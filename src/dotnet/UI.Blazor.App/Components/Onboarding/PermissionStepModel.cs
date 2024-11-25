@@ -1,13 +1,9 @@
-using System.Diagnostics.CodeAnalysis;
-using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.App;
 using ActualChat.Permissions;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class PermissionStepModel(IServiceProvider services)
 {
     public readonly HostInfo HostInfo = services.HostInfo();

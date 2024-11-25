@@ -1,7 +1,5 @@
-@using System.Diagnostics.CodeAnalysis
 @inherits LayoutComponentBase
 @layout BaseLayout
-@attribute [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 
 <PageWithHeaderAndFooter @key="@Key" Class="default-layout">
     <LeftDrawer><RenderSlot Name="MainLeftDrawer"/></LeftDrawer>

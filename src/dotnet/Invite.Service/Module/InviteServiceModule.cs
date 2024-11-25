@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Db;
@@ -6,7 +5,6 @@ using ActualChat.Redis.Module;
 
 namespace ActualChat.Invite.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class InviteServiceModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IServerModule
 {

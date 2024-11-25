@@ -130,7 +130,6 @@
         }
     }
 
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record Model(UserLanguageSettings Languages, bool ShouldDisplayTranscriberEngineSettings) {
         public static readonly Model Loading = new(new(), false);
     }

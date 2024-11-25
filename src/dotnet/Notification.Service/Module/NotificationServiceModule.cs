@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.Db.Module;
+﻿using ActualChat.Db.Module;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
@@ -8,7 +7,6 @@ using FirebaseAdmin.Messaging;
 
 namespace ActualChat.Notification.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class NotificationServiceModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IServerModule
 {

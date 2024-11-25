@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
@@ -7,7 +6,6 @@ using Polly.Extensions.Http;
 
 namespace ActualChat.Kubernetes.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class KubernetesModule(IServiceProvider moduleServices)
     : HostModule<KubernetesSettings>(moduleServices), IServerModule
 {

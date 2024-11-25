@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<EditChatTypeModalPage.ComputedModel>
 @{
 #pragma warning disable IL2091
-    
+
     var m = State.Value;
     if (ReferenceEquals(m, ComputedModel.Loading))
         return;
@@ -299,7 +299,6 @@
         }
     }
 
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record ComputedModel {
         public static readonly ComputedModel Loading = new();
 

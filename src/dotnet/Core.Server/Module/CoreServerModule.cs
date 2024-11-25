@@ -12,7 +12,6 @@ namespace ActualChat.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class CoreServerModule(IServiceProvider moduleServices)
     : HostModule<CoreServerSettings>(moduleServices), IServerModule
 {

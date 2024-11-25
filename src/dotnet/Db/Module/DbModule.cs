@@ -1,5 +1,3 @@
-using System.Data;
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
@@ -14,7 +12,6 @@ using ActualLab.Fusion.Operations.Internal;
 
 namespace ActualChat.Db.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class DbModule(IServiceProvider moduleServices)
     : HostModule<DbSettings>(moduleServices), IServerModule
 {

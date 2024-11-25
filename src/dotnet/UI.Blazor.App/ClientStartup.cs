@@ -97,6 +97,10 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UnavailablePage))]
     // Components
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TextInputOptions))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatView))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListRenderState))]
     public static void Initialize()
     {

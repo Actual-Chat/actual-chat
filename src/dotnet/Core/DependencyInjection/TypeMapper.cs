@@ -21,6 +21,8 @@ public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMe
             .ToDictionary(kv => kv.Key, kv => kv.Value)))
     { }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2073:NoMatchingAnnotation", Justification = "Type is marked with DynamicallyAccessedMembers.")]
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type Get([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type source)
         => TryGet(source)
             ?? throw StandardError.NotFound<Type>(

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
@@ -9,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Redis.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class RedisModule(IServiceProvider moduleServices)
     : HostModule<RedisSettings>(moduleServices), IServerModule
 {

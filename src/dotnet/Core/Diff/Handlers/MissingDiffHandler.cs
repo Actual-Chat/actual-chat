@@ -1,7 +1,9 @@
 namespace ActualChat.Diff.Handlers;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class MissingDiffHandler<T, TDiff>(DiffEngine engine) : DiffHandlerBase<T, TDiff>(engine)
+public class MissingDiffHandler<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiff>(DiffEngine engine)
+    : DiffHandlerBase<T, TDiff>(engine)
 {
     public override TDiff Diff(T source, T target)
         => throw StandardError.NotSupported(

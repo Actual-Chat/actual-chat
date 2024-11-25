@@ -18,7 +18,6 @@ namespace ActualChat.UI.Blazor.App.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IBlazorUIModule
 {

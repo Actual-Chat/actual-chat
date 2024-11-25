@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -21,7 +20,6 @@ using Twilio.Clients;
 
 namespace ActualChat.Users.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class UsersServiceModule(IServiceProvider moduleServices)
     : HostModule<UsersSettings>(moduleServices), IServerModule
 {

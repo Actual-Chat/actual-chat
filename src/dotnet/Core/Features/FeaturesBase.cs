@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using CommunityToolkit.HighPerformance.Buffers;
 
 namespace ActualChat;

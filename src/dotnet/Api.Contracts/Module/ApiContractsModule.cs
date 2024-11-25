@@ -23,7 +23,6 @@ namespace ActualChat.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ApiContractsModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IAppModule
 {

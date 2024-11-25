@@ -3,7 +3,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
 #pragma warning disable IL2091
-    
+
     var isPlaceChat = !PlaceId.IsNone;
     var canChangeChatType = PlaceId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
     var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
@@ -194,7 +194,6 @@
     }
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed class FormModel {
         [Required, MinLength(1)]
         public string Title { get; set; } = "";

@@ -1,8 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using ActualChat.Expressions;
 using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework;
 using ActualLab.Redis;
 
 namespace ActualChat.Db;

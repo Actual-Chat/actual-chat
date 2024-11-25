@@ -1,6 +1,5 @@
 namespace ActualChat.Diff.Handlers;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class RecordDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRecord,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiff> : DiffHandlerBase<TRecord, TDiff>

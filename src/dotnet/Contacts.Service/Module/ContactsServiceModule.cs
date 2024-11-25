@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Contacts.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ContactsServiceModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IServerModule
 {

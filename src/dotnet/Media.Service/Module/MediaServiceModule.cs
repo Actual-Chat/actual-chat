@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
@@ -6,7 +5,6 @@ using ActualChat.Redis.Module;
 
 namespace ActualChat.Media.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class MediaServiceModule(IServiceProvider moduleServices)
     : HostModule<MediaSettings>(moduleServices), IServerModule
 {

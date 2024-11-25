@@ -23,7 +23,6 @@ public sealed class ExternalContactHasher
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)]
 internal sealed partial record HashedExternalContact
 {
     [DataMember, MemoryPackOrder(0)] public ExternalContactId Id { get; init; }

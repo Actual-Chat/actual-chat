@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat;
 
 public delegate int ShardKeyResolver<in T>(T source);

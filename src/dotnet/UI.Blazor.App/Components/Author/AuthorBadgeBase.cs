@@ -83,7 +83,6 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
     // Nested types
 
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record Model(
         Author Author,
         bool IsOwn = false)

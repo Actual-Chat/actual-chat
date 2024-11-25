@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.ML;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -28,7 +27,6 @@ using ActualChat.MLSearch.Flows;
 
 namespace ActualChat.MLSearch.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : HostModule<MLSearchSettings>(moduleServices), IWebServerModule
 {
     private readonly ILogger<MLSearchServiceModule> _log = moduleServices.LogFor<MLSearchServiceModule>();

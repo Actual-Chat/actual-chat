@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.UI.Blazor;
 
 public abstract class FormFieldInfo
@@ -19,6 +17,7 @@ public abstract class FormFieldInfo
 
 #pragma warning disable IL2070
     [UnconditionalSuppressMessage("Trimming", "IL2070:DoesNotSatisfyDynamicallyAccessedMemberTypes.PublicProperties", Justification = "FormType is marked with DynamicallyAccessedMembers.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111:DoesNotSatisfyDynamicallyAccessedMemberTypes.PublicProperties", Justification = "FormType is marked with DynamicallyAccessedMembers.")]
     public static FormFieldInfo[] GetFields(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type formType)
         => FieldInfoCache.GetOrAdd(formType, static ([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]formType1) => {
@@ -35,6 +34,8 @@ public abstract class FormFieldInfo
         });
 #pragma warning restore IL2070
 
+    [UnconditionalSuppressMessage("Trimming", "IL2076:DoesNotSatisfyDynamicallyAccessedMemberTypes.PublicProperties", Justification = "FormType is marked with DynamicallyAccessedMembers.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111:DoesNotSatisfyDynamicallyAccessedMemberTypes.PublicProperties", Justification = "FormType is marked with DynamicallyAccessedMembers.")]
     public static FormFieldInfo New([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type formType, PropertyInfo fieldIdProperty)
     {
         if (!fieldIdProperty.Name.OrdinalEndsWith(FieldIdSuffix))

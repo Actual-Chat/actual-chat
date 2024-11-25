@@ -15,7 +15,6 @@ namespace ActualChat.Module;
 #pragma warning disable IL2026, IL2111 // Fine for modules
 #pragma warning disable CA1822 // Method can be static
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class CoreModule(IServiceProvider moduleServices)
     : HostModule<CoreSettings>(moduleServices)
 {

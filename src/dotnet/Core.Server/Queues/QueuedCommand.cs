@@ -1,10 +1,8 @@
 using System.Collections.Frozen;
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Queues;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public abstract record QueuedCommand : IHasId<Ulid>
 {
     private static readonly MethodInfo NewInternalMethod = typeof(QueuedCommand)

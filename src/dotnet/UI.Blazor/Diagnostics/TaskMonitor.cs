@@ -19,6 +19,7 @@ public class TaskMonitor : WorkerBase
     }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(TaskScheduler))]
+    [UnconditionalSuppressMessage("Trimming", "IL2075:DoesNotSatisfyDynamicallyAccessedMemberTypes.NonPublicMembers", Justification = "There is DynamicDependencyAttribute.")]
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var scheduler = TaskScheduler.Current;

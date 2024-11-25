@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Flows.Db;
 using ActualChat.Flows.Infrastructure;
@@ -7,7 +6,6 @@ using ActualChat.Redis.Module;
 
 namespace ActualChat.Flows.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class FlowsServiceModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IServerModule
 {

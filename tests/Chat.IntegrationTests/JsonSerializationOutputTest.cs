@@ -13,7 +13,7 @@ public class JsonSerializationOutputTest(ITestOutputHelper @out) : TestBase(@out
         Dump(ApiArray.New(new ActiveChat(ChatId.ParseOrNone("dpwo1tm0tw"))));
         Dump(new UserOnboardingSettings() { IsAvatarStepCompleted = true });
         Dump(new ChatListSettings(ChatListOrder.ByAlphabet));
-        Dump(new UserBubbleSettings() { ReadBubbles = ApiArray.New("x") });
+        Dump(new UserBubbleSettings() { ReadBubbles = ApiArray.New(["x"]) });
     }
 
     [Fact]

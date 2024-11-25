@@ -4,7 +4,7 @@
 @implements IDisposable
 @{
 #pragma warning disable IL2091
-    
+
     if (ReferenceEquals(_timeZoneFormModel, null))
         return;
     var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZoneName, _timeZoneFormModel.SelectedTimeZoneName);
@@ -155,7 +155,6 @@
 
     // Nested types
 
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed class TimeZoneFormModel {
         public string SelectedTimeZoneId { get; set; } = "";
         public string SelectedTimeZoneName { get; set; } = "";
@@ -171,7 +170,6 @@
         }
     }
 
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed class EmailFormModel {
         [EmailAddress] public string? Email { get; set; }
 
