@@ -236,7 +236,9 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
             long localId;
-            if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
+            if (userId == Constants.User.Sherlock.UserId)
+                localId = Constants.User.Sherlock.AuthorLocalId;
+            else if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
                 var placeId = chatId.PlaceId;
                 var placeAuthor = await GetByUserId(placeId.ToRootChatId(), userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
                 if (placeAuthor == null)
@@ -563,8 +565,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
         if (authorId == Bots.GetWalleId(chatId))
             return Bots.GetWalle(chatId);
-        if (authorId == Bots.GetSherlockId(chatId))
-            return Bots.GetSherlock(chatId);
 
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         AuthorFull? author;
