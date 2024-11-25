@@ -28,8 +28,11 @@ public partial class EditChatTypeModalPage
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
+    private IInvites Invites => Hub.Invites;
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private UICommander UICommander => Hub.UICommander();
+    private Features Features => Hub.Features();
+    private MomentClockSet Clocks => Hub.Clocks();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
     private ChatId ChatId { get; set; }
@@ -103,14 +106,14 @@ public partial class EditChatTypeModalPage
     {
         var chatId = ChatId;
 
-        var chat = await Chats.Get(Session, chatId, cancellationToken);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null || !chat.Rules.CanEditProperties())
             return new ComputedModel { Chat = chat };
 
         List<Invite.Invite> activeInvites;
         if (chat.CanInvite()) {
-            var invites = await Hub.Invites.ListChatInvites(Session, chatId, cancellationToken);
-            var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
+            var invites = await Invites.ListChatInvites(Session, chatId, cancellationToken).ConfigureAwait(false);
+            var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
             activeInvites = invites
                 .Where(c => c.ExpiresOn > threshold)
                 .OrderByDescending(c => c.ExpiresOn)
@@ -118,7 +121,7 @@ public partial class EditChatTypeModalPage
         }
         else
             activeInvites = [];
-        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI>(cancellationToken);
+        var allowEditIsTemplate = await Features.Get<Features_EnableTemplateChatUI>(cancellationToken);
         var isPublic = chat.IsPublic;
         return new () {
             Chat = chat,
@@ -131,7 +134,7 @@ public partial class EditChatTypeModalPage
     private async Task OnNewInviteClick()
     {
         var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
-        invite = await UICommander.Run(new Invites_Generate(Session, invite));
+        invite = await UICommander.Run(new Invites_Generate(Session, invite)).ConfigureAwait(false);
         _newInviteId = invite.Id;
     }
 
@@ -140,12 +143,13 @@ public partial class EditChatTypeModalPage
         if (_formRef is not { IsValid: true })
             return;
 
-        await Save();
+        if (!await Save())
+            Context.Close();
     }
 
-    private async Task Save()
+    private async Task<bool> Save()
     {
-        var chat = await Chats.Get(Session, ChatId, default).Require();
+        var chat = await Chats.Get(Session, ChatId, default).Require().ConfigureAwait(false);
         var isPlaceChat = chat.Id.IsPlaceChat;
         var newChat = chat with {
             IsPublic = _form!.IsPublic,
@@ -159,11 +163,8 @@ public partial class EditChatTypeModalPage
             new () {
                 Update = DiffEngine.Diff<Chat.Chat, ChatDiff>(chat, newChat),
             });
-        var uiActionResult = await UICommander.Run(command);
-        if (uiActionResult.HasError)
-            return;
-
-        Context.Close();
+        var uiActionResult = await UICommander.Run(command).ConfigureAwait(false);
+        return !uiActionResult.HasError;
     }
 
     private void OnPublicChatClick(bool isPublic)
