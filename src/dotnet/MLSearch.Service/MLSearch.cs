@@ -41,14 +41,16 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
         // Note: Quick workaround to make a chat owned by a bot.
         // Promote ownership instead of creating it by the bot from the start.
         // Reason: not sure how to create a session for a bot.
+        var (session, title, mediaId) = command;
+        mediaId ??= Constants.User.Sherlock.MediaId;
         var chatChange = Change.Create<ChatDiff> (new() {
             IsPublic = false,
-            Title = command.Title,
+            Title = title,
             Kind = ChatKind.Group,
-            MediaId = command.MediaId,
+            MediaId = mediaId,
             SystemTag = Constants.Chat.SystemTags.Bot,
         });
-        var chatChangeCommand = new Chats_Change(command.Session, ChatId.None, null, chatChange);
+        var chatChangeCommand = new Chats_Change(session, ChatId.None, null, chatChange);
         var chat = await Commander.Call(
             chatChangeCommand,
             isOutermost: true,
@@ -63,7 +65,7 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
             new AuthorDiff()
         );
         var botAuthor = await Commander.Call(upsertCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
-        var promoteCommand = new Authors_PromoteToOwner(command.Session, botAuthor.Id);
+        var promoteCommand = new Authors_PromoteToOwner(session, botAuthor.Id);
         _ = await Commander.Call(promoteCommand, isOutermost: true, cancellationToken).ConfigureAwait(false);
         return new MLSearchChat(chat.Id);
     }

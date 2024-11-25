@@ -20,25 +20,32 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
     // Private methods
 
     private async Task EnsureAdminExists(CancellationToken cancellationToken)
-    => await EnsureUserExists(Constants.User.Admin.UserId, Constants.User.Admin.Name, cancellationToken)
-        .ConfigureAwait(false);
-    private async Task EnsureUserExists(UserId userId, string name, CancellationToken cancellationToken)
+        => await EnsureUserExists(
+                new InternalUserInfo(Constants.User.Admin.UserId, Constants.User.Admin.Name) {
+                    AvatarBio = "Admin",
+                    AvatarPictureUrl = Constants.User.Admin.Picture
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task EnsureSherlockExists(CancellationToken cancellationToken)
+        => await EnsureUserExists(
+                new InternalUserInfo(Constants.User.Sherlock.UserId, Constants.User.Sherlock.Name) {
+                    AvatarBio = Constants.User.Sherlock.Name,
+                    AvatarMediaId = Constants.User.Sherlock.MediaId
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task EnsureUserExists(InternalUserInfo userInfo, CancellationToken cancellationToken)
     {
-        var account = await GetInternalAccount(userId, cancellationToken).ConfigureAwait(false);
+        var account = await GetInternalAccount(userInfo.Id, cancellationToken).ConfigureAwait(false);
         if (account != null)
             return;
 
-        Log.LogInformation($"Creating {name} user...");
-        await AddInternalAccount(new (userId, name), cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Creating '{UserName}' user...", userInfo.UserName);
+        await AddInternalAccount(userInfo, cancellationToken).ConfigureAwait(false);
     }
-
-    private async Task EnsureSherlockExists(CancellationToken cancellationToken)
-    => await EnsureUserExists(
-            Constants.User.Sherlock.UserId,
-            Constants.User.Sherlock.Name,
-            cancellationToken
-        )
-        .ConfigureAwait(false);
 
     private async Task EnsureTestBotsExist(CancellationToken cancellationToken)
     {
@@ -155,15 +162,19 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
 
         // Create avatar
-        var avatarBio = isAdmin ? "Admin" : $"I'm just a {userName} test bot";
-        var avatarPicture = isAdmin
-            ? Constants.User.Admin.Picture
-            : $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
+        var avatarBio = userInfo.AvatarBio.NullIfEmpty() ?? $"I'm just a {userName} test bot";
+        var avatarMediaId = userInfo.AvatarMediaId;
+        string avatarPictureUrl = "";
+        if (avatarMediaId.IsNone)
+            avatarPictureUrl = userInfo.AvatarPictureUrl.NullIfEmpty() ??
+                $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
+
         var changeAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull(account.Id) {
                 Name = userInfo.AvatarNameOrDefault,
                 Bio = avatarBio,
-                PictureUrl = avatarPicture,
+                MediaId = avatarMediaId,
+                PictureUrl = avatarPictureUrl,
             },
         });
         var avatar = await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
@@ -197,6 +208,10 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         string Email = "",
         string AvatarName = "")
     {
+        public string AvatarBio { get; init; } = "";
+        public MediaId AvatarMediaId { get; init; } = MediaId.None;
+        public string AvatarPictureUrl { get; init; } = "";
+
         public string UserNameOrDefault => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLowerInvariant()}_{LastName.ToLowerInvariant()}";
         public string AvatarNameOrDefault => AvatarName.NullIfEmpty() ?? $"{FirstName} {LastName}".Trim().NullIfEmpty() ?? UserNameOrDefault;
     }

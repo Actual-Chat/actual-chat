@@ -18,16 +18,4 @@ public static class Bots
                 PictureUrl = Constants.User.Walle.Picture,
             },
         };
-
-    public static AuthorId GetSherlockId(ChatId chatId)
-        => new(chatId, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
-
-    public static AuthorFull GetSherlock(ChatId chatId)
-        => new (GetSherlockId(chatId)) {
-            UserId = Constants.User.Sherlock.UserId,
-            Avatar = new AvatarFull(Constants.User.Sherlock.UserId) {
-                Name = Constants.User.Sherlock.Name,
-                PictureUrl = Constants.User.Sherlock.Picture,
-            },
-        };
 }

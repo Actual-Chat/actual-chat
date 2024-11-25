@@ -32,6 +32,8 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private HighlightUI HighlightUI => Hub.HighlightUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
     private UICommander UICommander => Hub.UICommander();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)
     {
@@ -115,7 +117,9 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     }
 
     private async Task<ChatId?> CreateSearchChat() {
-        var createSearchChatCommand = new MLSearch_CreateChat(Session, "Search", default);
+        var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
+        var title = "Search on " + now.ToString("g");
+        var createSearchChatCommand = new MLSearch_CreateChat(Session, title, default);
         var (searchChat, error) = await UICommander.Run(createSearchChatCommand).ConfigureAwait(false);
         if (error != null)
             return null;

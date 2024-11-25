@@ -1,0 +1,31 @@
+﻿using ActualChat.Media.Resources;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace ActualChat.Media.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddSherlockImage : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            UpAsync(migrationBuilder).Wait();
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+
+        }
+
+        private async Task UpAsync(MigrationBuilder migrationBuilder)
+        {
+            await new ImagesUploader(this.GetType())
+                .Execute(async c => {
+                    await c.AddMedia(Constants.User.Sherlock.MediaId.Value, Resource.Sherlock).ConfigureAwait(false);
+                }).ConfigureAwait(false);
+        }
+    }
+}
