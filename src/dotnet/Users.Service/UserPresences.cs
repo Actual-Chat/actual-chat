@@ -13,7 +13,12 @@ public class UserPresences(IServiceProvider services) : IUserPresences
 
     // [ComputeMethod]
     public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
-        => await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+    {
+        if (Constants.User.Sherlock.UserId.Equals(userId))
+            return Presence.Online; // TODO: check if ML search is configured and running.
+
+        return await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+    }
 
     // [ComputeMethod]
     public virtual async Task<ApiNullable8<Moment>> GetLastCheckIn(UserId userId, CancellationToken cancellationToken)
