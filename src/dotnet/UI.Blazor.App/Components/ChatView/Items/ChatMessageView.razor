@@ -390,7 +390,7 @@
         if (chat.HasSingleAuthor)
             return false;
 
-        if (chat.SystemTag == Constants.Chat.SystemTags.Bot)
+        if (chat.IsAiSearchChat())
             return false;
 
         var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);

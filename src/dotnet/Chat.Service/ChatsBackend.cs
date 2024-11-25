@@ -751,7 +751,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
                 }
 
-                if (chat.SystemTag == Constants.Chat.SystemTags.Bot) {
+                if (chat.IsAiSearchChat()) {
                     var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
                         chat.Id, default, Constants.User.Sherlock.UserId, null,
                         new AuthorDiff()

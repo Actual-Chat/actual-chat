@@ -328,7 +328,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         rebuildTiles: // Building actual virtual list tiles
 
-        var isBot = chat.SystemTag == Constants.Chat.SystemTags.Bot;
+        var isBot = chat.IsAiSearchChat();
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
         var shownReadyEntryLid = _shownReadEntryLid.Value;
         var renderedTiles = renderedData.Tiles.ToDictionary(t => t.Key, StringComparer.Ordinal);
@@ -579,7 +579,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chat.Id.Kind == ChatKind.Peer)
             return;
 
-        var isAiSearchChat = chat.SystemTag == Constants.Chat.SystemTags.Bot;
+        var isAiSearchChat = chat.IsAiSearchChat();
         if (isAiSearchChat)
             return;
 

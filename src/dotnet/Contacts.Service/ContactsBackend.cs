@@ -590,7 +590,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             if (chat is null)
                 Log.LogWarning("Can't get chat with id '{ChatId}' on changing author '{Author}', old author: '{OldAuthor}'",
                     chatId, author, oldAuthor);
-            else if (chat.SystemTag == Constants.Chat.SystemTags.Bot)
+            else if (chat.IsAiSearchChat())
                 return; // Do not create contacts for ML Search chats
         }
 
