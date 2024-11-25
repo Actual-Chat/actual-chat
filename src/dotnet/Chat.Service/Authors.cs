@@ -286,6 +286,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (isOwner)
             throw StandardError.Constraint("You can't remove an owner of this chat from chat members.");
 
+        if (authorId.LocalId == Constants.User.Sherlock.AuthorLocalId)
+            throw StandardError.Constraint("You can't remove an AI search bot from chat members.");
+
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { HasLeft = true });
