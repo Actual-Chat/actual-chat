@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
@@ -750,6 +749,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                             },
                         });
                     await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+                }
+
+                if (chat.SystemTag == Constants.Chat.SystemTags.Bot) {
+                    var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
+                        chat.Id, default, Constants.User.Sherlock.UserId, null,
+                        new AuthorDiff()
+                    );
+                    _ = await Commander.Call(upsertMlBotAuthorCommand, cancellationToken).ConfigureAwait(false);
                 }
             }
             else
