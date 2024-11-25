@@ -86,6 +86,9 @@ public static partial class Constants
             public static readonly long AuthorLocalId = -2;
             public static readonly string Name =  "AI Search Bot";
             public static readonly MediaId MediaId = new ("system-icons:sherlock");
+
+            public static AuthorId GetSherlockAuthorId(ChatId chatId)
+                => new(chatId, AuthorLocalId, AssumeValid.Option);
         }
 
         public static readonly IReadOnlyList<UserId> SystemUserIds = [Admin.UserId, Walle.UserId, Sherlock.UserId];
