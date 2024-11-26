@@ -16,6 +16,7 @@ public partial class ChatUI
             AsyncChain.From(ResetHighlightedEntry),
             AsyncChain.From(PushKeepAwakeState),
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
+            AsyncChain.From(PrefetchChatTails),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -193,6 +194,40 @@ public partial class ChatUI
             await Hub.Dispatcher
                 .InvokeAsync(() => ChatListUI.GetPlaceChatListSettings(SelectedPlaceId.Value))
                 .ConfigureAwait(false);
+        }
+    }
+
+    private async Task PrefetchChatTails(CancellationToken cancellationToken)
+    {
+        var visibleChatsChanges = ChatListUI.VisibleChats.Changes(cancellationToken);
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        await foreach (var cVisibleChats in visibleChatsChanges.Where(c => c.Value.Count > 0)) {
+            cts.CancelAndDisposeSilently();
+            cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var changeToken = cts.Token;
+            var visibleChatIds = cVisibleChats.Value;
+            foreach (var chatId in visibleChatIds)
+                _ = BackgroundTask.Run(async () => {
+                        var cGet = await Computed.Capture(() => Get(chatId, changeToken), changeToken).ConfigureAwait(false);
+                        var chatInfoChanges = cGet.Changes(changeToken);
+                        await foreach (var cChatInfo in chatInfoChanges) {
+                            var chatInfo = cChatInfo.Value;
+                            if (chatInfo == null)
+                                continue;
+
+                            var prefetchNearTo = chatInfo.ReadEntryLid != 0
+                                ? chatInfo.ReadEntryLid
+                                : chatInfo.News.TextEntryIdRange.End;
+
+                            var secondLayer = IdTileStack.Layers[1];
+                            var idRange = new Range<long>(
+                                secondLayer.GetTile(prefetchNearTo - LoadLimit).Start,
+                                secondLayer.GetTile(prefetchNearTo + HalfLoadLimit).End).IntersectWith(new Range<long>(0, long.MaxValue));
+
+                            _ = PrefetchTiles(chatId, idRange, cancellationToken);
+                        }
+                    },
+                    changeToken);
         }
     }
 }

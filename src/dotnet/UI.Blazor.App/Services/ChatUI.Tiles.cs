@@ -7,6 +7,11 @@ public partial class ChatUI
     public const string ShowIndexDocIdChatIdsSettingsKey = "ShowIndexDocIdChatIds";
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
+    public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
+    public static readonly long SecondTileSize = IdTileStack.Layers[1].TileSize; // 20
+    public static readonly long HalfLoadLimit = 2 * SecondTileSize; // 40
+    public static readonly long LoadLimit = 4 * SecondTileSize; // 80
+
     // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
@@ -16,13 +21,14 @@ public partial class ChatUI
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
     {
+        DebugLog?.LogDebug("GetTile: {ChatId} {IdRange} {LastReadEntryId}", chatId, idRange, lastReadEntryId);
         if (idRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(idRange));
 
         var requestedIdRange = prevMessage == null
             ? idRange.MoveStart(-1) // to request previous item of requested range to properly render block star - we will drop it off
             : idRange;
-        var tiles = await ChatView.IdTileStack.FirstLayer
+        var tiles = await IdTileStack.FirstLayer
             .GetCoveringTiles(requestedIdRange)
             .Select(t => Chats.GetTile(Session, chatId, ChatEntryKind.Text, t.Range, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
@@ -128,12 +134,62 @@ public partial class ChatUI
         CancellationToken cancellationToken = default)
         => Chats.GetEntry(Session, id, cancellationToken);
 
+    public Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
+    {
+        if (idRange.IsEmptyOrNegative)
+            return Task.CompletedTask;
+
+        DebugLog?.LogDebug("PrefetchTiles: {ChatId} {IdRange}", chatId, idRange);
+
+        return BackgroundTask.Run(async () => {
+            // We are making following calls during chat view rendering:
+            // IChats.Get:3
+            // IChats.GetTile:3
+            // IChats.GetIdRange:4
+            // IChats.GetRules:3
+            // IAuthors.ListAuthorIds:3
+            // IAuthors.GetPresence:4
+            // IRoles.ListOwnerIds:3
+            // IReactions.ListSummaries:3
+            // IAuthors.Get:4
+            var chatTask = Chats.Get(Session, chatId, cancellationToken);
+            var idRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
+            var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
+            var authorsTask = Authors.ListAuthorIds(Session, chatId, cancellationToken);
+            var isEmptyTask = IsEmpty(chatId, cancellationToken);
+            var tilesTask = IdTileStack.FirstLayer
+                .GetCoveringTiles(idRange)
+                .Select(x => Chats.GetTile(Session,
+                    chatId,
+                    ChatEntryKind.Text,
+                    x.Range,
+                    cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+
+            var tiles = await tilesTask.ConfigureAwait(false);
+
+            // prefetch authors
+            await tiles
+                .SelectMany(t => t.Entries)
+                .Select(e => e.AuthorId)
+                .Distinct()
+                .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+            await Task.WhenAll(chatTask, idRangeTask, rulesTask, authorsTask, isEmptyTask, tilesTask).ConfigureAwait(false);
+        }, Log, "Error prefetching chat tiles.", CancellationToken.None);
+    }
+
+    // Private methods
+
     private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
     {
         var account = AccountUI.OwnAccount.Value;
+        if (!account.IsAdmin || chatId.IsNone)
+            return false;
+
         var chatIdListToShowIndexDocId = await Hub.AccountSettings().Get<string>(ShowIndexDocIdChatIdsSettingsKey, cancellationToken).ConfigureAwait(false);
         var chatSidsShowIndexDocId = chatIdListToShowIndexDocId?.Split(';') ?? [];
-        var showIndexDocId = account.IsAdmin && !chatId.IsNone && chatSidsShowIndexDocId.Contains(chatId.Value, StringComparer.Ordinal);
+        var showIndexDocId = chatSidsShowIndexDocId.Contains(chatId.Value, StringComparer.Ordinal);
         return showIndexDocId;
     }
 

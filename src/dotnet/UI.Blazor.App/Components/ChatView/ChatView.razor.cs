@@ -10,10 +10,6 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessage>, IDisposable
 {
-    public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
-    public static readonly long SecondTileSize = IdTileStack.Layers[1].TileSize; // 20
-    public static readonly long HalfLoadLimit = 2 * SecondTileSize; // 40
-    public static readonly long LoadLimit = 4 * SecondTileSize; // 80
     public static readonly TimeSpan FastUpdateRecency = TimeSpan.FromMilliseconds(100);
     public static readonly TimeSpan FastUpdateDelay = TimeSpan.FromMilliseconds(20);
     public static readonly TimeSpan SlowUpdateDelay = TimeSpan.FromMilliseconds(100);
@@ -305,23 +301,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
         var hasAllItems = hasVeryFirstItem && hasVeryLastItem;
-        if (idRangeToLoad.End + HalfLoadLimit >= chatIdRange.End)
+        if (idRangeToLoad.End + ChatUI.HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
         activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
         activity?.SetTag("AC." + "IdRangeToLoad", idRangeToLoad.Format());
-        // DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, idRangeToLoad.Format());
+        DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, idRangeToLoad.Format());
 
         // Prefetching new tiles
         var lastIdRangeToLoad = _lastIdRangeToLoad;
         _lastIdRangeToLoad = idRangeToLoad;
         var newIdRanges = idRangeToLoad.Subtract(lastIdRangeToLoad);
-        using (var __ = ExecutionContextExt.TrySuppressFlow()) {
-            // We don't want dependencies to be captured for prefetch calls
-            _ = PrefetchTiles(chatId, newIdRanges.Item1, cancellationToken);
-            _ = PrefetchTiles(chatId, newIdRanges.Item2, cancellationToken);
-        }
+        _ = ChatUI.PrefetchTiles(chatId, newIdRanges.Item1, cancellationToken);
+        _ = ChatUI.PrefetchTiles(chatId, newIdRanges.Item2, cancellationToken);
 
         var idTiles = GetIdTilesToLoad(idRangeToLoad, chatIdRange);
         var tryUpdateShownReadEntryLid = true;
@@ -377,8 +370,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 };
         }
         else if (query.ExpectedCount > tiles.SelectMany(t => t.Items).Count() / 2 && !hasAllItems) {
-            var startOffset = (int)(query.MoveRange.Start - SecondTileSize);
-            var endOffset = (int)(query.MoveRange.End + SecondTileSize);
+            var startOffset = (int)(query.MoveRange.Start - ChatUI.SecondTileSize);
+            var endOffset = (int)(query.MoveRange.End + ChatUI.SecondTileSize);
             var extendedQuery = new VirtualListDataQuery(query.KeyRange, query.VirtualRange, new Range<int>(startOffset, endOffset)) {
                 ExpectedCount = query.ExpectedCount,
             };
@@ -421,10 +414,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             : result;
     }
 
-    private static Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
+    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
     {
-        var firstLayer = IdTileStack.FirstLayer;
-        var secondLayer = IdTileStack.Layers[1];
+        DebugLog?.LogDebug("GetIdTilesToLoad: {IdRangeToLoad} {ChatIdRange}", idRangeToLoad, chatIdRange);
+        idRangeToLoad = new Range<long>(Math.Max(chatIdRange.Start, idRangeToLoad.Start), idRangeToLoad.End);
+        var firstLayer = ChatUI.IdTileStack.FirstLayer;
+        var secondLayer = ChatUI.IdTileStack.Layers[1];
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
             // hot range assumes high probability of changes - so close to the end of the chat messages
@@ -444,7 +439,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 : default;
             tiles.AddRange(firstLayer.GetCoveringTiles(hotRange).SkipWhile(hr => hr.Range.Overlaps(lastColdRange)));
             var result = tiles.ToArray();
-            // DebugLog?.LogDebug("GetIdTilesToLoad: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
             // if (result.DistinctBy(x => x.Range).Count() != result.Length)
             //     Debugger.Break();
             return result;
@@ -454,29 +448,30 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
     }
 
-    private static Range<long> GetIdRangeToLoad(
+    private Range<long> GetIdRangeToLoad(
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> oldData,
         Navigation? scrollAnchor,
         Range<long> chatIdRange,
         ChatViewItemVisibility itemVisibility)
     {
-        var firstLayer = IdTileStack.Layers[0];
-        var minTileSize = IdTileStack.MinTileSize;
+        var firstLayer = ChatUI.IdTileStack.Layers[0];
+        var secondLayer = ChatUI.IdTileStack.Layers[1];
+        var minTileSize = ChatUI.IdTileStack.MinTileSize;
         var chatIdRangeEndPlus = chatIdRange.End + minTileSize;
         var firstItem = oldData.FirstItem;
         var lastItem = oldData.LastItem;
         var range = (!query.IsNone, firstItem != null) switch {
             // No query, no data -> initial load
             (false, false) => new Range<long>(
-                firstLayer.GetTile(chatIdRange.End - LoadLimit).Start,
-                chatIdRangeEndPlus),
+                secondLayer.GetTile(chatIdRange.End - ChatUI.LoadLimit).Start,
+                secondLayer.GetTile(chatIdRangeEndPlus).End).IntersectWith(new Range<long>(chatIdRange.Start, long.MaxValue)),
 
             // No query, but there is old data + we know visible items
             // KEEP THIS case, otherwise virtual list will grow indefinitely!
             (false, true) when !itemVisibility.IsEmpty
                 => new Range<long>(itemVisibility.MinEntryLid, itemVisibility.MaxEntryLid)
-                    .Expand(SecondTileSize)
+                    .Expand(ChatUI.SecondTileSize)
                     .ExpandToTiles(firstLayer),
 
             // No query, but there is old data -> retaining it
@@ -489,8 +484,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // If we are scrolling somewhere, let's extend the range to scrollAnchor & nearby entries.
         if (scrollAnchor is { } vScrollAnchor) {
             var scrollAnchorRange = new Range<long>(
-                vScrollAnchor.EntryLid - HalfLoadLimit,
-                vScrollAnchor.EntryLid + HalfLoadLimit);
+                vScrollAnchor.EntryLid - ChatUI.HalfLoadLimit,
+                vScrollAnchor.EntryLid + ChatUI.HalfLoadLimit);
             range = scrollAnchorRange.Overlaps(range)
                 ? range.MinMaxWith(scrollAnchorRange)
                 : scrollAnchorRange;
@@ -505,30 +500,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             range = new Range<long>(range.Start, chatIdRangeEndPlus);
 
         // Expand queryRange to tile boundaries
-        range = range.ExpandToTiles(IdTileStack.FirstLayer);
+        range = range.ExpandToTiles(ChatUI.IdTileStack.FirstLayer);
         return range;
-    }
-
-    private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
-    {
-        if (idRange.IsEmptyOrNegative)
-            return Task.CompletedTask;
-
-        return Task.Run(async () => {
-            var tiles = await IdTileStack.FirstLayer
-                .GetCoveringTiles(idRange)
-                .Select(x => Chats.GetTile(Session, chatId, ChatEntryKind.Text, x.Range, cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken)
-                .ConfigureAwait(false);
-
-            // prefetch authors
-            await tiles
-                .SelectMany(t => t.Entries)
-                .Select(e => e.AuthorId)
-                .Distinct()
-                .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken);
-        }, CancellationToken.None);
     }
 
     // Helpers
@@ -550,7 +523,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return false; // No item visibility or we aren't at the end of the list
 
         var shownReadEntryLid = _shownReadEntryLid.Value;
-        if (shownReadEntryLid > itemVisibility.MinEntryLid - LoadLimit)
+        if (shownReadEntryLid > itemVisibility.MinEntryLid - ChatUI.LoadLimit)
             return false; // The marker is visible or near the viewport
 
         var newShownReadEntryLid = UpdateReadPosition(itemVisibility.MaxEntryLid);
@@ -567,7 +540,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatIdRange = await Chats
             .GetIdRange(Session, Chat.Id, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
-        var range = new Range<long>(minEntryLid, minEntryLid + 20 * IdTileStack.MinTileSize)
+        var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.IdTileStack.MinTileSize))
             .IntersectWith(chatIdRange);
         return await entryReader.GetFirst(range, cancellationToken).ConfigureAwait(false);
     }

@@ -111,5 +111,25 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
     // Private methods
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility visibility)
-        => _visibility = visibility;
+    {
+        _visibility = visibility;
+        if (!UsePlaceChatListSettings)
+            return;
+
+        _ = UpdateVisibleChats(CancellationToken.None);
+        return;
+
+        async Task UpdateVisibleChats(CancellationToken cancellationToken)
+        {
+            var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(PlaceId);
+            var chatSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
+            var allChats = await ChatListUI.List(PlaceId, chatSettings, cancellationToken).ConfigureAwait(false);
+            var chatIds = visibility.VisibleKeys
+                .Select(idx => int.TryParse(idx, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) ? i : -1)
+                .Where(idx => idx >= 0 && idx < allChats.Count)
+                .Select(idx => allChats[idx].Id)
+                .ToHashSet();
+            ChatListUI.UpdateVisibleChats(chatIds);
+        }
+    }
 }
