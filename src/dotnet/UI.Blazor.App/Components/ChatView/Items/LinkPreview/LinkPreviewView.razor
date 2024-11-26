@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@using ILinkPreviews = ActualChat.Media.IMediaLinkPreviews
 @using LinkPreview = ActualChat.Media.LinkPreview;
 @inherits ComputedStateComponent<LinkPreviewView.Model>
 @{
@@ -83,7 +82,6 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
-    private ILinkPreviews MediaLinkPreviews => Hub.MediaLinkPreviews;
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private IChats Chats => Hub.Chats;
@@ -132,7 +130,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Entry;
-        var linkPreview = chatEntry.LinkPreview;
+        var linkPreview = chatEntry.LinkPreviews.FirstOrDefault();
         if (chatEntry.LinkPreviewMode == LinkPreviewMode.None || linkPreview == null || linkPreview.IsEmpty)
             return Model.None;
 
@@ -182,7 +180,7 @@
         public static readonly Model None = new();
 
         public ChatEntry ChatEntry { get; init; } = null!;
-        public LinkPreview Preview => ChatEntry.LinkPreview!;
+        public LinkPreview Preview => ChatEntry.LinkPreviews[0];
         public Uri Uri { get; init; } = null!;
         public LocalLinkPreview.Model? LocalLink { get; init; }
     }

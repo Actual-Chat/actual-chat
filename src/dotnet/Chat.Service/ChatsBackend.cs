@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
@@ -21,37 +20,44 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         = Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId);
     private static readonly Task<ILookup<TextEntryId, TextEntryAttachment>> EmptyAttachmentsTask
         = Task.FromResult(EmptyAttachments);
-    private static readonly IReadOnlyDictionary<Symbol, Media.LinkPreview> EmptyLinkPreviews
-        = new Dictionary<Symbol, Media.LinkPreview>().AsReadOnly();
-    private static readonly Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> EmptyLinkPreviewsTask
+    private static readonly IReadOnlyDictionary<Symbol, LinkPreview> EmptyLinkPreviews
+        = new Dictionary<Symbol, LinkPreview>().AsReadOnly();
+    private static readonly Task<IReadOnlyDictionary<Symbol, LinkPreview>> EmptyLinkPreviewsTask
         = Task.FromResult(EmptyLinkPreviews);
 
     // all backend services should be requested lazily to avoid circular references!
-    private IAccountsBackend? _accountsBackend;
-    private IAuthorsBackend? _authorsBackend;
-    private IRolesBackend? _rolesBackend;
-    private IMediaBackend? _mediaBackend;
-    private ILinkPreviewsBackend? _linkPreviewsBackend;
-    private IInvitesBackend? _invitesBackend;
-    private IPlacesBackend? _placesBackend;
-    private IServerKvasBackend? _serverKvasBackend;
 
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
-    private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
-    private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
-    private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= Services.GetRequiredService<ILinkPreviewsBackend>();
-    private IInvitesBackend InvitesBackend => _invitesBackend ??= Services.GetRequiredService<IInvitesBackend>();
-    private IPlacesBackend PlacesBackend => _placesBackend ??= Services.GetRequiredService<IPlacesBackend>();
-    private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
-
-    private HostInfo HostInfo { get; } = services.HostInfo();
-    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
-    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
-    private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-    private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
-    private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
-    private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+    [field: AllowNull, MaybeNull]
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
+    [field: AllowNull, MaybeNull]
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+    [field: AllowNull, MaybeNull]
+    private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IInvitesBackend InvitesBackend => field ??= Services.GetRequiredService<IInvitesBackend>();
+    [field: AllowNull, MaybeNull]
+    private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
+    [field: AllowNull, MaybeNull]
+    private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
+    [field: AllowNull, MaybeNull]
+    private HostInfo HostInfo => field ??= Services.HostInfo();
+    [field: AllowNull, MaybeNull]
+    private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
+    [field: AllowNull, MaybeNull]
+    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory => field ??= Services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbChat> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
+    [field: AllowNull, MaybeNull]
+    private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+    [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
 
     // [ComputeMethod]
@@ -295,16 +301,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     .Select(dbe => dbe.ToModel())
                     .ToApiArray());
 
-        var linkPreviewIds  = dbEntries.Where(x => !x.LinkPreviewId.IsNullOrEmpty())
-            .Select(x => (Symbol)x.LinkPreviewId)
-            .Distinct()
-            .ToList();
-
         var allAttachmentsTask = GetAttachments();
+        var allLinkPreviewsTask = GetLinkPreviews();
 
-        var allLinkPreviewsTask = linkPreviewIds.Count > 0
-            ? GetLinkPreviews(linkPreviewIds)
-            : EmptyLinkPreviewsTask;
         await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
 
         var allAttachments = await allAttachmentsTask.ConfigureAwait(false);
@@ -312,21 +311,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var entries = dbEntries.Select(e => {
             var entryId = TextEntryId.Parse(e.Id);
             var entryAttachments = allAttachments[entryId];
-            var linkPreview = allLinkPreviews.GetValueOrDefault(e.LinkPreviewId);
-            return e.ToModel(entryAttachments, linkPreview);
+            var linkPreviews = e.GetLinkPreviewIds()
+                .Select(previewId => allLinkPreviews.GetValueOrDefault(previewId))
+                .SkipNullItems()
+                .ToApiArray();
+            return e.ToModel(entryAttachments, linkPreviews);
         });
         return new ChatTile(idTileRange, true, entries.ToApiArray());
 
-        async Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> GetLinkPreviews(ICollection<Symbol> linkPreviewIds1)
+        Task<IReadOnlyDictionary<Symbol, LinkPreview>> GetLinkPreviews()
         {
-            if (linkPreviewIds1.Count == 0)
-                return EmptyLinkPreviews;
+            var linkPreviewIds  = dbEntries.Where(x => !x.LinkPreviewIds.IsNullOrEmpty())
+                .SelectMany(x => x.GetLinkPreviewIds())
+                .Distinct()
+                .ToList();
+            return linkPreviewIds.Count > 0
+                ? GetLinkPreviewsBulk()
+                : EmptyLinkPreviewsTask;
 
-            var linkPreviews = await linkPreviewIds1
-                .Select(id => LinkPreviewsBackend.Get(id, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            return linkPreviews.SkipNullItems().ToDictionary(lp => lp.Id);
+            async Task<IReadOnlyDictionary<Symbol, LinkPreview>> GetLinkPreviewsBulk()
+            {
+                var linkPreviews = await linkPreviewIds
+                    .Select(id => LinkPreviewsBackend.Get(id, true, cancellationToken))
+                    .Collect(cancellationToken)
+                    .ConfigureAwait(false);
+                return linkPreviews.SkipNullItems().ToDictionary(lp => lp.Id);
+            }
         }
 
         Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments()
@@ -1000,6 +1010,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     BeginsAt = Clocks.SystemClock.Now,
                 };
                 entry = ApplyDiff(entry, update, false);
+                entry = entry with {
+                    LinkPreviewIds = ExtractLinkPreviewIds(entry),
+                };
                 // Inject mention names into the markup
                 entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
                 dbEntry = new DbChatEntry(entry) {
@@ -1017,6 +1030,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 };
                 // Inject mention names into the markup
                 entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
+                entry = entry with { LinkPreviewIds = ExtractLinkPreviewIds(entry) };
                 var hasAttachments = update.Attachments is { Count: > 0 } || dbEntry.HasAttachments;
                 dbEntry.UpdateFrom(entry);
                 dbEntry.HasAttachments = hasAttachments;
@@ -1095,7 +1109,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     throw StandardError.Constraint("Audio entry should not have ForwardedAuthorId.");
                 if (newEntry.Attachments.Count > 0)
                     throw StandardError.Constraint("Audio entry should not have Attachments.");
-                if (!newEntry.LinkPreviewId.IsEmpty)
+                if (!newEntry.LinkPreviewIds.IsEmpty)
                     throw StandardError.Constraint("Audio entry should not have LinkPreviewId.");
                 break;
             case ChatEntryKind.Text:
@@ -1145,6 +1159,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         }
     }
+
+    private ApiArray<Symbol> ExtractLinkPreviewIds(ChatEntry entry)
+        => MarkupParser.ExtractLinks(entry.Content, Constants.Media.LinkPreviewsPerMessageLimit)
+            .Select(LinkPreview.ComposeId)
+            .ToApiArray();
 
     // [CommandHandler]
     public virtual async Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(

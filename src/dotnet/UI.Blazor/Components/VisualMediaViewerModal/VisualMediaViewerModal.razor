@@ -9,7 +9,7 @@
     var selectedAttachmentDownloadUrl = selectedAttachment != null
         ? UrlMapper.ContentUrl(selectedAttachment.Media.ContentId)
         : ModalModel.Url;
-    var linkPreview = ModalModel.ChatEntry?.LinkPreview;
+    var linkPreview = ModalModel.ChatEntry?.LinkPreviews.FirstOrDefault();
     var isYouTubeVideo = linkPreview?.IsYouTubeVideo ?? false;
 }
 

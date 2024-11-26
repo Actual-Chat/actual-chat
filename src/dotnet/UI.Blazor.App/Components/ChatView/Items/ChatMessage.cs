@@ -21,7 +21,7 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
     public bool IsReplacement
         => ReplacementKind != ChatMessageReplacementKind.None;
     public bool ShowLinkPreview
-        => Entry.LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.None;
+        => Entry.LinkPreviews.FirstOrDefault() is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.None;
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";
@@ -46,7 +46,7 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
             && Date == other.Date
             && Flags == other.Flags
             && Entry.Attachments.SequenceEqual(other.Entry.Attachments)
-            && Entry.LinkPreview == other.Entry.LinkPreview;
+            && Entry.LinkPreviews.SequenceEqual(other.Entry.LinkPreviews);
     }
 
     public override int GetHashCode()

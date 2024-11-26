@@ -42,7 +42,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatEntry.Property(e => e.AuthorId).UseCollation("C");
         chatEntry.Property(e => e.StreamId).UseCollation("C");
         chatEntry.Property(e => e.ForwardedAuthorId).UseCollation("C");
-        chatEntry.Property(e => e.LinkPreviewId).UseCollation("C");
+        chatEntry.Property(e => e.LinkPreviewIds).UseCollation("C");
 
         var mention = model.Entity<DbMention>();
         mention.Property(e => e.Id).UseCollation("C");

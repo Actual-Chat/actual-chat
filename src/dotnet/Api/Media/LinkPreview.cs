@@ -10,9 +10,6 @@ namespace ActualChat.Media;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
-    public static readonly LinkPreview Updating = new();
-    public static readonly LinkPreview UseExisting = new();
-
     [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; }
     [DataMember, MemoryPackOrder(8)] public long Version { get; init; }
     [DataMember, MemoryPackOrder(1)] public string Url { get; init; } = "";

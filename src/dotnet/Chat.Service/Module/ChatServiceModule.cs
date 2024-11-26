@@ -47,11 +47,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IReactions, Reactions>();
         rpcHost.AddBackend<IReactionsBackend, ReactionsBackend>();
 
-        // Links
-#pragma warning disable CS0618 // Type or member is obsolete
-        rpcHost.AddApi<ILinkPreviews, LinkPreviews>();
-#pragma warning restore CS0618 // Type or member is obsolete
-
         // UserLinks
         rpcHost.AddApiOrLocal<IUserLinks, UserLinks>();
         rpcHost.AddBackend<IUserLinksBackend, UserLinksBackend>();

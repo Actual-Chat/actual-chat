@@ -23,6 +23,8 @@ public class ImageGrabber(
         if (imageUri.IsNullOrEmpty())
             return MediaId.None;
 
+        // TODO: reuse existing media by mediaIdScope which is url hash
+
         // TODO: image size limit
         var processedFile = await DownloadImageToFile(imageUri, cancellationToken).ConfigureAwait(false);
         return await SaveFileToMedia(imageUri, processedFile, cancellationToken).ConfigureAwait(false);
