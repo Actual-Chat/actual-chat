@@ -51,16 +51,17 @@
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
+
+        var timeDelta = (Moment.CpuNow - Message.Entry.BeginsAt).Seconds;
+        if (timeDelta > 30)
+            return false;
+
         var chatState = await ChatUI.GetState(_chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)
             return false;
 
         var lastEntry = chatState.Info.LastTextEntry;
-        if (lastEntry != message.Entry)
-            return false;
-
-        var timeDelta = (Moment.CpuNow - Message.Entry.BeginsAt).Seconds;
-        return timeDelta < 30;
+        return lastEntry == message.Entry;
     }
 
     private void OnAuthorBadgeClick(AuthorId authorId)
