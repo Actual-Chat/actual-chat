@@ -67,7 +67,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Content { get; set; } = "";
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
-    public string? LinkPreviewId { get; set; }
+    public string? LinkPreviewIds { get; set; }
     public LinkPreviewMode? LinkPreviewMode { get; set; }
     public string? StreamId { get; set; }
 
@@ -75,7 +75,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long? VideoEntryId { get; set; }
     public string? TimeMap { get; set; }
 
-    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, Media.LinkPreview? linkPreview = null)
+    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, ApiArray<Media.LinkPreview> linkPreviews = default)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
         var attachmentsArray = attachments == null
@@ -83,6 +83,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             : new ApiArray<TextEntryAttachment>(attachments!.OrderBy(x => x.Index).ToArray());
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
+        var linkPreviewIds = GetLinkPreviewIds();
         return new (id, Version) {
             IsRemoved = IsRemoved,
             AuthorId = new AuthorId(AuthorId),
@@ -103,9 +104,15 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt.ToMoment(),
             Attachments = attachmentsArray,
-            LinkPreviewId = LinkPreviewId,
+ #pragma warning disable CS0618 // Type or member is obsolete
+            LinkPreviewId = linkPreviewIds.FirstOrDefault(),
+ #pragma warning restore CS0618 // Type or member is obsolete
+            LinkPreviewIds = linkPreviewIds,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
-            LinkPreview = linkPreview,
+ #pragma warning disable CS0618 // Type or member is obsolete
+            LinkPreview = linkPreviews.FirstOrDefault(),
+ #pragma warning restore CS0618 // Type or member is obsolete
+            LinkPreviews = linkPreviews,
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null
                     ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
@@ -113,6 +120,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 : default,
         };
     }
+
+    public ApiArray<Symbol> GetLinkPreviewIds()
+        => !LinkPreviewIds.IsNullOrEmpty() ? JsonSerializer.Deserialize<ApiArray<Symbol>>(LinkPreviewIds) : [];
 
     public void UpdateFrom(ChatEntry model)
     {
@@ -145,7 +155,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         IsSystemEntry = model.SystemEntry != null;
-        LinkPreviewId = model.LinkPreviewId;
+        LinkPreviewIds = !model.LinkPreviewIds.IsEmpty ? JsonSerializer.Serialize(model.LinkPreviewIds) : null;
         LinkPreviewMode = model.LinkPreviewMode;
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)

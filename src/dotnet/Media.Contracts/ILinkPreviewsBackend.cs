@@ -6,14 +6,15 @@ namespace ActualChat.Media;
 public interface ILinkPreviewsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken);
+    Task<LinkPreview?> Get(
+        Symbol id,
+        bool mustScheduleRefreshIfRequired,
+        CancellationToken cancellationToken);
 
     // Commands
 
     [CommandHandler]
-    Task<LinkPreview?> OnRefresh(LinkPreviewsBackend_Refresh command, CancellationToken cancellationToken);
+    Task<LinkPreview?> OnChange(LinkPreviewsBackend_Change command, CancellationToken cancellationToken);
 
     // Events
 
@@ -23,10 +24,12 @@ public interface ILinkPreviewsBackend : IComputeService, IBackendService
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record LinkPreviewsBackend_Refresh(
-    [property: DataMember, MemoryPackOrder(0)] string Url
-) : ICommand<LinkPreview?>, IBackendCommand, IHasShardKey<string>
+public sealed partial record LinkPreviewsBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] Symbol Id,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<LinkPreview> Change
+) : ICommand<LinkPreview?>, IBackendCommand, IHasShardKey<Symbol>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string ShardKey => Url;
+    public Symbol ShardKey => Id;
 }

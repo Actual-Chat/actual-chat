@@ -248,6 +248,11 @@ public static partial class Constants
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(3);
     }
 
+    public static class Media
+    {
+        public const int LinkPreviewsPerMessageLimit = 20;
+    }
+
     public static class Search
     {
         public const int PageSizeLimit = 50;

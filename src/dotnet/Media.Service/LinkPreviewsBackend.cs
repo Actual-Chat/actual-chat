@@ -1,233 +1,136 @@
 using ActualChat.Chat;
+using ActualChat.Flows;
 using ActualChat.Media.Db;
+using ActualChat.Media.Flows;
 using ActualChat.Media.Module;
-using ActualChat.Mesh;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
-public class LinkPreviewsBackend(MediaSettings settings, IChatsBackend chatsBackend, IMediaBackend mediaBackend, IMarkupParser markupParser, Crawler crawler, IMeshLocks<MediaDbContext> meshLocks, IServiceProvider services)
+public class LinkPreviewsBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
-    private static readonly HashSet<string> SupportedSchemes = new (StringComparer.OrdinalIgnoreCase) { "http", "https" };
-    private IMeshLocks CrawlLocks { get; } = meshLocks.WithKeyPrefix(nameof(CrawlLocks));
+    [field: AllowNull, MaybeNull]
+    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
+    [field: AllowNull, MaybeNull]
+    private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
+    [field: AllowNull, MaybeNull]
+    private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
+    [field: AllowNull, MaybeNull]
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+
     private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
-    public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
-        => GetAndRefreshIfRequired(id, null, true, cancellationToken);
-
-    // [ComputeMethod]
-    [Obsolete("2023.10: Remains for backward compability.")]
-    public virtual async Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken)
+    public virtual async Task<LinkPreview?> Get(
+        Symbol id,
+        bool mustScheduleRefreshIfRequired,
+        CancellationToken cancellationToken)
     {
-        var entry = await chatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
-        if (entry is null)
-            return null;
-
-        var linkPreview = await Get(entry.LinkPreviewId, cancellationToken).ConfigureAwait(false);
-        if (linkPreview != null)
-            return linkPreview;
-
-        // Regenerate link preview in background in case there is no preview yet (or it was wiped)
-        _ = BackgroundTask.Run(() => GetOrGenerateForEntry(entry, CancellationToken.None), CancellationToken.None);
-        return null;
-    }
-
-    // [CommandHandler]
-    public virtual async Task<LinkPreview?> OnRefresh(LinkPreviewsBackend_Refresh command, CancellationToken cancellationToken)
-    {
-        var url = command.Url;
-        var id = LinkPreview.ComposeId(url);
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var wasChanged = context.Operation.Items.GetOrDefault(false);
-            if (wasChanged)
-                _ = GetFromDb(id, default);
-            return default!;
-        }
-
-        if (id.IsEmpty)
-            return null;
-
-        var runOptions = new RunLockedOptions(3, RetryDelaySeq.Exp(1.5, 5), Log);
-        var resultOpt = await CrawlLocks
-            .TryRunLocked(id, runOptions, RefreshTaskFactory, cancellationToken)
-            .ConfigureAwait(false);
-        return resultOpt.IsSome(out var result)
-            ? result
-            : LinkPreview.UseExisting;
-
-        async Task<LinkPreview> RefreshTaskFactory(CancellationToken ct)
-            => await RefreshUnsafe(id, url, ct).ConfigureAwait(false);
-    }
-
-    // [EventHandler]
-    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
-    {
-        var (entry, _, changeKind, _) = eventCommand;
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-
-        if (changeKind is ChangeKind.Remove)
-            return Task.CompletedTask;
-
-        return GetOrGenerateForEntry(entry, cancellationToken);
-    }
-
-    // Private methods
-
-    private async Task<LinkPreview> RefreshUnsafe(Symbol id, string url, CancellationToken cancellationToken)
-    {
-        var context = CommandContext.GetCurrent();
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
+        var linkPreview = dbLinkPreview?.ToModel();
 
-        if (dbLinkPreview != null && SystemNow - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
-            return dbLinkPreview.ToModel();
-
-        var linkMeta = await crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
-        var videoMeta = linkMeta.OpenGraph.Video;
-        if (dbLinkPreview == null) {
-            var linkPreview = new LinkPreview {
-                Id = LinkPreview.ComposeId(url),
-                Version = VersionGenerator.NextVersion(),
-                Url = url,
-                Title = linkMeta.OpenGraph.Title,
-                Description = linkMeta.OpenGraph.Description,
-                PreviewMediaId = linkMeta.PreviewMediaId,
-                CreatedAt = SystemNow,
-                ModifiedAt = SystemNow,
-            };
-            if (videoMeta != OpenGraphVideo.None)
-                linkPreview = linkPreview with {
-                    VideoSite = linkMeta.OpenGraph.SiteName,
-                    VideoUrl = linkMeta.OpenGraph.Video.SecureUrl,
-                    VideoWidth = linkMeta.OpenGraph.Video.Width,
-                    VideoHeight = linkMeta.OpenGraph.Video.Height,
-                };
-
-            dbLinkPreview = new DbLinkPreview(linkPreview);
-            dbContext.Add(dbLinkPreview);
-        }
-        else {
-            dbLinkPreview = await dbContext.LinkPreviews.ForNoKeyUpdate()
-                .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-                .ConfigureAwait(false);
-            var linkPreview = dbLinkPreview!.ToModel();
-            if (linkMeta.OpenGraph != OpenGraph.None)
-                linkPreview = linkPreview with {
-                    Title = linkMeta.OpenGraph.Title,
-                    Description = linkMeta.OpenGraph.Description,
-                };
-            if (videoMeta != OpenGraphVideo.None)
-                linkPreview = linkPreview with {
-                    VideoSite = linkMeta.OpenGraph.SiteName,
-                    VideoUrl = videoMeta.SecureUrl,
-                    VideoWidth = videoMeta.Width,
-                    VideoHeight = videoMeta.Height,
-                };
-            linkPreview = linkPreview with {
-                PreviewMediaId = linkMeta.PreviewMediaId,
-                ModifiedAt = SystemNow,
-                Version = VersionGenerator.NextVersion(linkPreview.Version),
-            };
-            dbLinkPreview.UpdateFrom(linkPreview);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(true);
-        return dbLinkPreview.ToModel();
-    }
-
-    private async Task<LinkPreview?> GetOrGenerateForEntry(ChatEntry entry, CancellationToken cancellationToken)
-    {
-        var linkPreview = await GetAndRefreshIfRequired(entry, false, cancellationToken).ConfigureAwait(false);
-        var linkPreviewId = linkPreview?.Id ?? Symbol.Empty;
-        Log.LogDebug("Retrieved LinkPreview #{LinkPreviewId} for entry #{EntryId}. Current Entry.LinkPreview: #{PreviousLinkPreviewId}", linkPreviewId, entry.Id, entry.LinkPreviewId);
-        if (entry.LinkPreviewId == linkPreviewId)
-            return linkPreview;
-
-        Log.LogDebug("Setting LinkPreview #{LinkPreviewId} for entry #{EntryId}", linkPreviewId, entry.Id);
-        var changeTextEntryCmd = new ChatsBackend_ChangeEntry(
-            entry.Id,
-            null, // The entry passed here may have an outdated version
-            Change.Update(new ChatEntryDiff { LinkPreviewId = linkPreviewId }));
-        await Commander.Call(changeTextEntryCmd, true, cancellationToken).ConfigureAwait(false);
-        return linkPreview;
-    }
-
-    private async Task<LinkPreview?> GetAndRefreshIfRequired(ChatEntry entry, bool allowStale, CancellationToken cancellationToken)
-    {
-        var urls = ExtractUrls(entry);
-        foreach (var url in urls) {
-            var preview = await GetAndRefreshIfRequired(LinkPreview.ComposeId(url), url, allowStale, cancellationToken).ConfigureAwait(false);
-            if (preview != null)
-                return preview;
-        }
-        return null;
-    }
-
-    private async Task<LinkPreview?> GetAndRefreshIfRequired(Symbol id, string? url, bool allowStale, CancellationToken cancellationToken)
-    {
-        if (id.IsEmpty)
-            return null;
-
-        var linkPreview = await GetFromDb(id, cancellationToken).ConfigureAwait(false);
-        url ??= linkPreview?.Url;
-        var mustRefresh = !url.IsNullOrEmpty()
-            && (linkPreview == null || linkPreview.ModifiedAt + settings.LinkPreviewUpdatePeriod < SystemNow);
-        if (mustRefresh) {
-            if (await IsCrawling(id, cancellationToken).ConfigureAwait(false))
-                return linkPreview;
-
-            // Intentionally not passing CancellationToken to avoid cancellation on exit
-            var refreshTask = Commander.Call(new LinkPreviewsBackend_Refresh(url!), CancellationToken.None);
-            if (!allowStale)
-                linkPreview = await refreshTask.ConfigureAwait(false);
-            else if (linkPreview == null)
-                linkPreview = LinkPreview.Updating;
-            else if (linkPreview == LinkPreview.UseExisting)
-                return linkPreview;
-        }
+        await ScheduleRefreshIfRequired();
         if (linkPreview?.PreviewMediaId.IsNone != false)
             return linkPreview;
 
         return linkPreview with {
-            PreviewMedia = await mediaBackend.Get(linkPreview.PreviewMediaId, cancellationToken).ConfigureAwait(false),
+            PreviewMedia = await MediaBackend.Get(linkPreview.PreviewMediaId, cancellationToken).ConfigureAwait(false),
         };
+
+        Task ScheduleRefreshIfRequired()
+            => mustScheduleRefreshIfRequired && linkPreview != null && NeedsUpdate(linkPreview.ModifiedAt)
+                ? Flows.GetAndResume<LinkPreviewFlow>(linkPreview.Url,
+                    Settings.LinkPreviewUpdatePeriod,
+                    "Get link preview",
+                    null,
+                    cancellationToken)
+                : Task.CompletedTask;
     }
 
-    [ComputeMethod]
-    protected virtual async Task<LinkPreview?> GetFromDb(Symbol id, CancellationToken cancellationToken)
+    // [CommandHandler]
+    public virtual async Task<LinkPreview?> OnChange(LinkPreviewsBackend_Change command, CancellationToken cancellationToken)
     {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
+        var (id, expectedVersion, change) = command;
+        if (Invalidation.IsActive) {
+            _ = Get(id, false, default);
+            _ = Get(id, true, default);
+            return default!;
+        }
 
-        var dbLinkPreview = await dbContext.LinkPreviews
+        change.RequireValid();
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        return dbLinkPreview?.ToModel();
+        if (change.IsCreate(out var linkPreview)) {
+            if (dbLinkPreview != null)
+                return dbLinkPreview.ToModel();
+
+            dbLinkPreview = new DbLinkPreview(linkPreview) {
+                Id = id,
+                CreatedAt = SystemNow,
+                ModifiedAt = SystemNow,
+                Version = VersionGenerator.NextVersion(),
+            };
+            dbContext.Add(dbLinkPreview);
+        } else if (change.IsUpdate(out linkPreview)) {
+            if (dbLinkPreview is null)
+                return null;
+
+            dbLinkPreview.RequireVersion(expectedVersion);
+            linkPreview = linkPreview with {
+                CreatedAt = dbLinkPreview.CreatedAt,
+            };
+            dbLinkPreview = new DbLinkPreview(linkPreview) {
+                Version = VersionGenerator.NextVersion(dbLinkPreview.Version),
+                ModifiedAt = SystemNow,
+            };
+            dbContext.Add(dbLinkPreview);
+        }
+        else
+            throw StandardError.NotSupported("Link previews cannot be removed.");
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return dbLinkPreview.ToModel();
     }
 
-    private IEnumerable<string> ExtractUrls(ChatEntry entry)
+    // Event handlers
+
+    // [EventHandler]
+    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var markup = markupParser.Parse(entry.Content);
-        return new LinkExtractor().GetLinks(markup).Where(IsSupportedUrl);
+        var (entry, _, changeKind, oldEntry) = eventCommand;
+        if (Invalidation.IsActive)
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
-        bool IsSupportedUrl(string x)
-            => Uri.TryCreate(x, UriKind.Absolute, out var uri) && SupportedSchemes.Contains(uri.Scheme);
+        return ScheduleNewLinksCrawling();
+
+        async Task ScheduleNewLinksCrawling()
+        {
+            if(changeKind is ChangeKind.Remove)
+                return;
+
+            var links = ExtractLinks(entry);
+            var oldLinks = ExtractLinks(oldEntry);
+            foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks))
+                await Flows.GetOrStart<LinkPreviewFlow>(link.ToBase64(), cancellationToken);
+        }
     }
 
-    // redis helpers
+    private IEnumerable<string> ExtractLinks(ChatEntry? entry)
+        => MarkupParser.ExtractLinks(entry?.Content ?? "", Constants.Media.LinkPreviewsPerMessageLimit);
 
-    private async Task<bool> IsCrawling(Symbol id, CancellationToken cancellationToken)
-        => await CrawlLocks.GetInfo(id, cancellationToken).ConfigureAwait(false) != null;
+    // Private methods
+
+    private bool NeedsUpdate(Moment modifiedAt)
+        => modifiedAt + Settings.LinkPreviewUpdatePeriod < SystemNow;
 }

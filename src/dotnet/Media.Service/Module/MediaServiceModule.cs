@@ -1,6 +1,7 @@
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
+using ActualChat.Media.Flows;
 using ActualChat.Redis.Module;
 
 namespace ActualChat.Media.Module;
@@ -46,5 +47,8 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         dbModule.AddDbContextServices<MediaDbContext>(services, db => {
             db.AddEntityResolver<string, DbMedia>();
         });
+
+        // Flows
+        services.AddFlows().Add<LinkPreviewFlow>();
     }
 }

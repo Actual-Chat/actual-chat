@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Media.Module;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -13,6 +14,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private HttpHandlerMock Http { get; } = fixture.AppHost.Services.GetRequiredService<HttpHandlerMock>();
     private IMediaLinkPreviews Previews { get; } = fixture.AppHost.Services.GetRequiredService<IMediaLinkPreviews>();
+    private MediaSettings Settings { get; } = fixture.AppHost.Services.GetRequiredService<MediaSettings>();
     private Session Session => Tester.Session;
 
     protected override async Task DisposeAsync()
@@ -49,25 +51,77 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entryLinkPreview.Title.Should().Be("Title 1");
         entryLinkPreview.Description.Should().Be("Description 1");
         entryLinkPreview.PreviewMedia.Should().NotBeNull();
-        var linkPreview = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
-        linkPreview.Should().BeEquivalentTo(entryLinkPreview);
+        var linkPreview1 = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        linkPreview1.Should().BeEquivalentTo(entryLinkPreview);
 
         // act
         entry = await Tester.UpdateTextEntry(entry.Id, $"New text {url2} {url1}");
 
         // assert
-        var updatedEntryLinkPreview = await GetEntryLinkPreview(entry.Id, id2).Require();
-        updatedEntryLinkPreview.Url.Should().Be(url2);
-        updatedEntryLinkPreview.Title.Should().Be("Title 2");
-        updatedEntryLinkPreview.Description.Should().Be("Description 2");
-        updatedEntryLinkPreview.PreviewMedia.Should().NotBeNull().And.NotBe(linkPreview.PreviewMedia);
-        linkPreview = await ComputedTest.When(ct => Previews.Get(id2, ct).Require());
-        linkPreview.Should().BeEquivalentTo(updatedEntryLinkPreview);
+        var updatedEntryLinkPreviews = await GetEntryLinkPreviews(entry.Id, id2, id1).Require();
+        updatedEntryLinkPreviews[0].Url.Should().Be(url2);
+        updatedEntryLinkPreviews[0].Title.Should().Be("Title 2");
+        updatedEntryLinkPreviews[0].Description.Should().Be("Description 2");
+        updatedEntryLinkPreviews[0].PreviewMedia.Should().NotBeNull().And.NotBe(linkPreview1.PreviewMedia);
+        var linkPreview2 = await ComputedTest.When(ct => Previews.Get(id2, ct).Require());
+        linkPreview2.Should().BeEquivalentTo(updatedEntryLinkPreviews[0]);
+        updatedEntryLinkPreviews[1].Url.Should().Be(url1);
+        updatedEntryLinkPreviews[1].Title.Should().Be("Title 1");
+        updatedEntryLinkPreviews[1].Description.Should().Be("Description 1");
+        updatedEntryLinkPreviews[1].PreviewMedia.Should().NotBeNull().And.Be(linkPreview1.PreviewMedia);
+        linkPreview1 = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        linkPreview1.Should().BeEquivalentTo(updatedEntryLinkPreviews[1]);
 
         // act
         entry = await Tester.UpdateTextEntry(entry.Id, "Text without links");
-        var nullEntryLinkPreview = await GetEntryLinkPreview(entry.Id, Symbol.Empty);
-        nullEntryLinkPreview.Should().BeNull();
+        var nullEntryLinkPreview = await GetEntryLinkPreviews(entry.Id);
+        nullEntryLinkPreview.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(6)]
+    [InlineData(11)]
+    [InlineData(20)]
+    [InlineData(100)]
+    public async Task ShouldCreateManyLinkPreviews(int count)
+    {
+        // arrange
+        var urls = Enumerable.Range(1, count).Select(i => $"https://domain{i}.some/{RandomStringGenerator.Next()}").ToList();
+        var ids = urls.Select(LinkPreview.ComposeId).ToList();
+        var imgUrls = Enumerable.Range(1, count).Select(i => $"https://domain{i}.some/{RandomStringGenerator.Next()}.jpg").ToList();
+
+        for (int i = 0; i < count; i++) {
+            var url = urls[i];
+            var imgUrl = imgUrls[i];
+            var suffix = (i + 1).ToInvariantString();
+            Http.SetupImage(imgUrl)
+                .SetupHtml(url, h => h.Title($"Title {suffix}").Description($"Description {suffix}").Image(imgUrl))
+                .SetupEmptyRobots(url);
+        }
+
+        // act
+        await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var sLinks = string.Join(" !!! ", urls);
+        var entry = await Tester.CreateTextEntry(chatId, $"a b c {sLinks} d e f");
+
+        // assert
+        var expectedIds = ids.Take(Constants.Media.LinkPreviewsPerMessageLimit).ToList();
+        var entryLinkPreviews = await GetEntryLinkPreviews(entry.Id, expectedIds);
+        for (int i = 0; i < expectedIds.Count; i++) {
+            var id = ids[i];
+            var url = urls[i];
+            var entryLinkPreview = entryLinkPreviews[i];
+            entryLinkPreview.Url.Should().Be(url);
+            entryLinkPreview.Title.Should().Be($"Title {i + 1}");
+            entryLinkPreview.Description.Should().Be($"Description {i + 1}");
+            entryLinkPreview.PreviewMedia.Should().NotBeNull();
+
+            var linkPreview = await ComputedTest.When(ct => Previews.Get(id, ct).Require());
+            linkPreview.Should().BeEquivalentTo(entryLinkPreview);
+        }
     }
 
     [Fact]
@@ -122,10 +176,26 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         linkPreview.Should().BeEquivalentTo(entryLinkPreview);
     }
 
-    private async Task<LinkPreview?> GetEntryLinkPreview(ChatEntryId entryId, Symbol expectedId)
+    private async Task<LinkPreview?> GetEntryLinkPreview(
+        ChatEntryId entryId,
+        Symbol expectedId)
+    {
+        var linkPreviews = await GetEntryLinkPreviews(entryId, expectedId);
+        return linkPreviews.FirstOrDefault();
+    }
+
+    private async Task<ApiArray<LinkPreview>> GetEntryLinkPreviews(ChatEntryId entryId, params IReadOnlyList<Symbol> expectedIds)
         => await ComputedTest.When(async ct => {
             var chatEntry = await Chats.GetEntry(Session, entryId, ct).Require();
-            chatEntry.LinkPreviewId.Should().Be(expectedId);
-            return expectedId.IsEmpty ? chatEntry.LinkPreview.RequireNull() : chatEntry.LinkPreview.Require();
+ #pragma warning disable CS0618 // Type or member is obsolete
+            chatEntry.LinkPreviewId.Should().Be(expectedIds.FirstOrDefault());
+            if (expectedIds.Count > 0)
+                chatEntry.LinkPreview.Should().NotBeNull();
+            else
+                chatEntry.LinkPreview.Should().BeNull();
+ #pragma warning restore CS0618 // Type or member is obsolete
+            chatEntry.LinkPreviewIds.Should().BeEquivalentTo(expectedIds);
+            chatEntry.LinkPreviews.Select(x => x.Id).Should().BeEquivalentTo(expectedIds);
+            return chatEntry.LinkPreviews;
         }, TimeSpan.FromSeconds(10));
 }

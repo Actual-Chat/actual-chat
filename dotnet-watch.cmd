@@ -1,1 +1,1 @@
-dotnet watch -v run --project src/dotnet/App.Server
+dotnet watch run --project src/dotnet/App.Server
