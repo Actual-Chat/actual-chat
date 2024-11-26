@@ -37,7 +37,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
     }
 
     [Fact(Timeout = 30_000)]
-    public async Task LockIsGoneTest()
+    public async Task LockIsGoneButReacquiredTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
@@ -58,7 +58,10 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
 
         var minDelay = TimeSpanExt.Max(locks.LockOptions.UnconditionalCheckPeriod, lockOptions.ExpirationPeriod);
         await Task.Delay(minDelay + TimeSpan.FromSeconds(0.25));
-        h.StopToken.IsCancellationRequested.Should().BeTrue();
+
+        // reacquired
+        h.StopToken.IsCancellationRequested.Should().BeFalse();
+        (await locks.GetInfo(key)).Should().NotBeNull();
 
         await changes.DisposeAsync();
         var changeSet = await changes.Reader.ReadAllAsync().ToHashSetAsync(StringComparer.Ordinal);
@@ -110,10 +113,8 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
 
         await using var h1 = await locks.Lock(key, "", lockOptions, ctsA.Token);
-
-        await Task.Delay(2000, CancellationToken.None);
-
         (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
+
         _ = BackgroundTask.Run(
             () => Task.Delay(1000, CancellationToken.None)
                 .ContinueWith(_ => {
@@ -123,7 +124,10 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
                 }, TaskScheduler.Default),
             CancellationToken.None);
 
-        (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
+        await Task.Delay(2000, CancellationToken.None);
+
+
+        (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
         await using var h2 = await locks.Lock(key, "", lockOptions, ctsB.Token);
 
         (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();

@@ -27,7 +27,7 @@ public class RedisMeshLocks : MeshLocksBase
         local key, anyLockKey, value, expiresIn = KEYS[1], KEYS[2], ARGV[1], ARGV[2]
         local rSet = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
         local rt = type(rSet)
-        if (rt == 'boolean' and r) or (rt == 'table' and rSet['ok'] == 'OK') then
+        if (rt == 'boolean' and rSet) or (rt == 'table' and rSet['ok'] == 'OK') then
             redis.call('PUBLISH', key, '')
             redis.call('PUBLISH', anyLockKey, key)
             return 0
@@ -45,7 +45,7 @@ public class RedisMeshLocks : MeshLocksBase
         if rGet == false then
             local rSet = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
             local rt = type(rSet)
-            if (rt == 'boolean' and r) or (rt == 'table' and rSet['ok'] == 'OK') then
+            if (rt == 'boolean' and rSet) or (rt == 'table' and rSet['ok'] == 'OK') then
                 redis.call('PUBLISH', key, '')
                 redis.call('PUBLISH', anyLockKey, key)
                 return 0
