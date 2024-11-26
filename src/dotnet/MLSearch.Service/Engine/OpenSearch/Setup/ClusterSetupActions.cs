@@ -493,20 +493,21 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
     {
         var modelGroupId = await GetModelGroupId(openSearchSettings, cancellationToken).ConfigureAwait(false);
 
-        var connectorId = await GetOrCreateConnectorId(openSearchSettings, cancellationToken).ConfigureAwait(false);
+        var modelProps = await GetOrExtractExternalModelProps(openSearchSettings, cancellationToken).ConfigureAwait(false);
 
-        var modelId = await GetOrCreateModelId(modelGroupId, connectorId, cancellationToken).ConfigureAwait(false);
+        var modelId = await GetOrCreateModelId(modelGroupId, modelProps, cancellationToken).ConfigureAwait(false);
 
-        return await CreateEmbeddingModelPropertiesAsync(modelId, connectorId, cancellationToken).ConfigureAwait(false);
+        return new EmbeddingModelProps(modelId, modelProps.Dimension, modelProps.ModelHash);
     }
 
-    private record EmbeddingModel(string ModelName, string ModelUrl);
+    private record ExternalModel(string ModelName, string ModelUrl);
+    private record ExternalModelProps(string Name, int Dimension, string ModelHash, string ConnectorId);
 
     private static readonly JsonSerializerOptions jsonSerializerOptions = new() {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private async Task<string> GetOrCreateConnectorId(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
+    private async Task<ExternalModelProps> GetOrExtractExternalModelProps(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
         var customConnectorConfig = openSearchSettings.EmbeddingService.Custom
             ?? throw new InvalidOperationException("Custom embedding service is not configured.");
@@ -533,29 +534,30 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
         using var contentStream = await modelResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
         var embeddingModels = await JsonSerializer
-            .DeserializeAsync<EmbeddingModel[]>(contentStream, jsonSerializerOptions, cancellationToken)
+            .DeserializeAsync<ExternalModel[]>(contentStream, jsonSerializerOptions, cancellationToken)
             .ConfigureAwait(false);
 
         if (embeddingModels is null || embeddingModels.Length == 0)
             throw new InvalidOperationException("Embedding model service doesn't host any model.");
 
-        var modelName = customConnectorConfig.ModelName;
-        EmbeddingModel? model;
-        if (string.IsNullOrWhiteSpace(modelName)) {
+        var configuredModelName = customConnectorConfig.ModelName;
+        ExternalModel? model;
+        if (string.IsNullOrWhiteSpace(configuredModelName)) {
             if (embeddingModels.Length > 1)
                 throw new InvalidOperationException("Embedding model service hosts multiple models. Please specify model name.");
             model = embeddingModels[0];
         }
         else {
-            model = embeddingModels.FirstOrDefault(em => OrdinalEquals(em.ModelName, modelName));
+            model = embeddingModels.FirstOrDefault(em => OrdinalEquals(em.ModelName, configuredModelName));
             if (model is null)
-                throw new InvalidOperationException($"The specified model name '{modelName}' is not found.");
+                throw new InvalidOperationException($"The specified model name '{configuredModelName}' is not found.");
         }
 
         var modelProps = model.ModelUrl.Split('.')[1];
-        // .Split('_');
-        // var dimension = int.Parse(modelProps[0], NumberStyles.Integer, CultureInfo.InvariantCulture);
-        // var modelHash = modelProps[1];
+        var modelPropsParts = modelProps.Split('_');
+        var dimension = int.Parse(modelPropsParts[0], NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var modelHash = modelPropsParts[1];
+        var connectorId = string.Empty;
 
         var searchConnectorResponse = await _openSearch.RunAsync(
                 $$"""
@@ -585,10 +587,10 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
             .FirstHitOrDefault();
 
         if (connectorInfo is not null) {
-            var connectorId = connectorInfo.Get<string>("_id");
+            connectorId = connectorInfo.Get<string>("_id");
             if (connectorId.IsNullOrEmpty())
                 throw new InvalidOperationException("Failed to retrieve model connector id.");
-            return connectorId;
+            return new ExternalModelProps(model.ModelName, dimension, modelHash, connectorId);
         }
 
         var createConnectorResponse = await _openSearch.RunAsync(
@@ -625,49 +627,65 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
             .AssertSuccess()
             .FirstHit();
 
-        return newConnectorInfo.Get<string>("connector_id")
+        connectorId = newConnectorInfo.Get<string>("connector_id")
             ?? throw new InvalidOperationException(
                 "connector_id is null"
             );
+        return new ExternalModelProps(model.ModelName, dimension, modelHash, connectorId);
     }
 
-    private async Task<string> GetOrCreateModelId(string? modelGroupId, string connectorId, CancellationToken cancellationToken)
+    private async Task<string> GetOrCreateModelId(string? modelGroupId, ExternalModelProps modelProps, CancellationToken cancellationToken)
     {
-        // POST /_plugins/_ml/models/_register
-        // {
-        // "name": "Self-hosted embedding model",
-        // "function_name": "remote",
-        // "model_group_id": "Xah4KJMBXRT92TnoRXAl",
-        // "description": "test self-hosted model",
-        // "connector_id": "XKh3KJMBXRT92Tno93Aq"
-        // }
-        throw new NotImplementedException();
-    }
+        var searchModelResponse = await _openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/models/_search
+                {
+                    "query": {
+                        "match": { "connector_id": "{{modelProps.ConnectorId}}" }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
-    private async ValueTask<EmbeddingModelProps> CreateEmbeddingModelPropertiesAsync(
-        string modelId, string connectorId, CancellationToken cancellationToken)
-    {
-        var connectorResponse = (await _openSearch
-                .RunAsync($"GET /_plugins/_ml/connectors/{connectorId}", cancellationToken)
-                .ConfigureAwait(false)
-            ).AssertSuccess();
+        var modelInfo = searchModelResponse
+            .AssertSuccess()
+            .FirstHitOrDefault();
 
-        var description = connectorResponse.Get<string>("description");
-        if (description.IsNullOrEmpty()) {
-            throw new InvalidOperationException(
-                "Failed to retrieve connector description."
-            );
+        if (modelInfo is not null) {
+            var modelId = modelInfo.Get<string>("_id");
+            if (modelId.IsNullOrEmpty())
+                throw new InvalidOperationException("Failed to retrieve model id.");
+            return modelId;
         }
 
-        var parts = description.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length != 2) {
-            throw new InvalidOperationException(
-                "Unexpected connector description format. That should be in the form '{EmbeddingDimension} {ModelContentHash}'."
-            );
-        }
-        var embeddingDimension = int.Parse(parts[0], NumberStyles.Number, CultureInfo.InvariantCulture);
-        var modelContentHash = parts[2];
+        var registerModelResponse = await _openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/models/_register
+                {
+                    "name": "{{modelProps.Name}}",
+                    "function_name": "remote",
+                    "model_group_id": "{{modelGroupId}}",
+                    "description": "Externally hosted embedding model.",
+                    "connector_id": "{{modelProps.ConnectorId}}"
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
-        return new EmbeddingModelProps(modelId, embeddingDimension, modelContentHash);
+        var newModelInfo = registerModelResponse
+            .AssertSuccess()
+            .FirstHit();
+
+        return newModelInfo.Get<string>("model_id")
+            ?? throw new InvalidOperationException(
+                "model_id is null"
+            );
     }
 }
