@@ -17,6 +17,7 @@
     var showAuthor = !isSystem && (isBlockStart || isReply);
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
+    var isChatWithBot = ChatContext.Chat.SystemTag == Constants.Chat.SystemTags.Bot;
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
@@ -210,6 +211,10 @@
         </div>
     </div>
 </div>
+
+@if (isChatWithBot && m.IsOwnMessage) {
+    <ChatBotWaitingMessage ChatContext="@ChatContext" Message="@Message"/>
+}
 
 @code {
     private Model? _rendered;

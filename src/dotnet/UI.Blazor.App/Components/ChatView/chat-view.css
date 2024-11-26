@@ -425,3 +425,41 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 .notify-mentioned-members .default-text {
     @apply text-01;
 }
+
+.waiting-message-container {
+    @apply flex-x items-center gap-x-1;
+    @apply w-fit;
+    @apply h-8;
+    @apply px-3;
+    @apply rounded-r-full rounded-bl-full;
+    @apply bg-03;
+}
+.waiting-message-container > .c-circle {
+    @apply flex-none;
+    @apply w-1 h-1;
+    @apply rounded-full;
+    @apply bg-[var(--violet-50)];
+}
+.c-circle#waiting-circle-1 {
+    animation: wave 1.3s steps(10, start) infinite;
+}
+.c-circle#waiting-circle-2 {
+    animation: wave 1.3s steps(10, start) infinite -1.1s;
+}
+.c-circle#waiting-circle-3 {
+    animation: wave 1.3s steps(10, start) infinite -0.9s;
+}
+@keyframes wave {
+    0%, 100% {
+        transform: initial;
+        filter: opacity(1);
+    }
+    30% {
+        transform: translateY(-5px);
+        filter: opacity(0.5);
+    }
+    60% {
+        transform: initial;
+        filter: opacity(0.75);
+    }
+}
