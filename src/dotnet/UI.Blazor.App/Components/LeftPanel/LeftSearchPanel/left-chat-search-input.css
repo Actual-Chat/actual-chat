@@ -70,21 +70,10 @@ body.hoverable .left-chat-search-input .c-ai-btn:hover {
 .left-chat-search-input.open .c-ai-btn {
     @apply hidden;
     @apply opacity-0;
-    @apply duration-300 delay-0;
-    transition-behavior: allow-discrete;
-    transition-property: display, opacity;
 }
 .left-chat-search-input.closed .c-ai-btn {
     @apply opacity-100;
-    @apply delay-300;
-    @starting-style {
-        opacity: 0;
-    }
 }
-/*.left-chat-search-input .place-search {*/
-/*    @apply absolute top-0 right-0;*/
-/*    @apply w-10 h-10;*/
-/*}*/
 
 .left-chat-search-input .c-close-btn {
     @apply flex;

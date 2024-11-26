@@ -1,0 +1,68 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<bool>
+@{
+    var m = State.Value;
+    if (m == false)
+        return;
+}
+
+<div class="bot-waiting-message">
+    <div class="chat-message group">
+        <div class="c-author-badge">
+            <ChatMessageAuthorCircle
+                AuthorSid="@_botId"
+                Click="@_onClickCallback"/>
+        </div>
+        <div class="c-content">
+            <div class="c-author-header">
+                <AuthorName AuthorSid="@_botId" Class="chat-message-author-name"/>
+                <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@Moment.CpuNow"/>
+            </div>
+
+            <div class="message-content">
+                <div class="waiting-message-container">
+                    <span id="waiting-circle-1" class="c-circle"></span>
+                    <span id="waiting-circle-2" class="c-circle"></span>
+                    <span id="waiting-circle-3" class="c-circle"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private EventCallback<AuthorId> _onClickCallback;
+    private AuthorId _botId;
+    private ChatId _chatId;
+
+    // Shortcuts
+    private ChatUIHub Hub => ChatContext.Hub;
+    private AuthorUI AuthorUI => Hub.AuthorUI;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
+        _chatId = ChatContext.Chat.Id;
+        _botId = new AuthorId(ChatContext.Chat.Id, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
+    }
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var message = Message;
+        var chatState = await ChatUI.GetState(_chatId, false, cancellationToken).ConfigureAwait(false);
+        if (chatState == null)
+            return false;
+
+        var lastEntry = chatState.Info.LastTextEntry;
+        if (lastEntry != message.Entry)
+            return false;
+
+        var timeDelta = (Moment.CpuNow - Message.Entry.BeginsAt).Seconds;
+        return timeDelta < 30;
+    }
+
+    private void OnAuthorBadgeClick(AuthorId authorId)
+        => _ = AuthorUI.Show(authorId);
+}
