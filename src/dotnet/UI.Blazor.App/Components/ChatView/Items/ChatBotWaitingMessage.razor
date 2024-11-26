@@ -16,7 +16,7 @@
         <div class="c-content">
             <div class="c-author-header">
                 <AuthorName AuthorSid="@_botId" Class="chat-message-author-name"/>
-                <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@Moment.CpuNow"/>
+                <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@Clocks.SystemClock.Now"/>
             </div>
 
             <div class="message-content">
@@ -39,6 +39,7 @@
     private ChatUIHub Hub => ChatContext.Hub;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private MomentClockSet Clocks => Hub.Clocks();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
@@ -46,13 +47,13 @@
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
         _chatId = ChatContext.Chat.Id;
-        _botId = new AuthorId(ChatContext.Chat.Id, Constants.User.Sherlock.AuthorLocalId, AssumeValid.Option);
+        _botId = Constants.User.Sherlock.GetSherlockAuthorId(_chatId);
     }
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
 
-        var timeDelta = (Moment.CpuNow - Message.Entry.BeginsAt).Seconds;
+        var timeDelta = (Clocks.SystemClock.Now - Message.Entry.BeginsAt).Seconds;
         if (timeDelta > 30)
             return false;
 
