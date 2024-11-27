@@ -19,7 +19,7 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IH
     [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public Moment ModifiedAt { get; init; }
     [DataMember, MemoryPackOrder(7)] public Media? PreviewMedia { get; init; } // Populated only on reads
-    [DataMember, MemoryPackOrder(100)] public PropertyBag Metadata { get; init; }
+    [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int VideoWidth {

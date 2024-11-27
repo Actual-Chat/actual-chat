@@ -11,7 +11,7 @@ public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirement
 {
     [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public string ContentId { get; init; } = "";
-    [DataMember, MemoryPackOrder(100)] public PropertyBag Metadata { get; init; }
+    [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
 
     // Computed properties
 
