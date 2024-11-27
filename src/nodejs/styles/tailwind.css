@@ -55,7 +55,7 @@
     span,
     p,
     li {
-        font-variant-ligatures: common-ligatures discretionary-ligatures historical-ligatures no-contextual;
+        font-variant-ligatures: common-ligatures historical-ligatures no-contextual;
     }
 
     input:-webkit-autofill,
