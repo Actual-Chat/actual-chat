@@ -22,7 +22,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<Navigation?> _nextNavigation = null!;
-    private Range<long> _lastIdRangeToLoad;
     private ChatContext _chatContext = null!;
 
     private ChatUIHub Hub { get; set; }
@@ -325,14 +324,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         activity?.SetTag("AC." + "IdRangeToLoad", idRangeToLoad.Format());
         DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, idRangeToLoad.Format());
 
-        // Prefetching new tiles
-        var lastIdRangeToLoad = _lastIdRangeToLoad;
-        _lastIdRangeToLoad = idRangeToLoad;
-        var newIdRanges = idRangeToLoad.Subtract(lastIdRangeToLoad);
-        _ = ChatUI.PrefetchTiles(chatId, newIdRanges.Item1, cancellationToken);
-        _ = ChatUI.PrefetchTiles(chatId, newIdRanges.Item2, cancellationToken);
-
-        var idTiles = GetIdTilesToLoad(idRangeToLoad, chatIdRange);
         var tryUpdateShownReadEntryLid = true;
 
         rebuildTiles: // Building actual virtual list tiles
@@ -341,49 +332,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chat == null)
             return VirtualListData<ChatMessage>.None;
 
-        var isBot = chat.IsAiSearchChat();
-        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
-        var shownReadyEntryLid = _shownReadEntryLid.Value;
-        var renderedTiles = renderedData.Tiles.ToDictionary(t => t.Key, StringComparer.Ordinal);
-        var tiles = new List<VirtualListTile<ChatMessage>>();
-        foreach (var idTile in idTiles) {
-            var lastReadEntryLid = shownReadyEntryLid;
-            if (lastReadEntryLid < idTile.Range.Start)
-                lastReadEntryLid = 0;
-            else if (shownReadyEntryLid >= idTile.Range.End - 1)
-                lastReadEntryLid = long.MaxValue;
-            var tile = await ChatUI.GetTile(
-                chatId,
-                chat.Rules.Author?.Id ?? AuthorId.None,
-                idTile.Range,
-                prevMessage,
-                lastReadEntryLid,
-                cancellationToken);
-            if (tile.Items.Count == 0)
-                continue;
-
-            if (renderedTiles.TryGetValue(tile.Key, out var renderedTile)) {
-                var tileToAdd = ReferenceEquals(tile, renderedTile) || renderedTile.Items.SequenceEqual(tile.Items)
-                    ? renderedTile
-                    : tile;
-                tiles.Add(tileToAdd);
-            }
-            else
-                tiles.Add(tile);
-            prevMessage = tile.Items[^1];
-#if false
-        // Uncomment for debugging:
-        DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
-            idTile.Range.Format(), isUnread, lastReadEntryLidArg);
-        foreach (var item in tile.Items)
-            DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
-#endif
-        }
+        var tiles = await ChatUI.GetTiles(chatId, idRangeToLoad, readEntryLid, cancellationToken).ConfigureAwait(false);
         if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
                 return new VirtualListData<ChatMessage>([
-                    new VirtualListTile<ChatMessage>(default(Range<long>), new [] { ChatMessage.Welcome(ChatId, isBot) }),
+                    new VirtualListTile<ChatMessage>(default(Range<long>),
+                        [ChatMessage.Welcome(ChatId, chat.IsAiSearchChat())]),
                 ]) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
@@ -435,40 +390,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return !mustScrollToEntry && result.IsSimilarTo(renderedData)
             ? renderedData
             : result;
-    }
-
-    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
-    {
-        DebugLog?.LogDebug("GetIdTilesToLoad: {IdRangeToLoad} {ChatIdRange}", idRangeToLoad, chatIdRange);
-        idRangeToLoad = new Range<long>(Math.Max(chatIdRange.Start, idRangeToLoad.Start), idRangeToLoad.End);
-        var firstLayer = ChatUI.IdTileStack.FirstLayer;
-        var secondLayer = ChatUI.IdTileStack.Layers[1];
-        var tiles = ArrayBuffer<Tile<long>>.Lease(true);
-        try {
-            // hot range assumes high probability of changes - so close to the end of the chat messages
-            var hotRangeTiles = firstLayer.GetCoveringTiles(new Range<long>(chatIdRange.End - secondLayer.TileSize, chatIdRange.End + firstLayer.TileSize));
-            var hotRange = new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End);
-            if (!idRangeToLoad.Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
-                hotRange = default;
-
-            var coldRange = hotRange.IsEmpty
-                ? idRangeToLoad
-                : new Range<long>(secondLayer.GetTile(idRangeToLoad.Start).Start, hotRange.Start);
-
-            // load second layer stack to improve reuse if large tiles during scroll
-            tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
-            var lastColdRange = tiles.Count > 0
-                ? tiles[^1].Range
-                : default;
-            tiles.AddRange(firstLayer.GetCoveringTiles(hotRange).SkipWhile(hr => hr.Range.Overlaps(lastColdRange)));
-            var result = tiles.ToArray();
-            // if (result.DistinctBy(x => x.Range).Count() != result.Length)
-            //     Debugger.Break();
-            return result;
-        }
-        finally {
-            tiles.Release();
-        }
     }
 
     private Range<long> GetIdRangeToLoad(

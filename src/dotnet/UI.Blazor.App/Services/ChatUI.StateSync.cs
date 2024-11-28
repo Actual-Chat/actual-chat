@@ -215,8 +215,9 @@ public partial class ChatUI
                             if (chatInfo == null)
                                 continue;
 
-                            var prefetchNearTo = chatInfo.ReadEntryLid != 0
-                                ? chatInfo.ReadEntryLid
+                            var lastReadEntryLid = chatInfo.ReadEntryLid;
+                            var prefetchNearTo = lastReadEntryLid != 0
+                                ? lastReadEntryLid
                                 : chatInfo.News.TextEntryIdRange.End;
 
                             var secondLayer = IdTileStack.Layers[1];
@@ -224,7 +225,8 @@ public partial class ChatUI
                                 secondLayer.GetTile(prefetchNearTo - LoadLimit).Start,
                                 secondLayer.GetTile(prefetchNearTo + HalfLoadLimit).End).IntersectWith(new Range<long>(0, long.MaxValue));
 
-                            _ = PrefetchTiles(chatId, idRange, cancellationToken);
+                            await PrefetchTiles(chatId, idRange, cancellationToken).ConfigureAwait(false);
+                            _ = GetTiles(chatId, idRange, lastReadEntryLid, cancellationToken);
                         }
                     },
                     changeToken);

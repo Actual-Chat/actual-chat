@@ -12,6 +12,52 @@ public partial class ChatUI
     public static readonly long HalfLoadLimit = 2 * SecondTileSize; // 40
     public static readonly long LoadLimit = 4 * SecondTileSize; // 80
 
+    public async Task<List<VirtualListTile<ChatMessage>>> GetTiles(
+        ChatId chatId,
+        Range<long> idRange,
+        long shownReadyEntryLid,
+        CancellationToken cancellationToken)
+    {
+        DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, idRange, shownReadyEntryLid);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return [];
+
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var idTiles = GetIdTilesToLoad(idRange, chatIdRange);
+        var isBot = chat.IsAiSearchChat();
+        var hasVeryFirstItem = idRange.Start <= chatIdRange.Start;
+        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
+        var tiles = new List<VirtualListTile<ChatMessage>>();
+        foreach (var idTile in idTiles) {
+            var lastReadEntryLid = shownReadyEntryLid;
+            if (lastReadEntryLid < idTile.Range.Start)
+                lastReadEntryLid = 0;
+            else if (shownReadyEntryLid >= idTile.Range.End - 1)
+                lastReadEntryLid = long.MaxValue;
+            var tile = await GetTile(
+                chatId,
+                chat.Rules.Author?.Id ?? AuthorId.None,
+                idTile.Range,
+                prevMessage,
+                lastReadEntryLid,
+                cancellationToken);
+            if (tile.Items.Count == 0)
+                continue;
+
+            tiles.Add(tile);
+            prevMessage = tile.Items[^1];
+#if false
+        // Uncomment for debugging:
+        DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
+            idTile.Range.Format(), isUnread, lastReadEntryLidArg);
+        foreach (var item in tile.Items)
+            DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
+#endif
+        }
+        return tiles;
+    }
+
     // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
@@ -196,6 +242,40 @@ public partial class ChatUI
     }
 
     // Private methods
+
+    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
+    {
+        DebugLog?.LogDebug("GetIdTilesToLoad: {IdRangeToLoad} {ChatIdRange}", idRangeToLoad, chatIdRange);
+        idRangeToLoad = new Range<long>(Math.Max(chatIdRange.Start, idRangeToLoad.Start), idRangeToLoad.End);
+        var firstLayer = IdTileStack.FirstLayer;
+        var secondLayer = IdTileStack.Layers[1];
+        var tiles = ArrayBuffer<Tile<long>>.Lease(true);
+        try {
+            // hot range assumes high probability of changes - so close to the end of the chat messages
+            var hotRangeTiles = firstLayer.GetCoveringTiles(new Range<long>(chatIdRange.End - secondLayer.TileSize, chatIdRange.End + firstLayer.TileSize));
+            var hotRange = new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End);
+            if (!idRangeToLoad.Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
+                hotRange = default;
+
+            var coldRange = hotRange.IsEmpty
+                ? idRangeToLoad
+                : new Range<long>(secondLayer.GetTile(idRangeToLoad.Start).Start, hotRange.Start);
+
+            // load second layer stack to improve reuse if large tiles during scroll
+            tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
+            var lastColdRange = tiles.Count > 0
+                ? tiles[^1].Range
+                : default;
+            tiles.AddRange(firstLayer.GetCoveringTiles(hotRange).SkipWhile(hr => hr.Range.Overlaps(lastColdRange)));
+            var result = tiles.ToArray();
+            // if (result.DistinctBy(x => x.Range).Count() != result.Length)
+            //     Debugger.Break();
+            return result;
+        }
+        finally {
+            tiles.Release();
+        }
+    }
 
     private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
     {
