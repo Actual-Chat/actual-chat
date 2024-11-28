@@ -102,6 +102,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _chatContext = new ChatContext(Hub, ChatId);
     }
 
+    protected override Task OnParametersSetAsync()
+        => NavigateToUrlFragment();
+
     public void Dispose()
     {
         if (_disposeTokenSource.IsCancellationRequested)
@@ -112,9 +115,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _readPosition.DisposeSilently();
         Nav.LocationChanged -= OnLocationChanged;
     }
-
-    protected override Task OnParametersSetAsync()
-        => NavigateToUrlFragment();
 
     public async Task NavigateToNext(long entryLid, bool highlight, bool updateReadPosition = false)
     {
@@ -138,7 +138,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _nextNavigation.Value = new Navigation(entryLid, highlight);
     }
 
-    public async Task NavigateToUrlFragment()
+    // Event handlers
+
+    private async Task NavigateToUrlFragment()
     {
         await WhenInitialized;
         // Ignore location changed events if already disposed
@@ -167,8 +169,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         History.CancelWhen(cts, x => !OrdinalEquals(x.Url, sUri));
         await NavigateTo(entryId, true);
     }
-
-    // Event handlers
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {

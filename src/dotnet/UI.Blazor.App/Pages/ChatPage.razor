@@ -53,9 +53,7 @@
     }
 </RenderIntoSlot>
 
-@if (ReferenceEquals(chat, SpecialChat.Loading)) {
-    <chat-view-skeleton count="15" />
-} else if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
+@if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
     <NoChatSelected/>
 } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
     if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
@@ -65,9 +63,7 @@
     }
 }
 
-@if (!chatId.IsNone) {
-    <ChatView @key="@chatKey" ChatId="@chatId"/>
-}
+<ChatView @key="@chatKey" ChatId="@chatId"/>
 
 @code {
     protected static TimeSpan VeryFirstLoadDelay = TimeSpan.FromSeconds(1.5);
