@@ -70,14 +70,12 @@ class API:
                 data = {
                     "query": {
                         "bool": {
-                            "must": [{
-                                "exists": { "field": "model_config" },
-                                "exists": { "field": "model_content_hash_value" },
-                                "exists": { "field": "model_state" },
-                                "match": {
-                                    "model_group_id": model_group_id
-                                }
-                            }]
+                            "must": [
+                                { "exists": { "field": "model_config" } },
+                                { "exists": { "field": "model_content_hash_value" } },
+                                { "exists": { "field": "model_state" } },
+                                { "match": { "model_group_id": model_group_id } }
+                            ]
                         }
                     },
                     "sort": [{

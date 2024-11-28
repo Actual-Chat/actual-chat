@@ -411,14 +411,12 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
                 {
                     "query": {
                         "bool": {
-                            "must": [{
-                                "exists": { "field": "model_config" },
-                                "exists": { "field": "model_content_hash_value" },
-                                "exists": { "field": "model_state" },
-                                "match": {
-                                    "model_group_id": "{{modelGroupId}}"
-                                }
-                            }]
+                            "must": [
+                                { "exists": { "field": "model_config" } },
+                                { "exists": { "field": "model_content_hash_value" } },
+                                { "exists": { "field": "model_state" } },
+                                { "match": { "model_group_id": "{{modelGroupId}}" } }
+                            ]
                         }
                     },
                     "sort": [{
