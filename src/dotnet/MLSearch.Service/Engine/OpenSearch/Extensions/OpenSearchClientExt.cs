@@ -68,6 +68,7 @@ internal static class OpenSearchClientExt
         var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
         return await (headline.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) switch {
+            ["GET", var path] => openSearch.LowLevel.DoRequestAsync<DynamicResponse>(HttpMethod.GET, path, cancellationToken),
             ["PUT", var path] => openSearch.LowLevel.DoRequestAsync<DynamicResponse>(HttpMethod.PUT, path, cancellationToken, PostData.String(json)),
             ["POST", var path] => openSearch.LowLevel.DoRequestAsync<DynamicResponse>(HttpMethod.POST, path, cancellationToken, PostData.String(json)),
             _ => throw new InvalidOperationException("Unknown script directive")
