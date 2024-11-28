@@ -61,11 +61,18 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             .AddAlias<IServiceCoordinator, ServiceCoordinator>()
             .AddHostedService(c => c.GetRequiredService<ServiceCoordinator>());
 
-        services
+        _ = services
             .AddSingleton<IClusterSetup>(static c => c.CreateInstance<ClusterSetup>(
                 c.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(ClusterSetup))
             ))
-            .AddSingleton<IClusterSetupActions, BuiltInModelClusterSetupActions>();
+            .AddSingleton<IClusterSetupActions>(static c => {
+                var openSearchSettings = c.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
+                return openSearchSettings.EmbeddingService.EmbeddingServiceType switch {
+                    EmbeddingsServiceType.BuiltIn => c.CreateInstance<BuiltInModelClusterSetupActions>(),
+                    EmbeddingsServiceType.Custom => c.CreateInstance<CustomRemoteModelClusterSetupActions>(),
+                    _ => throw new InvalidOperationException()
+                };
+            });
 
         services
             .AddSingleton<IOptionsFactory<PlainIndexSettings>, PlainIndexSettingsFactory>()
