@@ -208,6 +208,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private async Task UpdateReadState(CancellationToken cancellationToken)
     {
         var chatId = ChatId;
+        if (chatId.IsNone)
+            return;
+
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authorId = author?.Id ?? AuthorId.None;
@@ -260,6 +263,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         VirtualListData<ChatMessage> renderedData,
         CancellationToken cancellationToken)
     {
+        var chatId = ChatId;
+        if (chatId.IsNone)
+            return VirtualListData<ChatMessage>.None;
+
         var startedAt = CpuTimestamp.Now;
         await WhenInitialized;
 
@@ -287,7 +294,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // ReSharper disable once ExplicitCallerInfoArgument
         using var activity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "GetVirtualListData");
 
-        var chatId = ChatId;
         activity?.SetTag("AC." + nameof(ChatId), chatId);
 
         // Handling NavigateTo + default navigation
@@ -566,7 +572,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void UpdateGroupChatUsageList()
     {
         var chatId = ChatId;
-        if (chatId.Kind == ChatKind.Peer)
+        if (chatId.IsNone || chatId.Kind == ChatKind.Peer)
             return;
 
         _ = BackgroundTask.Run(async () => {

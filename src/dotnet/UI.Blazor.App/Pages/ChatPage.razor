@@ -104,7 +104,8 @@
         RouteState = PageRouteState.Resolving;
         var pageRoute = Route;
         if (pageRoute.IsNullOrEmpty()) {
-            RouteState = PageRouteState.UnknownUserLink;
+            RouteState = PageRouteState.ChatSid;
+            _ = SelectChat(null);
             return;
         }
 
