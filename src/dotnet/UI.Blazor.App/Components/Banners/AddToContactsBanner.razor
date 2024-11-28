@@ -17,13 +17,13 @@
 </Banner>
 
 @code {
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
-    private IContacts Contacts => ChatContext.Hub.Contacts;
-    private AccountUI AccountUI => ChatContext.Hub.AccountUI;
-    private UICommander UICommander => ChatContext.Hub.UICommander();
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IContacts Contacts => Hub.Contacts;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private UICommander UICommander => Hub.UICommander();
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

@@ -10,15 +10,15 @@
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
-    @key="@Chat.Id.Value"
+    @key="@ChatId.Value"
     Class="chat-view"
     DataSource="@this"
-    Identity="@Chat.Id"
+    Identity="@ChatId"
     DefaultEdge="@VirtualListEdge.End"
     SkeletonCount="@skeletonCount"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
-        <ChatMessageView ChatContext="@ChatContext" Message="@context" />
+        <ChatMessageView ChatContext="@_chatContext" Message="@context" />
     </Item>
     <SkeletonBatch>
         <chat-view-skeleton count="@context" />
@@ -26,9 +26,9 @@
 </VirtualList>
 
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigationSubFooter">
-    <ChatViewNavigationPanel ChatContext="@ChatContext" ChatView="@this" />
+    <ChatViewNavigationPanel ChatId="@ChatId" ChatView="@this" />
 </RenderIntoStack>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="DateVisor">
-    <DateVisor ChatContext="@ChatContext" ChatView="@this"/>
+    <DateVisor ChatId="@ChatId" ChatView="@this"/>
 </RenderIntoStack>

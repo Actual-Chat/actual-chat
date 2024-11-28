@@ -9,11 +9,12 @@
 </span>
 
 @code {
-    private Chat Chat => ChatContext.Chat;
-    private Session Session => ChatContext.Hub.Session();
-    private IAuthors Authors => ChatContext.Hub.Authors;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
+    private AccountUI AccountUI => Hub.AccountUI;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -29,7 +30,7 @@
             };
         }
 
-        var ownAccount = ChatContext.OwnAccount;
+        var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var peerAccountId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
         if (peerAccountId.IsNone)
             return Model.Loading;

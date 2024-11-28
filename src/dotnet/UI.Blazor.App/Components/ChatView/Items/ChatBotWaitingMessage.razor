@@ -36,7 +36,7 @@
     private ChatId _chatId;
 
     // Shortcuts
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private ChatUI ChatUI => Hub.ChatUI;
     private MomentClockSet Clocks => Hub.Clocks();
@@ -46,7 +46,10 @@
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
-        _chatId = ChatContext.Chat.Id;
+    }
+
+    protected override void OnParametersSet() {
+        _chatId = ChatContext.ChatId;
         _botId = Constants.User.Sherlock.GetSherlockAuthorId(_chatId);
     }
 

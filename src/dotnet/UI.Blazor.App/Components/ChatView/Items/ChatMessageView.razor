@@ -2,6 +2,7 @@
 @inherits ComputedStateComponent<ChatMessageView.Model>
 @{
     var m = _rendered = State.Value;
+    var chat = m.Chat;
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
     var entry = message.Entry;
@@ -17,7 +18,7 @@
     var showAuthor = !isSystem && (isBlockStart || isReply);
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
-    var isAiSearchChat = ChatContext.Chat.IsAiSearchChat();
+    var isAiSearchChat = chat.IsAiSearchChat();
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
@@ -42,10 +43,10 @@
         <Separator Title="New messages" TitleClass="new-separator-title"/>
         return;
     case ChatMessageReplacementKind.WelcomeBlock:
-        <ChatWelcomeBlock ChatContext="@ChatContext" />
+        <ChatWelcomeBlock Chat="@chat" />
         return;
     case ChatMessageReplacementKind.SearchWelcomeBlock:
-        <SearchChatWelcomeBlock ChatContext="@ChatContext" />
+        <SearchChatWelcomeBlock Chat="@chat" />
         return;
     default:
         throw new ArgumentOutOfRangeException();
@@ -273,9 +274,9 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         var initialValue = Model.None;
         var repliedEntry = Entry.RepliedEntryLid.HasValue ? ChatEntry.Loading : null;
-        var isOwnMessage = Entry.AuthorId == OwnAuthorId;
+        var isOwnMessage = Message.Flags.HasFlag(ChatMessageFlags.IsOwnMessage);
         if (isOwnMessage || repliedEntry != null) {
-            initialValue = new() {
+            initialValue = new(SpecialChat.Loading) {
                 IsOwnMessage = isOwnMessage,
                 RepliedEntry = repliedEntry,
             };
@@ -291,9 +292,10 @@
         var prevEntry = Message.PreviousMessage?.Entry;
         var chatId = ChatId;
         var chatMessage = Message;
-        var ownAuthor = OwnAuthor;
-        var ownAuthorId = OwnAuthor?.Id ?? AuthorId.None;
-        var isOwnMessage = entry.AuthorId == OwnAuthorId;
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false) ?? SpecialChat.Unavailable;
+        var ownAuthor = chat.Rules.Author;
+        var ownAuthorId = chat.Rules.Author?.Id ?? AuthorId.None;
+        var isOwnMessage = entry.AuthorId == (chat.Rules.Author?.Id ?? AuthorId.None);
 
         var markup = await _markupTask.ConfigureAwait(false);
         var repliedEntry = await GetRepliedEntry(cancellationToken).ConfigureAwait(false);
@@ -326,11 +328,12 @@
                 }
             }
         }
+
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
-        var (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(entry, prevEntry, ownAuthorId, cancellationToken);
-        var result = new Model {
+        var (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
+        var result = new Model(chat) {
             RepliedEntry = repliedEntry,
             IsOwnMessage = isOwnMessage,
             IsHighlighted = isHighlighted,
@@ -358,7 +361,7 @@
         }
     }
 
-    private async Task<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(ChatEntry entry, ChatEntry? prevEntry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
+    private async Task<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(Chat chat, ChatEntry entry, ChatEntry? prevEntry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
         if (_hasBeenRead)
             return (false, false);
 
@@ -366,7 +369,7 @@
         if (!isOwnMessage)
             return (false, false);
 
-        if (!await ChatSupportsUnreadStatus(cancellationToken).ConfigureAwait(false))
+        if (!await ChatSupportsUnreadStatus(chat, cancellationToken).ConfigureAwait(false))
             return (false, false);
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
@@ -383,10 +386,9 @@
         return (!hasBeenRead, previousHasBeenRead);
     }
 
-    private async Task<bool> ChatSupportsUnreadStatus(CancellationToken cancellationToken) {
+    private async Task<bool> ChatSupportsUnreadStatus(Chat chat, CancellationToken cancellationToken) {
         // NOTE(DF): move this check to ChatContext to share among all message views.
         // ChatContext and Chat can be considered as immutable and used from any thread.
-        var chat = ChatContext.Chat;
         if (chat.HasSingleAuthor)
             return false;
 
@@ -418,12 +420,6 @@
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);
-
-    private AuthorId OwnAuthorId
-        => OwnAuthor?.Id ?? AuthorId.None;
-
-    private AuthorFull? OwnAuthor
-        => ChatContext.Chat.Rules.Author;
 
     private bool IsMentioned(Markup markup,
         ChatEntry? repliedEntry,
@@ -509,8 +505,8 @@
 
     // Nested types
 
-    public sealed record Model {
-        public static readonly Model None = new();
+    public sealed record Model(Chat Chat) {
+        public static readonly Model None = new(SpecialChat.Unavailable);
 
         public bool IsOwnMessage { get; init; }
         public bool IsHighlighted { get; init; }

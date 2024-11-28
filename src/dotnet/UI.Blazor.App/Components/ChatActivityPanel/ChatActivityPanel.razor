@@ -42,8 +42,7 @@
 </div>
 
 @code {
-    private Chat Chat => ChatContext.Chat;
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
@@ -55,7 +54,7 @@
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnParametersSetAsync() {

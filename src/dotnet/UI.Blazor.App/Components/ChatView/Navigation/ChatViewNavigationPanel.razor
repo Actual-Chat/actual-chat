@@ -8,22 +8,22 @@
     <ChatViewSearchResultsNavigator />
 } else {
     <NavigateToUnreadOrEnd
-        ChatContext="@ChatContext"
+        ChatId="@ChatId"
         ChatView="ChatView" />
 }
 
 @code {
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(false),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = new (false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
@@ -31,10 +31,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         if (!screenSize.IsNarrow())
-            return new Model(false);
+            return new (false);
 
         var hasSearchResults = await SearchUI.IsResultsNavigationOn.Use(cancellationToken).ConfigureAwait(false);
-        return new Model(hasSearchResults);
+        return new (hasSearchResults);
     }
 
     // Nested types

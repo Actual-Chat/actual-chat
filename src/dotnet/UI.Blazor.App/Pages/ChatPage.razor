@@ -8,10 +8,11 @@
     if (_isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value)
         return;
 
-    var chatContext = m.ChatContext;
-    var chat = m.ChatContext.Chat;
-    var chatKey = chat.Id.Value;
-    // Log.LogDebug("Rendered for #{ChatId}", chat.Id);
+    var chat = m.Chat;
+    var account = m.OwnAccount;
+    var chatId = chat.Id.IsNone ? ChatId : chat.Id;
+    var chatKey = chatId.Value;
+    Log.LogDebug("Rendered for #{ChatId}", chatId);
 }
 
 @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
@@ -28,17 +29,17 @@
     @if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
         <SkeletonChatHeader/>
     } else {
-        <ChatHeader @key="@chatKey" ChatContext="@chatContext"/>
+        <ChatHeader @key="@chatKey" Chat="@chat"/>
     }
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <ChatFooter @key="@chatKey" ChatContext="@chatContext" Model="m.FooterModel" />
+    <ChatFooter @key="@chatKey" Chat="@chat" Model="m.FooterModel" />
 </RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
-    @if (chatContext.HasChat) {
-        <Banners @key="@chatKey" ChatContext="@chatContext"/>
+    @if (!chatId.IsNone) {
+        <Banners @key="@chatKey" Chat="@chat"/>
     } else {
         <AlwaysVisibleBanners/>
     }
@@ -47,25 +48,25 @@
 <RenderIntoSlot Name="MainRightDrawer">
     @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
         <SkeletonRightPanel/>
-    } else if (chatContext.HasChat) {
-        <ChatRightPanel @key="@chatKey" ChatContext="@chatContext"/>
+    } else if (!chatId.IsNone) {
+        <ChatRightPanel @key="@chatKey" Chat="@chat"/>
     }
 </RenderIntoSlot>
 
 @if (ReferenceEquals(chat, SpecialChat.Loading)) {
     <chat-view-skeleton count="15" />
-    return;
-}
-@if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
+} else if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
     <NoChatSelected/>
 } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
     if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
-        <InaccessiblePlace ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
+        <InaccessiblePlace ShowSignIn="@(!account.IsActive())"/>
     } else {
-        <ChatNotFound ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
+        <ChatNotFound ShowSignIn="@(!account.IsActive())"/>
     }
-} else {
-    <ChatView @ref="ChatViewRef" @key="@chatKey" ChatContext="@chatContext"/>
+}
+
+@if (!chatId.IsNone) {
+    <ChatView @key="@chatKey" ChatId="@chatId"/>
 }
 
 @code {
@@ -73,11 +74,10 @@
     protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
     private static bool _isVeryFirstLoad = true;
-    private ILogger? _log;
-    private MutableState<HandlePageRouteState> _handlePageRouteState = null!;
 
     protected Model? Rendered;
-    protected ChatView ChatViewRef = null!;
+    protected PageRouteState RouteState = PageRouteState.Resolving;
+    protected ChatId ChatId = ChatId.None;
 
     [Inject] protected ChatUIHub Hub { get; init; } = null!;
     protected Features Features => Hub.Features();
@@ -94,30 +94,56 @@
     protected PanelsUI PanelsUI => Hub.PanelsUI;
     protected BrowserInfo BrowserInfo => Hub.BrowserInfo;
     protected UICommander UICommander => Hub.UICommander();
-    protected ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string? Route { get; set; }
 
     protected override void OnInitialized() {
-        _handlePageRouteState = StateFactory.NewMutable(HandlePageRouteState.ChatSid);
         ChatAudioUI.Enable();
     }
 
-    protected override async Task OnParametersSetAsync() {
-        _handlePageRouteState.Value = HandlePageRouteState.Resolving;
-        var result = await HandlePageRoute(Route, default).ConfigureAwait(false);
-        if (ReferenceEquals(result, PageRoute.UnknownUserLink))
-            _handlePageRouteState.Value = HandlePageRouteState.UnknownUserLink;
-        else if (!ReferenceEquals(result, PageRoute.Redirect)) {
-            ChatId? chatId = !ReferenceEquals(result, PageRoute.InvalidRoute) ? result.ChatId : null;
-            _ = SelectChat(chatId);
-            _handlePageRouteState.Value = HandlePageRouteState.ChatSid;
+    protected override void OnParametersSet() {
+        RouteState = PageRouteState.Resolving;
+        var pageRoute = Route;
+        if (pageRoute.IsNullOrEmpty()) {
+            RouteState = PageRouteState.UnknownUserLink;
+            return;
         }
+
+        if (pageRoute.StartsWith(Links.UserLinkPrefix))
+            return;
+
+        RouteState = PageRouteState.ChatSid;
+        _ = ChatId.TryParse(pageRoute, out var chatId)
+            ? SelectChat(chatId)
+            : SelectChat(null);
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        var pageRoute = Route;
+        if (RouteState != PageRouteState.Resolving)
+            return;
+
+        var result = await HandleUserLink(pageRoute, default).ConfigureAwait(false);
+        if (ReferenceEquals(result, PageRoute.Redirect)) {
+            RouteState = PageRouteState.Redirect;
+            return;
+        }
+
+        if (ReferenceEquals(result, PageRoute.UnknownUserLink)) {
+            RouteState = PageRouteState.UnknownUserLink;
+            return;
+        }
+
+        RouteState = PageRouteState.ChatSid;
+        await SelectChat(result.ChatId.IsNone ? null : result.ChatId);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Loading(Hub),
+            InitialValue = Model.Loading,
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
@@ -130,23 +156,23 @@
         var hostInfo = HostInfo;
         var isEmptyPageRoute = Route.IsNullOrEmpty();
 
-        var userLinkStep = await _handlePageRouteState.Use(cancellationToken).ConfigureAwait(false);
-        if (userLinkStep != HandlePageRouteState.ChatSid) {
-            if (userLinkStep == HandlePageRouteState.UnknownUserLink) {
-                var account2 = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-                return Model.Unavailable(Hub, account2, false, false);
-            }
-            return Model.Loading(Hub);
-        }
+        var pageRouteState = RouteState;
+        if (pageRouteState is PageRouteState.Redirect or PageRouteState.Resolving)
+            return Model.Loading;
+
+        if (pageRouteState == PageRouteState.UnknownUserLink)
+            return Model.Unavailable(false);
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        ChatId = chatId;
         var lastState = State.ValueOrDefault;
-        var lastContext = lastState?.ChatContext;
-        var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
+        var lasChat = lastState?.Chat;
+        var lastChatId = lasChat?.Id ?? ChatId.None;
 
         var canSendJoinPlaceRequest = false;
-        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUITask = Features.EnableIncompleteUI(cancellationToken);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         if (_isVeryFirstLoad) {
@@ -163,11 +189,10 @@
             }
         }
 
-        var account = AccountFull.Loading;
         try {
             if (!AccountUI.WhenLoaded.IsCompleted)
                 await AccountUI.WhenLoaded.WaitAsync(LoadTimeout, cancellationToken).ConfigureAwait(false);
-            account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+            var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {
 #if false // NOTE(AY): Let's try to disable this for now, maybe it works better after rendering changes
@@ -198,20 +223,20 @@
                 chat ??= SpecialChat.Unavailable;
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
-            var chatContext = new ChatContext(Hub, chat, account);
-            return new(chatContext, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
+            var enableIncompleteUI = await enableIncompleteUITask.ConfigureAwait(false);
+            return new(chat, account, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
         }
         catch (TimeoutException) {
             Computed.Current?.Invalidate(LoadTimeoutToReloadDelay);
             this.NotifyStateHasChanged();
             return lastState != null && chatId == lastChatId
                 ? lastState
-                : Model.Loading(Hub);
+                : Model.Loading;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Hub, account, false, enableIncompleteUI);
+            return Model.Unavailable(false);
         }
     }
 
@@ -282,22 +307,17 @@
             if (chatId.IsNone && Hub.ChatUI.SelectedPlaceId.Value.IsNone)
                 chatId = Constants.Chat.AnnouncementsChatId;
         }
+
+        ChatId = chatId;
         ChatUI.SelectChatOnNavigation(chatId);
     }
 
-    private async Task<PageRoute> HandlePageRoute(string? pageRoute, CancellationToken cancellationToken) {
+    private async Task<PageRoute> HandleUserLink(string? pageRoute, CancellationToken cancellationToken) {
         if (pageRoute.IsNullOrEmpty())
             return PageRoute.Empty;
 
-        if (!pageRoute.StartsWith(Links.UserLinkPrefix)) {
-            if (ChatId.TryParse(pageRoute, out var chatId))
-                return new PageRoute(chatId);
-
-            return PageRoute.InvalidRoute;
-        }
-
-        var parts = pageRoute.Substring(1).Split("/");
-        if (parts.Length < 1 || parts.Length > 2)
+        var parts = pageRoute[1..].Split("/");
+        if (parts.Length is < 1 or > 2)
             return PageRoute.InvalidRoute;
 
         ChatId targetChatId;
@@ -341,7 +361,7 @@
                     return PageRoute.InvalidRoute;
                 placeChatId = placeChatId1;
             } else {
-                var sChatUserLink = chatIdPart.Substring(1);
+                var sChatUserLink = chatIdPart[1..];
                 if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
                     return PageRoute.UnknownUserLink;
 
@@ -359,20 +379,16 @@
     // Nested types
 
     public sealed record Model(
-        ChatContext ChatContext,
+        Chat Chat,
+        AccountFull OwnAccount,
         FooterModel FooterModel,
         bool CanSendJoinPlaceRequest,
         bool EnableIncompleteUI
     ) {
-        public static Model Loading(ChatUIHub hub) {
-            var chatContext = new ChatContext(hub, SpecialChat.Loading, AccountFull.Loading);
-            return new(chatContext, FooterModel.None, false, false);
-        }
+        public static Model Loading { get; } = new(SpecialChat.Loading, AccountFull.Loading, FooterModel.None, false, false);
 
-        public static Model Unavailable(ChatUIHub hub, AccountFull account, bool canSendJoinPlaceRequest, bool enableIncompleteUI) {
-            var chatContext = new ChatContext(hub, SpecialChat.Unavailable, account);
-            return new(chatContext, new FooterModel(), canSendJoinPlaceRequest, enableIncompleteUI);
-        }
+        public static Model Unavailable(bool canSendJoinPlaceRequest)
+            => new(SpecialChat.Unavailable, AccountFull.None, new (), canSendJoinPlaceRequest, false);
     }
 
     public sealed record FooterModel {
@@ -389,7 +405,7 @@
         public Place? Place { get; init; }
     }
 
-    public enum HandlePageRouteState { Resolving, ChatSid, UnknownUserLink }
+    public enum PageRouteState { Resolving, ChatSid, UnknownUserLink, Redirect }
 
     public record PageRoute(ChatId ChatId) {
         public static readonly PageRoute Empty = new (ChatId.None);

@@ -39,13 +39,13 @@
 }
 
 @code {
-    private Chat Chat => ChatContext.Chat;
-    private Session Session => ChatContext.Hub.Session();
-    private IAuthors Authors => ChatContext.Hub.Authors;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -56,7 +56,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
+        var chatId = ChatId;
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         var authorPresences = await allAuthorIds

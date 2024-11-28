@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <TabPanel
-    @key="@Chat.Id.Value"
+    @key="@ChatId.Value"
     TabsClass="search-panel-tabs"
     BottomHill="true">
 
@@ -47,7 +47,5 @@
 </TabPanel>
 
 @code {
-    private Chat Chat => ChatContext.Chat;
-
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
 }

@@ -49,13 +49,13 @@
 </div>
 
 @code {
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
-    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
-    private UICommander UICommander => ChatContext.Hub.UICommander();
-    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private ModalUI ModalUI => Hub.ModalUI;
+    private UICommander UICommander => Hub.UICommander();
+    private ChatUI ChatUI => Hub.ChatUI;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter, EditorRequired] public ChatPage.FooterModel Model { get; set; } = null!;
 
     private async Task OnJoin() {

@@ -3,18 +3,17 @@
 <Banner IsVisible="@true" Severity="BannerSeverity.Default" Class="chat-activity-banner subheader">
     <Icon></Icon>
     <Body>
-        <ChatActivityPanel ChatContext="@ChatContext"/>
+        <ChatActivityPanel Chat="@Chat"/>
     </Body>
 </Banner>
 
 @code {
-    private Chat Chat => ChatContext.Chat;
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();

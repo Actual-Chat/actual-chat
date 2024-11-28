@@ -7,11 +7,11 @@
 <div class="right-chat-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         @if (m.ShowSearchPanel) {
-            <AISearchPanel ChatContext="@ChatContext"/>
+            <AISearchPanel Chat="@Chat"/>
         }
-        <RightPanelHeader ChatContext="@ChatContext" />
+        <RightPanelHeader Chat="@Chat" />
         <div class="c-panel-content">
-            <RightPanelChatInfo ChatContext="@ChatContext"/>
+            <RightPanelChatInfo Chat="@Chat"/>
             <div class="c-panel-tabs">
                 @if (m.ShowTabs) {
                     <TabPanel
@@ -43,15 +43,14 @@
 </div>
 
 @code {
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
-    private Chat Chat => ChatContext.Chat;
     private IChats Chats => Hub.Chats;
     private Features Features => Hub.Features();
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private ShareUI ShareUI => Hub.ShareUI;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

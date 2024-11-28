@@ -22,14 +22,15 @@
 @code {
     private bool _isCopying;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private UICommander UICommander => Hub.UICommander();
     private ModalUI ModalUI => Hub.ModalUI;
     private ToastUI ToastUI => Hub.ToastUI;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -40,8 +41,8 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var hasChat = ChatContext.HasChat;
-        var chat = ChatContext.Chat;
+        var chat = Chat;
+        var hasChat = !chat.Id.IsNone;
 
         if (!hasChat || !chat.Id.IsPlaceChat || !chat.Rules.IsOwner())
             return Model.Hidden;
@@ -57,7 +58,7 @@
     }
 
     private Task OnPublishClick(ChatCopyState copiedChat)
-        => CopyChatToPlaceUI.PublishCopiedChat(ChatContext.Hub, copiedChat.Id, copiedChat.SourceChatId);
+        => CopyChatToPlaceUI.PublishCopiedChat(Hub, copiedChat.Id, copiedChat.SourceChatId);
 
     private Task OnUpdateClick(ChatCopyState copiedChat)
         => CopyChatToPlaceUI.CopyChat(Hub,

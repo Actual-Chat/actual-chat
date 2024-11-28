@@ -33,13 +33,13 @@
 </span>
 
 @code {
-    private Chat Chat => ChatContext.Chat;
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
+    private AccountUI AccountUI => Hub.AccountUI;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsColorful { get; set; } = true;
     [Parameter] public bool ShowLastSeen { get; set; }
     [Parameter] public bool ShowOnlyIcon { get; set; }
@@ -71,13 +71,13 @@
                     return Model.Loading;
 
                 status = Chat.IsPublic ? "Place\u00A0chat" : "Private\u00A0chat";
-                return new Model() {
+                return new () {
                     Status = status,
                     BadgeClass = badgeClass,
                     Place = place,
                 };
             default:
-                var ownAccount = ChatContext.OwnAccount;
+                var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
                 var chatId = Chat.Id;
                 if (!chatId.IsPeerChat(out var peerChatId))
                     return Model.Loading;

@@ -17,8 +17,7 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    private ChatUIHub Hub => ChatContext.Hub;
-    private Chat Chat => ChatContext.Chat;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private IJSRuntime JS => Hub.JSRuntime();
     private IChats Chats => Hub.Chats;
@@ -27,7 +26,7 @@
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -51,7 +50,7 @@
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
         var chatView = ChatView;
-        var chatId = Chat.Id;
+        var chatId = ChatId;
         if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return string.Empty;
 

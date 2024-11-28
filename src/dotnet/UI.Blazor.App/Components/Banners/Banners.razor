@@ -6,24 +6,25 @@
 
 <ReconnectBanner/>
 @if (ScreenSize.IsNarrow()) {
-     <ChatActivityBanner ChatContext="@ChatContext"/>
+     <ChatActivityBanner Chat="@Chat"/>
 }
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
-<ChatCopyBanner ChatContext="@ChatContext"/>
-<AddToContactsBanner ChatContext="@ChatContext"/>
-<AddChatMembersBanner ChatContext="@ChatContext"/>
+<ChatCopyBanner Chat="@Chat"/>
+<AddToContactsBanner Chat="@Chat"/>
+<AddChatMembersBanner Chat="@Chat"/>
 <PermissionBannerSwitch/>
 
 @code {
     private const int MaxCount = 2;
 
-    private BannerUI BannerUI => ChatContext.Hub.BannerUI;
+    [Inject] ChatUIHub Hub { get; init; } = null!;
+    private BannerUI BannerUI => Hub.BannerUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-<EmptySearchChatContent ChatContext="@ChatContext"/>
+<EmptySearchChatContent Chat="@Chat"/>
 <div class="message-wrapper">
     <div class="chat-welcome-block search-welcome">
         <div class="c-header">
@@ -38,8 +38,7 @@
 </div>
 
 @code {
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
+    [Inject] private Session Session { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 }

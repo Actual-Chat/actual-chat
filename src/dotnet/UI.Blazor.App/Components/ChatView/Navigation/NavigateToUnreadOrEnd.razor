@@ -28,19 +28,19 @@
     private ShowHideAnimator _animator = null!;
     private Moment _lastClickAt;
 
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
-    private IChats Chats => ChatContext.Hub.Chats;
-    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
-    private UIEventHub UIEventHub => ChatContext.Hub.UIEventHub();
-    private Moment CpuNow => ChatContext.Hub.Clocks().CpuClock.Now;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private UIEventHub UIEventHub => Hub.UIEventHub();
+    private Moment CpuNow => Hub.Clocks().CpuClock.Now;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     protected override void OnInitialized()
-        => _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
+        => _animator = new (this, TimeSpan.FromMilliseconds(300));
 
     public override ValueTask DisposeAsync() {
         _animator.Dispose();
@@ -57,7 +57,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatView = ChatView;
-        var chatId = Chat.Id;
+        var chatId = ChatId;
         var oldState = State;
 
         if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))

@@ -48,13 +48,14 @@
     private ChatId _chatId = ChatId.None;
 
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override void OnInitialized() {
-        _chatId = ChatContext.Chat.Id;
+        _chatId = Chat.Id;
         _chatMarkupHub = ChatMarkupHubFactory[Constants.Chat.DefaultChatId];
     }
 
@@ -65,11 +66,11 @@
     // }
 
     private void CloseSearchPanel() {
-        ChatContext.Hub.PanelsUI.Right.SearchToggle();
+        Hub.PanelsUI.Right.SearchToggle();
         if (ScreenSize.IsNarrow()) {
-            ChatContext.Hub.PanelsUI.Right.SetIsVisible(false);
+            Hub.PanelsUI.Right.SetIsVisible(false);
         }
-        ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
+        Hub.ChatUI.EnableSearch(ChatId.None);
     }
 
     private async Task OnSetMarkupClick()

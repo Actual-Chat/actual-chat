@@ -6,7 +6,7 @@
         return;
 }
 
-<EmptyChatContent ChatContext="@ChatContext"/>
+<EmptyChatContent Chat="@Chat"/>
 <div class="message-wrapper">
     <div class="chat-welcome-block">
         <div class="c-header">
@@ -79,12 +79,12 @@
     }
 
     // Shortcuts
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
-    private ShareUI ShareUI => ChatContext.Hub.ShareUI;
-    private UrlMapper UrlMapper => ChatContext.Hub.UrlMapper();
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private ShareUI ShareUI => Hub.ShareUI;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;

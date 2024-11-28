@@ -23,13 +23,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<Navigation?> _nextNavigation = null!;
     private Range<long> _lastIdRangeToLoad;
-    private ChatUIHub? _hub;
-    private ILogger? _log;
+    private ChatContext _chatContext = null!;
 
-    private ChatUIHub Hub => _hub ??= ChatContext.Hub;
+    private ChatUIHub Hub { get; set; }
     private Session Session => Hub.Session();
     private ICommander Commander => Hub.Commander();
-    private Chat.Chat Chat => ChatContext.Chat;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
     private Media.IMediaLinkPreviews MediaLinkPreviews => Hub.MediaLinkPreviews;
@@ -40,7 +38,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private StateFactory StateFactory => Hub.StateFactory();
     private Dispatcher Dispatcher => Hub.Dispatcher;
     private CancellationToken DisposeToken { get; }
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     public IState<ReadPosition> ReadPosition => _readPosition;
@@ -49,18 +49,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
-    public ChatView()
+    public ChatView(ChatUIHub hub)
     {
+        Hub = hub;
         _disposeTokenSource = new ();
         DisposeToken = _disposeTokenSource.Token;
     }
 
     protected override async Task OnInitializedAsync()
     {
-        Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
+        Log.LogDebug("Created for chat #{ChatId}", ChatId);
         Nav.LocationChanged += OnLocationChanged;
         try {
             var type = GetType();
@@ -73,7 +74,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _shownReadEntryLid = StateFactory.NewMutable(
                 0L,
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
-            _readPosition = await ChatUI.LeaseReadPositionState(Chat.Id, DisposeToken);
+            _readPosition = await ChatUI.LeaseReadPositionState(ChatId, DisposeToken);
             _shownReadEntryLid.Value = _readPosition.Value.EntryLid;
             _whenInitializedSource.TrySetResult();
             _updateReadStateTask = AsyncChain.From(UpdateReadState)
@@ -91,6 +92,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (_disposeTokenSource.IsCancellationRequested)
                 _readPosition.DisposeSilently();
         }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_disposeTokenSource.IsCancellationRequested)
+            return;
+
+        _chatContext = new ChatContext(Hub, ChatId);
     }
 
     public void Dispose()
@@ -164,11 +173,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
         var identity = virtualListItemVisibility.ListIdentity;
-        if (!OrdinalEquals(identity, Chat.Id.Value)) {
+        if (!OrdinalEquals(identity, ChatId.Value)) {
             Log.LogWarning(
                 $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
                 identity,
-                Chat.Id.Value);
+                ChatId.Value);
             return;
         }
 
@@ -189,7 +198,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
     {
-        if (@event.ChatEntryId.ChatId == Chat.Id)
+        if (@event.ChatEntryId.ChatId == ChatId)
             _ = NavigateTo(@event.ChatEntryId.LocalId, @event.MustHighlight);
         return Task.CompletedTask;
     }
@@ -198,8 +207,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private async Task UpdateReadState(CancellationToken cancellationToken)
     {
-        var chatId = Chat.Id;
-        var entryReader = ChatContext.NewEntryReader(ChatEntryKind.Text);
+        var chatId = ChatId;
+        var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authorId = author?.Id ?? AuthorId.None;
         var chatIdRange = await Chats
@@ -269,15 +278,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var lastComputedAt = renderedData.IsNone ? startedAt : renderedData.ComputedAt;
             var isFastUpdate = startedAt - lastComputedAt <= FastUpdateRecency;
             var delay = startedAt + (isFastUpdate ? FastUpdateDelay : SlowUpdateDelay) - CpuTimestamp.Now;
-            if (delay > TimeSpan.FromMilliseconds(10))
+            if (delay > TimeSpan.FromMilliseconds(10)) {
                 await Task.Delay(delay, cancellationToken);
+                DebugLog?.LogDebug("GetData: delayed for {Delay}", delay);
+            }
         }
 
         // ReSharper disable once ExplicitCallerInfoArgument
         using var activity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "GetVirtualListData");
 
-        var chat = Chat;
-        var chatId = chat.Id;
+        var chatId = ChatId;
         activity?.SetTag("AC." + nameof(ChatId), chatId);
 
         // Handling NavigateTo + default navigation
@@ -321,6 +331,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         rebuildTiles: // Building actual virtual list tiles
 
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return VirtualListData<ChatMessage>.None;
+
         var isBot = chat.IsAiSearchChat();
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
         var shownReadyEntryLid = _shownReadEntryLid.Value;
@@ -332,7 +346,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 lastReadEntryLid = 0;
             else if (shownReadyEntryLid >= idTile.Range.End - 1)
                 lastReadEntryLid = long.MaxValue;
-            var tile = await ChatUI.GetTile(chatId,
+            var tile = await ChatUI.GetTile(
+                chatId,
+                chat.Rules.Author?.Id ?? AuthorId.None,
                 idTile.Range,
                 prevMessage,
                 lastReadEntryLid,
@@ -360,9 +376,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessage>(new [] {
-                    new VirtualListTile<ChatMessage>(default(Range<long>), new [] { ChatMessage.Welcome(Chat.Id, isBot) }),
-                }) {
+                return new VirtualListData<ChatMessage>([
+                    new VirtualListTile<ChatMessage>(default(Range<long>), new [] { ChatMessage.Welcome(ChatId, isBot) }),
+                ]) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
@@ -511,7 +527,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         readEntryLid = Math.Max(_readPosition.Value.EntryLid, readEntryLid);
         if (_readPosition.Value.EntryLid < readEntryLid)
-            _readPosition.Value = new ReadPosition(Chat.Id, readEntryLid);
+            _readPosition.Value = new ReadPosition(ChatId, readEntryLid);
         return readEntryLid;
     }
 
@@ -537,9 +553,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private async ValueTask<ChatEntry?> GetFirstEntry(long minEntryLid, CancellationToken cancellationToken)
     {
-        var entryReader = ChatContext.NewEntryReader(ChatEntryKind.Text);
+        var chatId = ChatId;
+        var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var chatIdRange = await Chats
-            .GetIdRange(Session, Chat.Id, ChatEntryKind.Text, cancellationToken)
+            .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
         var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.IdTileStack.MinTileSize))
             .IntersectWith(chatIdRange);
@@ -548,20 +565,24 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private void UpdateGroupChatUsageList()
     {
-        var chat = Chat;
-        if (chat.Id.Kind == ChatKind.Peer)
-            return;
-
-        var isAiSearchChat = chat.IsAiSearchChat();
-        if (isAiSearchChat)
+        var chatId = ChatId;
+        if (chatId.Kind == ChatKind.Peer)
             return;
 
         _ = BackgroundTask.Run(async () => {
-                var command = new ChatUsages_RegisterUsage(Session, ChatUsageListKind.ViewedGroupChats, chat.Id);
-                await Commander.Call(command, default);
+                var chat = await Chats.Get(Session, chatId, DisposeToken);
+                if (chat == null)
+                    return;
+
+                var isAiSearchChat = chat.IsAiSearchChat();
+                if (isAiSearchChat)
+                    return;
+
+                var command = new ChatUsages_RegisterUsage(Session, ChatUsageListKind.ViewedGroupChats, chatId);
+                await Commander.Call(command, DisposeToken);
             },
             ex => Log.LogDebug(ex, "Failed to register view group chat"),
-            default);
+            DisposeToken);
     }
 
     // Nested types

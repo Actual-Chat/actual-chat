@@ -16,6 +16,7 @@ public partial class ChatUI
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
+        AuthorId currentAuthorId,
         Range<long> idRange,
         ChatMessage? prevMessage,
         long lastReadEntryId,
@@ -85,6 +86,8 @@ public partial class ChatUI
                 flags |= ChatMessageFlags.ForwardAuthorStart;
             if (isEntryUnread)
                 flags |= ChatMessageFlags.Unread;
+            if (entry.AuthorId == currentAuthorId)
+                flags |= ChatMessageFlags.IsOwnMessage;
             if (shouldAddToResult) {
                 if (!isWelcomeBlockAdded) {
                     if (hasVeryFirstItem) {

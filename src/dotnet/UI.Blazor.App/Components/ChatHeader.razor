@@ -1,7 +1,7 @@
 @inherits ComputedStateComponent<ChatHeader.Model>
 @{
     var m = State.Value;
-    var chat = ChatContext.Chat;
+    var chat = Chat;
     var searchCls = m.IsSearchMode ? "blackout on" : "blackout";
 }
 
@@ -29,22 +29,22 @@
                         @chat.Title
                     </div>
                     @if (ScreenSize.IsNarrow() && !chat.Id.IsPeerChat(out _)) {
-                        <StatusBadge ChatContext="@ChatContext" ShowOnlyIcon="true"/>
+                        <StatusBadge Chat="@chat" ShowOnlyIcon="true"/>
                     }
                 </div>
                 <div class="c-info">
                     @if (chat.Rules.CanJoin()) {
                         @if (!chat.Id.IsPeerChat(out _)) {
-                            <ChatMemberCounter ChatContext="@ChatContext"/>
+                            <ChatMemberCounter ChatId="@Chat.Id"/>
                         }
                     }
                     @if (chat.Id.IsPeerChat(out _)) {
-                        <StatusBadge ChatContext="@ChatContext" IsColorful="@false"/>
+                        <StatusBadge Chat="@chat" IsColorful="@false"/>
                     }
                 </div>
             </div>
             @if (!ScreenSize.IsNarrow()) {
-                <ChatActivityPanel ChatContext="@ChatContext"/>
+                <ChatActivityPanel Chat="@Chat"/>
             }
         }
     </div>
@@ -67,7 +67,7 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 
@@ -80,8 +80,8 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var hasSelection = await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
-        var isSearchMode = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
+        var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
+        var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features().EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
         return new() {
             HasSelection = hasSelection,
@@ -91,13 +91,13 @@
     }
 
     private void OnToggleRightPanelClick()
-        => ChatContext.Hub.PanelsUI.Right.Toggle();
+        => Hub.PanelsUI.Right.Toggle();
 
     private void OnOpenLeftPanelClick()
-        => ChatContext.Hub.PanelsUI.Left.SetIsVisible(true);
+        => Hub.PanelsUI.Left.SetIsVisible(true);
 
     private void OnSearchClick()
-        => ChatContext.Hub.PanelsUI.Right.SearchToggle();
+        => Hub.PanelsUI.Right.SearchToggle();
 
     // Nested types
 

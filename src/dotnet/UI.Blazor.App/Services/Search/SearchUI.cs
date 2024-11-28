@@ -32,7 +32,6 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private HighlightUI HighlightUI => Hub.HighlightUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
     private UICommander UICommander => Hub.UICommander();
-    private MomentClockSet Clocks => Hub.Clocks();
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     public SearchUI(ChatUIHub uiHub) : base(uiHub)

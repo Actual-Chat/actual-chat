@@ -23,12 +23,13 @@
 </div>
 
 @code {
-    private Session Session => ChatContext.Hub.Session();
-    private Chat Chat => ChatContext.Chat;
-    private IAccounts Accounts => ChatContext.Hub.Accounts;
-    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private AccountUI AccountUI => Hub.AccountUI;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
@@ -41,7 +42,8 @@
         if (!chatId.IsPeerChat(out var peerChatId))
             return Model.NoPeerAccount;
 
-        var peerAccountId = peerChatId.AnotherUserIdOrDefault(ChatContext.OwnAccount.Id);
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var peerAccountId = peerChatId.AnotherUserIdOrDefault(account.Id);
         if (peerAccountId.IsNone)
             return Model.NoPeerAccount;
 

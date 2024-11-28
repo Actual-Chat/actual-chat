@@ -26,9 +26,8 @@
     private ISyncedState<Moment> _dismissedAt = null!;
     private ILogger? _log;
 
-    private ChatUIHub Hub => ChatContext.Hub;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
-    private Chat Chat => ChatContext.Chat;
     private IRoles Roles => Hub.Roles;
     private IAuthors Authors => Hub.Authors;
     private AccountSettings AccountSettings => Hub.AccountSettings();
@@ -38,7 +37,7 @@
     private MomentClockSet Clocks => Hub.Clocks();
     private ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;

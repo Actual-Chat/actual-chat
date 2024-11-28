@@ -6,13 +6,14 @@
     Side="SideNavSide.Right"
     IsOpen="@State.Value"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Right.SetIsVisible(isOpen)))">
-    <ChatRightPanelContent ChatContext="@ChatContext" />
+    <ChatRightPanelContent Chat="@Chat" />
 </SideNav>
 
 @code {
-    private PanelsUI PanelsUI => ChatContext.Hub.PanelsUI;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
 
-    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
