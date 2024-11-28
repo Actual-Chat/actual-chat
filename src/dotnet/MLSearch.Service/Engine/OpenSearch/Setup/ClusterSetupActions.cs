@@ -594,6 +594,7 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
             return new ExternalModelProps(model.ModelName, dimension, modelHash, connectorId);
         }
 
+        var predictionsUri = new Uri(modelUri, "predictions").ToString().TrimEnd('/');
         var createConnectorResponse = await _openSearch.RunAsync(
                 $$"""
                 POST /_plugins/_ml/connectors/_create
@@ -609,7 +610,7 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
                         {
                             "action_type": "predict",
                             "method": "POST",
-                            "url": "{{modelUri}}/predictions/${parameters.model}",
+                            "url": "{{predictionsUri}}/${parameters.model}",
                             "headers": {
                                 "content-type": "application/json"
                             },
