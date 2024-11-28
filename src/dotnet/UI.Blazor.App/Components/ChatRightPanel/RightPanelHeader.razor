@@ -68,13 +68,16 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(AuthorRules.None(Chat.Id), null),
+            InitialValue = Model.Loading,
             UpdateDelayer = FixedDelayer.NextTick,
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
+        if (chatId.IsNone)
+            return Model.Loading;
+
         var authorRules = await Chats.GetRules(Session, chatId, default).ConfigureAwait(false);
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         return new Model(authorRules, shareModel);
@@ -94,5 +97,7 @@
 
     // Nested types
 
-    public sealed record Model(AuthorRules AuthorRules, ShareModalModel? ShareModel);
+    public sealed record Model(AuthorRules AuthorRules, ShareModalModel? ShareModel) {
+        public static readonly Model Loading = new (AuthorRules.None(ChatId.None), null);
+    }
 }
