@@ -498,6 +498,7 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
         return new EmbeddingModelProps(modelId, modelProps.Dimension, modelProps.ModelHash);
     }
 
+    private record ExternalModelResponse(ExternalModel[] Models);
     private record ExternalModel(string ModelName, string ModelUrl);
     private record ExternalModelProps(string Name, int Dimension, string ModelHash, string ConnectorId);
 
@@ -531,22 +532,24 @@ internal sealed class CustomRemoteModelClusterSetupActions : ClusterSetupActions
 
         using var contentStream = await modelResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
-        var embeddingModels = await JsonSerializer
-            .DeserializeAsync<ExternalModel[]>(contentStream, jsonSerializerOptions, cancellationToken)
+        var externalModelResponse = await JsonSerializer
+            .DeserializeAsync<ExternalModelResponse>(contentStream, jsonSerializerOptions, cancellationToken)
             .ConfigureAwait(false);
 
-        if (embeddingModels is null || embeddingModels.Length == 0)
+        var externalModels = externalModelResponse?.Models;
+
+        if (externalModels is null || externalModels.Length == 0)
             throw new InvalidOperationException("Embedding model service doesn't host any model.");
 
         var configuredModelName = customConnectorConfig.ModelName;
         ExternalModel? model;
         if (string.IsNullOrWhiteSpace(configuredModelName)) {
-            if (embeddingModels.Length > 1)
+            if (externalModels.Length > 1)
                 throw new InvalidOperationException("Embedding model service hosts multiple models. Please specify model name.");
-            model = embeddingModels[0];
+            model = externalModels[0];
         }
         else {
-            model = embeddingModels.FirstOrDefault(em => OrdinalEquals(em.ModelName, configuredModelName));
+            model = externalModels.FirstOrDefault(em => OrdinalEquals(em.ModelName, configuredModelName));
             if (model is null)
                 throw new InvalidOperationException($"The specified model name '{configuredModelName}' is not found.");
         }
