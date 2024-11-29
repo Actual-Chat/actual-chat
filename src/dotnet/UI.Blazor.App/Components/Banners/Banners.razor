@@ -2,18 +2,21 @@
 @inherits ComputedStateComponent<Banners.ComputedModel>
 @{
     var m = State.Value;
+    var hasChat = !Chat.Id.IsNone;
 }
 
 <ReconnectBanner/>
-@if (ScreenSize.IsNarrow()) {
+@if (ScreenSize.IsNarrow() && hasChat) {
      <ChatActivityBanner Chat="@Chat"/>
 }
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
-<ChatCopyBanner Chat="@Chat"/>
-<AddToContactsBanner Chat="@Chat"/>
-<AddChatMembersBanner Chat="@Chat"/>
+@if (hasChat) {
+    <ChatCopyBanner Chat="@Chat"/>
+    <AddToContactsBanner Chat="@Chat"/>
+    <AddChatMembersBanner Chat="@Chat"/>
+}
 <PermissionBannerSwitch/>
 
 @code {

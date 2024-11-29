@@ -2,22 +2,35 @@
 @using ActualChat.UI.Blazor.Components.SideNav
 @inherits ComputedStateComponent<bool>
 
+@{
+    var showSkeletonsOnly = Chat.Id.IsNone;
+    var isOpen = State.LastNonErrorValue;
+    // Log.LogDebug("RightPanel IsOpen={IsOpen}", isOpen);
+}
+
+@if (showSkeletonsOnly)
+{
+    <SkeletonRightPanel/>
+    return;
+}
+
 <SideNav
     Side="SideNavSide.Right"
-    IsOpen="@State.Value"
-    VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Right.SetIsVisible(isOpen)))">
+    IsOpen="@isOpen"
+    VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(b => PanelsUI.Right.SetIsVisible(b)))">
     <ChatRightPanelContent Chat="@Chat" />
 </SideNav>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private PanelsUI PanelsUI => Hub.PanelsUI;
+    private ILogger Log => Hub.LogFor<ChatRightPanel>();
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<bool>.Options() {
+            t => new ComputedState<bool>.Options {
                 InitialValue = PanelsUI.Right.IsVisible.Value,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = ComputedStateComponent.GetStateCategory(t),

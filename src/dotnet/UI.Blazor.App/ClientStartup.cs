@@ -173,8 +173,8 @@ public static class ClientStartup
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };
 #endif
-        var remoteComputedCacheUpdateDelayTask = Task.Delay(3000)
-            .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = null, TaskScheduler.Default);
+        var remoteComputedCacheUpdateDelayTask = Task.Delay(Constants.RpcCalls.InitialCacheInvalidationDelay)
+            .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = (_, _) => Task.Delay(Constants.RpcCalls.CacheInvalidationDelay), TaskScheduler.Default);
         RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
     }
 

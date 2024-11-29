@@ -29,28 +29,20 @@
     @if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
         <SkeletonChatHeader/>
     } else {
-        <ChatHeader @key="@chatKey" Chat="@chat"/>
+        <ChatHeader Chat="@chat"/>
     }
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <ChatFooter @key="@chatKey" Chat="@chat" Model="m.FooterModel" />
+    <ChatFooter Chat="@chat" Model="m.FooterModel" />
 </RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
-    @if (!chatId.IsNone) {
-        <Banners @key="@chatKey" Chat="@chat"/>
-    } else {
-        <AlwaysVisibleBanners/>
-    }
+    <Banners Chat="@chat"/>
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
-    @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
-        <SkeletonRightPanel/>
-    } else if (!chatId.IsNone) {
-        <ChatRightPanel @key="@chatKey" Chat="@chat"/>
-    }
+    <ChatRightPanel Chat="@chat"/>
 </RenderIntoSlot>
 
 @if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {

@@ -9,8 +9,8 @@ public partial class ChatUI
 
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
     public static readonly long SecondTileSize = IdTileStack.Layers[1].TileSize; // 20
-    public static readonly long HalfLoadLimit = 2 * SecondTileSize; // 40
-    public static readonly long LoadLimit = 4 * SecondTileSize; // 80
+    public static readonly long HalfLoadLimit = SecondTileSize; // 20
+    public static readonly long LoadLimit = 2 * SecondTileSize; // 40
 
     public async Task<List<VirtualListTile<ChatMessage>>> GetTiles(
         ChatId chatId,

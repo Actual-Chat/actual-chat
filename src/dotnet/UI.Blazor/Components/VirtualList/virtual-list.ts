@@ -1394,7 +1394,7 @@ export class VirtualList {
                 // check whether we need to continue loading from the end
                 if (alreadyLoadedTillEnd < loadZoneTrigger) {
                     if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
-                        loadEnd = viewport.end + loadZoneSize * 3;
+                        loadEnd = viewport.end + loadZoneSize * 2;
                         loadStart = viewport.start - viewportSize / 2;
                     }
                 }
@@ -1410,7 +1410,7 @@ export class VirtualList {
                 // check whether we need to continue loading from the start
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
                     if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
-                        loadStart = viewport.start - loadZoneSize * 3;
+                        loadStart = viewport.start - loadZoneSize * 2;
                         loadEnd = viewport.end + viewportSize / 2;
                     }
                 }

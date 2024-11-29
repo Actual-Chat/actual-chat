@@ -272,4 +272,10 @@ public static partial class Constants
     {
         public const string UseChatContentArranger2ChatIds = "UseChatContentArranger2ChatIds";
     }
+
+    public static class RpcCalls
+    {
+        public static readonly TimeSpan InitialCacheInvalidationDelay = TimeSpan.FromMilliseconds(3000);
+        public static readonly TimeSpan CacheInvalidationDelay = TimeSpan.FromMilliseconds(250);
+    }
 }
