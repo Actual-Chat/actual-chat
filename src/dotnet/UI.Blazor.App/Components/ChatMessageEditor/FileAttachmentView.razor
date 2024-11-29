@@ -1,0 +1,22 @@
+@using ActualChat.Media
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    MediaMimeTypes.TryGetExtension(Attachment.FileType, out var extension);
+    var fileExtension = extension != null ? extension.Replace(".", "") : "";
+    var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
+}
+
+<div class="c-file">
+    <div class="c-icon @fileCls">
+        @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
+            <i class="icon-play-fill text-2xl"></i>
+        } else {
+            <i class="icon-file text-xl"></i>
+        }
+    </div>
+    <span class="c-extension">@fileExtension.ToUpper()</span>
+</div>
+
+@code {
+    [Parameter] public AttachmentList.Attachment Attachment { get; set; } = null!;
+}
