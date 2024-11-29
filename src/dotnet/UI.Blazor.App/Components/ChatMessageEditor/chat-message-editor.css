@@ -363,8 +363,28 @@ body.narrow .narrow-panel .attachment-item > img,
     @apply hidden;
 }
 .attachment-item > .c-file {
-    @apply flex items-center justify-center;
+    @apply flex-y items-center justify-center;
     @apply p-3;
+}
+.attachment-item > .c-file .c-icon {
+    @apply flex items-center justify-center;
+    @apply w-10 h-12;
+    @apply rounded-md;
+    @apply always-white;
+}
+.attachment-item > .c-file .c-icon.file-default {
+    @apply bg-04;
+    @apply text-primary;
+}
+.attachment-item > .c-file .c-extension {
+    @apply h-3.5;
+    @apply text-caption-6 text-01;
+}
+body.narrow .attachment-item > .c-file .c-extension {
+    @apply always-white;
+}
+.narrow-panel .attachment-item > .c-file .c-extension {
+    @apply hidden;
 }
 
 .remove-attachment-btn.btn .btn-content {
