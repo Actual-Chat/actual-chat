@@ -15,7 +15,7 @@ public sealed class UserLinkIdAttribute : ValidationAttribute
             return new ValidationResult("Link is too short.", GetMemberNames(validationContext));
 
         if (!UserLinkId.Alphabet.IsMatch(str))
-            return new ValidationResult("Link should contain only 0-9, a-Z, and _.", GetMemberNames(validationContext));
+            return new ValidationResult("Link should contain only 0-9, a-Z, - and _.", GetMemberNames(validationContext));
 
         return ValidationResult.Success;
     }

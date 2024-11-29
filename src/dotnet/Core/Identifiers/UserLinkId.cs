@@ -17,7 +17,7 @@ public readonly partial struct UserLinkId : ISymbolIdentifier<UserLinkId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UserLinkId>();
-    public static readonly Alphabet Alphabet = Alphabet.AlphaNumeric + "_";
+    public static readonly Alphabet Alphabet = Alphabet.AlphaNumeric + "_" + "-";
 
     public static UserLinkId None => default;
 
