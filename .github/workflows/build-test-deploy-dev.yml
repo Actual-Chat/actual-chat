@@ -572,6 +572,10 @@ jobs:
       ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
       PACKAGE_FILE_NAME: ${{env.PACKAGE_FILE_NAME}}
     steps:
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
