@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Chat;
 
 public interface IUserLinks : IComputeService
@@ -14,8 +16,12 @@ public interface IUserLinks : IComputeService
 
 public enum UserLinkKind { Chat, Place }
 
-public record UserLinkRef(UserLinkKind Kind, string TargetId)
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record UserLinkRef(
+    [property: DataMember, MemoryPackOrder(0)] UserLinkKind Kind,
+    [property: DataMember, MemoryPackOrder(1)] string TargetId)
 {
     public static readonly UserLinkRef None = new (UserLinkKind.Chat, "");
+    [IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => TargetId.IsNullOrEmpty();
 }

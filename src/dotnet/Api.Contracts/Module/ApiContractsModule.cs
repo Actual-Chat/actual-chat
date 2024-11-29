@@ -66,6 +66,9 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Notification
         fusion.AddClient<INotifications>();
 
+        // UserLinks
+        fusion.AddClient<IUserLinks>();
+
         // Users
         rpc.AddClient<ISecureTokens>();
         fusion.AddClient<ISystemProperties>();
