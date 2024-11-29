@@ -94,6 +94,7 @@
 
     protected override void OnParametersSet() {
         RouteState = PageRouteState.Resolving;
+        ChatId = ChatId.None;
         var pageRoute = Route;
         if (pageRoute.IsNullOrEmpty()) {
             RouteState = PageRouteState.ChatSid;

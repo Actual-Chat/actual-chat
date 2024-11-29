@@ -4,7 +4,8 @@
 @{
     var m = State.Value;
     var placeId = PlaceId.None;
-    var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats || NavbarUI.IsPlaceSelected(out placeId);
+    // Default to chats if no group is selected
+    var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats || NavbarUI.SelectedGroupId.IsNullOrEmpty() || NavbarUI.IsPlaceSelected(out placeId);
     if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
         isChats = true;
         placeId = pinnedChatId.PlaceId;
