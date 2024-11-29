@@ -4,16 +4,8 @@
     var url = Markup.Url;
 }
 
-@if (_localUrl is { } localUrl) {
-    <a class="@cls"
-       href="@(_localUrl!.Value)"
-       @onclick="@(() => _ = History.NavigateTo(localUrl))"
-       @onclick:preventDefault="true"
-       data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, Markup.Url, ""))">
-        @url
-    </a>
+@if (_localUrl is not null)
     return;
-}
 
 <a class="@cls" href="@_hrefUrl" target="_blank"
    data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, url, ""))">

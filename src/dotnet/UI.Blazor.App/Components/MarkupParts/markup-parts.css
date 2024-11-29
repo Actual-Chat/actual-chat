@@ -27,6 +27,10 @@
 .plain-text-markup.highlight {
     @apply text-primary;
 }
+.plain-text-markup:empty,
+.plain-text-markup:empty + br {
+    @apply hidden;
+}
 
 .playable-text-markup {
     @apply whitespace-break-spaces;

@@ -90,6 +90,7 @@
     private Session Session => Hub.Session();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired] public LinkPreview LinkPreview { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     private string GetImageUrl(Media? preview)
@@ -130,8 +131,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Entry;
-        var linkPreview = chatEntry.LinkPreviews.FirstOrDefault();
-        if (chatEntry.LinkPreviewMode == LinkPreviewMode.None || linkPreview == null || linkPreview.IsEmpty)
+        var linkPreview = LinkPreview;
+        if (chatEntry.LinkPreviewMode == LinkPreviewMode.None || linkPreview.IsEmpty)
             return Model.None;
 
         Uri.TryCreate(linkPreview.Url, UriKind.Absolute, out var uri);

@@ -20,6 +20,10 @@
 .image-attachment {
     @apply w-full;
 }
+.image-attachment > .c-content {
+    @apply flex;
+    @apply cursor-pointer;
+}
 .image-attachment image-skeleton.loading {
     @apply bg-skeleton rounded-md animate-pulse;
     @apply w-full;
@@ -43,7 +47,7 @@
     @apply rounded-full border border-message-hover;
     @apply bg-01;
 }
-.file-attachment .c-icon {
+.file-attachment .c-file-icon {
     @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply w-10 h-10;
@@ -51,7 +55,7 @@
     @apply overflow-hidden;
     @apply text-white;
 }
-.file-attachment .c-info {
+.file-attachment .c-file-info {
     @apply flex-y justify-between;
     @apply w-full;
     @apply overflow-hidden;
@@ -101,7 +105,7 @@
 .file-archive {
     @apply bg-[var(--sienna-70)];
 }
-.file-attachment .c-icon.file-default {
+.file-attachment .c-file-icon.file-default {
     @apply bg-cancel;
     @apply text-primary;
 }

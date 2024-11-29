@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Media
 @inherits ComputedStateComponent<ChatMessageView.Model>
 @{
     var m = _rendered = State.Value;
@@ -193,9 +194,16 @@
                     }
                 </div>
             }
-            @if (message.ShowLinkPreview) {
-                <div class="message-link-preview">
-                    <LinkPreviewView Entry="@entry" />
+            @if (message.Entry.LinkPreviews.Count > 0) {
+                <div class="message-links">
+                    @foreach (var linkPreview in message.Entry.LinkPreviews) {
+                        var showLinkPreview = !linkPreview.IsEmpty && message.Entry.LinkPreviewMode != LinkPreviewMode.None;
+                        @if (showLinkPreview) {
+                            <div class="message-link-preview">
+                                <LinkPreviewView Entry="@entry" LinkPreview="@linkPreview"/>
+                            </div>
+                        }
+                    }
                 </div>
             }
             @if (entry.HasReactions) {
