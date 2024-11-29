@@ -11,32 +11,25 @@
     var place = m.Place;
     var author = m.Author;
     var url = m.LocalUrl;
-    var cls = chat.Kind == ChatKind.Place ? "place-link" : "";
-    cls += entry is not null ? " local-link-chat-entry" : " local-link-chat";
+    var cls = entry is not null ? " local-link-chat-entry" : " local-link-chat";
+    var linkText = chat.Title;
+    if (place is { Id.IsNone: false })
+        linkText += $", {place.Title}";
+    var maxCount = entry != null
+        ? entry.Attachments.Count > 3 ? 3 : entry.Attachments.Count
+        : 0;
 }
 
 <div class="link-preview local-link unfocusable @cls">
-    @if (chat.Kind == ChatKind.Place) {
-        <div class="image-wrapper">
-            @{
-                var picture = place != null ? place.Background : chat.Picture;
-                var size = place != null ? SquareSize.SizeFull : SquareSize.Size24;
-                var avatarKey = place != null ? place.Id.Value : chat.Id.Value;
-            }
-            <Pic
-                Picture="@picture.ToPicture()"
-                Size="@size"
-                IsSquare="@true"
-                HideTitle="@true"
-                IsBlurred="@false"
-                AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@avatarKey"/>
-        </div>
-    } else {
-        <div class="c-chat-icon">
+    <div class="c-chat-icon">
+        @if (ReferenceEquals(entry, null)) {
             <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
-        </div>
-    }
+        } else {
+            <AuthorCircle
+                AuthorSid="@entry.AuthorId"
+                Size="SquareSize.Size9"/>
+        }
+    </div>
     <div class="c-info">
         @if (entry is not null) {
             <div class="c-top">
@@ -49,21 +42,56 @@
                 <a class="c-description" href="@url" @onclick:preventDefault="true" @onclick="NavigateToUrl">@entry.Content</a>
             </div>
         }
+
+        @if (entry is not null && entry.Attachments.Count > 0) {
+            <div class="link-preview-attachment-list">
+            @for (var i = 0; i < maxCount; i++) {
+                var attachment = entry.Attachments[i];
+                if (attachment.IsVisualMedia()) {
+                    <VisualMediaAttachment Attachment="@attachment" ChatEntry="@entry"/>
+                } else {
+                    <FileAttachment Attachment="@attachment"/>
+                }
+            }
+            @if (entry.Attachments.Count > 3) {
+                <div class="extra-attachment">+@($"{entry.Attachments.Count - maxCount}")</div>
+            }
+            </div>
+        }
+
         <span class="c-domain">
             @if (entry is not null) {
                 <span>in </span>
             }
-            <a class="text-primary" href="@Links.Chat(chat.Id)" @onclick:preventDefault="true" @onclick="NavigateToChat">@chat.Title</a>
+            <a class="text-primary" href="@Links.Chat(chat.Id)" @onclick:preventDefault="true" @onclick="NavigateToChat">@linkText</a>
         </span>
     </div>
     <div class="incut"></div>
 </div>
 
 @code {
+    private EventCallback<AuthorId> _onClickCallback;
+
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+
     private History History => Hub.History;
+    private IPlaces Places => Hub.Places;
+    private Session Session => Hub.Session();
+    private AuthorUI AuthorUI => Hub.AuthorUI;
 
     [Parameter, EditorRequired] public Model Data { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
+
+    private void OnAuthorBadgeClick(AuthorId authorId)
+        => _ = AuthorUI.Show(authorId);
+
+    private void NavigateToUrl()
+        => _ = History.NavigateTo(Data.LocalUrl);
+
+    private void NavigateToChat()
+        => _ = History.NavigateTo(Links.Chat(Data.Chat!.Id));
 
     // Nested types
 
@@ -74,10 +102,4 @@
         public Place? Place { get; init; }
         public bool CanRender => Chat is not null;
     }
-
-    private void NavigateToUrl()
-        => _ = History.NavigateTo(Data.LocalUrl);
-
-    private void NavigateToChat()
-        => _ = History.NavigateTo(Links.Chat(Data.Chat!.Id));
 }

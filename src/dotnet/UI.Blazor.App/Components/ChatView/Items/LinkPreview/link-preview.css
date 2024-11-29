@@ -10,15 +10,12 @@ body.narrow .link-preview {
     @apply flex-y items-start;
     @apply h-60;
 }
-body.narrow .link-preview.local-link:not(.place-link) {
+body.narrow .link-preview.local-link {
     @apply flex-x;
     @apply h-full;
 }
 .link-preview:not(:has(.c-thumbnail)) {
     @apply h-20 md:h-20;
-}
-body.hoverable .link-preview:hover {
-    @apply brightness-105;
 }
 .link-preview.compact {
     @apply flex-x flex-x items-center;
@@ -111,9 +108,6 @@ body.narrow .link-preview.compact .c-icon > i {
     @apply line-clamp-1;
     @apply font-semibold;
 }
-body.narrow .message-link-preview:not(:has(.compact)) .c-domain {
-    @apply mb-1;
-}
 .link-preview .c-play {
     @apply text-white text-xl;
 }
@@ -128,12 +122,15 @@ body.narrow .message-link-preview:not(:has(.compact)) .c-domain {
 
 /* Link Buttons */
 .message-link-preview .link-buttons {
-    @apply absolute bottom-3 right-2;
-    @apply flex-x items-center gap-x-1;
+    @apply absolute bottom-2 right-2;
+    @apply flex-x items-center;
     @apply h-fit;
 }
+.message-link-preview:has(.local-link) .link-buttons {
+    @apply bottom-1 right-1;
+}
 body.narrow .message-link-preview:not(:has(.compact)) .link-buttons {
-    @apply bottom-2;
+    @apply bottom-0 right-0;
 }
 body.narrow .message-link-preview:has(.compact) .link-buttons {
     @apply gap-x-0;
@@ -171,16 +168,20 @@ body.narrow .link-preview.compact .incut {
 }
 .link-preview.local-link .c-info {
     @apply gap-y-0.5;
+    @apply pl-0 pr-2 py-1;
 }
-.link-preview.local-link:not(.place-link) .c-info {
-    @apply pl-0 pt-1 pr-2 pb-1 md:pb-4;
+.link-preview.local-link .c-info:not(:has(.c-top)) {
+    @apply justify-center;
+}
+.link-preview.local-link .c-info:not(:has(.c-top)) .c-domain {
+    @apply mt-0;
 }
 .link-preview.local-link .c-description {
-    @apply line-clamp-2 md:line-clamp-3;
+    @apply line-clamp-2 md:line-clamp-2;
     @apply wrap-anywhere;
 }
-.link-preview.local-link:not(.place-link) .c-domain {
-    @apply pt-4;
+.link-preview.local-link .c-domain {
+    @apply py-1 mt-1;
 }
 .local-link .image-wrapper {
     @apply h-34;

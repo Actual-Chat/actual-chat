@@ -412,7 +412,8 @@ body.narrow .narrow-panel .attachment-filename {
     transition: all 150ms ease-in-out;
 }
 .narrow-panel .attachment-upload-progress {
-    @apply hidden;
+    @apply h-[2x];
+    @apply mt-px;
 }
 .attachment-upload-completed {
     @apply bg-success;
