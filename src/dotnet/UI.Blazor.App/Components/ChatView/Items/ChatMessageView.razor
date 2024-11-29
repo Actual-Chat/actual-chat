@@ -59,8 +59,8 @@
         <string-skeleton firstWidth="2" secondWidth="4" height="6" system="true"/>
     } else {
         <div class="@cls"
-             data-hover-menu="@(MenuRef.New<MessageHoverMenu>(message.Entry.Id, bool.TrueString))"
-             data-menu="@(MenuRef.New<MessageMenu>(message.Entry.Id, bool.TrueString, "", ""))"
+             data-hover-menu="@(MenuRef.New<MessageHoverMenu>(entry.Id, bool.TrueString))"
+             data-menu="@(MenuRef.New<MessageMenu>(entry.Id, bool.TrueString, "", ""))"
              data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="chat-message group">
                 <div class="c-content">
@@ -82,9 +82,9 @@
 }
 
 <div class="@cls"
-     data-chat-entry-id="@(message.Entry.Id)"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(message.Entry.Id, bool.FalseString))"
-     data-menu="@(MenuRef.New<MessageMenu>(message.Entry.Id, bool.FalseString, "", ""))"
+     data-chat-entry-id="@(entry.Id)"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(entry.Id, bool.FalseString))"
+     data-menu="@(MenuRef.New<MessageMenu>(entry.Id, bool.FalseString, "", ""))"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <div class="chat-message group">
         <div class="c-author-badge">
@@ -194,10 +194,10 @@
                     }
                 </div>
             }
-            @if (message.Entry.LinkPreviews.Count > 0) {
+            @if (entry.LinkPreviews.Count > 0) {
                 <div class="message-links">
-                    @foreach (var linkPreview in message.Entry.LinkPreviews) {
-                        var showLinkPreview = !linkPreview.IsEmpty && message.Entry.LinkPreviewMode != LinkPreviewMode.None;
+                    @foreach (var linkPreview in entry.LinkPreviews) {
+                        var showLinkPreview = !linkPreview.IsEmpty && entry.LinkPreviewMode != LinkPreviewMode.None;
                         @if (showLinkPreview) {
                             <div class="message-link-preview">
                                 <LinkPreviewView Entry="@entry" LinkPreview="@linkPreview"/>
