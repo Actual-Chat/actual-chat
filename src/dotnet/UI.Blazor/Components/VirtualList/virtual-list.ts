@@ -993,7 +993,7 @@ export class VirtualList {
         });
     }
 
-    private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll: boolean = false) {
+    private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll: boolean = false): void {
         const now = Date.now();
         const isInitialRender = now - this.createdAt < 1500; // first 1.5 seconds after creating the virtual list
         if (this._renderState.renderIndex <= 1 || isInitialRender)
@@ -1013,7 +1013,11 @@ export class VirtualList {
                     inline: 'nearest',
                 });
             } else {
-                this._ref.scrollTop = this._ref.scrollHeight;
+                let scrollHeight = 0;
+                fastRaf({
+                    read: () => scrollHeight = this._ref.scrollHeight,
+                    write: () => this._ref.scrollTop = scrollHeight,
+                });
             }
             void this.turnOnIsEndAnchorVisible();
             this.turnOffIsEndAnchorVisibleDebounced.reset();
