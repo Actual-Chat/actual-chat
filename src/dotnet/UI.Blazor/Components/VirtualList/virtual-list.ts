@@ -1001,7 +1001,6 @@ export class VirtualList {
         if (DeviceInfo.isIos) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
             useSmoothScroll = false;
         debugLog?.log('scrollTo end', edge, useSmoothScroll);
-        this._inertialScroll.freeze();
         this._scrollTime = Date.now();
         if (edge == VirtualListEdge.End) {
             const isFarFromEdge = (this._ref.scrollHeight - this._ref.scrollTop) > 2 * this._ref.offsetHeight;
@@ -1032,11 +1031,6 @@ export class VirtualList {
                 this._ref.scrollTop = 0;
             }
         }
-        fastRaf({
-            write: () => {
-                this._inertialScroll.unfreeze();
-            }
-        });
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
