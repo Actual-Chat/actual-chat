@@ -127,7 +127,7 @@
     <PackageVersion Include="Blake3" Version="1.1.0" />
     <PackageVersion Include="CommunityToolkit.HighPerformance" Version="8.3.2" />
     <PackageVersion Include="CommunityToolkit.Maui.Core" Version="9.1.1" />
-    <PackageVersion Include="Deepgram" Version="4.1.0" />
+    <PackageVersion Include="Deepgram" Version="4.4.0" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.1.0" />
     <PackageVersion Include="FirebaseAdmin" Version="2.4.1" />

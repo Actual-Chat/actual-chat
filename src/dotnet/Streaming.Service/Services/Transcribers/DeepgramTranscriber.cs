@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Streaming.Module;
@@ -7,7 +6,7 @@ using ActualChat.Transcription;
 using Deepgram;
 using Deepgram.Constants;
 using Deepgram.Models.Authenticate.v1;
-using Deepgram.Models.Listen.v1.WebSocket;
+using Deepgram.Models.Listen.v2.WebSocket;
 using static ActualChat.Constants.Transcription.Deepgram;
 
 namespace ActualChat.Streaming.Services.Transcribers;
@@ -47,26 +46,25 @@ public partial class DeepgramTranscriber : ITranscriber
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken = default)
     {
-        using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        using var deepgramClient = new ListenWebSocketClient(
-            StreamingSettings.DeepgramKey,
-            new DeepgramWsClientOptions {
-                KeepAlive = true,
-            });
-
         var transcriptState = new DeepgramTranscribeState(audioSource, output);
         var whenCompletedSource = TaskCompletionSourceExt.New();
         var whenConnectedSource = TaskCompletionSourceExt.New();
-        var whenCompleted = whenCompletedSource.Task;
-        var whenConnected = whenConnectedSource.Task;
-
-
         Exception? error = null;
         try {
-            deepgramClient.Subscribe(HandleConnectionOpened);
-            deepgramClient.Subscribe(HandleConnectionClosed);
-            deepgramClient.Subscribe(HandleConnectionError);
-            deepgramClient.Subscribe(HandleTranscriptReceived);
+            using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var deepgramClient = new ListenWebSocketClient(
+                StreamingSettings.DeepgramKey,
+                new DeepgramWsClientOptions {
+                    KeepAlive = true,
+                });
+
+            var whenCompleted = whenCompletedSource.Task;
+            var whenConnected = whenConnectedSource.Task;
+
+            await deepgramClient.Subscribe(HandleConnectionOpened).ConfigureAwait(false);
+            await deepgramClient.Subscribe(HandleConnectionClosed).ConfigureAwait(false);
+            await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
+            await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
             var language = GetSupportedLanguage(options);
             var liveSchema = new LiveSchema {
@@ -78,7 +76,7 @@ public partial class DeepgramTranscriber : ITranscriber
                 InterimResults = true,
                 Model = "nova-2",
             };
-            await deepgramClient.Connect(liveSchema, tokenSource)
+            await deepgramClient.Connect(liveSchema, cancelToken: tokenSource)
                 .ConfigureAwait(false);
 
             await whenConnected.ConfigureAwait(false);
@@ -166,7 +164,7 @@ public partial class DeepgramTranscriber : ITranscriber
             throw;
         }
         finally {
-            deepgramClient.SendFinalize();
+            await deepgramClient.SendFinalize().ConfigureAwait(false);
         }
     }
 
@@ -202,7 +200,7 @@ public partial class DeepgramTranscriber : ITranscriber
         var lastStableDuration = lastStable.TimeMap.YRange.End;
 
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();
-        var endTime = ((float?)result.Start + (float?)result.Duration) ?? 0;
+        var endTime = (float?)result.Start + (float?)result.Duration ?? 0;
         if (alternative == null || alternative.Transcript.IsNullOrEmpty()) {
             text = "";
             return false;
