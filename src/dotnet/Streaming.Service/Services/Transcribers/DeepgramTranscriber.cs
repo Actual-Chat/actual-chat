@@ -48,20 +48,18 @@ public partial class DeepgramTranscriber : ITranscriber
     {
         var transcriptState = new DeepgramTranscribeState(audioSource, output);
         var whenCompletedSource = TaskCompletionSourceExt.New();
-        var whenConnectedSource = TaskCompletionSourceExt.New();
         Exception? error = null;
         try {
             using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var apiKey = StreamingSettings.DeepgramKey;
             using var deepgramClient = new ListenWebSocketClient(
-                StreamingSettings.DeepgramKey,
-                new DeepgramWsClientOptions {
+                apiKey,
+                new DeepgramWsClientOptions(apiKey) {
                     KeepAlive = true,
                 });
 
             var whenCompleted = whenCompletedSource.Task;
-            var whenConnected = whenConnectedSource.Task;
 
-            await deepgramClient.Subscribe(HandleConnectionOpened).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleConnectionClosed).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
@@ -76,10 +74,11 @@ public partial class DeepgramTranscriber : ITranscriber
                 InterimResults = true,
                 Model = "nova-2",
             };
-            await deepgramClient.Connect(liveSchema, cancelToken: tokenSource)
+            var isConnected = await deepgramClient.Connect(liveSchema, cancelToken: tokenSource)
                 .ConfigureAwait(false);
+            if (!isConnected)
+                throw StandardError.External("Deepgram connection failed");
 
-            await whenConnected.ConfigureAwait(false);
             await PushAudio(transcriptState, deepgramClient, cancellationToken).ConfigureAwait(false);
 
             await whenCompleted.ConfigureAwait(false);
@@ -116,10 +115,6 @@ public partial class DeepgramTranscriber : ITranscriber
             };
         }
 
-        [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
-        void HandleConnectionOpened(object? sender, OpenResponse e)
-            => whenConnectedSource.SetResult();
-
         void HandleTranscriptReceived(object? sender, ResultResponse e)
             => ProcessResponse(transcriptState, e);
 
@@ -146,7 +141,7 @@ public partial class DeepgramTranscriber : ITranscriber
                 if (delay > TimeSpan.Zero)
                     await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
 
-                deepgramClient.SendBinary(chunk);
+                deepgramClient.Send(chunk);
 
                 if (lastFrame != null) {
                     var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration).Positive();
