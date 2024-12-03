@@ -54,7 +54,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
         // Check model props are retrieved
         setupActions.Verify(actions => actions.EnsureEmbeddingModelDeployedAsync(
-                It.Is<OpenSearchSettings>(settings => ReferenceEquals(settings, openSearchSettings.Object)),
+                It.Is<OpenSearchSettings>(settings => ReferenceEquals(settings, _openSearchSettings)),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
             ), Times.Once());
 
