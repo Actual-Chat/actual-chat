@@ -147,7 +147,8 @@ def main():
         model_group_id = model_group_id,
         model_path = os.getenv('TORCHSCRIPT_MODEL_PATH'),
         model_config_path = os.getenv('TORCHSCRIPT_MODEL_CONFIG_PATH'),
-        deploy_model = False
+        deploy_model = True,
+        wait_until_deployed = True
     )
     print(f"New model id: {model_id}")
     current_model_info = ml_client.get_model_info(model_id)
