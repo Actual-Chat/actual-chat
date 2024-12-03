@@ -14,32 +14,19 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.Redis.Module;
 using Microsoft.Extensions.Hosting;
-using ActualChat.Module;
-using Microsoft.AspNetCore.Builder;
 using ActualChat.Rpc;
 using ActualChat.Search;
 using Microsoft.SemanticKernel;
 using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Flows;
 
-// Note: Temporary disabled. Will be re-enabled with OpenAPI PR
-// using Swashbuckle.AspNetCore.SwaggerGen;
-
 namespace ActualChat.MLSearch.Module;
 
-public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : HostModule<MLSearchSettings>(moduleServices), IWebServerModule
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : HostModule<MLSearchSettings>(moduleServices)
 {
     private readonly ILogger<MLSearchServiceModule> _log = moduleServices.LogFor<MLSearchServiceModule>();
 
-    public void ConfigureApp(IApplicationBuilder app)
-    {
-        if (HostInfo.HasRole(HostRole.Api)) {
-            app.UseEndpoints(endpoints => {
-                endpoints.MapControllers();
-            });
-            app.UseRouting();
-        }
-    }
     protected override void InjectServices(IServiceCollection services)
     {
         if (!Settings.IsEnabled) {
@@ -166,33 +153,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
     private void InjectBotServices(RpcHostBuilder rpcHost, bool isBackendClient)
     {
         var services = rpcHost.Services;
-
-        if (rpcHost.IsApiHost) {
-            services.AddMvcCore().AddApplicationPart(GetType().Assembly); // Controllers
-
-            // Swagger endpoint (OpenAPI)
-            // Note: This is temporarily disabled. Will be re-enabled in a separate PR.
-            /*
-            services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen(c => {
-                c.IncludeXmlComments(
-                    Path.Combine(
-                        AppContext.BaseDirectory,
-                        $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"
-                    )
-                );
-                c.DocInclusionPredicate((docName, apiDesc) => {
-                    if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
-                    var isBotTool = methodInfo.DeclaringType
-                        .GetCustomAttributes(true)
-                        .OfType<BotToolsAttribute>()
-                        .Any();
-                    return isBotTool;
-                });
-                c.SwaggerDoc("bot-tools-v1", new OpenApiInfo { Title = "Bot Tools API - V1", Version = "v1"});
-            });
-            */
-        }
 
         if (isBackendClient)
             return;
