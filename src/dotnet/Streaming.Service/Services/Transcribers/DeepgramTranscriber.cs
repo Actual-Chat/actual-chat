@@ -116,7 +116,7 @@ public partial class DeepgramTranscriber : ITranscriber
         }
 
         void HandleTranscriptReceived(object? sender, ResultResponse e)
-            => ProcessResponse(transcriptState, e);
+            => ProcessResponse(transcriptState, whenCompletedSource, e);
 
         void HandleConnectionClosed(object? sender, CloseResponse e)
             => whenCompletedSource.TrySetResult();
@@ -163,9 +163,13 @@ public partial class DeepgramTranscriber : ITranscriber
         }
     }
 
-    private static void ProcessResponse(DeepgramTranscribeState state, ResultResponse result)
+    private static void ProcessResponse(
+        DeepgramTranscribeState state,
+        TaskCompletionSource whenCompletedSource,
+        ResultResponse result)
     {
         var isFinal = result.IsFinal ?? false;
+        var isSpeechFinal = result.SpeechFinal ?? false;
         var suffix = result.Channel?.Alternatives?.FirstOrDefault()?.Transcript ?? "";
         var endTime = (float?)result.Duration ?? 0;
         var appendToUnstable = state.IsLastAppendStable;
@@ -182,6 +186,9 @@ public partial class DeepgramTranscriber : ITranscriber
 
         if (state.Unstable.Length != 0)
             _ = state.Output.WriteAsync(state.Unstable);
+
+        if (isSpeechFinal)
+            whenCompletedSource.TrySetResult();
     }
 
     private static bool TryParseFinal(
