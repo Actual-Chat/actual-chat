@@ -341,7 +341,8 @@ internal abstract class ClusterSetupActions(
                                 "model_id": "{{modelId}}",
                                 "field_map": {
                                     "{{textField}}": "event_dense_embedding"
-                                }
+                                },
+                                "batch_size": 100
                             }
                         }
                     ]
