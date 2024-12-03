@@ -68,8 +68,8 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             .AddSingleton<IClusterSetupActions>(static c => {
                 var openSearchSettings = c.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
                 return openSearchSettings.EmbeddingService.EmbeddingServiceType switch {
-                    EmbeddingsServiceType.BuiltIn => c.CreateInstance<BuiltInModelClusterSetupActions>(),
-                    EmbeddingsServiceType.Custom => c.CreateInstance<CustomRemoteModelClusterSetupActions>(),
+                    EmbeddingServiceType.BuiltIn => c.CreateInstance<BuiltInModelClusterSetupActions>(),
+                    EmbeddingServiceType.Custom => c.CreateInstance<CustomRemoteModelClusterSetupActions>(),
                     _ => throw new InvalidOperationException()
                 };
             });

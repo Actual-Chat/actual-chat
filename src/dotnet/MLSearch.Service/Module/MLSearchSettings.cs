@@ -56,7 +56,7 @@ public sealed class OpenSearchSettings
     public EmbeddingServiceSettings EmbeddingService { get; set; } = new();
 }
 
-public enum EmbeddingsServiceType
+public enum EmbeddingServiceType
 {
     BuiltIn,
     Custom
@@ -64,7 +64,7 @@ public enum EmbeddingsServiceType
 
 public sealed class EmbeddingServiceSettings
 {
-    public EmbeddingsServiceType EmbeddingServiceType { get; set; }
+    public EmbeddingServiceType EmbeddingServiceType { get; set; }
 
     [ValidateObjectMembers]
     public CustomEmbeddingServiceSettings? Custom { get; set;}
