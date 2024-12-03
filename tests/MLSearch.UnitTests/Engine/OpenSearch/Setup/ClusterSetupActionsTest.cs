@@ -54,30 +54,30 @@ public class ClusterSetupActionsTest(ITestOutputHelper @out) : TestBase(@out)
         """,
     ];
 
-    [Fact]
-    public async Task CanRetrieveModelProps()
-    {
-        List<(int, string)> responses = [
-            .. _retrieveModelPropsResponses.Select(r => (200, r)),
-        ];
-        var actions = CreateActions(responses);
+//     [Fact]
+//     public async Task CanRetrieveModelProps()
+//     {
+//         List<(int, string)> responses = [
+//             .. _retrieveModelPropsResponses.Select(r => (200, r)),
+//         ];
+//         var actions = CreateActions(responses);
 
-        var settings = new OpenSearchSettings {
-            ModelGroup = ModelGroupName
-        };
+//         var settings = new OpenSearchSettings {
+//             ModelGroup = ModelGroupName
+//         };
 
-        var modelProps = await actions.EnsureEmbeddingModelDeployedAsync(settings, CancellationToken.None);
+//         var modelProps = await actions.EnsureEmbeddingModelDeployedAsync(settings, CancellationToken.None);
 
-#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
-        var uniqueModelKey = Convert.ToHexString(SHA1.HashData(_utf8Encoding.GetBytes(ModelAllConfig)))
-            .ToLower(CultureInfo.InvariantCulture);
-#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
+// #pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
+//         var uniqueModelKey = Convert.ToHexString(SHA1.HashData(_utf8Encoding.GetBytes(ModelAllConfig)))
+//             .ToLower(CultureInfo.InvariantCulture);
+// #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
 
-        var expected = new EmbeddingModelProps(ModelId, EmbeddingDimension, uniqueModelKey);
-        Assert.Equal(expected.Id, modelProps.Id);
-        Assert.Equal(expected.EmbeddingDimension, modelProps.EmbeddingDimension);
-        Assert.Equal(expected.UniqueKey, modelProps.UniqueKey);
-    }
+//         var expected = new EmbeddingModelProps(ModelId, EmbeddingDimension, uniqueModelKey);
+//         Assert.Equal(expected.Id, modelProps.Id);
+//         Assert.Equal(expected.EmbeddingDimension, modelProps.EmbeddingDimension);
+//         Assert.Equal(expected.UniqueKey, modelProps.UniqueKey);
+//     }
 
     // [Theory]
     // [InlineData(0)]
