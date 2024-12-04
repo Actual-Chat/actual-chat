@@ -27,6 +27,9 @@ public class Chats(IServiceProvider services) : IChats
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
+        if (chatId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.Kind == ChatKind.Peer) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
