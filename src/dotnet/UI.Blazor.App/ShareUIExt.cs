@@ -17,6 +17,9 @@ public static class ShareUIExt
     public static async ValueTask<ShareModalModel?> GetModel(
         this ShareUI shareUI, ChatId chatId, CancellationToken cancellationToken = default)
     {
+        if (chatId.IsNone)
+            return null;
+
         var hub = shareUI.Hub;
         var session = hub.Session();
         var chats = hub.GetRequiredService<IChats>();
