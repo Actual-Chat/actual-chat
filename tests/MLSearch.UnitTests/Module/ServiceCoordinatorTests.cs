@@ -9,15 +9,15 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task RunOfServiceCoordinatorStartsInitialization()
     {
-        var clusterSetup = new Mock<IClusterSetup>();
+        var clusterSetup = new Mock<IClusterSetup>(MockBehavior.Loose);
         clusterSetup
             .Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<MomentClock>(),
-            Mock.Of<ILogger<ServiceCoordinator>>());
+            Mock.Of<MomentClock>(MockBehavior.Loose),
+            Mock.Of<ILogger<ServiceCoordinator>>(MockBehavior.Loose));
 
         await serviceCoordinator.Run();
 
@@ -28,9 +28,9 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
     public async Task CoordinatedServicesWaitForInitializationCompletion()
     {
         var serviceCoordinator = new ServiceCoordinator(
-            Mock.Of<IClusterSetup>(),
-            Mock.Of<MomentClock>(),
-            Mock.Of<ILogger<ServiceCoordinator>>());
+            Mock.Of<IClusterSetup>(MockBehavior.Loose),
+            Mock.Of<MomentClock>(MockBehavior.Loose),
+            Mock.Of<ILogger<ServiceCoordinator>>(MockBehavior.Loose));
 
         var dependentAction = serviceCoordinator.ExecuteWhenReadyAsync(_ => Task.CompletedTask, CancellationToken.None);
         var dependentFunc = serviceCoordinator.ExecuteWhenReadyAsync(_ => Task.FromResult(true), CancellationToken.None);
@@ -50,13 +50,17 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         const int maxAttempts = 1_000;
         var errorTask = Task.FromException(new InvalidOperationException("Something is wrong."));
         var attemptCount = 0;
-        var clusterSetup = new Mock<IClusterSetup>();
+        var clusterSetup = new Mock<IClusterSetup>(MockBehavior.Loose);
         clusterSetup
             .Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>()))
             .Returns<CancellationToken>(_ => ++attemptCount < maxAttempts ? errorTask : Task.CompletedTask);
 
+#pragma warning disable Moq1002 // Mock<T> construction must call an existing type constructor
+        // Temporarily suppressing until false positive issue is resolved
+        // https://github.com/rjmurillo/moq.analyzers/issues/234
         var zeroRetryDelaySeq = new Mock<RetryDelaySeq>(
-            () => new RetryDelaySeq(TimeSpan.Zero, TimeSpan.Zero, 0d));
+            () => new RetryDelaySeq(TimeSpan.Zero, TimeSpan.Zero, 0d), MockBehavior.Loose);
+#pragma warning restore Moq1002 // Mock<T> construction must call an existing type constructor
         zeroRetryDelaySeq.Setup(x => x.GetDelay(It.IsAny<int>())).Returns(TimeSpan.Zero);
 
         // Quick check if sequence generates zero delays
@@ -64,8 +68,8 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<MomentClock>(),
-            Mock.Of<ILogger<ServiceCoordinator>>()) {
+            Mock.Of<MomentClock>(MockBehavior.Loose),
+            Mock.Of<ILogger<ServiceCoordinator>>(MockBehavior.Loose)) {
                 RetryDelaySeq = zeroRetryDelaySeq.Object,
             };
 
@@ -80,7 +84,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         var gate = new TaskCompletionSource();
         var neverEndingTask = ActualLab.Async.TaskExt.NewNeverEndingUnreferenced();
         OperationCanceledException? cancellationError = null;
-        var clusterSetup = new Mock<IClusterSetup>();
+        var clusterSetup = new Mock<IClusterSetup>(MockBehavior.Loose);
         clusterSetup
             .Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>()))
             .Returns<CancellationToken>(async ct => {
@@ -96,8 +100,8 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<MomentClock>(),
-            Mock.Of<ILogger<ServiceCoordinator>>());
+            Mock.Of<MomentClock>(MockBehavior.Loose),
+            Mock.Of<ILogger<ServiceCoordinator>>(MockBehavior.Loose));
 
         var dependentAction = serviceCoordinator.ExecuteWhenReadyAsync(_ => Task.CompletedTask, CancellationToken.None);
 
@@ -115,15 +119,15 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         var startCompletionSource = new TaskCompletionSource();
         var startSignal = new TaskCompletionSource();
 
-        var clusterSetup = new Mock<IClusterSetup>();
+        var clusterSetup = new Mock<IClusterSetup>(MockBehavior.Loose);
         clusterSetup
             .Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
-            Mock.Of<MomentClock>(),
-            Mock.Of<ILogger<ServiceCoordinator>>()) {
+            Mock.Of<MomentClock>(MockBehavior.Loose),
+            Mock.Of<ILogger<ServiceCoordinator>>(MockBehavior.Loose)) {
                 OnStartTask = OnStart(),
             };
 
@@ -150,15 +154,19 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
     public async Task CoordinatorRetriesInternalNonTerminalErrorsButExitsOnTerminalOnes()
     {
         var initializationError = Task.FromException(new ExternalError());
-        var clusterSetup = new Mock<IClusterSetup>();
+        var clusterSetup = new Mock<IClusterSetup>(MockBehavior.Loose);
         clusterSetup
             .Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>()))
             .Returns(initializationError);
-        var clock = new Mock<MomentClock>();
+        var clock = new Mock<MomentClock>(MockBehavior.Loose);
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
+#pragma warning disable Moq1002 // Mock<T> construction must call an existing type constructor
+        // Temporarily suppressing until false positive issue is resolved
+        // https://github.com/rjmurillo/moq.analyzers/issues/234
         var errorRetryDelaySeq = new Mock<RetryDelaySeq>(
-            () => new RetryDelaySeq(TimeSpan.FromSeconds(0.1), TimeSpan.FromSeconds(1), 0d));
+            () => new RetryDelaySeq(TimeSpan.FromSeconds(0.1), TimeSpan.FromSeconds(1), 0d), MockBehavior.Loose);
+#pragma warning restore Moq1002 // Mock<T> construction must call an existing type constructor
         errorRetryDelaySeq.Setup(x => x.GetDelay(It.IsAny<int>())).Throws<InvalidOperationException>();
 
         var retryCount = 0;
@@ -168,7 +176,7 @@ public class ServiceCoordinatorTests(ITestOutputHelper @out) : TestBase(@out)
         var serviceCoordinator = new ServiceCoordinator(
             clusterSetup.Object,
             clock.Object,
-            Mock.Of<ILogger<ServiceCoordinator>>()) {
+            Mock.Of<ILogger<ServiceCoordinator>>(MockBehavior.Loose)) {
                 RetryDelaySeq = errorRetryDelaySeq.Object,
                 TransiencyResolver = TransiencyResolver,
         };

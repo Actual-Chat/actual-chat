@@ -46,7 +46,7 @@ public class ChatContentArrangerTests(ITestOutputHelper @out) : TestBase(@out)
             from e in entries
             where string.IsNullOrWhiteSpace(e.Content)
             select e.Id);
-        var contentArranger = new ChatContentArranger(Mock.Of<IChatsBackend>()) {
+        var contentArranger = new ChatContentArranger(Mock.Of<IChatsBackend>(MockBehavior.Loose)) {
             MaxEntriesPerDocument = maxEntriesPerDocument,
         };
         var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
@@ -62,7 +62,7 @@ public class ChatContentArrangerTests(ITestOutputHelper @out) : TestBase(@out)
     {
         var tailDocuments = ChatContentTestHelpers.CreateDocuments();
 
-        var chats = new Mock<IChatsBackend>();
+        var chats = new Mock<IChatsBackend>(MockBehavior.Loose);
         chats
             .Setup(x => x.GetTile(
                 It.IsAny<ChatId>(),

@@ -10,23 +10,23 @@ public class ChatContentIndexerFactoryTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public async Task CreateMethodReturnsIndexerInstance()
     {
-        var serviceProvider = new Mock<IServiceProvider>();
+        var serviceProvider = new Mock<IServiceProvider>(MockBehavior.Loose);
         serviceProvider
             .Setup(x => x.GetService(typeof(IChatContentArrangerSelector)))
-            .Returns(Mock.Of<IChatContentArrangerSelector>());
-        var chatsBackend = Mock.Of<IChatsBackend>();
+            .Returns(Mock.Of<IChatContentArrangerSelector>(MockBehavior.Loose));
+        var chatsBackend = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         serviceProvider
             .Setup(x => x.GetService(typeof(IChatsBackend)))
             .Returns(chatsBackend);
         serviceProvider
             .Setup(x => x.GetService(typeof(IChatContentDocumentLoader)))
-            .Returns(Mock.Of<IChatContentDocumentLoader>());
+            .Returns(Mock.Of<IChatContentDocumentLoader>(MockBehavior.Loose));
         serviceProvider
             .Setup(x => x.GetService(typeof(IChatContentMapper)))
-            .Returns(Mock.Of<IChatContentMapper>());
+            .Returns(Mock.Of<IChatContentMapper>(MockBehavior.Loose));
         serviceProvider
             .Setup(x => x.GetService(typeof(ISink<ChatSlice, string>)))
-            .Returns(Mock.Of<ISink<ChatSlice, string>>());
+            .Returns(Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose));
 
         var factory = new ChatContentIndexerFactory(serviceProvider.Object);
 

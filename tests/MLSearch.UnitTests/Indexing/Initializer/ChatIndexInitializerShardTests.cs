@@ -39,7 +39,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
 
         // Setup clock to generate one event for the update cursor flow
         var delayCallCount = 0;
-        var clock = new Mock<MomentClock>();
+        var clock = new Mock<MomentClock>(MockBehavior.Loose);
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns<TimeSpan, CancellationToken>((ts, _) => {
                 if (ts == updateCursorInterval && delayCallCount++ == 0) {
@@ -54,14 +54,14 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             yield return (chatToIndexId, chatToIndexVersion);
             await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(cancellationToken);
         }
-        var infiniteChatSequence = new Mock<IInfiniteChatSequence>();
+        var infiniteChatSequence = new Mock<IInfiniteChatSequence>(MockBehavior.Loose);
         infiniteChatSequence
             .Setup(x => x.LoadAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns<long, CancellationToken>((_, ct) => GetChatsAsync(ct));
 
-        var queues = Mock.Of<IQueues>();
-        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>();
-        var log = Mock.Of<ILogger<ChatIndexInitializerShard>>();
+        var queues = Mock.Of<IQueues>(MockBehavior.Loose);
+        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose);
+        var log = Mock.Of<ILogger<ChatIndexInitializerShard>>(MockBehavior.Loose);
 
         var initializerShard = new ChatIndexInitializerShard(
             clock.Object,
@@ -130,17 +130,17 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
     {
         const int maxBufferCapacity = 10;
 
-        var infiniteChatSequence = new Mock<IInfiniteChatSequence>();
+        var infiniteChatSequence = new Mock<IInfiniteChatSequence>(MockBehavior.Loose);
         infiniteChatSequence
             .Setup(x => x.LoadAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns<long, CancellationToken>((_, _) => AsyncEnumerable.Empty<(ChatId, long)>());
 
         var initializerShard = new ChatIndexInitializerShard(
-            Mock.Of<MomentClock>(),
-            Mock.Of<IQueues>(),
+            Mock.Of<MomentClock>(MockBehavior.Loose),
+            Mock.Of<IQueues>(MockBehavior.Loose),
             infiniteChatSequence.Object,
-            Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(),
-            Mock.Of<ILogger<ChatIndexInitializerShard>>()
+            Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose),
+            Mock.Of<ILogger<ChatIndexInitializerShard>>(MockBehavior.Loose)
         ) {
             OnScheduleJob = MockScheduleJobHandler().Object,
             OnCompleteJob = MockCompleteJobHandler().Object,
@@ -190,7 +190,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             ValueTask>? onCall = null
     )
     {
-        var mock = new Mock<ChatIndexInitializerShard.ScheduleJobHandler>();
+        var mock = new Mock<ChatIndexInitializerShard.ScheduleJobHandler>(MockBehavior.Loose);
         mock.Setup(handler => handler(
                 It.IsAny<ChatIndexInitializerShard.ChatInfo>(),
                 It.IsAny<ChatIndexInitializerShard.SharedState>(),
@@ -207,7 +207,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         Action<MLSearch_TriggerChatIndexingCompletion, ChatIndexInitializerShard.SharedState>? onCall = null
     )
     {
-        var mock = new Mock<ChatIndexInitializerShard.CompleteJobHandler>();
+        var mock = new Mock<ChatIndexInitializerShard.CompleteJobHandler>(MockBehavior.Loose);
         mock.Setup(handler => handler(
                 It.IsAny<MLSearch_TriggerChatIndexingCompletion>(),
                 It.IsAny<ChatIndexInitializerShard.SharedState>()))
@@ -220,7 +220,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             ICursorStates<ChatIndexInitializerShard.Cursor>, ILogger, Tracer?, CancellationToken, ValueTask>? onCall = null
     )
     {
-        var mock = new Mock<ChatIndexInitializerShard.UpdateCursorHandler>();
+        var mock = new Mock<ChatIndexInitializerShard.UpdateCursorHandler>(MockBehavior.Loose);
         mock.Setup(handler => handler(
                 It.IsAny<Moment>(),
                 It.IsAny<ChatIndexInitializerShard.SharedState>(),

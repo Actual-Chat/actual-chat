@@ -20,7 +20,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         var supposedDialogs = new[] { dialog1EntryIds, dialog2EntryIds };
         var dialogFragmentAnalyzer = CreateDialogFragmentAnalyzer(supposedDialogs, entries);
         var contentArranger = new ChatContentArranger2(
-            Mock.Of<IChatsBackend>(),
+            Mock.Of<IChatsBackend>(MockBehavior.Loose),
             dialogFragmentAnalyzer,
             chatDialogFormatter);
         var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
@@ -42,14 +42,14 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
             .ToArray();
         var entries = GetEntries(messages).ToList();
 
-        var dialogFragmentAnalyzer = new Mock<IDialogFragmentAnalyzer>();
+        var dialogFragmentAnalyzer = new Mock<IDialogFragmentAnalyzer>(MockBehavior.Loose);
         dialogFragmentAnalyzer
             .Setup(c => c.IsDialogAboutTheSameTopic(It.IsAny<string>()))
             .Returns(Task.FromResult(Option.Some(true)));
         var contentArranger = new ChatContentArranger2(
-            Mock.Of<IChatsBackend>(),
+            Mock.Of<IChatsBackend>(MockBehavior.Loose),
             dialogFragmentAnalyzer.Object,
-            Mock.Of<IChatDialogFormatter>()) {
+            Mock.Of<IChatDialogFormatter>(MockBehavior.Loose)) {
             MaxEntriesPerDocument = maxEntriesPerDocument,
         };
         var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
@@ -59,7 +59,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
 
     private IDialogFragmentAnalyzer CreateDialogFragmentAnalyzer(long[][] supposedDialogs, IList<ChatEntry> entries)
     {
-        var mock = new Mock<IDialogFragmentAnalyzer>();
+        var mock = new Mock<IDialogFragmentAnalyzer>(MockBehavior.Loose);
         mock
             .Setup(c => c.IsDialogAboutTheSameTopic(It.IsAny<string>()))
             .Returns<string>(d => {

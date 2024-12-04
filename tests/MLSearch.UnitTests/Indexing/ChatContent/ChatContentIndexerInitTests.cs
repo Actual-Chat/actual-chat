@@ -12,8 +12,8 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
     {
         const int maxTailSetSize = 333;
         var tailDocuments = ChatContentTestHelpers.CreateDocuments();
-        var chats = Mock.Of<IChatsBackend>();
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadTailAsync(
                 It.IsAny<ChatId>(),
@@ -21,9 +21,9 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(tailDocuments);
-        var docMapper = Mock.Of<IChatContentMapper>();
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var chatId = new ChatId(Generate.Option);
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink) {
@@ -51,8 +51,8 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
     [Fact]
     public async Task InitMethodDoesNotSwallowExceptions()
     {
-        var chats = Mock.Of<IChatsBackend>();
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadTailAsync(
                 It.IsAny<ChatId>(),
@@ -60,9 +60,9 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.FromException<IReadOnlyCollection<ChatSlice>>(new UniqueException()));
-        var docMapper = Mock.Of<IChatContentMapper>();
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var contentIndexer = new ChatContentIndexer(ChatId.None, chats, docLoader.Object, docMapper, contentArranger, sink);
 

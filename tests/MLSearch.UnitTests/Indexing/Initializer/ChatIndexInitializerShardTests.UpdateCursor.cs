@@ -18,8 +18,8 @@ public partial class ChatIndexInitializerShardTests
             PrevEventCount = eventCount,
         };
 
-        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>();
-        var log = Mock.Of<ILogger>();
+        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose);
+        var log = Mock.Of<ILogger>(MockBehavior.Loose);
         var isExitWithNoUpdates = false;
         var tracer = new Tracer("TestTracer", tp => {
             if (tp.Label==ChatIndexInitializerShard.UpdateCursorStages.NoUpdates) {
@@ -51,7 +51,7 @@ public partial class ChatIndexInitializerShardTests
         state.ScheduledJobs[chatId1] = (chat1Version, now);
         state.ScheduledJobs[chatId2] = (chat2Version, now);
 
-        var cursorStates = new Mock<ICursorStates<ChatIndexInitializerShard.Cursor>>();
+        var cursorStates = new Mock<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose);
         cursorStates
             .Setup(x => x.SaveAsync(
                 It.IsAny<string>(),
@@ -104,7 +104,7 @@ public partial class ChatIndexInitializerShardTests
         });
         var expectedSemaphoreSlots = state.Semaphore.CurrentCount + expectedStallCount;
 
-        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>();
+        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose);
         var log = LogMock.Create<ChatIndexInitializerShard>();
 
         await ChatIndexInitializerShard.UpdateCursorAsync(
@@ -137,7 +137,7 @@ public partial class ChatIndexInitializerShardTests
         await state.Semaphore.WaitAsync();
         await state.Semaphore.WaitAsync();
 
-        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>();
+        var cursorStates = Mock.Of<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose);
         var log = LogMock.Create<ChatIndexInitializerShard>();
         var tracer = new Tracer("TestTracer", tp => {
             if (tp.Label==ChatIndexInitializerShard.UpdateCursorStages.EvictStallJobs) {
@@ -168,7 +168,7 @@ public partial class ChatIndexInitializerShardTests
 
         var cancellationSource = new CancellationTokenSource();
         var log = LogMock.Create<ChatIndexInitializer>();
-        var cursorStates = new Mock<ICursorStates<ChatIndexInitializerShard.Cursor>>();
+        var cursorStates = new Mock<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose);
         cursorStates
             .Setup(x => x.SaveAsync(
                 It.IsAny<string>(),
@@ -201,7 +201,7 @@ public partial class ChatIndexInitializerShardTests
         };
 
         var log = LogMock.Create<ChatIndexInitializer>();
-        var cursorStates = new Mock<ICursorStates<ChatIndexInitializerShard.Cursor>>();
+        var cursorStates = new Mock<ICursorStates<ChatIndexInitializerShard.Cursor>>(MockBehavior.Loose);
         cursorStates
             .Setup(x => x.SaveAsync(
                 It.IsAny<string>(),

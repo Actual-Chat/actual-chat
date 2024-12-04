@@ -11,7 +11,7 @@ public class FragmentContinuationSelectorTest(ITestOutputHelper @out) : TestBase
     {
         var selector = new DialogFragmentAnalyzer(
             DialogFragmentAnalyzer.Options.Default,
-            Mock.Of<ILogger<DialogFragmentAnalyzer>>(),
+            Mock.Of<ILogger<DialogFragmentAnalyzer>>(MockBehavior.Loose),
             new PromptUtils(),
             new AnthropicClientImpl(new AnthropicClient()));
         var index = await selector.ChooseOption(

@@ -51,7 +51,7 @@ public static class ChatContentArranger2Utils
 
     public static IAuthorsBackend CreateAuthorsBackend(IEnumerable<AuthorFull> authors)
     {
-        var mock = new Mock<IAuthorsBackend>();
+        var mock = new Mock<IAuthorsBackend>(MockBehavior.Loose);
         mock
             .Setup(c => c.Get(
                 It.IsAny<ChatId>(),

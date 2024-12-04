@@ -80,7 +80,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldQueueDigest()
     {
-        var emailsBackend = new Mock<IEmailsBackend>();
+        var emailsBackend = new Mock<IEmailsBackend>(MockBehavior.Loose);
 
         using var h = await NewAppHost(options => options with  {
             ConfigureServices = (_, services) => {

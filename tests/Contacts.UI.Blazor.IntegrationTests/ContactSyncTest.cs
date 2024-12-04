@@ -34,7 +34,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     protected override async Task InitializeAsync()
     {
-        var deviceContacts = new Mock<DeviceContacts>();
+        var deviceContacts = new Mock<DeviceContacts>(MockBehavior.Loose);
         deviceContacts.SetupGet(x => x.DeviceId).Returns(() => DeviceId);
         deviceContacts.Setup(x => x.List(It.IsAny<CancellationToken>())).Returns(() => Task.FromResult(DeviceContacts.ToApiArray()));
         _externalContacts = AppHost.Services.GetRequiredService<IExternalContacts>();
