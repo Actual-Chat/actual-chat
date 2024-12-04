@@ -34,9 +34,9 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
 
         // There must be no calls to GetTile, as updatedDoc contains single entry,
         // so we don't setup GetTile call in the mock.
-        var chats = Mock.Of<IChatsBackend>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
 
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         // Emulate loading tail documents
         docLoader
             .Setup(x => x.LoadTailAsync(
@@ -66,7 +66,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
             }
         });
 
-        var contentArranger = new Mock<IChatContentArranger>();
+        var contentArranger = new Mock<IChatContentArranger>(MockBehavior.Loose);
         contentArranger
             .Setup(x => x.ArrangeAsync(
                 It.IsAny<IReadOnlyCollection<ChatEntry>>(),
@@ -82,7 +82,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
 
         IReadOnlyCollection<ChatSlice>? actualUpdates = null;
         IReadOnlyCollection<string>? actualRemoves = null;
-        var sink = new Mock<ISink<ChatSlice, string>>();
+        var sink = new Mock<ISink<ChatSlice, string>>(MockBehavior.Loose);
         sink.Setup(x => x.ExecuteAsync(
                 It.IsAny<IReadOnlyCollection<ChatSlice>>(),
                 It.IsAny<IReadOnlyCollection<string>>(),

@@ -38,7 +38,7 @@ internal static class ChatContentTestHelpers
     public static Mock<IChatContentMapper> MockDocMapper(Action<ChatSlice> onUpdatedDoc)
     {
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
-        var docMapper = new Mock<IChatContentMapper>();
+        var docMapper = new Mock<IChatContentMapper>(MockBehavior.Loose);
         docMapper
             .Setup(x => x.MapAsync(
                 It.IsAny<SourceEntries>(),

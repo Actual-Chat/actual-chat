@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
@@ -43,7 +42,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
                 nameof(ChatSliceEntry.LocalId),
             }.Select(namingPolicy.ConvertName));
 
-        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>(MockBehavior.Loose);
         var isIdFieldNameExpected = default(bool?);
         var isLocalIdFieldNameExpected = default(bool?);
         var isChatIdFieldNameExpected = default(bool?);
@@ -86,7 +85,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         const long lastLocalId = 9999;
         var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
         var resultDocuments = CreateSearchResults();
-        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>(MockBehavior.Loose);
         searchEngine
             .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
             .Returns<SearchQuery, CancellationToken>((_, _) => {
@@ -121,7 +120,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
     public async Task LoadTailMethodDoesntSwallowExceptions()
     {
         var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
-        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>(MockBehavior.Loose);
         searchEngine
             .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromException<SearchResult<ChatSlice>>(new UniqueException()));
@@ -137,7 +136,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
     {
         var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
         var resultDocuments = CreateSearchResults();
-        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>(MockBehavior.Loose);
         searchEngine
             .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
             .Returns<SearchQuery, CancellationToken>((_, _) => {
@@ -161,7 +160,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
     public async Task LoadByEntryIdsMethodDoesntSwallowExceptions()
     {
         var namingPolicy = ResolveNamingPolicy(NamingPolicy.CamelCase);
-        var searchEngine = new Mock<ISearchEngine<ChatSlice>>();
+        var searchEngine = new Mock<ISearchEngine<ChatSlice>>(MockBehavior.Loose);
         searchEngine
             .Setup(x => x.Find(It.IsAny<SearchQuery>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromException<SearchResult<ChatSlice>>(new UniqueException()));

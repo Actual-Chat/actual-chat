@@ -14,14 +14,14 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var chatId = new ChatId(Generate.Option);
         var otherChatId = new ChatId(Generate.Option);
 
-        var chats = Mock.Of<IChatsBackend>();
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        var docMapper = Mock.Of<IChatContentMapper>();
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
 
@@ -37,15 +37,15 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public async Task ApplyingCreateEventPutsEventIntoInternalBuffer()
     {
-        var chats = Mock.Of<IChatsBackend>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         // Doc loader returns empty list, so event considered as new chat entry
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        var docMapper = Mock.Of<IChatContentMapper>();
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var chatId = new ChatId(Generate.Option);
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
@@ -63,15 +63,15 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public async Task ApplyingUpdateEventRightAfterCreateEventUpdatesEntryInBuffer()
     {
-        var chats = Mock.Of<IChatsBackend>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         // Doc loader returns empty list, so event considered as new chat entry
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        var docMapper = Mock.Of<IChatContentMapper>();
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var chatId = new ChatId(Generate.Option);
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
@@ -94,15 +94,15 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public async Task ApplyingRemoveEventRightAfterCreateEventRemovesEntryFromBuffer()
     {
-        var chats = Mock.Of<IChatsBackend>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         // Doc loader returns empty list, so event considered as new chat entry
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        var docMapper = Mock.Of<IChatContentMapper>();
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var chatId = new ChatId(Generate.Option);
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
@@ -123,15 +123,15 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public async Task ApplyingOrphanedRemoveEventDoesNotChangeBuffer()
     {
-        var chats = Mock.Of<IChatsBackend>();
+        var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         // Doc loader returns empty list, so event doesn't have index footprint yet
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        var docMapper = Mock.Of<IChatContentMapper>();
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var chatId = new ChatId(Generate.Option);
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
@@ -159,7 +159,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var updatedDocId = tailDocuments[tailDocuments.Length / 2].Id;
         var updatedEntryId = tailDocuments[tailDocuments.Length / 2].Metadata.ChatEntries.Single().Id;
 
-        var chats = new Mock<IChatsBackend>();
+        var chats = new Mock<IChatsBackend>(MockBehavior.Loose);
         // There must be no calls to GetTile, as updatedDoc contains single entry,
         // so there is no need of loading anything
         chats.Setup(x => x.GetTile(
@@ -169,7 +169,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             It.Is<bool>(include => include == true),
             It.IsAny<CancellationToken>()));
 
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         // Emulate loading tail documents
         docLoader
             .Setup(x => x.LoadTailAsync(
@@ -189,8 +189,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         var docMapper = ChatContentTestHelpers.MockDocMapper(doc => indexDocs[doc.Id] = doc);
 
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var contentIndexer = new ChatContentIndexer(updatedEntryId.ChatId, chats.Object, docLoader.Object, docMapper.Object, contentArranger, sink);
 
@@ -250,7 +250,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var tailDocuments = ChatContentTestHelpers.CreateDocuments();
         var updatedDoc = tailDocuments[tailDocuments.Length / 2];
         var updatedEntryId = updatedDoc.Metadata.ChatEntries.Single().Id;
-        var chats = new Mock<IChatsBackend>();
+        var chats = new Mock<IChatsBackend>(MockBehavior.Loose);
         // There must be no calls to GetTile, as updatedDoc contains single entry,
         // so there is no need of loading anything
         chats.Setup(x => x.GetTile(
@@ -260,7 +260,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             It.Is<bool>(include => include == true),
             It.IsAny<CancellationToken>()));
 
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         // Emulate loading tail documents
         docLoader
             .Setup(x => x.LoadTailAsync(
@@ -276,8 +276,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         var docMapper = ChatContentTestHelpers.MockDocMapper(doc => updatedDoc = doc);
 
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var contentIndexer = new ChatContentIndexer(updatedEntryId.ChatId, chats.Object, docLoader.Object, docMapper.Object, contentArranger, sink);
 
@@ -392,7 +392,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         // Behavior must not depend on entries order
         allEntries.Shuffle();
 
-        var chats = new Mock<IChatsBackend>();
+        var chats = new Mock<IChatsBackend>(MockBehavior.Loose);
         _ = chats
             .Setup(x => x.GetTile(
                 It.IsAny<ChatId>(),
@@ -405,7 +405,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                     var tile = new ChatTile(range, includeRemoved, allEntries.ToApiArray());
                     return Task.FromResult(tile);
                 });
-        var docLoader = new Mock<IChatContentDocumentLoader>();
+        var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         docLoader
             .Setup(x => x.LoadByEntryIdsAsync(
                 It.IsAny<IEnumerable<ChatEntryId>>(),
@@ -420,8 +420,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         ChatSlice? updatedDoc = null;
         var docMapper = ChatContentTestHelpers.MockDocMapper(doc => updatedDoc = doc);
 
-        var sink = Mock.Of<ISink<ChatSlice, string>>();
-        var contentArranger = Mock.Of<IChatContentArranger>();
+        var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
+        var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
         var contentIndexer = new ChatContentIndexer(chatId, chats.Object, docLoader.Object, docMapper.Object, contentArranger, sink);
         await contentIndexer.ApplyAsync(chatEntry, CancellationToken.None);

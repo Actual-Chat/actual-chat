@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch.UnitTests;
 public static class LogMock
 {
     public static Mock<ILogger<T>> Create<T>() {
-        var logger = new Mock<ILogger<T>>();
+        var logger = new Mock<ILogger<T>>(MockBehavior.Loose);
         logger
             .Setup(GetLogMethodExpression<T>())
             .Verifiable();

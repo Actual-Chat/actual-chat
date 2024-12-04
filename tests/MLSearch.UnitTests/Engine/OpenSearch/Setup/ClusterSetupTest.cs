@@ -23,14 +23,14 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
     public void ResultPropertyThrowsWhenNotInitialized()
     {
         var clusterSetup = new ClusterSetup(
-            Mock.Of<IMeshLocks>(),
-            Mock.Of<IClusterSetupActions>(),
-            Mock.Of<IOptions<OpenSearchSettings>>(),
+            Mock.Of<IMeshLocks>(MockBehavior.Loose),
+            Mock.Of<IClusterSetupActions>(MockBehavior.Loose),
+            Mock.Of<IOptions<OpenSearchSettings>>(MockBehavior.Loose),
             [],
-            Mock.Of<ILogger<ClusterSetup>>(),
+            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
-        Assert.Throws<InvalidOperationException>(() => clusterSetup.Result);
+        _ = Assert.Throws<InvalidOperationException>(() => clusterSetup.Result);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(),
+            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -113,7 +113,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(),
+            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -140,7 +140,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(),
+            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -182,7 +182,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         var setupActions = MockSetupActions(isClusterStateValid);
         var openSearchSettings = MockOpenSearchSettings();
 
-        var settingChangeSource = new Mock<ISettingsChangeTokenSource>();
+        var settingChangeSource = new Mock<ISettingsChangeTokenSource>(MockBehavior.Loose);
         settingChangeSource.Setup(s => s.RaiseChanged());
 
         var clusterSetup = new ClusterSetup(
@@ -190,7 +190,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [settingChangeSource.Object],
-            Mock.Of<ILogger<ClusterSetup>>(),
+            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -207,7 +207,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
         var modelProps = _setupResult.EmbeddingModelProps;
 
-        var setupActions = new Mock<IClusterSetupActions>();
+        var setupActions = new Mock<IClusterSetupActions>(MockBehavior.Loose);
         setupActions
             .Setup(actions => actions.RetrieveEmbeddingModelPropsAsync(
                 It.IsAny<string>(),
@@ -251,7 +251,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var modelProps = _setupResult.EmbeddingModelProps;
 
-        var setupActions = new Mock<IClusterSetupActions>();
+        var setupActions = new Mock<IClusterSetupActions>(MockBehavior.Loose);
         setupActions.Setup(actions => actions.RetrieveEmbeddingModelPropsAsync(
             It.IsAny<string>(), It.IsAny<CancellationToken>()
         ))
@@ -307,9 +307,9 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     private Mock<IMeshLocks> MockMeshLocks() {
-        var meshLocksBackend = new Mock<IMeshLocksBackend>();
+        var meshLocksBackend = new Mock<IMeshLocksBackend>(MockBehavior.Loose);
         meshLocksBackend.Setup(x => x.Clock).Returns(MomentClockSet.Default.SystemClock);
-        var meshLocks = new Mock<IMeshLocks>();
+        var meshLocks = new Mock<IMeshLocks>(MockBehavior.Loose);
         meshLocks
             .SetupGet(x => x.LockOptions)
             .Returns(MeshLockOptions.Default);
@@ -329,7 +329,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
     private Mock<IOptions<OpenSearchSettings>> MockOpenSearchSettings()
     {
-        var openSearchSettings = new Mock<IOptions<OpenSearchSettings>>();
+        var openSearchSettings = new Mock<IOptions<OpenSearchSettings>>(MockBehavior.Loose);
         openSearchSettings
             .SetupGet(x => x.Value)
             .Returns(_openSearchSettings);

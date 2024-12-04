@@ -16,12 +16,12 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         var authorsBackend = ChatContentArranger2Utils.CreateAuthorsBackend(authors.Values);
         var chatDialogFormatter = new ChatDialogFormatter(authorsBackend);
         var contentArranger = new ChatContentArranger2(
-            Mock.Of<IChatsBackend>(),
+            Mock.Of<IChatsBackend>(MockBehavior.Loose),
             new DialogFragmentAnalyzer(
                 DialogFragmentAnalyzer.Options.Default,
-                Mock.Of<ILogger<DialogFragmentAnalyzer>>(),
-                Mock.Of<IPromptUtils>(),
-                Mock.Of<IAnthropicClient>()),
+                Mock.Of<ILogger<DialogFragmentAnalyzer>>(MockBehavior.Loose),
+                Mock.Of<IPromptUtils>(MockBehavior.Loose),
+                Mock.Of<IAnthropicClient>(MockBehavior.Loose)),
             chatDialogFormatter);
         var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
         sourceGroups.Count.Should().Be(2);

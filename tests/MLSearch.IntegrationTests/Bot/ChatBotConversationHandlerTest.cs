@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using ActualChat.Chat;
 using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Module;
@@ -20,7 +19,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
 
         var commander = MockCommander();
 
-        var authors = new Mock<IAuthorsBackend>();
+        var authors = new Mock<IAuthorsBackend>(MockBehavior.Loose);
         authors.Setup(x => x
             .Get(
                 It.IsAny<ChatId>(),
@@ -31,15 +30,15 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
                 UserId = userId,
             }));
 
-        var chatHistoryCache = new Mock<IChatHistoryCache>();
+        var chatHistoryCache = new Mock<IChatHistoryCache>(MockBehavior.Loose);
         chatHistoryCache.Setup(x => x.GetOrSetDefault(It.IsAny<ChatId>(),It.IsAny<ChatHistory>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult<ChatHistory>([]));
 
-        var userIntentDetector = new Mock<IUserIntentDetector>();
+        var userIntentDetector = new Mock<IUserIntentDetector>(MockBehavior.Loose);
         userIntentDetector.Setup(x => x.Detect(It.IsAny<ChatMessageContent>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(UserIntent.GeneralSearch));
 
-        var mockSearchPlugin = new Mock<ISearchPlugin>();
+        var mockSearchPlugin = new Mock<ISearchPlugin>(MockBehavior.Loose);
         mockSearchPlugin
             .Setup(x => x.Find(
                 It.IsAny<string>(),
@@ -55,7 +54,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
                         new SearchResult { Text = $"Expected {searchType} cotent", Link = "link2" },
                     ])
             );
-        var forwardPlugin = Mock.Of<IForwardPlugin>();
+        var forwardPlugin = Mock.Of<IForwardPlugin>(MockBehavior.Loose);
 
         var searchBotPluginSet = new SearchBotPluginSet(mockSearchPlugin.Object, forwardPlugin);
 
@@ -118,15 +117,15 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
 
     private static Mock<ICommander> MockCommander(Func<CommandContext, CancellationToken, Task>? action = null)
     {
-        var scopeFactory = new Mock<IServiceScopeFactory>();
+        var scopeFactory = new Mock<IServiceScopeFactory>(MockBehavior.Loose);
         scopeFactory
             .Setup(x => x.CreateScope())
-            .Returns(Mock.Of<IServiceScope>());
-        var services = new Mock<IServiceProvider>();
+            .Returns(Mock.Of<IServiceScope>(MockBehavior.Loose));
+        var services = new Mock<IServiceProvider>(MockBehavior.Loose);
         services
             .Setup(x => x.GetService(typeof(IServiceScopeFactory)))
             .Returns(scopeFactory.Object);
-        var commander = new Mock<ICommander>();
+        var commander = new Mock<ICommander>(MockBehavior.Loose);
         commander
             .SetupGet(x => x.Services)
             .Returns(services.Object);

@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
-using ActualChat.Search;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.MLSearch.UnitTests;

@@ -35,7 +35,7 @@ public class PlainIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@o
 
     private IClusterSetup MockClusterSetup()
     {
-        var clusterSetupMock = new Mock<IClusterSetup>();
+        var clusterSetupMock = new Mock<IClusterSetup>(MockBehavior.Loose);
         clusterSetupMock.SetupGet(clusterSetup => clusterSetup.Result).Returns(_setupResult);
         var clasterSetup = clusterSetupMock.Object;
         return clasterSetup;
