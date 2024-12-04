@@ -334,9 +334,9 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         public void Deserialize(IXunitSerializationInfo info)
         {
-            NumDocs = info.GetValue<int>(nameof(NumDocs));
-            IsFirst = info.GetValue<bool>(nameof(IsFirst));
-            IsLast = info.GetValue<bool>(nameof(IsLast));
+            NumDocs = info.GetValue<int>(nameof(numDocs));
+            IsFirst = info.GetValue<bool>(nameof(isFirst));
+            IsLast = info.GetValue<bool>(nameof(isLast));
         }
 
         public void Serialize(IXunitSerializationInfo info)
