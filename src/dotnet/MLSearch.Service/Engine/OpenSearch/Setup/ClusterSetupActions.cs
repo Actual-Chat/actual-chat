@@ -13,7 +13,6 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 internal interface IClusterSetupActions
 {
     Task<EmbeddingModelProps> EnsureEmbeddingModelDeployedAsync(OpenSearchSettings value, CancellationToken cancellationToken);
-    Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroup, CancellationToken cancellationToken);
     Task<bool> IsTemplateValidAsync(string templateName, string pattern, int? numberOfReplicas, CancellationToken cancellationToken);
     Task<bool> IsPipelineExistsAsync(string pipelineName, CancellationToken cancellationToken);
     Task<bool> IsIndexExistsAsync(string indexName, CancellationToken cancellationToken);
@@ -40,7 +39,7 @@ internal abstract class ClusterSetupActions(
             .ConfigureAwait(false);
     }
 
-    public async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
+    private async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(string modelGroupName, CancellationToken cancellationToken)
     {
         using var _1 = _tracer.Region();
         // Read model group latest state
