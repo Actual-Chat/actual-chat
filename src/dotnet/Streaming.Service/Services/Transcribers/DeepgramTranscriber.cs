@@ -24,6 +24,7 @@ public partial class DeepgramTranscriber : ITranscriber
     private static readonly Regex CompleteSentenceOrEmptyRegex = CompleteSentenceOrEmptyRegexFactory();
     private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
 
+    private IServiceProvider Services { get; }
     private ILogger Log { get; }
     private MomentClockSet Clocks { get; }
     private StreamingSettings StreamingSettings { get; }
@@ -31,6 +32,7 @@ public partial class DeepgramTranscriber : ITranscriber
 
     public DeepgramTranscriber(IServiceProvider services)
     {
+        Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         StreamingSettings = services.GetRequiredService<StreamingSettings>();
@@ -82,7 +84,29 @@ public partial class DeepgramTranscriber : ITranscriber
             await PushAudio(transcriptState, deepgramClient, cancellationToken).ConfigureAwait(false);
 
             await whenCompleted.ConfigureAwait(false);
-            await deepgramClient.Stop(tokenSource).ConfigureAwait(false);
+
+            try {
+                // Ignore errors on stopping
+                await deepgramClient.Stop(tokenSource).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Error closing transcription channel {StreamId}", audioStreamId);
+            }
+
+            // Re-transcribe with Whisper model
+            // Uncomment to test
+            // try {
+            //     var offlineTranscriber = new DeepgramOfflineTranscriber(Services);
+            //     await offlineTranscriber.Transcribe(audioStreamId,
+            //             audioSource,
+            //             options,
+            //             output,
+            //             default)
+            //         .ConfigureAwait(false);
+            // }
+            // catch (Exception e) {
+            //     Log.LogError(e, "Error re-transcribing {StreamId} with Whisper model", audioStreamId);
+            // }
         }
         catch (Exception e) {
             error = e;
