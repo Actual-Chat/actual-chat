@@ -2,6 +2,7 @@ import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { createWebRtcAecStream, isWebRtcAecRequired } from './web-rtc-aec';
 import { Disposable } from 'disposable';
+import { resetMediaSessionMetadata } from './audio-context-source';
 
 const { debugLog, errorLog } = Log.get('FallbackPlayback');
 
@@ -10,7 +11,8 @@ export class AudioContextDestinationFallback {
     private destinationNode?: MediaStreamAudioDestinationNode = null;
     private aecStream: MediaStream & Disposable = null;
 
-    public static get isRequired() { return isWebRtcAecRequired; }
+    // Allows to expose mediaSession metadata at the lock screen
+    public static get isRequired() { return DeviceInfo.isIos; }
 
     public get destination() { return this.destinationNode; }
 
@@ -27,9 +29,7 @@ export class AudioContextDestinationFallback {
         this.audio.hidden = true;
         this.audio.muted = false;
         this.audio.controls = false;
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.playbackState = 'none';
-        }
+        resetMediaSessionMetadata();
     }
 
     public async attach(context: AudioContext): Promise<void> {

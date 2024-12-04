@@ -44,6 +44,24 @@ export type OverridenAudioContext = AudioContext & {
     destinationOverride?: MediaStreamAudioDestinationNode;
 };
 
+export function resetMediaSessionMetadata(): void {
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: `Ready`,
+            artist: 'Actual Chat',
+            artwork: [{ src: '/_applogo-dark.svg' }]
+        });
+        navigator.mediaSession.playbackState = 'none';
+        navigator.mediaSession.setPositionState({
+            playbackRate: 1,
+            position: 0,
+            duration: 0,
+        });
+    }
+}
+
+export const resetMediaSessionDebounced = debounce(() => resetMediaSessionMetadata(), AP.MEDIA_SESSION_RESET_DEBOUNCE_MS);
+
 export interface AudioContextSource {
     get isMaintained(): boolean;
     get isContextRunning(): boolean;
@@ -104,19 +122,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             if (AudioContextDestinationFallback.isRequired)
                 this.fallbackDestination = new AudioContextDestinationFallback();
 
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: `Ready`,
-                    artist: 'Actual Chat',
-                    artwork: [{ src: '/_applogo-dark.svg' }]
-                });
-                navigator.mediaSession.playbackState = 'none';
-                navigator.mediaSession.setPositionState({
-                    playbackRate: 1,
-                    position: 0,
-                    duration: 0,
-                });
-            }
+            resetMediaSessionMetadata();
             if ('audioSession' in navigator) {
                 navigator.audioSession['type'] = 'playback'; // 'playback'
             }
@@ -874,3 +880,5 @@ export const recordingAudioContextSource: AudioContextSource = BrowserInfo.hostK
     ? new MauiAudioContextSource('recording')
     : new WebAudioContextSource('recording');
 globalThis['recordingAudioContextSource'] = recordingAudioContextSource;
+
+resetMediaSessionMetadata();

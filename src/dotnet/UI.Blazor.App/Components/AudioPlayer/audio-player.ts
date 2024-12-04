@@ -1,4 +1,7 @@
-import { audioContextSource, OverridenAudioContext } from '../../Services/audio-context-source';
+import {
+    audioContextSource,
+    OverridenAudioContext, resetMediaSessionDebounced,
+} from '../../Services/audio-context-source';
 import { AudioContextInUse, AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
@@ -11,7 +14,6 @@ import { Log } from 'logging';
 import { ObjectPool } from "object-pool";
 import { Resettable } from "resettable";
 import { AudioInitializer } from "../../Services/audio-initializer";
-import { AUDIO_PLAY as AP } from '_constants';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
@@ -181,16 +183,7 @@ export class AudioPlayer implements Resettable {
         this.playing?.dispose();
         this.playing = null;
         this.whenEnded?.resolve(undefined);
-        this.resetMediaSessionDebounced();
-        try {
-            if (navigator.mediaSession) {
-                navigator.mediaSession.metadata = null;
-                navigator.mediaSession.playbackState = 'none';
-            }
-        }
-        catch (e) {
-            warnLog?.log(`#${this.internalId} reset(): error clearing metadata:`, e);
-        }
+        resetMediaSessionDebounced();
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
@@ -223,7 +216,7 @@ export class AudioPlayer implements Resettable {
         await this.whenEnded;
         this.playing?.dispose();
         this.playing = null;
-        this.resetMediaSessionDebounced();
+        resetMediaSessionDebounced();
     }
 
     /** Called by Blazor */
@@ -259,7 +252,7 @@ export class AudioPlayer implements Resettable {
 
     private setMediaSessionState(playbackState: MediaSessionPlaybackState): void {
         try {
-            if (navigator.mediaSession)
+            if ('mediaSession' in navigator)
                 navigator.mediaSession.playbackState = playbackState;
         }
         catch (e) {
@@ -268,9 +261,9 @@ export class AudioPlayer implements Resettable {
     }
 
     private setMediaSession(title: string, album: string): void {
-        this.resetMediaSessionDebounced.reset();
+        resetMediaSessionDebounced.reset();
         try {
-            if (navigator.mediaSession) {
+            if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: `${title} @ ${album}`,
                     album: album,
@@ -286,19 +279,6 @@ export class AudioPlayer implements Resettable {
             }
         } catch (e) {
             warnLog?.log(`#${this.internalId}.startPlayback: error setting metadata:`, e);
-        }
-    }
-
-    private resetMediaSessionDebounced = debounce(() => this.resetMediaSession(), AP.MEDIA_SESSION_RESET_DEBOUNCE_MS);
-    private resetMediaSession(): void {
-        try {
-            if (navigator.mediaSession) {
-                navigator.mediaSession.metadata = null;
-                navigator.mediaSession.playbackState = 'none';
-            }
-        }
-        catch (e) {
-            warnLog?.log(`#${this.internalId} resetMediaSession(): error clearing metadata:`, e);
         }
     }
 
