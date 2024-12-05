@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Streaming.Module;
 using ActualChat.Transcription;
@@ -13,17 +12,8 @@ namespace ActualChat.Streaming.Services.Transcribers;
 
 #pragma warning disable CA1826
 
-public partial class DeepgramTranscriber : ITranscriber
+public class DeepgramTranscriber : ITranscriber
 {
-    [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
-    private static partial Regex CompleteSentenceOrEmptyRegexFactory();
-
-    [GeneratedRegex(@"(\s+$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
-    private static partial Regex EndsWithWhitespaceOrEmptyRegexFactory();
-
-    private static readonly Regex CompleteSentenceOrEmptyRegex = CompleteSentenceOrEmptyRegexFactory();
-    private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
-
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
     private MomentClockSet Clocks { get; }
@@ -196,17 +186,14 @@ public partial class DeepgramTranscriber : ITranscriber
         var isSpeechFinal = result.SpeechFinal ?? false;
         var suffix = result.Channel?.Alternatives?.FirstOrDefault()?.Transcript ?? "";
         var endTime = (float?)result.Duration ?? 0;
-        var appendToUnstable = state.IsLastAppendStable;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))
                 state.Append(suffix, map).MakeStable();
             else
                 state.MakeStable();
         }
-        else {
-            suffix = FixSuffix(state[appendToUnstable].Text, suffix);
-            state.Append(suffix, endTime, appendToUnstable);
-        }
+        else
+            state.Append(suffix, endTime);
 
         if (state.Unstable.Length != 0)
             _ = state.Output.WriteAsync(state.Unstable);
@@ -274,28 +261,5 @@ public partial class DeepgramTranscriber : ITranscriber
             mapPoints.Add(veryLastPoint);
         timeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
         return true;
-    }
-
-    private static string FixSuffix(string prefix, string suffix)
-    {
-        var firstLetterIndex = Transcript.ContentStartRegex.Match(suffix).Length;
-        if (firstLetterIndex == suffix.Length)
-            return suffix; // Suffix is all whitespace or empty
-
-        if (firstLetterIndex == 0 && !EndsWithWhitespaceOrEmptyRegex.IsMatch(prefix)) {
-            // Add spacer
-            suffix = " " + suffix;
-            firstLetterIndex++;
-        }
-        else if (firstLetterIndex > 0 && EndsWithWhitespaceOrEmptyRegex.IsMatch(prefix)) {
-            // Remove spacer
-            suffix = suffix[firstLetterIndex..];
-            firstLetterIndex = 0;
-        }
-
-        if (CompleteSentenceOrEmptyRegex.IsMatch(prefix))
-            suffix = suffix.Capitalize(firstLetterIndex);
-
-        return suffix;
     }
 }
