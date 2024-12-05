@@ -30,8 +30,9 @@ body.narrow .link-preview.compact {
 }
 .link-preview .c-info {
     @apply flex-1 flex-y justify-between gap-y-4;
-    @apply h-full;
+    @apply h-full max-w-full;
     @apply p-2 md:py-4;
+    @apply overflow-hidden;
 }
 .link-preview.compact .c-info {
     @apply gap-y-1;
