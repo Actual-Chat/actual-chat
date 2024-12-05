@@ -30,7 +30,8 @@ export class SoundPlayer {
                 const source = context.createBufferSource();
                 try {
                     source.buffer = buffer;
-                    source.connect(context.destination);
+                    const destinationOverride = context.destinationOverride ?? context.destination;
+                    source.connect(destinationOverride);
                     source.start();
                     const playTask = new PromiseSourceWithTimeout();
                     playTask.setTimeout(5000);
