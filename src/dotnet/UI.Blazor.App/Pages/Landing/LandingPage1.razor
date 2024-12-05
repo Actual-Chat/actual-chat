@@ -36,6 +36,16 @@
             </p>
         </div>
         <div class="c-btn-group">
+            @if (!IsGuest) {
+                <button class="btn-download btn-to-chats" @onclick="@(() => NavigateTo(Links.Chats))">
+                    <div class="c-content">
+                        <span class="gradient-span">
+                            <i class="icon-message-ellipse text-2xl"></i>
+                            <span>Go to Chats</span>
+                        </span>
+                    </div>
+                </button>
+            }
             @if (!isMaui) {
                 <DownloadButton
                     Title="Get mobile/desktop app"
@@ -50,8 +60,8 @@
                     }
                 </button>
             }
-            @if (IsGuest) {
-                <button class="btn-download transparent md:hidden" @onclick="@ShowVideoClick">
+            @if (IsGuest && ScreenSize.IsNarrow()) {
+                <button class="btn-download transparent" @onclick="@ShowVideoClick">
                     <i class="icon-play-fill text-2xl"></i>
                     <span>Watch Actual Chat in action</span>
                 </button>
@@ -79,6 +89,7 @@
 
 @code {
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -86,4 +97,7 @@
     [Parameter] public EventCallback SignInClick { get; set; }
     [Parameter] public EventCallback ShowVideoClick { get; set; }
     [Parameter] public EventCallback DownloadClick { get; set; }
+
+    private void NavigateTo(string url)
+        => _ = History.NavigateTo(url);
 }

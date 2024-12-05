@@ -917,6 +917,23 @@ body.narrow .landing .btn-download.ios-disabled {
     @apply flex items-center;
     @apply text-06 text-headline-1;
 }
+.btn-download.btn-to-chats {
+    @apply p-px;
+    @apply overflow-hidden;
+}
+.btn-download.btn-to-chats .c-content {
+    @apply flex-1 flex-x items-center justify-center;
+    @apply h-full;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-white;
+}
+.btn-download.btn-to-chats .gradient-span {
+    @apply flex-x items-center gap-x-2;
+    @apply bg-gradient-to-r from-[var(--magenta-40)] to-[var(--primary)];
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
 
 /* Docs */
 .docs-layout {
