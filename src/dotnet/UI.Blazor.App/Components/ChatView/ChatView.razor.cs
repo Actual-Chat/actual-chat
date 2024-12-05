@@ -303,8 +303,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
 
-        var itemVisibility = ItemVisibility.Value;
-        var mustScrollToEntry = nav != null && !itemVisibility.IsFullyVisible(nav.EntryLid);
+        var mustScrollToEntry = nav != null && !ItemVisibility.Value.IsFullyVisible(nav.EntryLid);
         Computed<Range<long>> cChatIdRange;
         using (Computed.BeginIsolation()) {
             cChatIdRange = await Computed.Capture(
@@ -344,7 +343,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     HasVeryLastItem = true,
                     ScrollToKey = null,
                     NavigationState = nav ?? renderedData.NavigationState,
-                    ItemVisibilityState = itemVisibility,
+                    ItemVisibilityState = ItemVisibility.Value,
                 };
         }
         else if (query.ExpectedCount > tiles.SelectMany(t => t.Items).Count() / 2 && !hasAllItems) {
@@ -359,14 +358,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         if (tryUpdateShownReadEntryLid
-            && !ReferenceEquals(itemVisibility, renderedData.ItemVisibilityState)
-            && TryUpdateShownReadEntryLid(tiles, itemVisibility)) {
+            && !ReferenceEquals(ItemVisibility.Value, renderedData.ItemVisibilityState)
+            && TryUpdateShownReadEntryLid(tiles)) {
             tryUpdateShownReadEntryLid = false;
+            readEntryLid = _readPosition.Value.EntryLid;
             goto rebuildTiles;
         }
 
         // Locating navigation entry
-        var navEntry = (ChatEntry?)null;
+        ChatEntry? navEntry = null;
         if (nav != null) {
             navEntry = tiles
                 .SkipWhile(t => t.Items[^1].Entry.LocalId < nav.EntryLid)
@@ -383,7 +383,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = navEntry != null && mustScrollToEntry ? navEntry.LocalId.Format() : null,
             NavigationState = nav ?? renderedData.NavigationState,
-            ItemVisibilityState = itemVisibility,
+            ItemVisibilityState = ItemVisibility.Value,
         };
 
         // do not return new instance if data is the same to prevent re-renders
@@ -458,19 +458,28 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return readEntryLid;
     }
 
-    private bool TryUpdateShownReadEntryLid(List<VirtualListTile<ChatMessage>> tiles, ChatViewItemVisibility itemVisibility)
+    private bool TryUpdateShownReadEntryLid(List<VirtualListTile<ChatMessage>> tiles)
     {
-        if (tiles.Count == 0)
+        var itemVisibility = ItemVisibility.Value;
+        if (tiles.Count == 0 || tiles[^1].Items.Count == 0)
             return false; // Not loaded yet or wrong load range
 
         if (itemVisibility.IsEmpty || !itemVisibility.IsEndAnchorVisible)
             return false; // No item visibility or we aren't at the end of the list
 
         var shownReadEntryLid = _shownReadEntryLid.Value;
-        if (shownReadEntryLid > itemVisibility.MinEntryLid - ChatUI.LoadLimit)
-            return false; // The marker is visible or near the viewport
+        var newMessagesLine = tiles
+            .SkipWhile(t => t.Items[^1].Entry.LocalId < shownReadEntryLid)
+            .SelectMany(t => t.Items)
+            .FirstOrDefault(i => i.ReplacementKind == ChatMessageReplacementKind.NewMessagesLine);
+        var hasNewMessagesLine = newMessagesLine != null;
+        if (!hasNewMessagesLine)
+            return false; // No new messages line
 
-        var newShownReadEntryLid = UpdateReadPosition(itemVisibility.MaxEntryLid);
+        // We see end anchor, when the new message appears so we can update shownReadEntryLid
+        var lastEntryLid = tiles[^1].Items[^1].Entry.LocalId;
+        var maxVisibleEntryLid = itemVisibility.MaxEntryLid;
+        var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
         if (newShownReadEntryLid == shownReadEntryLid)
             return false;
 
