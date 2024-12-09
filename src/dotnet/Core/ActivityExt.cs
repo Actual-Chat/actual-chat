@@ -41,6 +41,9 @@ public static class ActivityExt
     {
         // Sentry does not export events from an Activity.
         // To get around this limitation we create inner spans with min duration.
+        if (!CanSetCurrent(activity))
+            return activity;
+
         var currentActivity = Activity.Current;
         try {
             Activity.Current = activity;
