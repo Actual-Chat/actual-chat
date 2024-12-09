@@ -63,6 +63,8 @@ public class DeepgramTranscriber : ITranscriber
                 Diarize = false,
                 Encoding = AudioEncoding.OggOpus,
                 Channels = 1,
+                EndPointing = "100",
+                SmartFormat = true,
                 InterimResults = true,
                 Model = "nova-2",
             };
@@ -82,21 +84,6 @@ public class DeepgramTranscriber : ITranscriber
             catch (Exception e) {
                 Log.LogWarning(e, "Error closing transcription channel {StreamId}", audioStreamId);
             }
-
-            // Re-transcribe with Whisper model
-            // Uncomment to test
-            // try {
-            //     var offlineTranscriber = new DeepgramOfflineTranscriber(Services);
-            //     await offlineTranscriber.Transcribe(audioStreamId,
-            //             audioSource,
-            //             options,
-            //             output,
-            //             default)
-            //         .ConfigureAwait(false);
-            // }
-            // catch (Exception e) {
-            //     Log.LogError(e, "Error re-transcribing {StreamId} with Whisper model", audioStreamId);
-            // }
         }
         catch (Exception e) {
             error = e;
@@ -125,6 +112,20 @@ public class DeepgramTranscriber : ITranscriber
                 "es-US" => "es-419",
                 "ru-RU" => "ru",
                 "zh-CN" => "zh-CN",
+                "zh-TW" => "zh-TW",
+                "ja-JP" => "ja",
+                "ko-KR" => "ko",
+                "it-IT" => "it",
+                "nl-NL" => "nl",
+                "pl-PL" => "pl",
+                "tr-TR" => "tr",
+                "vi-VN" => "vi",
+                "uk-UA" => "uk",
+                "cs-CZ" => "cs",
+                "sv-SE" => "sv",
+                "da-DK" => "da",
+                "fi-FI" => "fi",
+                "th-TH" => "th",
                 _ => throw StandardError.NotSupported(typeof(DeepgramTranscriber), $"Language '{options1.Language.Id}' is not supported"),
             };
         }
