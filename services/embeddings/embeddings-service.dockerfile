@@ -1,7 +1,7 @@
 ARG MODEL_NAME="Alibaba-NLP/gte-multilingual-base"
 
 # Builder image
-FROM pytorch/torchserve AS builder
+FROM pytorch/torchserve:latest-gpu AS builder
 
 ARG MODEL_NAME
 
@@ -27,7 +27,7 @@ RUN --mount=type=bind,source=./src/Handler.py,target=./Handler.py \
     bash ./scripts/create-model-archive.sh ${MODEL_NAME} ./Handler.py
 
 # Production image
-FROM pytorch/torchserve
+FROM pytorch/torchserve:latest-gpu
 
 RUN pip install transformers
 
