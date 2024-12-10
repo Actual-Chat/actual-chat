@@ -2,6 +2,7 @@
 using ActualChat.Audio;
 using ActualChat.Streaming.Module;
 using ActualChat.Transcription;
+using ActualLab.Diagnostics;
 using Deepgram;
 using Deepgram.Constants;
 using Deepgram.Models.Authenticate.v1;
@@ -14,8 +15,10 @@ namespace ActualChat.Streaming.Services.Transcribers;
 
 public class DeepgramTranscriber : ITranscriber
 {
+    private static bool DebugMode => Constants.DebugMode.TranscriberDeepgram;
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
     private MomentClockSet Clocks { get; }
     private StreamingSettings StreamingSettings { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
@@ -47,7 +50,7 @@ public class DeepgramTranscriber : ITranscriber
             using var deepgramClient = new ListenWebSocketClient(
                 apiKey,
                 new DeepgramWsClientOptions(apiKey) {
-                    KeepAlive = true,
+                    KeepAlive = false,
                 });
 
             var whenCompleted = whenCompletedSource.Task;
@@ -178,13 +181,14 @@ public class DeepgramTranscriber : ITranscriber
         }
     }
 
-    private static void ProcessResponse(
+    private void ProcessResponse(
         DeepgramTranscribeState state,
         TaskCompletionSource whenCompletedSource,
         ResultResponse result)
     {
+        DebugLog?.LogDebug("Transcript received: {Result}", result);
         var isFinal = result.IsFinal ?? false;
-        var isSpeechFinal = result.SpeechFinal ?? false;
+        var isStreamFinalized = result.FromFinalize ?? false;
         var suffix = result.Channel?.Alternatives?.FirstOrDefault()?.Transcript ?? "";
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
@@ -199,7 +203,7 @@ public class DeepgramTranscriber : ITranscriber
         if (state.Unstable.Length != 0)
             _ = state.Output.WriteAsync(state.Unstable);
 
-        if (isSpeechFinal)
+        if (isStreamFinalized)
             whenCompletedSource.TrySetResult();
     }
 

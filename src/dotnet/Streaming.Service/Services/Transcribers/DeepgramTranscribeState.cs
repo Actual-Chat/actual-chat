@@ -32,15 +32,21 @@ public class DeepgramTranscribeState(
         return this;
     }
 
-    public DeepgramTranscribeState Append(string suffix, float? suffixEndTime, bool appendToUnstable = false)
+    public DeepgramTranscribeState Append(string suffix, float? suffixEndTime)
     {
-        Unstable = this[appendToUnstable].WithSuffix(suffix, Unstable.TimeMap, suffixEndTime);
+        if (string.IsNullOrWhiteSpace(suffix))
+            return this;
+
+        Unstable = Stable.WithSuffix($" {suffix}", Unstable.TimeMap, suffixEndTime);
         return this;
     }
 
-    public DeepgramTranscribeState Append(string suffix, LinearMap suffixTextToTimeMap, bool appendToUnstable = false)
+    public DeepgramTranscribeState Append(string suffix, LinearMap suffixTextToTimeMap)
     {
-        Unstable = this[appendToUnstable].WithSuffix(suffix, suffixTextToTimeMap);
+        if (string.IsNullOrWhiteSpace(suffix))
+            return this;
+
+        Unstable = Stable.WithSuffix($" {suffix}", suffixTextToTimeMap);
         return this;
     }
 }

@@ -19,7 +19,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
     // [InlineData("file.webm", false)]
     [InlineData("file.webm", true)]
     // [InlineData("0001-AY.opuss", true)]
-    // [InlineData("0003-AK.opuss", true)] - fails as too short???
+    // [InlineData("0003-AK.opuss", true)] //- fails as too short???
     // [InlineData("tail-cut.opuss", true)]
     public async Task TranscribeWorks(string fileName, bool withDelay)
     {
@@ -32,10 +32,10 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
 
         // helper to save webm format
         // await using (var outputStream = new FileStream(
-        //     Path.Combine(Environment.CurrentDirectory, "data", file-name),
+        //     Path.Combine(Environment.CurrentDirectory, "data", "tail-cut.webm"),
         //     FileMode.OpenOrCreate,
         //     FileAccess.ReadWrite)) {
-        //     var converter = new WebMStreamConverter(Log);
+        //     var converter = new WebMStreamConverter(MomentClockSet.Default, Log);
         //     var byteStream = converter.ToByteStream(audio, CancellationToken.None);
         //     await foreach (var data in byteStream) {
         //         await outputStream.WriteAsync(data, CancellationToken.None);

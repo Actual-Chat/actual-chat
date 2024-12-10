@@ -53,9 +53,9 @@ public static partial class Constants
         public static readonly bool AudioRecordingStream = false;
 
         // Transcription
-        public static readonly bool Transcription = false;
         public static readonly bool TranscriberAny = false;
         public static readonly bool TranscriberGoogle = false;
+        public static readonly bool TranscriberDeepgram = false;
 
         // Search
         public static readonly bool OpenSearchRequest = false;
