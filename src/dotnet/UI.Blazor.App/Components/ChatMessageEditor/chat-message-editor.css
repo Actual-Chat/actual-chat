@@ -124,16 +124,28 @@ body.hoverable .post-panel-btn:hover {
 .mention-btn.btn.btn-round {
     @apply my-1;
 }
+.attach-btn.btn.btn-round {
+    @apply bg-input;
+    outline: 0.375rem solid var(--input);
+}
+body.narrow .attach-btn.btn.btn-round {
+    @apply bg-[var(--black-05)];
+    outline: 0.375rem solid var(--black-05);
+}
+body.hoverable .attach-btn.btn.btn-round.btn-transparent:hover {
+    @apply bg-input;
+}
 
 body.narrow .post-panel-btn.attach-btn {
     @apply self-end;
 }
 .post-panel .c-left-buttons {
-    @apply flex-x items-center self-end;
+    @apply relative;
+    @apply flex-x items-center self-end gap-x-1.5;
+    @apply my-2 mx-1;
 }
 body.narrow .post-panel .c-left-buttons {
-    @apply gap-x-1;
-    @apply mr-1 py-0;
+    @apply my-0;
 }
 body.narrow .text-mode .c-left-buttons,
 body.narrow .narrow-panel .c-left-buttons {
@@ -141,7 +153,6 @@ body.narrow .narrow-panel .c-left-buttons {
 }
 body.wide .post-panel .c-left-buttons {
     @apply rounded-full;
-    @apply m-1 py-1;
 }
 
 /* Notify Call Panel */

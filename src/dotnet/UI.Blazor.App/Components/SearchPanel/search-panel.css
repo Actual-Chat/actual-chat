@@ -84,6 +84,9 @@
     @apply rounded-full;
     @apply text-left bg-input;
 }
+.search-input:has(.c-close-btn) input {
+    @apply pr-10;
+}
 .search-input input:focus {
     @apply pl-4;
     @apply bg-transparent;

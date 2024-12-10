@@ -407,6 +407,7 @@
     --place-header-search: var(--white-30);
     --place-header-text: var(--white);
     --tile: var(--white);
+    --highlighted: var(--blue-50-30);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);
@@ -452,6 +453,23 @@
     --search-cat-paws: var(--white);
     --search-cat-border: var(--gray-60);
     --search-cat-shadow: var(--gray-80);
+
+    --no-results-cat-body: var(--gray-90);
+    --no-results-cat-body-center: var(--white);
+    --no-results-cat-shadow: var(--gray-70);
+    --no-results-cat-circle: var(--gray-80);
+    --no-results-cat-light-circle: var(--white);
+    --no-results-cat-paws: var(--white);
+    --no-results-cat-medal: var(--gray-95);
+    --no-results-cat-medal-stars: var(--gray-60);
+    --no-results-cat-mask: var(--gray-60);
+    --no-results-cat-eyes: var(--white);
+    --no-results-cat-ears: var(--white);
+    --no-results-cat-flower: var(--gray-80);
+    --no-results-cat-flower-leaf: var(--white);
+    --no-results-cat-main-stroke: var(--gray-60);
+    --no-results-cat-rays-stroke: var(--white);
+    --no-results-cat-ground-stroke: var(--gray-80);
 }
 .theme-dark {
     /* Background */
@@ -679,6 +697,23 @@
     --search-cat-paws: var(--ash-80);
     --search-cat-border: var(--ash-30);
     --search-cat-shadow: var(--ash-40);
+
+    --no-results-cat-body: var(--ash-60);
+    --no-results-cat-body-center: var(--ash-90);
+    --no-results-cat-shadow: var(--ash-40);
+    --no-results-cat-circle: var(--ash-50);
+    --no-results-cat-light-circle: var(--ash-95);
+    --no-results-cat-paws: var(--ash-90);
+    --no-results-cat-medal: var(--ash-80);
+    --no-results-cat-medal-stars: var(--ash-30);
+    --no-results-cat-mask: var(--ash-30);
+    --no-results-cat-eyes: var(--ash-95);
+    --no-results-cat-ears: var(--ash-50);
+    --no-results-cat-flower: var(--ash-90);
+    --no-results-cat-flower-leaf: var(--ash-90);
+    --no-results-cat-main-stroke: var(--ash-30);
+    --no-results-cat-rays-stroke: var(--ash-95);
+    --no-results-cat-ground-stroke: var(--ash-90);
 }
 .theme-ash {
     /* Background */
@@ -905,4 +940,21 @@
     --search-cat-paws: var(--white);
     --search-cat-border: var(--ash-60);
     --search-cat-shadow: var(--ash-95);
+
+    --no-results-cat-body: var(--ash-95);
+    --no-results-cat-body-center: var(--white);
+    --no-results-cat-shadow: var(--ash-60);
+    --no-results-cat-circle: var(--ash-80);
+    --no-results-cat-light-circle: var(--ash-95);
+    --no-results-cat-paws: var(--white);
+    --no-results-cat-medal: var(--white);
+    --no-results-cat-medal-stars: var(--ash-60);
+    --no-results-cat-mask: var(--ash-60);
+    --no-results-cat-eyes: var(--ash-95);
+    --no-results-cat-ears: var(--white);
+    --no-results-cat-flower: var(--ash-90);
+    --no-results-cat-flower-leaf: var(--white);
+    --no-results-cat-main-stroke: var(--ash-60);
+    --no-results-cat-rays-stroke: var(--ash-95);
+    --no-results-cat-ground-stroke: var(--ash-80);
 }

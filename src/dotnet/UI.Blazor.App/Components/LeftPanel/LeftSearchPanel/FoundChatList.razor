@@ -6,11 +6,12 @@
         // TODO: loading view
         return;
 
-    var listCls = IsPlace ? "place" : "";
+    _isPlace = Place is { Id.IsNone: false };
+    var listCls = _isPlace ? "place" : "";
 }
 
 @if (foundItems.Count == 0) {
-    <NoResults />
+    <NoResults/>
     return;
 }
 
@@ -23,7 +24,7 @@
                 IsGlobalSearchResult="foundItem.IsGlobalSearchResult" />
         }
 
-        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@IsPlace"/>
+        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@_isPlace"/>
 
         @if (foundItem.IsLastInGroup) {
             <Divider Class="mx-1 my-1.5" />
@@ -32,10 +33,13 @@
 </div>
 
 @code {
+    private bool _isPlace;
+
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
-    [Parameter] public bool IsPlace { get; set; }
+    [Parameter] public Place? Place { get; set; }
 
     protected override async Task<IReadOnlyList<FoundItem>> ComputeState(CancellationToken cancellationToken) {
         var isOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
