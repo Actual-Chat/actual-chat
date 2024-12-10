@@ -27,6 +27,7 @@ export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-vi
 export * from './Components/MentionList/mention-list';
 export * from './Components/Navbar/sortable-list';
 export * from './Components/NoResults/no-results-svg.lit';
+export * from './Components/NoResults/no-search-results-svg.lit';
 export * from './Components/Onboarding/phone-verification-cat-svg.lit';
 export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';

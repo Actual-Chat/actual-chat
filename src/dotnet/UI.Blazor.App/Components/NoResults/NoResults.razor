@@ -1,11 +1,61 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<Place?>
+@{
+    var place = State.Value;
+    var isPlace = place is { Id.IsNone: false };
+}
 
 <div class="no-results-container">
     <div class="c-wrapper">
-        <no-results-svg />
+        <no-search-results-svg />
         <div class="text-wrapper">
             <p>No results.</p>
-            <p>Try another request.</p>
+            @if (!isPlace) {
+                <p>Try another request.</p>
+            } else {
+                <Button Class="btn-transparent" Click="@SelectChatsNavbarItem">Try searching outside the place.</Button>
+            }
         </div>
     </div>
 </div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+    private IPlaces Places => Hub.Places;
+    private Session Session => Hub.Session();
+
+    protected override async Task OnInitializedAsync() {
+        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+        NavbarUI.SelectedGroupTitleUpdated += OnNavbarSelectedGroupChanged;
+        await base.OnInitializedAsync();
+    }
+
+    public void Dispose() {
+        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+        NavbarUI.SelectedGroupTitleUpdated -= OnNavbarSelectedGroupChanged;
+    }
+
+    protected override ComputedState<Place?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Place?>.Options() {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Place?> ComputeState(CancellationToken cancellationToken) {
+        NavbarUI.IsPlaceSelected(out var placeId);
+        if (placeId.IsNone)
+            return null;
+
+        var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+        return place;
+    }
+
+    private void SelectChatsNavbarItem()
+        => NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
+
+    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
+        => State.Invalidate();
+}
