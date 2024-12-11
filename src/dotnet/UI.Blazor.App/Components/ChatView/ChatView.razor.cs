@@ -357,11 +357,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .ConfigureAwait(false);
         }
 
-        if (tryUpdateShownReadEntryLid
-            && !ReferenceEquals(ItemVisibility.Value, renderedData.ItemVisibilityState)
-            && TryUpdateShownReadEntryLid(tiles)) {
+        if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(tiles, out readEntryLid)) {
             tryUpdateShownReadEntryLid = false;
-            readEntryLid = _readPosition.Value.EntryLid;
             goto rebuildTiles;
         }
 
@@ -458,14 +455,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return readEntryLid;
     }
 
-    private bool TryUpdateShownReadEntryLid(List<VirtualListTile<ChatMessage>> tiles)
+    private bool TryUpdateShownReadEntryLid(List<VirtualListTile<ChatMessage>> tiles, out long readEntryLid)
     {
         var itemVisibility = ItemVisibility.Value;
-        if (tiles.Count == 0 || tiles[^1].Items.Count == 0)
+        if (tiles.Count == 0 || tiles[^1].Items.Count == 0) {
+            readEntryLid = default;
             return false; // Not loaded yet or wrong load range
+        }
 
-        if (itemVisibility.IsEmpty || !itemVisibility.IsEndAnchorVisible)
+        if (itemVisibility.IsEmpty || !itemVisibility.IsEndAnchorVisible) {
+            DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no item visibility or end anchor is not visible");
+            readEntryLid = default;
             return false; // No item visibility or we aren't at the end of the list
+        }
 
         var shownReadEntryLid = _shownReadEntryLid.Value;
         var newMessagesLine = tiles
@@ -473,17 +475,24 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .SelectMany(t => t.Items)
             .FirstOrDefault(i => i.ReplacementKind == ChatMessageReplacementKind.NewMessagesLine);
         var hasNewMessagesLine = newMessagesLine != null;
-        if (!hasNewMessagesLine)
+        if (!hasNewMessagesLine) {
+            DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no new messages line");
+            readEntryLid = default;
             return false; // No new messages line
+        }
 
         // We see end anchor, when the new message appears so we can update shownReadEntryLid
         var lastEntryLid = tiles[^1].Items[^1].Entry.LocalId;
         var maxVisibleEntryLid = itemVisibility.MaxEntryLid;
         var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
-        if (newShownReadEntryLid == shownReadEntryLid)
+        if (newShownReadEntryLid == shownReadEntryLid) {
+            DebugLog?.LogDebug("TryUpdateShownReadEntryLid: read position is unchanged");
+            readEntryLid = default;
             return false;
+        }
 
         _shownReadEntryLid.Value = newShownReadEntryLid;
+        readEntryLid = newShownReadEntryLid;
         return true;
     }
 

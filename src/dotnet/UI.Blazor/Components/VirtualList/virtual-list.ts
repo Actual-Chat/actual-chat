@@ -786,8 +786,9 @@ export class VirtualList {
         await fastReadRaf();
         this.updateVisibleItems();
         const visibleItems = [...this._visibleItems].sort(this._keySortCollator.compare);
-        debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, this._isEndAnchorVisible);
-        await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', this._identity, visibleItems, this._isEndAnchorVisible);
+        const isEndAnchorVisible = this._stickyEdge?.edge === VirtualListEdge.End;
+        debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, isEndAnchorVisible);
+        await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', this._identity, visibleItems, isEndAnchorVisible);
     }, 2);
 
     private updateOrderedItems(): void {
@@ -1070,7 +1071,6 @@ export class VirtualList {
             let shouldResync = false;
 
             const pivotEpsilon = PivotSyncEpsilon + 100 * iteration;
-            const whenRestoreCompleted = new PromiseSource();
             // code below triggers forced reflow - but it's OK  - reflow will be triggered after adding new elements anyway
             const pivotOffset = pivot.offset;
             const itemRect = pivotRef.getBoundingClientRect();
@@ -1104,9 +1104,6 @@ export class VirtualList {
                 debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
 
 
-            whenRestoreCompleted.resolve(undefined);
-
-            await whenRestoreCompleted;
             // check position again, on Chromium scrollTop can be stale
             // if (DeviceInfo.isChromium && (shouldResync || iteration < 2 ))
             //     await this.restoreScrollPosition(renderTime, iteration+1);
