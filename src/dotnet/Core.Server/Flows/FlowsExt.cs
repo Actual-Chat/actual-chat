@@ -41,14 +41,14 @@ public static class FlowsExt
     public static async Task<TFlow?> GetAndResume<TFlow>(
         this IFlows flows,
         string arguments,
-        TimeSpan? minResumeIn = null,
+        TimeSpan? maxLastRunIn = null,
         string? tag = null,
         TimeSpan? delay = null,
         CancellationToken cancellationToken = default)
         where TFlow : Flow
         => (TFlow?)await flows.GetAndResume(typeof(TFlow),
                 arguments,
-                minResumeIn,
+                maxLastRunIn,
                 tag,
                 delay,
                 cancellationToken)
@@ -58,7 +58,7 @@ public static class FlowsExt
         this IFlows flows,
         Type flowType,
         string arguments,
-        TimeSpan? minResumeIn = null,
+        TimeSpan? maxLastRunIn = null,
         string? tag = null,
         TimeSpan? delay = null,
         CancellationToken cancellationToken = default)
@@ -76,11 +76,11 @@ public static class FlowsExt
             log.LogInformation("`{Id}`.GetAndResume: unable to resume because the flow was not found", flowId);
             return null;
         }
-        var minHardResumeAt = clocks.SystemClock.Now + minResumeIn + (delay ?? TimeSpan.Zero);
+        var maxLastRunAt = clocks.SystemClock.Now + maxLastRunIn + (delay ?? TimeSpan.Zero);
         var flowResumeEvent = new FlowResumeEvent(flowId,
             false,
             tag,
-            minHardResumeAt,
+            maxLastRunAt,
             clocks.SystemClock.Now + delay);
         await queues.Enqueue(flowResumeEvent, cancellationToken)
             .ConfigureAwait(false);

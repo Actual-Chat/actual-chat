@@ -11,6 +11,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     private long _lid = 1;
     private const int BatchSize = SimpleBatchedIndexingFlow.BatchSizeOverride;
     private const int Quota = SimpleBatchedIndexingFlow.QuotaOverride;
+    private static readonly TimeSpan RecheckInterval = SimpleBatchedIndexingFlow.RecheckIntervalOverride;
     private BatchedIndexingFlowTestContext<SimpleItem> Context { get; } = fixture.AppHost.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem>>();
 
     [Fact]
@@ -33,7 +34,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
             Context.ListRemaining(id).Should().BeEmpty();
             var (step, hardResumeIn) = Context.ListTransitions(id, start).Should().HaveCount(1).And.Subject.First();
             step.Should().Be("OnIndex");
-            hardResumeIn.Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(3));
+            hardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromMinutes(3));
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -63,22 +64,20 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         var start = Clocks.SystemClock.Now;
 
         // assert
+        var processedQuotaCount = fullBatchCount * BatchSize / Quota;
         await TestExt.When(async () => {
             Context.ListProcessed(id).Should();
             Context.ListRemaining(id).Should().BeEmpty();
             var transitions = Context.ListTransitions(id);
             transitions
                 .Should()
-                .HaveCount((fullBatchCount * BatchSize / Quota) + 1);
+                .HaveCount(processedQuotaCount + 1);
             transitions[..^1].Should().AllBeEquivalentTo(("OnIndex", (TimeSpan?)null));
             transitions[^1].Step.Should().Be("OnIndex");
-            transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(3));
+            transitions[^1].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
             var flow = await Flows.Get<SimpleBatchedIndexingFlow>(id);
-            (flow!.NextRecheckAt - start).Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(3));
+            (flow!.NextRecheckAt - start).Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
         }, TimeSpan.FromSeconds(10));
-
-        // act
-        await Flows.GetAndResume<SimpleBatchedIndexingFlow>(id);
 
         // assert
         await TestExt.When(async () => {
@@ -86,7 +85,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
             var transitions = Context.ListTransitions(id, start);
             transitions
                 .Should()
-                .HaveCount((fullBatchCount * BatchSize / Quota) + 2);
+                .HaveCount(processedQuotaCount + 2);
             transitions[^1].Step.Should().Be("OnIndex");
             transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
             var flow = await Flows.Get<SimpleBatchedIndexingFlow>(id);

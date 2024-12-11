@@ -5,7 +5,7 @@ namespace ActualChat.Flows;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-public abstract class IndexingFlowBase<TCursor> : Flow
+public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
 {
     [DataMember(Order = 100), MemoryPackOrder(100)]
     public TCursor? Cursor { get; protected set; }
@@ -16,6 +16,8 @@ public abstract class IndexingFlowBase<TCursor> : Flow
     public Moment? NextRecheckAt { get; protected set; }
     [DataMember(Order = 103), MemoryPackOrder(103)]
     public long FlowSetVersion { get; protected set; }
+    [DataMember(Order = 104), MemoryPackOrder(104)]
+    public Moment LastRunAt { get; protected set; }
     [IgnoreDataMember, MemoryPackIgnore]
     protected abstract int CurrentFlowSetVersion { get; }
 
@@ -45,10 +47,11 @@ public abstract class IndexingFlowBase<TCursor> : Flow
 
     protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
+        LastRunAt = Clocks.SystemClock.Now;
         var (mustEnd, isTailReached, updatedCursor, processedCount) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = updatedCursor;
         var transitionKind = IndexingFlowTransitionKind.Resume;
-        Log.LogInformation(
+        DebugLog?.LogDebug(
             "`{Id}`.OnIndex: processed portion: MustEnd={MustEnd}, IsTailReached={IsTailReached}, {@UpdatedCursor}",
             Id,
             mustEnd,
@@ -73,12 +76,12 @@ public abstract class IndexingFlowBase<TCursor> : Flow
         };
     }
 
-    protected virtual Task<IndexingFlowTransitionKind> HandleTail(int processCount, CancellationToken cancellationToken)
+    protected virtual Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
     {
         Log.LogInformation("`{Id}`.OnTailReached: {Cursor}", Id, Cursor);
-        var transitionKind = processCount > 0
+        var transitionKind = processedCount > 0
             || NextRecheckAt is null
-            || NextRecheckAt < Clocks.SystemClock.Now + TimerRescheduleThreshold
+            || NextRecheckAt > Clocks.SystemClock.Now + TimerRescheduleThreshold
                 ? IndexingFlowTransitionKind.Recheck
                 : IndexingFlowTransitionKind.Watchdog;
         return Task.FromResult(transitionKind);

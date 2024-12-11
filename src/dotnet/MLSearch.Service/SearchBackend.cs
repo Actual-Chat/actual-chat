@@ -195,7 +195,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 await IndexedDocuments.UpdateGroupContacts([], [chat.Id], cancellationToken).ConfigureAwait(false);
             else
                 await Flows.GetAndResume<GroupContactIndexingFlow>("",
-                        Settings.IndexingRecheckInterval,
+                        Settings.IndexingDelay,
                         "Chat changed",
                         Settings.IndexingRecheckInterval,
                         cancellationToken)
@@ -218,7 +218,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             await IndexedDocuments.UpdatePlaceContacts([], [place.Id], cancellationToken).ConfigureAwait(false);
         else
             await Flows.GetAndResume<PlaceContactIndexingFlow>("",
-                    Settings.IndexingRecheckInterval,
+                    Settings.IndexingDelay,
                     "Place changed",
                     Settings.IndexingRecheckInterval,
                     cancellationToken)
@@ -233,7 +233,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         var chatId = eventCommand.Entry.ChatId;
         return Flows.GetAndResume<EntryIndexingFlow>(chatId,
-            Settings.IndexingRecheckInterval,
+            Settings.IndexingDelay,
             "TextEntry changed",
             Settings.IndexingRecheckInterval,
             cancellationToken);

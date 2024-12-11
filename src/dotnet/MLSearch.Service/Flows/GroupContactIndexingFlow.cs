@@ -48,11 +48,11 @@ public partial class GroupContactIndexingFlow : BatchedIndexingFlowBase<Chat.Cha
         await indexedDocuments.UpdateGroupContacts(updated, [], cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processCount, CancellationToken cancellationToken)
+    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
     {
-        var transition = await base.HandleTail(processCount, cancellationToken).ConfigureAwait(false);
-        if (processCount > 0) {
-            Log.LogInformation("`{Id}`.OnTailReached: requesting entry index refresh", Id);
+        var transition = await base.HandleTail(processedCount, cancellationToken).ConfigureAwait(false);
+        if (processedCount > 0) {
+            Log.LogInformation("`{Id}`.OnTailReached: requesting group index refresh", Id);
             await Host.Services.Queues()
                 .Enqueue(new SearchBackend_Refresh(RefreshGroups: true), cancellationToken)
                 .ConfigureAwait(false);
