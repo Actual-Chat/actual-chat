@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Streaming.Module;
 using ActualChat.Transcription;
@@ -13,8 +14,18 @@ namespace ActualChat.Streaming.Services.Transcribers;
 
 #pragma warning disable CA1826
 
-public class DeepgramTranscriber : ITranscriber
+public partial class DeepgramTranscriber : ITranscriber
 {
+    [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
+    private static partial Regex CompleteSentenceOrEmptyRegexFactory();
+
+    [GeneratedRegex(@"(\s+$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
+    private static partial Regex EndsWithWhitespaceOrEmptyRegexFactory();
+
+    private static readonly Regex CompleteSentenceOrEmptyRegex = CompleteSentenceOrEmptyRegexFactory();
+    private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
+
+
     private static bool DebugMode => Constants.DebugMode.TranscriberDeepgram;
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -198,13 +209,18 @@ public class DeepgramTranscriber : ITranscriber
                 state.MakeStable();
         }
         else
-            state.Append(suffix, endTime);
+            state.Append(FixSuffix(state.Stable.Text, suffix), endTime);
 
         if (state.Unstable.Length != 0)
             _ = state.Output.WriteAsync(state.Unstable);
 
-        if (isStreamFinalized)
+        if (isStreamFinalized) {
+            if (!CompleteSentenceOrEmptyRegex.IsMatch(state.Stable.Text))
+                state.CompleteSentence();
+            state.MakeStable();
+            _ = state.Output.WriteAsync(state.Stable);
             whenCompletedSource.TrySetResult();
+        }
     }
 
     private static bool TryParseFinal(
@@ -224,10 +240,7 @@ public class DeepgramTranscriber : ITranscriber
             return false;
         }
 
-        text = alternative.Transcript;
-        if (lastStableTextLength > 0 && text.Length > 0 && !char.IsWhiteSpace(text[0]))
-            text = " " + text;
-
+        text = FixSuffix(lastStable.Text, alternative.Transcript);
         var mapPoints = new List<Vector2>();
         var parsedOffset = 0;
         var parsedDuration = lastStableDuration;
@@ -266,5 +279,28 @@ public class DeepgramTranscriber : ITranscriber
             mapPoints.Add(veryLastPoint);
         timeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
         return true;
+    }
+
+    private static string FixSuffix(string prefix, string suffix)
+    {
+        var firstLetterIndex = Transcript.ContentStartRegex.Match(suffix).Length;
+        if (firstLetterIndex == suffix.Length)
+            return suffix; // Suffix is all whitespace or empty
+
+        if (firstLetterIndex == 0 && !EndsWithWhitespaceOrEmptyRegex.IsMatch(prefix)) {
+            // Add spacer
+            suffix = " " + suffix;
+            firstLetterIndex++;
+        }
+        else if (firstLetterIndex > 0 && EndsWithWhitespaceOrEmptyRegex.IsMatch(prefix)) {
+            // Remove spacer
+            suffix = suffix[firstLetterIndex..];
+            firstLetterIndex = 0;
+        }
+
+        if (CompleteSentenceOrEmptyRegex.IsMatch(prefix))
+            suffix = suffix.Capitalize(firstLetterIndex);
+
+        return suffix;
     }
 }

@@ -37,7 +37,10 @@ public class DeepgramTranscribeState(
         if (string.IsNullOrWhiteSpace(suffix))
             return this;
 
-        Unstable = Stable.WithSuffix($" {suffix}", Unstable.TimeMap, suffixEndTime);
+        var prependedSuffix = Stable.Text.EndsWith(' ')
+            ? suffix.Trim()
+            : $" {suffix.Trim()}";
+        Unstable = Stable.WithSuffix(prependedSuffix, Unstable.TimeMap, suffixEndTime);
         return this;
     }
 
@@ -46,7 +49,16 @@ public class DeepgramTranscribeState(
         if (string.IsNullOrWhiteSpace(suffix))
             return this;
 
-        Unstable = Stable.WithSuffix($" {suffix}", suffixTextToTimeMap);
+        var prependedSuffix = Stable.Text.EndsWith(' ')
+            ? suffix.Trim()
+            : $" {suffix.Trim()}";
+        Unstable = Stable.WithSuffix(prependedSuffix, suffixTextToTimeMap);
+        return this;
+    }
+
+    public DeepgramTranscribeState CompleteSentence()
+    {
+        Unstable = Unstable.WithSuffix(".", Unstable.TimeMap);
         return this;
     }
 }
