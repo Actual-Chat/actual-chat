@@ -528,34 +528,22 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return dbChats.Select(x => x.ToModel()).ToApiArray();
     }
 
-    // Not a [ComputeMethod]!
-    public async Task<Chat?> GetLastChanged(CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbChat = await dbContext.Chats
-            .OrderByDescending(x => x.Version)
-            .ThenByDescending(x => x.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        return dbChat?.ToModel();
-    }
-
     public async Task<ApiArray<ChatEntry>> ListChangedEntries(
         ChatId chatId,
         long lastLid,
         long minVersion,
+        long maxVersion,
         int limit,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var entriesQuery = lastLid > 0
-            ? dbContext.ChatEntries.Where(x => x.Version >= minVersion)
-            : dbContext.ChatEntries.Where(x => x.Version > minVersion || (x.Version == minVersion && x.LocalId > lastLid));
+        var entriesQuery = lastLid <= 0
+            ? dbContext.ChatEntries.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+            : dbContext.ChatEntries.Where(x
+                => (x.Version > minVersion && x.Version <= maxVersion)
+                || (x.Version == minVersion && x.LocalId > lastLid));
 
         return await entriesQuery
             .Where(x => x.ChatId == chatId.Value && x.Kind == ChatEntryKind.Text)

@@ -12,13 +12,13 @@ public partial class EntryIndexingMasterFlow
     public long MaxVersion { get; private set; }
 
     protected override int CurrentFlowSetVersion => 1;
-
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
     {
         var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
         if (mustContinue)
             // only created before now + 10sec. New chats are handled from events
-            MaxVersion = (Clocks.CoarseCpuClock.Now + TimeSpan.FromSeconds(10)).EpochOffset.Ticks;
+            // Note: intentionally set negative number
+            MaxVersion = Clocks.GetMaxVersion(TimeSpan.FromSeconds(-10));
 
         return mustContinue;
     }

@@ -21,7 +21,7 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, P
     {
         var placesBackend = Host.Services.GetRequiredService<IPlacesBackend>();
         var settings = Host.Services.GetRequiredService<MLSearchSettings>();
-        var maxVersion = (Clocks.CoarseCpuClock.Now - settings.IndexingDelay).EpochOffset.Ticks;
+        var maxVersion = Clocks.GetMaxVersion(settings.IndexingDelay);
         cursor ??= new (PlaceId.None, 0);
         var batch = await placesBackend.ListChanged(
                 cursor.LastUpdatedVersion,
@@ -30,7 +30,7 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, P
                 BatchSize,
                 cancellationToken)
             .ConfigureAwait(false);
-        Log.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
+        DebugLog?.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
         return batch;
     }
 

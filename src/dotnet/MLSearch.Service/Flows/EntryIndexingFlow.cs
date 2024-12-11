@@ -1,7 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Flows;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
-using ActualChat.MLSearch.Indexing.ChatContent;
+using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
 using ActualChat.Search;
 using MemoryPack;
@@ -12,7 +12,13 @@ namespace ActualChat.MLSearch.Flows;
 public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
 {
     protected override int CurrentFlowSetVersion => 1;
-    private Task WhenReady => Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+
+    [field: AllowNull, MaybeNull]
+    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
+    [field: AllowNull, MaybeNull]
+    private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
 
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
         => await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false)
@@ -22,16 +28,17 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
-        // TODO: maxVersion = now - IndexingDelay
-        var updateLoader = Host.Services.GetRequiredService<IChatContentUpdateLoader>();
-        cursor ??= new (ChatEntryId.None, 0);
-        return await updateLoader.LoadChatUpdatesAsync(new ChatId(Id.Arguments),
-                cursor.LastUpdatedVersion,
+        var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
+        cursor ??= new (new ChatEntryId(new ChatId(Id.Arguments), ChatEntryKind.Text, 0, AssumeValid.Option), 0);
+        var batch = await ChatsBackend.ListChangedEntries(cursor.LastUpdatedId.ChatId,
                 cursor.LastUpdatedId.LocalId,
+                cursor.LastUpdatedVersion,
+                maxVersion,
+                BatchSize,
                 cancellationToken)
-            .Take(BatchSize)
-            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        Log.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
+        return batch;
     }
 
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)

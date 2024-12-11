@@ -58,32 +58,6 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         batches.Should().BeEmpty();
     }
 
-    [Theory]
-    [InlineData(150, 27)]
-    [InlineData(30, 15)]
-    public async Task ShouldListChangedGroups(int chatCount, int limit)
-    {
-        // arrange
-        var lastChanged = await ChatsBackend.GetLastChanged(CancellationToken.None);
-        await Tester.SignInAsBob();
-        var created = await CreateChats(chatCount);
-
-        // act
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var cancellationToken = cts.Token;
-        var retrieved = await ChatsBackend.BatchChangedGroups(
-                lastChanged?.Version ?? 0,
-                long.MaxValue,
-                lastChanged?.Id ?? ChatId.None,
-                limit,
-                cancellationToken)
-            .ToApiArrayAsync(cancellationToken)
-            .Flatten();
-
-        // assert
-        retrieved.Select(x => x.Title).Should().Contain(created.Select(x => x.Title));
-    }
-
     private async Task<Chat[]> CreateChats(int count)
     {
         var chats = new Chat[count];
