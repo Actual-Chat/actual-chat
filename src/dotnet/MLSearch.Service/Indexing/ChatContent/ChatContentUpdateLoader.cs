@@ -22,7 +22,12 @@ internal class ChatContentUpdateLoader(
             bool continueReadUpdates;
             do {
                 var updatedEntries = await chats
-                    .ListChangedEntries(targetId, lastEntryLocalId, lastEntryVersion, batchSize, cancellationToken)
+                    .ListChangedEntries(targetId,
+                        lastEntryLocalId,
+                        lastEntryVersion,
+                        long.MaxValue,
+                        batchSize,
+                        cancellationToken)
                     .ConfigureAwait(false);
                 foreach (var entry in updatedEntries) {
                     lastEntryVersion = Math.Max(lastEntryVersion, entry.Version);

@@ -13,15 +13,17 @@ public partial class GroupContactIndexingFlow : BatchedIndexingFlowBase<Chat.Cha
 {
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingRecheckInterval;
-    private Task WhenReady => Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    [field: AllowNull, MaybeNull]
+    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    [field: AllowNull, MaybeNull]
+    private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(
         IndexingFlowCursor<ChatId>? cursor,
         CancellationToken cancellationToken)
     {
         var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var settings = Host.Services.GetRequiredService<MLSearchSettings>();
-        var maxVersion = (Clocks.CoarseCpuClock.Now - settings.IndexingDelay).EpochOffset.Ticks;
+        var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
         cursor ??= new (ChatId.None, 0);
         var batch = await chatsBackend.ListChanged(
                 new () {
