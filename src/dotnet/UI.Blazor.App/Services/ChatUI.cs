@@ -28,6 +28,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IUserPresences UserPresences => Hub.UserPresences;
     private IAccounts Accounts => Hub.Accounts;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private AccountUI AccountUI => Hub.AccountUI;

@@ -638,14 +638,24 @@ export class VirtualList {
             if (rs.hasVeryLastItem)
                 endSpacerSize = 0;
         }
-        this._spacerRef.style.height = `${spacerSize}px`;
-        this._endSpacerRef.style.height = `${endSpacerSize}px`;
-        this._spacerSize = spacerSize;
-        this._endSpacerSize = endSpacerSize;
+        fastRaf({ write: () => {
+            // Delay until the next frame to prevent layout thrashing
+            this._spacerRef.style.height = `${spacerSize}px`;
+            this._endSpacerRef.style.height = `${endSpacerSize}px`;
+            this._spacerSize = spacerSize;
+            this._endSpacerSize = endSpacerSize;
+        }});
 
         const startedAt = this._renderStartedAt;
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
+        let positionSet = false;
+        if (this._pivots.length) {
+            // Restore scroll position first, and then use smooth scroll to go to the scroll target
+            this.restoreScrollPosition(startedAt);
+            positionSet = true;
+        }
+
         try {
             this._renderState = rs;
 
@@ -675,7 +685,7 @@ export class VirtualList {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                     this.scrollToEdge(VirtualListEdge.End, true);
                 }
-            } else if (this._stickyEdge != null && rs.query.isNone) {
+            } else if (this._stickyEdge != null/* && rs.query.isNone*/) {
                 // Sticky edge scroll when we are not requesting data with query - render of new items only
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
                     ? this.getFirstItemKey()
@@ -683,6 +693,7 @@ export class VirtualList {
                         ? this.getLastItemKey()
                         : null;
                 if (itemKey == null) {
+                    console.warn('endRender: sticky edge scroll failed', this._stickyEdge);
                     // let's scroll to the latest edge key when we've got a lot of new messages
                     if (this._stickyEdge?.edge === VirtualListEdge.End) {
                         let itemRef = this.getItemRef(this._stickyEdge.itemKey);
@@ -690,6 +701,7 @@ export class VirtualList {
                     }
                     this.setStickyEdge(null);
                 } else {
+                    console.warn('endRender: sticky edge scroll', this._stickyEdge);
                     this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
                     if (this._stickyEdge?.edge === VirtualListEdge.End) {
                         this.scrollToEdge(VirtualListEdge.End, true);
@@ -699,17 +711,14 @@ export class VirtualList {
                     }
                 }
             }
-            else if (this._pivots.length) {
-                await this.restoreScrollPosition(startedAt);
-
-                // ensure scroll position and size are recalculated
-                await fastWriteRaf();
-            }
-            else {
+            else if (!positionSet) {
                 if (rs.renderIndex <= 2)
                     this.scrollToEdge(this._defaultEdge, false);
                 warnLog?.log(`endRender: there are no pivots`);
             }
+
+            // ensure scroll position and size are recalculated
+            await fastWriteRaf();
         } finally {
             const anchorRefs = [...this._containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item.anchor')]
             for (const anchorRef of anchorRefs) {
@@ -724,10 +733,6 @@ export class VirtualList {
             this._pivots = [];
             this._itemRange = null;
             this._viewport = null;
-
-            // trigger update only for first render to load data if needed
-            if (rs.renderIndex <= 1)
-                void this.updateViewport();
         }
     }
 
@@ -976,7 +981,6 @@ export class VirtualList {
         useSmoothScroll: boolean = false,
         blockPosition: ScrollLogicalPosition = 'center') {
         debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
-        this._inertialScroll.freeze();
         this._scrollTime = Date.now();
         if (itemRef) {
             const authorBadge = itemRef.querySelector('div.c-author-badge');
@@ -987,11 +991,6 @@ export class VirtualList {
                 inline: 'nearest',
             });
         }
-        fastRaf({
-            write: () => {
-                this._inertialScroll.unfreeze();
-            }
-        });
     }
 
     private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll: boolean = false): void {
@@ -999,43 +998,36 @@ export class VirtualList {
         const isInitialRender = now - this.createdAt < 1500; // first 1.5 seconds after creating the virtual list
         if (this._renderState.renderIndex <= 1 || isInitialRender)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
-        if (DeviceInfo.isIos) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
-            useSmoothScroll = false;
-        debugLog?.log('scrollTo end', edge, useSmoothScroll);
         this._scrollTime = Date.now();
-        if (edge == VirtualListEdge.End) {
-            const isFarFromEdge = (this._ref.scrollHeight - this._ref.scrollTop) > 2 * this._ref.offsetHeight;
-            if (isFarFromEdge)
-                useSmoothScroll = false;
-            if (useSmoothScroll) {
-                this._endAnchorRef.scrollIntoView({
-                    behavior: "smooth",
-                    block: 'center',
-                    inline: 'nearest',
-                });
-            } else {
-                let scrollHeight = 0;
-                fastRaf({
-                    read: () => scrollHeight = this._ref.scrollHeight,
-                    write: () => this._ref.scrollTop = scrollHeight,
-                });
+        let scrollHeight = 0;
+        fastRaf({
+            read: () => {
+                scrollHeight = this._ref.scrollHeight;
+                const isFarFromEdge = edge == VirtualListEdge.End
+                    ? (scrollHeight - this._ref.scrollTop) > 2 * this._ref.offsetHeight
+                    : this._ref.scrollTop > this._ref.offsetHeight;
+                useSmoothScroll = useSmoothScroll && !isFarFromEdge;
+            },
+            write: () => {
+                const target = edge == VirtualListEdge.End
+                    ? this._endAnchorRef
+                    : this._spacerRef;
+                if (useSmoothScroll)
+                    target.scrollIntoView({
+                        behavior: "smooth",
+                        block: 'center',
+                        inline: 'nearest',
+                    });
+                else {
+                    this._ref.scrollTop = edge == VirtualListEdge.End ? scrollHeight : 0;
+                }
+                if (edge == VirtualListEdge.End) {
+                    void this.turnOnIsEndAnchorVisible();
+                    this.turnOffIsEndAnchorVisibleDebounced.reset();
+                }
+                debugLog?.log('scrollToEdge', edge, useSmoothScroll);
             }
-            void this.turnOnIsEndAnchorVisible();
-            this.turnOffIsEndAnchorVisibleDebounced.reset();
-        } else {
-            const isFarFromEdge = this._ref.scrollTop > this._ref.offsetHeight;
-            if (isFarFromEdge)
-                useSmoothScroll = false;
-            if (useSmoothScroll) {
-                this._spacerRef.scrollIntoView({
-                    behavior: "smooth",
-                    block: 'center',
-                    inline: 'nearest',
-                });
-            } else {
-                this._ref.scrollTop = 0;
-            }
-        }
+        });
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
@@ -1048,69 +1040,80 @@ export class VirtualList {
             this._stickyEdge = stickyEdge;
             if (stickyEdge?.edge === VirtualListEdge.End) {
                 const lastItemRef = this.getLastItemRef();
-                if (lastItemRef && !lastItemRef.classList.contains('anchor'))
-                    lastItemRef.classList.add('anchor');
+                if (!lastItemRef)
+                    return false;
+
+                let hasAnchor = false;
+                fastRaf({
+                    read: () => { hasAnchor = lastItemRef.classList.contains('anchor'); },
+                    write: () => {
+                        if (!hasAnchor)
+                            lastItemRef.classList.add('anchor');
+                    },
+                });
             }
             return true;
         }
         return false;
     }
 
-    private async restoreScrollPosition(renderTime: number, iteration: number = 0): Promise<void> {
-        debugLog?.log(`restoreScrollPosition: pivots`, [...this._pivots], renderTime);
-
-        let pivots = this._pivots;
+    private restoreScrollPosition(renderTime: number): void {
+        const pivots = [...this._pivots];
         pivots.sort((l,r) => Math.abs(l.offset) - Math.abs(r.offset));
-        for (const pivot of pivots) {
-            // resync scroll to make pivot ref position the same within viewport
-            const pivotRef = this.getItemRef(pivot.itemKey);
-            if (!pivotRef)
-                continue;
 
-            let scrollTop: number | null = null;
-            let shouldResync = false;
-
-            const pivotEpsilon = PivotSyncEpsilon + 100 * iteration;
-            // code below triggers forced reflow - but it's OK  - reflow will be triggered after adding new elements anyway
-            const pivotOffset = pivot.offset;
-            const itemRect = pivotRef.getBoundingClientRect();
-            const currentPivotOffset = Math.round(itemRect.top);
-            const dPivotOffset = pivotOffset - currentPivotOffset;
-            scrollTop = this._ref.scrollTop;
-            if (Math.abs(dPivotOffset) > pivotEpsilon) {
-                debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${Math.round(itemRect.top)} + ${dPivotOffset}`, pivot);
-                scrollTop -= dPivotOffset;
-                shouldResync = true;
-            }
-            if (shouldResync) {
-                // debug helper
-                // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
-
-                // set scroll styles to improve UX on iOS before setting scrollTop
-                this._inertialScroll.freeze();
-                this._ref.scrollTop = scrollTop;
-                fastRaf({
-                    write: () => {
-                        this._inertialScroll.unfreeze();
-                    }
-                });
-                debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
-            } else if (this._isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
-                debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this.isRendering);
-
-                // we have lost scroll offset so let's scroll to the last visible pivot
-                this.scrollTo(pivotRef, false);
-            } else
-                debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
-
-
-            // check position again, on Chromium scrollTop can be stale
-            // if (DeviceInfo.isChromium && (shouldResync || iteration < 2 ))
-            //     await this.restoreScrollPosition(renderTime, iteration+1);
-
+        const tuple = pivots
+            .map(pivot => ({ pivotRef: this.getItemRef(pivot.itemKey), pivot }))
+            .find(t => t.pivotRef);
+        if (!tuple) {
+            warnLog?.log(`restoreScrollPosition: there are no pivot refs found!`);
             return;
         }
-        warnLog?.log(`restoreScrollPosition: there are no pivot refs found!`);
+
+        // resync scroll to make pivot ref position the same within viewport
+        const { pivotRef, pivot } = tuple;
+        let scrollTop: number | null = null;
+        let shouldResync = false;
+
+        fastRaf({
+            read: () => {
+                const pivotEpsilon = PivotSyncEpsilon;
+                // code below triggers forced reflow - but it's OK  - reflow will be triggered after adding new elements anyway
+                const pivotOffset = pivot.offset;
+                const itemRect = pivotRef.getBoundingClientRect();
+                const currentPivotOffset = Math.round(itemRect.top);
+                const dPivotOffset = pivotOffset - currentPivotOffset;
+                scrollTop = this._ref.scrollTop;
+                if (Math.abs(dPivotOffset) > pivotEpsilon) {
+                    debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${Math.round(itemRect.top)} + ${dPivotOffset}`, pivot);
+                    scrollTop -= dPivotOffset;
+                    shouldResync = true;
+                }
+            },
+            write: () => {
+                debugLog?.log(`restoreScrollPosition: pivots`, pivots, renderTime);
+
+                if (shouldResync) {
+                    // debug helper
+                    // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+
+                    // set scroll styles to improve UX on iOS before setting scrollTop
+                    this._inertialScroll.freeze();
+                    this._ref.scrollTop = scrollTop;
+                    fastRaf({
+                        write: () => {
+                            this._inertialScroll.unfreeze();
+                        }
+                    });
+                    debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
+                } else if (this._isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
+                    debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this.isRendering);
+
+                    // we have lost scroll offset so let's scroll to the last visible pivot
+                    this.scrollTo(pivotRef, false);
+                } else
+                    debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
+            }
+        });
     }
 
     private async measureItems(): Promise<void> {
@@ -1375,22 +1378,13 @@ export class VirtualList {
 
         switch (lastQuerySide) {
             case 'none':
-                // check whether we need to load from the start first
-                if (alreadyLoadedFromStart < loadZoneTrigger) {
-                    if (!rs.hasVeryFirstItem)
-                        loadStart = viewport.start - loadZoneSize; // extend from the start
-                }
-                else if (alreadyLoadedTillEnd < loadZoneTrigger) {
-                    if (!rs.hasVeryLastItem)
-                        loadEnd = viewport.end + loadZoneSize; // extend from the end
-                }
                 break;
             case 'end':
                 // check whether we need to continue loading from the end
                 if (alreadyLoadedTillEnd < loadZoneTrigger) {
                     if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
-                        loadEnd = viewport.end + loadZoneSize * 2;
-                        loadStart = viewport.start - viewportSize / 2;
+                        loadEnd = viewport.end + loadZoneSize * 1.5;
+                        loadStart = viewport.start - viewportSize / 3;
                     }
                 }
                 else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
@@ -1405,8 +1399,8 @@ export class VirtualList {
                 // check whether we need to continue loading from the start
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
                     if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
-                        loadStart = viewport.start - loadZoneSize * 2;
-                        loadEnd = viewport.end + viewportSize / 2;
+                        loadStart = viewport.start - loadZoneSize * 1.5;
+                        loadEnd = viewport.end + viewportSize / 3;
                     }
                 }
                 else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction

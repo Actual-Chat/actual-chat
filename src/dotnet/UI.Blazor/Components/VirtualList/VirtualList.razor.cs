@@ -44,7 +44,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public double SpacerSize { get; set; } = 200;
     [Parameter] public VirtualListEdge DefaultEdge { get; set; }
     [Parameter] public double ExpandTriggerMultiplier { get; set; } = 1;
-    [Parameter] public double ExpandMultiplier { get; set; } = 1.5;
+    [Parameter] public double ExpandMultiplier { get; set; } = 1;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
