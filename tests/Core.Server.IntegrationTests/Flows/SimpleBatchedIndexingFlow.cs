@@ -8,9 +8,12 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
 {
     public const int BatchSizeOverride = 3;
     public const int QuotaOverride = 6;
+    public static readonly TimeSpan RecheckIntervalOverride = TimeSpan.FromSeconds(1.5);
     protected override int BatchSize => BatchSizeOverride;
     protected override int Quota => QuotaOverride;
     protected override int CurrentFlowSetVersion => 1;
+    protected override TimeSpan RecheckInterval => RecheckIntervalOverride;
+    protected override TimeSpan TimerRescheduleThreshold => TimeSpan.FromSeconds(0.5);
 
     [IgnoreDataMember, MemoryPackIgnore]
     private BatchedIndexingFlowTestContext<SimpleItem> Context => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem>>();
@@ -37,9 +40,9 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
         Context.OnProcessed(Id.Arguments, batch);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processCount, CancellationToken cancellationToken)
+    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
     {
-        var result = await base.HandleTail(processCount, cancellationToken);
-        return await Context.HandleTail(Id.Arguments, processCount) ?? result;
+        var result = await base.HandleTail(processedCount, cancellationToken);
+        return await Context.HandleTail(Id.Arguments, processedCount) ?? result;
     }
 }

@@ -8,6 +8,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    private static readonly TimeSpan RecheckInterval = SimpleBatchedIndexingFlow.RecheckIntervalOverride;
     private IndexingFlowTestContext Context { get; } = fixture.AppHost.Services.GetRequiredService<IndexingFlowTestContext>();
 
     [Theory]
@@ -39,14 +40,13 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
                 .HaveCount(batchCount + 1);
             transitions[..^1].Should().AllBeEquivalentTo(("OnIndex", (TimeSpan?)null));
             transitions[^1].Step.Should().Be("OnIndex");
-            transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(3));
+            transitions[^1].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
             var flow = await Flows.Get<SimpleIndexingFlow>(id);
-            (flow!.NextRecheckAt - start).Should().BeCloseTo(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(3));
+            (flow!.NextRecheckAt - start).Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
         }, TimeSpan.FromSeconds(10));
 
         // act
         Context.Add(id, [new (false, true, (batchCount + 1) * batchSize, 0)]);
-        await Flows.GetAndResume<SimpleIndexingFlow>(id);
 
         // assert
         await TestExt.When(async () => {

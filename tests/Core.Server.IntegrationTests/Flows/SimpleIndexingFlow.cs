@@ -7,7 +7,10 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public partial class SimpleIndexingFlow : IndexingFlowBase<long>
 {
     protected override int CurrentFlowSetVersion => 1;
+    public static readonly TimeSpan RecheckIntervalOverride = TimeSpan.FromSeconds(1.5);
 
+    protected override TimeSpan RecheckInterval => RecheckIntervalOverride;
+    protected override TimeSpan TimerRescheduleThreshold => TimeSpan.FromSeconds(0.5);
     [IgnoreDataMember, MemoryPackIgnore]
     private IndexingFlowTestContext Context => Host.Services.GetRequiredService<IndexingFlowTestContext>();
 

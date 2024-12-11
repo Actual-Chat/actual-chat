@@ -17,7 +17,7 @@ public abstract class IndexingMasterFlowBase<TIndexingFlow, TItem, TId>
     protected virtual string BuildArguments(TItem item)
         => item.Id.Value;
 
-    protected override Task<IndexingFlowTransitionKind> HandleTail(int processCount, CancellationToken cancellationToken)
+    protected override Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
     {
         // stop indexing until version is bumped
         FlowSetVersion = CurrentFlowSetVersion;
