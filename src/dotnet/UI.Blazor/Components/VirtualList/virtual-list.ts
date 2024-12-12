@@ -652,8 +652,7 @@ export class VirtualList {
         let positionSet = false;
         if (this.pivots.length) {
             // Restore scroll position first, and then use smooth scroll to go to the scroll target
-            this.restoreScrollPosition(startedAt);
-            positionSet = true;
+            positionSet = this.restoreScrollPosition(startedAt);
         }
 
         try {
@@ -875,8 +874,17 @@ export class VirtualList {
         const firstItemKey = getItemKey(firstItemRef);
         const secondItemRef = firstItemRef?.nextElementSibling as HTMLElement;
         const secondItemKey = getItemKey(secondItemRef);
+        let medianVisibleKey = null;
+        if (this.visibleItems.size) {
+            const visibleItems = [...this.visibleItems.values()];
+            medianVisibleKey = visibleItems[Math.floor(visibleItems.length / 2)];
+            const medianRef = this.getItemRef(medianVisibleKey);
+            if (medianRef)
+                if (!medianRef.classList.contains('anchor'))
+                    medianRef.classList.add('anchor');
+        }
 
-        const itemKeys = [secondItemKey, this.query.keyRange?.start, this.query.keyRange?.end, this.getLastItemKey()];
+        const itemKeys = [medianVisibleKey, this.getLastItemKey(), this.query.keyRange?.end, secondItemKey, this.query.keyRange?.start];
         for (let itemKey of itemKeys) {
             if (itemKey === firstItemKey)
                 continue;
@@ -897,15 +905,6 @@ export class VirtualList {
         }
         if (pivots.length)
             this.pivots = pivots;
-
-        if (this.visibleItems.size) {
-            const visibleItems = [...this.visibleItems.values()];
-            const medianVisibleKey = visibleItems[Math.floor(visibleItems.length / 2)];
-            const medianRef = this.getItemRef(medianVisibleKey);
-            if (medianRef)
-                if (!medianRef.classList.contains('anchor'))
-                    medianRef.classList.add('anchor');
-        }
     }
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
@@ -1069,13 +1068,16 @@ export class VirtualList {
 
     private restoreScrollPosition(renderTime: number): boolean {
         const pivots = [...this.pivots];
-        pivots.sort((l, r) => Math.abs(l.offset) - Math.abs(r.offset));
-
         const tuple = pivots
             .map(pivot => ({ pivotRef: this.getItemRef(pivot.itemKey), pivot }))
             .find(t => t.pivotRef);
         if (!tuple) {
             warnLog?.log(`restoreScrollPosition: there are no pivot refs found!`);
+            return false;
+        }
+
+        if (renderTime - this.createdAt < 1500) {
+            // Do not restore scroll position during initial render`
             return false;
         }
 
