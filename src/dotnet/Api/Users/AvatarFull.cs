@@ -25,6 +25,9 @@ public sealed partial record AvatarFull(
         Name = Name,
         Bio = Bio,
         MediaId = MediaId,
+        Media = Media,
+        AvatarKey = AvatarKey,
+        PictureUrl = PictureUrl,
     };
 
     public AvatarFull WithMissingPropertiesFrom(AvatarFull? other)

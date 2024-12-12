@@ -1,0 +1,28 @@
+@using ActualChat.Roulette
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="interests-selector cr-badge-selector c-content">
+    @foreach (var option in ActualChat.Roulette.Interests.All) {
+        var isSelected = Interests.Contains(option);
+        var cls = isSelected ? "selected" : "";
+        <div class="cr-badge profile-badge clickable @cls" @onclick="@(() => Select(option, !isSelected))">
+            @ActualChat.Roulette.Interests.GetTitle(option)
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public ImmutableArray<Interest> Interests { get; set; } = ImmutableArray<Interest>.Empty;
+    [Parameter] public EventCallback<ImmutableArray<Interest>> InterestsChanged { get; set; }
+
+    private Task Select(Interest interest, bool select) {
+        var interests = Interests;
+        if (select) {
+            if (!interests.Contains(interest))
+                interests = interests.Add(interest);
+        } else {
+            interests = interests.Remove(interest);
+        }
+        return InterestsChanged.InvokeAsync(interests);
+    }
+}

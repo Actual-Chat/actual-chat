@@ -1,14 +1,37 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Roulette
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<List<AvatarFull>>
+@inherits ComputedStateComponent<ChatRouletteCenter.Model>
 @{
-    var avatars = State.Value;
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    var candidates = m.ChatCandidates;
+    var profile = m.Profile;
 }
 
 <div class="cr-center">
-    <div class="cr-main-title">Here are some people ready to chat:</div>
-    @foreach (var avatar in avatars) {
-        <ChatRouletteItem Avatar="@avatar"/>
+    @if (m.SearchState == SearchState.Completed) {
+        @if (candidates.IsEmpty) {
+            <div class="cr-main-title">No people found to chat. Try to change filter criteria.</div>
+        } else {
+            <div class="cr-main-title">Here are some people ready to chat:</div>
+            @foreach (var candidate in candidates) {
+                <ChatRouletteCandidate Profile="@candidate.Profile" StartChatClick="@(() => OnStartChatClick(profile, candidate.Profile))"/>
+            }
+        }
+    }
+    else if (m.SearchState == SearchState.Started) {
+        <div class="cr-main-title">Search is in progress...</div>
+    } else {
+        @if (profile.IsNone || profile.Preferences.Preferences.IsEmpty) {
+            <div class="cr-main-title">Select and fill in chat roulette profile or create a new one.</div>
+        } else if (!m.SearchCriteria.IsSufficientForFiltering) {
+            <div class="cr-main-title">Check search filter.</div>
+        } else {
+            <div class="cr-main-title">Ready to talk? Push Start!</div>
+        }
     }
 
     <Button Class="cr-btn" Click="@OnStopRouletteClick">
@@ -17,37 +40,67 @@
 </div>
 
 @code {
+    private Task _whenLoaded = null!;
+
     [Inject] ChatUIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
     private IAvatars Avatars => Hub.Avatars;
+    private IRoulette Roulette => Hub.Roulette;
     private Session Session => Hub.Session();
+    private RouletteUI RouletteUI => Hub.RouletteUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
 
-    protected override ComputedState<List<AvatarFull>>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<List<AvatarFull>>.Options() {
-                InitialValue = [],
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
-    protected override async Task<List<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
-        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
-        var avatars = await avatarIds
-            .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
-            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
-            .ConfigureAwait(false);
-        return avatars.SkipNullItems().ToList();
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var selectedProfile = await RouletteUI.SelectedProfile.Use(cancellationToken).ConfigureAwait(false);
+        var searchCriteria = await RouletteUI.SearchCriteria.Use(cancellationToken).ConfigureAwait(false);
+        var search = await RouletteUI.ActiveSearch.Use(cancellationToken).ConfigureAwait(false);
+        if (search is not null) {
+            return new Model {
+                SearchState = search.IsCompleted ? SearchState.Completed : SearchState.Started,
+                ChatCandidates = search.Results,
+                SearchCriteria = search.Request.Criteria,
+                Profile = selectedProfile,
+            };
+        }
+
+        return new Model {
+            Profile = selectedProfile,
+            SearchCriteria = searchCriteria
+        };
     }
 
-    private void OnSettingsClick()
-        => _ = UIEventHub.Publish(new ShowSettingsEvent());
-
-    private void OnStopRouletteClick() {
+    private async Task OnStopRouletteClick() {
         // if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow()) {
         //     Hub.PanelsUI.Left.SetIsVisible(true);
         //     return;
         // }
 
+        //
+        var wentBack = await Hub.History.TryStepBack();
+        if (wentBack)
+            return;
+
         _ = Hub.History.NavigateTo(Links.Chats);
+    }
+
+    private void OnStartChatClick(Profile ownProfile, Profile peerProfile)
+        => _ = RouletteUI.StartChat(ownProfile.Id, peerProfile.Id);
+
+    public enum SearchState { None, Started, Completed }
+
+    public record Model {
+        public static readonly Model Loading = new ();
+
+        public Profile Profile { get; init; } = Profile.None;
+        public SearchState SearchState { get; init; } = SearchState.None;
+        public Preferences SearchCriteria { get; init; } = Preferences.Empty;
+        public ImmutableArray<ChatCandidate> ChatCandidates { get; init; } = ImmutableArray<ChatCandidate>.Empty;
     }
 }

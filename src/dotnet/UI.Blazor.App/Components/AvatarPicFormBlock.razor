@@ -1,0 +1,57 @@
+@using ActualLab.Generators
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="c-top">
+    <Pic
+        Title="@Title"
+        Picture="@Picture"
+        Size="@SquareSize.SizeFull"
+        IsSquare="@true"
+        IsBlurred="@true"/>
+
+    @if (CloseRequested.HasDelegate) {
+        <ButtonRound Click="@CloseRequested" Class="btn-sm right-panel-close-btn">
+            <i class="icon-close text-2xl text-toast-text"></i>
+        </ButtonRound>
+    }
+</div>
+
+<div class="c-center">
+    <PicUpload
+        UploadUrl="@UploadUrl"
+        IsSquare="false"
+        Size="@SquareSize.Size16"
+        Title="@Title"
+        Picture="@Picture"
+        Picked="@OnImagePicked"/>
+
+    <div class="c-buttons">
+        <PicUploadButton
+            UploadUrl="@UploadUrl"
+            Picked="@OnImagePicked">
+            <Icon>
+                <i class="icon-image text-2xl"></i>
+            </Icon>
+        </PicUploadButton>
+
+        <ButtonRound Class="btn-modal btn-sm" Click="@OnGenerateAvatarClick">
+            <i class="icon-sync"></i>
+        </ButtonRound>
+    </div>
+</div>
+
+@code {
+    private static readonly string UploadUrl = "/api/avatars/upload-picture";
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public Picture? Picture { get; set; }
+    [Parameter] public EventCallback<Picture> ImagePicked { get; set; }
+    [Parameter] public EventCallback CloseRequested { get; set; }
+
+    private void OnGenerateAvatarClick()
+        => ImagePicked.InvokeAsync(new Picture(null, null, DefaultUserPicture.GetAvatarKey(IdGenerator.Next())));
+
+    private void OnImagePicked(MediaContent mediaContent)
+        => ImagePicked.InvokeAsync(new(mediaContent));
+}

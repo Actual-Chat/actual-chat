@@ -1,3 +1,4 @@
+using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -47,11 +48,16 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private AppBlazorCircuitContext? _circuitContext;
     private IJSRuntime? _jsRuntime;
     private AnalyticEvents? _analyticEvents;
+    private IRoulette? _roulette;
+    private IRouletteProfiles? _rouletteProfiles;
+    private ComponentIdGenerator? _componentIdGenerator;
 
     public IFusionTime FusionTime => _fusionTime ??= Services.GetRequiredService<IFusionTime>();
     public LiveTime LiveTime => _liveTime ??= Services.GetRequiredService<LiveTime>();
     public IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     public IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
+    public IRoulette Roulette => _roulette ??= Services.GetRequiredService<IRoulette>();
+    public IRouletteProfiles RouletteProfiles => _rouletteProfiles ??= Services.GetRequiredService<IRouletteProfiles>();
     public Media.IMediaLinkPreviews MediaLinkPreviews => _linkPreviews ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
     public ISearch Search => _search ??= Services.GetRequiredService<ISearch>();
     public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
@@ -86,6 +92,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     public AppBlazorCircuitContext CircuitContext => _circuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
     public AnalyticEvents AnalyticEvents => _analyticEvents ??= Services.GetRequiredService<AnalyticEvents>();
+    public ComponentIdGenerator ComponentIdGenerator => _componentIdGenerator ??= Services.GetRequiredService<ComponentIdGenerator>();
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
     public UICommander UICommander() => _uiCommander ??= Services.UICommander();

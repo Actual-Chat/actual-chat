@@ -1,0 +1,30 @@
+@using ActualChat.Roulette
+@namespace ActualChat.UI.Blazor.Components
+
+<ChatRouletteItem Profile="Profile">
+    <ActionsTemplate>
+        <ButtonRound Class="btn-xxs btn-transparent blackout" Click="@OnEditProfileClick">
+            <i class="icon-edit"></i>
+        </ButtonRound>
+        <ButtonRound Class="btn-xxs choose-avatar-btn" IsDisabled="@IsSelected" Click="@SelectClick">
+            @if (IsSelected) {
+                <i class="icon-checkmark-simple"></i>
+            }
+        </ButtonRound>
+    </ActionsTemplate>
+</ChatRouletteItem>
+
+@code {
+    [Inject] ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private ModalUI ModalUI => Hub.ModalUI;
+    private UICommander UICommander => Hub.UICommander();
+
+    [Parameter] public Profile Profile { get; set; } = null!;
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public EventCallback SelectClick { get; set; }
+
+    private void OnEditProfileClick()
+        => _ = ModalUI.Show(new ChatRouletteProfileEditorModal.Model(Profile.Id));
+}

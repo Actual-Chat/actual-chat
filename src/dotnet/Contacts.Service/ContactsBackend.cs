@@ -592,6 +592,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                     chatId, author, oldAuthor);
             else if (chat.IsAiSearchChat())
                 return; // Do not create contacts for ML Search chats
+            else if (chat.IsChatRoulette())
+                return; // Do not create contacts for Chat Roulette.
         }
 
         var change = author.HasLeft

@@ -50,6 +50,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <CompressionEnabled>false</CompressionEnabled>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <!-- Key folders -->
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>

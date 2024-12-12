@@ -10,6 +10,7 @@ using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.MLSearch;
 using ActualChat.Notification;
+using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
@@ -68,6 +69,10 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // UserLinks
         fusion.AddClient<IUserLinks>();
+
+        // Chat Roulette
+        fusion.AddClient<IRoulette>();
+        fusion.AddClient<IRouletteProfiles>();
 
         // Users
         rpc.AddClient<ISecureTokens>();

@@ -11,7 +11,9 @@ namespace ActualChat.Media.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+ #pragma warning disable VSTHRD002
             UpAsync(migrationBuilder).Wait();
+ #pragma warning restore VSTHRD002
         }
 
         /// <inheritdoc />

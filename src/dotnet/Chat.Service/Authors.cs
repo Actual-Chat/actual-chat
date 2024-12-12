@@ -78,6 +78,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat == null)
             return null;
 
+        if (chat.IsChatRoulette())
+            return null; // NOTE(DF): Do not reveal account id. Do not allow starting peer chat.
+
         var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
@@ -314,7 +317,10 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
         var (session, chatId, avatarId) = command;
-        await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        if (chat.IsChatRoulette())
+            throw StandardError.Constraint("You can't set avatar in chat roulette.");
+
         var targetChat = chatId.IsPlaceChat ? chatId.PlaceId.ToRootChatId() : chatId;
 
         var author = await GetOwn(session, targetChat, cancellationToken).ConfigureAwait(false);

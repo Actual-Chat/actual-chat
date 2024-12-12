@@ -248,6 +248,43 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("kvas_entries");
                 });
 
+            modelBuilder.Entity("ActualChat.Users.Db.DbRouletteProfilePrefs", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("CountryCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("country_code");
+
+                    b.Property<int>("Gender")
+                        .HasColumnType("integer")
+                        .HasColumnName("gender");
+
+                    b.Property<string>("Interests")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("interests");
+
+                    b.Property<string>("Languages")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("languages");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_roulette_profile_prefs");
+
+                    b.ToTable("roulette_profile_prefs");
+                });
+
             modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>
                 {
                     b.Property<string>("Id")

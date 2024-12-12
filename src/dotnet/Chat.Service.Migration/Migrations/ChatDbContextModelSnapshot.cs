@@ -415,6 +415,62 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("chat_entries");
                 });
 
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatRoulette", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ProfileId1")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("profile_id1")
+                        .UseCollation("C");
+
+                    b.Property<string>("ProfileId2")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("profile_id2")
+                        .UseCollation("C");
+
+                    b.Property<string>("UserId1")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id1")
+                        .UseCollation("C");
+
+                    b.Property<string>("UserId2")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id2")
+                        .UseCollation("C");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_roulettes");
+
+                    b.HasIndex("ChatId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_roulettes_chat_id");
+
+                    b.HasIndex("ProfileId1", "ProfileId2")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_roulettes_profile_id1_profile_id2");
+
+                    b.ToTable("chat_roulettes");
+                });
+
             modelBuilder.Entity("ActualChat.Chat.Db.DbMention", b =>
                 {
                     b.Property<string>("Id")

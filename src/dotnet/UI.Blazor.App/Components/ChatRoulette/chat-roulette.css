@@ -93,6 +93,9 @@ body.narrow .cr-center {
     @apply bg-03;
     @apply text-xs;
 }
+.cr-badge.clickable {
+    @apply cursor-pointer;
+}
 .cr-badge i {
     @apply text-03;
 }
@@ -100,25 +103,24 @@ body.narrow .cr-center {
     @apply bg-[var(--indigo-99)];
     @apply text-[var(--indigo-60)];
 }
-.cr-badge.profile-badge {
+.cr-badge-selector .cr-badge {
     @apply h-6;
     @apply px-3;
-    @apply bg-01;
     @apply text-01 text-headline-1;
-    @apply cursor-pointer;
 }
-.cr-badge.profile-badge.special {
+.cr-badge-selector .cr-badge.special {
     @apply text-[var(--indigo-70)];
 }
-.cr-badge.profile-badge.selected {
+.cr-badge-selector .cr-badge.selected {
     @apply bg-[var(--indigo-70)];
     @apply always-white;
-    @apply cursor-default;
 }
 .cr-item .c-bottom {
     @apply flex-x items-center gap-x-2;
 }
-
+div.c-start-chat {
+    @apply cursor-pointer
+}
 .btn.cr-btn {
     @apply w-full;
     @apply text-[var(--indigo-60)];
@@ -241,8 +243,17 @@ body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
 .cr-right-panel-content .c-center .c-container .c-title {
     @apply text-caption-1;
 }
-.cr-right-panel-content .c-center .c-container .c-content {
+.cr-right-panel-content .form-section-validation {
+    @apply bg-inherit;
+}
+/*.cr-right-panel-content .c-center .c-container .c-content,*/
+.cr-badge-selector
+{
     @apply flex-wrap flex-x items-center gap-x-3 gap-y-2;
+}
+.cr-right-panel-content .cr-badge-selector .cr-badge:not(.selected) {
+    @apply bg-white;
+    @apply bg-opacity-60;
 }
 .country-container {
     @apply flex-none flex items-end justify-start;
@@ -279,4 +290,18 @@ body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
 }
 .cr-choose-avatar-modal .cr-cancel.btn {
     @apply bg-cancel;
+}
+
+section.profile-field {
+    @apply gap-y-2;
+}
+section.profile-field label {
+    @apply text-caption-1;
+}
+.form.form-y section.profile-field .form-section-content {
+    @apply px-0;
+}
+
+.languages-selector-popup {
+    @apply px-4
 }

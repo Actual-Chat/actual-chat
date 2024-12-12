@@ -1,0 +1,86 @@
+@using System.Linq.Expressions
+@using ActualChat.UI.Blazor.App.Components.ChatRoulette
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<LanguagesSelector.Model>
+@{
+    var m = State.Value;
+    var availableLanguages = m.AvailableLanguages;
+    foreach (var language in Languages)
+        availableLanguages = availableLanguages.Remove(language);
+}
+
+<div class="languages-selector cr-badge-selector c-content">
+    @foreach (var option in Languages) {
+        <div class="cr-badge profile-badge selected">
+            <span>@option.Title</span>
+            <span class="clickable"><i class="icon-close" @onclick="@(() => Remove(option))"></i></span>
+        </div>
+    }
+    @if (availableLanguages.Length > 0) {
+        <div class="cr-badge profile-badge special clickable" @onclick="@(() => OnAddLanguageClick(availableLanguages))">Add</div>
+    }
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private FieldIdentifier? _fieldIdentifier;
+
+    [CascadingParameter] private EditContext? CascadedEditContext { get; set; }
+    [Parameter] public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
+    [Parameter] public EventCallback<ImmutableArray<Language>> LanguagesChanged { get; set; }
+    [Parameter] public Expression<Func<ImmutableArray<Language>>>? ValueExpression { get; set; }
+
+    protected override void OnInitialized() {
+        _fieldIdentifier = ValueExpression is not null ? FieldIdentifier.Create(ValueExpression) : null;
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var possibleLanguages = new List<Language> { languages.Primary };
+        if (languages.Secondary.HasValue)
+            possibleLanguages.Add(languages.Secondary.Value);
+        if (languages.Tertiary.HasValue)
+            possibleLanguages.Add(languages.Tertiary.Value);
+        return new Model { AvailableLanguages = possibleLanguages.ToImmutableArray()};
+    }
+
+    private void Add(Language language) {
+        var languages = Languages;
+        if (languages.Contains(language))
+            return;
+
+        languages = languages.Add(language);
+        OnChange(languages);
+    }
+
+    private void Remove(Language language) {
+        var languages = Languages;
+        if (!languages.Contains(language))
+            return;
+
+        languages = languages.Remove(language);
+        OnChange(languages);
+    }
+
+    private void OnChange(ImmutableArray<Language> languages)
+    {
+        _ = LanguagesChanged.InvokeAsync(languages);
+        if (CascadedEditContext is not null && _fieldIdentifier is not null)
+            CascadedEditContext.NotifyFieldChanged(_fieldIdentifier.Value);
+    }
+
+    private void OnAddLanguageClick(ImmutableArray<Language> availableLanguages) {
+        if (availableLanguages.Length == 1) {
+            Add(availableLanguages[0]);
+            return;
+        }
+
+        ModalUI.Show(new LanguagesSelectorPopup.Model(availableLanguages, Add));
+    }
+
+    // Nested types
+    public record Model {
+        public ImmutableArray<Language> AvailableLanguages { get; init; } = ImmutableArray<Language>.Empty;
+    }
+}

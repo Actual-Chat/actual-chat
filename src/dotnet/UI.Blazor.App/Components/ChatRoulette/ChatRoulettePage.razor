@@ -1,9 +1,11 @@
 @page "/chat-roulette"
 @layout ListViewLayout
 
-@inherits ComputedStateComponent<bool>
+@using ActualChat.Roulette
+@inherits ComputedStateComponent<ChatRoulettePage.Model>
 @{
-    var isRightPanelVisible = State.Value;
+    var m = State.Value;
+    var isRightPanelVisible = m.IsRightPanelVisible;
 }
 
 <RenderIntoSlot Name="MainHeader">
@@ -14,40 +16,7 @@
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <div class="cr-footer">
-        <ButtonRound
-            Class="post-panel-btn btn-transparent btn-xxs mobile"
-            Click="@OnToggleRightPanelClick">
-            <i class="icon-options-2 text-2xl"></i>
-        </ButtonRound>
-        <span class="c-filter mobile">Filters</span>
-
-        @* Absolute elements *@
-        <div class="rounded-sub-footer"></div>
-        <div class="c-center">
-            <div class="c-profile-container desktop" @onclick=@OnProfileClick>
-                <span class="c-profile-incut"></span>
-                <span>George Black</span>
-            </div>
-            <div class="refresh-wrapper">
-                <ButtonRound
-                    Class="cr-refresh-btn"
-                    Tooltip="Refresh"
-                    TooltipPosition="FloatingPosition.Top"
-                    Click="OnToggleRightPanelClick">
-                    <div class="c-content">
-                        <i class="icon-refresh c-icon"></i>
-                        <span class="c-text">Refresh</span>
-                    </div>
-                </ButtonRound>
-            </div>
-        </div>
-        <div class="c-incut"></div>
-        <div class="c-profile mobile" @onclick="@OnProfileClick">
-            <span>Profile</span>
-            <span class="c-profile-incut"></span>
-        </div>
-    </div>
+    <ChatRouletteFooter Profile="@m.SelectedProfile" />
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainRightDrawer">
@@ -57,21 +26,34 @@
 <ChatRouletteCenter/>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
+    private Task _whenRenewed = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private PanelsUI PanelsUI => Hub.PanelsUI;
-    private ModalUI ModalUI => Hub.ModalUI;
+    private RouletteUI RouletteUI => Hub.RouletteUI;
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override void OnInitialized() {
+        _whenRenewed = RouletteUI.ReviewState();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<bool>.Options() {
-                InitialValue = PanelsUI.Right.IsVisible.Value,
+            t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => PanelsUI.Right.IsVisible.Use(cancellationToken).AsTask();
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        await _whenRenewed.ConfigureAwait(false);
+        var isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
+        var profile = await RouletteUI.SelectedProfile.Use(cancellationToken).ConfigureAwait(false);
+        return new Model {
+            IsRightPanelVisible = isRightPanelVisible,
+            SelectedProfile = profile,
+        };
+    }
 
     private void OnToggleRightPanelClick()
         => PanelsUI.Right.Toggle();
@@ -79,6 +61,14 @@
     private void OnOpenLeftPanelClick()
         => PanelsUI.Left.SetIsVisible(true);
 
-    private void OnProfileClick()
-        => ModalUI.Show(new ChatRouletteProfileModal.Model());
+    // Nested types
+
+    public record Model {
+        public static readonly Model Loading = new () { SelectedProfile = Profile.Loading };
+
+        public bool IsRightPanelVisible { get; init; }
+        public Profile SelectedProfile { get; init; } = Profile.None;
+    }
 }
+
+

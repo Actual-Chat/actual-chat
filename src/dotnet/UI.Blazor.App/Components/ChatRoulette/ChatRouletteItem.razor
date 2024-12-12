@@ -1,53 +1,53 @@
+@using ActualChat.Roulette
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var avatar = Profile.Avatar;
+    var preferences = Profile.Preferences.Preferences;
+    var country = preferences.Country;
+    var countryName = country.Title.NullIfEmpty() ?? "---";
+    var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
+}
 
 <div class="cr-item">
     <div class="c-top">
         <AvatarCircle
-            Avatar="@Avatar"
+            Avatar="@avatar"
             Size="@SquareSize.Size10"/>
         <div class="c-description">
-            <span class="c-name">@Avatar.Name</span>
-            <span class="c-bio">@Avatar.Bio</span>
+            <span class="c-name">@avatar.Name</span>
+            <span class="c-bio">@avatar.Bio</span>
         </div>
         <div class="c-ending">
-            @if (!IsChooseAvatarView) {
-                <div class="c-start-chat">
-                    <i class="icon-message-ellipse text-xl"></i>
-                </div>
-            } else {
-                <ButtonRound Class="btn-xxs btn-transparent blackout">
-                    <i class="icon-edit"></i>
-                </ButtonRound>
-                <ButtonRound Class="btn-xxs choose-avatar-btn">
-                    <i class="icon-checkmark-simple"></i>
-                </ButtonRound>
-            }
+            @ActionsTemplate
         </div>
     </div>
     <div class="c-center">
         <div class="cr-badge c-location">
             <i class="icon-map-point"></i>
-            <span>United States</span>
+            <span>@countryName</span>
         </div>
         <div class="cr-badge c-languages">
             <i class="icon-globe"></i>
-            <span>English, Spanish</span>
+            <span>@languages</span>
+            @* <span>English, Spanish</span> *@
         </div>
     </div>
     <div class="c-bottom">
-        <div class="cr-badge">
-            <span>Flexible</span>
-        </div>
-        <div class="cr-badge">
-            <span>Jokes</span>
-        </div>
-        <div class="cr-badge selected">
-            <span>Cinema & TV Shows</span>
-        </div>
+        @foreach (var interest in preferences.Interests) {
+            <div class="cr-badge">
+                <span>@(Interests.GetTitle(interest))</span>
+            </div>
+        }
+        @* <div class="cr-badge"> *@
+        @*     <span>Jokes</span> *@
+        @* </div> *@
+        @* <div class="cr-badge selected"> *@
+        @*     <span>Cinema & TV Shows</span> *@
+        @* </div> *@
     </div>
 </div>
 
 @code {
-    [Parameter] public Avatar Avatar { get; set; } = null!;
-    [Parameter] public bool IsChooseAvatarView { get; set; }
+    [Parameter] public Profile Profile { get; set; } = null!;
+    [Parameter] public RenderFragment ActionsTemplate { get; set; } = null!;
 }

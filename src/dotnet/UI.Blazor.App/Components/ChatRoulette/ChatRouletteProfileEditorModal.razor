@@ -1,0 +1,192 @@
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Roulette
+@implements IModalView<ChatRouletteProfileEditorModal.Model>
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var bioFieldAttrs = new Dictionary<string, object> { { "maxLength", 160 } };
+    var title = "Avatar settings";
+}
+
+<Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DataAnnotationsValidator/>
+    <DialogFrame
+        Class="edit-settings-modal edit-avatar-modal edit-roulette-profile"
+        Title="@title"
+        HasCloseButton="true"
+        NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()"
+        ButtonsClass="full-width">
+        <Body>
+            <FormBlock Class="own-avatar-edit-header">
+                <AvatarPicFormBlock
+                    Title="@title"
+                    Picture="@_form.Picture"
+                    ImagePicked="@OnImagePicked"
+                    CloseRequested="@(() => Modal.Close())" />
+            </FormBlock>
+
+            <FormBlock>
+                <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
+                    <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" ClearButton="true"/>
+                </FormSection>
+
+                <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
+                    <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true" AdditionalAttributes="@bioFieldAttrs"/>
+                </FormSection>
+
+                <FormSection For="() => _form.CountryCode" InputId="@_form.CountryCodeFieldId" Label="Choose country" IsLabelInsideInput="true">
+                    <InputSelect @bind-Value="@_form.CountryCode">
+                        @foreach (var country in RouletteUI.CountryOptions) {
+                            <option value="@country.Code">@country.Title</option>
+                        }
+                    </InputSelect>
+                </FormSection>
+
+                <FormSection Class="profile-field" For="() => _form.Gender" InputId="@_form.GenderFieldId" Label="Gender">
+                    <GenderSelector @bind-Gender="@_form.Gender" />
+                </FormSection>
+
+                <FormSection Class="profile-field"
+                             For="() => _form.Languages"
+                             InputId="@_form.LanguagesFieldId"
+                             IsRequired="true"
+                             Label="My Languages">
+                    <LanguagesSelector
+                        ValueExpression="@(() => _form.Languages)"
+                        @bind-Languages="@_form.Languages" />
+                </FormSection>
+
+                <FormSection Class="profile-field" For="() => _form.Interests" InputId="@_form.InterestsFieldId" Label="My interests">
+                    <InterestsSelector @bind-Interests="@_form.Interests" />
+                </FormSection>
+            </FormBlock>
+
+
+        </Body>
+        <Buttons>
+            <FormButtons>
+                @{
+                    var submitClass = $"btn-modal btn-primary {_formRef.IsValid.ToEnabledClass()}";
+                }
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
+            </FormButtons>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private Profile _profile = Profile.None;
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+    private UICommander UICommander => Hub.UICommander();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public override Task SetParametersAsync(ParameterView parameters) {
+        var parametersAsync = base.SetParametersAsync(parameters);
+        return parametersAsync;
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        if (!ModalModel.ProfileId.IsEmpty) {
+            var profile = await RouletteProfiles.GetOwnProfile(Session, ModalModel.ProfileId, default);
+            if (profile is null) {
+                UICommander.ShowError(StandardError.Constraint("Profile does not exist."));
+                CloseModal();
+                return;
+            }
+
+            _profile = profile;
+            var avatar = _profile.Avatar;
+            var preferences = _profile.Preferences.Preferences;
+
+            _form.Picture = avatar.Picture;
+            _form.Name = avatar.Name;
+            _form.Bio = avatar.Bio;
+            _form.CountryCode = preferences.Country.Code;
+            _form.Languages = preferences.Languages;
+            _form.Gender = preferences.Gender;
+            _form.Interests = preferences.Interests;
+        } else {
+            var account = await Accounts.GetOwn(Session, default);
+            _form.Name = account.Avatar.Name;
+            _form.Picture = account.Avatar.Picture;
+        }
+        _form.CopyToBase();
+    }
+
+    private async Task OnSave() {
+        var profileId = ModalModel.ProfileId;
+        var profile = _profile;
+        var avatar = profile.Avatar with {
+            Name = _form.Name,
+            Bio = _form.Bio,
+        };
+        avatar = avatar.WithPicture(_form.Picture);
+        var preferences = profile.Preferences.Preferences with {
+            Country = Country.ParseOrNone(_form.CountryCode),
+            Gender = _form.Gender,
+            Languages = _form.Languages,
+            Interests = _form.Interests,
+        };
+        profile = profile with {
+            Avatar = avatar,
+            Preferences = profile.Preferences with { Preferences = preferences },
+        };
+
+        var change = profileId.IsEmpty ? Change.Create(profile) : Change.Update(profile);
+        var command = new RouletteProfiles_UpsertProfile(Session, profileId, null, change);
+        var (_, error) = await UICommander.Run(command);
+        if (error != null)
+            return;
+
+        CloseModal();
+    }
+
+    private void OnImagePicked(Picture picture) {
+        _form.Picture = picture;
+        _form.CopyToBase();
+        StateHasChanged();
+    }
+
+    private void OnCancel()
+        => CloseModal();
+
+    private void CloseModal()
+        => Modal.Close();
+
+    // Nested types
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
+    public sealed class FormModel : FormModel<FormModel> {
+        [Required, MinLength(1)] public string Name { get; set; } = "";
+        public string NameFieldId { get; set; } = "";
+        public string Bio { get; set; } = "";
+        public string BioFieldId { get; set; } = "";
+        public Picture? Picture { get; set; }
+        public string CountryCode { get; set; } = "";
+        public string CountryCodeFieldId { get; set; } = "";
+        [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
+        public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
+        public string LanguagesFieldId { get; set; } = "";
+        public Gender Gender { get; set; } = Gender.NotSpecified;
+        public string GenderFieldId { get; set; } = "";
+        public ImmutableArray<Interest> Interests { get; set; } = ImmutableArray<Interest>.Empty;
+        public string InterestsFieldId { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("profile-editor", componentIdGenerator) {
+        }
+    }
+
+    public sealed record Model(Symbol ProfileId);
+}

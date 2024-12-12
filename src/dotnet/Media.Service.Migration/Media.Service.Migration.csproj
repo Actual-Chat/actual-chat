@@ -15,6 +15,7 @@
     <EmbeddedResource Include="Resources\friends.svg" />
     <EmbeddedResource Include="Resources\notes.svg" />
     <EmbeddedResource Include="Resources\sherlock.svg" />
+    <EmbeddedResource Include="Resources\chatroulette.svg" />
   </ItemGroup>
 
 </Project>

@@ -10,4 +10,7 @@ public static class ChatExt
 
     public static bool IsAiSearchChat(this Chat chat)
         => chat.SystemTag == Constants.Chat.SystemTags.Bot;
+
+    public static bool IsChatRoulette(this Chat chat)
+        => chat.SystemTag == Constants.Chat.SystemTags.ChatRoulette;
 }

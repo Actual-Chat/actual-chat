@@ -1,0 +1,53 @@
+@using ActualChat.Roulette
+<div class="cr-footer">
+    <ButtonRound
+        Class="post-panel-btn btn-transparent btn-xxs mobile"
+        Click="@OnRefreshClick">
+        <i class="icon-options-2 text-2xl"></i>
+    </ButtonRound>
+    <span class="c-filter mobile">Filters</span>
+
+    @* Absolute elements *@
+    <div class="rounded-sub-footer"></div>
+    <div class="c-center">
+        <div class="c-profile-container desktop" @onclick=@OnProfileClick>
+            @* <span class="c-profile-incut"></span> *@
+            @* <span>George Black</span> *@
+            <AvatarCircle Avatar="@Profile.Avatar" />
+            <span>@Profile.Avatar.Name</span>
+        </div>
+        <div class="refresh-wrapper">
+            <ButtonRound
+                Class="cr-refresh-btn"
+                Tooltip="Refresh"
+                TooltipPosition="FloatingPosition.Top"
+                Click="OnRefreshClick">
+                <div class="c-content">
+                    <i class="icon-refresh c-icon"></i>
+                    <span class="c-text">Refresh</span>
+                </div>
+            </ButtonRound>
+        </div>
+    </div>
+    <div class="c-incut"></div>
+    <div class="c-profile mobile" @onclick="@OnProfileClick">
+        <span>Profile</span>
+        @* <span class="c-profile-incut"></span> *@
+        <AvatarCircle Avatar="@Profile.Avatar"  />
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private ModalUI ModalUI => Hub.ModalUI;
+    private RouletteUI RouletteUI => Hub.RouletteUI;
+
+    [Parameter, EditorRequired] public Profile Profile { get; set; } = null!;
+
+    private void OnRefreshClick()
+        => _ = RouletteUI.UpdateSearchResult();
+
+    private void OnProfileClick()
+        => ModalUI.Show(new ChatRouletteProfileModal.Model());
+}
