@@ -3,6 +3,7 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Module;
@@ -50,6 +51,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // UserLinks
         rpcHost.AddApiOrLocal<IUserLinks, UserLinks>();
         rpcHost.AddBackend<IUserLinksBackend, UserLinksBackend>();
+
+        // Chat Roulette
+        rpcHost.AddApiOrLocal<IRoulette, Roulette>();
+        rpcHost.AddBackend<IRouletteBackend, RouletteBackend>();
 
         // IBackendChatMarkupHub
         services.AddSingleton(c =>
@@ -102,6 +107,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbUserLink
             db.AddEntityResolver<string, DbUserLink>();
+
+            // DbUserLink
+            db.AddEntityResolver<string, DbChatRoulette>();
         });
     }
 }

@@ -1,0 +1,34 @@
+@using ActualChat.Roulette
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="gender-selector cr-badge-selector c-content">
+    @foreach (var option in _options) {
+        var isSelected = option == Gender;
+        var onclickHandler = !isSelected ? EventCallback.Factory.Create(this, () => Select(option)) : default;
+        var cls = isSelected ? "selected" : "clickable";
+        <div class="cr-badge profile-badge @cls" @onclick="@onclickHandler">@GetTitle(option)</div>
+    }
+</div>
+
+@code {
+    private readonly ImmutableArray<Gender> _options = ImmutableArray<Gender>.Empty
+        .Add(Gender.NotSpecified)
+        .Add(Gender.Male)
+        .Add(Gender.Female)
+        .Add(Gender.Other);
+
+    [Parameter] public Gender Gender { get; set; } = Gender.NotSpecified;
+    [Parameter] public EventCallback<Gender> GenderChanged { get; set; }
+
+    private static string GetTitle(Gender gender) =>
+        gender switch {
+            Gender.NotSpecified => "Not Specified",
+            Gender.Male => "Male",
+            Gender.Female => "Female",
+            Gender.Other => "Other",
+            _ => "Unknown"
+        };
+
+    private Task Select(Gender gender)
+        => GenderChanged.InvokeAsync(gender);
+}

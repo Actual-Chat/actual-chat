@@ -49,6 +49,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
     private IStreamClient? _streamClient;
     private IMLSearch? _mlSearch;
+    private RouletteUI? _rouletteUI;
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IUserLinks UserLinks => _userLinks ??= Services.GetRequiredService<IUserLinks>();
@@ -89,6 +90,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public IStreamClient StreamClient => _streamClient ??= Services.GetRequiredService<IStreamClient>();
+    public RouletteUI RouletteUI => _rouletteUI ??= Services.GetRequiredService<RouletteUI>();
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

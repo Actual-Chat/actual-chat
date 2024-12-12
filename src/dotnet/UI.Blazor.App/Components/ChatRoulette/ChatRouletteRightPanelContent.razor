@@ -1,47 +1,153 @@
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Roulette
+@inherits ComputedStateComponent<ChatRouletteRightPanelContent.Model>
+@{
+    var hasChanged = HasFilterChanged(_form, _searchFilter);
+    var canApply = hasChanged && _formRef?.IsValid == true;
+}
+
 <div class="cr-right-panel-content">
-    <div class="c-center">
-        <div class="country-container">
-            Country container
+    <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSubmit">
+        <DataAnnotationsValidator/>
+
+        <div class="c-center">
+            <FormBlock>
+
+                <FormSection For="() => _form.CountryCode"
+                             InputId="@_form.CountryCodeFieldId"
+                             Label="Choose country"
+                             IsLabelInsideInput="true">
+                    <InputSelect @bind-Value="@_form.CountryCode">
+                        @foreach (var country in RouletteUI.CountryOptions) {
+                            <option value="@country.Code">@country.Title</option>
+                        }
+                    </InputSelect>
+                </FormSection>
+
+                <FormSection Class="profile-field"
+                             For="() => _form.Gender"
+                             InputId="@_form.GenderFieldId"
+                             Label="Gender">
+                    <GenderSelector @bind-Gender="@_form.Gender" />
+                </FormSection>
+
+                <FormSection Class="profile-field"
+                             For="() => _form.Languages"
+                             InputId="@_form.LanguagesFieldId"
+                             IsRequired="true"
+                             Label="Speaking languages">
+                    <LanguagesSelector
+                        ValueExpression="@(() => _form.Languages)"
+                        @bind-Languages="@_form.Languages" />
+                </FormSection>
+
+                <FormSection Class="profile-field"
+                             For="() => _form.Interests"
+                             InputId="@_form.InterestsFieldId"
+                             Label="Interests">
+                    <InterestsSelector @bind-Interests="@_form.Interests" />
+                </FormSection>
+            </FormBlock>
         </div>
 
-        <div class="c-container gender">
-            <span class="c-title">Gender</span>
-            <div class="c-content">
-                <div class="cr-badge profile-badge selected">Not specified</div>
-                <div class="cr-badge profile-badge">Male</div>
-                <div class="cr-badge profile-badge">Female</div>
-                <div class="cr-badge profile-badge">Other</div>
-            </div>
+        <div class="cr-buttons">
+            <Button Class="cr-cancel" Click="OnCancelClick">Cancel</Button>
+            <Button Class="cr-apply" IsDisabled="@(!canApply)" Type="@ButtonType.Submit">Apply</Button>
         </div>
-        <div class="c-container languages">
-            <span class="c-title">Speaking languages</span>
-            <div class="c-content">
-                <div class="cr-badge profile-badge selected">English</div>
-                <div class="cr-badge profile-badge">Russian</div>
-                <div class="cr-badge profile-badge special">Add</div>
-            </div>
-        </div>
-        <div class="c-container interests">
-            <span class="c-title">Interests</span>
-            <div class="c-content">
-                <div class="cr-badge profile-badge selected">Flexible</div>
-                <div class="cr-badge profile-badge">Food</div>
-                <div class="cr-badge profile-badge">Cinema & TV Shows</div>
-                <div class="cr-badge profile-badge">Education</div>
-                <div class="cr-badge profile-badge">Jokes</div>
-                <div class="cr-badge profile-badge">Traveling</div>
-                <div class="cr-badge profile-badge">Culture</div>
-                <div class="cr-badge profile-badge">Sport & Fitness</div>
-                <div class="cr-badge profile-badge">Gaming</div>
-                <div class="cr-badge profile-badge">Life Advice</div>
-                <div class="cr-badge profile-badge">Language Swap</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="cr-buttons">
-        <Button Class="cr-cancel">Cancel</Button>
-        <Button Class="cr-apply">Apply</Button>
-    </div>
+    </Form>
 </div>
 
+@code {
+    private Preferences _searchFilter = Preferences.Empty;
+    private Form? _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private RouletteUI RouletteUI => Hub.RouletteUI;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+
+    protected override Task OnInitializedAsync() {
+        MustRenderAfterEvent = true;
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        return Task.CompletedTask;
+    }
+
+    private void FillInForm(FormModel form, Preferences searchCriteria) {
+        form.CountryCode = searchCriteria.Country.Code;
+        form.Gender = searchCriteria.Gender;
+        form.Languages = searchCriteria.Languages;
+        form.Interests = searchCriteria.Interests;
+        form.CopyToBase();
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var searchCriteria = await RouletteUI.SearchCriteria.Use(cancellationToken);
+        if (searchCriteria != _searchFilter) {
+            FillInForm(_form, searchCriteria);
+            _searchFilter = searchCriteria;
+        }
+        return new Model();
+    }
+
+    private void OnCancelClick()
+        => FillInForm(_form, _searchFilter);
+
+    private void OnSubmit() {
+        var preferences = new Preferences {
+            Country = Country.ParseOrNone(_form.CountryCode),
+            Gender = _form.Gender,
+            Languages = _form.Languages,
+            Interests = _form.Interests,
+        };
+        RouletteUI.ApplyNewFilter(preferences);
+    }
+
+    private bool HasFilterChanged(FormModel form, Preferences searchFilter) {
+        if (form.CountryCode != searchFilter.Country.Code)
+            return true;
+
+        if (form.Gender != searchFilter.Gender)
+            return true;
+
+        if (!SameCollection(form.Languages, searchFilter.Languages))
+            return true;
+
+        if (!SameCollection(form.Interests, searchFilter.Interests))
+            return true;
+
+        return false;
+    }
+
+    private bool SameCollection<T>(IReadOnlyCollection<T> collection1, IReadOnlyCollection<T> collection2) {
+        if (collection1.Count != collection2.Count)
+            return false;
+
+        foreach (var item in collection1) {
+            if (!collection2.Contains(item))
+                return false;
+        }
+
+        return true;
+    }
+
+    // Nested types
+    public record Model();
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
+    public sealed class FormModel : FormModel<FormModel> {
+        public string CountryCode { get; set; } = "";
+        public string CountryCodeFieldId { get; set; } = "";
+        [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
+        public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
+        public string LanguagesFieldId { get; set; } = "";
+        public Gender Gender { get; set; } = Gender.NotSpecified;
+        public string GenderFieldId { get; set; } = "";
+        public ImmutableArray<Interest> Interests { get; set; } = ImmutableArray<Interest>.Empty;
+        public string InterestsFieldId { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("search-filter", componentIdGenerator) {
+        }
+    }
+}

@@ -1795,6 +1795,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied(),
                 };
         }
+
+        if (chat.IsChatRoulette()) {
+            const ChatPermissions mask = ChatPermissions.Read | ChatPermissions.Write | ChatPermissions.SeeMembers;
+            rules = rules with { Permissions = rules.Permissions & mask };
+        }
         return rules;
     }
 

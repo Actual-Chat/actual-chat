@@ -3,6 +3,7 @@ using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.Permissions;
+using ActualChat.UI.Blazor.App.Components.ChatRoulette;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
@@ -72,6 +73,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // SearchUI
         fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 
+        // ChatRouletteUI
+        fusion.AddService<RouletteUI>(ServiceLifetime.Scoped);
+
         // IMarkupViews
         services.AddTypeMapper<IMarkupView>(map => map
             .Add<NewLineMarkup, NewLineMarkupView>()
@@ -110,6 +114,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<DownloadAppModal.Model, DownloadAppModal>()
             .Add<CopyChatToPlaceErrorModal.Model, CopyChatToPlaceErrorModal>()
             .Add<ChatRouletteProfileModal.Model, ChatRouletteProfileModal>()
+            .Add<ChatRouletteProfileEditorModal.Model, ChatRouletteProfileEditorModal>()
+            .Add<LanguagesSelectorPopup.Model, LanguagesSelectorPopup>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

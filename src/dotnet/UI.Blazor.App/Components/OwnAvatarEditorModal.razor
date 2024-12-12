@@ -1,12 +1,12 @@
 @using System.ComponentModel.DataAnnotations
-@using ActualLab.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var additionalAttributes = new Dictionary<string, object> { { "maxLength", 160 } };
+    var bioFieldAttrs = new Dictionary<string, object> { { "maxLength", 160 } };
 }
 
 <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DataAnnotationsValidator/>
     <DialogFrame
         Class="edit-settings-modal edit-avatar-modal"
         Title="@_form.Title"
@@ -15,55 +15,20 @@
         ButtonsClass="full-width">
         <Body>
         <FormBlock Class="own-avatar-edit-header">
-            <DataAnnotationsValidator/>
-
-            <div class="c-top">
-                <Pic
-                    Title="@_form.Title"
-                    Picture="@_form.Picture"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="@true"
-                    IsBlurred="@true"/>
-
-                <ButtonRound Click="@(() => Modal.Close())" Class="btn-sm right-panel-close-btn">
-                    <i class="icon-close text-2xl text-toast-text"></i>
-                </ButtonRound>
-            </div>
-
-            <div class="c-center">
-                <PicUpload
-                    UploadUrl="@UploadUrl"
-                    IsSquare="false"
-                    Size="@SquareSize.Size16"
-                    Title="@_form.Title"
-                    Picture="@_form.Picture"
-                    Picked="@OnImagePicked"/>
-
-                <div class="c-buttons">
-                    <PicUploadButton
-                        UploadUrl="@UploadUrl"
-                        Picked="@OnImagePicked">
-                        <Icon>
-                            <i class="icon-image text-2xl"></i>
-                        </Icon>
-                    </PicUploadButton>
-
-                    <ButtonRound Class="btn-modal btn-sm" Click="@OnGenerateAvatarClick">
-                        <i class="icon-sync"></i>
-                    </ButtonRound>
-                </div>
-            </div>
+            <AvatarPicFormBlock
+                Title="@_form.Title"
+                Picture="@_form.Picture"
+                ImagePicked="@OnImagePicked"
+                CloseRequested="@(() => Modal.Close())" />
         </FormBlock>
 
         <FormBlock>
-            <DataAnnotationsValidator/>
-
             <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" ClearButton="true"/>
             </FormSection>
 
             <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true" AdditionalAttributes="@additionalAttributes"/>
+                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true" AdditionalAttributes="@bioFieldAttrs"/>
             </FormSection>
         </FormBlock>
 
@@ -116,13 +81,9 @@
 </Form>
 
 @code {
-    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
-    private static readonly string UploadUrl = "/api/avatars/upload-picture";
-
     private Form _formRef = null!;
     private FormModel _form = null!;
     private bool _isAnonymous;
-    private Avatar _avatar = Avatar.None;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -141,7 +102,6 @@
         var avatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
 
         _isAnonymous = avatar?.IsAnonymous ?? false;
-        _avatar = avatar ?? Avatar.None;
         var account = await Accounts.GetOwn(Session, default);
         var isDefault = ModalModel.AvatarId == account.Avatar.Id;
         var isActive = false;
@@ -150,7 +110,7 @@
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
-        _form.Picture = _avatar.Picture;
+        _form.Picture = (avatar ?? Avatar.None).Picture;
 
         _form.Name = avatar?.Name ?? "";
         _form.Bio = avatar?.Bio ?? "";
@@ -189,8 +149,8 @@
         CloseModal();
     }
 
-    private void OnImagePicked(MediaContent mediaContent) {
-        _form.Picture = new(mediaContent);
+    private void OnImagePicked(Picture picture) {
+        _form.Picture = picture;
         _form.CopyToBase();
         StateHasChanged();
     }
@@ -220,12 +180,6 @@
         });
         await UICommander.Run(command);
         Modal.Close();
-    }
-
-    private void OnGenerateAvatarClick() {
-        _form.Picture = new Picture(null, null, DefaultUserPicture.GetAvatarKey(IdGenerator.Next()));
-        _form.CopyToBase();
-        StateHasChanged();
     }
 
     private void CloseModal()

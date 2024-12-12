@@ -36,12 +36,12 @@
             @if (!IsOwn) {
                 <AddToContactsButton Author="@Author"/>
             }
-            @if (!Author.IsAnonymous) {
+            @if (_shareModalModel is not null) {
                 <ButtonRound
                     Class="btn-sm"
                     Tooltip="Share"
                     TooltipPosition="FloatingPosition.Top"
-                    Click="@(OnShareClick)">
+                    Click="@OnShareClick">
                     <i class="icon-share text-2xl"></i>
                 </ButtonRound>
             }
@@ -61,6 +61,8 @@
 </div>
 
 @code {
+    private ShareModalModel? _shareModalModel;
+
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
@@ -71,17 +73,26 @@
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
     [Parameter] public EventCallback OnEditClick { get; set; }
 
-    private void OnClose()
-        => Modal.Close();
+    protected override async Task OnParametersSetAsync()
+        => _shareModalModel = await GetShareModalModel(default);
 
-    private async Task OnShareClick() {
-        if (IsOwn) {
-            _ = ShareUI.ShareOwnAccount();
-            return;
-        }
+    private async Task<ShareModalModel?> GetShareModalModel(CancellationToken cancellationToken) {
+        if (Author.IsAnonymous)
+            return null;
+
+        if (IsOwn)
+            return await ShareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
 
         var account = await Authors.GetAccount(Session, Author.ChatId, Author.Id, default);
-        if (account != null)
-            _ = ShareUI.Share(account.Id);
+        if (account == null)
+            return null;
+
+        return await ShareUI.GetModel(account.Id, cancellationToken).ConfigureAwait(true);
     }
+
+    private Task OnShareClick()
+        => _shareModalModel is not null ? ShareUI.Share(_shareModalModel) : Task.CompletedTask;
+
+    private void OnClose()
+        => Modal.Close();
 }

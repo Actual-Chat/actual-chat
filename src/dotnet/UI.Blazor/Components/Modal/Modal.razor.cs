@@ -2,7 +2,7 @@
 
 namespace ActualChat.UI.Blazor.Components;
 
-public partial class Modal : ComponentBase, IDisposable
+public partial class Modal : IDisposable
 {
     private FocusTrap? _focusTrap;
     private bool _mustFocus;

@@ -61,16 +61,8 @@ public class Avatars(IServiceProvider services) : IAvatars
         if (avatar.IsAnonymous)
             return avatar; // We don't account anonymous avatars in the list
 
-        cancellationToken = default; // We don't cancel anything from here
         var kvas = ServerKvas.GetClient(session);
-        var oldSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
-        var settings = oldSettings;
-        if (change.Create.HasValue)
-            settings = settings.WithAvatarId(avatar.Id);
-        else if (change.Remove)
-            settings = settings.WithoutAvatarId(avatarId);
-        if (!ReferenceEquals(settings, oldSettings))
-            await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
+        await UpdateAvatarList(kvas, change, change.Remove ? avatarId : avatar.Id).ConfigureAwait(false);
 
         return avatar;
     }
@@ -87,5 +79,19 @@ public class Avatars(IServiceProvider services) : IAvatars
 
         settings = settings with { DefaultAvatarId = avatarId };
         await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
+    }
+
+    internal static async Task UpdateAvatarList(IKvas<User> kvas, Change<AvatarFull> change, Symbol avatarId)
+    {
+        // We don't cancel anything from here
+        CancellationToken cancellationToken = default;
+        var oldSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
+        var settings = oldSettings;
+        if (change.Create.HasValue)
+            settings = settings.WithAvatarId(avatarId);
+        else if (change.Remove)
+            settings = settings.WithoutAvatarId(avatarId);
+        if (!ReferenceEquals(settings, oldSettings))
+            await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
     }
 }

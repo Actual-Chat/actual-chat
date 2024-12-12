@@ -1,5 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Roulette
+@inherits ComputedStateComponent<ChatRouletteProfileModal.ComputedModel>
 @implements IModalView<ChatRouletteProfileModal.Model>
+@{
+    var m = State.Value;
+    var profiles = m.Profiles;
+    var canApply = !_selectedProfile.Id.IsEmpty && m.SelectedProfileId != _selectedProfile.Id;
+}
 
 <DialogFrame
     Class="cr-choose-avatar-modal"
@@ -7,17 +14,81 @@
     HasCloseButton="true"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <ChatRouletteProfileModalContent/>
+        <div class="cr-profile-modal">
+            @foreach (var profile in profiles) {
+                <ChatRouletteProfileItem
+                    Profile="@profile"
+                    IsSelected="@(profile.Id.Equals(_selectedProfile.Id))"
+                    SelectClick="@(() => SelectProfile(profile))" />
+            }
+            <Button Class="cr-btn" Click="@OnCreateProfileClick">
+                <Icon><i class="icon-plus text-2xl"></i></Icon>
+                <Title>Create new</Title>
+            </Button>
+        </div>
     </Body>
     <Buttons>
-        <Button Class="cr-cancel">Cancel</Button>
-        <Button Class="cr-apply">Apply</Button>
+        <Button Class="cr-cancel" Click="@OnCancelClick">Cancel</Button>
+        <Button Class="cr-apply" IsDisabled="@(!canApply)" Click="@OnApply">Apply</Button>
     </Buttons>
 </DialogFrame>
 
 @code {
+    private Profile _selectedProfile = null!;
+
+    [Inject] ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IAvatars Avatars => Hub.Avatars;
+    private RouletteUI RouletteUI => Hub.RouletteUI;
+    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+    private ModalUI ModalUI => Hub.ModalUI;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    protected override void OnInitialized()
+        => _selectedProfile = RouletteUI.SelectedProfile.Value;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options {
+                InitialValue = ComputedModel.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
+        var profiles = await avatarIds
+            .Select(id => RouletteProfiles.GetOwnProfile(Session, id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
+
+        var selectedProfileId = await RouletteProfiles.GetSelectedProfileId(Session, cancellationToken).ConfigureAwait(false);
+        return new ComputedModel(profiles.SkipNullItems().ToImmutableArray(), selectedProfileId);
+    }
+
+    private void SelectProfile(Profile profile) {
+        _selectedProfile = profile;
+        StateHasChanged();
+    }
+
+    private void OnCreateProfileClick()
+        => _ = ModalUI.Show(new ChatRouletteProfileEditorModal.Model(Symbol.Empty));
+
+    private void OnCancelClick()
+        => Modal.Close();
+
+    private void OnApply() {
+        RouletteUI.SelectProfile(_selectedProfile);
+        Modal.Close();
+    }
+
+    // Nested types
+
     public sealed record Model;
+
+    public record ComputedModel(ImmutableArray<Profile> Profiles, Symbol SelectedProfileId) {
+        public static readonly ComputedModel None = new ([], default);
+    }
 }

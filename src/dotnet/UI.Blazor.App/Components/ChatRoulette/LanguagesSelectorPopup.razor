@@ -1,0 +1,62 @@
+@implements IModalView<LanguagesSelectorPopup.Model>
+@{
+    var canSubmit = !_form.LanguageId.IsNullOrEmpty();
+}
+
+<Form OnSubmit="OnSubmit" Class="h-full" Model="@_form">
+    <DialogFrame
+        Title="Peek language"
+        HasCloseButton="true"
+        Class="modal-sm languages-selector-popup"
+        NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
+        <Body>
+            <FormSection For="() => _form.LanguageId" InputId="@_form.LanguageIdFieldId" Label="Peek language" IsLabelInsideInput="true">
+                <InputSelect @bind-Value="@_form.LanguageId">
+                    @foreach (var option in ModalModel.AvailableLanguages) {
+                        <option value="@option.Id">@option.Title</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        </Body>
+        <Buttons>
+            <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+            <Button Class="btn-modal btn-primary" IsDisabled="@(!canSubmit)" Type="@ButtonType.Submit">Select</Button>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private FormModel _form = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+
+    private void OnSubmit() {
+        var language = ModalModel.AvailableLanguages.FirstOrDefault(c => c.Id == _form.LanguageId);
+        if (language.IsNone)
+            return;
+
+        Modal.Close();
+        ModalModel.OnLanguageSelected(language);
+    }
+
+    // Nested types
+
+    public record Model(ImmutableArray<Language> AvailableLanguages, Action<Language> OnLanguageSelected);
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
+    public sealed class FormModel : FormModel<FormModel> {
+        public string LanguageId { get; set; } = Language.None.Id;
+        public string LanguageIdFieldId { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("languages-selector-popup", componentIdGenerator) {
+        }
+    }
+}
