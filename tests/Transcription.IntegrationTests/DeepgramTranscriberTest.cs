@@ -19,6 +19,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
     // [InlineData("file.webm", false)]
     [InlineData("file.webm", true)]
     // [InlineData("0001-AY.opuss", true)]
+    // [InlineData("0002-AY.opuss", true)]
     // [InlineData("0003-AK.opuss", true)] //- fails as too short???
     // [InlineData("tail-cut.opuss", true)]
     public async Task TranscribeWorks(string fileName, bool withDelay)

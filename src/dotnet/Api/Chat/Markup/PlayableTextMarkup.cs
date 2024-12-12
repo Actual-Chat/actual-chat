@@ -30,7 +30,7 @@ public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) 
                 var timeRange = (timeMap.TryMap(textRange.Start) ?? InfTime, timeMap.TryMap(textRange.End) ?? InfTime);
                 var word = new Word(match.Value, textRange, timeRange);
                 words.Add(word);
-                start += match.Length;
+                start = match.Index + match.Length;
             }
             else {
                 var textRange = new Range<int>(start, Text.Length);
