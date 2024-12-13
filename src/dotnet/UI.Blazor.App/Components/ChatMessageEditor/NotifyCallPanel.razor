@@ -14,10 +14,10 @@
 @if (m.Account.IsAdmin) {
     <ButtonRound
         Class="post-panel-btn notify-call-btn btn-xs btn-transparent hidden"
-        Tooltip="Notify All"
+        Tooltip="Alert everyone"
         TooltipPosition="FloatingPosition.Top"
         Click="@OnNotifyAllClick">
-        <i class="icon-notify-phone text-2xl"></i>
+        <i class="icon-notify-phone text-1.5xl"></i>
     </ButtonRound>
 } else if (m.EnableIncompleteUI) {
     <ButtonRound
@@ -25,17 +25,17 @@
         Tooltip="Notify Panel"
         TooltipPosition="FloatingPosition.Top"
         Click="@OnExpandClick">
-        <i class="icon-notify-phone text-2xl"></i>
+        <i class="icon-notify-phone text-1.5xl"></i>
     </ButtonRound>
     <div class="@panelCls notify-call-panel">
         <div class="notify-call-content">
             <div class="actions">
                 <button class="notify-btn" @onclick="@OnNotifyAllClick">
                     <i class="icon-at text-2xl"></i>
-                    <p>Notify all</p>
+                    <p>Alert everyone</p>
                 </button>
                 <button class="call-btn" @onclick="@OnCallAllClick">
-                    <i class="icon-phone text-2xl"></i>
+                    <i class="icon-phone text-1.5xl"></i>
                     <p>Call all</p>
                 </button>
             </div>
@@ -87,9 +87,9 @@
     private void OnNotifyAllClick() =>
         _ = ModalUI.Show(new ConfirmModal.Model(
             false,
-            $"Are you sure you want to Notify All members?",
+            $"Are you sure you want to Alert everyone?",
             NotifyAllInternal) {
-            Title = "Notify All"
+            Title = "Alert everyone"
         });
 
     private void NotifyAllInternal()

@@ -9,17 +9,25 @@
     var cls = "post-panel-btn notify-call-btn btn-xs btn-transparent btn-primary";
     if (!m.IsActive)
         cls += " pseudo-disabled";
+    var tooltip = $"Alert {m.AlertTarget}";
 }
 
 <ButtonRound
     Class="@cls"
-    Tooltip="Notify All"
+    Tooltip="@tooltip"
     TooltipPosition="FloatingPosition.Top"
     Click="@(() => OnNotifyAllClick(m))">
-    <i class="icon-notify-phone text-2xl"></i>
+    <i class="icon-notify-phone text-1.5xl"></i>
 </ButtonRound>
 
 @code {
+    private string AlertTarget => State.Value.AlertTarget;
+    private string AlertClass => State.Value.AlertClass;
+    private string AlertInfo => $"<div class='alert-text'>Actual Chat sends regular notifications for every message, but an" +
+                                $" <span class='font-bold'>\"Alert\" is a notification similar to a phone call</span>" +
+                                $" — it’s louder, and the user must swipe it or open the app to stop the sound." +
+                                $" If you don’t need to distract <span class='{AlertClass}'>{AlertTarget}</span> right now, consider not sending it.</div>";
+    private MarkupString MarkupTitle => (MarkupString)$"<p>Are you sure you want to alert <span class='{AlertClass}'>{AlertTarget}</span>?</p>";
     private (ChatEntry, Moment)? _lastKnownOwnUnreadEntryInfo;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -45,8 +53,17 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        if (chatId.Kind is ChatKind.Peer)
-            return Model.EnabledUnread; // Always allowed for peer chats.
+        var alertTarget = "companion";
+        if (chatId.Kind is ChatKind.Peer) {
+            var cls = "font-bold";
+            if (chatId.IsPeerChat(out var peerChatId)) {
+                var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account.Id);
+                var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, default).ConfigureAwait(false);
+                if (!ReferenceEquals(anotherAuthor, null) && !string.IsNullOrEmpty(anotherAuthor.Avatar.Name))
+                    alertTarget = anotherAuthor.Avatar.Name;
+            }
+            return Model.EnabledUnread with { AlertTarget = alertTarget, AlertClass = cls}; // Always allowed for peer chats.
+        }
 
         var isPublicAccessible = chat.IsPublic;
         if (isPublicAccessible && chatId.IsPlaceChat) {
@@ -156,14 +173,22 @@
             return;
         }
 
+        var title = m.IsUnread
+            ? MarkupTitle
+            : (MarkupString)"Your messages have read recently. Do you still want to alert everyone?";
+
         var message = m.IsUnread
-            ? "Are you sure you want to Notify All members?"
-            : "Your messages have read recently. Do you still want to Notify All members?";
+            ? $"Are you sure you want to alert {AlertTarget}?"
+            : "Your messages have read recently. Do you still want to alert everyone?";
         _ = ModalUI.Show(new ConfirmModal.Model(
             false,
             message,
             NotifyAllInternal) {
-            Title = "Notify All"
+            Title = "Alert confirmation",
+            ConfirmButtonText = "Alert",
+            MarkupTitle = title,
+            AdditionalContent = AlertInfo,
+            Class = "alert-confirm-modal",
         });
     }
 
@@ -179,22 +204,25 @@
 
         public static readonly Model DisabledForLargeGroup = new() {
             IsActive = false,
-            DisableReason = "Notify All is unavailable in chats with more than 10 people."
+            DisableReason = "Alert everyone is unavailable in chats with more than 10 people."
         };
 
         public static readonly Model DisabledNoMessage = new() {
             IsActive = false,
-            DisableReason = "Notify All is disabled. You need to send a message first."
+            DisableReason = "Alert everyone is disabled. You need to send a message first."
         };
 
         public static readonly Model DisabledNoWritePermission = new() {
             IsActive = false,
-            DisableReason = "Notify All is disabled. You should be able to write messages."
+            DisableReason = "Alert everyone is disabled. You should be able to write messages."
         };
 
         public bool IsUnavailable { get; private init; }
         public bool IsActive { get; private init; }
         public string DisableReason { get; private init; } = "";
         public bool IsUnread { get; private init; }
+        public string AlertTarget { get; init; } = "everyone";
+        public string AlertClass { get; init; } = "";
+        public string AnotherAuthorName { get; init; } = "";
     }
 }

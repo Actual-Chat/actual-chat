@@ -1,6 +1,16 @@
 @inherits ComputedMarkupViewBase<MentionMarkup, MentionView.Model>
 @{
     var m = State.Value;
+    var cls = "";
+    if (m.HasRead != null) {
+        cls = !m.HasRead.Value ? "dim" : "";
+    }
+
+    var tooltip = m.HasRead == null
+        ? ""
+        : m.HasRead.Value
+            ? "Has read"
+            : "Has not read";
 }
 
 <AuthorBadgeTemplate AuthorSid="@_authorId">
@@ -10,20 +20,19 @@
     }
 
     <div
-        class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "") cursor-pointer"
+        class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "") @cls cursor-pointer"
+        data-tooltip="@tooltip"
+        data-tooltip-position="@FloatingPosition.Top.ToPositionString()"
         @onclick="@(_ => AuthorUI.Show(_authorId))">
         <div class="truncate">
             @context.Author.Avatar.Name
         </div>
-        @if (m.HasRead) {
-            <i class="icon-checkmark-simple"></i>
-        }
     </div>
 </AuthorBadgeTemplate>
 
 @code {
     private AuthorId _authorId;
-    private bool _hasRead;
+    private bool? _hasRead;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
@@ -42,19 +51,20 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (Entry.IsSystemEntry)
-            return new Model(false); // Do not track hasRead status for mentions inside system messages.
+        _hasRead = Entry.IsSystemEntry ? null : false;
+
+        if (_hasRead == null)
+            return new Model(null); // Do not track hasRead status for mentions inside system messages.
 
         var chat = await Chats.Get(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var isOwnMessage = Entry.AuthorId == chat?.Rules.Author?.Id;
-        if (!isOwnMessage)
-            return new Model(false); // Show HasRead status only to message author.
+        if (chat?.Rules.Author?.Id == _authorId)
+            return new Model(true);
 
-        if (!_hasRead)
+        if (!_hasRead.Value)
             _hasRead = await Chats.IsEntryReadByMentionedUser(Session, Entry.Id.ToTextEntryId(), Markup.Id, cancellationToken).ConfigureAwait(false);
         return new Model(_hasRead);
     }
 
     // Nested types
-    public record Model(bool HasRead);
+    public record Model(bool? HasRead);
 }

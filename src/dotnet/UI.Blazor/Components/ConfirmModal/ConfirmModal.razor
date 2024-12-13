@@ -11,22 +11,34 @@
         text = isDestructive
             ? "Are you sure you want to discard all changes?"
             : "Are you sure you want to confirm all changes?";
+    var additionalContent = ModalModel.AdditionalContent;
+    var markupTitle = ModalModel.MarkupTitle;
     var btnCls = isDestructive ? "danger" : "btn-primary";
     btnCls = "btn-modal " + btnCls;
     var btnText = ModalModel.ConfirmButtonText;
     if (btnText.IsNullOrEmpty())
         btnText = isDestructive ? "Discard" : "Confirm";
+    var cls = $"confirm-modal modal-sm {ModalModel.Class}";
 }
 
-<DialogFrame Class="confirm-modal modal-sm" Title="@title">
+<DialogFrame Class="@cls" Title="@title">
     <Body>
-    <FormBlock>
+    <FormBlock Class="confirm-text">
         <div class="c-text">
-            <p>
-                @text
-            </p>
+            @if (!markupTitle.Value.IsNullOrEmpty()) {
+                @markupTitle
+            } else {
+                <p>
+                    @text
+                </p>
+            }
         </div>
     </FormBlock>
+    @if (!additionalContent.IsNullOrEmpty()) {
+        <FormBlock>
+            @((MarkupString)additionalContent)
+        </FormBlock>
+    }
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
@@ -46,5 +58,8 @@
     public sealed record Model(bool IsDestructive, string Text, Action Confirm) {
         public string Title { get; init; } = "";
         public string ConfirmButtonText { get; init; } = "";
+        public MarkupString MarkupTitle { get; init; } = default;
+        public string AdditionalContent { get; init; } = "";
+        public string Class { get; init; } = "";
     }
 }

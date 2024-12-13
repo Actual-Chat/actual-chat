@@ -14,7 +14,8 @@
         };
     var bgColor = isMuted ? "bg-counter" : "bg-primary";
     var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";
-    var cssClass = $"message-counter-badge {cursorClass}";
+    var mentionClass = HasMentions ? "unread-mention" : "";
+    var cssClass = $"message-counter-badge {cursorClass} {mentionClass}";
 }
 
 <Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>
