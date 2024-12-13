@@ -13,11 +13,13 @@ public static class VirtualList
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : class, IVirtualListItem
 {
-    private ILogger? _log;
+    private VirtualListData<TItem>? _initialData = null;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    private ILogger Log => _log ??= CircuitContext.Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= CircuitContext.Services.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -30,6 +32,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     private int RenderIndex { get; set; } = 0;
 
+    [Parameter] public bool RequestDataOnParameterSet { get; set; }
     [Parameter] public string Identity { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
@@ -78,6 +81,17 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         return Task.CompletedTask;
     }
 
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        var requestDataOnParameterSet = parameters.GetValueOrDefault<bool>(nameof(RequestDataOnParameterSet));
+        var dataSource = parameters.GetValueOrDefault<IVirtualListDataSource<TItem>>(nameof(DataSource));
+        if (requestDataOnParameterSet && dataSource != null)
+            _initialData = await DataSource.GetData(VirtualListDataQuery.None,
+                VirtualListData<TItem>.None,
+                CancellationToken.None);
+        await base.SetParametersAsync(parameters);
+    }
+
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
@@ -123,12 +137,15 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<VirtualListData<TItem>>.Options() {
-                InitialValue = VirtualListData<TItem>.None,
+    {
+        var initialData = _initialData ?? VirtualListData<TItem>.None;
+        return ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<VirtualListData<TItem>>.Options {
+                InitialValue = initialData,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
+    }
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
