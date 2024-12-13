@@ -8,6 +8,7 @@ namespace ActualChat.UI.Blazor.Components;
 public static class VirtualList
 {
     public static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VirtualList.create";
+    public static bool IsNonFirstRender = false;
 }
 
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
@@ -26,7 +27,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
     private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
-    private VirtualListData<TItem> Data => State.LastNonErrorValue;
+    // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+    private VirtualListData<TItem> Data => State?.LastNonErrorValue ?? VirtualListData<TItem>.None;
     private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
     private VirtualListItemVisibility LastReportedItemVisibility { get; set; } = VirtualListItemVisibility.Empty;
 
@@ -83,13 +85,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     public override async Task SetParametersAsync(ParameterView parameters)
     {
-        var requestDataOnParameterSet = parameters.GetValueOrDefault<bool>(nameof(RequestDataOnParameterSet));
-        var dataSource = parameters.GetValueOrDefault<IVirtualListDataSource<TItem>>(nameof(DataSource));
-        if (requestDataOnParameterSet && dataSource != null)
+        parameters.SetParameterProperties(this);
+        if (RequestDataOnParameterSet && VirtualList.IsNonFirstRender)
             _initialData = await DataSource.GetData(VirtualListDataQuery.None,
                 VirtualListData<TItem>.None,
                 CancellationToken.None);
-        await base.SetParametersAsync(parameters);
+        await base.SetParametersAsync(ParameterView.Empty);
     }
 
     public override async ValueTask DisposeAsync()
@@ -119,6 +120,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        VirtualList.IsNonFirstRender = true;
         if (CircuitContext.IsPrerendering)
             return;
 

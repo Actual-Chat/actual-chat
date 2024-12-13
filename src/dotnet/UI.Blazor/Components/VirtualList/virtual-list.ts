@@ -318,7 +318,6 @@ export class VirtualList {
                 warnLog?.log('onItemSetChange: there are mutations, but isRendering() == false');
             this.renderStartedAt = Date.now();
         }
-        this.cachedAllItemRefs = null;
         const startedAt = this.renderStartedAt;
         if (debugLog) {
             const removedCount = mutations.reduce((prev, m) => prev + m.removedNodes.length, 0);
@@ -332,6 +331,7 @@ export class VirtualList {
         }
 
         // request recalculation of the item range and order item list as we've got new items
+        this.cachedAllItemRefs = null;
         this.shouldRecalculateItemRange = true;
         this.shouldUpdateOrderedItems = true;
 
@@ -494,7 +494,7 @@ export class VirtualList {
         if (hasChanged) {
             let hasStickyEdge = false;
             if (rs.hasVeryLastItem) {
-                if (this.visibleItems.has(lastItemKey) || this.isEndAnchorVisible) {
+                if (this.visibleItems.has(lastItemKey)) {
                     this.setStickyEdge({ itemKey: lastItemKey, edge: VirtualListEdge.End });
                     hasStickyEdge = true;
                 }
@@ -571,7 +571,7 @@ export class VirtualList {
         // console.warn("skeleton os off");
     }
 
-    private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce * 3);
+    private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
 
     private turnOffIsEndAnchorVisible(): void {
         this.isEndAnchorVisible = false;
@@ -617,6 +617,13 @@ export class VirtualList {
             return;
         }
 
+        if (rs.query.isNone) {
+            // Reset query - it become irrelevant after render without query
+            this.query = VirtualListDataQuery.None;
+            this.lastQuery = VirtualListDataQuery.None;
+        }
+
+        this.renderState = rs;
         let spacerSize = this.defaultSpacerSize;
         let endSpacerSize = this.defaultSpacerSize;
         if (rs.beforeCount !== null && rs.afterCount !== null) {
@@ -652,14 +659,12 @@ export class VirtualList {
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
         let positionSet = false;
-        if (this.pivots.length) {
+        if (this.pivots.length && rs.scrollToKey == null) {
             // Restore scroll position first, and then use smooth scroll to go to the scroll target
-            positionSet = this.restoreScrollPosition(startedAt);
+            positionSet = this.restoreScrollPosition(startedAt, !rs.query.isNone);
         }
 
         try {
-            this.renderState = rs;
-
             // fix iOS MAUI scroll issue after first renders
             if (rs.renderIndex === 0 && DeviceInfo.isIos)
                 fastRaf({ write: () => this.forceReflow() });
@@ -701,7 +706,6 @@ export class VirtualList {
                     }
                     this.setStickyEdge(null);
                 } else {
-                    console.warn('endRender: sticky edge scroll', this.stickyEdge);
                     this.setStickyEdge({ itemKey: itemKey, edge: this.stickyEdge.edge });
                     if (this.stickyEdge?.edge === VirtualListEdge.End) {
                         this.scrollToEdge(VirtualListEdge.End, true, 'sticky-edge');
@@ -858,7 +862,7 @@ export class VirtualList {
             this.updateViewportThrottled();
     };
 
-    private onScroll = (): void => {
+    private onScroll = (ev: Event): void => {
         this.isScrolling = true;
         this.turnOffIsScrollingDebounced();
 
@@ -866,6 +870,17 @@ export class VirtualList {
         // let's update offset
         if (this.isRendering)
             return;
+
+        if (this.stickyEdge?.edge === VirtualListEdge.End && ev.isTrusted) {
+            // Check if we need to keep sticky edge on user scroll
+            fastRaf(() => {
+                const keepStickyEdge = this.isItemPartiallyVisible(this.endAnchorRef);
+                if (!keepStickyEdge) {
+                    this.setStickyEdge(null);
+                    this.updateVisibleKeysThrottled();
+                }
+            });
+        }
 
         this.updateViewportThrottled();
     };
@@ -1077,7 +1092,7 @@ export class VirtualList {
         return false;
     }
 
-    private restoreScrollPosition(renderTime: number): boolean {
+    private restoreScrollPosition(renderTime: number, useRaf: boolean = true): boolean {
         const pivots = [...this.pivots];
         const tuple = pivots
             .map(pivot => ({ pivotRef: this.getItemRef(pivot.itemKey), pivot }))
@@ -1097,7 +1112,7 @@ export class VirtualList {
         let scrollTop: number | null = null;
         let shouldResync = false;
 
-        fastRaf({
+        const options = {
             read: () => {
                 const pivotEpsilon = PivotSyncEpsilon;
                 // code below triggers forced reflow - but it's OK  - reflow will be triggered after adding new elements anyway
@@ -1137,7 +1152,13 @@ export class VirtualList {
                 } else
                     debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
             },
-        });
+        };
+        if (useRaf)
+            fastRaf(options);
+        else {
+            options.read();
+            options.write();
+        }
         return true;
     }
 
@@ -1386,6 +1407,9 @@ export class VirtualList {
         if (rs.hasVeryFirstItem && rs.hasVeryLastItem)
             return this.lastQuery; // We have already loaded all data
 
+        if (this.isRendering)
+            return this.lastQuery; // Do not request data during rendering as it might be inconsistent
+
         const viewportSize = viewport.size;
         const lastQuerySide = this.lastQuery.moveRange.size === 0
             ? 'none'
@@ -1411,7 +1435,6 @@ export class VirtualList {
                         loadStart = viewport.start - viewportSize / 3;
                     }
                 } else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
-                    debugLog?.log('getDataQuery: previous direction was _end_', viewport, alreadyLoaded, loadZoneSize);
                     if (!rs.hasVeryFirstItem)
                         loadStart = viewport.start - loadZoneSize;
                     else
@@ -1426,11 +1449,6 @@ export class VirtualList {
                         loadEnd = viewport.end + viewportSize / 3;
                     }
                 } else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
-                    debugLog?.log(
-                        'getDataQuery: previous direction was _start_',
-                        viewport,
-                        alreadyLoaded,
-                        loadZoneSize);
                     if (!rs.hasVeryLastItem)
                         loadEnd = viewport.end + loadZoneSize;
                     else
@@ -1457,7 +1475,7 @@ export class VirtualList {
 
         let startIndex = -1;
         let endIndex = -1;
-        const items = this.orderedItems;
+        const items = [...this.orderedItems];
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             if (!item.isChatEntry)

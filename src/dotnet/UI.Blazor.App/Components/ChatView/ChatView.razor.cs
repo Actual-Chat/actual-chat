@@ -425,7 +425,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // If we are scrolling somewhere, let's extend the range to scrollAnchor & nearby entries.
         if (scrollAnchor is { } vScrollAnchor) {
             var scrollAnchorRange = new Range<long>(
-                vScrollAnchor.EntryLid - ChatUI.HalfLoadLimit,
+                vScrollAnchor.EntryLid - ChatUI.LoadLimit,
                 vScrollAnchor.EntryLid + ChatUI.HalfLoadLimit);
             range = scrollAnchorRange.Overlaps(range)
                 ? range.MinMaxWith(scrollAnchorRange)
@@ -459,13 +459,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var itemVisibility = ItemVisibility.Value;
         if (tiles.Count == 0 || tiles[^1].Items.Count == 0) {
-            readEntryLid = default;
+            readEntryLid = 0;
             return false; // Not loaded yet or wrong load range
         }
 
         if (itemVisibility.IsEmpty || !itemVisibility.IsEndAnchorVisible) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no item visibility or end anchor is not visible");
-            readEntryLid = default;
+            readEntryLid = 0;
             return false; // No item visibility or we aren't at the end of the list
         }
 
@@ -477,7 +477,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasNewMessagesLine = newMessagesLine != null;
         if (!hasNewMessagesLine) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no new messages line");
-            readEntryLid = default;
+            readEntryLid = 0;
             return false; // No new messages line
         }
 
@@ -487,7 +487,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
         if (newShownReadEntryLid == shownReadEntryLid) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: read position is unchanged");
-            readEntryLid = default;
+            readEntryLid = 0;
             return false;
         }
 
