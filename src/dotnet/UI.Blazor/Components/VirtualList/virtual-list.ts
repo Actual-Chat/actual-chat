@@ -1013,7 +1013,7 @@ export class VirtualList {
         const now = Date.now();
         // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
         const isInitialRender = now - this.createdAt < 1500; // first 1.5 seconds after creating the virtual list
-        if (isInitialRender && reason === 'non-item-resize')
+        if (isInitialRender && (reason === 'non-item-resize' || reason === 'item-resize'))
             return; // do not scroll to the end on initial render on spacer resize
 
         if (this.renderState.renderIndex <= 1 || isInitialRender)
