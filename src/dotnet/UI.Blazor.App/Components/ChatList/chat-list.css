@@ -229,6 +229,10 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
 .navbar-item .navbar-item-ending .message-counter-badge {
     @apply static;
 }
+.message-counter-badge.unread-mention > span {
+    @apply mb-0.5;
+    @apply text-headline-1;
+}
 
 /* Hoverable slot */
 .chat-list .navbar-item .navbar-item-ending .slot {

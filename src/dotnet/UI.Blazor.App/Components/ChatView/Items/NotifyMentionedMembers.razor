@@ -17,8 +17,8 @@
 }
 <div class="notify-mentioned-members @cls" @onclick="@clickHandler">
     @if (!m.HasNotified) {
-        <i class="icon-notify-phone self-center"></i>
-        <span>&nbsp;Notify mentioned</span>
+        <i class="icon-notify-phone self-center text-xs"></i>
+        <span>&nbsp;Alert mentioned</span>
     } else {
         <span class="text-primary font-semibold">You</span><span class="default-text">&nbsp;notified&nbsp;</span>
         @for (var i = 0; i < AuthorIds.Length; i++) {
@@ -46,6 +46,11 @@
 </div>
 
 @code {
+    private string AdditionalInfo => $"<div class='alert-text'>Actual Chat sends regular notifications for every message, but an" +
+                                $" <span class='font-bold'>\"Alert\" is a notification similar to a phone call</span>" +
+                                $" — it’s louder, and the user must swipe it or open the app to stop the sound." +
+                                $" If you don’t need to distract mentioned members right now, consider not sending it.</div>";
+
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public ImmutableArray<AuthorId> AuthorIds { get; set; }
@@ -88,9 +93,12 @@
     private void OnNotifyAuthorsClick()
         => _ = ModalUI.Show(new ConfirmModal.Model(
             false,
-            "Are you sure you want to Notify mentioned members?",
+            "Are you sure you want to Alert mentioned members?",
             NotifyAuthorsInternal) {
-            Title = "Notify mentioned members"
+            Title = "Alert mentioned members",
+            AdditionalContent = AdditionalInfo,
+            Class = "alert-confirm-modal",
+            ConfirmButtonText = "Alert",
         });
 
     private void NotifyAuthorsInternal()

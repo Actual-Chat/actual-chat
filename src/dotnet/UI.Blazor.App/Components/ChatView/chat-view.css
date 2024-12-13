@@ -414,12 +414,9 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply flex-x flex-wrap items-center;
     @apply min-h-5;
     @apply px-1.5;
-    @apply rounded-full bg-focus-after-primary;
-    @apply text-mention-other-text text-caption-6;
+    @apply rounded-full bg-danger-outline-hover;
+    @apply text-danger text-xs;
     @apply select-none;
-}
-body.hoverable .notify-mentioned-members:hover {
-    @apply bg-hover;
 }
 
 .notify-mentioned-members.has-notified {

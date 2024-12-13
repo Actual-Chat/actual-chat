@@ -3,12 +3,16 @@
 }
 
 .mention-markup {
-    @apply inline-flex align-middle;
-    @apply max-w-48;
-    @apply my-[1px] px-1.5 pb-0.5;
+    @apply inline-flex align-middle items-center;
+    @apply max-w-48 h-5;
+    @apply px-1.5;
     @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-medium;
     @apply select-none;
+}
+.mention-markup.dim {
+    @apply bg-status-badge;
+    @apply text-status;
 }
 .mention-markup.mention-markup-own {
     @apply bg-mention-own text-mention-own-text;

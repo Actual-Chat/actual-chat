@@ -8,7 +8,7 @@
     @apply text-base text-02;
     @apply pointer-events-none;
     @apply shadow-modal-narrow md:shadow-modal-wide;
-    max-width: 80vw;
+    @apply max-w-none md:max-w-80;
 }
 .ac-tooltip-text {
     @apply truncate;

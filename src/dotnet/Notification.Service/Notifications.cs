@@ -132,7 +132,7 @@ public class Notifications(IServiceProvider services) : INotifications
             var authorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
             // Always disabled for middle and large groups.
             if (authorIds.Count > 10)
-                throw StandardError.Unavailable("Notify All is unavailable in chats with more than 10 people.");
+                throw StandardError.Unavailable("Alert everyone is unavailable in chats with more than 10 people.");
         }
 
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);

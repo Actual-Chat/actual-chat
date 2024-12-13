@@ -141,7 +141,7 @@ body.narrow .post-panel-btn.attach-btn {
 }
 .post-panel .c-left-buttons {
     @apply relative;
-    @apply flex-x items-center self-end gap-x-1.5;
+    @apply flex-x items-center self-end gap-x-2;
     @apply my-2 mx-1;
 }
 body.narrow .post-panel .c-left-buttons {
