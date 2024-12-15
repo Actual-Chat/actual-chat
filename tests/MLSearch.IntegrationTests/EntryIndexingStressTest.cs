@@ -39,19 +39,19 @@ public class EntryIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @
         var portion2 = await CreateEntries(chatId, 50, "The second portion:");
 
         // act
-        var entries = await Find("first", expected: 50);
+        var searchResults = await Find("first", expected: 50);
 
         // assert
-        entries.Select(x => x.Text)
+        searchResults.Select(x => x.Text)
             .Should()
             .OnlyHaveUniqueItems()
             .And.BeSubsetOf(portion1.Select(x => x.Content));
 
         // act
-        entries = await Find("second", expected: 50);
+        searchResults = await Find("second", expected: 50);
 
         // assert
-        entries.Select(x => x.Text)
+        searchResults.Select(x => x.Text)
             .Should()
             .OnlyHaveUniqueItems()
             .And.BeSubsetOf(portion2.Select(x => x.Content));

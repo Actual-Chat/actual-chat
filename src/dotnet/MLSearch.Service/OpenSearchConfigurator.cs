@@ -8,6 +8,7 @@ using ActualChat.MLSearch.Module;
 using ActualChat.Search;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
+using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 namespace ActualChat.MLSearch;
 

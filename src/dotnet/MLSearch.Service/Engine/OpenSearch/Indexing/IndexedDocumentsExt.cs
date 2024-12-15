@@ -1,4 +1,6 @@
 using ActualChat.MLSearch.Documents;
+using ActualChat.Search;
+using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
@@ -31,4 +33,11 @@ internal static class IndexedDocumentsExt
         IReadOnlyCollection<ChatId> deleted,
         CancellationToken cancellationToken = default)
         => indexedDocuments.Update(x => x.GroupIndexName, updatedDocuments, deleted, cancellationToken);
+
+    public static Task UpdateUserContacts(
+        this IndexedDocuments indexedDocuments,
+        IReadOnlyCollection<IndexedUserContact> updatedDocuments,
+        IReadOnlyCollection<UserId> deleted,
+        CancellationToken cancellationToken = default)
+        => indexedDocuments.Update(x => x.UserIndexName, updatedDocuments, deleted, cancellationToken);
 }

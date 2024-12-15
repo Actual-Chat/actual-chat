@@ -13,17 +13,21 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, P
 {
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingRecheckInterval;
-    private Task WhenReady => Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    [field: AllowNull, MaybeNull]
+    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    [field: AllowNull, MaybeNull]
+    private IPlacesBackend PlacesBackend => field ??= Host.Services.GetRequiredService<IPlacesBackend>();
+    [field: AllowNull, MaybeNull]
+    private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
+
 
     protected override async Task<IReadOnlyList<Place>> GetBatch(
         IndexingFlowCursor<PlaceId>? cursor,
         CancellationToken cancellationToken)
     {
-        var placesBackend = Host.Services.GetRequiredService<IPlacesBackend>();
-        var settings = Host.Services.GetRequiredService<MLSearchSettings>();
-        var maxVersion = Clocks.GetMaxVersion(settings.IndexingDelay);
+        var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
         cursor ??= new (PlaceId.None, 0);
-        var batch = await placesBackend.ListChanged(
+        var batch = await PlacesBackend.ListChanged(
                 cursor.LastUpdatedVersion,
                 maxVersion,
                 cursor.LastUpdatedId,

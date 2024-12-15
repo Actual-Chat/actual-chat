@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using ActualChat.Search;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -166,11 +167,11 @@ internal static class OpenSearchClientExt
         throw StandardError.External("OpenSearch request failed.");
     }
 
-    public static SearchDescriptor<T> Log<T>(this SearchDescriptor<T> descriptor, IOpenSearchClient client, ILogger? log, string description = "") where T : class
-        => LogRequest(descriptor, client, log, description);
+    public static SearchDescriptor<T> Log<T>(this SearchDescriptor<T> descriptor, IOpenSearchClient client, ILogger? log, string scope, string indexName) where T : class
+        => LogRequest(descriptor, client, log, $"{scope} search request: \nGET {indexName}/_search\n");
 
     public static ICreateIndexRequest Log(this ICreateIndexRequest request, IOpenSearchClient client, ILogger? log, string description = "")
-        => LogRequest(request, client, log, description);
+        => LogRequest(request, client, log, description.EnsureSuffix(": "));
 
     private static T LogRequest<T>(T request, IOpenSearchClient client, ILogger? log, string description)
     {
@@ -179,7 +180,7 @@ internal static class OpenSearchClientExt
 
         try {
             var s = client.RequestResponseSerializer.SerializeToString(request);
-            log.LogDebug("{Description}: {Request}", description, s);
+            log.LogDebug("{Description}{Request}", description, s);
         }
         catch (Exception e) {
             log.LogWarning(e, "Could not log {Description}", description);

@@ -4,6 +4,7 @@ using ActualChat.Search;
 using Cysharp.Text;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
+using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
