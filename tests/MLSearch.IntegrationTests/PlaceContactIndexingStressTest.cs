@@ -30,19 +30,19 @@ public class PlaceContactIndexingStressTest(AppHostFixture fixture, ITestOutputH
         var portion2 = await CreatePlaces(50, "The second portion:");
 
         // act
-        var entries = await Find("first");
+        var searchResults = await Find("first");
 
         // assert
-        entries.Select(x => x.Text)
+        searchResults.Select(x => x.Text)
             .Should()
             .OnlyHaveUniqueItems()
             .And.BeSubsetOf(portion1.Select(x => x.Title));
 
         // act
-        entries = await Find("second");
+        searchResults = await Find("second");
 
         // assert
-        entries.Select(x => x.Text)
+        searchResults.Select(x => x.Text)
             .Should()
             .OnlyHaveUniqueItems()
             .And.BeSubsetOf(portion2.Select(x => x.Title));

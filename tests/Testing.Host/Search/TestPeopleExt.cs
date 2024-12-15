@@ -2,6 +2,7 @@ using ActualChat.Chat;
 using ActualChat.MLSearch;
 using ActualChat.Search;
 using ActualChat.Users;
+using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 
 namespace ActualChat.Testing.Host;
 

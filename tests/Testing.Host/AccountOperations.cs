@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.Chat;
 using ActualChat.Users;
 
 namespace ActualChat.Testing.Host;
@@ -45,6 +44,30 @@ public static class AccountOperations
         if (!phone.IsNone)
             user = user.WithPhone(phone);
         return await tester.SignIn(user);
+    }
+
+    public static async Task<AccountFull> UpdateAccount(
+        this IWebTester tester,
+        AccountFull account,
+        CancellationToken cancellationToken = default)
+    {
+        await using var __ = await tester.BackupAuth();
+        await tester.SignIn(account, cancellationToken);
+        var cmd = new Accounts_Update(tester.Session, account, null);
+        await tester.Commander.Call(cmd, cancellationToken);
+        return await tester.Accounts.GetOwn(tester.Session, cancellationToken);
+    }
+
+    public static async Task<AccountFull> DeleteAccount(
+        this IWebTester tester,
+        AccountFull account,
+        CancellationToken cancellationToken = default)
+    {
+        await using var __ = await tester.BackupAuth();
+        await tester.SignIn(account, cancellationToken);
+        var cmd = new Accounts_DeleteOwn(tester.Session);
+        await tester.Commander.Call(cmd, cancellationToken);
+        return await tester.Accounts.GetOwn(tester.Session, cancellationToken);
     }
 
     public static async Task<AsyncDisposable<User?>> BackupAuth(this IWebTester tester)

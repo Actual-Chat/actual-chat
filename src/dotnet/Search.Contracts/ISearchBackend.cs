@@ -20,11 +20,7 @@ public interface ISearchBackend : IComputeService, IBackendService
     // Commands
 
     [CommandHandler]
-    Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnStartUserContactIndexing(SearchBackend_StartUserContactIndexing command, CancellationToken cancellationToken);
 
     // Events
 
@@ -38,26 +34,6 @@ public interface ISearchBackend : IComputeService, IBackendService
     Task OnPlaceChangedEvent(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_UserContactBulkIndex(
-    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedUserContact> Updated,
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedUserContact> Deleted
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // Review
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_StartUserContactIndexing
-    : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit> // NOTE(AY): Will execute on a single backend now!
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

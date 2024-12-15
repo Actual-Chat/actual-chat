@@ -29,13 +29,11 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
         // act
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellationToken = cts.Token;
-        var retrieved = await Sut.BatchChanged(minVersion,
-                long.MaxValue,
-                lastChangedId,
-                batchSize,
-                cancellationToken)
-            .ToApiArrayAsync(cancellationToken)
-            .Flatten();
+        var retrieved = await Sut.ListChangedFull(minVersion,
+            long.MaxValue,
+            lastChangedId,
+            batchSize,
+            cancellationToken);
 
         // assert
         retrieved.Select(x => x.User.Name).Should().Contain(accounts.Select(x => x.User.Name));

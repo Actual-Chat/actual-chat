@@ -54,7 +54,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         rpcHost.AddApi<ISearch, Search>();
         rpcHost.AddApi<IMLSearch, MLSearchImpl>();
         rpcHost.AddBackend<ISearchBackend, SearchBackend>();
-        rpcHost.AddBackend<IContactIndexStatesBackend, ContactIndexStateBackend>();
         rpcHost.AddBackend<IMLSearchBackend, MLSearchBackend>();
         if (!Settings.IsInitialIndexingDisabled) {
             rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
@@ -91,9 +90,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, MLSearchDbInitializer>();
-        dbModule.AddDbContextServices<MLSearchDbContext>(services, Settings.Db, db => {
-            db.AddEntityResolver<string, DbContactIndexState>();
-        });
+        dbModule.AddDbContextServices<MLSearchDbContext>(services, Settings.Db, db => { });
 
         // OpenSearch
         services
@@ -107,7 +104,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .Add<EntryIndexingFlow>()
             .Add<EntryIndexingMasterFlow>()
             .Add<PlaceContactIndexingFlow>()
-            .Add<GroupContactIndexingFlow>();
+            .Add<GroupContactIndexingFlow>()
+            .Add<AccountIndexingFlow>()
+            .Add<PlaceAuthorIndexingFlow>();
     }
 
     private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)
@@ -125,11 +124,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         );
         services.AddSingleton<ICursorStates<ChatContentCursor>>(
             static c => c.CreateInstance<CursorStates<ChatContentCursor>>(OpenSearchNames.ChatContentCursor));
-
-        // Contact indexing: UserContactIndexer, GroupChatContactIndexer, PlaceContactIndexer
-
-        services.AddSingleton<UserContactIndexer>()
-            .AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
 
         // Chat content indexing
 

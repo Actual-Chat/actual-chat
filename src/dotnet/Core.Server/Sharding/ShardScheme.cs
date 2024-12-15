@@ -24,7 +24,6 @@ public sealed class ShardScheme(
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), N, HostRole.AudioBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), N, HostRole.ChatBackend);
     public static readonly ShardScheme ContactsBackend = new(nameof(ContactsBackend), N, HostRole.ContactsBackend);
-    public static readonly ShardScheme ContactIndexerBackend = new(nameof(ContactIndexerBackend), 1, HostRole.ContactIndexerBackend);
     public static readonly ShardScheme InviteBackend = new(nameof(InviteBackend), 1, HostRole.InviteBackend);
     public static readonly ShardScheme NotificationBackend = new(nameof(NotificationBackend), N, HostRole.NotificationBackend);
     public static readonly ShardScheme SearchBackend = new(nameof(SearchBackend), N, HostRole.SearchBackend);
@@ -49,7 +48,6 @@ public sealed class ShardScheme(
         { MLSearchBackend.Id, MLSearchBackend },
         { TranscriptionBackend.Id, TranscriptionBackend },
         { UsersBackend.Id, UsersBackend },
-        { ContactIndexerBackend.Id, ContactIndexerBackend },
         { TestBackend.Id, TestBackend },
     };
 

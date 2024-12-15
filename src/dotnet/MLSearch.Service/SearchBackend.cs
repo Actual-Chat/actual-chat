@@ -6,14 +6,13 @@ using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Flows;
-using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Module;
-using ActualChat.Queues;
 using ActualChat.Search;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.AspNetCore.Http;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
+using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 
 namespace ActualChat.MLSearch;
 
@@ -24,11 +23,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private OpenSearchNames OpenSearchNames { get; } = services.GetRequiredService<OpenSearchNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
-    private UserContactIndexer UserContactIndexer { get; } = services.GetRequiredService<UserContactIndexer>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
     private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
-    private IQueues Queues { get; } = services.Queues();
     private ILogger? DebugLog => Constants.DebugMode.OpenSearchRequest ? Log : null;
 
     // Not a [ComputeMethod]!
@@ -71,29 +68,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // [CommandHandler]
-    public virtual async Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return;
-
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(OnUserContactBulkIndex)}: search is disabled");
-            return;
-        }
-
-        var updated = command.Updated;
-        var deleted = command.Deleted;
-        if (deleted.IsEmpty && updated.IsEmpty)
-            return;
-
-        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
-
-        Log.LogDebug("Indexing users: {UpdatedCount} updated and {DeletedCount} deleted", command.Updated.Count, command.Deleted.Count);
-        await IndexUserContacts(updated, deleted, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
     public virtual async Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -119,55 +93,43 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         await OpenSearchClient.Indices.RefreshAsync(Indices.Index(indices), ct: cancellationToken).ConfigureAwait(false);
     }
 
-    // [CommandHandler]
-    public virtual Task OnStartUserContactIndexing(
-        SearchBackend_StartUserContactIndexing command,
-        CancellationToken cancellationToken)
+    // [EventHandler]
+    public virtual Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return Task.CompletedTask; // it only notifies indexing job
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
-        if (!Settings.IsEnabled) {
-            Log.LogWarning($"{nameof(OnStartUserContactIndexing)}: search is disabled");
+        if (!Settings.IsEnabled)
             return Task.CompletedTask;
-        }
 
-        UserContactIndexer.OnSyncNeeded();
-        return Task.CompletedTask;
+        var (_, old, changeKind) = eventCommand;
+        return UpdateIndexedUserContacts();
+
+        Task UpdateIndexedUserContacts()
+            // NOTE: we don't have any other chance to process removed items
+            => changeKind == ChangeKind.Remove
+                ? IndexedDocuments.UpdateUserContacts([], [old!.Id], cancellationToken)
+                : Flows.GetAndResume<AccountIndexingFlow>("",
+                    Settings.IndexingDelay,
+                    "Account changed",
+                    Settings.IndexingRecheckInterval,
+                    cancellationToken);
     }
 
     // [EventHandler]
-    public virtual async Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
         if (!Settings.IsEnabled)
-            return;
+            return Task.CompletedTask;
 
-        var (account, _, changeKind) = eventCommand;
-        // NOTE: we don't have any other chance to process removed items
-        Log.LogDebug("Received AccountChangedEvent {ChangeKind} #{Id}", changeKind, account.Id);
-        if (changeKind == ChangeKind.Remove) {
-            var deletedContacts = ApiArray.New([account.ToIndexedUserContact()]);
-            await Queues.Enqueue(new SearchBackend_UserContactBulkIndex([], deletedContacts), cancellationToken).ConfigureAwait(false);
-        }
-        else
-            await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
-    }
-
-    // [EventHandler]
-    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
-        if (!Settings.IsEnabled)
-            return;
-
-        var (author, _) = eventCommand;
-        Log.LogDebug("Received AuthorChangedEvent #{Id}", author.Id);
-        await Queues.Enqueue(new SearchBackend_StartUserContactIndexing(), cancellationToken).ConfigureAwait(false);
+        return Flows.GetAndResume<PlaceAuthorIndexingFlow>("",
+            Settings.IndexingDelay,
+            "Account changed",
+            Settings.IndexingRecheckInterval,
+            cancellationToken);
     }
 
     // [EventHandler]
@@ -241,17 +203,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
     // Private methods
 
-    private Task IndexUserContacts(
-        IReadOnlyCollection<IndexedUserContact> updated,
-        IReadOnlyCollection<IndexedUserContact> deleted,
-        CancellationToken cancellationToken)
-        => OpenSearchClient
-            .BulkAsync(r => r
-                    .IndexMany(updated, (op, _) => op.Index(OpenSearchNames.UserIndexName))
-                    .DeleteMany(deleted, (op, _) => op.Index(OpenSearchNames.UserIndexName)),
-                cancellationToken)
-            .Assert(Log);
-
     private async Task<ContactSearchResultPage> FindPeople(
         UserId userId,
         ContactSearchQuery query,
@@ -272,7 +223,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.FullName)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "People search request"),
+                            .Log(OpenSearchClient, DebugLog, "People", OpenSearchNames.UserIndexName),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -331,7 +282,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Title)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "Group search request"),
+                            .Log(OpenSearchClient, DebugLog, "Group", OpenSearchNames.GroupIndexName),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -377,7 +328,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Title)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "Place search request"),
+                            .Log(OpenSearchClient, DebugLog, "Place", OpenSearchNames.PlaceIndexName),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -422,7 +373,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Sort(s => s.Descending(x => x.At))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Content)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "Entry search request"),
+                            .Log(OpenSearchClient, DebugLog, "Entry", OpenSearchNames.EntryIndexName),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);

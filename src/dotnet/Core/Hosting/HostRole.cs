@@ -31,7 +31,6 @@ public partial record struct HostRole(
     public static readonly HostRole MediaBackend = nameof(MediaBackend);
     public static readonly HostRole ChatBackend = nameof(ChatBackend);
     public static readonly HostRole ContactsBackend = nameof(ContactsBackend);
-    public static readonly HostRole ContactIndexerBackend = nameof(ContactIndexerBackend);
     public static readonly HostRole InviteBackend = nameof(InviteBackend);
     public static readonly HostRole NotificationBackend = nameof(NotificationBackend);
     public static readonly HostRole SearchBackend = nameof(SearchBackend);

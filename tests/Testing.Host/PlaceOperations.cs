@@ -7,10 +7,10 @@ public static class PlaceOperations
 {
     private const string DefaultPlaceTitle = "test place";
 
-    public static Task<Place> CreatePlace(this IWebTester tester, bool isPublicPlace, string title = DefaultPlaceTitle, params AccountFull[] usersToInvite)
+    public static Task<Place> CreatePlace(this IWebTester tester, bool isPublicPlace, string title = DefaultPlaceTitle, params IReadOnlyCollection<AccountFull> usersToInvite)
         => CreatePlace(tester, c => c with { IsPublic = isPublicPlace, Title = title }, usersToInvite.OfType<Account>().ToArray());
 
-    public static async Task<Place> CreatePlace(this IWebTester tester, Func<PlaceDiff, PlaceDiff> configure, params Account[] usersToInvite)
+    public static async Task<Place> CreatePlace(this IWebTester tester, Func<PlaceDiff, PlaceDiff> configure, params IReadOnlyCollection<Account> usersToInvite)
     {
         var session = tester.Session;
         var placeDiff = configure(new PlaceDiff() {
@@ -24,7 +24,7 @@ public static class PlaceOperations
                 Create = placeDiff,
             }));
         place.Require();
-        if (usersToInvite.Length > 0)
+        if (usersToInvite.Count > 0)
             await tester.InviteToPlace(place.Id, usersToInvite);
         return place;
     }
@@ -47,6 +47,6 @@ public static class PlaceOperations
         await commander.Call(new Places_Invite(session, placeId, userIds));
     }
 
-    public static Task InviteToPlace(this IWebTester tester, PlaceId placeId, params Account[] accounts)
+    public static Task InviteToPlace(this IWebTester tester, PlaceId placeId, params IEnumerable<Account> accounts)
         => tester.InviteToPlace(placeId, accounts.Select(x => x.Id).ToArray());
 }

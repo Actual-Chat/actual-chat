@@ -405,8 +405,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
         context.Operation.Items.Set(authors.ToArray());
+        context.Operation.AddEvent(new AuthorsRemovedEvent(authors.ToApiArray()));
     }
 
     // CommandHandler
