@@ -121,9 +121,11 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
                 var owner = await Tester.GetOwnAccount();
                 var uniqueCriteria = criteria;
                 var friends = await Tester.FindPeople(uniqueCriteria, true);
-                friends.Should().BeEquivalentTo(owner.BuildSearchResults(expectedFriends), o => o.ExcludingSearchMatch());
+                friends.Should()
+                    .BeEquivalentTo(owner.BuildSearchResults(expectedFriends), o => o.ExcludingSearchMatch());
                 var strangers = await Tester.FindPeople(uniqueCriteria, false);
-                strangers.Should().BeEquivalentTo(owner.BuildSearchResults(expectedStrangers), o => o.ExcludingSearchMatch());
+                strangers.Should()
+                    .BeEquivalentTo(owner.BuildSearchResults(expectedStrangers), o => o.ExcludingSearchMatch());
                 var joinedGroups = await Tester.FindGroups(uniqueCriteria, true);
                 joinedGroups.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedJoinedGroups), o => o.ExcludingSearchMatch());
@@ -137,16 +139,15 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
                 otherPlaces.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedOtherPlaces), o => o.ExcludingSearchMatch());
             },
+            Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
             TimeSpan.FromSeconds(30));
 
-    private async Task<List<FoundItem>> GetSearchResults(int expectedCount)
-    {
-        IReadOnlyList<FoundItem> results = [];
-        await TestExt.When(async () => {
-                results = await SearchUI.GetSearchResults();
+    private Task<IReadOnlyList<FoundItem>> GetSearchResults(int expectedCount)
+        => TestsExt.When(async () => {
+                var results = await SearchUI.GetSearchResults();
                 results.Should().HaveCount(expectedCount);
+                return results;
             },
+            Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
             TimeSpan.FromSeconds(10));
-        return results.ToList();
-    }
 }
