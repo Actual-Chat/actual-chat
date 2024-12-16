@@ -31,6 +31,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private MomentClockSet Clocks => Hub.Clocks();
     private IJSRuntime JS => Hub.JSRuntime();
+    private TuneUI TuneUI => Hub.TuneUI;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
 
@@ -178,8 +179,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         var recordingHasStarted = isRecording && !state.IsRecording;
         var recordingHasCompleted = !isRecording && state.IsRecording;
         var recordingDuration = TimeSpan.Zero;
-        if (recordingHasStarted)
+        if (recordingHasStarted) {
             newState = newState with { RecordingStartTime = Clocks.SystemClock.Now };
+            _ = TuneUI.Play(Tune.ConfirmRecording);
+        }
         else if (recordingHasCompleted) {
             recordingDuration = Clocks.SystemClock.Now - newState.RecordingStartTime;
             newState = newState with { RecordingStartTime = Moment.EpochStart };

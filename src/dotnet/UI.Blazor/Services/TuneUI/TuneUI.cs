@@ -20,6 +20,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
         [Tune.DragStart] = new (new[] { 100 }/*, "drag-start"*/),
         // Recording
         [Tune.BeginRecording] = new (new[] { 100, 50, 50 }, "begin-recording"),
+        [Tune.ConfirmRecording] = new (new[] { 50, 50, 100 }/*, "confirm-recording"*/),
         [Tune.EndRecording] = new (new[] { 100 }, "end-recording"),
         [Tune.RemindOfRecording] = new (new[] { 20 }, "remind-of-recording"),
         // Playback
@@ -111,6 +112,7 @@ public enum Tune
     SelectNavbarItem,
     ShowInputError,
     BeginRecording,
+    ConfirmRecording,
     EndRecording,
     RemindOfRecording,
     StartRealtimePlayback,
