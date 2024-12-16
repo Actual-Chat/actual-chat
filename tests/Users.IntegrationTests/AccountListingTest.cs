@@ -8,6 +8,7 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
 {
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private IAccountsBackend Sut { get; } = fixture.AppHost.Services.GetRequiredService<IAccountsBackend>();
+    private string UniquePart { get; } = UniqueNames.Prefix();
 
     protected override async Task DisposeAsync()
     {
@@ -22,9 +23,7 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
     {
         // arrange
         var alice = await Tester.SignInAsNew("Alice");
-        alice = await WaitGreetings(alice);
-        var accounts = await Tester.CreateAccounts(count);
-        accounts = await WaitGreetings(accounts);
+        var accounts = await Tester.CreateAccounts(count, nameFactory: _ => $"{UniquePart} User");
 
         // act
         var minVersion = alice.Version;
@@ -49,17 +48,4 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
         // assert
         allRetrieved.Select(x => x.Name).Should().Contain(accounts.Select(x => x.Name));
     }
-
-    private async Task<AccountFull> WaitGreetings(AccountFull account)
-    {
-        var accounts = await WaitGreetings([account]);
-        return accounts[0];
-    }
-
-    private Task<AccountFull[]> WaitGreetings(params IReadOnlyCollection<AccountFull> accounts)
-        => ComputedTest.When(async ct => {
-            var retrieved = await accounts.Select(x => Tester.AccountsBackend.Get(x.Id, ct).Require()).Collect(ct);
-            retrieved.Should().OnlyContain(x => x != null && x.IsGreetingCompleted == true);
-            return retrieved;
-        });
 }
