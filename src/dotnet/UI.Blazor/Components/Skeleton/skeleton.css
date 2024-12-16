@@ -3,6 +3,7 @@
 }
 .skeleton-left-panel {
     @apply flex-x;
+    @apply w-full md:w-1/2 lg:min-w-90 lg:max-w-90;
 }
 .thin-left-skeleton-panel {
     @apply flex-y;
@@ -22,7 +23,7 @@ body.narrow .thin-left-skeleton-panel .skeleton-panel-body {
     @apply relative;
     @apply flex-y;
     @apply bg-03;
-    @apply w-full md:w-80;
+    @apply w-full md:w-1/2 lg:w-80;
 }
 body.narrow .wide-left-skeleton-panel {
     @apply hidden;
@@ -61,9 +62,9 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply flex-1 flex-y;
 }
 .right-skeleton-panel {
-    @apply hidden flex-1 md:flex-y;
+    @apply hidden flex-none md:flex-y;
     @apply bg-03;
-    @apply w-full md:min-w-80 md:max-w-80;
+    @apply w-full md:w-1/2 lg:w-90;
 }
 .right-skeleton-panel .skeleton-panel-header {
     @apply grid gap-y-2;

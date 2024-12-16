@@ -14,8 +14,12 @@
 }
 
 .navigate-to-end > .c-content {
-    @apply absolute bottom-3 md:bottom-0 right-3 md:mb-2 z-10;
+    @apply absolute bottom-3 md:bottom-0 right-3 z-10;
     @apply flex-y items-center justify-center shadow-scrollbar;
+}
+body.hoverable .navigate-to-end > .c-content {
+    @apply right-0;
+    @apply p-3 pl-8;
 }
 .navigate-to-end .unread-counter {
     @apply -mb-2 z-10;

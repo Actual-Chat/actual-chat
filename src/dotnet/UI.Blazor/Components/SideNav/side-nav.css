@@ -37,6 +37,9 @@ body.device-ios .side-nav {
     @apply md:w-1/2 lg:w-110;
     @apply md:transition-width md:duration-200;
 }
+.page-with-header-and-footer:has(.right-skeleton-panel) > .side-nav.side-nav-left {
+    @apply md:w-1/2 lg:w-110;
+}
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .side-nav.side-nav-left {
     @apply md:w-110;
     @apply md:transition-width md:duration-200;

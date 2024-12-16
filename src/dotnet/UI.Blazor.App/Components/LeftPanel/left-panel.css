@@ -1,5 +1,5 @@
 .left-panel {
-    @apply flex-x;
+    @apply flex-1 flex-x;
     @apply h-full;
     @apply bg-04;
 }
