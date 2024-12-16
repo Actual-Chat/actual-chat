@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Server;
 using ActualChat.Chat;
 using ActualChat.Hosting;
@@ -18,6 +19,7 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     ICommander Commander { get; }
     IAuth Auth { get; }
     IAccounts Accounts { get; }
+    IAccountsBackend AccountsBackend { get; }
     IChats Chats { get; }
     IPlaces Places { get; }
     ISearch Search { get; }
@@ -41,21 +43,34 @@ public class WebClientTester : IWebClientTester
 
     public AppHost AppHost { get; }
     public IServiceProvider AppServices => AppHost.Services;
-    public ICommander Commander => AppServices.Commander();
-    public IAuth Auth => AppServices.GetRequiredService<IAuth>();
-    public IAccounts Accounts => AppServices.GetRequiredService<IAccounts>();
-    public IChats Chats => AppServices.GetRequiredService<IChats>();
-    public IPlaces Places => AppServices.GetRequiredService<IPlaces>();
-    public ISearch Search => AppServices.GetRequiredService<ISearch>();
-    public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
-    public INotificationsBackend NotificationsBackend  => AppServices.GetRequiredService<INotificationsBackend>();
-    public Session Session { get; }
-    public UrlMapper UrlMapper => AppServices.UrlMapper();
+    [field: AllowNull, MaybeNull]
+    public ICommander Commander => field ??= AppServices.Commander();
+    [field: AllowNull, MaybeNull]
+    public IAuth Auth => field ??= AppServices.GetRequiredService<IAuth>();
+    [field: AllowNull, MaybeNull]
+    public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    public IAccountsBackend AccountsBackend => field ??= AppServices.GetRequiredService<IAccountsBackend>();
+    [field: AllowNull, MaybeNull]
+    public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
+    [field: AllowNull, MaybeNull]
+    public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
+    [field: AllowNull, MaybeNull]
+    public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();
+    [field: AllowNull, MaybeNull]
+    public IAuthBackend AuthBackend => field ??= AppServices.GetRequiredService<IAuthBackend>();
+    [field: AllowNull, MaybeNull]
+    public INotificationsBackend NotificationsBackend  => field ??= AppServices.GetRequiredService<INotificationsBackend>();
+    [field: AllowNull, MaybeNull]
+    public UrlMapper UrlMapper => field ??= AppServices.UrlMapper();
     public ITestOutputHelper Out { get; }
+    public Session Session { get; }
 
     public IServiceProvider ClientServices => _clientServicesLazy.Value;
-    public ICommander ClientCommander => ClientServices.Commander();
-    public IAuth ClientAuth => ClientServices.GetRequiredService<IAuth>();
+    [field: AllowNull, MaybeNull]
+    public ICommander ClientCommander => field ??= ClientServices.Commander();
+    [field: AllowNull, MaybeNull]
+    public IAuth ClientAuth => field ??= ClientServices.GetRequiredService<IAuth>();
 
     public WebClientTester(
         AppHost appHost,
