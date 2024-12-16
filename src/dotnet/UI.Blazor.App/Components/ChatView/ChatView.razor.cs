@@ -296,10 +296,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         activity?.SetTag("AC." + nameof(ChatId), chatId);
 
         // Handling NavigateTo + default navigation
+        var itemVisibility = ItemVisibility.Value;
         var isFirstRender = renderedData.IsNone && query.IsNone;
-        var readEntryLid = _readPosition.Value.EntryLid;
+        var readEntryLid = itemVisibility.IsEndAnchorVisible
+            ? long.MaxValue // We are at the end of the chat so avoid displaying new messages line
+            : _readPosition.Value.EntryLid;
+        var hasReadEntry = readEntryLid != 0 && readEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
-            ?? (isFirstRender && readEntryLid != 0 ? new Navigation(readEntryLid, false) : null);
+            ?? (isFirstRender && hasReadEntry ? new Navigation(readEntryLid, false) : null);
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
 
@@ -357,7 +361,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .ConfigureAwait(false);
         }
 
-        if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(tiles, out readEntryLid)) {
+        if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(tiles, ref readEntryLid)) {
             tryUpdateShownReadEntryLid = false;
             goto rebuildTiles;
         }
@@ -396,6 +400,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Range<long> chatIdRange,
         ChatViewItemVisibility itemVisibility)
     {
+        // DebugLog?.LogDebug("GetIdRangeToLoad: {ChatId}, {Query}, {OldData}, {Anchor}, {IdRange}", ChatId, query, oldData.KeyRange.Format(), scrollAnchor, chatIdRange.Format());
         var firstLayer = ChatUI.IdTileStack.Layers[0];
         var secondLayer = ChatUI.IdTileStack.Layers[1];
         var minTileSize = ChatUI.IdTileStack.MinTileSize;
@@ -455,18 +460,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return readEntryLid;
     }
 
-    private bool TryUpdateShownReadEntryLid(List<VirtualListTile<ChatMessage>> tiles, out long readEntryLid)
+    private bool TryUpdateShownReadEntryLid(List<VirtualListTile<ChatMessage>> tiles, ref long readEntryLid)
     {
         var itemVisibility = ItemVisibility.Value;
-        if (tiles.Count == 0 || tiles[^1].Items.Count == 0) {
-            readEntryLid = 0;
+        if (tiles.Count == 0 || tiles[^1].Items.Count == 0)
             return false; // Not loaded yet or wrong load range
-        }
 
         if (itemVisibility.IsEmpty || !itemVisibility.IsEndAnchorVisible) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no item visibility or end anchor is not visible");
-            readEntryLid = 0;
             return false; // No item visibility or we aren't at the end of the list
+        }
+
+        if (readEntryLid == long.MaxValue) {
+            DebugLog?.LogDebug("TryUpdateShownReadEntryLid: read position is at the end");
+            return false; // We are at the end of the chat view
         }
 
         var shownReadEntryLid = _shownReadEntryLid.Value;
@@ -477,7 +484,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasNewMessagesLine = newMessagesLine != null;
         if (!hasNewMessagesLine) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no new messages line");
-            readEntryLid = 0;
             return false; // No new messages line
         }
 
@@ -487,7 +493,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
         if (newShownReadEntryLid == shownReadEntryLid) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: read position is unchanged");
-            readEntryLid = 0;
             return false;
         }
 

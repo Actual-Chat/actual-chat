@@ -152,8 +152,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
-        // Use None after reset() call
-        var lastData = LastData.Index >= RenderIndex ? VirtualListData<TItem>.None : LastData;
+        var lastData = LastData;
         VirtualListData<TItem> data;
         var computed = Computed.GetCurrent();
         try {

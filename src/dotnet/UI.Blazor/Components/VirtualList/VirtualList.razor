@@ -10,16 +10,17 @@
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
     var hasJsComponentCreated = JSRef != null;
-    var data = Data;
+    var data = State.Value;
     var containerClass = !hasJsComponentCreated
         ? "hide"
         : "";
 
+    var count = data.Tiles.Sum(t => t.Items.Sum(i => i.CountAs));
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
         KeyRange = data.KeyRange,
-        Count = data.Tiles.Sum(t => t.Items.Sum(i => i.CountAs)),
+        Count = count,
         BeforeCount = Data.BeforeCount,
         AfterCount = Data.AfterCount,
         HasVeryFirstItem = data.HasVeryFirstItem,
