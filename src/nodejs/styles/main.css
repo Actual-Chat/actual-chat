@@ -328,6 +328,9 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply md:transition-width;
     @apply md:duration-200;
 }
+.page-with-header-and-footer:has(.right-skeleton-panel) > .list-view-layout {
+    @apply sm:w-full md:w-0 lg:w-full;
+}
 @media (min-width: 820px) and (max-width: 1280px) {
     .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
         animation: hide-layout 200ms forwards;
