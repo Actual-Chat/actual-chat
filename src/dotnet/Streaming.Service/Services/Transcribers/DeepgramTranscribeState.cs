@@ -60,7 +60,8 @@ public class DeepgramTranscribeState(
 
     public DeepgramTranscribeState CompleteSentence()
     {
-        Unstable = Unstable.WithSuffix(".", Unstable.TimeMap);
+        var unstable = Unstable;
+        Unstable = (unstable with { Text = unstable.Text.TrimEnd(',', ';') }).WithSuffix(".", unstable.TimeMap);
         return this;
     }
 }
