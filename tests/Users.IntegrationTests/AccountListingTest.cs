@@ -22,11 +22,11 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
     {
         // arrange
         var alice = await Tester.SignInAsNew("Alice");
+        alice = await WaitGreetings(alice);
         var accounts = await Tester.CreateAccounts(count);
-        await Task.Delay(1000); // wait for version stabilizing
+        accounts = await WaitGreetings(accounts);
 
         // act
-        alice = await Tester.SignIn(alice); // refresh version
         var minVersion = alice.Version;
         var lastChangedId = alice.Id;
         var allRetrieved = new List<AccountFull>();
@@ -49,4 +49,17 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
         // assert
         allRetrieved.Select(x => x.Name).Should().Contain(accounts.Select(x => x.Name));
     }
+
+    private async Task<AccountFull> WaitGreetings(AccountFull account)
+    {
+        var accounts = await WaitGreetings([account]);
+        return accounts[0];
+    }
+
+    private Task<AccountFull[]> WaitGreetings(params IReadOnlyCollection<AccountFull> accounts)
+        => ComputedTest.When(async ct => {
+            var retrieved = await accounts.Select(x => Tester.AccountsBackend.Get(x.Id, ct).Require()).Collect(ct);
+            retrieved.Should().OnlyContain(x => x != null && x.IsGreetingCompleted == true);
+            return retrieved;
+        });
 }

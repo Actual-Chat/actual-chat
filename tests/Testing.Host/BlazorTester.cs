@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Server;
 using ActualChat.Chat;
 using ActualChat.Notification;
@@ -12,18 +13,30 @@ public class BlazorTester : TestContext, IWebTester
     private readonly IServiceScope _serviceScope;
 
     public AppHost AppHost { get; }
-    public IServiceProvider AppServices => AppHost.Services;
+    [field: AllowNull, MaybeNull]
+    public IServiceProvider AppServices => field ??= AppHost.Services;
     public IServiceProvider ScopedAppServices => _serviceScope.ServiceProvider;
-    public ICommander Commander => AppServices.Commander();
-    public IAuth Auth => AppServices.GetRequiredService<IAuth>();
-    public IAccounts Accounts => AppServices.GetRequiredService<IAccounts>();
-    public IChats Chats => AppServices.GetRequiredService<IChats>();
-    public IPlaces Places => AppServices.GetRequiredService<IPlaces>();
-    public ISearch Search => AppServices.GetRequiredService<ISearch>();
-    public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
-    public INotificationsBackend NotificationsBackend  => AppServices.GetRequiredService<INotificationsBackend>();
+    [field: AllowNull, MaybeNull]
+    public ICommander Commander => field ??= AppServices.Commander();
+    [field: AllowNull, MaybeNull]
+    public IAuth Auth => field ??= AppServices.GetRequiredService<IAuth>();
+    [field: AllowNull, MaybeNull]
+    public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    public IAccountsBackend AccountsBackend => field ??= AppServices.GetRequiredService<IAccountsBackend>();
+    [field: AllowNull, MaybeNull]
+    public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
+    [field: AllowNull, MaybeNull]
+    public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
+    [field: AllowNull, MaybeNull]
+    public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();
+    [field: AllowNull, MaybeNull]
+    public IAuthBackend AuthBackend => field ??= AppServices.GetRequiredService<IAuthBackend>();
+    [field: AllowNull, MaybeNull]
+    public INotificationsBackend NotificationsBackend  => field ??= AppServices.GetRequiredService<INotificationsBackend>();
     public Session Session { get; }
-    public UrlMapper UrlMapper => AppServices.UrlMapper();
+    [field: AllowNull, MaybeNull]
+    public UrlMapper UrlMapper => field ??= AppServices.UrlMapper();
     public ITestOutputHelper Out { get; }
 
     public BlazorTester(AppHost appHost, ITestOutputHelper @out)
