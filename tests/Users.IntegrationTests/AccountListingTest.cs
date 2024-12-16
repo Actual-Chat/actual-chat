@@ -22,20 +22,31 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
     {
         // arrange
         var alice = await Tester.SignInAsNew("Alice");
-        var minVersion = alice.Version;
-        var lastChangedId = alice.Id;
         var accounts = await Tester.CreateAccounts(count);
+        await Task.Delay(1000); // wait for version stabilizing
 
         // act
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var cancellationToken = cts.Token;
-        var retrieved = await Sut.ListChangedFull(minVersion,
-            long.MaxValue,
-            lastChangedId,
-            batchSize,
-            cancellationToken);
+        alice = await Tester.SignIn(alice); // refresh version
+        var minVersion = alice.Version;
+        var lastChangedId = alice.Id;
+        var allRetrieved = new List<AccountFull>();
+        while (true) {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var cancellationToken = cts.Token;
+            var retrieved = await Sut.ListChangedFull(minVersion,
+                long.MaxValue,
+                lastChangedId,
+                batchSize,
+                cancellationToken);
+            if (retrieved.Count == 0)
+                break;
+
+            minVersion = retrieved[^1].Version;
+            lastChangedId = retrieved[^1].Id;
+            allRetrieved.AddRange(retrieved);
+        }
 
         // assert
-        retrieved.Select(x => x.User.Name).Should().Contain(accounts.Select(x => x.User.Name));
+        allRetrieved.Select(x => x.Name).Should().Contain(accounts.Select(x => x.Name));
     }
 }
