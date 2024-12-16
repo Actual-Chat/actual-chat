@@ -5,6 +5,7 @@ import { map } from 'lit/directives/map.js';
 import { css, html, LitElement } from 'lit';
 import { MessageWidth, randomIntFromInterval } from './helpers';
 import { messageStyles } from './styles.lit';
+import { fastRaf } from 'fast-raf';
 
 @customElement('chat-list-skeleton')
 class ChatListSkeleton extends LitElement {
@@ -67,10 +68,9 @@ class ChatListSkeleton extends LitElement {
         this.observer = new IntersectionObserver(entries => {
             const isVisible = entries.some(e => e.isIntersecting);
             // console.warn('isVisible', isVisible, entries);
-            if (isVisible)
-                this.classList.add('animated-skeleton');
-            else
-                this.classList.remove('animated-skeleton');
+            fastRaf({
+                write: () => this.classList.toggle('animated-skeleton', isVisible && this.count > 0)
+            })
         });
         this.observer.observe(this);
     }

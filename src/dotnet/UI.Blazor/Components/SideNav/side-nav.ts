@@ -38,17 +38,16 @@ export class SideNav extends DisposableBag {
 
     private readonly contentDiv: HTMLElement;
     private readonly bodyClassWhenOpen: string;
+    private _isPulling = false;
 
     public readonly hasHistoryNavigationGesture: boolean;
     public get side(): SideNavSide { return this.options.side; }
     public get opposite(): SideNav { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
     public get isOpen() { return this.element.dataset['sideNav'] === 'open'; }
-    public get isPulling() { return this.element.classList.contains('pulling')}
+    public get isPulling() { return this._isPulling; }
     public set isPulling(value: boolean) {
-        if (value)
-            this.element.classList.add('pulling');
-        else
-            this.element.classList.remove('pulling');
+        this._isPulling = value;
+        this.element.classList.toggle('pulling', value);
     }
 
     public static create(
