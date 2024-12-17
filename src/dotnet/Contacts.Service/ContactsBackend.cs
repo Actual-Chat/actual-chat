@@ -592,6 +592,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (author.HasLeft) {
             var removeCommand = new ContactsBackend_Change(contactId, null, Change.Remove<Contact>());
             await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
+            return;
         }
 
         var isChatRoulette = false;
