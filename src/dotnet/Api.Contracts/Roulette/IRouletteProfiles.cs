@@ -7,6 +7,8 @@ public interface IRouletteProfiles : IComputeService
     Task<Symbol> GetSelectedProfileId(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Profile?> GetOwnProfile(Session session, Symbol profileId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Profile?> GetProfile(Session session, Symbol profileId, CancellationToken cancellationToken);
 
     // Commands
 
