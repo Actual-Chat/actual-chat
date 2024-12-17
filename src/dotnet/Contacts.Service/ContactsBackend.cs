@@ -132,11 +132,16 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var isChatRoulette = Constants.Place.ChatRouletteId == placeId;
+
         ApiArray<ContactId> result;
         if (placeId.IsNone) {
             var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
             if (!sContactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
                 sContactIds.Add(announcementChatContactId);
+            result = sContactIds.ToApiArray(c => new ContactId(c));
+        }
+        else if (isChatRoulette) {
             result = sContactIds.ToApiArray(c => new ContactId(c));
         }
         else {
@@ -239,7 +244,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
                 UserId = userId,
-                IsPinned = contact.IsPinned,
                 TouchedAt = Clocks.SystemClock.Now,
             };
             dbContact = new DbContact(contact);
@@ -585,20 +589,27 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (contact.IsStored() == !author.HasLeft)
             return; // No need to make any changes
 
+        if (author.HasLeft) {
+            var removeCommand = new ContactsBackend_Change(contactId, null, Change.Remove<Contact>());
+            await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        var isChatRoulette = false;
         if (chatId.Kind == ChatKind.Group && !author.HasLeft) {
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
             if (chat is null)
                 Log.LogWarning("Can't get chat with id '{ChatId}' on changing author '{Author}', old author: '{OldAuthor}'",
                     chatId, author, oldAuthor);
-            else if (chat.IsAiSearchChat())
-                return; // Do not create contacts for ML Search chats
-            else if (chat.IsChatRoulette())
-                return; // Do not create contacts for Chat Roulette.
+            else {
+                isChatRoulette = chat.IsChatRoulette();
+                if (chat.IsAiSearchChat())
+                    return; // Do not create contacts for ML Search chats
+            }
         }
 
-        var change = author.HasLeft
-            ? new Change<Contact> { Remove = true }
-            : new Change<Contact> { Create = new Contact(contactId) };
+        var change = new Change<Contact> { Create = new Contact(contactId) {
+                IsChatRoulette = isChatRoulette
+            } };
         var command = new ContactsBackend_Change(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

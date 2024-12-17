@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase
 @{
+    var showFilters = PlaceId.IsNone || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
     RenderFragment RenderTab(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
         var title = filter.Title;
@@ -22,33 +23,33 @@
 
 <div class="c-container">
     <div class="c-all-chats">
-        <TabPanel
-            @ref="@_tabPanel"
-            BottomHill="true"
-            TabsClass="left-panel-tabs"
-            AutoSelectInitialTab="false"
-            SelectedTabIdChanged="@OnSelectedTabIdChanged">
-            <AdditionalButton>
-                <ChatListSortButton PlaceChatListSettings="@_placeChatListSettings" />
-            </AdditionalButton>
-            <ChildContent>
-                @for (var i = 0; i < ChatListFilter.All.Count; i++) {
-                    var filter = ChatListFilter.All[i];
-                    @RenderTab(filter, i)
-                }
-            </ChildContent>
-            <TabContent>
-                <ChatList @key="@PlaceId.Value" PlaceId="@PlaceId" UsePlaceChatListSettings="@true" />
-            </TabContent>
-        </TabPanel>
+        @if (showFilters) {
+            <TabPanel
+                @ref="@_tabPanel"
+                BottomHill="true"
+                TabsClass="left-panel-tabs"
+                AutoSelectInitialTab="false"
+                SelectedTabIdChanged="@OnSelectedTabIdChanged">
+                <AdditionalButton>
+                    <ChatListSortButton PlaceChatListSettings="@_placeChatListSettings"/>
+                </AdditionalButton>
+                <ChildContent>
+                    @for (var i = 0; i < ChatListFilter.All.Count; i++) {
+                        var filter = ChatListFilter.All[i];
+                        @RenderTab(filter, i)
+                    }
+                </ChildContent>
+            </TabPanel>
+        }
+        <ChatList @key="@PlaceId.Value" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
     </div>
     <div class="c-active-chats">
-        <ActiveChats />
+        <ActiveChats/>
     </div>
 </div>
 
 @code {
-    private TabPanel _tabPanel = null!;
+    private TabPanel? _tabPanel;
     private PlaceChatListSettings? _placeChatListSettings;
     private string? _tabPanelSelectedTabId;
 
@@ -72,7 +73,7 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        if (_tabPanelSelectedTabId == null)
+        if (_tabPanelSelectedTabId == null || _tabPanel is null)
             return;
 
         _tabPanel.SelectedTabId = _tabPanelSelectedTabId;

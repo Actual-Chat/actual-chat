@@ -56,7 +56,7 @@ public class Avatars(IServiceProvider services) : IAvatars
         }
 
         var changeCommand = new AvatarsBackend_Change(avatarId, expectedVersion, change);
-        avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+        avatar = await Commander.Call(changeCommand, cancellationToken).ConfigureAwait(false);
 
         if (avatar.IsAnonymous)
             return avatar; // We don't account anonymous avatars in the list

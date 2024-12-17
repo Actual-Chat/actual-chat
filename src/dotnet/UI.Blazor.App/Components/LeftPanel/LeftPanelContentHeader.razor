@@ -1,13 +1,17 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @implements IDisposable
-@inherits ComputedStateComponent<Place?>
+@inherits ComputedStateComponent<LeftPanelContentHeader.Model>
 @{
     var m = State.Value;
+    var place = m.Place;
+    var isChatRoulette = m.IsChatRoulette;
 }
 
-@if (m != null) {
-    <LeftPanelPlaceContentHeader Place="@m"/>
-    <LeftPlaceSearchOverlayPanel Place="@m"/>
+@if (place != null) {
+    <LeftPanelPlaceContentHeader Place="@place"/>
+    <LeftPlaceSearchOverlayPanel Place="@place"/>
+} else if (isChatRoulette) {
+    <LeftPanelChatRouletteContentHeader />
 } else {
     <LeftPanelChatContentHeader />
     <LeftChatSearchOverlayPanel />
@@ -33,30 +37,36 @@
         NavbarUI.SelectedGroupTitleUpdated -= OnNavbarSelectedGroupOrTitleChanged;
     }
 
-    protected override ComputedState<Place?>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = null,
+            InitialValue = new Model(null, false),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
-    protected override async Task<Place?> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var session = Session;
         var searchPlaceId = await SearchUI.PlaceId.Use(cancellationToken).ConfigureAwait(false);
         var isSearchOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         if (isSearchOn && searchPlaceId.IsNone)
-            return null;
+            return new Model(null, false);
 
         var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
             ? selectedPlaceId
             : NavbarUI.IsPinnedChatSelected(out var pinnedChatId)
                 ? pinnedChatId.PlaceId
                 : PlaceId.None;
+        if (Constants.Place.ChatRouletteId.Equals(placeId))
+            return new Model(null, true);
+
         var place = placeId.IsNone
             ? null
-            : await Places.Get(session, placeId, default).ConfigureAwait(false);
-        return place;
+            : await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        return new Model(place, false);
     }
 
     private void OnNavbarSelectedGroupOrTitleChanged(object? s, EventArgs e)
         => State.Invalidate();
+
+    // Nested types
+    public record Model(Place? Place, bool IsChatRoulette);
 }

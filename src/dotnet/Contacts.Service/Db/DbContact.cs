@@ -36,6 +36,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             TouchedAt = TouchedAt.ToMoment(),
             IsPinned = IsPinned,
             PeerContactName = PeerContactName,
+            IsChatRoulette = Constants.Place.ChatRouletteId.Value.Equals(PlaceId),
         };
 
     public void UpdateFrom(Contact model)
@@ -55,7 +56,13 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         OwnerId = model.OwnerId.Value.NullIfEmpty() ?? throw StandardError.Constraint("OwnerId cannot be empty.");
         ChatId = model.ChatId.Value.NullIfEmpty();
         UserId = model.UserId.Value.NullIfEmpty();
-        PlaceId = model.PlaceId.Value.NullIfEmpty();
+        var placeId = model.PlaceId.Value.NullIfEmpty();
+        if (model.IsChatRoulette) {
+            if (placeId is not null)
+                throw StandardError.Constraint("PlaceId should be null for chat roulette.");
+            placeId = Constants.Place.ChatRouletteId;
+        }
+        PlaceId = placeId;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>

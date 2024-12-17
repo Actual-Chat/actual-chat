@@ -10,13 +10,6 @@ public static class ContactsExt
         CancellationToken cancellationToken)
         => contacts.ListContacts(session, PlaceId.None, c => c.Account != null, cancellationToken);
 
-    public static ValueTask<List<Contact>> ListContacts(
-        this IContacts contacts,
-        Session session,
-        PlaceId placeId,
-        CancellationToken cancellationToken)
-        => contacts.ListContacts(session, placeId, null, cancellationToken);
-
     public static async ValueTask<List<Contact>> ListContacts(
         this IContacts contacts,
         Session session,

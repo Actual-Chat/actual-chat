@@ -47,8 +47,15 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var filterLanguageIds = filter.Languages.Select(l => l.Id.Value).ToArray();
         queryable = queryable.Where(c => filterLanguageIds.Any(l => c.Languages.Contains(l)));
         if (filter.Interests.Length > 0) {
-            var filterInterestCodes = filter.Interests.Select(c => c.Code).ToArray();
-            queryable = queryable.Where(c => filterInterestCodes.Any(i => c.Interests.Contains(i)));
+            var hasFlexible = filter.Interests.Any(c => c.Code == Interests.Flexible.Code);
+            if (hasFlexible) {
+                // Flexible interest indicates that profiles with any interests will suite.
+                queryable = queryable.Where(c => c.Interests.Length > 0);
+            }
+            else {
+                var filterInterestCodes = filter.Interests.Select(c => c.Code).ToArray();
+                queryable = queryable.Where(c => filterInterestCodes.Any(i => c.Interests.Contains(i)));
+            }
         }
         var candidates = await queryable.ToListAsync(cancellationToken)
             .ConfigureAwait(false);

@@ -70,7 +70,8 @@ public class Contacts(IServiceProvider services) : IContacts
         PlaceId placeId,
         CancellationToken cancellationToken)
     {
-        if (!placeId.IsNone) {
+        var isChatRoulette = placeId == Constants.Place.ChatRouletteId;
+        if (!placeId.IsNone && !isChatRoulette) {
             var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
             if (place?.Rules.CanRead() != true)
                 return ApiArray.Empty<ContactId>();
@@ -79,7 +80,7 @@ public class Contacts(IServiceProvider services) : IContacts
         var accountId = account.Id;
         var contactIds = await Backend.ListIds(accountId, placeId, cancellationToken).ConfigureAwait(false);
         // Add peer contacts for place members
-        if (!placeId.IsNone) {
+        if (!placeId.IsNone && !isChatRoulette) {
             var peerContacts = await GetPeerContacts(accountId, cancellationToken).ConfigureAwait(false);
             var memberUserIds = await Places.ListUserIds(session, placeId, cancellationToken).ConfigureAwait(false);
             var memberContactIds = new ApiSet<ContactId>();
