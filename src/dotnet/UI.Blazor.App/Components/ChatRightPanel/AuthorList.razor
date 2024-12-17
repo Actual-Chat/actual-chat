@@ -12,6 +12,8 @@
         if (!m.IsOwner && m.AllAuthorIds.Count < 5)
             hideMembers = true;
     }
+
+    var useFlatList = isPeerChat || m.IsChatRoulette;
 }
 
 <div class="author-list-tab">
@@ -21,7 +23,7 @@
                 There are <b>@m.AllAuthorIds.Count</b> members now. Anonymous chat members are hidden unless there are at least 5 of them.
             </div>
         }
-        else if (isPeerChat) {
+        else if (useFlatList) {
             var authorIds = m.AllAuthorIds.OrderBy(c => c.Equals(m.OwnAuthorId) ? 0 : 1);
             @foreach (var authorId in authorIds) {
                 <AuthorBadge
@@ -96,6 +98,7 @@
         var chatId = ChatId.None;
         var allAuthorIds = ApiArray<AuthorId>.Empty;
         var ownerIds = new HashSet<AuthorId>();
+        var isChatRoulette = false;
 
         if (!ChatId.IsNone) {
             chatId = ChatId;
@@ -103,6 +106,10 @@
             ownerIds = !chatId.IsPeerChat(out _)
                 ? [..await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false)]
                 : [];
+            if (chatId.Kind == ChatKind.Group) {
+                var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+                isChatRoulette = chat is not null && chat.IsChatRoulette();
+            }
         } else if (!PlaceId.IsNone) {
             var placeId = PlaceId;
             chatId = placeId.ToRootChatId();
@@ -175,6 +182,7 @@
             UnreportedAuthorIds = unreportedAuthors.Select(c => c.Id).ToList(),
             AllAreAnonymous = allAreAnonymous,
             ItemSize = itemSize,
+            IsChatRoulette = isChatRoulette,
         };
     }
 
@@ -196,6 +204,7 @@
         public bool AllAreAnonymous { get; init; }
         public bool IsOwner => !OwnAuthorId.IsNone && OwnerAuthorIds.Contains(OwnAuthorId);
         public float ItemSize { get; init; } = 48;
+        public bool IsChatRoulette { get; init; }
     }
 
     public record struct AuthorInfo(AuthorId Id, string Name);

@@ -48,6 +48,24 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
         return profile.ToProfile();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<Profile?> GetProfile(
+        Session session,
+        Symbol profileId,
+        CancellationToken cancellationToken)
+    {
+        if (profileId.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(profileId));
+
+        // NOTE(DF): Do we need any permission checks here?
+
+        var profile = await Backend.GetProfile(profileId, cancellationToken).ConfigureAwait(false);
+        if (profile is null)
+            return null;
+
+        return profile.ToProfile();
+    }
+
     // Commands
 
     // [CommandHandler]

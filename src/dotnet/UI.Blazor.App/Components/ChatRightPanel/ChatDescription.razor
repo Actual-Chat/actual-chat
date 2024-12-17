@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Roulette
 @inherits ComputedStateComponent<ChatDescription.Model>
 @{
     var m = State.Value;
@@ -8,10 +9,40 @@
     @m.Description
 </span>
 
+@if (m.ChatRouletteInfo != null) {
+    var preferences = m.ChatRouletteInfo.PeerProfile.Preferences.Preferences;
+    var countryName = preferences.Country.Title.NullIfEmpty() ?? "---";
+    var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
+    <div class="cr-item">
+        <div class="c-center">
+            <div class="cr-badge c-location">
+                <i class="icon-map-point"></i>
+                <span>@countryName</span>
+            </div>
+            <div class="cr-badge c-languages">
+                <i class="icon-globe"></i>
+                <span>@languages</span>
+            </div>
+        </div>
+        <div class="c-bottom">
+            @{
+                var matchInterests = m.ChatRouletteInfo.OwnProfile.Preferences.Preferences.Interests;
+            }
+            @foreach (var interest in preferences.Interests) {
+                var match = matchInterests.Contains(interest);
+                <div class="cr-badge @(match ? "selected" : "")">
+                    <span>@(Interests.GetTitle(interest))</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
+    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
     private AccountUI AccountUI => Hub.AccountUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -24,12 +55,21 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!Chat.Id.IsPeerChat(out var peerChatId)) {
-            return new() {
-                Description = Chat.Description,
-            };
-        }
+        var isPeerChat = Chat.Id.IsPeerChat(out var peerChatId);
+        if (isPeerChat)
+            return await GetPeerChatModel(peerChatId, cancellationToken);
 
+        var isChatRoulette = Chat.IsChatRoulette();
+        if (isChatRoulette)
+            return await GetChatRouletteModel(Chat, cancellationToken);
+
+        return new() {
+            Description = Chat.Description,
+        };
+    }
+
+    private async Task<Model> GetPeerChatModel(PeerChatId peerChatId, CancellationToken cancellationToken)
+    {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var peerAccountId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
         if (peerAccountId.IsNone)
@@ -48,11 +88,44 @@
         };
     }
 
+    private async Task<Model> GetChatRouletteModel(Chat chat, CancellationToken cancellationToken) {
+        var chatRouletteInfo = await GetChatRouletteInfo(chat, cancellationToken).ConfigureAwait(false);
+        if (chatRouletteInfo is null)
+            return new();
+
+        return new() {
+            Description = chatRouletteInfo.PeerProfile.Avatar.Bio,
+            ChatRouletteInfo = chatRouletteInfo
+        };
+    }
+
+    private async Task<ChatRouletteInfo?> GetChatRouletteInfo(Chat chat, CancellationToken cancellationToken) {
+        var ownAuthor = chat.Rules.Author;
+        if (ownAuthor is null)
+            return null;
+
+        var authorIds = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        var peerAuthorId = authorIds.FirstOrDefault(c => c != ownAuthor.Id);
+        var peerAuthor = await Authors.Get(Session, peerAuthorId.ChatId, peerAuthorId, cancellationToken).ConfigureAwait(false);
+        if (peerAuthor is null)
+            return null;
+
+        var peerProfile = await RouletteProfiles.GetProfile(Session, peerAuthor.AvatarId, cancellationToken).ConfigureAwait(false);
+        if (peerProfile is null)
+            return null;
+
+        var ownProfile = await RouletteProfiles.GetOwnProfile(Session, ownAuthor.AvatarId, cancellationToken).ConfigureAwait(false);
+        return new ChatRouletteInfo(peerProfile, ownProfile ?? Profile.None);
+    }
+
     // Nested types
 
     public sealed record Model {
         public static readonly Model Loading = new();
 
         public string Description { get; init; } = "";
+        public ChatRouletteInfo? ChatRouletteInfo { get; init; }
     }
+
+    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile OwnProfile);
 }
