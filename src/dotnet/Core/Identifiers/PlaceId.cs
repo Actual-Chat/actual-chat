@@ -75,7 +75,7 @@ public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
         if (s.Length < 10)
             return false;
 
-        if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
+        if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Place.SystemPlaceIds.Contains(s)))
             return false;
 
         result = new PlaceId(s, AssumeValid.Option);

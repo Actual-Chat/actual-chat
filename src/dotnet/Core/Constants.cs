@@ -24,6 +24,13 @@ public static partial class Constants
         public const string LocalActualChat = "local.actual.chat";
     }
 
+    public static class Place
+    {
+        public static readonly PlaceId ChatRouletteId = new ("chat-roulette", AssumeValid.Option); // Pseudo Place
+        public static readonly IReadOnlySet<Symbol> SystemPlaceIds =
+            new HashSet<Symbol>(new [] { ChatRouletteId.Id });
+    }
+
     public static class Chat
     {
         public static readonly ChatId DefaultChatId = ChatId.Group("the-actual-one");

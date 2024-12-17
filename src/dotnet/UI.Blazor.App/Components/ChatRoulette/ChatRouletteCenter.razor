@@ -18,7 +18,10 @@
         } else {
             <div class="cr-main-title">Here are some people ready to chat:</div>
             @foreach (var candidate in candidates) {
-                <ChatRouletteCandidate Profile="@candidate.Profile" StartChatClick="@(() => OnStartChatClick(profile, candidate.Profile))"/>
+                <ChatRouletteCandidate
+                    Profile="@candidate.Profile"
+                    HighlightMatchWithProfile="@profile"
+                    StartChatClick="@(() => OnStartChatClick(profile, candidate.Profile))"/>
             }
         }
     }

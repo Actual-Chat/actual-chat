@@ -20,12 +20,17 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
+    private ModalUI ModalUI => Hub.ModalUI;
+    private RouletteUI RouletteUI => Hub.RouletteUI;
+
     private void OnCreateChatClick()
-        => Hub.ModalUI.Show(new NewChatModal.Model(Hub.ChatUI.SelectedPlaceId.Value));
+        => ModalUI.Show(new NewChatModal.Model(Hub.ChatUI.SelectedPlaceId.Value));
 
     private void OnCreatePlaceClick()
-        => Hub.ModalUI.Show(new NewPlaceModal.Model());
+        => ModalUI.Show(new NewPlaceModal.Model());
 
-    private void OnStartChatRouletteClick()
-        => _ = NavigateTo("/chat-roulette");
+    private async Task OnStartChatRouletteClick() {
+        await WhenClosed;
+        await RouletteUI.StartChatRoulette();
+    }
 }

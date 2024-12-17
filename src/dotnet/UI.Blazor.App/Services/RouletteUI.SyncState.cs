@@ -27,7 +27,7 @@ partial class RouletteUI
         var cGetProfile0 = await Computed
             .Capture(() =>  GetSelectedProfile(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var changes = cGetProfile0.Changes(FixedDelayer.NextTick, cancellationToken);
+        var changes = cGetProfile0.Changes(FixedDelayer.NextTick, cancellationToken).Skip(1);
         await foreach (var cGetProfile in changes.ConfigureAwait(false)) {
             var (profileId, profile) = cGetProfile.Value;
             if (SelectedProfile.Value.Id != profileId)

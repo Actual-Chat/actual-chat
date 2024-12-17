@@ -64,7 +64,11 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     public PlaceChatListSettings GetPlaceChatListSettings(PlaceId placeId)
         => _placeChatLists.GetOrAdd(placeId,
-            static (placeId1, self) => new PlaceChatListSettings(placeId1, self.Hub), this);
+            static (placeId1, self) =>
+                Constants.Place.ChatRouletteId.Equals(placeId1)
+                    ? new PlaceChatListSettings(placeId1, self.Hub, false)
+                    : new PlaceChatListSettings(placeId1, self.Hub, true),
+            this);
 
     [ComputeMethod]
     public virtual async Task<int> GetCount(PlaceId placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)

@@ -4,19 +4,36 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class PlaceChatListSettings
 {
-    private readonly IStoredState<ChatListSettings> _state;
+    private readonly IMutableState<ChatListSettings> _state;
 
     public PlaceId PlaceId { get; }
-    public Task WhenReady => _state.WhenRead;
+    public Task WhenReady { get; }
 
-    public PlaceChatListSettings(PlaceId placeId, UIHub hub)
+    public PlaceChatListSettings(PlaceId placeId, UIHub hub, bool useStoredState)
     {
         PlaceId = placeId;
-        _state = hub.StateFactory().NewKvasStored<ChatListSettings>(
-            new (hub.LocalSettings(), ChatListSettings.GetKvasKey(placeId)) {
-                InitialValue = new(),
-                Category = StateCategories.Get(GetType(), nameof(_state)),
-            });
+        if (useStoredState) {
+            var state = hub.StateFactory()
+                .NewKvasStored<ChatListSettings>(
+                    new (hub.LocalSettings(), ChatListSettings.GetKvasKey(placeId)) {
+                        InitialValue = new (),
+                        Category = StateCategories.Get(GetType(), nameof(_state)),
+                    });
+            _state = state;
+            WhenReady = state.WhenRead;
+        }
+        else {
+            var state = hub.StateFactory()
+                .NewMutable<ChatListSettings>(
+                    new () {
+                        InitialValue = new () {
+                            Order = ChatListOrder.ByLastEventTime,
+                        },
+                        Category = StateCategories.Get(GetType(), nameof(_state)),
+                    });
+            _state = state;
+            WhenReady = Task.CompletedTask;
+        }
     }
 
     public async ValueTask<ChatListSettings> Get(CancellationToken cancellationToken = default)
@@ -39,7 +56,7 @@ public sealed class PlaceChatListSettings
             });
     }
 
-    public async Task  SetOrder(ChatListOrder order, CancellationToken cancellationToken = default)
+    public async Task SetOrder(ChatListOrder order, CancellationToken cancellationToken = default)
     {
         if (!WhenReady.IsCompleted)
             await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);

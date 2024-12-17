@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualChat.Roulette;
 using ActualChat.Users;
 
@@ -29,6 +30,7 @@ public class Roulette(IServiceProvider services) : IRoulette
 
         var result = new List<ChatCandidate>();
 
+        var sw = Stopwatch.GetTimestamp();
         var profilePrefs = await RouletteProfilesBackend.FindProfiles(filter, cancellationToken).ConfigureAwait(false);
         foreach (var profilePref in profilePrefs) {
             var profileId = profilePref.Id;
@@ -44,14 +46,15 @@ public class Roulette(IServiceProvider services) : IRoulette
             if (!presence.HasFlag(Presence.Online))
                 continue;
 
-
             result.Add(new ChatCandidate(Profile.Create(avatar, profilePref)));
             if (result.Count >= 3)
                 break;
         }
 
-        // For test only.
-        await Task.Delay(1500, cancellationToken);
+        // Delay is for test purpose only.
+        var elapsed = (int)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
+        if (elapsed < 1500)
+            await Task.Delay(1500 - elapsed, cancellationToken);
         return result.ToImmutableArray();
     }
 

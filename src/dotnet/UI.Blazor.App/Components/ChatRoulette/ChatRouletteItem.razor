@@ -33,8 +33,12 @@
         </div>
     </div>
     <div class="c-bottom">
+        @{
+            var matchInterests = HighlightMatchWithProfile?.Preferences.Preferences.Interests ?? ImmutableArray<Interest>.Empty;
+        }
         @foreach (var interest in preferences.Interests) {
-            <div class="cr-badge">
+            var match = matchInterests.Contains(interest);
+            <div class="cr-badge @(match ? "selected" : "")">
                 <span>@(Interests.GetTitle(interest))</span>
             </div>
         }
@@ -49,5 +53,6 @@
 
 @code {
     [Parameter] public Profile Profile { get; set; } = null!;
+    [Parameter] public Profile? HighlightMatchWithProfile { get; set; }
     [Parameter] public RenderFragment ActionsTemplate { get; set; } = null!;
 }

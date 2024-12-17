@@ -1,7 +1,7 @@
 @using ActualChat.Roulette
 @namespace ActualChat.UI.Blazor.Components
 
-<ChatRouletteItem Profile="Profile">
+<ChatRouletteItem Profile="Profile" HighlightMatchWithProfile="@HighlightMatchWithProfile">
     <ActionsTemplate>
         <div class="c-start-chat" @onclick="@StartChatClick">
             <i class="icon-message-ellipse text-xl"></i>
@@ -11,6 +11,7 @@
 
 @code {
     [Parameter] public Profile Profile { get; set; } = null!;
+    [Parameter] public Profile? HighlightMatchWithProfile { get; set; }
     [Parameter] public EventCallback StartChatClick { get; set; }
 }
 

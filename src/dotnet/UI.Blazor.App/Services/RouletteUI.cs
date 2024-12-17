@@ -1,9 +1,10 @@
 using ActualChat.Roulette;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService
+public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     public static readonly ImmutableArray<Country> CountryOptions
         = ImmutableArray<Country>.Empty.Add(Country.NotSpecified).AddRange(Countries.All);
@@ -35,6 +36,12 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService
         _searchCriteria = hub.StateFactory().NewMutable(Preferences.Empty);
     }
 
+    void INotifyInitialized.Initialized()
+        => this.Start();
+
+    public Task StartChatRoulette()
+        => History.NavigateTo("/chat-roulette");
+
     private void OnSelectedProfileChanged(IState<Profile> arg1, StateEventKind arg2)
     {
        var profile = arg1.Value;
@@ -58,7 +65,10 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService
 
         _selectedProfile.Value = profile;
         if (lastProfile.Id != profile.Id || updateSearchCriteria)
-            UpdateSearchCriteria(profile.Preferences.Preferences);
+            UpdateSearchCriteria(profile.Preferences.Preferences with {
+                Gender = Gender.NotSpecified,
+                Country = Country.NotSpecified,
+            });
     }
 
     public void ApplyNewFilter(Preferences filter)

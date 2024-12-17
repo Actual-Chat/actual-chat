@@ -1,0 +1,34 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="left-panel-content-header place chat-roulette">
+    <div class="c-content">
+        <div class="c-icon c-chat-roulette-icon">
+            <i class="icon-hand text-4xl"></i>
+        </div>
+    </div>
+
+    <div class="c-info">
+        <div class="c-left">
+            <div class="c-top">
+                <span class="c-title">Chat Roulette</span>
+            </div>
+            <div class="c-bottom">
+                <span>Place</span>
+            </div>
+        </div>
+        <div class="c-right">
+            <ButtonRound Click="@StartChatRoulette" Class="btn-start-roulette">
+                <i class="icon-message-ellipse text-xl"></i>
+            </ButtonRound>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private RouletteUI RouletteUI => Hub.RouletteUI;
+
+    private Task StartChatRoulette()
+        => RouletteUI.StartChatRoulette();
+}
