@@ -10,7 +10,7 @@
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
     var hasJsComponentCreated = JSRef != null;
-    var data = State.Value;
+    var data = State?.Value ?? _initialData ?? VirtualListData<TItem>.None;
     var containerClass = !hasJsComponentCreated
         ? "hide"
         : "";

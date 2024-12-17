@@ -645,15 +645,12 @@ export class VirtualList {
             if (rs.hasVeryLastItem)
                 endSpacerSize = 0;
         }
-        fastRaf({
-            write: () => {
-                // Delay until the next frame to prevent layout thrashing
-                this.spacerRef.style.height = `${spacerSize}px`;
-                this.endSpacerRef.style.height = `${endSpacerSize}px`;
-                this.spacerSize = spacerSize;
-                this.endSpacerSize = endSpacerSize;
-            },
-        });
+
+        // Unable to delay until the next frame - will lead to scroll jumps
+        this.spacerRef.style.height = `${spacerSize}px`;
+        this.endSpacerRef.style.height = `${endSpacerSize}px`;
+        this.spacerSize = spacerSize;
+        this.endSpacerSize = endSpacerSize;
 
         const startedAt = this.renderStartedAt;
         const now = Date.now();
@@ -1123,7 +1120,7 @@ export class VirtualList {
                 scrollTop = this.ref.scrollTop;
                 if (Math.abs(dPivotOffset) > pivotEpsilon) {
                     debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${Math.round(
-                        itemRect.top)} + ${dPivotOffset}`, pivot);
+                        itemRect.top)} + ${dPivotOffset}`, pivot, useRaf);
                     scrollTop -= dPivotOffset;
                     shouldResync = true;
                 }
