@@ -137,6 +137,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _nextNavigation.Value = new Navigation(entryLid, highlight);
     }
 
+    public override string ToString()
+    {
+        var chatId = ChatId;
+        return chatId.IsNone ? "ChatView" : $"ChatView #{chatId}";
+    }
+
     // Event handlers
 
     private async Task NavigateToUrlFragment()

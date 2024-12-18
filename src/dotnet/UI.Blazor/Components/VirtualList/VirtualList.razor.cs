@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Module;
 using ActualLab.Fusion.Internal;
@@ -86,10 +85,19 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         parameters.SetParameterProperties(this);
-        if (RequestDataOnParameterSet && VirtualList.IsNonFirstRender)
+        var shouldSetInitialData = RequestDataOnParameterSet && VirtualList.IsNonFirstRender;
+        if (shouldSetInitialData)
             _initialData = await DataSource.GetData(VirtualListDataQuery.None,
                 VirtualListData<TItem>.None,
                 CancellationToken.None);
+        else
+            _initialData = null;
+
+        LastData = VirtualListData<TItem>.None;
+        if (ReferenceEquals(State, null) && shouldSetInitialData && _initialData != null) {
+            var (state, stateOptions) = CreateState();
+            SetState(state, stateOptions);
+        }
         await base.SetParametersAsync(ParameterView.Empty);
     }
 
@@ -100,13 +108,15 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
+        RenderIndex = 0;
+        LastData = VirtualListData<TItem>.None;
     }
 
     public async ValueTask Reset()
     {
         RenderIndex = 0;
         Query = VirtualListDataQuery.None;
-        LastData = Data;
+        LastData = VirtualListData<TItem>.None;
         LastReportedItemVisibility = VirtualListItemVisibility.Empty;
         StateHasChanged();
         await JSRef.InvokeVoidAsync("reset");
@@ -115,7 +125,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override bool ShouldRender()
         => !ReferenceEquals(Data, LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
-            || (RenderIndex == 1 && !Data.IsNone) // OR it's our first render with data
             || LastReportedItemVisibility.VisibleKeys.Count == 0; // OR there are no visible items
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -141,12 +150,11 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
     {
         var initialData = _initialData ?? VirtualListData<TItem>.None;
-        return ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<VirtualListData<TItem>>.Options {
-                InitialValue = initialData,
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
-            });
+        return new ComputedState<VirtualListData<TItem>>.Options {
+            InitialValue = initialData,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
     }
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
