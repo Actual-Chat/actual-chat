@@ -868,17 +868,6 @@ export class VirtualList {
         if (this.isRendering)
             return;
 
-        if (this.stickyEdge?.edge === VirtualListEdge.End && ev.isTrusted) {
-            // Check if we need to keep sticky edge on user scroll
-            fastRaf(() => {
-                const keepStickyEdge = this.isItemPartiallyVisible(this.endAnchorRef);
-                if (!keepStickyEdge) {
-                    this.setStickyEdge(null);
-                    this.updateVisibleKeysThrottled();
-                }
-            });
-        }
-
         this.updateViewportThrottled();
     };
 

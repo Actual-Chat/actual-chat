@@ -7,8 +7,6 @@
 
     // Console.Out.WriteLine("VirtualList.Render(" + Identity + ") = "  + Data.KeyRange + " BUT ["+ State?.Value.KeyRange+"]!" + State + " @" + RenderIndex + " #" + GetHashCode() + " == " + (_initialData == null));
     var renderIndex = RenderIndex++;
-    if (renderIndex == 0 && State?.Computed.ConsistencyState == ConsistencyState.Invalidated)
-        return; // Do not render initial state if it is invalidated
 
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
