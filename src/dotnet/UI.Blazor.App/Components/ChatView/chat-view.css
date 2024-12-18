@@ -335,6 +335,7 @@ body.hoverable .chat-header-title:hover {
 }
 .chat-link .c-link-url {
     @apply flex-1;
+    @apply min-h-12;
     @apply text-caption-1 md:text-headline-1;
     @apply truncate;
 }

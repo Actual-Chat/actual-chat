@@ -143,6 +143,9 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .layout-header > .c-content .chat-header-back {
     @apply md:hidden;
 }
+.layout-header > .c-content.c-selection {
+    @apply bg-gradient-to-r from-[var(--magenta-50-10)] to-[var(--blue-50-10)];
+}
 .layout-subheader {
     @apply absolute top-14 z-10;
     @apply flex-none flex-y;

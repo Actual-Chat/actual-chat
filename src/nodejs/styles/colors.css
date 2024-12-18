@@ -377,7 +377,7 @@
     --toggle: var(--gray-50);
     --toggle-circle: var(--white);
     --toggle-on: var(--primary);
-    --message-hover: var(--blue-50-10);
+    --message-hover: var(--blue-50-05);
     --mention-other: var(--blue-95);
     --mention-other-text: var(--primary);
     --mention-own: var(--violet-50-10);
@@ -507,7 +507,7 @@
     --text-banner-error: var(--magenta-80);
 
     /* Toasts */
-    --toast-body: var(--ash-30);
+    --toast-body: var(--ash-10);
     --toast-text: var(--ash-99);
     --toast-action: var(--blue-80);
 

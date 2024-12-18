@@ -126,8 +126,12 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply flex-x items-center gap-x-1;
 }
 .chat-header-center > .chat-header-title > .c-title-wrapper > .c-title {
+    @apply h-6;
     @apply text-01 font-medium;
     @apply truncate;
+}
+.chat-header-center > .chat-header-title > .c-title-wrapper > .status-badge i {
+    @apply text-xs;
 }
 .chat-header-center > .chat-header-title > .c-title-wrapper > .title-icon {
     @apply text-sm text-03;
