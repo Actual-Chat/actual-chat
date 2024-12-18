@@ -36,11 +36,13 @@
                 Click="@(() => SelectionUI.CopyToClipboard())">
                 <i class="icon-copy text-xl"></i>
             </ButtonRound>
-            <Button
-                Class="btn-submit btn-transparent"
-                Click="@(() => SelectionUI.Forward())">
-                Forward
-            </Button>
+            <ButtonRound
+                Class="btn-xs btn-primary btn-transparent"
+                Click="@(() => SelectionUI.Forward())"
+                Tooltip="Forward selected"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-share text-xl"></i>
+            </ButtonRound>
         </div>
     </div>
     return;
@@ -62,7 +64,7 @@
     <div class="selection-header-buttons">
         @if (m.CanDelete) {
             <ButtonRound
-                Class="btn-xs btn-danger btn-transparent"
+                Class="btn-xs btn-danger"
                 Click="@(() => SelectionUI.Delete())"
                 Tooltip="Delete selected"
                 TooltipPosition="FloatingPosition.Bottom">
@@ -70,17 +72,19 @@
             </ButtonRound>
         }
         <ButtonRound
-            Class="btn-xs btn-primary btn-transparent"
+            Class="btn-xs btn-primary"
             Click="@(() => SelectionUI.CopyToClipboard())"
             Tooltip="Copy selected as text"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-copy text-xl"></i>
         </ButtonRound>
-        <Button
-            Class="btn-primary btn-sm"
-            Click="@(() => SelectionUI.Forward())">
-            Forward
-        </Button>
+        <ButtonRound
+            Class="btn-xs btn-primary"
+            Click="@(() => SelectionUI.Forward())"
+            Tooltip="Forward selected"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-share text-xl"></i>
+        </ButtonRound>
     </div>
 </div>
 
