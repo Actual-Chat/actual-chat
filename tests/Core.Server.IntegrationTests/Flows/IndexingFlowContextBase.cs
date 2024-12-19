@@ -4,14 +4,15 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
 {
-    protected readonly Dictionary<Symbol, Queue<TBatch>> _batches = new();
+    protected readonly Dictionary<Symbol, Queue<TBatch>> Batches = new();
     private readonly Dictionary<Symbol, List<TBatch>> _processedBatches = new();
     private readonly Dictionary<Symbol, List<FlowTransition>> _appliedTransitions = new();
     private readonly Dictionary<Symbol, Queue<TailHandler>> _tailHandlers = new();
+    private readonly Dictionary<Symbol, int?> _currentFlowSetVersionOverrides = new();
 
     public void Add(Symbol id, params IEnumerable<TBatch> batches)
     {
-        var queue = _batches.GetOrAdd(id);
+        var queue = Batches.GetOrAdd(id);
         foreach (var result in batches)
             queue.Enqueue(result);
     }
@@ -19,7 +20,7 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
     public abstract TBatch Next(Symbol id);
 
     public Queue<TBatch> ListRemaining(Symbol id)
-        => _batches[id];
+        => Batches[id];
 
     public void OnTransition(Symbol id, FlowTransition transition)
         => _appliedTransitions.GetOrAdd(id).Add(transition);
@@ -50,6 +51,12 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
             : Task.FromResult<IndexingFlowTransitionKind?>(null);
 
     protected abstract int GetCount(TBatch batch);
+
+    public int? GetCurrentFlowSetVersionOverride(Symbol id)
+        => _currentFlowSetVersionOverrides.GetValueOrDefault(id);
+
+    public int? SetCurrentFlowSetVersionOverride(Symbol id, int? value)
+        => _currentFlowSetVersionOverrides[id] = value;
 
     public delegate Task<IndexingFlowTransitionKind?> TailHandler(int processedCount);
 }
