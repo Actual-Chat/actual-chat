@@ -507,7 +507,7 @@
     --text-banner-error: var(--magenta-80);
 
     /* Toasts */
-    --toast-body: var(--ash-10);
+    --toast-body: var(--ash-40);
     --toast-text: var(--ash-99);
     --toast-action: var(--blue-80);
 
