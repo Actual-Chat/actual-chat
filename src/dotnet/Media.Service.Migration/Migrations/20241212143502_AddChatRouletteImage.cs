@@ -1,5 +1,6 @@
 ﻿using ActualChat.Chat;
 using ActualChat.Media.Resources;
+using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

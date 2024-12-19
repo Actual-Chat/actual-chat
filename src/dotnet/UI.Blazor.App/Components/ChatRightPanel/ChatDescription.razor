@@ -42,6 +42,7 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
+    private IRoulette Roulette => Hub.Roulette;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
     private AccountUI AccountUI => Hub.AccountUI;
 
@@ -100,22 +101,14 @@
     }
 
     private async Task<ChatRouletteInfo?> GetChatRouletteInfo(Chat chat, CancellationToken cancellationToken) {
-        var ownAuthor = chat.Rules.Author;
-        if (ownAuthor is null)
+        var chatRouletteProfiles = await Roulette.GetProfiles(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        if (chatRouletteProfiles is null)
             return null;
 
-        var authorIds = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
-        var peerAuthorId = authorIds.FirstOrDefault(c => c != ownAuthor.Id);
-        var peerAuthor = await Authors.Get(Session, peerAuthorId.ChatId, peerAuthorId, cancellationToken).ConfigureAwait(false);
-        if (peerAuthor is null)
+        if (chatRouletteProfiles.PeerProfile.Id.IsEmpty)
             return null;
 
-        var peerProfile = await RouletteProfiles.GetProfile(Session, peerAuthor.AvatarId, cancellationToken).ConfigureAwait(false);
-        if (peerProfile is null)
-            return null;
-
-        var ownProfile = await RouletteProfiles.GetOwnProfile(Session, ownAuthor.AvatarId, cancellationToken).ConfigureAwait(false);
-        return new ChatRouletteInfo(peerProfile, ownProfile ?? Profile.None);
+        return new ChatRouletteInfo(chatRouletteProfiles.PeerProfile, chatRouletteProfiles.OwnProfile);
     }
 
     // Nested types
