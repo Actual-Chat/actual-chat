@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.Queues;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -80,6 +81,64 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         await TestExt.When(() => {
             Context.ListTransitions(id).Should().BeEquivalentTo([("OnReset", TimeSpan.MaxValue)]);
             Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task MustWaitForReindexingIfVersionIsBumped()
+    {
+        // arrange
+        var id = RandomSymbolGenerator.Default.Next();
+        BatchIndexingResult<long>[] batches = [
+            new (false, true, 20, 10),
+            new (false, true, 30, 10),
+            new (false, true, 30, 10),
+            new (false, true, 30, 10),
+        ];
+        Context.Add(id, batches);
+
+        // act
+        await Flows.GetOrStart<SimpleIndexingFlow>(id);
+        var start = Clocks.SystemClock.Now;
+
+        // assert
+        await TestExt.When(async () => {
+            var flow = await Flows.Get<SimpleIndexingFlow>(id).Require();
+            flow.FlowSetVersion.Should().Be(1);
+            var transitions = Context.ListTransitions(id, start);
+            transitions
+                .Should()
+                .HaveCount(1);
+            transitions[0].Step.Should().Be("OnIndex");
+            transitions[0].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
+        }, TimeSpan.FromSeconds(10));
+
+        // act
+        Context.SetCurrentFlowSetVersionOverride(id, 2);
+        await Flows.GetAndResume<SimpleIndexingFlow>(id);
+
+        // assert
+        await TestExt.When(async () => {
+            var transitions = Context.ListTransitions(id);
+            transitions.Should().HaveCount(2);
+            transitions[^1].Should().BeEquivalentTo(("", (TimeSpan?)null));
+
+            var flow = await Flows.Get<SimpleIndexingFlow>(id).Require();
+            flow.FlowSetVersion.Should().Be(1);
+        }, TimeSpan.FromSeconds(10));
+
+        // act
+        await Queues.Enqueue(new FlowResetEvent(FlowRegistry.NewId<SimpleIndexingFlow>(id)));
+
+        // assert
+        await TestExt.When(async () => {
+            var transitions = Context.ListTransitions(id);
+            transitions.Should().HaveCount(4);
+            transitions[^1].Step.Should().Be("OnIndex");
+            transitions[^1].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
+
+            var flow = await Flows.Get<SimpleIndexingFlow>(id).Require();
+            flow.FlowSetVersion.Should().Be(2);
         }, TimeSpan.FromSeconds(10));
     }
 }

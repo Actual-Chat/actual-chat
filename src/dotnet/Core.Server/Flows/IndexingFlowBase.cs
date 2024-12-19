@@ -20,6 +20,8 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
     public Moment LastRunAt { get; protected set; }
     [IgnoreDataMember, MemoryPackIgnore]
     protected abstract int CurrentFlowSetVersion { get; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    private bool IsReindexing { get; set; }
 
     [IgnoreDataMember, MemoryPackIgnore]
     protected virtual TimeSpan WatchdogInterval { get; } = TimeSpan.FromHours(24);
@@ -38,8 +40,10 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
 
     protected virtual Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
     {
-        if (FlowSetVersion < CurrentFlowSetVersion)
-            Cursor = default; // needs reindex from the beginning
+        if (NeedsReindex()) {
+            IsReindexing = true;
+            Cursor = default;
+        }
         return ActualLab.Async.TaskExt.TrueTask;
     }
 
@@ -47,6 +51,12 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
 
     protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
+        if (NeedsReindex() && !IsReindexing) {
+            Event.MarkHandled();
+            return default;
+        }
+            // return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt, "Waiting for reindex");
+
         LastRunAt = Clocks.SystemClock.Now;
         var (mustEnd, isTailReached, updatedCursor, processedCount) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = updatedCursor;
@@ -75,6 +85,9 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
             _ => throw new ArgumentOutOfRangeException(nameof(transitionKind), transitionKind, null),
         };
     }
+
+    private bool NeedsReindex()
+        => FlowSetVersion < CurrentFlowSetVersion;
 
     protected virtual Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
     {
