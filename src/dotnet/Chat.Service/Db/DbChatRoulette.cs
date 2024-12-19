@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ActualLab.Versioning;
@@ -20,9 +21,9 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
     public string UserId2 { get; set; } = null!;
 
     public DbChatRoulette() { }
-    public DbChatRoulette(ChatRoulette model) => UpdateFrom(model);
+    public DbChatRoulette(ChatRouletteFull model) => UpdateFrom(model);
 
-    private void UpdateFrom(ChatRoulette model)
+    private void UpdateFrom(ChatRouletteFull model)
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
@@ -37,7 +38,7 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
         UserId2 = model.UserId2;
     }
 
-    public ChatRoulette ToModel()
+    public ChatRouletteFull ToModel()
         => new (new ChatRouletteId(Id), Version) {
             ChatId = new ChatId(ChatId),
             UserId1 = new UserId(UserId1),

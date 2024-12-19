@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -10,7 +11,7 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
     private IDbEntityResolver<string, DbChatRoulette> DbChatRouletteResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatRoulette>>();
 
-    public virtual async Task<ChatRoulette?> GetChatRoulette(
+    public virtual async Task<ChatRouletteFull?> GetChatRoulette(
         ChatRouletteId id,
         CancellationToken cancellationToken)
     {
@@ -21,7 +22,7 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         return dbChatRoulette?.ToModel();
     }
 
-    public virtual async Task<ChatRoulette> OnChangeChatRoulette(
+    public virtual async Task<ChatRouletteFull> OnChangeChatRoulette(
         RouletteBackend_ChangeChatRoulette command,
         CancellationToken cancellationToken)
     {
