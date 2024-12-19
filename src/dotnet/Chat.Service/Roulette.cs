@@ -189,4 +189,10 @@ public class Roulette(IServiceProvider services) : IRoulette
     }
 
     // Commands
+
+    //[CommandHandler]
+    public virtual Task OnDeclineChatRoulette(Roulette_DeclineChatRoulette command, CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
 }

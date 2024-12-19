@@ -1,0 +1,140 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Roulette
+@using ActualChat.Kvas
+@inherits ComputedStateComponent<ChatRouletteBanner.Model>
+@{
+    var m = State.Value;
+    if (!m.IsVisible)
+        return;
+
+    var peerProfile = m.ChatRouletteInfo!.PeerProfile;
+    var preferences = peerProfile.Preferences.Preferences;
+    var countryName = preferences.Country.Title.NullIfEmpty() ?? "---";
+    var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
+}
+
+@* <Banner *@
+@*     IsVisible="@State.Value" *@
+@*     Severity="BannerSeverity.Warning" *@
+@*     ShowDismissButton="true" *@
+@*     Dismiss="@OnDismiss"> *@
+@*     <Icon> *@
+@*         <i class="icon-bell text-2xl"></i> *@
+@*     </Icon> *@
+@*     <Body> *@
+@*         You are added to chat roulette! *@
+@*     </Body> *@
+@*     <Buttons> *@
+@*         <Button *@
+@*             Class="btn-transparent unhovered" *@
+@*             Click="@OnBlockClick">Block chat if you are not interested.</Button> *@
+@*     </Buttons> *@
+@* </Banner> *@
+
+<div class="bg-01">
+<div class="m-2 border rounded-lg">
+    <div class="flex-x">
+        <ChatIcon Chat="@Chat" />
+        <div class="flex-y">
+            <div>@Chat.Title</div>
+            <div>@peerProfile.Avatar.Bio</div>
+        </div>
+    </div>
+    <div class="cr-item">
+        <div class="c-center">
+            <div class="cr-badge c-location">
+                <i class="icon-map-point"></i>
+                <span>@countryName</span>
+            </div>
+            <div class="cr-badge c-languages">
+                <i class="icon-globe"></i>
+                <span>@languages</span>
+            </div>
+        </div>
+        <div class="c-bottom">
+            @{
+                var matchInterests = m.ChatRouletteInfo.OwnProfile.Preferences.Preferences.Interests;
+            }
+            @foreach (var interest in preferences.Interests) {
+                var match = matchInterests.Contains(interest);
+                <div class="cr-badge @(match ? "selected" : "")">
+                    <span>@(Interests.GetTitle(interest))</span>
+                </div>
+            }
+        </div>
+        <div>
+            <Button Click="OnDeclineClick">Decline</Button>
+            <Button Class="btn-primary" Click="OnAcceptClick">Accept</Button>
+        </div>
+    </div>
+</div>
+</div>
+
+@code {
+    private static readonly TimeSpan DismissDuration = TimeSpan.FromDays(7);
+
+    private ISyncedState<Moment> _dismissedAt = null!;
+    private ILogger? _log;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private UICommander UICommander => Hub.UICommander();
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+    private IRoulette Roulette => Hub.Roulette;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        var key = $"ChatRouletteBanner_DismissedAt_{Chat.Id.Value}";
+        _dismissedAt = StateFactory.NewKvasSynced<Moment>(new(AccountSettings, key));
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(false),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+
+        var ownAuthorId = chat.Rules.Author.Require().Id;
+        var isCreator = ownAuthorId.LocalId == 1;
+        if (isCreator)
+            return new Model(false);
+
+        if (!_dismissedAt.WhenFirstTimeRead.IsCompleted)
+            await _dismissedAt.WhenFirstTimeRead.ConfigureAwait(false);
+
+        var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
+        if (dismissedAt > Moment.EpochStart)
+            return new Model(false);
+
+        var info = await Roulette.GetProfiles(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        if (info is null)
+            return new Model(false);
+
+        return new Model(true, new ChatRouletteInfo(info.PeerProfile, info.OwnProfile));
+    }
+
+    // Event handlers
+
+    private void OnDismiss()
+        => _dismissedAt.Value = Clocks.ServerClock.Now;
+
+    private void OnAcceptClick()
+        => OnDismiss();
+
+    private Task OnDeclineClick()
+        => UICommander.Call(new Roulette_DeclineChatRoulette(Session, Chat.Id));
+
+    // Nested classes
+
+    public record Model(bool IsVisible, ChatRouletteInfo? ChatRouletteInfo = null);
+
+    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile OwnProfile);
+}
