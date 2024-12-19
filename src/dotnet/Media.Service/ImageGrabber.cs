@@ -1,88 +1,114 @@
 using System.Text;
+using ActualChat.Flows;
 using ActualChat.Hashing;
+using ActualChat.Media.Db;
+using ActualChat.Media.Flows;
 using ActualChat.Media.Module;
+using ActualChat.Mesh;
 using ActualChat.Uploads;
 using ActualLab.IO;
 
 namespace ActualChat.Media;
 
-public class ImageGrabber(
-    MediaSettings settings,
-    IHttpClientFactory httpClientFactory,
-    IMediaBackend mediaBackend,
-    IContentSaver contentSaver,
-    ICommander commander,
-    ILogger<ImageGrabber> log,
-    IEnumerable<IUploadProcessor> uploadProcessors)
+public class ImageGrabber(IServiceProvider services)
 {
-    private HttpClient HttpClient { get; } = httpClientFactory.CreateClient(Crawler.HttpClientName);
-    private IReadOnlyList<IUploadProcessor> UploadProcessors => uploadProcessors.ToList();
+    [field: AllowNull, MaybeNull]
+    private MediaSettings Settings => field ??= services.GetRequiredService<MediaSettings>();
+    [field: AllowNull, MaybeNull]
+    private IMediaBackend MediaBackend => field ??= services.GetRequiredService<IMediaBackend>();
+    [field: AllowNull, MaybeNull]
+    private IGrabStatusesBackend GrabStatusesBackend => field ??= services.GetRequiredService<IGrabStatusesBackend>();
+    [field: AllowNull, MaybeNull]
+    private IContentSaver ContentSaver => field ??= services.GetRequiredService<IContentSaver>();
+    [field: AllowNull, MaybeNull]
+    private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(Crawler.HttpClientName);
+    [field: AllowNull, MaybeNull]
+    private IReadOnlyList<IUploadProcessor> UploadProcessors => field ??= services.GetServices<IUploadProcessor>().ToList();
+    [field: AllowNull, MaybeNull]
+    private IFlows Flows => field ??= services.GetRequiredService<IFlows>();
+    [field: AllowNull, MaybeNull]
+    private IMeshLocks MeshLocks => field ??= services.MeshLocks<MediaDbContext>().WithKeyPrefix(nameof(ImageGrabber));
+    [field: AllowNull, MaybeNull]
+    private ICommander Commander => field ??= services.Commander();
+    [field: AllowNull, MaybeNull]
+    private MomentClockSet Clocks => field ??= services.Clocks();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
 
-    public async Task<MediaId> GrabImage(string imageUri, CancellationToken cancellationToken)
+    public async Task<MediaId> GetOrGrab(string imageUrl, CancellationToken cancellationToken)
     {
-        if (imageUri.IsNullOrEmpty())
+        if (imageUrl.IsNullOrEmpty())
             return MediaId.None;
 
-        // TODO: reuse existing media by mediaIdScope which is url hash
+        var existingId = await GetExisting();
+        if (existingId != MediaId.None) {
+            await ScheduleUpdateIfRequired(imageUrl, cancellationToken).ConfigureAwait(false);
+            return existingId;
+        }
+
+        var (_, mediaId) = await MeshLocks.RunLocked(imageUrl.Hash().SHA256().AlphaNumeric(),
+            RunLockedOptions.Default,
+            async ct => {
+                existingId = await GetExisting();
+                if (existingId != MediaId.None)
+                    return existingId;
+
+                return await GrabUnsafe(imageUrl, ct);
+            },
+            cancellationToken);
+        return mediaId;
+
+        async Task<MediaId> GetExisting()
+        {
+            var existingMedia = await MediaBackend.GetByMediaIdScope(GetMediaIdScope(imageUrl), cancellationToken);
+            return existingMedia?.Id ?? MediaId.None;
+        }
+    }
+
+    public async Task UpdateExisting(string imageUrl, CancellationToken cancellationToken)
+    {
+        try {
+            // No mesh locks because it's called from flow which is always not concurrent
+            await GrabUnsafe(imageUrl, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to update existing link preview thumbnail");
+            await SaveGrabStatus(imageUrl, false, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<MediaId> GrabUnsafe(string imageUrl, CancellationToken cancellationToken)
+    {
+        var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
+        if (!NeedsUpdate()) {
+            var media = await MediaBackend.GetByMediaIdScope(GetMediaIdScope(imageUrl), cancellationToken).ConfigureAwait(false);
+            if (media != null)
+                return media.Id;
+        }
 
         // TODO: image size limit
-        var processedFile = await DownloadImageToFile(imageUri, cancellationToken).ConfigureAwait(false);
-        return await SaveFileToMedia(imageUri, processedFile, cancellationToken).ConfigureAwait(false);
+        var processedFile = await DownloadImageToFile(imageUrl, cancellationToken).ConfigureAwait(false);
+        return await SaveFileToMedia(imageUrl, processedFile, cancellationToken).ConfigureAwait(false);
+
+        bool NeedsUpdate()
+            => grabStatus is null || grabStatus.ModifiedAt + GetUpdatePeriod(grabStatus) < Clocks.SystemClock.Now;
     }
 
-    public async Task<MediaId> GrabImage(HttpResponseMessage response, CancellationToken cancellationToken)
+    private async Task ScheduleUpdateIfRequired(string imageUrl, CancellationToken cancellationToken)
     {
-        var file = await SaveImageToFile(response, cancellationToken).ConfigureAwait(false);
-        return await SaveFileToMedia(response.RequestMessage!.RequestUri!.AbsoluteUri, file, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<MediaId> SaveFileToMedia(
-        string imageUri,
-        ProcessedFile? processedFile,
-        CancellationToken cancellationToken)
-    {
-        if (processedFile is null || !MediaTypeExt.IsSupportedImage(processedFile.File.ContentType))
-            return MediaId.None;
-
-        var mediaIdScope = imageUri.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
-        var mediaLid = await processedFile.File.Process(async stream => {
-            var hash = await stream.Hash().SHA256(cancellationToken).ConfigureAwait(false);
-            return hash.AlphaNumeric();
-        }).ConfigureAwait(false);
-        var mediaId = new MediaId(mediaIdScope, mediaLid);
-        var media = await mediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        if (media is not null)
-            return media.Id;
-
-        // TODO: extract common part with ChatMediaController
-        media = new Media(mediaId) {
-            ContentId = mediaId.ContentId(processedFile.File.FileName.Extension),
-            FileName = processedFile.File.FileName,
-            Length = processedFile.File.Length,
-            ContentType = processedFile.File.ContentType,
-            Width = processedFile.Size?.Width ?? 0,
-            Height = processedFile.Size?.Height ?? 0,
-        };
-
-        var stream = await processedFile.File.Open().ConfigureAwait(false);
-        await using var _ = stream.ConfigureAwait(false);
-        var content = new Content(media.ContentId, media.ContentType, stream);
-        await contentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-
-        var changeCommand = new MediaBackend_Change(
-            mediaId,
-            new Change<Media> {
-                Create = media,
-            });
-        await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-
-        return mediaId;
+        var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
+        var period = GetUpdatePeriod(grabStatus);
+        var flow = await Flows.GetAndResume<PreviewThumbnailUpdateFlow>(imageUrl.ToBase64(),
+            period,
+            cancellationToken: cancellationToken);
+        if (flow == null)
+            await Flows.GetOrStart<PreviewThumbnailUpdateFlow>(imageUrl.ToBase64(), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ProcessedFile?> DownloadImageToFile(string imageUrl, CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(settings.ImageDownloadTimeout);
+        cts.CancelAfter(Settings.ImageDownloadTimeout);
         return await Download(cts.Token).ConfigureAwait(false);
 
         async Task<ProcessedFile?> Download(CancellationToken cancellationToken1)
@@ -94,7 +120,7 @@ public class ImageGrabber(
                     return null;
             }
             catch (Exception e) {
-                log.LogWarning(e, "Failed to get an image with url='{ImageUrl}'", imageUrl);
+                Log.LogWarning(e, "Failed to get an image with url='{ImageUrl}'", imageUrl);
                 return null;
             }
 
@@ -114,4 +140,61 @@ public class ImageGrabber(
         var file = new UploadedStreamFile(fileName, contentType, response.Content.Headers.ContentLength ?? 0, () => response.Content.ReadAsStreamAsync(cancellationToken1));
         return await UploadProcessors.Process(file, cancellationToken1).ConfigureAwait(false);
     }
+
+    private async Task<MediaId> SaveFileToMedia(
+        string imageUrl,
+        ProcessedFile? processedFile,
+        CancellationToken cancellationToken)
+    {
+        if (processedFile is null || !MediaTypeExt.IsSupportedImage(processedFile.File.ContentType))
+            return MediaId.None;
+
+        var mediaIdScope = GetMediaIdScope(imageUrl);
+        var mediaLid = await processedFile.File.Process(async stream => {
+            var hash = await stream.Hash().SHA256(cancellationToken).ConfigureAwait(false);
+            return hash.AlphaNumeric();
+        }).ConfigureAwait(false);
+        var mediaId = new MediaId(mediaIdScope, mediaLid);
+        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media is not null) {
+            await SaveGrabStatus(imageUrl, true, cancellationToken).ConfigureAwait(false);
+            return media.Id;
+        }
+
+        // TODO: extract common part with ChatMediaController
+        media = new Media(mediaId) {
+            ContentId = mediaId.ContentId(processedFile.File.FileName.Extension),
+            FileName = processedFile.File.FileName,
+            Length = processedFile.File.Length,
+            ContentType = processedFile.File.ContentType,
+            Width = processedFile.Size?.Width ?? 0,
+            Height = processedFile.Size?.Height ?? 0,
+        };
+
+        var stream = await processedFile.File.Open().ConfigureAwait(false);
+        await using var _ = stream.ConfigureAwait(false);
+        var content = new Content(media.ContentId, media.ContentType, stream);
+        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
+
+        var changeCommand = new MediaBackend_Change(
+            mediaId,
+            new Change<Media> {
+                Create = media,
+            });
+        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+        await SaveGrabStatus(imageUrl, true, cancellationToken).ConfigureAwait(false);
+
+        return mediaId;
+    }
+
+    private static string GetMediaIdScope(string imageUrl)
+        => imageUrl.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
+
+    private Task<GrabStatus> SaveGrabStatus(string imageUrl, bool success, CancellationToken cancellationToken)
+        => Commander.Call(new GrabStatusesBackend_Change(GrabStatus.ComposeId(imageUrl), success),
+            true,
+            cancellationToken);
+
+    private TimeSpan GetUpdatePeriod(GrabStatus? grabStatus)
+        => grabStatus?.Success != false ? Settings.LinkPreviewUpdatePeriod : TimeSpan.FromHours(1);
 }

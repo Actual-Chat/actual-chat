@@ -54,6 +54,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 : Task.CompletedTask;
     }
 
+    // [ComputeMethod]
+
     // [CommandHandler]
     public virtual async Task<LinkPreview?> OnChange(LinkPreviewsBackend_Change command, CancellationToken cancellationToken)
     {
@@ -102,6 +104,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbLinkPreview.ToModel();
     }
+
+    // [CommandHandler]
 
     // Event handlers
 
