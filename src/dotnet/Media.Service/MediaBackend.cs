@@ -23,6 +23,20 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     }
 
     // [ComputeMethod]
+    public virtual async Task<Media?> GetByMediaIdScope(string mediaIdScope, CancellationToken cancellationToken)
+    {
+        if (mediaIdScope.IsNullOrEmpty())
+            return null;
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbMedia = await dbContext.Media.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id.StartsWith($"{mediaIdScope}{MediaId.Delimiter}"), cancellationToken);
+        return dbMedia?.ToModel();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken)
     {
         if (contentId.IsNullOrEmpty())

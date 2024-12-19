@@ -19,7 +19,7 @@ public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGra
 
         var mediaId = MediaId.None;
         try {
-            mediaId = await imageGrabber.GrabImage(graph.ImageUrl, cancellationToken).ConfigureAwait(false);
+            mediaId = await imageGrabber.GetOrGrab(graph.ImageUrl, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to grab image with url '{ImageUrl}' for page with url '{PageUrl}'",

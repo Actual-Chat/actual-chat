@@ -5,10 +5,14 @@ using MemoryPack;
 namespace ActualChat.Media.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class LinkPreviewFlow : Flow
+public sealed partial class LinkPreviewFlow : Flow
 {
     [field: AllowNull, MaybeNull]
     private MediaSettings Settings => field ??= Host.Services.GetRequiredService<MediaSettings>();
+    [field: AllowNull, MaybeNull]
+    private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Host.Services.GetRequiredService<ILinkPreviewsBackend>();
+    [field: AllowNull, MaybeNull]
+    private Crawler Crawler => field ??= Host.Services.GetRequiredService<Crawler>();
 
     protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
@@ -18,17 +22,14 @@ public partial class LinkPreviewFlow : Flow
 
     private async Task Run(CancellationToken cancellationToken)
     {
-        var linkPreviewsBackend = Host.Services.GetRequiredService<ILinkPreviewsBackend>();
-        var crawler = Host.Services.GetRequiredService<Crawler>();
-
         var url = Id.Arguments.FromBase64();
         var id = LinkPreview.ComposeId(url);
 
-        var linkPreview = await linkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
+        var linkPreview = await LinkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
         if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt))
             return;
 
-        var linkMeta = await crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
+        var linkMeta = await Crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
         var videoMeta = linkMeta.OpenGraph.Video;
         linkPreview ??= new LinkPreview {
             Id = LinkPreview.ComposeId(url),

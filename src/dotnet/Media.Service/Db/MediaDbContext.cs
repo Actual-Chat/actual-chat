@@ -9,6 +9,7 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
 {
     public DbSet<DbMedia> Media { get; protected set; } = null!;
     public DbSet<DbLinkPreview> LinkPreviews { get; protected set; } = null!;
+    public DbSet<DbGrabStatus> GrabStatuses { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -23,6 +24,9 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
         media.Property(e => e.Scope).UseCollation("C");
         media.Property(e => e.LocalId).UseCollation("C");
         media.Property(e => e.ContentId).UseCollation("C");
+
+        var grabStatus = model.Entity<DbGrabStatus>();
+        grabStatus.Property(e => e.Id).UseCollation("C");
 
         var linkPreview = model.Entity<DbLinkPreview>();
         linkPreview.Property(e => e.Id).UseCollation("C");
