@@ -228,6 +228,7 @@ public class Roulette(IServiceProvider services) : IRoulette
             ChatId = chat.Id,
             UserId1 = user1,
             UserId2 = user2,
+            InitiatedBy = account.Id
         };
         var chatRouletteCommand = new RouletteBackend_ChangeChatRoulette(chatRouletteId, null, Change.Create(diff));
         await Commander.Call(chatRouletteCommand, cancellationToken).ConfigureAwait(false);

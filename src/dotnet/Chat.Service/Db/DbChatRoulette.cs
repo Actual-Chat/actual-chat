@@ -21,6 +21,7 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
     public string ProfileId2 { get; set; } = null!;
     public string UserId1 { get; set; } = null!;
     public string UserId2 { get; set; } = null!;
+    public string InitiatedByUserId { get; set; } = null!;
     public string CompletedByUserId { get; set; } = null!;
     public CompleteChatRouletteReason CompleteReason { get; set; } = CompleteChatRouletteReason.None;
     public DateTime CompletedAt {
@@ -44,6 +45,7 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
         ProfileId2 = model.ProfileId2;
         UserId1 = model.UserId1;
         UserId2 = model.UserId2;
+        InitiatedByUserId = model.InitiatedBy;
 
         CompletedByUserId = model.CompletedBy;
         CompleteReason = model.CompleteReason;
@@ -55,6 +57,7 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
             ChatId = new ChatId(ChatId),
             UserId1 = new UserId(UserId1),
             UserId2 = new UserId(UserId2),
+            InitiatedBy = new UserId(InitiatedByUserId),
             CompletedBy = new UserId(CompletedByUserId),
             CompleteReason = CompleteReason,
             CompletedAt = CompletedAt,
@@ -70,6 +73,7 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
             builder.Property(a => a.ProfileId2).IsRequired();
             builder.Property(a => a.UserId1).IsRequired();
             builder.Property(a => a.UserId2).IsRequired();
+            builder.Property(a => a.InitiatedByUserId).IsRequired();
             builder.Property(a => a.CompletedByUserId).IsRequired();
         }
     }
