@@ -31,15 +31,32 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
     }
 
     public virtual async Task<ImmutableArray<ProfilePreferences>> FindProfiles(
+        UserId ownUserId,
+        Symbol ownProfileId,
         Preferences filter,
         CancellationToken cancellationToken)
     {
         if (filter.Languages.Length == 0)
             throw new ArgumentOutOfRangeException(nameof(filter));
 
+        var ownUserSid = ownUserId.Value;
+        var ownProfileSid = ownProfileId.Value;
+
+
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        var completionIdPrefix = ownUserSid + ":";
+        var completions = dbContext.RouletteCompletions
+            .Where(c => c.Id.StartsWith(completionIdPrefix));
+        var completedPeerProfileIds = completions
+            .Where(c => c.OwnerProfileId == ownProfileSid)
+            .Select(c => c.PeerProfileId);
+
         IQueryable<DbRouletteProfilePrefs> queryable = dbContext.RouletteProfilePrefs;
+        queryable = queryable
+            .Where(c => !completedPeerProfileIds.Contains(c.Id)); // Exclude completed chats
+        // NOTE: When should we exclude profiles by user id?
         if (!filter.Country.IsNotSpecified)
             queryable = queryable.Where(c => c.CountryCode == filter.Country.Code);
         if (filter.Gender != Gender.NotSpecified)
@@ -130,6 +147,33 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         return profilePrefs;
     }
 
+    public virtual async Task OnCreateCompletedChatRoulette(
+        RouletteProfilesBackend_CreateCompletedChatRoulette command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var id = command.OwnerUserId.Value + ":" + command.OwnerUserId + ":" + command.PeerProfileId;
+        var dbPrefs = new DbRouletteCompletion {
+            Id = id,
+            Version = VersionGenerator.NextVersion(),
+            OwnerUserId = command.OwnerUserId,
+            OwnerProfileId = command.OwnerProfileId,
+            PeerUserId = command.PeerUserId,
+            PeerProfileId = command.PeerProfileId,
+            IsInitiatedByOwner = command.IsInitiatedByOwner,
+            CompletedAt = command.CompletedAt,
+            CompleteReason = command.CompleteReason,
+        };
+        dbContext.RouletteCompletions.Add(dbPrefs);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     // [EventHandler]
     public virtual Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken)
     {
@@ -143,5 +187,42 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var profileId = avatar.Id;
         var removePrefs = new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Remove<ProfilePreferences>());
         return Commander.Call(removePrefs, true, cancellationToken);
+    }
+
+    // [EventHandler]
+    public virtual async Task OnChatRouletteCompletedEvent(
+        ChatRouletteCompletedEvent eventCommand,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var chatRoulette = eventCommand.ChatRoulette;
+
+        await Commander.Call(
+                new RouletteProfilesBackend_CreateCompletedChatRoulette(
+                    chatRoulette.UserId1,
+                    chatRoulette.ProfileId1,
+                    chatRoulette.UserId2,
+                    chatRoulette.ProfileId2,
+                    chatRoulette.UserId1 == chatRoulette.CompletedBy,
+                    chatRoulette.CompletedAt,
+                    chatRoulette.CompleteReason),
+                true,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        await Commander.Call(
+                new RouletteProfilesBackend_CreateCompletedChatRoulette(
+                    chatRoulette.UserId2,
+                    chatRoulette.ProfileId2,
+                    chatRoulette.UserId1,
+                    chatRoulette.ProfileId1,
+                    chatRoulette.UserId2 == chatRoulette.CompletedBy,
+                    chatRoulette.CompletedAt,
+                    chatRoulette.CompleteReason),
+                true,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 }

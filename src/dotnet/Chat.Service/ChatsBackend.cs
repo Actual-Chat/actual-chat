@@ -42,6 +42,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     [field: AllowNull, MaybeNull]
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     [field: AllowNull, MaybeNull]
+    private IRouletteBackend RouletteBackend => field ??= Services.GetRequiredService<IRouletteBackend>();
+    [field: AllowNull, MaybeNull]
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     [field: AllowNull, MaybeNull]
     private HostInfo HostInfo => field ??= Services.HostInfo();
@@ -1803,6 +1805,18 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 ChatPermissions.SeeMembers |
                 ChatPermissions.Leave;
             rules = rules with { Permissions = rules.Permissions & mask };
+            var hasCompleted = false;
+            var chatRouletteId = await RouletteExt.GetChatRouletteId(chatId, AuthorsBackend, cancellationToken)
+                .ConfigureAwait(false);
+            if (chatRouletteId.IsNone)
+                hasCompleted = true;
+            else {
+                var chatRoulette = await RouletteBackend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
+                if (chatRoulette is null || !chatRoulette.CompletedBy.IsNone)
+                    hasCompleted = true;
+            }
+            if (hasCompleted)
+                rules = rules with { Permissions = rules.Permissions & ~ChatPermissions.Write }; // Disable write when roulette marked as completed.
         }
         return rules;
     }

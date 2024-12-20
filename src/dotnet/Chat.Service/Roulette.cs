@@ -18,6 +18,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ChatCandidate>> FindChatCandidates(
         Session session,
+        Symbol profileId,
         Preferences filter,
         CancellationToken cancellationToken)
     {
@@ -28,14 +29,17 @@ public class Roulette(IServiceProvider services) : IRoulette
         // What if different profiles of the same user fit to the filter criteria?
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var profile = await RouletteProfilesBackend.GetProfile(profileId, cancellationToken).ConfigureAwait(false);
+        if (profile == null || profile.UserId != account.Id)
+            return ImmutableArray<ChatCandidate>.Empty;
 
         var result = new List<ChatCandidate>();
 
         var sw = Stopwatch.GetTimestamp();
-        var profilePrefs = await RouletteProfilesBackend.FindProfiles(filter, cancellationToken).ConfigureAwait(false);
+        var profilePrefs = await RouletteProfilesBackend.FindProfiles(account.Id, profileId, filter, cancellationToken).ConfigureAwait(false);
         foreach (var profilePref in profilePrefs) {
-            var profileId = profilePref.Id;
-            var avatar = await AvatarsBackend.Get(profileId, cancellationToken).ConfigureAwait(false);
+            var profileId2 = profilePref.Id;
+            var avatar = await AvatarsBackend.Get(profileId2, cancellationToken).ConfigureAwait(false);
             if (avatar is null)
                 continue;
 
@@ -89,6 +93,45 @@ public class Roulette(IServiceProvider services) : IRoulette
         ChatId chatId,
         CancellationToken cancellationToken)
     {
+        var profilesInternal = await GetProfilesInternal(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (profilesInternal is null)
+            return null;
+        // var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        // if (chat is null)
+        //     return null;
+        //
+        // if (!chat.IsChatRoulette())
+        //     return null;
+        //
+        // var authorId1 = new AuthorId(chatId, 1, AssumeValid.Option);
+        // var authorId2 = new AuthorId(chatId, 2, AssumeValid.Option);
+        // var author1 = await AuthorsBackend.Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        // var author2 = await AuthorsBackend.Get(chatId, authorId2, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        // if (author1 is null || author2 is null)
+        //     return null;
+        //
+        // var profileId1 = author1.AvatarId;
+        // var profileId2 = author2.AvatarId;
+        // var chatRouletteId = new ChatRouletteId(profileId1, profileId2);
+        // var chatRoulette = await Backend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
+        // if (chatRoulette is null)
+        //     return null;
+        //
+        // var isOwner = authorId1 == chat.Rules.Author!.Id;
+        var ownProfile = await RouletteProfilesBackend.GetProfile(profilesInternal.OwnProfileId, cancellationToken).ConfigureAwait(false);
+        var peerProfile = await RouletteProfilesBackend.GetProfile(profilesInternal.PeerProfileId, cancellationToken).ConfigureAwait(false);
+        return new ChatRouletteProfiles(profilesInternal.ChatRoulette.ToChatRoulette()) {
+            OwnProfile = ownProfile ?? Profile.None,
+            PeerProfile = peerProfile ?? Profile.None,
+        };
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ChatRouletteProfilesInternal?> GetProfilesInternal(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return null;
@@ -96,28 +139,32 @@ public class Roulette(IServiceProvider services) : IRoulette
         if (!chat.IsChatRoulette())
             return null;
 
-        var authorId1 = new AuthorId(chatId, 1, AssumeValid.Option);
-        var authorId2 = new AuthorId(chatId, 2, AssumeValid.Option);
-        var author1 = await AuthorsBackend.Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-        var author2 = await AuthorsBackend.Get(chatId, authorId2, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-        if (author1 is null || author2 is null)
+        // var authorId1 = new AuthorId(chatId, 1, AssumeValid.Option);
+        // var authorId2 = new AuthorId(chatId, 2, AssumeValid.Option);
+        // var author1 = await AuthorsBackend.Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        // var author2 = await AuthorsBackend.Get(chatId, authorId2, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        // if (author1 is null || author2 is null)
+        //     return null;
+        //
+        // var profileId1 = author1.AvatarId;
+        // var profileId2 = author2.AvatarId;
+        var chatRouletteId = await RouletteExt.GetChatRouletteId(chatId, AuthorsBackend, cancellationToken).ConfigureAwait(false);
+        if (chatRouletteId.IsNone)
             return null;
-
-        var profileId1 = author1.AvatarId;
-        var profileId2 = author2.AvatarId;
-        var chatRouletteId = new ChatRouletteId(profileId1, profileId2);
         var chatRoulette = await Backend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
         if (chatRoulette is null)
             return null;
 
-        var isOwner = authorId1 == chat.Rules.Author!.Id;
-        var profile1 = await RouletteProfilesBackend.GetProfile(profileId1, cancellationToken).ConfigureAwait(false);
-        var profile2 = await RouletteProfilesBackend.GetProfile(profileId2, cancellationToken).ConfigureAwait(false);
-        return new ChatRouletteProfiles(chatRoulette.ToChatRoulette()) {
-            OwnProfile = (isOwner ? profile1 : profile2) ?? Profile.None,
-            PeerProfile = (isOwner ? profile2 : profile1) ?? Profile.None,
-        };
+        var ownUserId = chat.Rules.Account.Id;
+        var ownProfileId = chatRoulette.UserId1 == ownUserId ? chatRoulette.ProfileId1 : chatRoulette.ProfileId2;
+        var peerProfileId = chatRoulette.UserId1 == ownUserId ? chatRoulette.ProfileId2 : chatRoulette.ProfileId1;
+        return new ChatRouletteProfilesInternal(chatRoulette, ownProfileId, peerProfileId);
     }
+
+    public record ChatRouletteProfilesInternal(
+        ChatRouletteFull ChatRoulette,
+        Symbol OwnProfileId,
+        Symbol PeerProfileId);
 
     public virtual async Task<ChatId> GetOrCreateChat(
         Session session,
@@ -177,12 +224,12 @@ public class Roulette(IServiceProvider services) : IRoulette
         var user2 = peerProfile.UserId;
         if (chatRouletteId.ProfileId1 != ownProfile.Id)
             (user1, user2) = (user2, user1);
-        chatRoulette = new ChatRouletteFull(chatRouletteId) {
+        var diff = new ChatRouletteFullDiff {
             ChatId = chat.Id,
             UserId1 = user1,
             UserId2 = user2,
         };
-        var chatRouletteCommand = new RouletteBackend_ChangeChatRoulette(chatRouletteId, null, Change.Create(chatRoulette));
+        var chatRouletteCommand = new RouletteBackend_ChangeChatRoulette(chatRouletteId, null, Change.Create(diff));
         await Commander.Call(chatRouletteCommand, cancellationToken).ConfigureAwait(false);
 
         return chat.Id;
@@ -191,8 +238,40 @@ public class Roulette(IServiceProvider services) : IRoulette
     // Commands
 
     //[CommandHandler]
-    public virtual Task OnDeclineChatRoulette(Roulette_DeclineChatRoulette command, CancellationToken cancellationToken)
+    public virtual async Task OnDeclineChatRoulette(Roulette_DeclineChatRoulette command, CancellationToken cancellationToken)
     {
-        return Task.CompletedTask;
+        var (session, chatId) = command;
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var profiles = await GetProfilesInternal(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (profiles is null)
+            return;
+
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return;
+
+        chat.Rules.Require(ChatPermissions.Leave);
+        var chatRoulette = profiles.ChatRoulette;
+        var ownUserId = chat.Rules.Account.Id;
+        if (chatRoulette.UserId1 != ownUserId && chatRoulette.UserId2 != ownUserId)
+            throw StandardError.Constraint("Only chat roulette member can decline it.");
+
+        if (chatRoulette.CompletedBy.IsNone) {
+            var diff = new ChatRouletteFullDiff {
+                CompletedBy = ownUserId,
+                CompleteReason = CompleteChatRouletteReason.Leave
+            };
+            var chatRouletteCommand = new RouletteBackend_ChangeChatRoulette(chatRoulette.Id, chatRoulette.Version, Change.Update(diff));
+            chatRoulette = await Commander.Call(chatRouletteCommand, cancellationToken).ConfigureAwait(false);
+        }
+
+        // NOTE(DF): All chat roulette members are the owners, and we don't check if there are other owners.
+        var ownAuthor = chat.Rules.Author.Require();
+        var upsertCommand = new AuthorsBackend_Upsert(
+            chatId, ownAuthor.Id, default, ownAuthor.Version,
+            new AuthorDiff() { HasLeft = true });
+        await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }
 }

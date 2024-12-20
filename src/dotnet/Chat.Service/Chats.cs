@@ -68,18 +68,15 @@ public class Chats(IServiceProvider services) : IChats
 
         chat = chat with { Rules = rules };
         if (chat.IsChatRoulette()) {
-            var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
             var ownAuthorId = chat.Rules.Author.Require().Id;
-            var anotherAuthorId = authorIds.FirstOrDefault(c => c.Id != ownAuthorId);
-            if (!anotherAuthorId.IsNone) {
-                var anotherAuthor = await AuthorsBackend.Get(chatId, anotherAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-                if (anotherAuthor is not null) {
-                    var avatar = anotherAuthor.Avatar;
-                    chat = chat with {
-                        Title = avatar.Name,
-                        Picture = avatar.Media,
-                    };
-                }
+            var anotherAuthorId = new AuthorId(chatId, ownAuthorId.LocalId == 1 ? 2 : 1, AssumeValid.Option);
+            var anotherAuthor = await AuthorsBackend.Get(chatId, anotherAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            if (anotherAuthor is not null) {
+                var avatar = anotherAuthor.Avatar;
+                chat = chat with {
+                    Title = avatar.Name,
+                    Picture = avatar.Media,
+                };
             }
         }
 

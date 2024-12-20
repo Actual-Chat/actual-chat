@@ -96,7 +96,7 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         _activeSearch.Value = search;
         ImmutableArray<ChatCandidate> candidates;
         try {
-            candidates = await Roulette.FindChatCandidates(Session, search.Request.Criteria, default)
+            candidates = await Roulette.FindChatCandidates(Session, selectedProfile.Id, search.Request.Criteria, default)
                 .ConfigureAwait(false);
         }
         catch (Exception e) {

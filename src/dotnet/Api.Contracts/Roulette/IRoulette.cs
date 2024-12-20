@@ -4,7 +4,7 @@ namespace ActualChat.Roulette;
 
 public interface IRoulette : IComputeService
 {
-    Task<ImmutableArray<ChatCandidate>> FindChatCandidates(Session session, Preferences filter, CancellationToken cancellationToken);
+    Task<ImmutableArray<ChatCandidate>> FindChatCandidates(Session session, Symbol profileId, Preferences filter, CancellationToken cancellationToken);
 
     // [ComputeMethod]
     // Task<ChatRoulette?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
@@ -26,4 +26,4 @@ public interface IRoulette : IComputeService
 public sealed partial record Roulette_DeclineChatRoulette(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId
-) : IApiCommand;
+) : ISessionCommand<Unit>, IApiCommand;
