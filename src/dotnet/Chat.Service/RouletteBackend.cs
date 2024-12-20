@@ -65,6 +65,10 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
                 throw StandardError.Constraint("UserId1 must be provided.");
             if (chatRoulette.UserId2.IsNone)
                 throw StandardError.Constraint("UserId2 must be provided.");
+            if (chatRoulette.InitiatedBy.IsNone)
+                throw StandardError.Constraint("InitiatedBy must be provided.");
+            if (chatRoulette.InitiatedBy != chatRoulette.UserId1 && chatRoulette.InitiatedBy != chatRoulette.UserId2)
+                throw StandardError.Constraint("InitiatedBy must be equal to either UserId1 or UserId2.");
 
             dbChatRoulette = new DbChatRoulette(chatRoulette);
             dbContext.ChatRoulettes.Add(dbChatRoulette);
@@ -81,6 +85,8 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
                 throw StandardError.Constraint("UserId1 can't be changed.");
             if (update.UserId2.HasValue)
                 throw StandardError.Constraint("UserId2 can't be changed.");
+            if (update.InitiatedBy.HasValue)
+                throw StandardError.Constraint("InitiatedBy can't be changed.");
 
             if (update.CompletedBy.HasValue) {
                 if (!oldChatRoulette.CompletedBy.IsNone)
