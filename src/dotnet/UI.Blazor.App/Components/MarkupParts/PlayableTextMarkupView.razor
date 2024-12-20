@@ -1,4 +1,5 @@
 @using ActualChat.MediaPlayback
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
 @{
     var m = _rendered = State.Value;
@@ -13,7 +14,7 @@
     var playOnClickIsEnabled = !m.HasSelection;
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
 }
-<span class="@containerCls @colorCls">
+<span @ref="Ref" class="@containerCls @colorCls">
     @for (var i = 0; i < Markup.Words.Count; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
@@ -24,24 +25,36 @@
         @if (!playOnClickIsEnabled) {
             <span class="@cls @highlightedCls">@word.Value</span>
         } else {
-            <span
-                class="@cls @highlightedCls"
-                @onclick="@(_ => OnClick(word.TextRange.Start))">@word.Value</span>
+            @word.Value
         }
     }
 </span>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.PlayableTextMarkupView.create";
+
     private ILogger? _log;
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private Model? _rendered;
 
+    [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private HighlightUI HighlightUI => Hub.HighlightUI;
+
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<PlayableTextMarkupView> BlazorRef { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, BlazorRef, Ref, Markup.Words.ToArray());
+        }
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -129,6 +142,34 @@
 
             return new() { Map = map1 };
         }
+    }
+
+    [JSInvokable]
+    public async Task OnMarkupClick(Range<int> textRange) {
+        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
+        var markup = Markup;
+        var entry = Entry;
+        var chatId = entry.ChatId;
+
+        var startIndex = textRange.Start;
+        var startTimeOpt = markup.TimeMap.TryMap(startIndex);
+        if (startTimeOpt is not { } startTime)
+            return;
+
+        // We resolve some of the services lazily here, coz they're supposed to be used quite rarely
+        var session = Services.Session();
+        var chats = Services.GetRequiredService<IChats>();
+
+        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryLid ?? -1, AssumeValid.Option);
+        var audioEntry = await chats.GetEntry(session, audioEntryId);
+        if (audioEntry == null) {
+            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
+            return; // We can't do much in this case
+        }
+
+        var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
+        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
+        chatPlayers.StartHistoricalPlayback(chatId, startAt);
     }
 
     private async Task OnClick(int startIndex) {
