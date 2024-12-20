@@ -14,16 +14,17 @@ public class MLSearchCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink)
     : Testing.Host.AppHostFixture("ml_search", messageSink, TestAppHostOptions.Default with {
-        ConfigureHost = (_, cfg) => {
-            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"));
-            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"));
-            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingDelay)}", "00:00:03"));
-            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingRecheckInterval)}", "00:00:04"));
+        ConfigureHost = (__, cfg) => {
+            _ = cfg
+                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"))
+                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"))
+                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingDelay)}", "00:00:03"))
+                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingRecheckInterval)}", "00:00:04"));
         },
-        ConfigureServices = (_, services) => {
-            services.AddSingleton<OpenSearchInit>()
-                .AddAlias<IModuleInitializer, OpenSearchInit>();
-            services.AddSingleton<OpenSearchCleanup>();
+        ConfigureServices = (__, services) => {
+            _ = services.AddSingleton<OpenSearchInit>()
+                .AddAlias<IModuleInitializer, OpenSearchInit>()
+                .AddSingleton<OpenSearchCleanup>();
         }
     })
 {
@@ -37,6 +38,7 @@ public class AppHostFixture(IMessageSink messageSink)
 }
 
 #pragma warning disable CA1812
+
 // An instance of OpenSearchInit class is created via DI container on app start
 internal sealed class OpenSearchInit(IClusterSetup clusterSetup) : IModuleInitializer
 {
@@ -44,15 +46,18 @@ internal sealed class OpenSearchInit(IClusterSetup clusterSetup) : IModuleInitia
 }
 
 // An instance of OpenSearchCleanup class is created via DI container of the app host of MLSearchCollection above
-
-internal sealed class OpenSearchCleanup(IOpenSearchClient openSearch) : IAsyncDisposable
+internal sealed class OpenSearchCleanup(
+    IOpenSearchClient openSearch,
+    OpenSearchNames openSearchNames) : IAsyncDisposable
 {
     public async ValueTask DisposeAsync()
     {
-        await openSearch.LowLevel.DoRequestAsync<StringResponse>(
-            HttpMethod.DELETE, $"/{OpenSearchNames.MLTestIndexPattern}", CancellationToken.None);
-        await openSearch.LowLevel.DoRequestAsync<StringResponse>(
-            HttpMethod.DELETE, $"/_ingest/pipeline/{OpenSearchNames.MLTestIndexPattern}", CancellationToken.None);
+        _ = await openSearch.LowLevel.DoRequestAsync<StringResponse>(
+            HttpMethod.DELETE, $"/{openSearchNames.CommonIndexPattern}", CancellationToken.None);
+        _ = await openSearch.LowLevel.DoRequestAsync<StringResponse>(
+            HttpMethod.DELETE, $"/_template/{openSearchNames.CommonIndexPattern}", CancellationToken.None);
+        _ = await openSearch.LowLevel.DoRequestAsync<StringResponse>(
+            HttpMethod.DELETE, $"/_ingest/pipeline/{openSearchNames.CommonIndexPattern}", CancellationToken.None);
     }
 }
 

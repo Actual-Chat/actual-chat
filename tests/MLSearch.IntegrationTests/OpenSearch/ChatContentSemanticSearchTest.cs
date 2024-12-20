@@ -22,8 +22,10 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
 
         // Cleanup all test indexes before each test method start
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+        var openSearchNames = AppHost.Services.GetRequiredService<OpenSearchNames>();
+
         var deleteByQueryResponse = await client.DeleteByQueryAsync<object>(d => d
-            .Index(OpenSearchNames.MLTestIndexPattern)
+            .Index(openSearchNames.CommonIndexPattern)
             .Refresh(true)
             .WaitForCompletion(true)
             .Query(query => query.Script(
@@ -32,7 +34,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
                 ))
             )
         );
-        deleteByQueryResponse.AssertSuccess();
+        _ = deleteByQueryResponse.AssertSuccess();
     }
 
     [Fact]
