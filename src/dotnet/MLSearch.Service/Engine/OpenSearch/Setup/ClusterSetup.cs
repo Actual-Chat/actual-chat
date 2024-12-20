@@ -42,8 +42,8 @@ internal sealed class ClusterSetup(
             .ConfigureAwait(false);
         if (!isClusterStateValid) {
             var runOptions = RunLockedOptions.Default with { Log = log };
-            await meshLocks.RunLocked(
-                    nameof(InitializeAsync),
+            _ = await meshLocks.RunLocked(
+                    $"{nameof(ClusterSetup)}.{nameof(InitializeAsync)}",
                     runOptions,
                     ct => InitialiseUnsafeAsync(embeddingModelProps, ct),
                     cancellationToken
@@ -59,7 +59,7 @@ internal sealed class ClusterSetup(
     {
         var numberOfReplicas = openSearchSettings.Value.DefaultNumberOfReplicas;
 
-        var (templateName, pattern) = (OpenSearchNames.MLTemplateName, OpenSearchNames.MLIndexPattern);
+        var (templateName, pattern) = (openSearchNames.CommonIndexTemplateName, openSearchNames.CommonIndexPattern);
         var ingestPipelineName = openSearchNames.GetFullIngestPipelineName(OpenSearchNames.ChatContent, embeddingModelProps);
         var indexShortNames = new[] { OpenSearchNames.ChatContent, OpenSearchNames.ChatContentCursor, OpenSearchNames.ChatCursor };
 
@@ -86,8 +86,8 @@ internal sealed class ClusterSetup(
         using var _ = _tracer.Region();
 
         await actions.EnsureTemplateAsync(
-                OpenSearchNames.MLTemplateName,
-                OpenSearchNames.MLIndexPattern,
+                openSearchNames.CommonIndexTemplateName,
+                openSearchNames.CommonIndexPattern,
                 openSearchSettings.Value.DefaultNumberOfReplicas,
                 cancellationToken
             )

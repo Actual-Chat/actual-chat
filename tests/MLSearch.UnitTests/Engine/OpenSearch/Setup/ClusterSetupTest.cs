@@ -60,8 +60,8 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
         // Check if initializer verifies validness of all needed templates
         setupActions.Verify(actions => actions.IsTemplateValidAsync(
-                It.Is<string>(name => name == OpenSearchNames.MLTemplateName),
-                It.Is<string>(pattern => pattern == OpenSearchNames.MLIndexPattern),
+                It.Is<string>(name => name == _openSearchNames.CommonIndexTemplateName),
+                It.Is<string>(pattern => pattern == _openSearchNames.CommonIndexPattern),
                 It.Is<int?>(numReplicas => numReplicas == _openSearchSettings.DefaultNumberOfReplicas),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
             ), Times.Once());
@@ -93,7 +93,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
     public enum EntityType { Template, Pipeline, Index }
     public static TheoryData<EntityType, string> FailedChecks => new() {
-        { EntityType.Template, OpenSearchNames.MLTemplateName},
         { EntityType.Pipeline, OpenSearchNames.ChatContent},
         { EntityType.Index, OpenSearchNames.ChatContent},
         { EntityType.Index, OpenSearchNames.ChatContentCursor},
@@ -127,6 +126,10 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
             ), Times.Once());
     }
+
+    [Fact]
+    public Task UnsuccessfulTemplateCheckLeadsToLockAcquisition()
+        => AnyUnsuccessfulCheckLeadsToLockAcquisition(EntityType.Template, _openSearchNames.CommonIndexTemplateName);
 
     [Fact]
     public async Task InitializationEnsuresEntitiesIfClusterCheckIsUnsuccessful()

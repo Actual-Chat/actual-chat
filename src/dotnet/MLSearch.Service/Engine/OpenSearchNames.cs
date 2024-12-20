@@ -4,10 +4,8 @@ namespace ActualChat.MLSearch.Engine;
 
 internal sealed class OpenSearchNames
 {
-    private const string MLPrefix = "ml";
     private const string IngestPipelineNameSuffix = "ingest-pipeline";
     private const string IndexNameSuffix = "index";
-    private const string TemplateNameSuffix = "template";
     public const string EntryIndexVersion = "v4";
     public const string UserIndexVersion = "v5";
     public const string GroupIndexVersion = "v5";
@@ -19,10 +17,6 @@ internal sealed class OpenSearchNames
     public const string ChatCursor = "v2-chat-cursor";
     public string UniquePart { get; init; } = ""; // for testing purpose only
     public string Env { get; init; } = "";
-    public static string MLIndexPattern => $"{MLPrefix}-*";
-    public static string MLTestIndexPattern => $"{TestPrefix}-{MLPrefix}-*";
-    public static string MLTemplateName => $"{MLPrefix}-{TemplateNameSuffix}";
-    private string MLFullPrefix => ToPrefix(Env, MLPrefix, UniquePart);
     private string Prefix => ToPrefix(Env, "sm", UniquePart); // sm == "Search Module"
     public string CommonIndexTemplateName => $"{Prefix}common";
     public string CommonIndexPattern => $"{Prefix}*";
@@ -32,10 +26,10 @@ internal sealed class OpenSearchNames
     public string EntryIndexName => $"{Prefix}entries-{EntryIndexVersion}";
 
     internal string GetFullName(string id, EmbeddingModelProps modelProps)
-        => GetFull(MLFullPrefix, id, IndexNameSuffix, modelProps.UniqueKey);
+        => GetFull(Prefix, id, IndexNameSuffix, modelProps.UniqueKey);
 
     internal string GetFullIngestPipelineName(string id, EmbeddingModelProps modelProps)
-        => GetFull(MLFullPrefix, id, IngestPipelineNameSuffix, modelProps.UniqueKey);
+        => GetFull(Prefix, id, IngestPipelineNameSuffix, modelProps.UniqueKey);
 
     private static string GetFull(params IEnumerable<string> parts)
         => string.Join("", parts.Select(ToPrefix)).TrimEnd('-');
