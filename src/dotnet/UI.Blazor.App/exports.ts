@@ -24,6 +24,7 @@ export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';
 export * from './Components/LeftPanel/logo-button-svg.lit';
 export * from './Components/LeftPanel/chat-roulette-svg.lit';
 export * from './Components/MarkupEditor/markup-editor';
+export * from './Components/MarkupParts/playable-text-markup-view';
 export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-view';
 export * from './Components/MentionList/mention-list';
 export * from './Components/Navbar/sortable-list';
