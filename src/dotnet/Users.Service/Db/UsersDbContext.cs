@@ -15,6 +15,7 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
     public DbSet<DbChatUsage> ChatUsages { get; protected set; } = null!;
     public DbSet<DbRouletteProfilePrefs> RouletteProfilePrefs { get; protected set; } = null!;
+    public DbSet<DbRouletteCompletion> RouletteCompletions { get; protected set; } = null!;
 
     // ActualLab.Fusion.Authentication.Services tables
     public DbSet<DbUser> Users { get; protected set; } = null!;
@@ -60,6 +61,13 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
         var rouletteProfilePrefs = model.Entity<DbRouletteProfilePrefs>();
         rouletteProfilePrefs.Property(e => e.Id).UseCollation("C");
+
+        var rouletteCompletion = model.Entity<DbRouletteCompletion>();
+        rouletteCompletion.Property(e => e.Id).UseCollation("C");
+        rouletteCompletion.Property(e => e.OwnerUserId).UseCollation("C");
+        rouletteCompletion.Property(e => e.OwnerProfileId).UseCollation("C");
+        rouletteCompletion.Property(e => e.PeerUserId).UseCollation("C");
+        rouletteCompletion.Property(e => e.PeerProfileId).UseCollation("C");
 
         var sessionInfo = model.Entity<DbSessionInfo>();
         sessionInfo.Property(e => e.Id).UseCollation("C");

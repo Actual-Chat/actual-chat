@@ -22,8 +22,27 @@ public partial record ChatRoulette(
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record ChatRouletteProfiles([property: DataMember, MemoryPackOrder(0)] ChatRoulette ChatRoulette)
+public partial record ChatRouletteFull(ChatRouletteId Id, long Version = 0)
+    : ChatRoulette(Id, Version)
 {
-    [DataMember, MemoryPackOrder(1)] public Profile OwnProfile { get; init; } = null!;
-    [DataMember, MemoryPackOrder(2)] public Profile PeerProfile { get; init; } = null!;
+    [DataMember, MemoryPackOrder(3)] public UserId UserId1 { get; init; }
+    [DataMember, MemoryPackOrder(4)] public UserId UserId2 { get; init; }
+    [DataMember, MemoryPackOrder(5)] public UserId CompletedBy { get; init; }
+    [DataMember, MemoryPackOrder(6)] public CompleteChatRouletteReason CompleteReason { get; init; } = CompleteChatRouletteReason.None;
+    [DataMember, MemoryPackOrder(7)] public Moment CompletedAt { get; init; }
+
+    public ChatRoulette ToChatRoulette()
+        => new (Id, Version) { ChatId = ChatId };
+}
+
+public enum CompleteChatRouletteReason { None, Leave, Decline }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record ChatRouletteFullDiff : RecordDiff
+{
+    [DataMember, MemoryPackOrder(0)] public ChatId? ChatId { get; init; }
+    [DataMember, MemoryPackOrder(1)] public UserId? UserId1 { get; init; }
+    [DataMember, MemoryPackOrder(2)] public UserId? UserId2 { get; init; }
+    [DataMember, MemoryPackOrder(3)] public UserId? CompletedBy { get; init; }
+    [DataMember, MemoryPackOrder(4)] public CompleteChatRouletteReason? CompleteReason { get; init; }
 }
