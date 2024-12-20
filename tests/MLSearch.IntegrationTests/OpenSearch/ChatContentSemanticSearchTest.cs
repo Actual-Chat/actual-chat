@@ -3,6 +3,7 @@ using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Testing.Host;
@@ -23,18 +24,29 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         // Cleanup all test indexes before each test method start
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
         var openSearchNames = AppHost.Services.GetRequiredService<OpenSearchNames>();
+        var clusterSetup = AppHost.Services.GetRequiredService<IClusterSetup>();
 
-        var deleteByQueryResponse = await client.DeleteByQueryAsync<object>(d => d
-            .Index(openSearchNames.CommonIndexPattern)
-            .Refresh(true)
-            .WaitForCompletion(true)
-            .Query(query => query.Script(
-                scriptQuery => scriptQuery.Script(
-                    script => script.Source("true")
-                ))
-            )
-        );
-        _ = deleteByQueryResponse.AssertSuccess();
+        var embeddingModelProps = clusterSetup.Result.EmbeddingModelProps;
+
+        var indexNames = new [] {
+            openSearchNames.GetFullName(OpenSearchNames.ChatContent, embeddingModelProps),
+            openSearchNames.GetFullName(OpenSearchNames.ChatContentCursor, embeddingModelProps),
+            openSearchNames.GetFullName(OpenSearchNames.ChatCursor, embeddingModelProps),
+        };
+
+        foreach (var indexName in indexNames) {
+            var deleteIndexResponse = await client.DeleteByQueryAsync<object>(d => d
+                .Index(indexName)
+                .Refresh(true)
+                .WaitForCompletion(true)
+                .Query(query => query.Script(
+                    scriptQuery => scriptQuery.Script(
+                        script => script.Source("true")
+                    ))
+                )
+            );
+            _ = deleteIndexResponse.AssertSuccess();
+        }
     }
 
     [Fact]
