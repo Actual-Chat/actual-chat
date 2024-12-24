@@ -13,7 +13,7 @@ public interface IRouletteProfilesBackend : IComputeService, IBackendService
     Task<RouletteUserSettings?> GetUserSettings(UserId userId, CancellationToken cancellationToken);
 
     // Not ComputeMethod
-    Task<ImmutableArray<ProfilePreferences>> FindProfiles(UserId ownUserId, Symbol ownProfileId, Preferences filter, CancellationToken cancellationToken);
+    Task<ImmutableArray<ProfilePreferencesFull>> FindProfiles(UserId ownUserId, Symbol ownProfileId, Preferences filter, CancellationToken cancellationToken);
 
     // Commands
 
@@ -21,7 +21,7 @@ public interface IRouletteProfilesBackend : IComputeService, IBackendService
     Task<RouletteUserSettings?> OnChangeUserSettings(RouletteProfilesBackend_ChangeUserSettings command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<ProfilePreferences?> OnChangePrefs(RouletteProfilesBackend_ChangePrefs command, CancellationToken cancellationToken);
+    Task<ProfilePreferencesFull?> OnChangePrefs(RouletteProfilesBackend_ChangePrefs command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnCreateCompletedChatRoulette(RouletteProfilesBackend_CreateCompletedChatRoulette command, CancellationToken cancellationToken);
@@ -36,15 +36,12 @@ public interface IRouletteProfilesBackend : IComputeService, IBackendService
 }
 
 public record ProfileFull(
-    [property: DataMember, MemoryPackOrder(2)]
-    UserId UserId,
-    Symbol Id) : Profile(Id)
+    [property: DataMember, MemoryPackOrder(2)] UserId UserId,
+    Symbol Id)
+    : Profile(Id)
 {
     public Profile ToProfile()
-        => new (Id) {
-            Avatar = Avatar,
-            Preferences = Preferences
-        };
+        => Create(Avatar, Preferences);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -60,8 +57,8 @@ public sealed partial record RouletteProfilesBackend_ChangeUserSettings(
 public sealed partial record RouletteProfilesBackend_ChangePrefs(
     [property: DataMember, MemoryPackOrder(0)] Symbol ProfileId,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ProfilePreferences> Change
-) : IBackendCommand<ProfilePreferences>;
+    [property: DataMember, MemoryPackOrder(2)] Change<ProfilePreferencesFull> Change
+) : IBackendCommand<ProfilePreferencesFull>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming

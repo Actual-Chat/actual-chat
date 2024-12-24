@@ -98,34 +98,34 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
             avatar = await Commander.Call(avatarsChange, cancellationToken).ConfigureAwait(false);
             profileId = avatar.Id;
 
-            var prefsChange = new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Create(profile.Preferences));
+            var preferencesFull = new ProfilePreferencesFull(avatar.UserId, profileId, profile.Preferences.Version)
+                .WithMissingPropertiesFrom(profile.Preferences);
+            var prefsChange = new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Create(preferencesFull));
             var preferences = await Commander.Call(prefsChange, cancellationToken).ConfigureAwait(false);
 
             var kvas = ServerKvas.GetClient(session);
             await ActualChat.Users.Avatars.UpdateAvatarList(kvas, avatarsChange.Change, avatar.Id).ConfigureAwait(false);
 
-            return new Profile(profileId) {
-                Avatar = avatar.ToAvatar(),
-                Preferences = preferences
-            };
+            return Profile.Create(avatar.ToAvatar(), preferences);
         }
         else {
-            var existentAvatar = await Avatars.GetOwn(session, profileId, cancellationToken).ConfigureAwait(false);
-            if (existentAvatar is null)
+            var avatar = await Avatars.GetOwn(session, profileId, cancellationToken).ConfigureAwait(false);
+            if (avatar is null)
                 throw StandardError.Constraint("Invalid profile id.");
 
             var profile = command.Change.Update.Value;
-            var avatar = new AvatarFull(existentAvatar.UserId, existentAvatar.Id).WithMissingPropertiesFrom(profile.Avatar);
+            avatar = new AvatarFull(avatar.UserId, avatar.Id).WithMissingPropertiesFrom(profile.Avatar);
             var avatarsChange = new Avatars_Change(session, profileId, profile.Avatar.Version, Change.Update(avatar));
             avatar = await Commander.Call(avatarsChange, cancellationToken).ConfigureAwait(false);
 
-            var preferences = profile.Preferences;
-            var prefsChange = preferences.IsStored()
-                ? new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Update(preferences))
-                : new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Create(preferences));
-            preferences = await Commander.Call(prefsChange, cancellationToken).ConfigureAwait(false);
+            var preferencesFull = new ProfilePreferencesFull(avatar.UserId, profileId, profile.Preferences.Version)
+                .WithMissingPropertiesFrom(profile.Preferences);
+            var prefsChange = preferencesFull.IsStored()
+                ? new RouletteProfilesBackend_ChangePrefs(profileId, preferencesFull.Version, Change.Update(preferencesFull))
+                : new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Create(preferencesFull));
+            preferencesFull = await Commander.Call(prefsChange, cancellationToken).ConfigureAwait(false);
 
-            return Profile.Create(avatar, preferences);
+            return Profile.Create(avatar, preferencesFull.ToProfilePreferences());
         }
     }
 

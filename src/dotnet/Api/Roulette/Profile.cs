@@ -10,15 +10,9 @@ namespace ActualChat.Roulette;
 public partial record Profile([property: DataMember, MemoryPackOrder(0)] Symbol Id)
     : IHasId<Symbol>, IRequirementTarget
 {
-    public static readonly Profile None = new (Symbol.Empty) {
-        Avatar = Avatar.None,
-        Preferences = ProfilePreferences.None
-    };
+    public static readonly Profile None = Create(Avatar.None, ProfilePreferences.None);
 
-    public static readonly Profile Loading = new (Symbol.Empty) {
-        Avatar = Avatar.Loading,
-        Preferences = ProfilePreferences.None
-    }; // Should differ by ref. From None
+    public static readonly Profile Loading = Create(Avatar.Loading, ProfilePreferences.None); // Should differ by ref. From None
 
     [DataMember, MemoryPackOrder(1)] public Avatar Avatar { get; init; } = null!;
     [DataMember, MemoryPackOrder(3)] public ProfilePreferences Preferences { get; init; } = null!;
@@ -47,7 +41,37 @@ public partial record ProfilePreferences(
 {
     public static readonly ProfilePreferences None = new (Symbol.Empty);
 
-    [DataMember, MemoryPackOrder(2)] public Preferences Preferences { get; init; } = Preferences.Empty;
+    [DataMember, MemoryPackOrder(3)] public Preferences Preferences { get; init; } = Preferences.Empty;
+
+    public ProfilePreferences WithMissingPropertiesFrom(ProfilePreferences? other)
+    {
+        if (other == null)
+            return this;
+
+        var prefs = this with {
+            Preferences = other.Preferences
+        };
+        return prefs;
+    }
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public partial record ProfilePreferencesFull(
+    [property: DataMember, MemoryPackOrder(2)] UserId UserId,
+    Symbol Id,
+    long Version = 0
+) : ProfilePreferences(Id, Version)
+{
+    public ProfilePreferences ToProfilePreferences()
+        => new (Id, Version) {
+            Preferences = Preferences
+        };
+
+    public ProfilePreferencesFull WithMissingPropertiesFrom(ProfilePreferencesFull? other)
+        => (ProfilePreferencesFull) base.WithMissingPropertiesFrom(other);
+    public new ProfilePreferencesFull WithMissingPropertiesFrom(ProfilePreferences? other)
+        => (ProfilePreferencesFull) base.WithMissingPropertiesFrom(other);
 }
 
 public enum Gender { NotSpecified, Male, Female, Other }
