@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using ActualChat.Roulette;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
@@ -12,6 +11,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
 
     private IDbEntityResolver<string, DbRouletteProfilePrefs> RouletteProfilePrefsResolver { get; }
             = services.GetRequiredService<IDbEntityResolver<string, DbRouletteProfilePrefs>>();
+
+    private IDbEntityResolver<string, DbRouletteUserSettings> RouletteUserSettingsResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbRouletteUserSettings>>();
 
     // [ComputeMethod]
     public virtual async Task<ProfileFull?> GetProfile(Symbol profileId, CancellationToken cancellationToken)
@@ -30,6 +32,15 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         };
     }
 
+    public virtual async Task<RouletteUserSettings?> GetUserSettings(UserId userId, CancellationToken cancellationToken)
+    {
+        if (userId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(userId));
+
+        var dbRouletteUserSettings = await RouletteUserSettingsResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        return dbRouletteUserSettings?.ToModel();
+    }
+
     public virtual async Task<ImmutableArray<ProfilePreferences>> FindProfiles(
         UserId ownUserId,
         Symbol ownProfileId,
@@ -41,7 +52,6 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
 
         var ownUserSid = ownUserId.Value;
         var ownProfileSid = ownProfileId.Value;
-
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -89,7 +99,67 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         return dbProfilePrefs?.ToModel();
     }
 
+
     // Commands
+
+    public virtual async Task<RouletteUserSettings?> OnChangeUserSettings(
+        RouletteProfilesBackend_ChangeUserSettings command,
+        CancellationToken cancellationToken)
+    {
+        var (id, expectedVersion, change) = command;
+        id.Require(nameof(RouletteProfilesBackend_ChangeUserSettings.Id));
+
+        if (Invalidation.IsActive) {
+            _ = GetUserSettings(id, default);
+            return default!;
+        }
+
+        change.RequireValid();
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        RouletteUserSettings? userSettings = null;
+        if (change.IsCreate(out var update)) {
+            if (!update.Id.IsNone && !update.Id.Equals(id))
+                throw StandardError.Constraint("Change settings id should be empty or match command id.");
+
+            userSettings = new RouletteUserSettings(id) {
+                IsEnabled = update.IsEnabled,
+                Version = VersionGenerator.NextVersion(),
+            };
+            var dbUserSettings = new DbRouletteUserSettings(userSettings);
+            dbContext.RouletteUserSettings.Add(dbUserSettings);
+            userSettings = dbUserSettings.ToModel();
+        }
+        else {
+            var dbUserSettings = await dbContext.RouletteUserSettings
+                .Get(id, cancellationToken)
+                .ConfigureAwait(false);
+            var oldUserSettings = dbUserSettings?.ToModel();
+
+            if (change.IsUpdate(out update)) {
+                oldUserSettings.Require();
+                oldUserSettings.RequireVersion(expectedVersion);
+                userSettings = oldUserSettings with {
+                    IsEnabled = update.IsEnabled,
+                    Version = VersionGenerator.NextVersion(oldUserSettings.Version),
+                };
+                dbUserSettings!.UpdateFrom(userSettings);
+            }
+            else {
+                if (expectedVersion is not null)
+                    dbUserSettings.RequireVersion(expectedVersion);
+                if (dbUserSettings is not null)
+                    dbContext.Remove(dbUserSettings);
+            }
+
+            userSettings = dbUserSettings?.ToModel();
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return userSettings;
+    }
 
     public virtual async Task<ProfilePreferences?> OnChangePrefs(
         RouletteProfilesBackend_ChangePrefs command,
