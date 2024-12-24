@@ -13,15 +13,16 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
+    public string UserId { get; set; } = "";
     public string CountryCode { get; set; } = "";
     public Gender Gender { get; set; } = Gender.NotSpecified;
     public string Languages { get; set; } = "";
     public string Interests { get; set; } = "";
 
     public DbRouletteProfilePrefs() { }
-    public DbRouletteProfilePrefs(ProfilePreferences model) => UpdateFrom(model);
+    public DbRouletteProfilePrefs(ProfilePreferencesFull model) => UpdateFrom(model);
 
-    public ProfilePreferences ToModel()
+    public ProfilePreferencesFull ToModel()
     {
         var country = CountryCode.IsNullOrEmpty() ? Country.NotSpecified : new Country(CountryCode);
         ImmutableArray<Language> languages =
@@ -32,7 +33,7 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
             Interests.IsNullOrEmpty()
                 ? ImmutableArray<Interest>.Empty
                 : [..Interests.Split(',').Select(i => new Interest(i))];
-        return new ProfilePreferences(Id, Version) {
+        return new ProfilePreferencesFull(new UserId(UserId), Id, Version) {
             Preferences = new Preferences {
                 Country = country,
                 Gender = Gender,
@@ -42,7 +43,7 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
         };
     }
 
-    public void UpdateFrom(ProfilePreferences model)
+    public void UpdateFrom(ProfilePreferencesFull model)
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
@@ -50,6 +51,12 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
 
         Id = id;
         Version = model.Version;
+        if (UserId.IsNullOrEmpty()) {
+            model.UserId.Require(nameof(ProfilePreferencesFull.UserId));
+            UserId = model.UserId;
+        }
+        else if (!model.UserId.IsNone && !Equals(UserId, model.UserId.Value))
+                throw StandardError.Constraint("UserId can't be changed.");
 
         var preferences = model.Preferences;
         CountryCode = preferences.Country.Code;

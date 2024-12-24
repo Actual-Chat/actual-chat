@@ -28,7 +28,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var prefs = await GetPreferences(profileId, cancellationToken).ConfigureAwait(false);
         return new ProfileFull(avatar.UserId, profileId) {
             Avatar = avatar.ToAvatar(),
-            Preferences = prefs ?? new ProfilePreferences(profileId)
+            Preferences = prefs?.ToProfilePreferences() ?? new ProfilePreferences(profileId)
         };
     }
 
@@ -41,7 +41,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         return dbRouletteUserSettings?.ToModel();
     }
 
-    public virtual async Task<ImmutableArray<ProfilePreferences>> FindProfiles(
+    public virtual async Task<ImmutableArray<ProfilePreferencesFull>> FindProfiles(
         UserId ownUserId,
         Symbol ownProfileId,
         Preferences filter,
@@ -63,10 +63,11 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
             .Where(c => c.OwnerProfileId == ownProfileSid)
             .Select(c => c.PeerProfileId);
 
+        var usersWithEnabledChatRoulette = dbContext.RouletteUserSettings.Where(x => x.IsEnabled).Select(x => x.Id);
         IQueryable<DbRouletteProfilePrefs> queryable = dbContext.RouletteProfilePrefs;
         queryable = queryable
             .Where(c => !completedPeerProfileIds.Contains(c.Id)); // Exclude completed chats
-        // NOTE: When should we exclude profiles by user id?
+        queryable = queryable.Where(c => usersWithEnabledChatRoulette.Contains(c.UserId));
         if (!filter.Country.IsNotSpecified)
             queryable = queryable.Where(c => c.CountryCode == filter.Country.Code);
         if (filter.Gender != Gender.NotSpecified)
@@ -90,7 +91,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
     }
 
     [ComputeMethod]
-    protected virtual async Task<ProfilePreferences?> GetPreferences(Symbol profileId, CancellationToken cancellationToken)
+    protected virtual async Task<ProfilePreferencesFull?> GetPreferences(Symbol profileId, CancellationToken cancellationToken)
     {
         if (profileId.IsEmpty)
             throw new ArgumentOutOfRangeException(nameof(profileId));
@@ -98,7 +99,6 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var dbProfilePrefs = await RouletteProfilePrefsResolver.Get(profileId, cancellationToken).ConfigureAwait(false);
         return dbProfilePrefs?.ToModel();
     }
-
 
     // Commands
 
@@ -161,7 +161,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         return userSettings;
     }
 
-    public virtual async Task<ProfilePreferences?> OnChangePrefs(
+    public virtual async Task<ProfilePreferencesFull?> OnChangePrefs(
         RouletteProfilesBackend_ChangePrefs command,
         CancellationToken cancellationToken)
     {
@@ -177,7 +177,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        ProfilePreferences? profilePrefs;
+        ProfilePreferencesFull? profilePrefs;
         if (change.IsCreate(out var profile)) {
             if (!profile.Id.IsEmpty && !profile.Id.Equals(profileId))
                 throw StandardError.Constraint("Change profile id should be empty or match command profile id.");
@@ -255,7 +255,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
             return Task.CompletedTask;
 
         var profileId = avatar.Id;
-        var removePrefs = new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Remove<ProfilePreferences>());
+        var removePrefs = new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Remove<ProfilePreferencesFull>());
         return Commander.Call(removePrefs, true, cancellationToken);
     }
 
