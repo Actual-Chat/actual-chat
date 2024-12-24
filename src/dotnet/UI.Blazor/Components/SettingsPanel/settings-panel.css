@@ -278,3 +278,8 @@ body.hoverable .tile-btn:hover {
 .settings-tab .docs-details .tile.c-docs {
     @apply bg-transparent;
 }
+
+.tile-item.chat-roulette-is-enabled {
+    @apply h-auto;
+    @apply py-1;
+}

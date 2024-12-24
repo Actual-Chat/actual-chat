@@ -63,6 +63,10 @@ body.hoverable .analytics-step > .c-content > a:hover {
     @apply text-primary;
 }
 
+.onboarding-modal .chat-roulette-step {
+    @apply flex-y gap-y-4;
+}
+
 .step-tile > .c-docs {
     @apply flex;
     @apply flex-y gap-y-2;

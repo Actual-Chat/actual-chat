@@ -1,0 +1,61 @@
+@using ActualChat.Roulette
+@inherits ComputedStateComponent<ChatRouletteSettings.Model>
+@{
+    #pragma warning disable IL2091
+    var m = State.Value;
+}
+
+<TileTopic Topic="Chat Roulette"/>
+@{
+    if (ReferenceEquals(m, Model.Loading))
+       return;
+}
+<Tile>
+    <TileItem Class="chat-roulette-is-enabled" Click="ToggleIsEnabled">
+        <Icon><i class="icon-hand text-2xl"></i></Icon>
+        <Content>Is enabled</Content>
+        <Caption>Allow other people find you with Chat Roulette and start talk with you.</Caption>
+        <Right>
+            <Toggle IsChecked="@m.IsEnabled" />
+        </Right>
+    </TileItem>
+</Tile>
+
+@code {
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private UICommander UICommander => Hub.UICommander();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.Loading };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
+        return new Model(userSettings?.IsEnabled ?? true);
+    }
+
+    private void ToggleIsEnabled()
+        => _ = UpdateSettings(c => c with {
+            IsEnabled = !c.IsEnabled
+        });
+
+    private async Task UpdateSettings(Func<RouletteUserSettings, RouletteUserSettings> update, CancellationToken cancellationToken = default) {
+        var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
+        userSettings ??= new RouletteUserSettings(AccountUI.OwnAccount.Value.Id);
+        userSettings = update(userSettings);
+        var change = userSettings.IsStored() ? Change.Update(userSettings) : Change.Create(userSettings);
+        var command = new RouletteProfiles_ChangeOwnUserSettings(Session, userSettings.IsStored() ? userSettings.Version : null, change);
+        await UICommander.Run(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Nested types
+
+    public record Model(bool IsEnabled)
+    {
+        public static readonly Model Loading = new(false);
+    }
+}

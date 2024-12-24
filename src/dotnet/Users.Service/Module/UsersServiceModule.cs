@@ -249,6 +249,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbChatPosition>();
             db.AddEntityResolver<string, DbRouletteProfilePrefs>();
+            db.AddEntityResolver<string, DbRouletteUserSettings>();
         });
     }
 }

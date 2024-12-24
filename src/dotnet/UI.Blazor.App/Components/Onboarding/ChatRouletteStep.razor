@@ -1,0 +1,144 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Kvas
+@using ActualChat.Roulette
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<Form
+    @ref="_formRef"
+    Model="@_model">
+    <DataAnnotationsValidator/>
+    <div class="chat-roulette-step">
+
+        <TileTopic Topic="Your chat roulette settings"/>
+        <Tile Class="chat-roulette-is-enabled">
+            <TileItem>
+                <Icon><i class="icon-hand text-2xl"></i></Icon>
+                <Content>Is enabled</Content>
+                <Caption>Allow other people find you with Chat Roulette and start talk with you.</Caption>
+                <Right>
+                    <Toggle IsChecked="@_model.IsEnabled"/>
+                </Right>
+            </TileItem>
+            @* <p class="c-description"> *@
+            @*     Help us to identify user experience issues faster by allowing *@
+            @*     Actual Chat to collect and process data on certain in-app events, *@
+            @*     such as critical user actions, errors, and crashes. *@
+            @* </p> *@
+        </Tile>
+        @if (_profile is not null) {
+            <TileTopic Topic="Selected profile"/>
+            <Tile Class="chat-roulette-profile">
+                <ChatRouletteItem Profile="@_profile" />
+            </Tile>
+        }
+    </div>
+</Form>
+
+@code {
+    private readonly Model _model = new();
+    private Form? _formRef;
+    private Profile? _profile;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private IAvatars Avatars => Hub.Avatars;
+    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+    private UICommander UICommander => Hub.UICommander();
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsChatRouletteStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsChatRouletteStepCompleted = true });
+
+    protected override async Task OnInitializedAsync() {
+        CancellationToken cancellationToken = default;
+        var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
+        _model.IsEnabled = userSettings?.IsEnabled ?? true;
+        _profile = await GetOrCreatedDefaultProfile(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Profile?> GetOrCreatedDefaultProfile(CancellationToken cancellationToken) {
+        var selectedProfileId = await RouletteProfiles.GetSelectedProfileId(Session, cancellationToken).ConfigureAwait(false);
+        var profileId = selectedProfileId;
+        if (profileId.IsEmpty) {
+            var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
+            var defaultAvatarId = accountSettings.DefaultAvatarId;
+            if (!defaultAvatarId.IsEmpty)
+                profileId = defaultAvatarId;
+        }
+
+        if (profileId.IsEmpty)
+            return null;
+
+        var profile = await RouletteProfiles.GetOwnProfile(Session, profileId, cancellationToken).ConfigureAwait(false);
+        if (profile is null)
+            return null;
+
+        if (profile.Preferences.Preferences.IsEmpty) {
+            var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+            var primaryLanguage = languages.Primary;
+            if (primaryLanguage.IsNone)
+                return null;
+
+            var preferences = profile.Preferences.Preferences;
+            preferences = preferences with {
+                Interests = ImmutableArray<Interest>.Empty.Add(Interests.Flexible)
+            };
+            if (!primaryLanguage.IsNone)
+                preferences = preferences with {
+                    Languages = ImmutableArray<Language>.Empty.Add(primaryLanguage)
+                };
+            profile = profile with {
+                Preferences = profile.Preferences with {
+                    Preferences = preferences
+                }
+            };
+            var upsertProfile = new RouletteProfiles_UpsertProfile(Session, profile.Id, Change.Update(profile));
+            profile = await UICommander.Run(upsertProfile, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (selectedProfileId.IsEmpty) {
+            var selectProfile = new RouletteProfiles_SelectProfile(Session, profile.Id);
+            await UICommander.Run(selectProfile, cancellationToken).ConfigureAwait(false);
+        }
+
+        return profile;
+    }
+
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override async Task<bool> Save() {
+        CancellationToken cancellationToken = default;
+        var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
+        if (userSettings is null) {
+            var account = await Accounts.GetOwn(Session, cancellationToken);
+            userSettings = new RouletteUserSettings(account.Id);
+        }
+
+        userSettings = userSettings with {
+            IsEnabled = _model.IsEnabled
+        };
+
+        var updateSettingsCommand = new RouletteProfiles_ChangeOwnUserSettings(
+            Session,
+            userSettings.Version,
+            !userSettings.IsStored() ? Change.Create(userSettings) : Change.Update(userSettings));
+        var (_, error) = await UICommander.Run(updateSettingsCommand, cancellationToken).ConfigureAwait(false);
+        return error is null;
+    }
+
+    public class Model {
+        public bool IsEnabled { get; set; }
+    }
+}

@@ -91,6 +91,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
         => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public IStreamClient StreamClient => _streamClient ??= Services.GetRequiredService<IStreamClient>();
     public RouletteUI RouletteUI => _rouletteUI ??= Services.GetRequiredService<RouletteUI>();
+    public new OnboardingUI OnboardingUI => (OnboardingUI)base.OnboardingUI;
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

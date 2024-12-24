@@ -144,7 +144,7 @@
         };
 
         var change = profileId.IsEmpty ? Change.Create(profile) : Change.Update(profile);
-        var command = new RouletteProfiles_UpsertProfile(Session, profileId, null, change);
+        var command = new RouletteProfiles_UpsertProfile(Session, profileId, change);
         var (_, error) = await UICommander.Run(command);
         if (error != null)
             return;
