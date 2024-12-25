@@ -1,4 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Roulette
 @inherits ComputedStateComponent<NavbarButtons.Model>
 @{
     var m = State.Value;
@@ -37,16 +38,21 @@
 
 <div class="navbar-buttons">
     <NavbarPlaceButtons/>
-    <NavbarChatRouletteButton/>
+    @if (m.EnableChatRoulettePlace) {
+        <NavbarChatRouletteButton/>
+    }
     <NavbarChatButtons/>
 </div>
 
 @code {
     [Inject] protected UIHub Hub { get; init; } = null!;
+    protected Session Session => Hub.Session();
     protected AccountUI AccountUI => Hub.AccountUI;
     protected ModalUI ModalUI => Hub.ModalUI;
     protected NavbarUI NavbarUI => Hub.NavbarUI;
     protected PanelsUI PanelsUI => Hub.PanelsUI;
+    protected Features Features => Hub.Features();
+    protected IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
 
     protected override void OnInitialized()
         => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
@@ -58,13 +64,19 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (AccountUI.OwnAccount.Value),
+            InitialValue = new (AccountUI.OwnAccount.Value, false),
             Category = ComputedStateComponent.GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        return new(ownAccount);
+        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
+        var isChatRouletteEnabled = false;
+        if (enableChatRouletteUI) {
+            var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
+            isChatRouletteEnabled = userSettings?.IsEnabled ?? false;
+        }
+        return new(ownAccount, isChatRouletteEnabled);
     }
 
     private Task OnCreateChatClick()
@@ -80,5 +92,5 @@
 
     // Nested types
 
-    public record Model(AccountFull OwnAccount);
+    public record Model(AccountFull OwnAccount, bool EnableChatRoulettePlace);
 }
