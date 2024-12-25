@@ -7,8 +7,10 @@ from opensearch_py_ml.ml_commons import MLCommonClient
 
 
 class API:
-    def __init__(self, cluster_url, client_cert_path=None, client_key_path=None, ca_cert_path=None):
+    def __init__(self, cluster_url, username=None, password=None, client_cert_path=None, client_key_path=None, ca_cert_path=None):
         self._cluster_url = cluster_url
+        self._username = username
+        self._password = password
         self._client_cert_path = client_cert_path
         self._client_key_path = client_key_path
         self._ca_cert_path = ca_cert_path
@@ -17,15 +19,14 @@ class API:
         headers = {
             'Content-Type': 'application/json',
         }
-        cert_config = None
-        if self._client_cert_path:
-            cert_config = (self._client_cert_path, self._client_key_path)
-
+        auth = (self._username, self._password) if self._username and self._password else None
+        cert_config = (self._client_cert_path, self._client_key_path) if self._client_cert_path and not auth else None
         result = method(
             self._cluster_url + path,
             headers=headers,
             json=data,
-            cert=cert_config  # Add certificate configuration here
+            cert=cert_config,  # Add certificate configuration here
+            auth=auth  # Add basic auth if username and password are provided
         )
         print(path)
         print(result)
@@ -126,7 +127,7 @@ def main():
     password = os.getenv('OPENSEARCH_PASSWORD')
    
     model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
-    api = API(cluster_url, client_cert_path, client_key_path, ca_cert_path)  # Pass certificate details
+    api = API(cluster_url, username, password, client_cert_path, client_key_path, ca_cert_path)  # Pass certificate details
     api.configure()
     model_group_id = api.register_model_group(
         model_group_name,
