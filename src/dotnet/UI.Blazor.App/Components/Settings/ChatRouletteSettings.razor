@@ -35,7 +35,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
-        return new Model(userSettings?.IsEnabled ?? true);
+        return new Model(userSettings?.IsEnabled ?? false);
     }
 
     private void ToggleIsEnabled()

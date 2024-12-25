@@ -11,5 +11,5 @@ public partial record RouletteUserSettings(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
 ) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2)] public bool IsEnabled { get; set; } = true;
+    [DataMember, MemoryPackOrder(2)] public bool IsEnabled { get; set; }
 }
