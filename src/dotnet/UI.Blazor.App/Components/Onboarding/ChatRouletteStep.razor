@@ -61,7 +61,7 @@
     protected override async Task OnInitializedAsync() {
         CancellationToken cancellationToken = default;
         var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
-        _model.IsEnabled = userSettings?.IsEnabled ?? true;
+        _model.IsEnabled = userSettings?.IsEnabled ?? false;
         _profile = await GetOrCreatedDefaultProfile(cancellationToken).ConfigureAwait(false);
     }
 
