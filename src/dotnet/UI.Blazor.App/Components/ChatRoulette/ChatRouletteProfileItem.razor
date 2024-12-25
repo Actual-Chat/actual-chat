@@ -4,11 +4,11 @@
 <ChatRouletteItem Profile="Profile">
     <ActionsTemplate>
         <ButtonRound Class="btn-xxs btn-transparent blackout" Click="@OnEditProfileClick">
-            <i class="icon-edit"></i>
+            <i class="icon-edit text-headline-7"></i>
         </ButtonRound>
-        <ButtonRound Class="btn-xxs choose-avatar-btn" IsDisabled="@IsSelected" Click="@SelectClick">
+        <ButtonRound Class="btn-xxs choose-avatar-btn" Click="@SelectClick">
             @if (IsSelected) {
-                <i class="icon-checkmark-simple"></i>
+                <i class="icon-checkmark-simple text-headline-7"></i>
             }
         </ButtonRound>
     </ActionsTemplate>

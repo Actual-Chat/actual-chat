@@ -3,7 +3,11 @@
 
 <ChatRouletteItem Profile="Profile" HighlightMatchWithProfile="@HighlightMatchWithProfile">
     <ActionsTemplate>
-        <div class="c-start-chat" @onclick="@StartChatClick">
+        <div
+            class="c-start-chat"
+            data-tooltip="Start chat"
+            data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
+            @onclick="@StartChatClick">
             <i class="icon-message-ellipse text-xl"></i>
         </div>
     </ActionsTemplate>

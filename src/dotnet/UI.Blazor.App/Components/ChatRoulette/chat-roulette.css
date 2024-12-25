@@ -7,7 +7,7 @@ body.wide .cr-header .cr-back-btn {
     @apply hidden;
 }
 .filter-btn.btn-h {
-    @apply md:text-[var(--indigo-70)];
+    @apply md:text-cr-btn;
 }
 body.narrow .cr-header .desktop,
 body.narrow .cr-center .desktop,
@@ -30,7 +30,7 @@ body.wide .filter-btn.btn-h i.mobile {
     @apply flex-none flex items-center justify-center;
     @apply w-10 h-10;
     @apply rounded-full;
-    @apply bg-[var(--indigo-70)];
+    @apply bg-cr-btn;
     @apply text-[var(--sienna-70)];
 }
 .cr-header .c-title {
@@ -53,7 +53,7 @@ body.narrow .cr-center {
 .cr-item {
     @apply flex-y items-center gap-y-2;
     @apply p-2;
-    @apply rounded-2xl border border-[var(--indigo-90)];
+    @apply rounded-2xl border border-cr-item-border;
     @apply bg-01;
 }
 .cr-item .c-top {
@@ -62,12 +62,15 @@ body.narrow .cr-center {
 }
 .cr-item .c-top .c-description {
     @apply flex-1 flex-y;
+    @apply text-01;
 }
 .cr-item .c-top .c-description .c-name {
+    @apply line-clamp-1;
     @apply text-text-1 font-medium;
 }
 .cr-item .c-top .c-description .c-bio {
-    @apply text-xs text-03;
+    @apply line-clamp-2;
+    @apply text-xs;
 }
 .cr-item .c-top .c-ending {
     @apply flex-none flex-x items-center gap-x-0.5;
@@ -78,11 +81,12 @@ body.narrow .cr-center {
     @apply mr-1;
     @apply rounded-full;
     @apply overflow-hidden;
-    @apply bg-[var(--indigo-99)];
-    @apply text-[var(--indigo-60)];
+    @apply bg-cr-item-badge-selected;
+    @apply text-cr-item-badge-selected-text;
 }
 .cr-item .c-center {
     @apply flex-x items-center gap-x-4;
+    @apply w-full;
 }
 .cr-badge {
     @apply flex-none flex-x items-center gap-x-1;
@@ -96,12 +100,29 @@ body.narrow .cr-center {
 .cr-badge.clickable {
     @apply cursor-pointer;
 }
+.cr-badge .clickable {
+    @apply flex-none flex items-center justify-center;
+    @apply w-4 h-4;
+    @apply cursor-pointer;
+}
 .cr-badge i {
-    @apply text-03;
+    @apply always-white;
+    @apply text-xs;
 }
 .cr-badge.selected {
-    @apply bg-[var(--indigo-99)];
-    @apply text-[var(--indigo-60)];
+    @apply bg-cr-badge-selected;
+    @apply text-cr-badge-selected-text;
+}
+.cr-badge.item-badge {
+    @apply bg-cr-item-badge;
+    @apply text-cr-item-badge-text;
+}
+.cr-badge.item-badge i {
+    @apply text-cr-item-badge-text;
+}
+.cr-badge.item-badge.selected {
+    @apply bg-cr-item-badge-selected;
+    @apply text-cr-item-badge-selected-text;
 }
 .cr-badge-selector .cr-badge {
     @apply h-6;
@@ -109,22 +130,26 @@ body.narrow .cr-center {
     @apply text-01 text-headline-1;
 }
 .cr-badge-selector .cr-badge.special {
-    @apply text-[var(--indigo-70)];
+    @apply text-cr-badge-selected;
 }
 .cr-badge-selector .cr-badge.selected {
-    @apply bg-[var(--indigo-70)];
+    @apply bg-cr-badge-selected;
     @apply always-white;
+}
+.cr-badge-selector .cr-badge.selected:has(.clickable) {
+    @apply pr-1;
 }
 .cr-item .c-bottom {
     @apply flex-x flex-wrap items-center gap-x-2 gap-y-2;
+    @apply w-full;
 }
 div.c-start-chat {
     @apply cursor-pointer
 }
 .btn.cr-btn {
     @apply w-full;
-    @apply text-[var(--indigo-60)];
-    @apply bg-[var(--indigo-99)];
+    @apply bg-cr-badge-selected;
+    @apply text-cr-badge-selected-text;
 }
 
 .cr-footer {
@@ -155,6 +180,9 @@ body.wide .cr-footer .c-center {
     @apply rounded-full;
     @apply bg-input;
     @apply cursor-pointer;
+}
+.cr-footer .c-center .c-profile-container .c-name {
+    @apply line-clamp-1;
 }
 .cr-footer .refresh-wrapper {
     @apply relative;
@@ -219,7 +247,7 @@ body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
 }
 
 .cr-right-panel {
-    @apply bg-[var(--indigo-99)];
+    @apply bg-cr-right-panel;
 }
 .cr-right-panel .c-header {
     @apply flex-x items-center gap-x-4;
@@ -234,8 +262,11 @@ body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
     @apply flex-1 flex-y;
     @apply p-4;
 }
-.cr-right-panel-content > .c-center {
+.cr-right-panel-content .c-center {
     @apply flex-1 flex-y gap-y-6;
+}
+.cr-right-panel-content .c-center > .form-block {
+    @apply px-0;
 }
 .cr-right-panel-content .c-center .c-container {
     @apply flex-y gap-y-2;
@@ -244,16 +275,19 @@ body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
     @apply text-caption-1;
 }
 .cr-right-panel-content .form-section-validation {
-    @apply bg-inherit;
+    @apply bg-cr-right-panel;
 }
 /*.cr-right-panel-content .c-center .c-container .c-content,*/
-.cr-badge-selector
-{
+.cr-badge-selector {
     @apply flex-wrap flex-x items-center gap-x-3 gap-y-2;
 }
 .cr-right-panel-content .cr-badge-selector .cr-badge:not(.selected) {
-    @apply bg-white;
+    @apply bg-cr-badge;
     @apply bg-opacity-60;
+    @apply text-cr-badge-text;
+}
+body.hoverable .cr-right-panel-content .cr-badge-selector .cr-badge:not(.selected):hover {
+    @apply bg-hover;
 }
 .country-container {
     @apply flex-none flex items-end justify-start;
@@ -272,10 +306,10 @@ body.wide .cr-footer .cr-refresh-btn.btn-round .c-content .c-text {
 }
 .cr-cancel.btn {
     @apply bg-01;
-    @apply text-[var(--indigo-70)];
+    @apply text-cr-badge-selected;
 }
 .cr-apply.btn {
-    @apply bg-[var(--indigo-70)];
+    @apply bg-cr-badge-selected;
     @apply always-white;
 }
 
@@ -301,7 +335,22 @@ section.profile-field label {
 .form.form-y section.profile-field .form-section-content {
     @apply px-0;
 }
+.profile-field.c-languages .form-section-validation {
+    @apply pl-0;
+}
 
-.languages-selector-popup {
+.languages-selector-popup .dialog-body {
     @apply px-4
+}
+
+.choose-avatar-btn.btn-round {
+    @apply bg-cr-item-badge-selected;
+    @apply text-cr-item-badge-selected-text;
+}
+
+.edit-roulette-profile .dialog-body {
+    @apply overflow-hidden;
+}
+.cr-edit-avatar-form-block {
+    @apply overflow-y-auto custom-scrollbar;
 }

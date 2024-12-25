@@ -24,7 +24,7 @@
                     CloseRequested="@(() => Modal.Close())" />
             </FormBlock>
 
-            <FormBlock>
+            <FormBlock Class="cr-edit-avatar-form-block">
                 <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
                     <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" ClearButton="true"/>
                 </FormSection>

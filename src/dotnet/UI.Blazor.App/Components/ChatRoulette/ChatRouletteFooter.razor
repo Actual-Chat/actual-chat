@@ -2,7 +2,7 @@
 <div class="cr-footer">
     <ButtonRound
         Class="post-panel-btn btn-transparent btn-xxs mobile"
-        Click="@OnRefreshClick">
+        Click="@OnOptionsClick">
         <i class="icon-options-2 text-2xl"></i>
     </ButtonRound>
     <span class="c-filter mobile">Filters</span>
@@ -14,7 +14,7 @@
             @* <span class="c-profile-incut"></span> *@
             @* <span>George Black</span> *@
             <AvatarCircle Avatar="@Profile.Avatar" />
-            <span>@Profile.Avatar.Name</span>
+            <span class="c-name">@Profile.Avatar.Name</span>
         </div>
         <div class="refresh-wrapper">
             <ButtonRound
@@ -44,6 +44,7 @@
     private RouletteUI RouletteUI => Hub.RouletteUI;
 
     [Parameter, EditorRequired] public Profile Profile { get; set; } = null!;
+    [Parameter] public EventCallback OnOptionsClick { get; set; }
 
     private void OnRefreshClick()
         => _ = RouletteUI.UpdateSearchResult();

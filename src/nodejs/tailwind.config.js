@@ -103,12 +103,6 @@ module.exports = {
         'black': 'var(--black)',
         'rating': 'var(--rating)',
 
-        // hover
-        'more-colored': 'var(--more-colored)',
-        'less-colored': 'var(--less-colored)',
-        'primary-colored': 'var(--primary-colored)',
-        'danger-colored': 'var(--danger-colored)',
-
         'disabled': 'var(--disabled)',
         'primary-hover': 'var(--primary-hover)',
         'primary-title': 'var(--primary-title)',
@@ -168,7 +162,6 @@ module.exports = {
         'quote': 'var(--quote)',
         'selected': 'var(--selected)',
         'hover': 'var(--hover)',
-        'place': 'var(--place)',
         'bubble': 'var(--bubble)',
         'bubble-text': 'var(--bubble-text)',
         'bubble-btn-hover': 'var(--bubble-btn-hover)',
@@ -228,6 +221,20 @@ module.exports = {
         'status-away-badge': 'var(--status-away-badge)',
         'status-offline': 'var(--status-offline)',
         'status-offline-badge': 'var(--status-offline-badge)',
+
+        // Chat Roulette
+        'cr-right-panel': 'var(--cr-right-panel)',
+        'cr-badge': 'var(--cr-badge)',
+        'cr-badge-text': 'var(--cr-badge-text)',
+        'cr-badge-selected': 'var(--cr-badge-selected)',
+        'cr-badge-selected-text': 'var(--cr-badge-selected-text)',
+        'cr-item-badge': 'var(--cr-item-badge)',
+        'cr-item-badge-text': 'var(--cr-item-badge-text)',
+        'cr-item-badge-selected': 'var(--cr-item-badge-selected)',
+        'cr-item-badge-selected-text': 'var(--cr-item-badge-selected-text)',
+        'cr-btn': 'var(--cr-btn)',
+        'cr-item-border': 'var(--cr-item-border)',
+
       },
       textColor: {
         '01': 'var(--text-01)',
