@@ -122,6 +122,8 @@ def main():
     client_cert_path = os.getenv('OPENSEARCH_CLIENT_CERT_PATH')
     client_key_path = os.getenv('OPENSEARCH_CLIENT_KEY_PATH')
     ca_cert_path = os.getenv('OPENSEARCH_CA_CERT_PATH')
+    username = os.getenv('OPENSEARCH_USERNAME')
+    password = os.getenv('OPENSEARCH_PASSWORD')
    
     model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
     api = API(cluster_url, client_cert_path, client_key_path, ca_cert_path)  # Pass certificate details
@@ -133,17 +135,27 @@ def main():
     current_model_id = api.get_model_group_model_id(
         model_group_id
     )
-    client = OpenSearch(
-        hosts=[cluster_url],
-        use_ssl=True,  # Enable SSL/TLS
-        verify_certs=True,  # Verify server certificate against CA
-        ssl_assert_hostname=False, # Disable hostname verification (if needed)
-        client_cert=client_cert_path, 
-        client_key=client_key_path,
-        ca_certs=ca_cert_path,
-    ) if client_cert_path else OpenSearch(
-        hosts=[cluster_url],
-    )
+    if username and password:
+        client = OpenSearch(
+            hosts=[cluster_url],
+            http_auth=(username, password),
+            use_ssl=True,  # Enable SSL/TLS
+            verify_certs=True,  # Verify server certificate against CA
+            ssl_assert_hostname=False,  # Disable hostname verification (if needed)
+            ca_certs=ca_cert_path,
+        )
+    else:
+        client = OpenSearch(
+            hosts=[cluster_url],
+            use_ssl=True,  # Enable SSL/TLS
+            verify_certs=True,  # Verify server certificate against CA
+            ssl_assert_hostname=False,  # Disable hostname verification (if needed)
+            client_cert=client_cert_path,
+            client_key=client_key_path,
+            ca_certs=ca_cert_path,
+        ) if client_cert_path else OpenSearch(
+            hosts=[cluster_url],
+        )
     
     ml_client = MLCommonClient(client)
     if current_model_id is not None:
