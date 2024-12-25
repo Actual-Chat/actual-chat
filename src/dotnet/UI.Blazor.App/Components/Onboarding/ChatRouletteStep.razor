@@ -7,41 +7,35 @@
     return;
 }
 
-<Form
-    @ref="_formRef"
-    Model="@_model">
-    <DataAnnotationsValidator/>
-    <div class="chat-roulette-step">
-
-        <TileTopic Topic="Your chat roulette settings"/>
-        <Tile Class="chat-roulette-is-enabled">
-            <TileItem>
-                <Icon><i class="icon-hand text-2xl"></i></Icon>
-                <Content>Is enabled</Content>
-                <Caption>Allow other people find you with Chat Roulette and start talk with you.</Caption>
-                <Right>
-                    <Toggle IsChecked="@_model.IsEnabled"/>
-                </Right>
-            </TileItem>
-            @* <p class="c-description"> *@
-            @*     Help us to identify user experience issues faster by allowing *@
-            @*     Actual Chat to collect and process data on certain in-app events, *@
-            @*     such as critical user actions, errors, and crashes. *@
-            @* </p> *@
+<div class="chat-roulette-step">
+    <TileTopic Topic="Your chat roulette settings"/>
+    <Tile>
+        <TileItem Class="chat-roulette-is-enabled" Click="@ToggleIsEnabled">
+            <Icon><i class="icon-hand text-2xl"></i></Icon>
+            <Content>Is enabled</Content>
+            <Caption>Allow other people find you with Chat Roulette and start talk with you.</Caption>
+            <Right>
+                <Toggle IsChecked="@_isEnabled"/>
+            </Right>
+        </TileItem>
+        @* <p class="c-description"> *@
+        @*     Help us to identify user experience issues faster by allowing *@
+        @*     Actual Chat to collect and process data on certain in-app events, *@
+        @*     such as critical user actions, errors, and crashes. *@
+        @* </p> *@
+    </Tile>
+    @if (_profile is not null) {
+        <TileTopic Topic="Selected profile"/>
+        <Tile Class="chat-roulette-profile">
+            <ChatRouletteItem Profile="@_profile" />
         </Tile>
-        @if (_profile is not null) {
-            <TileTopic Topic="Selected profile"/>
-            <Tile Class="chat-roulette-profile">
-                <ChatRouletteItem Profile="@_profile" />
-            </Tile>
-        }
-    </div>
-</Form>
+    }
+</div>
 
 @code {
-    private readonly Model _model = new();
-    private Form? _formRef;
+    private bool _isEnabled;
     private Profile? _profile;
+    private bool _hasLoaded;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
@@ -61,8 +55,9 @@
     protected override async Task OnInitializedAsync() {
         CancellationToken cancellationToken = default;
         var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
-        _model.IsEnabled = userSettings?.IsEnabled ?? false;
+        _isEnabled = userSettings?.IsEnabled ?? false;
         _profile = await GetOrCreatedDefaultProfile(cancellationToken).ConfigureAwait(false);
+        _hasLoaded = true;
     }
 
     private async Task<Profile?> GetOrCreatedDefaultProfile(CancellationToken cancellationToken) {
@@ -113,10 +108,8 @@
         return profile;
     }
 
-    protected override Task<bool> Validate() {
-        var isValid = _formRef?.EditContext?.Validate() ?? false;
-        return Task.FromResult(isValid);
-    }
+    protected override Task<bool> Validate()
+        => Task.FromResult(_hasLoaded);
 
     protected override async Task<bool> Save() {
         CancellationToken cancellationToken = default;
@@ -127,7 +120,7 @@
         }
 
         userSettings = userSettings with {
-            IsEnabled = _model.IsEnabled
+            IsEnabled = _isEnabled
         };
 
         var updateSettingsCommand = new RouletteProfiles_ChangeOwnUserSettings(
@@ -138,7 +131,6 @@
         return error is null;
     }
 
-    public class Model {
-        public bool IsEnabled { get; set; }
-    }
+    private void ToggleIsEnabled() =>
+        _isEnabled = !_isEnabled;
 }
