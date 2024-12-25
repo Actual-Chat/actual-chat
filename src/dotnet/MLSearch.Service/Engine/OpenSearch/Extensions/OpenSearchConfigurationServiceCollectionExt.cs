@@ -49,7 +49,9 @@ internal static class OpenSearchConfigurationServiceCollectionExt
                 .DefaultMappingFor<ChatSlice>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatSliceName))
                 .DefaultMappingFor<IndexedChat>(map => map.RoutingProperty(x => x.Id))
                 .DefaultMappingFor<IndexedEntry>(map => map.RoutingProperty(x => x.ChatId));
-            if (!openSearchSettings.ClientCertificatePath.IsNullOrEmpty()) {
+            if (!openSearchSettings.User.IsNullOrEmpty() && !openSearchSettings.Password.IsNullOrEmpty())
+                connectionSettings.BasicAuthentication(openSearchSettings.User, openSearchSettings.Password);
+            else if (!openSearchSettings.ClientCertificatePath.IsNullOrEmpty()) {
                 var certPath = Path.Combine(openSearchSettings.ClientCertificatePath, "tls.crt");
                 var keyPath = Path.Combine(openSearchSettings.ClientCertificatePath, "tls.key");
                 connectionSettings.ClientCertificate(X509Certificate2.CreateFromPemFile(certPath, keyPath));
