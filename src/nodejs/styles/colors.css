@@ -313,12 +313,6 @@
     --focus-after-danger: var(--magenta-50-05);
     --focus-after-cancel: var(--gray-50-05);
 
-    /* Hover */
-    --more-colored: var(--white);
-    --less-colored: var(--gray-05);
-    --primary-colored: var(--primary);
-    --danger-colored: var(--danger);
-
     /* Post Audio Panel */
     --post-panel: var(--gray-20);
     --post-panel-wide: var(--gray-95);
@@ -393,7 +387,6 @@
     --dot-selected: #4b5e71;
     --scrollbar: var(--gray-70);
     --quote: var(--gray-90);
-    --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
     --menuitem-hover-warning: var(--magenta-50-10);
     --bubble: var(--indigo-70);
@@ -414,6 +407,19 @@
     --skeleton-right-panel-header: var(--gray-80);
     --skeleton: var(--gray-90);
     --skeleton-border: var(--gray-95);
+
+    /* Chat Roulette */
+    --cr-right-panel: var(--indigo-99);
+    --cr-badge: var(--white);
+    --cr-badge-text: var(--gray-05);
+    --cr-badge-selected: var(--indigo-70);
+    --cr-badge-selected-text: var(--white);
+    --cr-item-badge: var(--gray-95);
+    --cr-item-badge-text: var(--gray-05);
+    --cr-item-badge-selected: var(--indigo-99);
+    --cr-item-badge-selected-text: var(--indigo-60);
+    --cr-btn: var(--indigo-70);
+    --cr-item-border: var(--indigo-90);
 
     /* Specific colors */
     --loading-cat-lines: var(--gray-70);
@@ -557,13 +563,6 @@
     --focus-after-danger: var(--magenta-50-20);
     --focus-after-cancel: var(--white-10);
 
-    /* Hover */
-    /* TODO Need to remove this colors */
-    --more-colored: var(--white);
-    --less-colored: var(--black);
-    --primary-colored: var(--primary);
-    --danger-colored: var(--danger);
-
     /* Post Audio Panel */
     --post-panel: var(--ash-14);
     --post-panel-wide: var(--gray-30);
@@ -639,7 +638,6 @@
     --dot-selected: #4B5E71;
     --scrollbar: var(--ash-40);
     --quote: var(--gray-10);
-    --place: var(--indigo-80);
     --menuitem-hover: var(--white-05);
     --menuitem-hover-warning: var(--magenta-50-10);
     --bubble: var(--indigo-70);
@@ -658,6 +656,19 @@
     --skeleton-right-panel-header: var(--ash-20);
     --skeleton: var(--ash-99-05);
     --skeleton-border: var(--ash-99-10);
+
+    /* Chat Roulette */
+    --cr-right-panel: var(--ash-20);
+    --cr-badge: var(--ash-30);
+    --cr-badge-text: var(--ash-99);
+    --cr-badge-selected: var(--indigo-70);
+    --cr-badge-selected-text: var(--white);
+    --cr-item-badge: var(--ash-30);
+    --cr-item-badge-text: var(--ash-99);
+    --cr-item-badge-selected: var(--ash-14);
+    --cr-item-badge-selected-text: var(--indigo-80);
+    --cr-btn: var(--indigo-80);
+    --cr-item-border: var(--ash-30);
 
     /* Specific colors */
     --loading-cat-lines: var(--ash-80);
@@ -801,12 +812,6 @@
     --focus-after-danger: var(--magenta-50-05);
     --focus-after-cancel: var(--gray-50-05);
 
-    /* Hover */
-    --more-colored: var(--white);
-    --less-colored: var(--black);
-    --primary-colored: var(--primary);
-    --danger-colored: var(--danger);
-
     /* Post Audio Panel */
     --post-panel: var(--gray-20);
     --post-panel-wide: var(--gray-95);
@@ -881,7 +886,6 @@
     --dot-selected: #4b5e71;
     --scrollbar: var(--gray-70);
     --quote: var(--gray-90);
-    --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
     --menuitem-hover-warning: var(--magenta-50-10);
     --bubble: var(--indigo-70);
@@ -901,6 +905,19 @@
     --skeleton-right-panel-header: var(--gray-80);
     --skeleton: var(--gray-90);
     --skeleton-border: var(--gray-95);
+
+    /* Chat Roulette */
+    --cr-right-panel: var(--indigo-99);
+    --cr-badge: var(--white);
+    --cr-badge-text: var(--gray-05);
+    --cr-badge-selected: var(--indigo-70);
+    --cr-badge-selected-text: var(--white);
+    --cr-item-badge: var(--gray-95);
+    --cr-item-badge-text: var(--gray-05);
+    --cr-item-badge-selected: var(--indigo-99);
+    --cr-item-badge-selected-text: var(--indigo-60);
+    --cr-btn: var(--indigo-70);
+    --cr-item-border: var(--indigo-90);
 
     /* Specific colors */
     --loading-cat-lines: var(--gray-70);

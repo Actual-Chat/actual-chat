@@ -16,7 +16,9 @@
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <ChatRouletteFooter Profile="@m.SelectedProfile" />
+    <ChatRouletteFooter
+        Profile="@m.SelectedProfile"
+        OnOptionsClick="@(() => OnToggleRightPanelClick())"/>
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainRightDrawer">

@@ -73,6 +73,9 @@
     @apply min-h-26;
     @apply -translate-y-1/2;
 }
+.left-panel-content-header.place.chat-roulette .c-icon.c-chat-roulette-icon {
+    @apply flex items-center justify-center;
+}
 .left-panel-content-header > .c-content {
     @apply relative;
     @apply ordinary-header;

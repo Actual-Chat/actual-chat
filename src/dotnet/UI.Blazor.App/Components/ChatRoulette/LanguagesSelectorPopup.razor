@@ -5,12 +5,12 @@
 
 <Form OnSubmit="OnSubmit" Class="h-full" Model="@_form">
     <DialogFrame
-        Title="Peek language"
+        Title="Pick language"
         HasCloseButton="true"
         Class="modal-sm languages-selector-popup"
         NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
         <Body>
-            <FormSection For="() => _form.LanguageId" InputId="@_form.LanguageIdFieldId" Label="Peek language" IsLabelInsideInput="true">
+            <FormSection For="() => _form.LanguageId" InputId="@_form.LanguageIdFieldId" Label="Pick language" IsLabelInsideInput="true">
                 <InputSelect @bind-Value="@_form.LanguageId">
                     @foreach (var option in ModalModel.AvailableLanguages) {
                         <option value="@option.Id">@option.Title</option>

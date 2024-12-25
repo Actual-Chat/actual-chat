@@ -12,7 +12,6 @@
 
         <div class="c-center">
             <FormBlock>
-
                 <FormSection For="() => _form.CountryCode"
                              InputId="@_form.CountryCodeFieldId"
                              Label="Choose country"
@@ -31,7 +30,7 @@
                     <GenderSelector @bind-Gender="@_form.Gender" />
                 </FormSection>
 
-                <FormSection Class="profile-field"
+                <FormSection Class="profile-field c-languages"
                              For="() => _form.Languages"
                              InputId="@_form.LanguagesFieldId"
                              IsRequired="true"
