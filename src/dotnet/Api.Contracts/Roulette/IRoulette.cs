@@ -15,6 +15,9 @@ public interface IRoulette : IComputeService
     [ComputeMethod]
     Task<ChatId> GetOrCreateChat(Session session, Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<bool> EnableChatRouletteUI(Session session, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

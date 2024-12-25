@@ -1,5 +1,8 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits ComputedMenuBase<CreateMenu.Model>
+@{
+    var m = State.Value;
+}
 
 <MenuEntry
     Icon="icon-conversation"
@@ -11,17 +14,31 @@
     Text="New Place"
     Click="OnCreatePlaceClick">
 </MenuEntry>
-<MenuEntry
-    Icon="icon-hand"
-    Text="New Chat Roulette"
-    Click="OnStartChatRouletteClick">
-</MenuEntry>
+@if (m.EnableChatRouletteUI) {
+    <MenuEntry
+        Icon="icon-hand"
+        Text="New Chat Roulette"
+        Click="OnStartChatRouletteClick">
+    </MenuEntry>
+}
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private ModalUI ModalUI => Hub.ModalUI;
     private RouletteUI RouletteUI => Hub.RouletteUI;
+    private Features Features => Hub.Features();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(false),
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
+        return new Model(enableChatRouletteUI);
+    }
 
     private void OnCreateChatClick()
         => ModalUI.Show(new NewChatModal.Model(Hub.ChatUI.SelectedPlaceId.Value));
@@ -33,4 +50,8 @@
         await WhenClosed;
         await RouletteUI.StartChatRoulette();
     }
+
+    // Nested types
+
+    public record Model(bool EnableChatRouletteUI);
 }
