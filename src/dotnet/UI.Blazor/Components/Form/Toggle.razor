@@ -5,7 +5,8 @@
        data-input-disabled="@IsDisabled">
     <input type="checkbox"
            id="@Id" disabled="@IsDisabled" checked="@CurrentValue"
-           @onchange="@OnChange">
+           @onclick:stopPropagation="true"
+           @onchange="@OnChange"/>
     <span class="dash"><span class="o">&nbsp;</span></span>
     @if (LabelContent != null) {
         <div class="c-label">@LabelContent</div>
