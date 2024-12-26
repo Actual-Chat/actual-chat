@@ -2,6 +2,9 @@
 @using ActualChat.Roulette
 @inherits ComputedStateComponent<ChatRouletteRightPanelContent.Model>
 @{
+    @if (!_formHasInitialized)
+        return;
+
     var hasChanged = HasFilterChanged(_form, _searchFilter);
     var canApply = hasChanged && _formRef?.IsValid == true;
 }
@@ -60,6 +63,7 @@
     private Preferences _searchFilter = Preferences.Empty;
     private Form? _formRef = null!;
     private FormModel _form = null!;
+    private bool _formHasInitialized;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
@@ -86,6 +90,7 @@
             FillInForm(_form, searchCriteria);
             _searchFilter = searchCriteria;
         }
+        _formHasInitialized = true;
         return new Model();
     }
 
