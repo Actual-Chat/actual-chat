@@ -47,11 +47,23 @@ class API:
                 }
             }
         }
+
+        # Check current settings
+        current_settings = self.call_opensearch("/_cluster/settings").json()
+        current_persistent_settings = current_settings.get('persistent', {}).get('plugins', {}).get('ml_commons', {})
+
+        # If settings are already applied, return current settings
+        if current_persistent_settings == data['persistent']['plugins']['ml_commons']:
+            print("Cluster settings are already applied.")
+            return current_settings
+
+        # Apply new settings
         result = self.call_opensearch(
             "/_cluster/settings",
-            method = requests.put,
-            data = data
+            method=requests.put,
+            data=data
         )
+
         # Throw an exception if the configuration update fails
         if result.status_code != 200:
             raise Exception(f"Failed to update OpenSearch configuration. Status code: {result.status_code}\nDetails: {result.text}")
