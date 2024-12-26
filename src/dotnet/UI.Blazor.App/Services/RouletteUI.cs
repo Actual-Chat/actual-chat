@@ -94,14 +94,8 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
         var search = new Search(new SearchRequest(selectedProfile.Id, searchCriteria));
         _activeSearch.Value = search;
-        ImmutableArray<ChatCandidate> candidates;
-        try {
-            candidates = await Roulette.FindChatCandidates(Session, selectedProfile.Id, search.Request.Criteria, default)
-                .ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            throw;
-        }
+        var candidates = await Roulette.FindChatCandidates(Session, selectedProfile.Id, search.Request.Criteria, default)
+            .ConfigureAwait(false);
         if (_activeSearch.Value != search)
             return;
 
@@ -137,23 +131,12 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         }
         _ = UpdateSearchResult();
         _whenLoaded.TrySetResult();
-        // if (_searchRequest is not null) {
-        //     if (_searchResult is not null && _searchResult.Request != _searchRequest) {
-        //
-        //     }
-        // }
     }
 
     public virtual async Task StartChat(Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken = default)
     {
-        ChatId chatId;
-        try {
-            chatId = await Roulette.GetOrCreateChat(Session, ownProfileId, peerProfileId, cancellationToken)
-                .ConfigureAwait(true);
-        }
-        catch (Exception e) {
-            throw;
-        }
+        var chatId = await Roulette.GetOrCreateChat(Session, ownProfileId, peerProfileId, cancellationToken)
+            .ConfigureAwait(true);
         if (chatId.IsNone) {
             UICommander.ShowError(new Exception("Can't start Roulette chat."));
             return;
@@ -163,7 +146,6 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     }
 
     public record SearchRequest(Symbol ProfileId, Preferences Criteria);
-    // public record SearchResult(SearchRequest Request, ImmutableArray<ChatCandidate> Results);
 
     public record Search
     {

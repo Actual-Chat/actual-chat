@@ -13,24 +13,6 @@
     var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
 }
 
-@* <Banner *@
-@*     IsVisible="@State.Value" *@
-@*     Severity="BannerSeverity.Warning" *@
-@*     ShowDismissButton="true" *@
-@*     Dismiss="@OnDismiss"> *@
-@*     <Icon> *@
-@*         <i class="icon-bell text-2xl"></i> *@
-@*     </Icon> *@
-@*     <Body> *@
-@*         You are added to chat roulette! *@
-@*     </Body> *@
-@*     <Buttons> *@
-@*         <Button *@
-@*             Class="btn-transparent unhovered" *@
-@*             Click="@OnBlockClick">Block chat if you are not interested.</Button> *@
-@*     </Buttons> *@
-@* </Banner> *@
-
 <div class="bg-01">
 <div class="m-2 border rounded-lg">
     <div class="flex-x">

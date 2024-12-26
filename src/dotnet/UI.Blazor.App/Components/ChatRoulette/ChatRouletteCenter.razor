@@ -37,9 +37,6 @@
         }
     }
 
-    @* <Button Class="cr-btn" Click="@OnStopRouletteClick"> *@
-    @*     Stop Roulette *@
-    @* </Button> *@
 </div>
 
 @code {
@@ -77,20 +74,6 @@
             Profile = selectedProfile,
             SearchCriteria = searchCriteria
         };
-    }
-
-    private async Task OnStopRouletteClick() {
-        // if (Hub.BrowserInfo.ScreenSize.Value.IsNarrow()) {
-        //     Hub.PanelsUI.Left.SetIsVisible(true);
-        //     return;
-        // }
-
-        //
-        var wentBack = await Hub.History.TryStepBack();
-        if (wentBack)
-            return;
-
-        _ = Hub.History.NavigateTo(Links.Chats);
     }
 
     private void OnStartChatClick(Profile ownProfile, Profile peerProfile)

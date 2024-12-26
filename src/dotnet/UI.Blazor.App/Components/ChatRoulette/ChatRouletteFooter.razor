@@ -11,8 +11,6 @@
     <div class="rounded-sub-footer"></div>
     <div class="c-center">
         <div class="c-profile-container desktop" @onclick=@OnProfileClick>
-            @* <span class="c-profile-incut"></span> *@
-            @* <span>George Black</span> *@
             <AvatarCircle Avatar="@Profile.Avatar" />
             <span class="c-name">@Profile.Avatar.Name</span>
         </div>
@@ -32,7 +30,6 @@
     <div class="c-incut"></div>
     <div class="c-profile mobile" @onclick="@OnProfileClick">
         <span>Profile</span>
-        @* <span class="c-profile-incut"></span> *@
         <AvatarCircle Avatar="@Profile.Avatar"  />
     </div>
 </div>
