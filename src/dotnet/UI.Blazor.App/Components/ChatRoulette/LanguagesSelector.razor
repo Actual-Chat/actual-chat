@@ -37,12 +37,23 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
-        var possibleLanguages = new List<Language> { languages.Primary };
-        if (languages.Secondary.HasValue)
-            possibleLanguages.Add(languages.Secondary.Value);
-        if (languages.Tertiary.HasValue)
-            possibleLanguages.Add(languages.Tertiary.Value);
+        var possibleLanguages = new List<Language>();
+        AddPossibleLanguage(possibleLanguages, languages.Primary);
+        AddPossibleLanguage(possibleLanguages, languages.Secondary);
+        AddPossibleLanguage(possibleLanguages, languages.Tertiary);
         return new Model { AvailableLanguages = possibleLanguages.ToImmutableArray()};
+    }
+
+    private void AddPossibleLanguage(List<Language> list, Language? languageOpt) {
+        if (!languageOpt.HasValue)
+            return;
+
+        var language = languageOpt.Value;
+        if (language.ShortTitle.Value.Length > 2 && ActualChat.Languages.IdToLanguage.TryGetValue(language.ShortTitle.Value.Substring(0, 2), out var alternative) && alternative != language)
+            language = alternative;
+
+        if (!list.Contains(language))
+            list.Add(language);
     }
 
     private void Add(Language language) {
