@@ -52,33 +52,3 @@ public static class Interests
     private static void RegisterInterestTitle(Interest interest, string title)
         => InterestTitles.Add(interest.Code, title);
 }
-
-// public class InterestsCollection : ICollection<Interest>
-// {
-//     private readonly ImmutableArray<Interest> _interests = new();
-//
-//     public IEnumerator<Interest> GetEnumerator()
-//         => ((IEnumerable<Interest>)_interests).GetEnumerator();
-//
-//     IEnumerator IEnumerable.GetEnumerator()
-//         => GetEnumerator();
-//
-//     public void Add(Interest item)
-//         => throw new NotImplementedException();
-//
-//     public void Clear()
-//         => throw new NotImplementedException();
-//
-//     public bool Contains(Interest item)
-//         => throw new NotImplementedException();
-//
-//     public void CopyTo(Interest[] array, int arrayIndex)
-//         => _interests.CopyTo(array, arrayIndex);
-//
-//     public bool Remove(Interest item)
-//         => throw new NotImplementedException();
-//
-//     public int Count { get; }
-//         =>
-//     public bool IsReadOnly { get; }
-// }
