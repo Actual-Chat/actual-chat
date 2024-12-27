@@ -176,10 +176,9 @@ body.hoverable .add-members-btn:hover {
 
 .left-panel-content-header.place.chat-roulette > .c-content {
     @apply bg-[var(--indigo-70)];
-    @apply text-[var(--sienna-70)];
 }
 
 .left-panel-content-header.place.chat-roulette .c-right .btn.btn-start-roulette {
-    @apply bg-[var(--indigo-70)];
+    @apply bg-cr-btn;
     @apply text-white;
 }
