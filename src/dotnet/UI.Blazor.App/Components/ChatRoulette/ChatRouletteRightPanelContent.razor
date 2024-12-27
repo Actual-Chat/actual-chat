@@ -53,7 +53,7 @@
         </div>
 
         <div class="cr-buttons">
-            <Button Class="cr-cancel" Click="OnCancelClick">Cancel</Button>
+            <Button Class="cr-cancel" IsDisabled="@(!hasChanged)" Click="OnCancelClick">Cancel</Button>
             <Button Class="cr-apply" IsDisabled="@(!canApply)" Type="@ButtonType.Submit">Apply</Button>
         </div>
     </Form>
