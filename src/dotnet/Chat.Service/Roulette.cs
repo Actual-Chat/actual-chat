@@ -178,7 +178,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     }
 
     public virtual Task<bool> EnableChatRouletteUI(Session session, CancellationToken cancellationToken)
-        => Task.FromResult(false);
+        => Task.FromResult(true);
 
     // Commands
 
