@@ -25,6 +25,9 @@
 .left-panel-buttons .settings-btn > .btn.btn-square:hover {
     @apply bg-transparent;
 }
+.left-panel-buttons .settings-btn > .btn.btn-square:hover:after {
+    @apply hidden;
+}
 .left-panel-buttons > .c-content > .c-logo {
     @apply flex justify-center;
     @apply w-full;

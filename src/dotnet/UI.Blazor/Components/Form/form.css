@@ -60,7 +60,8 @@
     @apply text-04 cursor-not-allowed;
 }
 .form.form-y section .form-section-content.label-inside-input:has(.form-section-label) .text-box-btn {
-    @apply -mt-4;
+    @apply absolute -top-4 -right-4;
+    @apply bg-transparent;
 }
 
 .form.form-x section {

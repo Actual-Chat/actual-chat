@@ -34,82 +34,150 @@
 </div>
 
 
-<h1>Square buttons</h1>
-<div class="flex-x gap-x-4">
-    <TimerCloseButton Delay="3"/>
-    <TimerCloseButton Delay="5"/>
-    <TimerCloseButton Delay="3" CircleClass="btn-sm"/>
-    <TimerCloseButton Delay="5" CircleClass="btn-sm"/>
+<h1>Timer buttons</h1>
+<div class="flex-x gap-4 flex-wrap">
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Default 3s</span>
+        <TimerCloseButton Delay="3"/>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Default 5s</span>
+        <TimerCloseButton Delay="5"/>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">SM 3s</span>
+        <TimerCloseButton Delay="3" CircleClass="btn-sm"/>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">SM 5s</span>
+        <TimerCloseButton Delay="5" CircleClass="btn-sm"/>
+    </div>
+</div>
 
-    <ButtonSquare>
-        1
-    </ButtonSquare>
-    <ButtonSquare Class="btn-primary">
-        2
-    </ButtonSquare>
-    <ButtonSquare Class="btn-danger btn-sm">
-        SM
-    </ButtonSquare>
-    <ButtonSquare Class="btn-cancel btn-xs">
-        XS
-    </ButtonSquare>
-    <ButtonSquare Class="transparent">
-        B
-    </ButtonSquare>
-    <ButtonSquare>
-        C
-    </ButtonSquare>
-    <ButtonSquare IsDisabled="true">
-        D
-    </ButtonSquare>
+<h1>Square buttons</h1>
+<div class="flex-x gap-4 flex-wrap">
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Default</span>
+        <ButtonSquare>
+            1
+        </ButtonSquare>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Primary</span>
+        <ButtonSquare Class="btn-primary">
+            2
+        </ButtonSquare>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Danger SM</span>
+        <ButtonSquare Class="btn-danger btn-sm">
+            SM
+        </ButtonSquare>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Cancel XS</span>
+        <ButtonSquare Class="btn-cancel btn-xs">
+            XS
+        </ButtonSquare>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Transparent</span>
+        <ButtonSquare Class="btn-transparent">
+            B
+        </ButtonSquare>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Unhovered</span>
+        <ButtonSquare Class="unhovered">
+            C
+        </ButtonSquare>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Disabled</span>
+        <ButtonSquare IsDisabled="true">
+            D
+        </ButtonSquare>
+    </div>
 </div>
 
 <h1>Round buttons</h1>
-<div class="flex-x gap-x-4">
-    <ButtonRound>
-        1
-    </ButtonRound>
-    <ButtonRound Class="btn-primary">
-        2
-    </ButtonRound>
-    <ButtonRound Class="btn-danger">
-        3
-    </ButtonRound>
-    <ButtonRound Class="btn-cancel">
-        A
-    </ButtonRound>
-    <ButtonRound>
-        B
-    </ButtonRound>
-    <ButtonRound>
-        C
-    </ButtonRound>
-    <ButtonRound IsDisabled="true">
-        D
-    </ButtonRound>
+<div class="flex-x gap-4 flex-wrap">
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Default</span>
+        <ButtonRound>
+            1
+        </ButtonRound>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Primary</span>
+        <ButtonRound Class="btn-primary">
+            2
+        </ButtonRound>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Danger</span>
+        <ButtonRound Class="btn-danger">
+            3
+        </ButtonRound>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Cancel</span>
+        <ButtonRound Class="btn-cancel">
+            A
+        </ButtonRound>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Transparent</span>
+        <ButtonRound Class="btn-transparent">
+            B
+        </ButtonRound>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Unhovered</span>
+        <ButtonRound Class="unhovered">
+            C
+        </ButtonRound>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Disabled</span>
+        <ButtonRound IsDisabled="true">
+            D
+        </ButtonRound>
+    </div>
 </div>
-<div class="flex-x gap-x-4">
-    <ButtonRound>
-        1
-    </ButtonRound>
-    <ButtonRound Class="btn-primary btn-md">
-        MD
-    </ButtonRound>
-    <ButtonRound Class="btn-danger btn-sm">
-        SM
-    </ButtonRound>
-    <ButtonRound Class="btn-cancel btn-xs">
-        XS
-    </ButtonRound>
-    <ButtonRound Class="transparent">
-        B
-    </ButtonRound>
-    <ButtonRound>
-        C
-    </ButtonRound>
-    <ButtonRound IsDisabled="true">
-        D
-    </ButtonRound>
+
+<h1>Header buttons</h1>
+<div class="flex-x gap-4 flex-wrap">
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Default</span>
+        <HeaderButton>
+            A
+        </HeaderButton>
+    </div>
+    <div class="flex-y gap-y-1 bg-black">
+        <span class="text-center text-xxs text-white">Bleached</span>
+        <HeaderButton Class="bleached">
+            B
+        </HeaderButton>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">SM</span>
+        <HeaderButton Class="btn-sm">
+            S
+        </HeaderButton>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">LG</span>
+        <HeaderButton Class="btn-lg">
+            L
+        </HeaderButton>
+    </div>
+    <div class="flex-y gap-y-1">
+        <span class="text-center text-xxs">Unhovered</span>
+        <HeaderButton Class="unhovered">
+            U
+        </HeaderButton>
+    </div>
 </div>
 
 <h1>Button colors</h1>

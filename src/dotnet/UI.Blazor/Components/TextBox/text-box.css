@@ -1,4 +1,5 @@
 .text-box {
+    @apply relative;
     @apply items-center;
 }
 
@@ -14,4 +15,7 @@
 }
 .text-box:focus-within .text-box-btn {
     @apply flex;
+}
+.text-box input {
+    @apply text-ellipsis;
 }

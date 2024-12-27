@@ -283,10 +283,7 @@ body.narrow .dialog-buttons {
     @apply p-0;
     @apply rounded-none;
 }
-.modal-overlay-fullscreen .btn-x {
-    @apply absolute right-4 top-4;
-    @apply hidden md:flex-x;
-}
+
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
 }

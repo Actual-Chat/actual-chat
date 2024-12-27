@@ -29,7 +29,7 @@
             </Steps>
             <Header>
                 @if (stepper.CanMoveBack) {
-                    <HeaderButton Class="blackout" Click="@(_ => stepper.MoveBack())">
+                    <HeaderButton Click="@(_ => stepper.MoveBack())">
                         <i class="icon-arrow-left text-2xl"></i>
                     </HeaderButton>
                     <div class="text-headline-7 text-02">Back</div>

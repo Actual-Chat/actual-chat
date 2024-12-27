@@ -15,7 +15,11 @@
 }
 
 <ModalFrame Class="settings-modal">
-    <ButtonX Click="OnCloseClick"/>
+    @if (!ScreenSize.IsNarrow()) {
+        <ButtonRound Class="close-settings-btn" Click="OnCloseClick">
+            <i class="icon-close text-xl"></i>
+        </ButtonRound>
+    }
     <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
         @if (showMyAccount) {
             <SettingsTab @key="1" TabIndex="1" Title="Your Account" Id="account" IconClass="icon-person">
@@ -44,7 +48,7 @@
         </SettingsTab>
 
         <SettingsTab @key="6" TabIndex="6" Title="Application" Id="app" IconClass="icon-settings">
-            <AppSettings />
+            <AppSettings/>
         </SettingsTab>
 
         <SettingsTab @key="7" TabIndex="7" Title="Emails" Id="emails" IconClass="icon-email">
@@ -86,6 +90,7 @@
     private Features Features => Hub.Features();
     private AccountUI AccountUI => Hub.AccountUI;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 

@@ -37,6 +37,9 @@
 .onboarding-modal .c-upload .c-buttons {
     @apply flex-1 flex-y justify-center gap-y-2;
 }
+.onboarding-modal .form .c-upload .c-buttons label.upload-label {
+    @apply text-primary;
+}
 .onboarding-modal .form-block {
     @apply p-0;
 }
@@ -83,8 +86,8 @@ body.hoverable .step-tile > .c-docs a:hover {
 }
 
 .sign-in-step .c-recaptcha-info {
-    font-size: 0.875rem;
-    line-height: 1rem;
-    font-weight: 500;
-    color: var(--text-03);
+    @apply text-caption-2 text-03;
+}
+.sign-in-step .c-recaptcha-info .recaptcha-link {
+    @apply text-caption-3 text-primary;
 }

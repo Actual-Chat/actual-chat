@@ -86,10 +86,10 @@
                 HasMentions="@m.HasUnreadMentions"/>
             @if (hasButtons) {
                 @if (audioState.IsRecording) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout ending-btn"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
                 }
                 <div class="listen-wrapper">
-                    <ChatListListenToggle AudioState="@audioState" Class="blackout ending-btn"/>
+                    <ChatListListenToggle AudioState="@audioState" Class="ending-btn"/>
                 </div>
             }
             @if (hasMenu) {
@@ -99,7 +99,7 @@
                     data-menu-trigger="@MenuTrigger.Primary"
                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
-                    <HeaderButton Class="blackout">
+                    <HeaderButton>
                         <i class="icon-more-vertical text-2xl"></i>
                     </HeaderButton>
                 </div>

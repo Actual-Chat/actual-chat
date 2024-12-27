@@ -9,5 +9,9 @@
     @apply text-sm;
 }
 .phone-verifier .c-recaptcha-info {
-    @apply text-caption-1 text-03 my-1;
+    @apply my-1;
+    @apply text-caption-2 text-03;
+}
+.phone-verifier .c-recaptcha-info .recaptcha-link {
+    @apply text-caption-3 text-primary;
 }

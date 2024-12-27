@@ -129,8 +129,8 @@ body.hoverable .post-panel-btn:hover {
     outline: 0.375rem solid var(--input);
 }
 body.narrow .attach-btn.btn.btn-round {
-    @apply bg-[var(--black-05)];
-    outline: 0.375rem solid var(--black-05);
+    @apply bg-transparent;
+    @apply outline-none;
 }
 body.hoverable .attach-btn.btn.btn-round.btn-transparent:hover {
     @apply bg-input;

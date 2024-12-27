@@ -20,7 +20,12 @@
            @attributes="@AdditionalAttributes"
            @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
     @if (ClearButton && !CurrentValue.IsNullOrEmpty()) {
-        <button type="button" class="text-box-btn" @onclick="@OnClearClick">
+        <button
+            type="button"
+            class="text-box-btn"
+            data-tooltip="Clear"
+            data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
+            @onclick="@OnClearClick">
             <i class="icon-close"></i>
         </button>
     }
