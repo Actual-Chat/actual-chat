@@ -103,3 +103,10 @@ body.narrow .docs-tab .docs-content {
     @apply p-4;
     @apply bg-transparent;
 }
+
+.close-settings-btn {
+    @apply absolute top-4 right-4;
+}
+body.narrow .close-settings-btn {
+    @apply hidden;
+}

@@ -271,11 +271,8 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply bg-after-lighter
 }
 
-/* Button Square */
-.btn.btn-square,
-.btn.btn-square.btn-primary,
-.btn.btn-square.btn-danger,
-.btn.btn-square.btn-cancel {
+/* Button Square and Round */
+.btn.btn-square {
     @apply flex-none;
     @apply max-h-none max-w-none;
     @apply p-0;
@@ -283,70 +280,7 @@ body.hoverable .btn.btn-modal:hover::after {
     @apply bg-square;
     @apply text-square-title;
 }
-.btn.btn-square.pseudo-disabled,
-.btn.btn-square:disabled {
-    @apply opacity-70;
-}
-.btn.btn-square.transparent {
-    @apply bg-transparent;
-}
-body.hoverable .btn.btn-square:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-primary;
-}
-body.hoverable .btn.btn-square:hover {
-    @apply bg-transparent;
-}
-.btn.btn-square:active::after,
-.btn.btn-square:hover:active::after,
-.btn.btn-square:focus:active::after,
-.btn.btn-square:hover:focus:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-primary;
-}
-.btn.btn-square:active,
-.btn.btn-square:hover:active,
-.btn.btn-square:focus:active,
-.btn.btn-square:hover:focus:active {
-    @apply bg-transparent;
-}
-body.hoverable .btn.btn-square.btn-danger:hover::after {
-    @apply hover-after;
-    @apply bg-hover-after-danger;
-}
-body.hoverable .btn.btn-square.btn-primary:hover {
-    @apply text-primary;
-}
-body.hoverable .btn.btn-square.btn-danger:hover {
-    @apply text-danger;
-}
-body.hoverable .btn.btn-square.btn-cancel:hover {
-    @apply text-cancel-text;
-}
-.btn.btn-square.btn-danger:active::after,
-.btn.btn-square.btn-danger:hover:active::after,
-.btn.btn-square.btn-danger:focus:active::after,
-.btn.btn-square.btn-danger:hover:focus:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-danger;
-}
-
-/* Button Square Sizes */
-.btn.btn-square, .btn.btn-square.btn-md {
-    @apply h-12 w-12;
-}
-.btn.btn-square.btn-sm {
-    @apply h-10 w-10;
-}
-.btn.btn-square.btn-xs {
-    @apply h-8 w-8;
-}
-
-/* Button Round */
-.btn.btn-round,
-.btn.btn-round.btn-primary,
-.btn.btn-round.btn-danger,
-.btn.btn-round.btn-cancel {
+.btn.btn-round {
     @apply flex-none;
     @apply max-h-none max-w-none;
     @apply p-0;
@@ -354,84 +288,95 @@ body.hoverable .btn.btn-square.btn-cancel:hover {
     @apply bg-round;
     @apply text-round-title;
 }
-.btn.btn-round.pseudo-disabled,
-.btn.btn-round:disabled {
-    @apply opacity-70;
-}
-.btn.btn-round.btn-transparent {
-    @apply bg-transparent;
-    @apply text-03;
-}
-body.hoverable .btn.btn-round.btn-transparent:hover {
-    @apply bg-transparent;
-    @apply text-02;
-}
-body.hoverable .btn.btn-round.btn-transparent:hover::after,
-.btn.btn-round.btn-transparent:active::after,
-.btn.btn-round.btn-transparent:hover:active::after,
-.btn.btn-round.btn-transparent:focus:active::after,
-.btn.btn-round.btn-transparent:hover:focus:active::after {
+
+/* Button Square and Round Hover */
+body.hoverable .btn.btn-square:hover,
+body.hoverable .btn.btn-round:hover {
     @apply bg-transparent;
 }
+body.hoverable .btn.btn-square:hover::after,
 body.hoverable .btn.btn-round:hover::after {
     @apply hover-after;
     @apply bg-hover-after-primary;
 }
-body.hoverable .btn.btn-round:hover {
+
+/* Button Square and Round Transparent */
+.btn.btn-square.btn-transparent,
+.btn.btn-round.btn-transparent {
     @apply bg-transparent;
+    @apply text-03;
 }
-.btn.btn-round:active::after,
-.btn.btn-round:hover:active::after,
-.btn.btn-round:focus:active::after,
-.btn.btn-round:hover:focus:active::after {
+body.hoverable .btn.btn-square.btn-transparent:hover,
+body.hoverable .btn.btn-round.btn-transparent:hover {
+    @apply text-02;
+}
+body.hoverable .btn.btn-square.btn-transparent:hover::after,
+body.hoverable .btn.btn-round.btn-transparent:hover::after {
     @apply hover-after;
-    @apply bg-focus-after-primary;
-}
-.btn.btn-round:active,
-.btn.btn-round:hover:active,
-.btn.btn-round:focus:active,
-.btn.btn-round:hover:focus:active {
     @apply bg-transparent;
 }
+
+/* Button Square and Round Primary */
+body.hoverable .btn.btn-square.btn-primary:hover,
+body.hoverable .btn.btn-round.btn-primary:hover {
+    @apply text-primary;
+}
+
+/* Button Square and Round Danger */
+body.hoverable .btn.btn-square.btn-danger:hover::after,
 body.hoverable .btn.btn-round.btn-danger:hover::after {
     @apply hover-after;
     @apply bg-hover-after-danger;
 }
-body.hoverable .btn.btn-round.btn-primary:hover {
-    @apply text-primary;
-}
+body.hoverable .btn.btn-square.btn-danger:hover,
 body.hoverable .btn.btn-round.btn-danger:hover {
     @apply text-danger;
 }
+
+/* Button Square and Round Unhovered */
+body.hoverable .btn.btn-square.unhovered:hover::after,
+body.hoverable .btn.btn-round.unhovered:hover::after {
+    @apply hidden;
+}
+body.hoverable .btn.btn-square.unhovered:hover,
+body.hoverable .btn.btn-round.unhovered:hover {
+    @apply bg-round;
+    @apply text-03;
+    @apply cursor-default;
+}
+
+/* Button Square and Round Cancel */
+body.hoverable .btn.btn-square.btn-cancel:hover,
 body.hoverable .btn.btn-round.btn-cancel:hover {
     @apply text-cancel-text;
 }
-.btn.btn-round.btn-danger:active::after,
-.btn.btn-round.btn-danger:hover:active::after,
-.btn.btn-round.btn-danger:focus:active::after,
-.btn.btn-round.btn-danger:hover:focus:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-danger;
+
+/* Button Square and Round Disabled */
+.btn.btn-square.pseudo-disabled,
+.btn.btn-square:disabled,
+.btn.btn-round.pseudo-disabled,
+.btn.btn-round:disabled {
+    @apply opacity-70;
 }
 
-/* Button Round Sizes */
+/* Button Square and Round Sizes */
+.btn.btn-square, .btn.btn-square.btn-md,
 .btn.btn-round, .btn.btn-round.btn-md {
     @apply h-12 w-12;
 }
+.btn.btn-square.btn-sm,
 .btn.btn-round.btn-sm {
     @apply h-10 w-10;
 }
+.btn.btn-square.btn-xs,
 .btn.btn-round.btn-xs {
     @apply h-8 w-8;
 }
+.btn.btn-square.btn-xxs,
 .btn.btn-round.btn-xxs {
     @apply h-6 w-6;
 }
-body.hoverable .btn-h.blackout:hover,
-.btn.blackout:focus,
-.btn.blackout:active {
-    @apply text-02;
-}
+
 body.hoverable .btn.bleached:hover,
 body.hoverable .btn-h.bleached:hover,
 .btn.bleached:focus,
@@ -442,7 +387,7 @@ body.hoverable .btn-h.bleached:hover,
     @apply invisible z-10 absolute;
 }
 
-/*Default horizontal*/
+/*Button Group */
 .btn-group {
     @apply flex-x gap-x-4;
     @apply max-w-none md:max-w-fit w-full md:w-auto;
@@ -452,7 +397,6 @@ body.hoverable .btn-h.bleached:hover,
     @apply min-w-0 md:min-w-24;
     @apply justify-items-stretch;
 }
-
 .btn-group.vertical {
     @apply flex-col gap-y-2;
 }
@@ -462,7 +406,6 @@ button.on, .btn.on, .btn.btn-square.on, .btn.btn-round.on {
     @apply text-primary;
 }
 .btn-h.on,
-.btn-h.on:focus,
 body.hoverable .btn-h.on:hover {
     @apply text-primary;
 }
@@ -473,26 +416,18 @@ button.off, .btn.off {
     @apply text-round-title;
 }
 
-/* Specific buttons */
-body.hoverable .btn.btn-x .btn-content,
-body.hoverable .btn.btn-x:hover .btn-content,
-body.hoverable .btn.btn-x:focus .btn-content,
-body.hoverable .btn.btn-x:active .btn-content {
-    @apply bg-transparent;
-}
-body.hoverable .btn.btn-x:hover .btn-content {
-    @apply text-02;
-}
-
 /* Header Button */
 .btn-h {
     @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply text-03;
 }
-
-body.hoverable .btn-h.inactive:hover {
+body.hoverable .btn-h:hover {
+    @apply text-02;
+}
+body.hoverable .btn-h.unhovered:hover {
     @apply text-03;
+    @apply cursor-default;
 }
 .btn-h > .c-content {
     @apply relative;

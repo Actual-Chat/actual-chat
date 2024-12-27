@@ -99,5 +99,8 @@
 }
 
 .sign-in-step .c-recaptcha-info {
-    @apply text-caption-1 text-03;
+    @apply text-caption-2 text-03;
+}
+.sign-in-step .c-recaptcha-info .recaptcha-link {
+    @apply text-caption-3 text-primary;
 }

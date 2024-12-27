@@ -25,7 +25,6 @@
 @import './Components/ChatView/Navigation/navigate-to-unread-or-end.css';
 @import './Components/ChatView/Navigation/chat-view-search-results-navigator.css';
 @import './Components/ChatMessageEditor/chat-message-editor.css';
-@import './Components/ChatSearchBox/chat-search-box.css';
 @import './Components/DateVisor/date-visor.css';
 @import './Components/Discover/discover.css';
 @import './Components/ForwardMessage/forward-message-modal.css';

@@ -27,11 +27,11 @@
                     </Caption>
                     <Right>
                         @if (AllowRevoke) {
-                            <HeaderButton Class="blackout" Click="@(() => Revoke(invite))">
+                            <HeaderButton Click="@(() => Revoke(invite))">
                                 <i class="icon-trash03 text-xl"></i>
                             </HeaderButton>
                         }
-                        <HeaderButton Class="blackout" Click="@(() => OnShareClick(invite).AsTask())">
+                        <HeaderButton Click="@(() => OnShareClick(invite).AsTask())">
                             <i class="icon-share text-xl"></i>
                         </HeaderButton>
                     </Right>

@@ -124,9 +124,9 @@ body.hoverable .tile:hover {
 }
 .tile-item {
     @apply flex-x items-center justify-center gap-x-2;
-    @apply h-10 w-full;
-    @apply rounded-lg;
+    @apply min-h-10 w-full;
     @apply pr-2;
+    @apply rounded-lg;
 }
 body.hoverable .tile-item.clickable:hover {
     @apply bg-hover;
