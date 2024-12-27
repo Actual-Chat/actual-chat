@@ -20,7 +20,7 @@ public sealed partial record Contact(
     [DataMember, MemoryPackOrder(3)] public Moment TouchedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public bool IsPinned { get; init; }
     [DataMember, MemoryPackOrder(7)] public string PeerContactName { get; init; } = "";
-    [DataMember, MemoryPackOrder(8)] public bool IsChatRoulette { get; init; }
+    [DataMember, MemoryPackOrder(8)] public Symbol SystemTag { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

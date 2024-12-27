@@ -203,10 +203,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var chatId = id.ChatId;
         var placeId = chatId.PlaceId;
         var context = CommandContext.GetCurrent();
+        const string IsChatRouletteOperationItemKey = "IsChatRoulette";
 
         if (Invalidation.IsActive) {
             var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
-            var invIsChatRoulette = context.Operation.Items.GetOrDefault<bool>(nameof(Contact.IsChatRoulette));
+            var invIsChatRoulette = context.Operation.Items.GetOrDefault<bool>(IsChatRouletteOperationItemKey);
             if (invIsChatRoulette) {
                 _ = Get(ownerId, id, default);
                 _ = ListIds(ownerId, Constants.Place.ChatRouletteId, default);
@@ -254,7 +255,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             };
             dbContact = new DbContact(contact);
             dbContext.Add(dbContact);
-            isChatRoulette = contact.IsChatRoulette;
+            isChatRoulette =  contact.IsChatRoulette();
         }
         else if (change.IsUpdate(out contact)) {
             dbContact.RequireVersion(expectedVersion);
@@ -262,7 +263,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 Version = VersionGenerator.NextVersion(dbContact.Version),
             };
             dbContact.UpdateFrom(contact);
-            isChatRoulette = contact.IsChatRoulette;
+            isChatRoulette = contact.IsChatRoulette();
         }
         else { // Remove
             if (expectedVersion != null)
@@ -271,12 +272,12 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 return null;
 
             dbContext.Remove(dbContact);
-            isChatRoulette = Constants.Place.ChatRouletteId.Value.Equals(dbContact.PlaceId);
+            isChatRoulette = dbContact.ToModel().IsChatRoulette();
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
-        context.Operation.Items.Set(nameof(Contact.IsChatRoulette), isChatRoulette);
+        context.Operation.Items.Set(IsChatRouletteOperationItemKey, isChatRoulette);
         contact = dbContact.ToModel();
         return contact;
     }
@@ -618,9 +619,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             }
         }
 
-        var change = new Change<Contact> { Create = new Contact(contactId) {
-                IsChatRoulette = isChatRoulette
-            } };
+        var change = new Change<Contact> {
+            Create = new Contact(contactId) {
+                SystemTag = isChatRoulette ? Constants.Contact.SystemTags.ChatRoulette : Symbol.Empty
+            }
+        };
         var command = new ContactsBackend_Change(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

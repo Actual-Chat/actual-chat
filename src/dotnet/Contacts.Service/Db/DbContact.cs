@@ -36,7 +36,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             TouchedAt = TouchedAt.ToMoment(),
             IsPinned = IsPinned,
             PeerContactName = PeerContactName,
-            IsChatRoulette = Constants.Place.ChatRouletteId.Value.Equals(PlaceId),
+            SystemTag = Constants.Place.ChatRouletteId.Value.Equals(PlaceId) ? Constants.Contact.SystemTags.ChatRoulette : Symbol.Empty,
         };
 
     public void UpdateFrom(Contact model)
@@ -57,7 +57,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ChatId = model.ChatId.Value.NullIfEmpty();
         UserId = model.UserId.Value.NullIfEmpty();
         var placeId = model.PlaceId.Value.NullIfEmpty();
-        if (model.IsChatRoulette) {
+        if (Constants.Contact.SystemTags.ChatRoulette.Equals(model.SystemTag)) {
             if (placeId is not null)
                 throw StandardError.Constraint("PlaceId should be null for chat roulette.");
             placeId = Constants.Place.ChatRouletteId;

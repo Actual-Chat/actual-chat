@@ -31,6 +31,14 @@ public static partial class Constants
             new HashSet<Symbol>(new [] { ChatRouletteId.Id });
     }
 
+    public static class Contact
+    {
+        public static class SystemTags
+        {
+            public static readonly Symbol ChatRoulette = "chat-roulette";
+        }
+    }
+
     public static class Chat
     {
         public static readonly ChatId DefaultChatId = ChatId.Group("the-actual-one");
