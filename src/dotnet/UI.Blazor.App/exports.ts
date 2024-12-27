@@ -22,6 +22,7 @@ export * from './Components/ChatView/EmptyChatContent/empty-search-chat-svg.lit'
 export * from './Components/DateVisor/date-visor';
 export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';
 export * from './Components/LeftPanel/logo-button-svg.lit';
+export * from './Components/LeftPanel/chat-roulette-svg.lit';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-view';
 export * from './Components/MentionList/mention-list';

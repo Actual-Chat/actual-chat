@@ -109,6 +109,10 @@ body.narrow .cr-center {
     @apply always-white;
     @apply text-xs;
 }
+.cr-badge.c-location i,
+.cr-badge.c-languages i {
+    @apply text-cr-item-badge-text;
+}
 .cr-badge.selected {
     @apply bg-cr-badge-selected;
     @apply text-cr-badge-selected-text;
