@@ -763,6 +763,7 @@ module.exports = {
       'caption-4': ['0.875rem', { lineHeight: '1rem', fontWeight: '400' }],
       'caption-6': ['0.75rem', { lineHeight: '0.875rem', fontWeight: '500' }],
       'caption-7': ['0.85rem', { lineHeight: '1rem', fontWeight: '600' }],
+      'caption-8': ['0.75rem', { lineHeight: '0.875rem', fontWeight: '400' }],
     },
     fontWeight: {
       thin: '100',

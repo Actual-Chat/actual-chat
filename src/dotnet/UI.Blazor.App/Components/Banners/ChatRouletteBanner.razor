@@ -13,43 +13,43 @@
     var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
 }
 
-<div class="bg-01">
-<div class="m-2 border rounded-lg">
-    <div class="flex-x">
-        <ChatIcon Chat="@Chat" />
-        <div class="flex-y">
-            <div>@Chat.Title</div>
-            <div>@peerProfile.Avatar.Bio</div>
-        </div>
-    </div>
-    <div class="cr-item">
-        <div class="c-center">
-            <div class="cr-badge c-location">
-                <i class="icon-map-point"></i>
-                <span>@countryName</span>
-            </div>
-            <div class="cr-badge c-languages">
-                <i class="icon-globe"></i>
-                <span>@languages</span>
+<div class="cr-banner">
+    <div class="c-content">
+        <div class="c-author">
+            <ChatIcon Chat="@Chat" />
+            <div class="c-info">
+                <div class="c-name">@Chat.Title</div>
+                <div class="c-bio">@peerProfile.Avatar.Bio</div>
             </div>
         </div>
-        <div class="c-bottom">
-            @{
-                var matchInterests = m.ChatRouletteInfo.OwnProfile.Preferences.Preferences.Interests;
-            }
-            @foreach (var interest in preferences.Interests) {
-                var match = matchInterests.Contains(interest);
-                <div class="cr-badge @(match ? "selected" : "")">
-                    <span>@(Interests.GetTitle(interest))</span>
+        <div class="cr-item">
+            <div class="c-center">
+                <div class="cr-badge c-location">
+                    <i class="icon-map-point"></i>
+                    <span>@countryName</span>
                 </div>
-            }
-        </div>
-        <div>
-            <Button Click="OnDeclineClick">Decline</Button>
-            <Button Class="btn-primary" Click="OnAcceptClick">Accept</Button>
+                <div class="cr-badge c-languages">
+                    <i class="icon-globe"></i>
+                    <span>@languages</span>
+                </div>
+            </div>
+            <div class="c-bottom">
+                @{
+                    var matchInterests = m.ChatRouletteInfo.OwnProfile.Preferences.Preferences.Interests;
+                }
+                @foreach (var interest in preferences.Interests) {
+                    var match = matchInterests.Contains(interest);
+                    <div class="cr-badge @(match ? "selected" : "")">
+                        <span>@(Interests.GetTitle(interest))</span>
+                    </div>
+                }
+            </div>
+            <div class="cr-buttons">
+                <Button Class="cr-cancel btn-sm" Click="OnDeclineClick">Decline</Button>
+                <Button Class="cr-apply btn-sm" Click="OnAcceptClick">Accept</Button>
+            </div>
         </div>
     </div>
-</div>
 </div>
 
 @code {
