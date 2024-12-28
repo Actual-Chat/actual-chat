@@ -1,3 +1,4 @@
+using ActualChat.Db.Module;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -27,55 +28,30 @@ public static class DbSetExt
         return set.FindAsync(DbKey.Compose(key), cancellationToken);
     }
 
-    public static async Task Lock<TEntity, TKey>(
+    public static Task Lock<TEntity, TKey>(
         this DbSet<TEntity> set,
         TKey key,
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode());
-        var timeout = context.Database.GetCommandTimeout();
-        // TODO(AK): find a way to resolve DBSettings instance
-        context.Database.SetCommandTimeout(30);
-        try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({lockKey});", cancellationToken);
-        }
-        catch (Exception ex) {
-            // TODO(AK): find a way to resolve a logger
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
-            throw;
-        }
-        finally {
-            context.Database.SetCommandTimeout(timeout);
-        }
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, false, cancellationToken);
     }
 
-    public static async Task Lock<TEntity, TKey, TArg0>(
+    public static Task Lock<TEntity, TKey, TArg0>(
         this DbSet<TEntity> set,
         TKey key,
         TArg0 arg0,
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode(), arg0);
-        var timeout = context.Database.GetCommandTimeout();
-        try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({lockKey});", cancellationToken);
-        }
-        catch (Exception ex) {
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
-            throw;
-        }
-        finally {
-            context.Database.SetCommandTimeout(timeout);
-        }
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, false, cancellationToken);
     }
 
-    public static async Task Lock<TEntity, TKey, TArg0, TArg1>(
+    public static Task Lock<TEntity, TKey, TArg0, TArg1>(
         this DbSet<TEntity> set,
         TKey key,
         TArg0 arg0,
@@ -83,23 +59,12 @@ public static class DbSetExt
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode(), arg0, arg1);
-        var timeout = context.Database.GetCommandTimeout();
-        try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({lockKey});", cancellationToken);
-        }
-        catch (Exception ex) {
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
-            throw;
-        }
-        finally {
-            context.Database.SetCommandTimeout(timeout);
-        }
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, false, cancellationToken);
     }
 
-    public static async Task Lock<TEntity, TKey, TArg0, TArg1, TArg2>(
+    public static Task Lock<TEntity, TKey, TArg0, TArg1, TArg2>(
         this DbSet<TEntity> set,
         TKey key,
         TArg0 arg0,
@@ -108,70 +73,35 @@ public static class DbSetExt
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode(), arg0, arg1, arg2);
-        var timeout = context.Database.GetCommandTimeout();
-        try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({lockKey});", cancellationToken);
-        }
-        catch (Exception ex) {
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
-            throw;
-        }
-        finally {
-            context.Database.SetCommandTimeout(timeout);
-        }
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, false, cancellationToken);
     }
 
-    public static async Task SharedLock<TEntity, TKey>(
+    public static Task SharedLock<TEntity, TKey>(
         this DbSet<TEntity> set,
         TKey key,
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode());
-        var timeout = context.Database.GetCommandTimeout();
-        context.Database.SetCommandTimeout(30);
-        try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock_shared({lockKey});", cancellationToken);
-        }
-        catch (Exception ex) {
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
-            throw;
-        }
-        finally {
-            context.Database.SetCommandTimeout(timeout);
-        }
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, true, cancellationToken);
     }
 
-    public static async Task SharedLock<TEntity, TKey, TArg0>(
+    public static Task SharedLock<TEntity, TKey, TArg0>(
         this DbSet<TEntity> set,
         TKey key,
         TArg0 arg0,
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode(), arg0);
-        var timeout = context.Database.GetCommandTimeout();
-        context.Database.SetCommandTimeout(30);
-        try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock_shared({lockKey});", cancellationToken);
-        }
-        catch (Exception ex) {
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
-            throw;
-        }
-        finally {
-            context.Database.SetCommandTimeout(timeout);
-        }
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, true, cancellationToken);
     }
 
-    public static async Task SharedLock<TEntity, TKey, TArg0, TArg1>(
+    public static Task SharedLock<TEntity, TKey, TArg0, TArg1>(
         this DbSet<TEntity> set,
         TKey key,
         TArg0 arg0,
@@ -179,24 +109,12 @@ public static class DbSetExt
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode(), arg0, arg1);
-        var timeout = context.Database.GetCommandTimeout();
-        context.Database.SetCommandTimeout(30);
-        try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock_shared({lockKey});", cancellationToken);
-        }
-        catch (Exception ex) {
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
-            throw;
-        }
-        finally {
-            context.Database.SetCommandTimeout(timeout);
-        }
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, true, cancellationToken);
     }
 
-    public static async Task SharedLock<TEntity, TKey, TArg0, TArg1, TArg2>(
+    public static Task SharedLock<TEntity, TKey, TArg0, TArg1, TArg2>(
         this DbSet<TEntity> set,
         TKey key,
         TArg0 arg0,
@@ -205,16 +123,27 @@ public static class DbSetExt
         CancellationToken cancellationToken)
         where TEntity : class
     {
-        var context = set.GetDbContext();
         var keyHash = (long)(key?.GetHashCode() ?? 239);
         var lockKey = (keyHash << 32) ^ HashCode.Combine(typeof(TEntity).GetHashCode(), arg0, arg1, arg2);
+        return set.GetDbContext().ExecuteLock<TEntity>(lockKey, true, cancellationToken);
+    }
+
+
+    // Private methods
+
+    private static async Task ExecuteLock<TEntity>(this DbContext context, long lockKey, bool isShared, CancellationToken cancellationToken)
+        where TEntity : class
+    {
         var timeout = context.Database.GetCommandTimeout();
-        context.Database.SetCommandTimeout(30);
+        context.Database.SetCommandTimeout(DbSettings.LockTimeout);
         try {
-            await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock_shared({lockKey});", cancellationToken);
+            if (isShared)
+                await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock_shared({lockKey});", cancellationToken);
+            else
+                await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({lockKey});", cancellationToken);
         }
         catch (Exception ex) {
-            await Console.Error.WriteLineAsync("Lock failed: " + ex.Message);
+            StaticLog.For<DbSet<TEntity>>().LogError(ex, "Lock failed: {Type} {EntityType}({Key})", isShared ? "Shared" : "Exclusive", typeof(TEntity).Name, lockKey);
             throw;
         }
         finally {

@@ -1480,7 +1480,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         await dbContext.ReadPositionsStats.Lock(chatId, cancellationToken).ConfigureAwait(false);
-        var dbReadPositionsStat = await dbContext.ReadPositionsStats.ForUpdate()
+        var dbReadPositionsStat = await dbContext.ReadPositionsStats
             .FirstOrDefaultAsync(c => c.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -1524,7 +1524,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }
         }
         else {
-            // await dbContext.ReadPositionsStats.Lock(chatId, cancellationToken).ConfigureAwait(false);
             var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
             var lastEntryId = idRange.End - 1; // Start tracking positions stat since this entry
             var shouldTrackPosition = positionId >= lastEntryId;
