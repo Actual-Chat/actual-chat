@@ -183,6 +183,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Can't use .ForUpdate() here due to join
+        await dbContext.Authors.SharedLock(chatId, userId, cancellationToken).ConfigureAwait(false);
         var dbAuthors = dbContext.Authors.Include(a => a.Roles);
         var dbAuthor = await (authorId.IsNone
             ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
@@ -225,15 +226,22 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             if (userId.IsNone)
                 throw new ArgumentOutOfRangeException(nameof(command), "UserId is required to create a new author.");
 
+            await dbContext.Authors.Lock(chatId, userId, cancellationToken).ConfigureAwait(false);
             var skipSingleAuthorCheck = userId == Constants.User.Sherlock.UserId;
             if (!skipSingleAuthorCheck) {
-                var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-                if (chat == null || chat.HasSingleAuthor) {
+                // Get chat directly in transaction instead of calling Backend
+                // var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+                var chat = await dbContext.Chats
+                    .Where(c => c.Id == chatId)
+                    .Select(c => new { c.Id, c.SystemTag })
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                if (chat == null || chat.SystemTag == Constants.Chat.SystemTags.Notes) {
                     var alreadyHasAuthor = await dbContext.Authors
                         .AnyAsync(a => a.ChatId == chatId && a.UserId != userId, cancellationToken)
                         .ConfigureAwait(false);
                     if (alreadyHasAuthor)
-                        throw StandardError.Constraint("There can be only one author in this chat.");
+                        throw StandardError.Constraint($"There can be only one author in this chat '{chat?.Id}:{userId}'.");
                 }
             }
             var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);

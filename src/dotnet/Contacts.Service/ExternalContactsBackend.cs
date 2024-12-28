@@ -123,9 +123,15 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         }
 
         var result = new List<Result<ExternalContactFull?>>(command.Changes.Count);
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var someDeviceId = command.Changes.Select(c => c.Id.UserDeviceId).FirstOrDefault();
+        await dbContext.ExternalContacts.Lock(someDeviceId, cancellationToken).ConfigureAwait(false);
+
         foreach (var itemChange in command.Changes)
             try {
-                var externalContact = await ChangeItem(itemChange, cancellationToken).ConfigureAwait(false);
+                var externalContact = await ChangeItem(itemChange, dbContext, cancellationToken).ConfigureAwait(false);
                 result.Add(new Result<ExternalContactFull?>(externalContact, null));
             }
             catch (Exception e) {
@@ -140,14 +146,12 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
     private async Task<ExternalContactFull?> ChangeItem(
         ExternalContactChange itemChange,
+        ContactsDbContext dbContext,
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = itemChange;
         id.Require();
         change.RequireValid();
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
 
         // Can't use .ForUpdate() here due to join
         var dbExternalContact = await dbContext.ExternalContacts

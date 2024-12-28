@@ -69,6 +69,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        await dbContext.LinkPreviews.SharedLock(id, cancellationToken).ConfigureAwait(false);
         var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
@@ -77,6 +79,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             if (dbLinkPreview != null)
                 return dbLinkPreview.ToModel();
 
+            await dbContext.LinkPreviews.Lock(id, cancellationToken).ConfigureAwait(false);
             dbLinkPreview = new DbLinkPreview(linkPreview) {
                 Id = id,
                 CreatedAt = SystemNow,

@@ -1355,6 +1355,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        await dbContext.Chats
+            .SharedLock(userId, Constants.Chat.SystemTags.Notes, cancellationToken)
+            .ConfigureAwait(false);
+
         var hasNotesChat = await dbContext.Chats
             .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
             .AnyAsync(x => x.a.UserId == userId && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value, cancellationToken)
@@ -1362,6 +1366,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (hasNotesChat)
             return;
+
+        await dbContext.Chats
+            .Lock(userId, Constants.Chat.SystemTags.Notes, cancellationToken)
+            .ConfigureAwait(false);
 
         var createNotesCommand = new ChatsBackend_Change(
             ChatId.None,
@@ -1473,7 +1481,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var dbReadPositionsStat = await dbContext.ReadPositionsStats.ForUpdate()
+        await dbContext.ReadPositionsStats.Lock(chatId, cancellationToken).ConfigureAwait(false);
+        var dbReadPositionsStat = await dbContext.ReadPositionsStats
             .FirstOrDefaultAsync(c => c.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -1907,6 +1916,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task JoinFeedbackTemplateChatIfAdmin(UserId userId, CancellationToken cancellationToken)
     {
+        var chatId = Constants.Chat.FeedbackTemplateChatId;
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null) {
+            Log.LogWarning("Feedback template chat is not found while trying to join {UserId}", userId);
+            return;
+        }
+
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account is not { IsAdmin: true })
             return;
@@ -1917,7 +1933,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (!email.OrdinalEndsWith(Constants.Team.EmailSuffix))
             return;
 
-        var chatId = Constants.Chat.FeedbackTemplateChatId;
         var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
 
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);

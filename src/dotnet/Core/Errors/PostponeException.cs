@@ -1,9 +1,11 @@
+using ActualLab.Diagnostics;
+
 namespace ActualChat;
 
 #pragma warning disable SYSLIB0051
 
 [Serializable]
-public class PostponeException : Exception // Must not be ITransientException!
+public class PostponeException : Exception, INotAnError // Must not be ITransientException!
 {
     private const string DefaultMessage = "Postponed.";
 
