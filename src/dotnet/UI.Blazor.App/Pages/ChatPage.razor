@@ -286,10 +286,17 @@
             || State.Value != Rendered;
 
     protected async ValueTask SelectChat(ChatId? chatId1) {
-        ChatId chatId;
-        if (chatId1.HasValue && !chatId1.Value.IsNone)
-            chatId = chatId1.Value;
-        else {
+        ChatId chatId = ChatId.None;
+        if (chatId1.HasValue && !chatId1.Value.IsNone) {
+            var chat = await Chats.Get(Session, chatId1.Value, CancellationToken.None);
+            if (chat?.Id != null)
+                chatId = chat.Id;
+            else {
+                chatId = ChatId.None;
+                RouteState = PageRouteState.UnknownUserLink;
+            }
+        }
+        if (chatId.IsNone) {
             await ChatUI.WhenLoaded;
             chatId = ChatUI.SelectedChatId.Value;
             // If Selected place is defined and chat id is not specified, then apparently place has no chats,

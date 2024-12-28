@@ -216,6 +216,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chatId.IsNone)
             return;
 
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return;
+
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authorId = author?.Id ?? AuthorId.None;
