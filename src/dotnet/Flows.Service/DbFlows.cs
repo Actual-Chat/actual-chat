@@ -81,6 +81,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         await using var _1 = dbContext.ConfigureAwait(false);
         dbContext.EnableChangeTracking(true);
 
+        await dbContext.Set<DbFlow>().SharedLock(flowId, cancellationToken).ConfigureAwait(false);
         var dbFlow = await dbContext.Set<DbFlow>().ForUpdate()
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
@@ -97,6 +98,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             if (flow.Step != FlowSteps.Starting)
                 throw StandardError.Internal("New Flow's Step should be 'Starting'.");
 
+            await dbContext.Set<DbFlow>().Lock(flowId, cancellationToken).ConfigureAwait(false);
             version = VersionGenerator.NextVersion();
             dbContext.Add(new DbFlow() {
                 Id = flowId,

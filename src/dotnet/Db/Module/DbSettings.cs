@@ -8,4 +8,5 @@ public sealed class DbSettings
     public bool ShouldMigrateDb { get; set; } = true;
     public bool ShouldRepairDb { get; set; } = true;
     public bool ShouldVerifyDb { get; set; } = true;
+    public int LockTimeout { get; set; } = 30;
 }
