@@ -11,7 +11,7 @@ namespace ActualChat.MLSearch.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
 {
-    protected override int CurrentFlowSetVersion => 1;
+    protected override int CurrentFlowSetVersion => 2;
 
     [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
