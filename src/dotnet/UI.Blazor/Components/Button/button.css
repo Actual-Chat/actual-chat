@@ -44,8 +44,7 @@ body.device-ios * {
     @apply truncate;
 }
 .btn > .btn-content {
-    @apply flex-x self-center items-center justify-center gap-x-2;
-    @apply w-full h-full;
+    @apply flex-x items-center justify-center gap-x-2;
 }
 .btn > .btn-content i {
     @apply flex-none;
@@ -99,17 +98,15 @@ body.hoverable .btn.btn-cancel:hover::after {
     @apply hover-after;
     @apply bg-hover-after-primary;
 }
-.btn:active::after,
-.btn:hover:active::after,
-.btn:focus:active::after,
-.btn:hover:focus:active::after,
-.btn.btn-cancel:hover:active::after,
-.btn.btn-cancel:hover:focus:active::after {
-    @apply hover-after;
-    @apply bg-after-lighter;
-}
-.btn.unhovered:hover::after {
+body.hoverable .btn.unhovered:hover::after {
     @apply hidden;
+}
+.btn:active {
+    filter: opacity(0.9) blur(0.04rem);
+}
+.btn.pseudo-disabled:active,
+.btn:disabled:active {
+    filter: none;
 }
 
 /* Outline Button */
@@ -151,26 +148,6 @@ body.hoverable .btn.btn-outline.btn-cancel:hover::after {
     @apply bg-hover-after-cancel;
 }
 
-/* Outline Focus, Active */
-.btn.btn-outline:active::after,
-.btn.btn-outline:focus:active::after,
-.btn.btn-outline:hover:focus:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-primary;
-}
-.btn.btn-outline.btn-danger:active::after,
-.btn.btn-outline.btn-danger:focus:active::after,
-.btn.btn-outline.btn-danger:hover:focus:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-danger;
-}
-.btn.btn-outline.btn-cancel:active::after,
-.btn.btn-outline.btn-cancel:focus:active::after,
-.btn.btn-outline.btn-cancel:hover:focus:active::after {
-    @apply hover-after;
-    @apply bg-focus-after-cancel;
-}
-
 /* Transparent Button */
 .btn.btn-transparent,
 .btn.btn-transparent.btn-primary,
@@ -209,28 +186,21 @@ body.hoverable .btn.btn-transparent.btn-cancel:hover::after {
 }
 
 /* Transparent focus, active */
-.btn.btn-transparent:active::after,
-.btn.btn-transparent:focus:active::after,
-.btn.btn-transparent:hover:focus:active::after {
+.btn.btn-transparent:active::after {
     @apply hover-after;
     @apply bg-focus-after-primary;
 }
-.btn.btn-transparent.btn-danger:active::after,
-.btn.btn-transparent.btn-danger:focus:active::after,
-.btn.btn-transparent.btn-danger:hover:focus:active::after {
+.btn.btn-transparent.btn-danger:active::after {
     @apply hover-after;
     @apply bg-focus-after-danger;
 }
-.btn.btn-transparent.btn-cancel:active::after,
-.btn.btn-transparent.btn-cancel:focus:active::after,
-.btn.btn-transparent.btn-cancel:hover:focus:active::after {
+.btn.btn-transparent.btn-cancel:active::after {
     @apply hover-after;
     @apply bg-focus-after-cancel;
 }
 
 /* Modal Button */
 .btn.btn-modal {
-    @apply flex-1;
     @apply w-auto;
     @apply bg-cancel;
     @apply text-primary;
@@ -264,9 +234,7 @@ body.hoverable .btn.btn-modal:hover::after {
 }
 
 /* Modal focus, active */
-.btn.btn-modal:active::after,
-.btn.btn-modal:focus:active::after,
-.btn.btn-modal:hover:focus:active::after {
+.btn.btn-modal:active::after {
     @apply hover-after;
     @apply bg-after-lighter
 }
@@ -345,6 +313,11 @@ body.hoverable .btn.btn-round.unhovered:hover {
     @apply cursor-default;
 }
 
+body.hoverable .btn.btn-square.unhovered:active,
+body.hoverable .btn.btn-round.unhovered:active {
+    filter: none;
+}
+
 /* Button Square and Round Cancel */
 body.hoverable .btn.btn-square.btn-cancel:hover,
 body.hoverable .btn.btn-round.btn-cancel:hover {
@@ -379,7 +352,6 @@ body.hoverable .btn.btn-round.btn-cancel:hover {
 
 body.hoverable .btn.bleached:hover,
 body.hoverable .btn-h.bleached:hover,
-.btn.bleached:focus,
 .btn.bleached:active {
     @apply text-white;
 }
@@ -428,6 +400,9 @@ body.hoverable .btn-h:hover {
 body.hoverable .btn-h.unhovered:hover {
     @apply text-03;
     @apply cursor-default;
+}
+.btn-h:not(.unhovered):active {
+    filter: opacity(0.9) blur(0.5px) drop-shadow(0px 0px 2px var(--gray-20-20));
 }
 .btn-h > .c-content {
     @apply relative;
