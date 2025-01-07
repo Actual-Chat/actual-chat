@@ -1,13 +1,12 @@
 @using ActualChat.Roulette
 @namespace ActualChat.UI.Blazor.Components
 
-<ChatRouletteItem Profile="Profile" HighlightMatchWithProfile="@HighlightMatchWithProfile">
+<ChatRouletteItem Profile="Profile" HighlightMatchWithProfile="@HighlightMatchWithProfile" Click="@StartChatClick">
     <ActionsTemplate>
         <div
             class="c-start-chat"
             data-tooltip="Start chat"
-            data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
-            @onclick="@StartChatClick">
+            data-tooltip-position="@(FloatingPosition.Top.ToPositionString())">
             <i class="icon-message-ellipse text-xl"></i>
         </div>
     </ActionsTemplate>
@@ -18,4 +17,3 @@
     [Parameter] public Profile? HighlightMatchWithProfile { get; set; }
     [Parameter] public EventCallback StartChatClick { get; set; }
 }
-

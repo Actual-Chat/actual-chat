@@ -6,9 +6,10 @@
     var country = preferences.Country;
     var countryName = country.Title.NullIfEmpty() ?? "---";
     var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
+    var cls = Click.HasDelegate ? "clickable" : "";
 }
 
-<div class="cr-item">
+<div class="cr-item @cls" @onclick="@Click">
     <div class="c-top">
         <AvatarCircle
             Avatar="@avatar"
@@ -48,4 +49,5 @@
     [Parameter] public Profile Profile { get; set; } = null!;
     [Parameter] public Profile? HighlightMatchWithProfile { get; set; }
     [Parameter] public RenderFragment ActionsTemplate { get; set; } = null!;
+    [Parameter] public EventCallback Click { get; set; }
 }
