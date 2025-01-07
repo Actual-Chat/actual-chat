@@ -1,10 +1,11 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Roulette
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatRouletteRightPanelContent.Model>
+@inherits ComputedStateComponent<ChatRouletteRightPanelContent.Model?>
 @{
     #pragma warning disable IL2091
-    if (!_formHasInitialized)
+    var m = State.Value;
+    if (m is null) // not initialized yet.
         return;
 
     var hasChanged = HasFilterChanged(_form, _searchFilter);
@@ -65,7 +66,6 @@
     private Preferences _searchFilter = Preferences.Empty;
     private Form? _formRef = null!;
     private FormModel _form = null!;
-    private bool _formHasInitialized;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
@@ -78,21 +78,12 @@
         return Task.CompletedTask;
     }
 
-    private void FillInForm(FormModel form, Preferences searchCriteria) {
-        form.CountryCode = searchCriteria.Country.Code;
-        form.Gender = searchCriteria.Gender;
-        form.Languages = searchCriteria.Languages;
-        form.Interests = searchCriteria.Interests;
-        form.CopyToBase();
-    }
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var searchCriteria = await RouletteUI.SearchCriteria.Use(cancellationToken);
         if (searchCriteria != _searchFilter) {
             FillInForm(_form, searchCriteria);
             _searchFilter = searchCriteria;
         }
-        _formHasInitialized = true;
         return new Model();
     }
 
@@ -116,29 +107,25 @@
         if (form.Gender != searchFilter.Gender)
             return true;
 
-        if (!SameCollection(form.Languages, searchFilter.Languages))
+        if (!Enumerable.SequenceEqual(form.Languages, searchFilter.Languages))
             return true;
 
-        if (!SameCollection(form.Interests, searchFilter.Interests))
+        if (!Enumerable.SequenceEqual(form.Interests, searchFilter.Interests))
             return true;
 
         return false;
     }
 
-    private bool SameCollection<T>(IReadOnlyCollection<T> collection1, IReadOnlyCollection<T> collection2) {
-        if (collection1.Count != collection2.Count)
-            return false;
-
-        foreach (var item in collection1) {
-            if (!collection2.Contains(item))
-                return false;
-        }
-
-        return true;
+    private void FillInForm(FormModel form, Preferences searchCriteria) {
+        form.CountryCode = searchCriteria.Country.Code;
+        form.Gender = searchCriteria.Gender;
+        form.Languages = searchCriteria.Languages;
+        form.Interests = searchCriteria.Interests;
+        form.CopyToBase();
     }
 
     // Nested types
-    public record Model();
+    public record Model;
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel : FormModel<FormModel> {

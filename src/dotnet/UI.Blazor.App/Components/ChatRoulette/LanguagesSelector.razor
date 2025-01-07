@@ -1,5 +1,4 @@
 @using System.Linq.Expressions
-@using ActualChat.UI.Blazor.App.Components.ChatRoulette
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<LanguagesSelector.Model>
 @{
@@ -7,6 +6,9 @@
     var availableLanguages = m.AvailableLanguages;
     foreach (var language in Languages)
         availableLanguages = availableLanguages.Remove(language);
+    if (_renderedLanguages.HasValue && !_renderedLanguages.Value.Equals(Languages))
+        _renderedLanguagesHasChanged = true;
+    _renderedLanguages = Languages;
 }
 
 <div class="languages-selector cr-badge-selector c-content">
@@ -25,6 +27,9 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ModalUI ModalUI => Hub.ModalUI;
     private FieldIdentifier? _fieldIdentifier;
+    private ImmutableArray<Language>? _renderedLanguages;
+    private bool _renderedLanguagesHasChanged;
+
 
     [CascadingParameter] private EditContext? CascadedEditContext { get; set; }
     [Parameter] public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
@@ -48,6 +53,13 @@
         AddPossibleLanguage(possibleLanguages, languages.Secondary);
         AddPossibleLanguage(possibleLanguages, languages.Tertiary);
         return new Model { AvailableLanguages = possibleLanguages.ToImmutableArray()};
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (_renderedLanguagesHasChanged) {
+            CascadedEditContext?.Validate();
+            _renderedLanguagesHasChanged = false;
+        }
     }
 
     private void AddPossibleLanguage(List<Language> list, Language? languageOpt) {
