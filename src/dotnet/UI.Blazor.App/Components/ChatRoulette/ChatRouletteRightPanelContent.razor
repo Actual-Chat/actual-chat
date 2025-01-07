@@ -1,8 +1,10 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Roulette
+@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<ChatRouletteRightPanelContent.Model>
 @{
-    @if (!_formHasInitialized)
+    #pragma warning disable IL2091
+    if (!_formHasInitialized)
         return;
 
     var hasChanged = HasFilterChanged(_form, _searchFilter);

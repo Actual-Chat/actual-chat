@@ -40,8 +40,6 @@
 </div>
 
 @code {
-    private Task _whenLoaded = null!;
-
     [Inject] ChatUIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
     private IAvatars Avatars => Hub.Avatars;
