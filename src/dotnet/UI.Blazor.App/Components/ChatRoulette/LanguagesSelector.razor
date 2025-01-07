@@ -31,9 +31,15 @@
     [Parameter] public EventCallback<ImmutableArray<Language>> LanguagesChanged { get; set; }
     [Parameter] public Expression<Func<ImmutableArray<Language>>>? ValueExpression { get; set; }
 
-    protected override void OnInitialized() {
-        _fieldIdentifier = ValueExpression is not null ? FieldIdentifier.Create(ValueExpression) : null;
-    }
+    protected override void OnInitialized()
+        => _fieldIdentifier = ValueExpression is not null ? FieldIdentifier.Create(ValueExpression) : null;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
