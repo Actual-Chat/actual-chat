@@ -10,9 +10,8 @@ public class ChatUsagesBackend(IServiceProvider services)
 {
     private const int RecencyListLimit = 100;
 
-    private IChatsBackend? _chatsBackend;
-
-    protected IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>();
+    [field: AllowNull, MaybeNull]
+    protected IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
     public virtual async Task<ApiArray<ChatId>> GetRecencyList(UserId userId, ChatUsageListKind kind, CancellationToken cancellationToken)
     {
