@@ -56,6 +56,9 @@ body.narrow .cr-center {
     @apply rounded-2xl border border-cr-item-border;
     @apply bg-01;
 }
+.cr-item.clickable {
+    @apply cursor-pointer;
+}
 .cr-item .c-top {
     @apply flex-x items-center gap-x-4;
     @apply w-full;
