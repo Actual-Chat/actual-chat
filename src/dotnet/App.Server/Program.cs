@@ -8,7 +8,7 @@ namespace ActualChat.App.Server;
 
 internal static class Program
 {
-    private static async Task Main(string[] args)
+    private static async Task<int> Main(string[] args)
     {
         Tracer.Default =
 #if DEBUG
@@ -44,6 +44,7 @@ internal static class Program
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"Can't build application host. Exception: {ex}");
             Console.ResetColor();
+            return 1;
         }
 
         Constants.HostInfo = appHost.Services.HostInfo();
@@ -55,6 +56,7 @@ internal static class Program
 
         await appHost.InvokeInitializers().ConfigureAwait(false);
         await appHost.Run().ConfigureAwait(false);
+        return 0;
 
         // We preserve default thread pool settings only if they are bigger of our minimals
         static void AdjustThreadPool()
