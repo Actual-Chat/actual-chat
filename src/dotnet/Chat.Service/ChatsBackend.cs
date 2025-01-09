@@ -530,28 +530,22 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return dbChats.Select(x => x.ToModel()).ToApiArray();
     }
 
-    public async Task<ApiArray<ChatEntry>> ListChangedEntries(
-        ChatId chatId,
-        long lastLid,
-        long minVersion,
-        long maxVersion,
-        int limit,
-        CancellationToken cancellationToken)
+    public async Task<ApiArray<ChatEntry>> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var entriesQuery = lastLid <= 0
-            ? dbContext.ChatEntries.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+        var entriesQuery = query.LastLocalId <= 0
+            ? dbContext.ChatEntries.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
             : dbContext.ChatEntries.Where(x
-                => (x.Version > minVersion && x.Version <= maxVersion)
-                || (x.Version == minVersion && x.LocalId > lastLid));
+                => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
+                || (x.Version == query.MinVersion && x.LocalId > query.LastLocalId));
 
         return await entriesQuery
-            .Where(x => x.ChatId == chatId.Value && x.Kind == ChatEntryKind.Text)
+            .Where(x => x.ChatId == query.ChatId.Value && x.Kind == ChatEntryKind.Text)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
-            .Take(limit)
+            .Take(query.Limit)
             .AsAsyncEnumerable()
             .Select(x => x.ToModel())
             .ToApiArrayAsync(cancellationToken)
