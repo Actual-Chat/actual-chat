@@ -12,6 +12,6 @@ public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.
         ConfigureServices = (ctx, services) => {
             services.AddFlows().Add<SimpleIndexingFlow>().Add<SimpleBatchedIndexingFlow>();
             services.AddSingleton<IndexingFlowTestContext>();
-            services.AddSingleton<BatchedIndexingFlowTestContext<SimpleItem>>();
+            services.AddSingleton<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
         },
     });
