@@ -27,25 +27,20 @@
     @apply pt-0;
 }
 
-.left-chat-search-overlay-panel .tab-panel,
 .left-place-search-overlay-panel .tab-panel {
     @apply overflow-hidden;
 }
-.left-chat-search-overlay-panel .tab-panel .tab,
 .left-place-search-overlay-panel .tab-panel .tab {
     @apply py-2;
     @apply overflow-hidden;
 }
-.left-chat-search-overlay-panel .tab-panel .btn-group,
 .left-place-search-overlay-panel .tab-panel .btn-group {
     @apply gap-x-4;
     @apply py-0 px-2;
     @apply overflow-x-auto;
     scrollbar-width: none;
 }
-.left-chat-search-overlay-panel .c-search-tab.c-container, /* TODO: Remove when migrated to new search UI */
-.left-chat-search-overlay-panel .tab > .c-container,
-.left-place-search-overlay-panel .c-search-tab.c-container,
+.left-place-search-overlay-panel .c-search-tab.c-container, /* TODO: Remove when migrated to new search UI */
 .left-place-search-overlay-panel .tab > .c-container {
     @apply flex-y;
     @apply h-full;
@@ -55,23 +50,16 @@
 .left-search-overlay-panel .own-chat-list {
     @apply px-2;
 }
-.left-chat-search-overlay-panel .chat-list .c-header .btn-h {
-    @apply text-xs text-primary;
-}
 
-.left-chat-search-overlay-panel .ai-btn,
 .left-place-search-overlay-panel .ai-btn {
     @apply px-2;
 }
-.left-chat-search-overlay-panel .ai-btn .btn,
 .left-place-search-overlay-panel .ai-btn .btn {
     @apply min-w-full;
 }
-body.narrow .left-chat-search-overlay-panel .ai-btn .btn,
 body.narrow .left-place-search-overlay-panel .ai-btn .btn {
     @apply min-h-10 max-h-10;
 }
-.left-chat-search-overlay-panel .ai-btn .btn .btn-content,
 .left-place-search-overlay-panel .ai-btn .btn .btn-content {
     @apply gap-x-3;
     @apply text-text-1;
