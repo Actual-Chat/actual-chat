@@ -449,21 +449,34 @@
     --verify-cat-display: var(--blue-80);
     --active-chats: var(--white-50);
 
-    --place-cat-background: var(--gray-80);
-    --place-cat-tank: var(--gray-60);
-    --place-cat-border: var(--gray-70);
+    --place-cat-background-gradient-1: var(--gray-80);
+    --place-cat-background-gradient-2: var(--white);
+    --place-cat-tank-gradient-1: var(--white);
+    --place-cat-tank-gradient-2: var(--gray-80);
+    --place-cat-tank-top-gradient-1: var(--white);
+    --place-cat-tank-top-gradient-2: var(--gray-80);
+    --place-cat-border: var(--gray-60);
+    --place-cat-fish-border: var(--gray-80);
     --place-cat-face: var(--white);
 
     --search-cat-background: var(--gray-95);
+    --search-cat-background-gradient-1: var(--gray-80);
+    --search-cat-background-gradient-2: var(--white);
+    --search-cat-background-gradient-3: var(--gray-80);
+    --search-cat-background-gradient-4: var(--white);
     --search-cat-chest: var(--gray-99);
     --search-cat-paws: var(--white);
     --search-cat-border: var(--gray-60);
     --search-cat-shadow: var(--gray-80);
 
     --no-results-cat-body: var(--gray-90);
+    --no-results-cat-body-gradient-1: var(--white);
+    --no-results-cat-body-gradient-2: var(--gray-80);
     --no-results-cat-body-center: var(--white);
-    --no-results-cat-shadow: var(--gray-70);
+    --no-results-cat-shadow: var(--gray-60);
     --no-results-cat-circle: var(--gray-80);
+    --no-results-cat-circle-gradient-1: var(--white);
+    --no-results-cat-circle-gradient-2: var(--gray-80);
     --no-results-cat-light-circle: var(--white);
     --no-results-cat-paws: var(--white);
     --no-results-cat-medal: var(--gray-95);
@@ -476,6 +489,10 @@
     --no-results-cat-main-stroke: var(--gray-60);
     --no-results-cat-rays-stroke: var(--white);
     --no-results-cat-ground-stroke: var(--gray-80);
+    --no-results-cat-dot: var(--gray-60);
+
+    --cr-header-gradient-1: var(--indigo-70);
+    --cr-header-gradient-2: var(--indigo-90);
 }
 .theme-dark {
     /* Background */
@@ -698,33 +715,50 @@
     --verify-cat-display: var(--blue-80);
     --active-chats: var(--ash-30);
 
-    --place-cat-background: var(--ash-50);
-    --place-cat-tank: var(--ash-30);
-    --place-cat-border: var(--ash-40);
-    --place-cat-face: var(--ash-80);
+    --place-cat-background-gradient-1: var(--ash-22);
+    --place-cat-background-gradient-2: var(--ash-50);
+    --place-cat-tank-gradient-1: var(--ash-50);
+    --place-cat-tank-gradient-2: var(--ash-22);
+    --place-cat-tank-top-gradient-1: var(--ash-50);
+    --place-cat-tank-top-gradient-2: var(--ash-22);
+    --place-cat-border: var(--ash-30);
+    --place-cat-fish-border: var(--ash-40);
+    --place-cat-face: var(--ash-90);
 
     --search-cat-background: var(--ash-50);
-    --search-cat-chest: var(--ash-70);
-    --search-cat-paws: var(--ash-80);
+    --search-cat-background-gradient-1: var(--ash-22);
+    --search-cat-background-gradient-2: var(--ash-50);
+    --search-cat-background-gradient-3: var(--ash-40);
+    --search-cat-background-gradient-4: var(--ash-80);
+    --search-cat-chest: var(--ash-95);
+    --search-cat-paws: var(--ash-95);
     --search-cat-border: var(--ash-30);
-    --search-cat-shadow: var(--ash-40);
+    --search-cat-shadow: var(--ash-30);
 
     --no-results-cat-body: var(--ash-60);
+    --no-results-cat-body-gradient-1: var(--ash-60);
+    --no-results-cat-body-gradient-2: var(--ash-22);
     --no-results-cat-body-center: var(--ash-90);
-    --no-results-cat-shadow: var(--ash-40);
+    --no-results-cat-shadow: var(--ash-30);
     --no-results-cat-circle: var(--ash-50);
-    --no-results-cat-light-circle: var(--ash-95);
+    --no-results-cat-circle-gradient-1: var(--ash-22);
+    --no-results-cat-circle-gradient-2: var(--ash-50);
+    --no-results-cat-light-circle: var(--ash-90);
     --no-results-cat-paws: var(--ash-90);
     --no-results-cat-medal: var(--ash-80);
     --no-results-cat-medal-stars: var(--ash-30);
     --no-results-cat-mask: var(--ash-30);
-    --no-results-cat-eyes: var(--ash-95);
+    --no-results-cat-eyes: var(--ash-90);
     --no-results-cat-ears: var(--ash-50);
-    --no-results-cat-flower: var(--ash-90);
+    --no-results-cat-flower: var(--ash-60);
     --no-results-cat-flower-leaf: var(--ash-90);
     --no-results-cat-main-stroke: var(--ash-30);
-    --no-results-cat-rays-stroke: var(--ash-95);
+    --no-results-cat-rays-stroke: var(--ash-90);
     --no-results-cat-ground-stroke: var(--ash-90);
+    --no-results-cat-dot: var(--ash-60);
+
+    --cr-header-gradient-1: var(--indigo-70);
+    --cr-header-gradient-2: var(--indigo-90);
 }
 .theme-ash {
     /* Background */
@@ -947,31 +981,48 @@
     --verify-cat-display: var(--blue-80);
     --active-chats: var(--white-50);
 
-    --place-cat-background: var(--ash-90);
-    --place-cat-tank: var(--ash-60);
-    --place-cat-border: var(--ash-80);
+    --place-cat-background-gradient-1: var(--ash-80);
+    --place-cat-background-gradient-2: var(--white);
+    --place-cat-tank-gradient-1: var(--white);
+    --place-cat-tank-gradient-2: var(--ash-80);
+    --place-cat-tank-top-gradient-1: var(--ash-80);
+    --place-cat-tank-top-gradient-2: var(--white);
+    --place-cat-border: var(--ash-60);
+    --place-cat-fish-border: var(--ash-80);
     --place-cat-face: var(--white);
 
     --search-cat-background: var(--ash-99);
+    --search-cat-background-gradient-1: var(--ash-80);
+    --search-cat-background-gradient-2: var(--white);
+    --search-cat-background-gradient-3: var(--ash-80);
+    --search-cat-background-gradient-4: var(--white);
     --search-cat-chest: var(--white);
     --search-cat-paws: var(--white);
     --search-cat-border: var(--ash-60);
-    --search-cat-shadow: var(--ash-95);
+    --search-cat-shadow: var(--ash-80);
 
     --no-results-cat-body: var(--ash-95);
+    --no-results-cat-body-gradient-1: var(--white);
+    --no-results-cat-body-gradient-2: var(--ash-90);
     --no-results-cat-body-center: var(--white);
-    --no-results-cat-shadow: var(--ash-60);
+    --no-results-cat-shadow: var(--ash-80);
     --no-results-cat-circle: var(--ash-80);
-    --no-results-cat-light-circle: var(--ash-95);
+    --no-results-cat-circle-gradient-1: var(--white);
+    --no-results-cat-circle-gradient-2: var(--ash-90);
+    --no-results-cat-light-circle: var(--white);
     --no-results-cat-paws: var(--white);
     --no-results-cat-medal: var(--white);
     --no-results-cat-medal-stars: var(--ash-60);
     --no-results-cat-mask: var(--ash-60);
-    --no-results-cat-eyes: var(--ash-95);
+    --no-results-cat-eyes: var(--white);
     --no-results-cat-ears: var(--white);
     --no-results-cat-flower: var(--ash-90);
     --no-results-cat-flower-leaf: var(--white);
     --no-results-cat-main-stroke: var(--ash-60);
-    --no-results-cat-rays-stroke: var(--ash-95);
+    --no-results-cat-rays-stroke: var(--white);
     --no-results-cat-ground-stroke: var(--ash-80);
+    --no-results-cat-dot: var(--ash-80);
+
+    --cr-header-gradient-1: var(--indigo-70);
+    --cr-header-gradient-2: var(--indigo-90);
 }

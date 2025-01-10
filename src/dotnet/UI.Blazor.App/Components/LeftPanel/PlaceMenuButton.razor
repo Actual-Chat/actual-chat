@@ -25,7 +25,7 @@
 </div>
 @if (m.ShowPlaceMenu) {
     <div class="c-right">
-        <ButtonRound Class="place-plus-btn btn-sm btn-transparent unhovered"
+        <ButtonRound Class="place-plus-btn btn-sm btn-transparent"
                      data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(m.Place.Id).ToString())"
                      data-menu-trigger="@MenuTrigger.Primary"
                      data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
