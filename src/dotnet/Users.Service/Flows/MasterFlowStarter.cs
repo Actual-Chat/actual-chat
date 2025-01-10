@@ -35,15 +35,9 @@ internal class MasterFlowStarter(IServiceProvider services)
             return;
         }
 
-        foreach (var (masterFlowType, (flowId, _)) in _masterFlows) {
-            var flow = await Flows.Get(flowId, cancellationToken).ConfigureAwait(false);
-            if (flow == null)
-                await Flows.GetOrStart(masterFlowType, "", cancellationToken).ConfigureAwait(false);
-            else {
-                var resetEvent = new FlowResetEvent(flowId);
-                await Queues.Enqueue(resetEvent, cancellationToken).ConfigureAwait(false);
-            }
-        }
+        foreach (var (masterFlowType, (flowId, _)) in _masterFlows)
+            await Flows.StartOrReset(masterFlowType, flowId.Arguments, "MasterFlowStarter", cancellationToken)
+                .ConfigureAwait(false);
         _isCompleted = true;
     }
 }
