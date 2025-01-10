@@ -11,7 +11,7 @@
 @if (_shareRequest is not null) {
     @* TODO: need invite links for private places (for Alexey K) *@
     <FormBlock Class="share-block">
-        <CopyTrigger Tooltip="Copy Place Invite link" CopyText="@_placeLink">
+            <CopyTrigger Class="share-externally-button" CopyText="@_placeLink">
             <Button Class="btn-modal">
                 <Icon>
                     <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>

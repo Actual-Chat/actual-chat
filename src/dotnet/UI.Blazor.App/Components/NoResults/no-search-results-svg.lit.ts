@@ -7,10 +7,16 @@ class NoSearchResultsSvg extends LitElement {
         return html`
             <svg width="198" height="234" viewBox="0 0 198 234" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <g clip-path="url(#clip0_20364_776232)">
-                    <path d="M114.82 233.815C160.38 233.815 197.32 196.875 197.32 151.315C197.32 105.755 160.38 68.8154 114.82 68.8154C69.2601 68.8154 32.3201 105.755 32.3201 151.315C32.3201 196.875 69.2601 233.815 114.82 233.815Z" fill="var(--no-results-cat-circle)"/>
+                    <path d="M114.82 233.815C160.38 233.815 197.32 196.875 197.32 151.315C197.32 105.755 160.38 68.8154 114.82 68.8154C69.2601 68.8154 32.3201 105.755 32.3201 151.315C32.3201 196.875 69.2601 233.815 114.82 233.815Z" fill="url(#no-search-results-gradient-1)"/>
+                    <defs>
+                        <linearGradient id="no-search-results-gradient-1" x1="77.5" y1="8" x2="82.8201" y2="165.814" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="var(--no-results-cat-circle-gradient-1)" stop-opacity="0"/>
+                            <stop offset="1" stop-color="var(--no-results-cat-circle-gradient-2)"/>
+                        </linearGradient>
+                    </defs>
                     <g clip-path="url(#clip1_20364_776232)">
-                        <path d="M47.934 23.6643L46.749 35.2766L41.0047 40.9338L37.218 54.4119L40.803 73.0773L30.3208 78.9614L21.9749 86.4845L13.0559 88.6529L7.44694 93.8287C5.82253 94.0648 2.93818 96.1975 4.39603 102.839C5.85388 109.481 10.841 110.709 13.1523 110.493L14.6605 125.459L22.7452 152.14L30.0138 165.089L38.5591 171.644L50.0362 173.311L61.4216 169.758L73.6023 159.677L88.5635 141.548L96.3364 128.67C96.3364 128.67 98.0326 125.808 99.1764 118.561C100.32 111.314 99.2635 107.16 99.2635 107.16L94.8234 97.0835L90.8052 89.2029L98.6101 83.6054L105.766 71.0739L106.757 62.0036L105.957 51.911L109.5 45L112.5 37.5L113.665 24.4734L102.67 22.9422L94.789 26.9604L89.9318 31.3087L72.6027 26.4401L71.381 14.1516L64.6419 12.2583L60.25 13.1018L55.7986 16.006L47.934 23.6643Z" fill="var(--no-results-cat-body)"/>
-                        <path d="M101.82 132.313L91.8201 133.313L93.8201 106.314L102.82 108.314L111.32 115.814C112.32 117.648 114.02 122.314 112.82 126.314C111.62 130.314 104.987 131.98 101.82 132.313Z" fill="var(--no-results-cat-body)"/>
+                        <path d="M47.934 23.6643L46.749 35.2766L41.0047 40.9338L37.218 54.4119L40.803 73.0773L30.3208 78.9614L21.9749 86.4845L13.0559 88.6529L7.44694 93.8287C5.82253 94.0648 2.93818 96.1975 4.39603 102.839C5.85388 109.481 10.841 110.709 13.1523 110.493L14.6605 125.459L22.7452 152.14L30.0138 165.089L38.5591 171.644L50.0362 173.311L61.4216 169.758L73.6023 159.677L88.5635 141.548L96.3364 128.67C96.3364 128.67 98.0326 125.808 99.1764 118.561C100.32 111.314 99.2635 107.16 99.2635 107.16L94.8234 97.0835L90.8052 89.2029L98.6101 83.6054L105.766 71.0739L106.757 62.0036L105.957 51.911L109.5 45L112.5 37.5L113.665 24.4734L102.67 22.9422L94.789 26.9604L89.9318 31.3087L72.6027 26.4401L71.381 14.1516L64.6419 12.2583L60.25 13.1018L55.7986 16.006L47.934 23.6643Z" fill="url(#paint0_linear_20364_776416)"/>
+                        <path d="M101.82 132.313L91.8201 133.313L93.8201 106.314L102.82 108.314L111.32 115.814C112.32 117.648 114.02 122.314 112.82 126.314C111.62 130.314 104.987 131.98 101.82 132.313Z" fill="url(#paint0_linear_20364_776416)"/>
                         <path d="M53.3201 30.3145L62.8201 26.8145C64.2321 19.9401 69.2042 15.8665 71.56 13.6832C71.56 13.6832 54.8201 7.68262 53.3201 30.3145Z" fill="var(--no-results-cat-ears)"/>
                         <path d="M89.7668 87.3538C94.8436 93.1892 98.1934 100.07 99.3336 107.253" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M96.1652 35.0024L104.059 45.6654C104.498 36.3498 110.041 27.4749 112.432 25.166C112.432 25.166 100.998 22.4505 96.1652 35.0024Z" fill="#A0A0A0"/>
@@ -21,7 +27,7 @@ class NoSearchResultsSvg extends LitElement {
                         <path d="M83.9129 85.7082C89.0767 81.8557 92.2951 76.7794 94.1615 71.4487" stroke="var(--no-results-cat-body-center)" stroke-width="8" stroke-linecap="round"/>
                         <path d="M105.5 49.9996C117.5 38 112 23.4993 112 23.4993C104.943 21.5167 98.6521 27.7028 96.4288 35.6164" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M78.5726 73.8749C92.6413 77.8276 105.831 74.6785 108.033 66.8412C110.235 59.004 100.615 49.4464 86.5463 45.4938C72.4775 41.5412 59.2876 44.6903 57.0857 52.5275C54.8838 60.3647 64.5038 69.9223 78.5726 73.8749Z" fill="var(--no-results-cat-mask)"/>
-                        <path d="M48.8201 36.3145L51.8201 37.3135L54.3201 25.3145L48.8201 31.8145V36.3145Z" fill="var(--no-results-cat-body)"/>
+                        <path d="M48.8201 36.3145L51.8201 37.3135L54.3201 25.3145L48.8201 31.8145V36.3145Z" fill="var(--no-results-cat-mask)"/>
                         <path d="M85.8058 14.5694C89.2619 15.5404 92.8507 13.5259 93.8217 10.0698C94.7926 6.6138 92.7781 3.02499 89.3221 2.05401C85.866 1.08303 82.2772 3.09757 81.3062 6.55361C80.3352 10.0097 82.3498 13.5985 85.8058 14.5694Z" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-miterlimit="10"/>
                         <path d="M38.1158 82.0136C38.1158 82.0136 60.9058 99.4996 95.094 96.1209C97.0415 96.0656 89.6317 87.8345 89.6317 87.8345C68.289 91.7061 42.7797 75.8764 42.7797 75.8764" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M90.0275 60.7756L75.8035 56.7793L74.4511 61.5929L88.6751 65.5892L90.0275 60.7756Z" fill="var(--no-results-cat-eyes)"/>
@@ -45,6 +51,15 @@ class NoSearchResultsSvg extends LitElement {
                         <circle cx="107.82" cy="187.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
                         <path d="M72.5669 25.6496C72.877 19.3872 70.8649 14.3081 70.8649 14.3081C63.8081 12.3255 56.4909 17.2395 53.7861 26.8668C52.8088 29.516 51.1474 35.7145 52.3202 39.3145" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                     </g>
+                    <defs>
+                        <linearGradient id="paint0_linear_20364_776416" x1="113" y1="131" x2="34" y2="36.5" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="var(--no-results-cat-body-gradient-1)"/>
+                            <stop offset="1" stop-color="var(--no-results-cat-body-gradient-2)"/>
+                        </linearGradient>
+                        <clipPath id="clip0_20364_776416">
+                            <rect width="165" height="187.78" fill="white" transform="translate(11.7905 -27) rotate(15.6928)"/>
+                        </clipPath>
+                    </defs>
                     <path d="M56.3202 199.815C68.4695 199.815 78.3202 196.681 78.3202 192.815C78.3202 188.95 68.4695 185.815 56.3202 185.815C44.1708 185.815 34.3202 188.95 34.3202 192.815C34.3202 196.681 44.1708 199.815 56.3202 199.815Z" fill="var(--no-results-cat-shadow)"/>
                     <path d="M101.404 131.984C101.404 131.984 91.9539 130.804 87.5139 138.534C87.5139 138.534 77.5339 141.614 70.0739 133.274C63.4339 125.844 70.0739 117.544 70.0739 117.544C70.0739 117.544 76.7939 104.104 96.5739 106.384C103.484 107.574 107.984 111.574 110.484 115.074C114.187 120.258 113.984 126.574 111.484 128.574" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                     <path d="M79.3438 138.465C79.3438 138.465 79.3338 133.645 85.2738 130.505" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round"/>
@@ -59,13 +74,13 @@ class NoSearchResultsSvg extends LitElement {
                     <path d="M153.576 181.323C153.667 186.134 151.454 196.255 141.882 198.254C139.737 194.384 139.073 185.58 153.576 181.323Z" fill="var(--no-results-cat-flower)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
                     <path d="M117.342 157.486C119.581 160.78 125.857 166.556 133.049 163.313C132.598 159.669 128.825 153.401 117.342 157.486Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
                     <path d="M129.092 145.843C132.185 148.352 137.412 155.093 133.574 161.986C129.98 161.229 124.053 156.941 129.092 145.843Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
-                    <circle cx="157.82" cy="195.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
-                    <circle cx="175.82" cy="185.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
-                    <circle cx="128.82" cy="202.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
-                    <circle cx="95.8201" cy="192.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
-                    <circle cx="121.82" cy="220.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
-                    <circle cx="171.82" cy="204.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
-                    <path d="M157.82 209.314C158.649 209.314 159.32 208.643 159.32 207.814C159.32 206.986 158.649 206.314 157.82 206.314V209.314ZM118.32 209.314H157.82V206.314H118.32V209.314Z" fill="var(--no-results-cat-ground-stroke)"/>
+                    <circle cx="157.82" cy="195.314" r="1.5" fill="var(--no-results-cat-dot)"/>
+                    <circle cx="175.82" cy="185.314" r="1.5" fill="var(--no-results-cat-dot)"/>
+                    <circle cx="128.82" cy="202.314" r="1.5" fill="var(--no-results-cat-dot)"/>
+                    <circle cx="95.8201" cy="192.314" r="1.5" fill="var(--no-results-cat-dot)"/>
+                    <circle cx="121.82" cy="220.314" r="1.5" fill="var(--no-results-cat-dot)"/>
+                    <circle cx="171.82" cy="204.314" r="1.5" fill="var(--no-results-cat-dot)"/>
+                    <path d="M157.82 209.314C158.649 209.314 159.32 208.643 159.32 207.814C159.32 206.986 158.649 206.314 157.82 206.314V209.314ZM118.32 209.314H157.82V206.314H118.32V209.314Z" fill="var(--no-results-cat-dot)"/>
                     <path d="M100.32 207.814H108.32C108.32 205.814 109.22 201.814 112.82 201.814C116.42 201.814 116.987 205.814 116.82 207.814H120.32" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round"/>
                     <path d="M103.5 144L111 174" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
                     <path d="M94.6205 63.4141L104.88 92.586" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
@@ -75,7 +90,7 @@ class NoSearchResultsSvg extends LitElement {
                 </g>
                 <defs>
                     <linearGradient id="paint0_linear_20364_776232" x1="81.2472" y1="13.9656" x2="90.6148" y2="11.2115" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="#E5E5FA"/>
+                        <stop offset="0" stop-color="#E5E5FA"/>
                         <stop offset="0.5" stop-color="#EAEAF7"/>
                         <stop offset="1" stop-color="#F6EEF5"/>
                     </linearGradient>
