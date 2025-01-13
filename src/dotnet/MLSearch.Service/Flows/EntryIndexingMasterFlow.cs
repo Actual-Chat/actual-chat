@@ -14,7 +14,7 @@ public partial class EntryIndexingMasterFlow
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public long MaxVersion { get; private set; }
 
-    protected override int CurrentFlowSetVersion => 4;
+    protected override int CurrentFlowSetVersion => 5;
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
     {
         var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
