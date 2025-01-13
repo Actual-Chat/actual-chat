@@ -76,14 +76,15 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
         if (mustEnd)
             transitionKind = IndexingFlowTransitionKind.Suspend;
 
-        Event.MarkHandled();
-        return transitionKind switch {
+        var transition = transitionKind switch {
             IndexingFlowTransitionKind.Resume => QueueResume(nameof(OnIndex), "Continue processing when possible"),
             IndexingFlowTransitionKind.Watchdog => WaitForWatchdog(),
             IndexingFlowTransitionKind.Recheck => WaitForRecheck(),
             IndexingFlowTransitionKind.Suspend => WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt),
             _ => throw new ArgumentOutOfRangeException(nameof(transitionKind), transitionKind, null),
         };
+        Event.MarkHandled();
+        return transition;
     }
 
     private bool NeedsReindex()
