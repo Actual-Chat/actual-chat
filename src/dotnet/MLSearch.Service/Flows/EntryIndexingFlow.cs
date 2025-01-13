@@ -11,7 +11,7 @@ namespace ActualChat.MLSearch.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
 {
-    protected override int CurrentFlowSetVersion => 2;
+    protected override int CurrentFlowSetVersion => 3;
 
     [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
@@ -30,11 +30,13 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
         cursor ??= new (new ChatEntryId(new ChatId(Id.Arguments), ChatEntryKind.Text, 0, AssumeValid.Option), 0);
-        var batch = await ChatsBackend.ListChangedEntries(cursor.LastUpdatedId.ChatId,
-                cursor.LastUpdatedId.LocalId,
-                cursor.LastUpdatedVersion,
-                maxVersion,
-                BatchSize,
+        var batch = await ChatsBackend.ListChangedEntries(new ChangedEntriesQuery {
+                    ChatId = cursor.LastUpdatedId.ChatId,
+                    LastLocalId = cursor.LastUpdatedId.LocalId,
+                    MinVersion = cursor.LastUpdatedVersion,
+                    MaxVersion = maxVersion,
+                    Limit = BatchSize,
+                },
                 cancellationToken)
             .ConfigureAwait(false);
         Log.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);

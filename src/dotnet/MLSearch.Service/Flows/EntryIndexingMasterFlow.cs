@@ -8,10 +8,13 @@ namespace ActualChat.MLSearch.Flows;
 public partial class EntryIndexingMasterFlow
     : IndexingMasterFlowBase<EntryIndexingFlow, Chat.Chat, ChatId>, IMasterFlow
 {
+    [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
+
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public long MaxVersion { get; private set; }
 
-    protected override int CurrentFlowSetVersion => 2;
+    protected override int CurrentFlowSetVersion => 4;
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
     {
         var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
@@ -25,9 +28,8 @@ public partial class EntryIndexingMasterFlow
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(IndexingFlowCursor<ChatId>? cursor, CancellationToken cancellationToken)
     {
-        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
         cursor ??= new (ChatId.None, 0);
-        return await chatsBackend.ListChanged(new ChangedChatsQuery {
+        return await ChatsBackend.ListChanged(new ChangedChatsQuery {
                     MinVersion = cursor.LastUpdatedVersion,
                     MaxVersion = MaxVersion,
                     LastId = cursor.LastUpdatedId,

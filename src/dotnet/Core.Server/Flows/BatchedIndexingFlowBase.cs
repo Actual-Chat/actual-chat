@@ -18,10 +18,10 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
         IndexingFlowCursor<TId>? cursor,
         CancellationToken cancellationToken)
     {
-        var batches = ListBatches(cancellationToken).ConfigureAwait(false);
+        var batches = ListBatches(cursor, cancellationToken).ConfigureAwait(false);
         var batchCount = 0;
         var totalCount = 0;
-        await foreach (var batch in batches) {
+        await foreach (var (batch, newCursor) in batches) {
             await ProcessBatch(batch, cancellationToken).ConfigureAwait(false);
             var first = batch[0];
             var last = batch[^1];
@@ -33,7 +33,7 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
                 first.Version,
                 last.Id,
                 last.Version);
-            cursor = new (last.Id, last.Version);
+            cursor = newCursor;
             batchCount++;
             totalCount += batch.Count;
         }
@@ -51,11 +51,13 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
 
     // Private methods
 
-    private async IAsyncEnumerable<IReadOnlyList<TItem>> ListBatches([EnumeratorCancellation] CancellationToken cancellationToken)
+    private async IAsyncEnumerable<(IReadOnlyList<TItem> Batch, IndexingFlowCursor<TId> NewCursor)> ListBatches(
+        IndexingFlowCursor<TId>? cursor,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var totalCount = 0;
         do {
-            var batch = await GetBatch(Cursor, cancellationToken).ConfigureAwait(false);
+            var batch = await GetBatch(cursor, cancellationToken).ConfigureAwait(false);
             if (batch.Count > BatchSize)
                 Log.LogWarning("`{Id}`.ListBatches: GetBatch returned batch with size({Size}) > BatchSize({BatchSize})",
                     Id,
@@ -65,7 +67,9 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
             if (batch.Count == 0)
                 yield break;
 
-            yield return batch;
+            var last = batch[^1];
+            cursor = new (last.Id, last.Version);
+            yield return (batch, cursor);
 
             if (batch.Count < BatchSize || totalCount >= Quota)
                 yield break;

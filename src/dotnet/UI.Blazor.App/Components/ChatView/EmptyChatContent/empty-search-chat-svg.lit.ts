@@ -6,8 +6,20 @@ class EmptySearchChatSvg extends LitElement {
     protected render(): unknown {
         return html`
             <svg width="166" height="222" viewBox="0 0 166 222" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M82.5 222C128.06 222 165 185.06 165 139.5C165 93.94 128.06 57 82.5 57C36.94 57 0 93.94 0 139.5C0 185.06 36.94 222 82.5 222Z" fill="var(--search-cat-background)"/>
-                <path d="M47.5 40L51.5 50.5L47.5 57.5V71.5L56 88.5L47.5 97L41.5 106.5L33.5 111L29.5 117.5C28 118.167 25.8 121 29 127C32.2 133 37.3333 132.833 39.5 132L45 146L60 169.5L70.5 180L80.5 184L92 182.5L102 176L111 163L120.5 141.5L124.5 127V116.5L127.5 114.5L137 105L141 95.5L141.5 93V64.5L145 52.5V42L137 32.5L127.5 31L118 35L113 22L102 23.5L95.5 29.5L92 35H77L70.5 26.5L62.5 23.5H54.5L50.5 28L47.5 40Z" fill="var(--search-cat-background)"/>
+                <path d="M82.5 222C128.06 222 165 185.06 165 139.5C165 93.94 128.06 57 82.5 57C36.94 57 0 93.94 0 139.5C0 185.06 36.94 222 82.5 222Z" fill="url(#search-cat-background-gradient)"/>
+                <defs>
+                    <linearGradient id="search-cat-background-gradient" x1="115.854" y1="-5.49172" x2="73.2856" y2="158.475" gradientUnits="userSpaceOnUse">
+                        <stop offset="0" stop-color="var(--search-cat-background-gradient-1)"/>
+                        <stop offset="1" stop-color="var(--search-cat-background-gradient-2)"/>
+                    </linearGradient>
+                </defs>
+                <path d="M47.5 40L51.5 50.5L47.5 57.5V71.5L56 88.5L47.5 97L41.5 106.5L33.5 111L29.5 117.5C28 118.167 25.8 121 29 127C32.2 133 37.3333 132.833 39.5 132L45 146L60 169.5L70.5 180L80.5 184L92 182.5L102 176L111 163L120.5 141.5L124.5 127V116.5L127.5 114.5L137 105L141 95.5L141.5 93V64.5L145 52.5V42L137 32.5L127.5 31L118 35L113 22L102 23.5L95.5 29.5L92 35H77L70.5 26.5L62.5 23.5H54.5L50.5 28L47.5 40Z" fill="url(#search-cat-background-gradient-1)"/>
+                <defs>
+                    <linearGradient id="search-cat-background-gradient-1" x1="131" y1="30.5" x2="48.5" y2="184" gradientUnits="userSpaceOnUse">
+                        <stop offset="0" stop-color="var(--search-cat-background-gradient-4)"/>
+                        <stop offset="1" stop-color="var(--search-cat-background-gradient-3)"/>
+                    </linearGradient>
+                </defs>
                 <ellipse cx="62.5133" cy="127.317" rx="11.0582" ry="12.2539" transform="rotate(50.7287 62.5133 127.317)" fill="var(--search-cat-paws)"/>
                 <path d="M107 89C113.466 93.2447 118.552 98.9626 121.593 105.57C124 111.5 126.374 118.3 123.5 127.5" stroke="var(--search-cat-border)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M99 36.8696L109.484 45C107.387 35.9128 110.323 25.8696 112 23C112 23 100.258 23.4783 99 36.8696Z" fill="var(--search-cat-border)"/>
@@ -53,7 +65,7 @@ class EmptySearchChatSvg extends LitElement {
                 <path d="M84 212C96.1493 212 106 208.866 106 205C106 201.134 96.1493 198 84 198C71.8507 198 62 201.134 62 205C62 208.866 71.8507 212 84 212Z" fill="var(--search-cat-shadow)"/>
                 <defs>
                     <linearGradient id="paint0_linear_20263_769562" x1="77.0667" y1="19" x2="86.4343" y2="16.2458" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="#E5E5FA"/>
+                        <stop offset="0" stop-color="#E5E5FA"/>
                         <stop offset="0.5" stop-color="#EAEAF7"/>
                         <stop offset="1" stop-color="#F6EEF5"/>
                     </linearGradient>

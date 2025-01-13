@@ -16,7 +16,7 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
     protected override TimeSpan TimerRescheduleThreshold => TimeSpan.FromSeconds(0.5);
 
     [IgnoreDataMember, MemoryPackIgnore]
-    private BatchedIndexingFlowTestContext<SimpleItem> Context => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem>>();
+    private BatchedIndexingFlowTestContext<SimpleItem, ChatId> Context => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
 
     protected override async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
@@ -31,7 +31,7 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
         CancellationToken cancellationToken)
     {
         await Task.Delay(1, cancellationToken);
-        return Context.Next(Id.Arguments);
+        return Context.Next(cursor, Id.Arguments);
     }
 
     protected override async Task ProcessBatch(IReadOnlyList<SimpleItem> batch, CancellationToken cancellationToken)

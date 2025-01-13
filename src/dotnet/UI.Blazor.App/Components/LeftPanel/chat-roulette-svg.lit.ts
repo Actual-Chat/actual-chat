@@ -5,7 +5,7 @@ import {css, html, LitElement} from "lit";
 class ChatRouletteSvg extends LitElement {
     protected render(): unknown {
         return html`
-            <svg width="382" height="143" viewBox="0 0 382 143" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="382" height="143" viewBox="0 0 382 143" fill="none" style="background: linear-gradient(96deg, var(--cr-header-gradient-1) 10.17%, var(--cr-header-gradient-2) 93.33%);" xmlns="http://www.w3.org/2000/svg">
                 <path d="M381.5 68.5L7.5 142.5L0 122V105L381.5 37.5V68.5Z" fill="#A394DD"/>
                 <path d="M293.953 79L252 66V30L293.953 22L332 34.5V71.5L293.953 79Z" fill="#C7B9FF"/>
                 <path d="M293.953 79L252 66V30M293.953 79L332 71.5V34.5M293.953 79V42.5M332 34.5L293.953 22L252 30M332 34.5L293.953 42.5M252 30L293.953 42.5" stroke="#695AA7" stroke-width="3" stroke-linejoin="round"/>

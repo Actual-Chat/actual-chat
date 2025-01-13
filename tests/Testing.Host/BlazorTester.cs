@@ -4,6 +4,7 @@ using ActualChat.Chat;
 using ActualChat.Notification;
 using ActualChat.Search;
 using ActualChat.Users;
+using ActualLab.Versioning;
 using Bunit;
 
 namespace ActualChat.Testing.Host;
@@ -37,6 +38,8 @@ public class BlazorTester : TestContext, IWebTester
     public Session Session { get; }
     [field: AllowNull, MaybeNull]
     public UrlMapper UrlMapper => field ??= AppServices.UrlMapper();
+    [field: AllowNull, MaybeNull]
+    public VersionGenerator<long> VersionGenerator => field ??= AppServices.VersionGenerator<long>();
     public ITestOutputHelper Out { get; }
 
     public BlazorTester(AppHost appHost, ITestOutputHelper @out)
