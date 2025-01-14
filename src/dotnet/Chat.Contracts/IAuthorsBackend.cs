@@ -14,11 +14,8 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
     // Not a [ComputeMethod]!
-    Task<ApiArray<AuthorFull>> ListChangedPlaceAuthors(
-        long minVersion,
-        long maxVersion,
-        AuthorId lastId,
-        int limit,
+    Task<ApiArray<AuthorFull>> ListChanged(
+        ChangedAuthorsQuery query,
         CancellationToken cancellationToken);
 
     // Commands

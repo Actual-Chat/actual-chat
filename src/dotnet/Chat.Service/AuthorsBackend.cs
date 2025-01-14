@@ -118,11 +118,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<AuthorFull>> ListChangedPlaceAuthors(
-        long minVersion,
-        long maxVersion,
-        AuthorId lastId,
-        int limit,
+    public async Task<ApiArray<AuthorFull>> ListChanged(
+        ChangedAuthorsQuery query,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -130,18 +127,18 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
 #pragma warning disable CA1309 // Use ordinal string comparison
 
-        var authorsQuery = lastId.IsNone
-            ? dbContext.Authors.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
-            : dbContext.Authors.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
-                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
+        var authorsQuery = query.LastId.IsNone
+            ? dbContext.Authors.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
+            : dbContext.Authors.Where(x => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
+                || (x.Version==query.MinVersion && string.Compare(x.Id, query.LastId.Value) > 0));
 
 #pragma warning restore CA1309 // Use ordinal string comparison
 
         var dbAuthors = await authorsQuery
-            .Where(x => x.IsPlaceAuthor)
+            .WhereIf(x => x.IsPlaceAuthor == query.IsPlaceAuthor, query.IsPlaceAuthor != null)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
-            .Take(limit)
+            .Take(query.Limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbAuthors.Select(x => x.ToModel()).ToApiArray();
