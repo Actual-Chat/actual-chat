@@ -13,12 +13,14 @@ import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
-import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
+import { OpusEncoderProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { AudioInitializer } from '../../Services/audio-initializer';
 import { AudioDiagnosticsState } from './audio-recorder';
 import { RecorderState, RecorderStateChanged, RecorderStateServer } from './opus-media-recorder-contracts';
 import { Log } from 'logging';
 import { Interactive } from 'interactive';
+import { DeviceInfo } from 'device-info';
+import { AudioVadProcessorOptions } from './worklets/audio-vad-worklet-processor';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -121,7 +123,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 return {
                     audio: {
                         channelCount: 1,
-                        sampleRate: AR.SAMPLE_RATE,
+                        sampleRate: DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate
                         sampleSize: 32,
                         echoCancellation: true,
                         autoGainControl: !(BrowserInfo.appKind === 'Android' || isAndroid), // Android auto gain delays recording and produces zeroes instead of signal
@@ -275,7 +277,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     channelCountMode: 'explicit',
                     processorOptions: {
                         timeSlice: 20, // hard-coded 20ms at the codec level
-                    } as ProcessorOptions,
+                        sampleRate: context.sampleRate,
+                    } as OpusEncoderProcessorOptions,
                 };
                 this.encoderWorkletInstance = new AudioWorkletNode(
                     context,
@@ -299,6 +302,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     channelCount: 1,
                     channelInterpretation: 'speakers',
                     channelCountMode: 'explicit',
+                    processorOptions: {
+                        sampleRate: context.sampleRate,
+                    } as AudioVadProcessorOptions,
                 };
                 this.vadWorkletInstance = new AudioWorkletNode(
                     context,

@@ -190,7 +190,8 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
         if (monoPcm.length !== AR.SAMPLES_PER_WINDOW_30)
             throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_30} sample audio windows only.`);
 
-        const activity = this.baseVad.detect(monoPcm.buffer);
+        // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
+        const activity = this.baseVad.detect(new Uint8Array(monoPcm.buffer, 0, monoPcm.length * 4));
         const now = Date.now();
         if (activity > 0 && (this.sampleCount / AR.SAMPLES_PER_MS < AV.SKIP_FIRST_RECORDING_MS || now - this.lastSkippedAt < 5)) {
             this.lastSkippedAt = now;
@@ -260,7 +261,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         }
 
         if (monoPcm.length !== AR.SAMPLES_PER_WINDOW_32) {
-            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32} sample audio windows only.`);
+            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32} sample audio windows only, but found ${monoPcm.length}.`);
         }
 
         buffer.set(context);

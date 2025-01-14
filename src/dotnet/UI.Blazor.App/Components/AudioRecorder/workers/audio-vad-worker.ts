@@ -17,6 +17,7 @@ import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { RecorderStateServer } from "../opus-media-recorder-contracts";
 import OnnxModel from './vad.onnx';
 import { Log } from 'logging';
+import { ResamplerLoader } from './resampler-loader';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('AudioVadWorker');
 
@@ -26,6 +27,7 @@ const queue = new Denque<ArrayBuffer>();
 let vadWorklet: AudioVadWorklet & Disposable = null;
 let encoderWorker: OpusEncoderWorker & Disposable = null;
 let isActive = false;
+let isProcessing = false;
 let audioPowerEma = new RunningEMA(0, 10);
 let lastVadEventProcessedAt = 0;
 
@@ -57,7 +59,7 @@ class VadLoader {
         if (this.whenWebRtcVadReady === null) {
             this.useNeuralVad = useNeuralVad;
             this.whenWebRtcVadReady = (async () => {
-                VadLoader.webRtcVadModule ??= await retry(3, () => webRtcVadModule(getEmscriptenLoaderOptions()));
+                VadLoader.webRtcVadModule ??= await retry(3, () => webRtcVadModule(getWebRTCVadEmscriptenLoaderOptions()));
                 const baseVad = new VadLoader.webRtcVadModule.WebRtcVad(AR.SAMPLE_RATE, 0);
                 const webRtcVad = new WebRtcVoiceActivityDetector(baseVad);
                 await webRtcVad.init();
@@ -104,6 +106,10 @@ class VadLoader {
 }
 const vads = new VadLoader();
 delayAsync(2000).then(_ => VadLoader.cancelNeuralVadLoadDelay());
+
+const resamplerLoader = new ResamplerLoader();
+// if (DeviceInfo.isFirefox)
+//     void resamplerLoader.load();
 
 const serverImpl: AudioVadWorker = {
     create: async (artifactVersions: Map<string, string>, canUseNNVad: boolean, _timeout?: RpcTimeout): Promise<void> => {
@@ -178,25 +184,34 @@ const serverImpl: AudioVadWorker = {
 const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);
 
 async function processQueue(): Promise<void> {
-    const vad = vads.vad;
-    const windowSizeSamples = vads.windowSizeMs * AR.SAMPLES_PER_MS;
-    const windowSizeBytes = windowSizeSamples * 4;
-    try {
-        while (!queue.isEmpty()) {
-            const buffer = queue.shift();
-            let vadEvent: VoiceActivityChange | number;
+    if (isProcessing)
+        return;
 
-            if (buffer.byteLength === windowSizeBytes) {
-                const monoPcm = new Float32Array(buffer, 0, windowSizeSamples);
-                vadEvent = await vad.appendChunk(monoPcm);
+    const vad = vads.vad;
+    const expectedWindowSizeSamples = vads.windowSizeMs * AR.SAMPLES_PER_MS;
+    const expectedWindowSizeBytes = expectedWindowSizeSamples * 4;
+    try {
+        isProcessing = true;
+        while (!queue.isEmpty()) {
+            const samplesBuffer = queue.shift();
+            let vadEvent: VoiceActivityChange | number = 0;
+
+            if (samplesBuffer.byteLength === expectedWindowSizeBytes) {
+                const samples = new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples);
+                vadEvent = await vad.appendChunk(samples);
             }
             else {
-                warnLog?.log(`processQueue: unexpected buffer length:`, buffer.byteLength);
-                vadEvent = 0;
+                // Needs resampling
+                const expectedSampleRate = AR.SAMPLE_RATE;
+                const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / vads.windowSizeMs * 1000 / 100) * 100;
+                const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
+                const samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));
+                if (samples.length != 0)
+                    vadEvent = await vad.appendChunk(samples);
             }
             lastVadEventProcessedAt = Date.now();
 
-            void vadWorklet.releaseBuffer(buffer, rpcNoWait);
+            void vadWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
                 audioPowerEma.appendSample(vadEvent);
@@ -216,11 +231,14 @@ async function processQueue(): Promise<void> {
     catch (error) {
         errorLog?.log(`processQueue: unhandled error:`, error);
     }
+    finally {
+        isProcessing = false;
+    }
 }
 
 // Helpers
 
-function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
+function getWebRTCVadEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
             const codecWasmPath = Versioning.mapPath(WebRtcVadWasm);

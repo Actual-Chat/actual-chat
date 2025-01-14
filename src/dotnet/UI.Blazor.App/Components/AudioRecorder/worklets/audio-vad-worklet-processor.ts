@@ -3,17 +3,21 @@ import { Disposable } from 'disposable';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
-import { AudioRingBuffer } from './audio-ring-buffer';
+import { AudioRingBuffer } from '../audio-ring-buffer';
 import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { AudioDiagnosticsState } from "../audio-recorder";
 import { Log } from 'logging';
-import { approximateGain } from 'math';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
 
+export interface AudioVadProcessorOptions {
+    sampleRate: number;
+}
+
 export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements AudioVadWorklet {
     private readonly buffer: AudioRingBuffer;
+    private readonly sampleRate: number;
 
     private state: 'running' | 'ready' | 'inactive' | 'terminated' = 'inactive';
     private samplesPerWindow: number = AR.SAMPLES_PER_WINDOW_32;
@@ -26,6 +30,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
+        const { sampleRate } = options.processorOptions as AudioVadProcessorOptions;
+        this.sampleRate = sampleRate;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
@@ -38,9 +44,9 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     }
 
     public async start(windowSizeMs: 30 | 32): Promise<void> {
-        this.samplesPerWindow = windowSizeMs == 30
-           ? AR.SAMPLES_PER_WINDOW_30
-           : AR.SAMPLES_PER_WINDOW_32;
+        this.samplesPerWindow = Math.ceil(windowSizeMs == 30
+           ? 30 * this.sampleRate / 1000
+           : 32 * this.sampleRate / 1000);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
         this.state = 'running';
         this.frameCount = 0;

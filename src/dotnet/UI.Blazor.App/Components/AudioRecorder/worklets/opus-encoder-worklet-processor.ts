@@ -3,7 +3,7 @@ import { Disposable } from 'disposable';
 import { ObjectPool } from 'object-pool';
 import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
-import { AudioRingBuffer } from './audio-ring-buffer';
+import { AudioRingBuffer } from '../audio-ring-buffer';
 import { AudioDiagnosticsState } from "../audio-recorder";
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
@@ -13,8 +13,9 @@ import { approximateGain } from 'math';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
-export interface ProcessorOptions {
+export interface OpusEncoderProcessorOptions {
     timeSlice: number;
+    sampleRate: number;
 }
 
 export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implements OpusEncoderWorklet {
@@ -34,14 +35,14 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
         debugLog?.log('ctor');
-        const { timeSlice } = options.processorOptions as ProcessorOptions;
+        const { timeSlice, sampleRate } = options.processorOptions as OpusEncoderProcessorOptions;
 
         if (!OpusEncoderWorkletProcessor.allowedTimeSlice.some(val => val === timeSlice)) {
             const allowedTimeSliceJson = JSON.stringify(OpusEncoderWorkletProcessor.allowedTimeSlice);
             throw new Error(`OpusEncoderWorkletProcessor supports only ${ allowedTimeSliceJson } options as timeSlice argument.`);
         }
 
-        this.samplesPerWindow = timeSlice * AR.SAMPLES_PER_MS;
+        this.samplesPerWindow = Math.ceil(timeSlice * sampleRate / 1000);
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
         this.stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, this.port, this);

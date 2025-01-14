@@ -18,6 +18,7 @@ import { AudioContextDestinationFallback } from './audio-context-destination-fal
 import { Log } from 'logging';
 import { AudioInitializer, BackgroundState } from './audio-initializer';
 import { Disposable, Disposables } from 'disposable';
+import { DeviceInfo } from 'device-info';
 
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -180,7 +181,9 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         // It might be in suspended state in this case.
         const context: OverridenAudioContext = new AudioContext({
             latencyHint: 'balanced',
-            sampleRate: this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE,
+            sampleRate: this.purpose === 'playback'
+                ? AP.SAMPLE_RATE
+                : DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate for microphone stream, we will use default
         });
         if (shouldResume)
             await this.resume(context, true);

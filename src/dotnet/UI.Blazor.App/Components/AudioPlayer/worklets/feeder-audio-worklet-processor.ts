@@ -13,7 +13,7 @@ import { Disposable } from 'disposable';
 import { ResolvedPromise } from 'promises';
 import { Log } from 'logging';
 import { BufferHandler } from '../workers/opus-decoder-worker-contract';
-import { AudioRingBuffer } from '../../AudioRecorder/worklets/audio-ring-buffer';
+import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
 
 const { logScope, debugLog, warnLog } = Log.get('FeederProcessor');
 

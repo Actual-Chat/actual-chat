@@ -13,9 +13,9 @@ export const DeviceInfo = {
     isWebKit: userAgentLowerCase.indexOf('webkit') >= 0 && !isChromium,
     isFirefox: userAgentLowerCase.indexOf('firefox') >= 0,
     isEdge: userAgentLowerCase.indexOf('edg/') >= 0,
-    isTouchCapable: (('ontouchstart' in window)
+    isTouchCapable: (typeof window !== 'undefined' && (('ontouchstart' in window)
         || (navigator['MaxTouchPoints'] as number > 0)
-        || (navigator['msMaxTouchPoints'] as number > 0)),
+        || (navigator['msMaxTouchPoints'] as number > 0))),
 
     init: function (): void {
         const body = document?.body;
