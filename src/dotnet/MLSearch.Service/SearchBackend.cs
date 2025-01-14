@@ -407,7 +407,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
     }
 
-    private Task<TFlow?> ResumeIndexingFlow<TFlow>(string arguments, string? tag = null, CancellationToken cancellationToken = default) where TFlow : Flow
+    private Task<TFlow?> ResumeIndexingFlow<TFlow>(
+        string arguments,
+        string? tag = null,
+        CancellationToken cancellationToken = default) where TFlow : Flow
         => Flows.GetAndResume<TFlow>(arguments,
             Settings.ChangedEntityIndexingDelay,
             tag,
