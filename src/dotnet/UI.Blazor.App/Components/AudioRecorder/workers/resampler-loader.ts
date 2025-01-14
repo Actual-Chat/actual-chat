@@ -2,12 +2,49 @@ import resamplerModuleFactory, { ResamplerModule, Resampler } from '@actual-chat
 import ResamplerWasm from '@actual-chat/resampler/resampler.wasm';
 import { Versioning } from 'versioning';
 import { retry } from 'promises';
+import { AudioRingBuffer } from '../audio-ring-buffer';
+
+export class ResamplerWrapper implements Resampler {
+    private ringBuffer: AudioRingBuffer = new AudioRingBuffer(8192, 1);
+    constructor(private resampler: Resampler)
+    { }
+
+    resample(buffer: BufferSource, output?: Float32Array): Float32Array {
+        const ringBuffer = this.ringBuffer;
+        const expectedSamples = Math.floor(this.outSampleRate * buffer.byteLength / 4 / this.inSampleRate);
+        const result = this.resampler.resample(buffer);
+
+        this.ringBuffer.push([result]);
+        if (this.ringBuffer.samplesAvailable >= expectedSamples) {
+            if (output && output.length === expectedSamples) {
+                ringBuffer.pull([output]);
+                return output;
+            }
+            const resampled = new Float32Array(expectedSamples);
+            ringBuffer.pull([resampled]);
+            return resampled;
+        }
+        return new Float32Array(0);
+    }
+    reset(): void {
+        this.resampler.reset();
+    }
+    delete(): void {
+        this.resampler.delete();
+    }
+
+    get inSampleRate(): number {
+        return this.resampler.inSampleRate;
+    }
+
+    get outSampleRate(): number {
+        return this.resampler.outSampleRate;
+    }
+}
 
 export class ResamplerLoader {
     private static resamplerModule: ResamplerModule = null;
-    private resampler: Resampler = null;
-    private fromSr: number = 0;
-    private toSr: number = 0;
+    private resampler: ResamplerWrapper = null;
 
     public whenResamplerReady: Promise<void> = null;
     public load(): Promise<void> {
@@ -23,12 +60,12 @@ export class ResamplerLoader {
         return this.whenResamplerReady;
     }
 
-    public async getResampler(fromSampleRate: number, toSampleRate: number): Promise<Resampler> {
+    public async getResampler(fromSampleRate: number, toSampleRate: number): Promise<ResamplerWrapper> {
         if (!ResamplerLoader.resamplerModule) {
             await this.load();
         }
 
-        if (this.resampler && this.fromSr === fromSampleRate && this.toSr === toSampleRate)
+        if (this.resampler && this.resampler.inSampleRate === fromSampleRate && this.resampler.outSampleRate === toSampleRate)
             return this.resampler;
 
         if (this.resampler)
@@ -36,11 +73,10 @@ export class ResamplerLoader {
         return this.createResampler(fromSampleRate, toSampleRate);
     }
 
-    private createResampler(fromSampleRate: number, toSampleRate: number): Resampler {
+    private createResampler(fromSampleRate: number, toSampleRate: number): ResamplerWrapper {
         // @ts-ignore
-        this.resampler = new ResamplerLoader.resamplerModule.Resampler(fromSampleRate, toSampleRate);
-        this.fromSr = fromSampleRate;
-        this.toSr = toSampleRate;
+        const resampler = new ResamplerLoader.resamplerModule.Resampler(fromSampleRate, toSampleRate);
+        this.resampler = new ResamplerWrapper(resampler);
         return this.resampler;
     }
 }

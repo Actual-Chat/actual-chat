@@ -275,15 +275,10 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 const expectedSampleRate = AR.SAMPLE_RATE;
                 const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / 20 * 1000 / 100) * 100;
                 const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
-                const monoPcm = resampler.resample(samplesBuffer);
-                // Pad or truncate to expected window size
-                samples = monoPcm;
-                if (monoPcm.length < expectedWindowSizeSamples) {
-                    samples = new Float32Array(expectedWindowSizeSamples);
-                    samples.set(monoPcm, expectedWindowSizeSamples - monoPcm.length);
-                }
-                else if (monoPcm.length > expectedWindowSizeSamples) {
-                    samples = monoPcm.slice(0, expectedWindowSizeSamples);
+                samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));
+                if (samples.length === 0) {
+                    // resampler needs more data
+                    continue;
                 }
             }
 
@@ -302,7 +297,8 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
             }
             else {
                 // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
-                const frameView = encoder.encode(samples.buffer);
+                // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
+                const frameView = encoder.encode(new Uint8Array(samples.buffer, 0, samples.length * 4));
                 audioStream?.addFrame(frameView);
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             }

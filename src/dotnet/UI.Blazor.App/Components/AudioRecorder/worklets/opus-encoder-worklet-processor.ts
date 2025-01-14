@@ -3,7 +3,7 @@ import { Disposable } from 'disposable';
 import { ObjectPool } from 'object-pool';
 import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
-import { AudioRingBuffer } from './audio-ring-buffer';
+import { AudioRingBuffer } from '../audio-ring-buffer';
 import { AudioDiagnosticsState } from "../audio-recorder";
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';

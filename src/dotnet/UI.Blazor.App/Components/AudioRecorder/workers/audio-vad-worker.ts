@@ -193,33 +193,25 @@ async function processQueue(): Promise<void> {
     try {
         isProcessing = true;
         while (!queue.isEmpty()) {
-            const buffer = queue.shift();
-            let vadEvent: VoiceActivityChange | number;
+            const samplesBuffer = queue.shift();
+            let vadEvent: VoiceActivityChange | number = 0;
 
-            if (buffer.byteLength === expectedWindowSizeBytes) {
-                const monoPcm = new Float32Array(buffer, 0, expectedWindowSizeSamples);
-                vadEvent = await vad.appendChunk(monoPcm);
+            if (samplesBuffer.byteLength === expectedWindowSizeBytes) {
+                const samples = new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples);
+                vadEvent = await vad.appendChunk(samples);
             }
             else {
                 // Needs resampling
                 const expectedSampleRate = AR.SAMPLE_RATE;
-                const actualSampleRate = Math.floor(buffer.byteLength / 4 / vads.windowSizeMs * 1000 / 100) * 100;
+                const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / vads.windowSizeMs * 1000 / 100) * 100;
                 const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
-                const monoPcm = resampler.resample(buffer);
-                // Pad or truncate to expected window size
-                let chunk = monoPcm;
-                if (monoPcm.length < expectedWindowSizeSamples) {
-                    chunk = new Float32Array(expectedWindowSizeSamples);
-                    chunk.set(monoPcm, expectedWindowSizeSamples - monoPcm.length);
-                }
-                else if (monoPcm.length > expectedWindowSizeSamples) {
-                    chunk = monoPcm.slice(0, expectedWindowSizeSamples);
-                }
-                vadEvent = await vad.appendChunk(chunk);
+                const samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));
+                if (samples.length != 0)
+                    vadEvent = await vad.appendChunk(samples);
             }
             lastVadEventProcessedAt = Date.now();
 
-            void vadWorklet.releaseBuffer(buffer, rpcNoWait);
+            void vadWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
                 audioPowerEma.appendSample(vadEvent);

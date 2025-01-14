@@ -3,12 +3,11 @@ import { Disposable } from 'disposable';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
-import { AudioRingBuffer } from './audio-ring-buffer';
+import { AudioRingBuffer } from '../audio-ring-buffer';
 import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { AudioDiagnosticsState } from "../audio-recorder";
 import { Log } from 'logging';
-import { approximateGain } from 'math';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
 
