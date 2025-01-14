@@ -72,14 +72,14 @@ public static class FlowsExt
             log.LogInformation("`{Id}`.GetAndResume: unable to resume because the flow was not found", flowId);
             return null;
         }
-        var maxLastRunAt = clocks.SystemClock.Now + maxLastRunIn + (delay ?? TimeSpan.Zero);
+        var now = clocks.SystemClock.Now;
+        var maxLastRunAt = now + maxLastRunIn + (delay ?? TimeSpan.Zero);
         var flowResumeEvent = new FlowResumeEvent(flowId,
             false,
             tag,
             maxLastRunAt,
-            clocks.SystemClock.Now + delay);
-        await queues.Enqueue(flowResumeEvent, cancellationToken)
-            .ConfigureAwait(false);
+            now + delay);
+        await queues.Enqueue(flowResumeEvent, cancellationToken).ConfigureAwait(false);
         return flow;
     }
 

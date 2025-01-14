@@ -81,11 +81,11 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
 
     private Task<Place[]> CreatePlaces(int count, params IReadOnlyCollection<AccountFull> usersToInvite)
         => Enumerable.Range(1, count)
-            .Select(i => CreatePlace($"{UniquePart} test place {i}", usersToInvite))
+            .Select(i => CreatePlace($"test place {i}", usersToInvite))
             .Collect(Environment.ProcessorCount);
 
     private Task<Place> CreatePlace(string title, params IReadOnlyCollection<AccountFull> usersToInvite)
-        => Tester.CreatePlace(false, $"{title} {UniquePart}", usersToInvite);
+        => Tester.CreatePlace(false, $"{UniquePart} {title}", usersToInvite);
 
     private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null, int expected = 50)
         => TestsExt.When(async () => {

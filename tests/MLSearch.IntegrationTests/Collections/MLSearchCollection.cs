@@ -19,7 +19,7 @@ public class AppHostFixture(IMessageSink messageSink)
                 .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"))
                 .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"))
                 .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingDelay)}", "00:00:03"))
-                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingRecheckInterval)}", "00:00:04"));
+                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingRecheckInterval)}", "00:00:05"));
         },
         ConfigureServices = (__, services) => {
             _ = services.AddSingleton<OpenSearchInit>()
