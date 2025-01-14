@@ -12,7 +12,7 @@ namespace ActualChat.MLSearch.Flows;
 public partial class GroupContactIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, ChatId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 1;
-    protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingRecheckInterval;
+    protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
     [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
     [field: AllowNull, MaybeNull]
@@ -23,7 +23,7 @@ public partial class GroupContactIndexingFlow : BatchedIndexingFlowBase<Chat.Cha
         CancellationToken cancellationToken)
     {
         var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
+        var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
         cursor ??= new (ChatId.None, 0);
         var batch = await chatsBackend.ListChanged(
                 new () {

@@ -28,7 +28,7 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
+        var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
         cursor ??= new (new ChatEntryId(new ChatId(Id.Arguments), ChatEntryKind.Text, 0, AssumeValid.Option), 0);
         var batch = await ChatsBackend.ListChangedEntries(new ChangedEntriesQuery {
                     ChatId = cursor.LastUpdatedId.ChatId,
