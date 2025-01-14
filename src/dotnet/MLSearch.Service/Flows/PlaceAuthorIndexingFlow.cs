@@ -15,7 +15,8 @@ namespace ActualChat.MLSearch.Flows;
 public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFull, AuthorId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 1;
-    protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingRecheckInterval;
+    protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
+
     [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
     [field: AllowNull, MaybeNull]
@@ -33,7 +34,7 @@ public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFul
         IndexingFlowCursor<AuthorId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
+        var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
         cursor ??= new (AuthorId.None, 0);
         var batch = await AuthorsBackend.ListChanged(
                 new ChangedAuthorsQuery {

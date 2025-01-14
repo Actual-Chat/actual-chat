@@ -12,7 +12,7 @@ namespace ActualChat.MLSearch.Flows;
 public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, PlaceId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 1;
-    protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingRecheckInterval;
+    protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
     [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
     [field: AllowNull, MaybeNull]
@@ -25,7 +25,7 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, P
         IndexingFlowCursor<PlaceId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
+        var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
         cursor ??= new (PlaceId.None, 0);
         var batch = await PlacesBackend.ListChanged(
                 cursor.LastUpdatedVersion,

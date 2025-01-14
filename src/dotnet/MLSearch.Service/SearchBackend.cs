@@ -109,11 +109,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             // NOTE: we don't have any other chance to process removed items
             => changeKind == ChangeKind.Remove
                 ? IndexedDocuments.UpdateUserContacts([], [old!.Id], cancellationToken)
-                : Flows.GetAndResume<AccountIndexingFlow>("",
-                    Settings.IndexingDelay,
-                    "Account changed",
-                    Settings.IndexingRecheckInterval,
-                    cancellationToken);
+                : ResumeIndexingFlow<AccountIndexingFlow>("", "Account changed", cancellationToken);
     }
 
     // [EventHandler]
@@ -128,15 +124,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         return UpdateIndexedUsers();
 
         Task UpdateIndexedUsers()
-        {
-            return eventCommand.Author.IsPlaceAuthor
-                ? Flows.GetAndResume<PlaceAuthorIndexingFlow>("",
-                    Settings.IndexingDelay,
-                    "Author changed",
-                    Settings.IndexingRecheckInterval,
-                    cancellationToken)
+            => eventCommand.Author.IsPlaceAuthor
+                ? ResumeIndexingFlow<PlaceAuthorIndexingFlow>("", "Author changed", cancellationToken)
                 : Task.CompletedTask;
-        }
     }
 
     // [EventHandler]
@@ -154,21 +144,16 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         await Flows.GetOrStart<EntryIndexingFlow>(eventCommand.Chat.Id, cancellationToken).ConfigureAwait(false);
         return;
 
-        async Task UpdateIndexedChatContacts()
+        Task UpdateIndexedChatContacts()
         {
             if (chat.Id.Kind == ChatKind.Peer || chat.Id.IsPlaceRootChat)
-                return;
+                return Task.CompletedTask;
 
             // NOTE: we don't have any other chance to process removed items
             if (changeKind == ChangeKind.Remove)
-                await IndexedDocuments.UpdateGroupContacts([], [chat.Id], cancellationToken).ConfigureAwait(false);
-            else
-                await Flows.GetAndResume<GroupContactIndexingFlow>("",
-                        Settings.IndexingDelay,
-                        "Chat changed",
-                        Settings.IndexingRecheckInterval,
-                        cancellationToken)
-                    .ConfigureAwait(false);
+                return IndexedDocuments.UpdateGroupContacts([], [chat.Id], cancellationToken);
+
+            return ResumeIndexingFlow<GroupContactIndexingFlow>("", "Chat changed", cancellationToken);
         }
     }
 
@@ -182,16 +167,17 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return;
 
         var (place, _, changeKind) = eventCommand;
-        // NOTE: we don't have any other chance to process removed items
-        if (changeKind == ChangeKind.Remove)
-            await IndexedDocuments.UpdatePlaceContacts([], [place.Id], cancellationToken).ConfigureAwait(false);
-        else
-            await Flows.GetAndResume<PlaceContactIndexingFlow>("",
-                    Settings.IndexingDelay,
-                    "Place changed",
-                    Settings.IndexingRecheckInterval,
-                    cancellationToken)
-                .ConfigureAwait(false);
+        await UpdatedIndexedPlaces();
+        return;
+
+        Task UpdatedIndexedPlaces()
+        {
+            // NOTE: we don't have any other chance to process removed items
+            if (changeKind == ChangeKind.Remove)
+                return IndexedDocuments.UpdatePlaceContacts([], [place.Id], cancellationToken);
+
+            return ResumeIndexingFlow<PlaceContactIndexingFlow>("", "Place changed", cancellationToken);
+        }
     }
 
     // [EventHandler]
@@ -200,12 +186,13 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (Invalidation.IsActive)
             return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
-        var chatId = eventCommand.Entry.ChatId;
-        return Flows.GetAndResume<EntryIndexingFlow>(chatId,
-            Settings.IndexingDelay,
-            "TextEntry changed",
-            Settings.IndexingRecheckInterval,
-            cancellationToken);
+        var entry = eventCommand.Entry;
+        return UpdateIndexedEntries();
+
+        Task UpdateIndexedEntries()
+            => entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text
+                ? Task.CompletedTask
+                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId, "TextEntry changed", cancellationToken);
     }
 
     // Private methods
@@ -419,4 +406,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return contactIds.Concat(peerContactIds).Select(x => x.ChatId).ToList();
         }
     }
+
+    private Task<TFlow?> ResumeIndexingFlow<TFlow>(string arguments, string? tag = null, CancellationToken cancellationToken = default) where TFlow : Flow
+        => Flows.GetAndResume<TFlow>(arguments,
+            Settings.ChangedEntityIndexingDelay,
+            tag,
+            Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelay, // to avoid too many flow executions
+            cancellationToken);
 }

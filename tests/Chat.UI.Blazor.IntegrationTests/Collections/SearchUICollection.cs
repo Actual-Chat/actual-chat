@@ -12,7 +12,7 @@ public class SearchAppHostFixture(IMessageSink messageSink) : ActualChat.Testing
         ConfigureHost = (_, cfg) => {
             cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"));
             cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"));
-            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingDelay)}", "00:00:03"));
-            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingRecheckInterval)}", "00:00:04"));
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ChangedEntityIndexingDelay)}", "00:00:03"));
+            cfg.AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingFlowResumeDelay)}", "00:00:02"));
         },
     });
