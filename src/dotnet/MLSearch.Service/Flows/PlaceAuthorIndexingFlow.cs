@@ -35,11 +35,13 @@ public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFul
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.IndexingDelay);
         cursor ??= new (AuthorId.None, 0);
-        var batch = await AuthorsBackend.ListChangedPlaceAuthors(
-                cursor.LastUpdatedVersion,
-                maxVersion,
-                cursor.LastUpdatedId,
-                BatchSize,
+        var batch = await AuthorsBackend.ListChanged(
+                new ChangedAuthorsQuery {
+                    MinVersion = cursor.LastUpdatedVersion,
+                    MaxVersion = maxVersion,
+                    LastId = cursor.LastUpdatedId,
+                    Limit = BatchSize,
+                },
                 cancellationToken)
             .ConfigureAwait(false);
         DebugLog?.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);

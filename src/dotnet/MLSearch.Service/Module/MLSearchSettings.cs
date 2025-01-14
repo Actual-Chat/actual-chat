@@ -18,7 +18,6 @@ public sealed class MLSearchSettings
     public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan IndexingDelay { get; set; } = TimeSpan.FromSeconds(15);
     public TimeSpan IndexingRecheckInterval { get; set; } = TimeSpan.FromSeconds(16);
-    public TimeSpan ContactIndexingSignalInterval { get; set; } = TimeSpan.FromSeconds(1); // TODO: remove when migration to flows complete
     public string OpenSearchNamesEnvPrefix { get; set; } = "";
 }
 

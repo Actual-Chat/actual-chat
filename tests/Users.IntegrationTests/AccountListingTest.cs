@@ -19,7 +19,7 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
     [Theory]
     [InlineData(30, 15)]
     [InlineData(150, 29)]
-    public async Task ShouldListBatches(int count, int batchSize)
+    public async Task ShouldListChanged(int count, int batchSize)
     {
         // arrange
         var alice = await Tester.SignInAsNew("Alice");

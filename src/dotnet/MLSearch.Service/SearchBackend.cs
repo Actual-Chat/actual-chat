@@ -125,11 +125,16 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (!Settings.IsEnabled)
             return Task.CompletedTask;
 
-        return Flows.GetAndResume<PlaceAuthorIndexingFlow>("",
-            Settings.IndexingDelay,
-            "Account changed",
-            Settings.IndexingRecheckInterval,
-            cancellationToken);
+        return UpdateIndexedUsers();
+
+        Task UpdateIndexedUsers()
+            => eventCommand.Author.IsPlaceAuthor
+                ? Flows.GetAndResume<PlaceAuthorIndexingFlow>("",
+                    Settings.IndexingDelay,
+                    "Author changed",
+                    Settings.IndexingRecheckInterval,
+                    cancellationToken)
+                : Task.CompletedTask;
     }
 
     // [EventHandler]
