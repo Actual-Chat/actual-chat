@@ -260,7 +260,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         }
 
         if (monoPcm.length !== AR.SAMPLES_PER_WINDOW_32) {
-            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32} sample audio windows only.`);
+            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32} sample audio windows only, but found ${monoPcm.length}.`);
         }
 
         buffer.set(context);

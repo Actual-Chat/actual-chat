@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "@actual-chat/codec": "0.4.1",
+    "@actual-chat/resampler": "^0.1.4",
     "@actual-chat/webrtc-vad": "^0.1.20",
     "@floating-ui/dom": "^1.6.3",
     "@microsoft/signalr": "^8.0.0",

@@ -22,6 +22,7 @@ import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { Log } from 'logging';
 import { approximateGain, average, clamp } from 'math';
+import { ResamplerLoader } from './resampler-loader';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -50,6 +51,7 @@ const systemCodecConfig: AudioEncoderConfig = {
 
 let state: 'initial' | 'created' | 'encoding' | 'ended' = 'initial';
 let isVoiceDetected: boolean = false;
+let isProcessing: boolean = false;
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
@@ -59,6 +61,10 @@ let lastSessionToken = '';
 let chunkTimeOffset: number = 0;
 let lastFrameProcessedAt = 0;
 let audioStream: AudioStream | null = null;
+
+const resamplerLoader = new ResamplerLoader();
+// if (DeviceInfo.isFirefox)
+//     void resamplerLoader.load();
 
 const serverImpl: OpusEncoderWorker = {
     create: async (artifactVersions: Map<string, string>, hubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
@@ -216,44 +222,71 @@ async function stopRecording(): Promise<void> {
     chunkTimeOffset = 0;
 }
 
-function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
+async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void> {
+    if (isProcessing)
+        return;
+
     if (!encoder && !systemEncoder)
         return; // No encoder = there is nothing we can do
 
-    if (fade === 'in') {
-        // calculate precise moment when speech starts - VAD may provide signals with delay
-        // we will try to filter out frames with gain significantly lower than most recent
-        const gains = new Float32Array(queue.length).fill(0);
-        if (gains.length) {
-            for (let i = 0; i < queue.length; i++) {
-                const samplesBuffer = queue.peekAt(i);
-                const samples = new Float32Array(samplesBuffer);
-                gains[i] = approximateGain(samples);
-            }
-            const speechGain = average(gains.slice(-5));
-            let startIndex = queue.length - 2;
-            while (startIndex > 0) {
-                const gain = gains[startIndex];
-                if (gain < speechGain/20)
-                    break;
-                startIndex--;
-            }
-            let framesToShift = clamp(startIndex - 1, 0, queue.length - 5); // Keep at least 4 frames
-            debugLog?.log(`processQueue(in): gains: `, gains, framesToShift);
-            while (framesToShift-- > 0)            {
-                const samplesBuffer = queue.shift();
-                void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
+    try {
+        isProcessing = true;
+        if (fade === 'in') {
+            // calculate precise moment when speech starts - VAD may provide signals with delay
+            // we will try to filter out frames with gain significantly lower than most recent
+            const gains = new Float32Array(queue.length).fill(0);
+            if (gains.length) {
+                for (let i = 0; i < queue.length; i++) {
+                    const samplesBuffer = queue.peekAt(i);
+                    const samples = new Float32Array(samplesBuffer);
+                    gains[i] = approximateGain(samples);
+                }
+                const speechGain = average(gains.slice(-5));
+                let startIndex = queue.length - 2;
+                while (startIndex > 0) {
+                    const gain = gains[startIndex];
+                    if (gain < speechGain/20)
+                        break;
+                    startIndex--;
+                }
+                let framesToShift = clamp(startIndex - 1, 0, queue.length - 5); // Keep at least 4 frames
+                debugLog?.log(`processQueue(in): gains: `, gains, framesToShift);
+                while (framesToShift-- > 0)            {
+                    const samplesBuffer = queue.shift();
+                    void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
+                }
             }
         }
-    }
-    else if (!isVoiceDetected)
-        return;
+        else if (!isVoiceDetected)
+            return;
 
-    // debugLog?.log(`processQueue:`, fade);
-    try {
+        const expectedWindowSizeSamples = 20 * AR.SAMPLES_PER_MS;
+        const expectedWindowSizeBytes = expectedWindowSizeSamples * 4;
+
+        // debugLog?.log(`processQueue:`, fade);
         while (!queue.isEmpty()) {
             const samplesBuffer = queue.shift();
-            const samples = new Float32Array(samplesBuffer);
+            let samples: Float32Array;
+            if (samplesBuffer.byteLength === expectedWindowSizeBytes) {
+                samples = new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples);
+            }
+            else {
+                // Needs resampling
+                const expectedSampleRate = AR.SAMPLE_RATE;
+                const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / 20 * 1000 / 100) * 100;
+                const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
+                const monoPcm = resampler.resample(samplesBuffer);
+                // Pad or truncate to expected window size
+                samples = monoPcm;
+                if (monoPcm.length < expectedWindowSizeSamples) {
+                    samples = new Float32Array(expectedWindowSizeSamples);
+                    samples.set(monoPcm, expectedWindowSizeSamples - monoPcm.length);
+                }
+                else if (monoPcm.length > expectedWindowSizeSamples) {
+                    samples = monoPcm.slice(0, expectedWindowSizeSamples);
+                }
+            }
+
             const timestamp = chunkTimeOffset * 1000; // microseconds instead of ms
             if (systemEncoder) {
                 const audioChunk = new AudioData({
@@ -269,7 +302,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             }
             else {
                 // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
-                const frameView = encoder.encode(samplesBuffer);
+                const frameView = encoder.encode(samples.buffer);
                 audioStream?.addFrame(frameView);
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             }
@@ -280,6 +313,9 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     }
     catch (error) {
         errorLog?.log(`processQueue: unhandled error:`, error);
+    }
+    finally {
+        isProcessing = false;
     }
 }
 
