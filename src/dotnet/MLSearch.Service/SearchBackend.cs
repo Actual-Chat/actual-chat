@@ -128,13 +128,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         return UpdateIndexedUsers();
 
         Task UpdateIndexedUsers()
-            => eventCommand.Author.IsPlaceAuthor
+        {
+            return eventCommand.Author.IsPlaceAuthor
                 ? Flows.GetAndResume<PlaceAuthorIndexingFlow>("",
                     Settings.IndexingDelay,
                     "Author changed",
                     Settings.IndexingRecheckInterval,
                     cancellationToken)
                 : Task.CompletedTask;
+        }
     }
 
     // [EventHandler]

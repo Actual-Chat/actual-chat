@@ -18,7 +18,6 @@ public sealed partial record FlowResumeEvent(
 
     public Symbol GetNextStep(Flow flow)
     {
-        // ReSharper disable once SuspiciousTypeConversion.Global
         if (flow is IHasLastRunAt f && f.LastRunAt >= MaxLastRunAt)
             return default; // skip
 
