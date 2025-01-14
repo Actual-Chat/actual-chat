@@ -79,10 +79,13 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
     private async Task<AccountFull[]> CreateAccounts(int portionSize, string prefix)
         => await Tester.CreateAccounts(portionSize, nameFactory: _ => $"{UniquePart} {prefix}");
 
-    private Task<Place[]> CreatePlaces(int count, params IReadOnlyCollection<AccountFull> usersToInvite)
-        => Enumerable.Range(1, count)
-            .Select(i => CreatePlace($"test place {i}", usersToInvite))
-            .Collect(Environment.ProcessorCount);
+    private async Task<Place[]> CreatePlaces(int count, params IReadOnlyCollection<AccountFull> usersToInvite)
+    {
+        var places = new Place[count];
+        for (int i = 0; i < count; i++)
+            places[i] = await CreatePlace($"test place {i}", usersToInvite);
+        return places;
+    }
 
     private Task<Place> CreatePlace(string title, params IReadOnlyCollection<AccountFull> usersToInvite)
         => Tester.CreatePlace(false, $"{UniquePart} {title}", usersToInvite);

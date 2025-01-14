@@ -53,14 +53,18 @@ public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFul
     {
         await WhenReady.ConfigureAwait(false);
 
-        var userContacts = await batch.Select(ToIndexedUserContact).Collect(cancellationToken).ConfigureAwait(false);
+        var userContacts = await batch.Select(x => x.UserId)
+            .Distinct()
+            .Select(ToIndexedUserContact)
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
         var updated = userContacts.SkipNullItems().ToApiArray();
         await IndexedDocuments.UpdateUserContacts(updated, [], cancellationToken).ConfigureAwait(false);
         return;
 
-        async Task<IndexedUserContact?> ToIndexedUserContact(AuthorFull author)
+        async Task<IndexedUserContact?> ToIndexedUserContact(UserId userId)
         {
-            var account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             if (account is null)
                 return null;
 

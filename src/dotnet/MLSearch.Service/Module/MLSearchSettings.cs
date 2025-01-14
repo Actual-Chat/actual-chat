@@ -16,8 +16,8 @@ public sealed class MLSearchSettings
 
     public ChatbotSettings? Bot { get; set; }
     public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(30);
-    public TimeSpan ChangedEntityIndexingDelay { get; set; } = TimeSpan.FromSeconds(15);
-    public TimeSpan IndexingFlowResumeDelay { get; set; } = TimeSpan.FromSeconds(3);
+    public TimeSpan ChangedEntityIndexingDelay { get; set; } = TimeSpan.FromMinutes(1);
+    public TimeSpan IndexingFlowResumeDelay { get; set; } = TimeSpan.FromSeconds(10);
     public TimeSpan IndexingTailRecheckInterval { get; set; } = TimeSpan.FromSeconds(30);
     public string OpenSearchNamesEnvPrefix { get; set; } = "";
 }
