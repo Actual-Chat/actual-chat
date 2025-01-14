@@ -73,11 +73,10 @@ public static class FlowsExt
             return null;
         }
         var now = clocks.SystemClock.Now;
-        var maxLastRunAt = now + maxLastRunIn + (delay ?? TimeSpan.Zero);
         var flowResumeEvent = new FlowResumeEvent(flowId,
             false,
             tag,
-            maxLastRunAt,
+            now + maxLastRunIn,
             now + delay);
         await queues.Enqueue(flowResumeEvent, cancellationToken).ConfigureAwait(false);
         return flow;
