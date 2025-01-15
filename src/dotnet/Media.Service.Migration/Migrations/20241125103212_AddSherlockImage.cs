@@ -11,23 +11,13 @@ namespace ActualChat.Media.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
- #pragma warning disable VSTHRD002
-            UpAsync(migrationBuilder).Wait();
- #pragma warning restore VSTHRD002
+            // Moved to InitializeData at DbInitializer
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
 
-        }
-
-        private async Task UpAsync(MigrationBuilder migrationBuilder)
-        {
-            await new ImagesUploader(this.GetType())
-                .Execute(async c => {
-                    await c.AddMedia(Constants.User.Sherlock.MediaId.Value, Resource.Sherlock).ConfigureAwait(false);
-                }).ConfigureAwait(false);
         }
     }
 }

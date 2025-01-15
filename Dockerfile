@@ -115,13 +115,13 @@ FROM runtime as migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
 COPY <<EOF /migrations/entrypoint.sh
 #!/bin/bash
-./Chat.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}chat;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
-./Contacts.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}contacts;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
-./Invite.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}invite;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
-./Media.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}media;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
-./MLSearch.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}mlsearch;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
-./Notification.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}notification;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
-./Users.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}users;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True"
+./Chat.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}chat;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+./Contacts.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}contacts;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+./Invite.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}invite;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+./Media.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}media;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+./MLSearch.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}mlsearch;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+./Notification.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}notification;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+./Users.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}users;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
 EOF
 RUN chmod -R 755 /migrations/
 WORKDIR /migrations
