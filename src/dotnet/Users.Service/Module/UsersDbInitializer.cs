@@ -15,7 +15,9 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             await EnsureTestBotsExist(cancellationToken).ConfigureAwait(false);
             await EnsureTestUsersExist(cancellationToken).ConfigureAwait(false);
         }
+        await EnsureSherlockPicUpdated(cancellationToken).ConfigureAwait(false);
     }
+
 
     // Private methods
 
@@ -197,6 +199,34 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             throw StandardError.Internal("Wrong avatar ID.");
 
         return account;
+    }
+
+    private async Task EnsureSherlockPicUpdated(CancellationToken cancellationToken)
+    {
+        var dbInitializer = this;
+        var services = dbInitializer.Services;
+        var log = services.LogFor(GetType());
+        var accountsBackend = services.GetRequiredService<IAccountsBackend>();
+
+        var account = await accountsBackend.Get(Constants.User.Sherlock.UserId, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return;
+
+        var avatar = account.Avatar;
+        if (!avatar.MediaId.IsNone && OrdinalEquals(avatar.Bio, Constants.User.Sherlock.Name))
+            return;
+
+        //using var dbContext = dbInitializer.CreateDbContext(true);
+        log.LogInformation("Updating Sherlock Avatar");
+        var avatarFull = new AvatarFull(account.Id, avatar.Id).WithMissingPropertiesFrom(avatar);
+        avatarFull = avatarFull with {
+            Bio = Constants.User.Sherlock.Name,
+            MediaId = Constants.User.Sherlock.MediaId,
+            PictureUrl = "",
+        };
+        var changeAvatarCommand = new AvatarsBackend_Change(avatar.Id, avatar.Version, Change.Update(avatarFull));
+        var commander = services.Commander();
+        await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
     }
 
     private sealed record InternalUserInfo(

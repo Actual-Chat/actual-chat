@@ -2,12 +2,11 @@ using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
-using ActualChat.Media.Module;
 using ActualChat.Media.Resources;
-using Microsoft.AspNetCore.StaticFiles;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.AspNetCore.StaticFiles;
 
-namespace ActualChat.Media;
+namespace ActualChat.Media.Module;
 
 public class ImagesUploader(Type owner)
 {

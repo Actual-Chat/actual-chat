@@ -21,24 +21,11 @@ namespace ActualChat.Media.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            UpAsync(migrationBuilder).Wait();
+            // Moved to InitializeData at DbInitializer
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
-        {
-        }
-
-        private async Task UpAsync(MigrationBuilder migrationBuilder)
-        {
-            await new ImagesUploader(this.GetType())
-                .Execute(async x => {
-                    await x.AddMedia("system-icons:family", Resource.FamilySvg).ConfigureAwait(false);
-                    await x.AddMedia("system-icons:coworkers", Resource.CoworkersSvg).ConfigureAwait(false);
-                    await x.AddMedia("system-icons:friends", Resource.FriendsSvg).ConfigureAwait(false);
-                    await x.AddMedia("system-icons:alumni", Resource.AlumniSvg).ConfigureAwait(false);
-                    await x.AddMedia("system-icons:notes", Resource.NotesSvg).ConfigureAwait(false);
-                }).ConfigureAwait(false);
-        }
+        { }
     }
 }
