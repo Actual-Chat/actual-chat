@@ -11,4 +11,14 @@
     <PackageReference Include="TurnerSoftware.RobotsExclusionTools" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\alumni.svg" />
+    <EmbeddedResource Include="Resources\chatroulette.svg" />
+    <EmbeddedResource Include="Resources\coworkers.svg" />
+    <EmbeddedResource Include="Resources\family.svg" />
+    <EmbeddedResource Include="Resources\friends.svg" />
+    <EmbeddedResource Include="Resources\notes.svg" />
+    <EmbeddedResource Include="Resources\sherlock.svg" />
+  </ItemGroup>
+
 </Project>

@@ -8,14 +8,4 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\alumni.svg" />
-    <EmbeddedResource Include="Resources\coworkers.svg" />
-    <EmbeddedResource Include="Resources\family.svg" />
-    <EmbeddedResource Include="Resources\friends.svg" />
-    <EmbeddedResource Include="Resources\notes.svg" />
-    <EmbeddedResource Include="Resources\sherlock.svg" />
-    <EmbeddedResource Include="Resources\chatroulette.svg" />
-  </ItemGroup>
-
 </Project>
