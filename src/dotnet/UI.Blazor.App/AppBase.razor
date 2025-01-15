@@ -2,7 +2,7 @@
 @using ActualChat.Security
 @implements IRootComponent
 @{
-    if (_isPrerendering) {
+    if (!UIHub.IsInteractive) {
         <LandingWeb/>
         return;
     }
@@ -36,34 +36,33 @@
     private static Assembly UIAssembly { get; } = typeof(AppBase).Assembly;
     private static Assembly[] UIModuleAssemblies { get; set; } = null!;
 
-    private bool _isPrerendering;
     private bool _readyToRender;
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
-    private ILogger? _log;
 
-    [Inject] protected IServiceProvider Services { get; init; } = null!;
-
-    [Inject] protected HostInfo HostInfo { get; init; } = null!;
     [Inject] protected ModuleHost Host { get; init; } = null!;
-    [Inject] protected BlazorRenderMode RenderMode { get; init; } = null!;
-    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] protected UIHub UIHub { get; init; } = null!;
     [Inject] protected AppScopedServiceStarter AppServiceStarter { get; init; } = null!;
     [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
-    [Inject] protected Tracer Tracer { get; init; } = null!;
+    protected IServiceProvider Services => UIHub.Services;
+    protected HostInfo HostInfo => UIHub.HostInfo();
+    protected AppBlazorCircuitContext CircuitContext => UIHub.CircuitContext;
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    protected Tracer Tracer => field ??= UIHub.Tracer();
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= UIHub.LogFor(GetType());
 
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";
+    [Parameter] public string RenderModeKey { get; set; } = "";
 
     public AppBase()
         => LoadingUI.MarkAppCreated();
 
-    protected override void OnInitialized() {
-        CircuitContext.RootComponent = this;
-        _isPrerendering = RenderMode.IsPrerendering;
-    }
+    protected override void OnInitialized()
+        => CircuitContext.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
 
     protected override async Task OnInitializedAsync() {
         using var _1 = Tracer.Region();
@@ -79,7 +78,7 @@
         else if (hostKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
         }
-        if (_isPrerendering)
+        if (!UIHub.IsInteractive)
             return;
 
         var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender(sessionHash);

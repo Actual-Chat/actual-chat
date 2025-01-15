@@ -62,7 +62,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="Pages\_Host.cshtml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="$(ProjectDir)\Resources\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Resources\" />
   </ItemGroup>
 

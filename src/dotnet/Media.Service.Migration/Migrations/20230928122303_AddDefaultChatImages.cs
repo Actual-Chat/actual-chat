@@ -32,12 +32,12 @@ namespace ActualChat.Media.Migrations
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
             await new ImagesUploader(this.GetType())
-                .Execute(async c => {
-                    await c.AddMedia("system-icons:family", Resource.FamilySvg).ConfigureAwait(false);
-                    await c.AddMedia("system-icons:coworkers", Resource.CoworkersSvg).ConfigureAwait(false);
-                    await c.AddMedia("system-icons:friends", Resource.FriendsSvg).ConfigureAwait(false);
-                    await c.AddMedia("system-icons:alumni", Resource.AlumniSvg).ConfigureAwait(false);
-                    await c.AddMedia("system-icons:notes", Resource.NotesSvg).ConfigureAwait(false);
+                .Execute(async x => {
+                    await x.AddMedia("system-icons:family", Resource.FamilySvg).ConfigureAwait(false);
+                    await x.AddMedia("system-icons:coworkers", Resource.CoworkersSvg).ConfigureAwait(false);
+                    await x.AddMedia("system-icons:friends", Resource.FriendsSvg).ConfigureAwait(false);
+                    await x.AddMedia("system-icons:alumni", Resource.AlumniSvg).ConfigureAwait(false);
+                    await x.AddMedia("system-icons:notes", Resource.NotesSvg).ConfigureAwait(false);
                 }).ConfigureAwait(false);
         }
     }

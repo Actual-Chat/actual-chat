@@ -18,7 +18,7 @@ namespace ActualChat.App.Wasm;
 
 public static class Program
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebApp))]
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Main is an entry point.")]
     public static async Task Main(string[] args)
     {

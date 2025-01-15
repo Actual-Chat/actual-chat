@@ -105,18 +105,17 @@
     private bool _isPhoneAuthEnabled;
     private AsyncDataAnnotationsValidator _validator = null!;
 
-    [Inject] private UIHub UIHub { get; init; } = null!;
-    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private ICaptcha Captcha { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
-    [Inject] private TotpUI TotpUI { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    private Session Session => UIHub.Session();
-    private Features Features => UIHub.Features();
-    private UICommander UICommander => UIHub.UICommander();
-    private AccountUI AccountUI => UIHub.AccountUI;
-    private ModalUI ModalUI => UIHub.ModalUI;
-
+    private Session Session => Hub.Session();
+    private Features Features => Hub.Features();
+    private AccountUI AccountUI => Hub.AccountUI;
+    private CaptchaUI CaptchaUI => Hub.CaptchaUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private TotpUI TotpUI => Hub.TotpUI;
+    private UICommander UICommander => Hub.UICommander();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;

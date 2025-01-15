@@ -11,7 +11,7 @@ namespace ActualChat.Media;
 
 public class ImagesUploader(Type owner)
 {
-    public async Task Execute(Func<Handler, Task> upload)
+    public async Task Execute(Func<UploadBuilderContext, Task> uploadBuilder)
     {
         var contentTypeProvider = new FileExtensionContentTypeProvider();
         var dbInitializer = DbInitializer.GetCurrent<MediaDbInitializer>();
@@ -23,13 +23,12 @@ public class ImagesUploader(Type owner)
         await using var dbContext = dbInitializer.CreateDbContext(true);
 
         log.LogInformation("Uploading chat pictures");
-
-        var handler = new Handler(AddMedia);
-        await upload(handler).ConfigureAwait(false);
-
+        var uploadBuilderContext = new UploadBuilderContext(AddMedia);
+        await uploadBuilder.Invoke(uploadBuilderContext).ConfigureAwait(false);
         await dbContext.SaveChangesAsync().ConfigureAwait(false);
 
         log.LogInformation("Uploading chat pictures: done");
+        return;
 
         async Task AddMedia(string id, Resource resource)
         {
@@ -61,16 +60,11 @@ public class ImagesUploader(Type owner)
                 dbContext.Media.Add(new DbMedia(media));
 
             var mediaExists = await blobStorage.Exists(media.ContentId, default).ConfigureAwait(false);
-            if (mediaExists) {
+            if (mediaExists)
                 await blobStorage.Delete(media.ContentId, default).ConfigureAwait(false);
-            }
             await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, default).ConfigureAwait(false);
         }
     }
 
-    public class Handler(Func<string,Resource, Task> addMedia)
-    {
-        public Task AddMedia(string id, Resource resource)
-            => addMedia(id, resource);
-    }
+    public sealed record UploadBuilderContext(Func<string, Resource, Task> AddMedia);
 }

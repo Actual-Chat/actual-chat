@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using ActualChat.App.Server.Components.Pages;
 using ActualChat.App.Server.Health;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
@@ -23,6 +24,7 @@ using ActualLab.IO;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 using ActualChat.MLSearch.Diagnostics;
+using ActualChat.UI.Blazor.App;
 using ActualLab.Fusion.Server;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -34,11 +36,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
     public static readonly string AppVersion =
         typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
-    private IWebHostEnvironment? _env;
+    [field: AllowNull, MaybeNull]
+    public IWebHostEnvironment Env => field ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
-    public IWebHostEnvironment Env => _env ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
-
-    public void ConfigureApp(IApplicationBuilder app)
+    public void ConfigureApp(WebApplication app)
     {
         if (Settings.AssumeHttps) {
             Log.LogWarning("AssumeHttps is on");
@@ -52,20 +53,21 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
         // and set it as this server's content root.
+        /*
         Env.WebRootPath =  Settings.WebRootPath.NullIfEmpty() ?? AppPathResolver.GetWebRootPath();
         Env.ContentRootPath = AppPathResolver.GetContentRootPath();
         Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
         Env.ContentRootFileProvider = new PhysicalFileProvider(Env.ContentRootPath);
         StaticWebAssetsLoader.UseStaticWebAssets(Env, Cfg);
+        */
 
-        if (Env.IsDevelopment()) {
-            app.UseDeveloperExceptionPage();
+        if (Env.IsDevelopment())
             app.UseWebAssemblyDebugging();
-        }
         else {
             app.UseExceptionHandler("/Error");
             app.UseHsts();
         }
+        app.UseStaticFiles();
 
         // See
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
@@ -93,14 +95,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 true));
         app.UseStaticFiles();
 
-        // Swagger
-        /*
-        app.UseSwagger();
-        app.UseSwaggerUI(c => {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
-        });
-        */
-
         // Response compression
         if (!Env.IsDevelopment()) // disable compression for local development and hot reload
             app.UseResponseCompression();
@@ -110,14 +104,17 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
+
+        app.MapRazorComponents<RootServerPage>()
+            .AddInteractiveServerRenderMode()
+            .AddInteractiveWebAssemblyRenderMode()
+            .AddAdditionalAssemblies(typeof(WebApp).Assembly);
         app.UseEndpoints(endpoints => {
             endpoints.MapAppHealth();
             // Disabled as we disabled prometheus endpoint recently
             // endpoints.MapAppMetrics();
-            endpoints.MapBlazorHub();
             endpoints.MapRpcWebSocketServer();
             endpoints.MapControllers();
-            endpoints.MapFallbackToPage("/_Host");
         });
         // app.UseOpenTelemetryPrometheusScrapingEndpoint();
     }
@@ -251,6 +248,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             o.MaximumParallelInvocationsPerClient = 4;
             o.StatefulReconnectBufferSize = 1000;
         });
+        services.AddRazorComponents()
+            .AddInteractiveServerComponents()
+            .AddInteractiveWebAssemblyComponents();
         services.AddBlazorCircuitActivitySuppressor();
 
         // Open Telemetry

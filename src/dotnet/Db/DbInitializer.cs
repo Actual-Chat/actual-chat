@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -76,7 +75,16 @@ public abstract class DbInitializer<
                 Log.LogInformation(
                     "Migrating DB '{DatabaseName}': applying {Migrations}...",
                     dbName, migrations.ToDelimitedString());
-                await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
+                try {
+                    await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
+                    Log.LogInformation(
+                        "Migrating DB '{DatabaseName}': applied {MigrationCount} migration(s)",
+                        dbName, migrations.Count);
+                }
+                catch (Exception e) {
+                    Log.LogError(e, "Failed to migrate DB '{DatabaseName}'", dbName);
+                    throw;
+                }
             }
             else
                 Log.LogInformation(
@@ -108,8 +116,7 @@ public abstract class DbInitializer<
 
     protected void ConfigureContext(TDbContext dbContext)
     {
-        if (!dbContext.Database.IsInMemory()) {
+        if (!dbContext.Database.IsInMemory())
             dbContext.Database.SetCommandTimeout(CommandTimeout);
-        }
     }
 }

@@ -178,7 +178,8 @@
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
     <!-- VSTHRD103: StateHasChanged synchronously blocks. Await NotifyStateHasChanged instead. -->
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
-    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0064;MA0099;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
+    <!-- VSTHRD200: Add 'Async' suffix. -->
+    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0064;MA0099;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110;VSTHRD200</NoWarn>
     <!-- New .NET 8 warnings -->
     <!-- CA1001: Type C owns disposable field(s) F but is not disposable -->
     <!-- CA1002: Change 'List<T>' in P to use 'Collection<T>', 'ReadOnlyCollection<T>' or 'KeyedCollection<K,V>' -->
@@ -221,6 +222,8 @@
     <NoWarn>$(NoWarn);CA1707;CA1711;CA1720;CA1724;CA1725</NoWarn>
     <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1848;CA1859</NoWarn>
     <NoWarn>$(NoWarn);CA2000;CA2213;CA2225;CA2234;CA5394</NoWarn>
+    <!-- ASP0014: Suggest using top level route registrations -->
+    <NoWarn>$(NoWarn);ASP0014</NoWarn>
     <!-- IDE0055: Fix formatting -->
     <!-- IDE0160: Use block-scoped namespace declarations -->
     <NoWarn>$(NoWarn);IDE0055;IDE0160</NoWarn>

@@ -26,12 +26,12 @@
     private Moment? _totpExpiresAt;
     private bool _isVerifying;
 
-    [Inject] private UIHub UIHub { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private TotpUI TotpUI { get; init; } = null!;
-    private Session Session => UIHub.Session();
-    private UICommander UICommander => UIHub.UICommander();
-    private MomentClockSet Clocks => UIHub.Clocks();
-    private TuneUI TuneUI => UIHub.TuneUI;
+    private Session Session => Hub.Session();
+    private UICommander UICommander => Hub.UICommander();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private TuneUI TuneUI => Hub.TuneUI;
 
     [Parameter] public string Phone { get; set; } = "";
     [Parameter] public string Email { get; set; } = "";

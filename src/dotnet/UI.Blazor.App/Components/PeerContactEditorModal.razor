@@ -35,11 +35,10 @@
     private Contact? _contact;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-
     private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
     private UICommander UICommander => Hub.UICommander();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

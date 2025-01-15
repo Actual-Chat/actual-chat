@@ -73,13 +73,13 @@ public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        if (CircuitContext.WhenReady.IsCompleted)
+        if (CircuitContext.WhenInitialized.IsCompleted)
             return Dispatcher.CheckAccess()
                 ? NavigateTo(url, reason)
                 : Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
 
         return Task.Run(async () => {
-            await CircuitContext.WhenReady.ConfigureAwait(false);
+            await CircuitContext.WhenInitialized.ConfigureAwait(false);
             await Dispatcher.InvokeAsync(() => NavigateTo(url, reason)).ConfigureAwait(false);
         });
     }

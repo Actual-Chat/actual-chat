@@ -7,92 +7,104 @@ namespace ActualChat.UI.Blazor;
 
 public class UIHub(IServiceProvider services) : Hub(services)
 {
-    private IFusionTime? _fusionTime;
-    private LiveTime? _liveTime;
-    private IAccounts? _accounts;
-    private IAvatars? _avatars;
-    private Media.IMediaLinkPreviews? _linkPreviews;
-    private ISearch? _search;
-    private LoadingUI? _loadingUI;
-    private ReloadUI? _reloadUI;
-    private AccountUI? _accountUI;
-    private AutoNavigationUI? _autoNavigationUI;
-    private UserActivityUI? _userActivityUI;
-    private DeviceAwakeUI? _deviceAwakeUI;
-    private InteractiveUI? _interactiveUI;
-    private KeepAwakeUI? _keepAwakeUI;
-    private ClipboardUI? _clipboardUI;
-    private PanelsUI? _panelsUI;
-    private ShareUI? _shareUI;
-    private ModalUI? _modalUI;
-    private FocusUI? _focusUI;
-    private FontSizeUI? _fontSizeUI;
-    private TuneUI? _tuneUI;
-    private ToastUI? _toastUI;
-    private BubbleUI? _bubbleUI;
-    private BannerUI? _bannerUI;
-    private NavbarUI? _navbarUI;
-    private IOnboardingUI? _onboardingUI;
-    private INotificationUI? _notificationUI;
-    private VisualMediaViewerUI? _visualMediaViewerUI;
-    private Escapist? _escapist;
     private UICommander? _uiCommander;
     private UIEventHub? _uiEventHub;
-    private RenderVars? _renderVars;
-    private BlazorRenderMode? _renderMode;
-    private BrowserInfo? _browserInfo;
-    private DateTimeConverter? _dateTimeConverter;
-    private NavigationManager? _nav;
-    private History? _history;
-    private Dispatcher? _dispatcher;
-    private AppBlazorCircuitContext? _circuitContext;
     private IJSRuntime? _jsRuntime;
-    private AnalyticEvents? _analyticEvents;
-    private IRoulette? _roulette;
-    private IRouletteProfiles? _rouletteProfiles;
-    private ComponentIdGenerator? _componentIdGenerator;
 
-    public IFusionTime FusionTime => _fusionTime ??= Services.GetRequiredService<IFusionTime>();
-    public LiveTime LiveTime => _liveTime ??= Services.GetRequiredService<LiveTime>();
-    public IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
-    public IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
-    public IRoulette Roulette => _roulette ??= Services.GetRequiredService<IRoulette>();
-    public IRouletteProfiles RouletteProfiles => _rouletteProfiles ??= Services.GetRequiredService<IRouletteProfiles>();
-    public Media.IMediaLinkPreviews MediaLinkPreviews => _linkPreviews ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
-    public ISearch Search => _search ??= Services.GetRequiredService<ISearch>();
-    public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
-    public ReloadUI ReloadUI => _reloadUI ??= Services.GetRequiredService<ReloadUI>();
-    public AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
-    public AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
-    public UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
-    public DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
-    public InteractiveUI InteractiveUI => _interactiveUI ??= Services.GetRequiredService<InteractiveUI>();
-    public KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
-    public ClipboardUI ClipboardUI => _clipboardUI ??= Services.GetRequiredService<ClipboardUI>();
-    public PanelsUI PanelsUI => _panelsUI ??= Services.GetRequiredService<PanelsUI>();
-    public ShareUI ShareUI => _shareUI ??= Services.GetRequiredService<ShareUI>();
-    public ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
-    public FocusUI FocusUI => _focusUI ??= Services.GetRequiredService<FocusUI>();
-    public FontSizeUI FontSizeUI => _fontSizeUI ??= Services.GetRequiredService<FontSizeUI>();
-    public TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    public ToastUI ToastUI => _toastUI ??= Services.GetRequiredService<ToastUI>();
-    public BubbleUI BubbleUI => _bubbleUI ??= Services.GetRequiredService<BubbleUI>();
-    public BannerUI BannerUI => _bannerUI ??= Services.GetRequiredService<BannerUI>();
-    public NavbarUI NavbarUI => _navbarUI ??= Services.GetRequiredService<NavbarUI>();
-    public IOnboardingUI OnboardingUI => _onboardingUI ??= Services.GetRequiredService<IOnboardingUI>();
-    public INotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<INotificationUI>();
-    public VisualMediaViewerUI VisualMediaViewerUI => _visualMediaViewerUI ??= Services.GetRequiredService<VisualMediaViewerUI>();
-    public Escapist Escapist => _escapist ??= Services.GetRequiredService<Escapist>();
-    public RenderVars RenderVars => _renderVars ??= Services.GetRequiredService<RenderVars>();
-    public BlazorRenderMode RenderMode => _renderMode ??= Services.GetRequiredService<BlazorRenderMode>();
-    public BrowserInfo BrowserInfo => _browserInfo ??= Services.GetRequiredService<BrowserInfo>();
-    public DateTimeConverter DateTimeConverter => _dateTimeConverter ??= Services.GetRequiredService<DateTimeConverter>();
-    public NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();
-    public History History => _history ??= Services.GetRequiredService<History>();
-    public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-    public AppBlazorCircuitContext CircuitContext => _circuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
-    public AnalyticEvents AnalyticEvents => _analyticEvents ??= Services.GetRequiredService<AnalyticEvents>();
-    public ComponentIdGenerator ComponentIdGenerator => _componentIdGenerator ??= Services.GetRequiredService<ComponentIdGenerator>();
+    [field: AllowNull, MaybeNull]
+    public IFusionTime FusionTime => field ??= Services.GetRequiredService<IFusionTime>();
+    [field: AllowNull, MaybeNull]
+    public LiveTime LiveTime => field ??= Services.GetRequiredService<LiveTime>();
+    [field: AllowNull, MaybeNull]
+    public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
+    [field: AllowNull, MaybeNull]
+    public Media.IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
+    [field: AllowNull, MaybeNull]
+    public IRoulette Roulette => field ??= Services.GetRequiredService<IRoulette>();
+    [field: AllowNull, MaybeNull]
+    public IRouletteProfiles RouletteProfiles => field ??= Services.GetRequiredService<IRouletteProfiles>();
+    [field: AllowNull, MaybeNull]
+    public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
+
+    [field: AllowNull, MaybeNull]
+    public LoadingUI LoadingUI => field ??= Services.GetRequiredService<LoadingUI>();
+    [field: AllowNull, MaybeNull]
+    public ReloadUI ReloadUI => field ??= Services.GetRequiredService<ReloadUI>();
+    [field: AllowNull, MaybeNull]
+    public AccountUI AccountUI => field ??= Services.GetRequiredService<AccountUI>();
+    [field: AllowNull, MaybeNull]
+    public AutoNavigationUI AutoNavigationUI => field ??= Services.GetRequiredService<AutoNavigationUI>();
+    [field: AllowNull, MaybeNull]
+    public UserActivityUI UserActivityUI => field ??= Services.GetRequiredService<UserActivityUI>();
+    [field: AllowNull, MaybeNull]
+    public DeviceAwakeUI DeviceAwakeUI => field ??= Services.GetRequiredService<DeviceAwakeUI>();
+    [field: AllowNull, MaybeNull]
+    public InteractiveUI InteractiveUI => field ??= Services.GetRequiredService<InteractiveUI>();
+    [field: AllowNull, MaybeNull]
+    public KeepAwakeUI KeepAwakeUI => field ??= Services.GetRequiredService<KeepAwakeUI>();
+    [field: AllowNull, MaybeNull]
+    public ClipboardUI ClipboardUI => field ??= Services.GetRequiredService<ClipboardUI>();
+    [field: AllowNull, MaybeNull]
+    public PanelsUI PanelsUI => field ??= Services.GetRequiredService<PanelsUI>();
+    [field: AllowNull, MaybeNull]
+    public ShareUI ShareUI => field ??= Services.GetRequiredService<ShareUI>();
+    [field: AllowNull, MaybeNull]
+    public FocusUI FocusUI => field ??= Services.GetRequiredService<FocusUI>();
+    [field: AllowNull, MaybeNull]
+    public ModalUI ModalUI => field ??= Services.GetRequiredService<ModalUI>();
+    [field: AllowNull, MaybeNull]
+    public FontSizeUI FontSizeUI => field ??= Services.GetRequiredService<FontSizeUI>();
+    [field: AllowNull, MaybeNull]
+    public ThemeUI ThemeUI => field ??= Services.GetRequiredService<ThemeUI>();
+    [field: AllowNull, MaybeNull]
+    public TuneUI TuneUI => field ??= Services.GetRequiredService<TuneUI>();
+    [field: AllowNull, MaybeNull]
+    public ToastUI ToastUI => field ??= Services.GetRequiredService<ToastUI>();
+    [field: AllowNull, MaybeNull]
+    public BubbleUI BubbleUI => field ??= Services.GetRequiredService<BubbleUI>();
+    [field: AllowNull, MaybeNull]
+    public BannerUI BannerUI => field ??= Services.GetRequiredService<BannerUI>();
+    [field: AllowNull, MaybeNull]
+    public NavbarUI NavbarUI => field ??= Services.GetRequiredService<NavbarUI>();
+    [field: AllowNull, MaybeNull]
+    public IOnboardingUI OnboardingUI => field ??= Services.GetRequiredService<IOnboardingUI>();
+    [field: AllowNull, MaybeNull]
+    public INotificationUI NotificationUI => field ??= Services.GetRequiredService<INotificationUI>();
+    [field: AllowNull, MaybeNull]
+    public VisualMediaViewerUI VisualMediaViewerUI => field ??= Services.GetRequiredService<VisualMediaViewerUI>();
+    [field: AllowNull, MaybeNull]
+    public TotpUI TotpUI => field ??= Services.GetRequiredService<TotpUI>();
+    [field: AllowNull, MaybeNull]
+    public CaptchaUI CaptchaUI => field ??= Services.GetRequiredService<CaptchaUI>();
+
+    [field: AllowNull, MaybeNull]
+    public Escapist Escapist => field ??= Services.GetRequiredService<Escapist>();
+    [field: AllowNull, MaybeNull]
+    public RenderVars RenderVars => field ??= Services.GetRequiredService<RenderVars>();
+    [field: AllowNull, MaybeNull]
+    public BrowserInfo BrowserInfo => field ??= Services.GetRequiredService<BrowserInfo>();
+    [field: AllowNull, MaybeNull]
+    public DateTimeConverter DateTimeConverter => field ??= Services.GetRequiredService<DateTimeConverter>();
+    [field: AllowNull, MaybeNull]
+    public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
+    [field: AllowNull, MaybeNull]
+    public NavigationManager Nav => field ??= Services.GetRequiredService<NavigationManager>();
+    [field: AllowNull, MaybeNull]
+    public History History => field ??= Services.GetRequiredService<History>();
+    [field: AllowNull, MaybeNull]
+    public Dispatcher Dispatcher => field ??= Services.GetRequiredService<Dispatcher>();
+    [field: AllowNull, MaybeNull]
+    public JSRuntimeInfo JSRuntimeInfo => field ??= CircuitContext.JSRuntimeInfo;
+    [field: AllowNull, MaybeNull]
+    public AppBlazorCircuitContext CircuitContext => field ??= Services.GetRequiredService<AppBlazorCircuitContext>();
+    [field: AllowNull, MaybeNull]
+    public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
+
+    // Shortcuts
+    public bool IsPrerendering => JSRuntimeInfo.IsPrerendering;
+    public bool IsInteractive => JSRuntimeInfo.IsInteractive;
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
     public UICommander UICommander() => _uiCommander ??= Services.UICommander();

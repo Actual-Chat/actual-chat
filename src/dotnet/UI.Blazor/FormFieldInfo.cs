@@ -56,6 +56,7 @@ public abstract class FormFieldInfo
         return field;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
     protected FormFieldInfo([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type formType, PropertyInfo property, PropertyInfo fieldIdProperty)
     {
         FormType = formType;
@@ -72,6 +73,7 @@ public sealed class FormFieldInfo<[DynamicallyAccessedMembers(DynamicallyAccesse
     public Action<FormModel, T> Setter { get; }
     public Func<FormModel, T> Getter { get; }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
     public FormFieldInfo([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type formType, PropertyInfo property, PropertyInfo fieldIdProperty)
         : base(formType, property, fieldIdProperty)
     {

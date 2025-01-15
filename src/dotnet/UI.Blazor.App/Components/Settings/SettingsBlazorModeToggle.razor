@@ -1,14 +1,14 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
 #pragma warning disable IL2091
-    
-    var ssbIsSelected = BlazorModeHelper.IsBlazorServer;
-    var wasmIsSelected = !ssbIsSelected;
-    var ssbClass = ssbIsSelected ? "selected transparent" : "transparent";
-    var wasmClass = wasmIsSelected ? "selected transparent" : "transparent";
-    // Use NoStateHasChanged since ChangeMode will cause page reload anyway, no need to re-render component.
-    var ssbClickHandler = !ssbIsSelected ? NoStateHasChanged.EventCallback(() => ChangeMode(true)) : default;
-    var wasmClickHandler = !wasmIsSelected ? NoStateHasChanged.EventCallback(() => ChangeMode(false)): default;
+
+    var modeKey = RenderModeHelper.CurrentMode?.Key ?? "a";
+    var isAuto = OrdinalEquals(modeKey, "a");
+    var isServer = OrdinalEquals(modeKey, "s");
+    var isWasm = OrdinalEquals(modeKey, "w");
+    var autoClass = isAuto ? "selected transparent" : "transparent";
+    var serverClass = isServer ? "selected transparent" : "transparent";
+    var wasmClass = isWasm ? "selected transparent" : "transparent";
 }
 
 <TileTopic Topic="Blazor Mode"/>
@@ -18,13 +18,26 @@
 
         <FormBlock>
             <InputRadioGroup
-                Name="blazor-mode"
-                DisplayName="Blazor Mode"
-                @bind-Value="_formModel.IsServerMode">
+                Name="rendering-mode"
+                DisplayName="Rendering Mode"
+                @bind-Value="_formModel.ModeKey">
 
-                <TileItem Class="@ssbClass" Click="@ssbClickHandler">
+                <TileItem Class="@autoClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("a"))">
                     <Icon>
-                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@true"/>
+                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@("a")"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.ServerModeFormId" Text="Auto"></Label>
+                        <div class="c-comment">
+                            Starts in Server-Side Rendering mode and loads WebAssembly Client in the background.
+                            Switches to WebAssembly Client once it's loaded.
+                        </div>
+                    </Content>
+                </TileItem>
+
+                <TileItem Class="@serverClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("s"))">
+                    <Icon>
+                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@("s")"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.ServerModeFormId" Text="Server-Side Rendering"></Label>
@@ -34,9 +47,9 @@
                     </Content>
                 </TileItem>
 
-                <TileItem Class="@wasmClass" Click="@wasmClickHandler">
+                <TileItem Class="@wasmClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("w"))">
                     <Icon>
-                        <FormRadio Id="@_formModel.WasmModeFormId" Value="@false"/>
+                        <FormRadio Id="@_formModel.WasmModeFormId" Value="@("w")"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.WasmModeFormId" Text="WebAssembly Client"></Label>
@@ -56,47 +69,49 @@
     private FormModel _formModel = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private BlazorModeHelper BlazorModeHelper => Hub.GetRequiredService<BlazorModeHelper>();
-
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private RenderModeHelper RenderModeHelper => Hub.GetRequiredService<RenderModeHelper>();
 
     protected override void OnInitialized() {
-        _formModel = new (ComponentIdGenerator) {
-            IsServerMode = BlazorModeHelper.IsBlazorServer,
+        _formModel = new(ComponentIdGenerator) {
+            ModeKey = RenderModeHelper.CurrentMode?.Key ?? "a",
         };
         _formModel.ModeChanged += OnBlazorModeChanged;
     }
 
-    private void OnBlazorModeChanged(bool isServerMode)
-        => BlazorModeHelper.ChangeMode(isServerMode);
+    private void OnBlazorModeChanged(string modeKey)
+        => RenderModeHelper.ChangeMode(RenderModeDef.GetOrDefault(modeKey));
 
-    private void ChangeMode(bool serverMode) {
-        if (BlazorModeHelper.IsBlazorServer == serverMode)
+    private void ChangeMode(string modeKey) {
+        if (OrdinalEquals(RenderModeHelper.CurrentMode?.Key, modeKey))
             return;
-        OnBlazorModeChanged(serverMode);
+
+        OnBlazorModeChanged(modeKey);
     }
 
     public sealed class FormModel {
-        private bool _isServerMode;
-
         private string FormId { get; }
+        public string AutoModeFormId { get; }
         public string ServerModeFormId { get; }
         public string WasmModeFormId { get; }
 
-        public bool IsServerMode {
-            get => _isServerMode;
+        [field: AllowNull, MaybeNull]
+        public string ModeKey {
+            get;
             set {
-                if (_isServerMode == value)
+                if (field == value)
                     return;
-                _isServerMode = value;
+
+                field = value;
                 ModeChanged?.Invoke(value);
             }
         }
 
-        public event Action<bool>? ModeChanged;
+        public event Action<string>? ModeChanged;
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("blazor-mode-form");
+            AutoModeFormId = $"{FormId}-auto-mode";
             ServerModeFormId = $"{FormId}-server-mode";
             WasmModeFormId = $"{FormId}-wasm-mode";
         }

@@ -5,5 +5,5 @@ namespace ActualChat.Module;
 
 public interface IWebServerModule : IServerModule
 {
-    void ConfigureApp(IApplicationBuilder app);
+    void ConfigureApp(WebApplication app);
 }

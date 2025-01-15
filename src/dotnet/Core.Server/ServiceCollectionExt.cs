@@ -6,11 +6,11 @@ using ActualChat.Queues.InMemory;
 using ActualChat.Queues.Internal;
 using ActualChat.Queues.Nats;
 using ActualChat.Rpc;
-using ActualLab.CommandR.Internal;
 using NATS.Client.Core;
 
 namespace ActualChat;
 
+[UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for server code")]
 public static class ServiceCollectionExt
 {
     // Private accessors
@@ -119,7 +119,6 @@ public static class ServiceCollectionExt
 
     // AddXxxQueues
 
-    [RequiresUnreferencedCode(UnreferencedCode.Commander)]
     public static IServiceCollection AddInMemoryQueues(
         this IServiceCollection services,
         Func<IServiceProvider, InMemoryQueues.Options>? optionsBuilder = null)
@@ -136,7 +135,6 @@ public static class ServiceCollectionExt
         return services;
     }
 
-    [RequiresUnreferencedCode(UnreferencedCode.Commander)]
     public static IServiceCollection AddNatsQueues(
         this IServiceCollection services,
         Func<IServiceProvider, NatsQueues.Options>? optionsBuilder = null)

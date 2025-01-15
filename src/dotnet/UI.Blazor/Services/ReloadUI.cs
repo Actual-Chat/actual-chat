@@ -19,7 +19,7 @@ public class ReloadUI
     {
         Log.LogInformation("Reload requested");
         var circuitContext = Services.GetRequiredService<AppBlazorCircuitContext>();
-        _ = circuitContext.WhenReady.ContinueWith(_ => circuitContext.Dispatcher.InvokeAsync(async () => {
+        _ = circuitContext.WhenInitialized.ContinueWith(_ => circuitContext.Dispatcher.InvokeAsync(async () => {
             Log.LogInformation("Reloading...");
             try {
                 var hostInfo = Services.HostInfo();

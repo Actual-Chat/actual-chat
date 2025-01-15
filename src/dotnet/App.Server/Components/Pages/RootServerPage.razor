@@ -1,41 +1,18 @@
-@page "/"
-@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@namespace ActualChat.App.Server.Pages
+@using ActualChat.Hashing
 @using ActualChat.Hosting
 @using ActualChat.Security
-@using ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using ActualChat.Users.Module
+@using ActualLab.Fusion.Blazor
 @using ActualLab.Fusion.Server.Endpoints
 @using ActualLab.Generators
-@using Microsoft.AspNetCore.Mvc.TagHelpers
-
-@inject HostInfo HostInfo
-@inject ServerAuth ServerAuth
-@inject ISessionResolver SessionResolver
-@inject IServiceProvider Services
-@inject UrlMapper UrlMapper
-@inject IWebHostEnvironment Env
-@inject UsersSettings UserSettings
-@inject CaptchaUI CaptchaUI
+@using ActualChat.UI.Blazor.App
 @{
-    var cancellationToken = HttpContext.RequestAborted;
-    var (session, isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
-    SessionResolver.Session = session;
-    if (isNewSession)
-        HttpContext.Response.Cookies.Delete(BlazorModeEndpoint.Cookie.Name!);
-    var isCloseFlow = ServerAuth.IsCloseFlow(HttpContext, out var flowName, out var redirectUrl, out var mustClose);
-    if (isCloseFlow && !redirectUrl.IsNullOrEmpty()) {
-        HttpContext.Response.Redirect(redirectUrl, false);
-        return;
-    }
-
-    var isBlazorServer = isNewSession || BlazorModeEndpoint.IsBlazorServer(HttpContext);
+    var isWasmRenderMode = OrdinalEquals(_renderMode?.Key, "w");
     var blazorMaxReconnectRetries = 0; // 100_000_000;
-    var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
+    var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : GetBlazorScriptSuffix();
     var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
-    Layout = null;
     var nonceGenerator = RandomStringGenerator.Default;
     var startupNonce = nonceGenerator.Next(12);
     var blazorReloadNonce = nonceGenerator.Next(12);
@@ -43,7 +20,9 @@
     var closeLoginNonce = nonceGenerator.Next(12);
     // unsafe-eval is required for 'eval-source-map' to debug during local development
     var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
-    var connectLocalhost = Env.IsDevelopment() ? "ws://localhost:* wss://localhost:*" : "";
+    var extraConnectSrc = Env.IsDevelopment() ? "ws://localhost:* wss://localhost:*" : "";
+
+    // Re-captcha setup
     var hasRecaptchaConfigured = !UserSettings.GoogleRecaptchaSiteKey.IsNullOrEmpty();
     var recaptchaKey = UserSettings.GoogleRecaptchaSiteKey;
     var recaptchaNonce = nonceGenerator.Next(12);
@@ -94,7 +73,7 @@
                     https://www.youtube.com/s/player/
                     https://www.googletagmanager.com/gtag/js;
         connect-src 'self'
-                    @connectLocalhost
+                    @extraConnectSrc
                     https://actual.chat
                     https://*.actual.chat
                     https://*.dicebear.com
@@ -193,14 +172,12 @@
         });
     </script>
     <script async src="/dist/bundle.js" asp-append-version="true"></script>
-    @if (isBlazorServer) {
-        <component type="typeof(Microsoft.AspNetCore.Components.Web.HeadOutlet)" render-mode="ServerPrerendered"/>
-    }
+    <HeadOutlet @rendermode="@(_renderMode?.Mode)" />
 </head>
 
-<body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")" style="background-color: #0036A3">
+<body class="app-web" style="background-color: #0036A3">
 
-@if (!isBlazorServer && !isCloseFlow) {
+@if (isWasmRenderMode && _closeFlow == null) {
     <div id="web-splash" class="loading-overlay"></div>
     <script nonce="@showOverlayNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
@@ -218,19 +195,19 @@
     </script>
 }
 
-@if (isCloseFlow) {
-    @if (mustClose) {
+@if (_closeFlow != null) {
+    @if (_closeFlow.MustClose) {
         <script nonce="@closeLoginNonce">
             setTimeout(function () {
                 window.open('','_self').close();
             }, 500)
         </script>
     }
-    <div class="fusion-close" data-flow-name="@(flowName)">
+    <div class="fusion-close" data-flow-name="@_closeFlow.Name">
         <div class="c-content">
             <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
             <div class="c-title">
-                <span>@(flowName)</span>
+                <span>@_closeFlow.Name</span>
                 <span>completed.</span>
             </div>
             <div class="c-footer">
@@ -255,83 +232,116 @@
     </div>
 } else {
     <app id="app" class="flex flex-col h-full">
-        @{
-            var appComponentType = typeof(WasmApp);
-            var renderMode = RenderMode.WebAssembly;
-            var sessionToken = "";
-            if (isBlazorServer) {
-                appComponentType = typeof(ServerApp);
-                renderMode = RenderMode.Server;
-                var isPrerendering = isBlazorServer && isNewSession;
-                if (isPrerendering) {
-                    var blazorRenderMode = Services.GetRequiredService<BlazorRenderMode>();
-                    blazorRenderMode.IsPrerendering = true;
-                    renderMode = RenderMode.ServerPrerendered;
-                }
-                var secureTokens = Services.GetRequiredService<ISecureTokens>();
-                sessionToken = (await secureTokens.CreateForSession(session, cancellationToken)).Token;
-            }
-            var parameters = new { SessionHash = session.Hash, SessionToken = sessionToken };
-        }
-        @(await Html.RenderComponentAsync(appComponentType, renderMode, parameters))
+        <WebApp
+            @rendermode="@(_renderMode?.Mode)"
+            SessionHash="@_session?.Hash"
+            SessionToken="@_sessionToken?.Token"
+            RenderModeKey="@(_renderMode?.Key)" />
     </app>
 
     <!-- This block must go right after app, otherwise page content won't be blurred -->
     <div id="components-reconnect-modal"></div>
     <div id="blazor-error-ui"></div>
     <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
-
-    @if (isBlazorServer) {
-        <script src="_framework/blazor.server@(blazorScriptSuffix).js" autostart="false"></script>
-        <script nonce="@blazorReloadNonce">
-            Blazor.start({
-                reconnectionOptions: {
-                     maxRetries: @(blazorMaxReconnectRetries),
-                     retryIntervalMilliseconds: 2000,
-                },
-                loadBootResource: function (type, name, defaultUri, integrity) {
-                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
-                        return (async function () {
-                            const hash = encodeURIComponent(integrity);
-                            const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
-                            if (!response.ok) {
-                                throw new Error(response.statusText);
-                            }
-                            return response;
-                        })();
-                    }
+    <script src="_framework/blazor.web@(blazorScriptSuffix).js" autostart="false"></script>
+    <script nonce="@blazorReloadNonce">
+        Blazor.start({
+            reconnectionOptions: {
+                 maxRetries: @(blazorMaxReconnectRetries),
+                 retryIntervalMilliseconds: 2000,
+            },
+            /*
+           // WASM Profiling & Mono logging
+           configureRuntime: dotnet => {
+               dotnet.withConfig({ browserProfilerOptions: {} });
+               dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
+               dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
+           },
+           */
+            loadBootResource: function (type, name, defaultUri, integrity) {
+                if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
+                    return (async function () {
+                        const hash = encodeURIComponent(integrity);
+                        const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
+                        if (!response.ok) {
+                            throw new Error(response.statusText);
+                        }
+                        return response;
+                    })();
                 }
-            });
-        </script>
-    }
-    else {
-        <script src="_framework/blazor.webassembly@(blazorScriptSuffix).js" autostart="false"></script>
-        <script nonce="@blazorReloadNonce">
-            Blazor.start({
-                /*
-               // WASM Profiling & Mono logging
-               configureRuntime: dotnet => {
-                   dotnet.withConfig({ browserProfilerOptions: {} });
-                   dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
-                   dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
-               },
-               */
-                loadBootResource: function (type, name, defaultUri, integrity) {
-                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
-                        return (async function () {
-                            const hash = encodeURIComponent(integrity);
-                            const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
-                            if (!response.ok) {
-                                throw new Error(response.statusText);
-                            }
-                            return response;
-                        })();
-                    }
-                }
-            });
-
-        </script>
-    }
+            }
+        });
+    </script>
 }
 </body>
 </html>
+
+@code {
+    private static string? _blazorScriptSuffix;
+    private bool _isInitialized;
+    private bool _isNewSession;
+    private Session? _session;
+    private SecureToken? _sessionToken;
+    private RenderModeDef? _renderMode; // Static by default
+    private CloseFlowInfo? _closeFlow;
+
+    [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
+    [Inject] private ISecureTokens SecureTokens { get; init; } = null!;
+    [Inject] private ServerAuth ServerAuth { get; init; } = null!;
+    [Inject] private UsersSettings UserSettings { get; init; } = null!;
+    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private IWebHostEnvironment Env { get; init; } = null!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = null!;
+
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        // We want to postpone the very first render till the moment async code below completes.
+        // That's why we override SetParametersAsync instead of OnInitializedAsync.
+        if (!_isInitialized) {
+            _isInitialized = true;
+            parameters.SetParameterProperties(this); // This call must be executed ASAP
+            await Initialize();
+        }
+        await base.SetParametersAsync(parameters);
+    }
+
+    // Private methods
+
+    private async Task Initialize()
+    {
+        var cancellationToken = HttpContext.RequestAborted;
+        (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
+        SessionResolver.Session = _session;
+        if (_isNewSession)
+            HttpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
+        _sessionToken = await SecureTokens.CreateForSession(_session, cancellationToken);
+
+        _closeFlow = ServerAuth.IsCloseFlow(HttpContext);
+        if (_closeFlow?.RedirectUrl is { } redirectUrl) {
+            HttpContext.Response.Redirect(redirectUrl, false);
+            return;
+        }
+
+        if (HttpContext.AcceptsInteractiveRouting())
+            _renderMode = RenderModeEndpoint.GetRenderMode(HttpContext);
+        // Activity.Current = null; // We don't want to "infect" Blazor circuit with it
+    }
+
+    private static string GetBlazorScriptSuffix()
+    {
+        if (_blazorScriptSuffix != null)
+            return _blazorScriptSuffix;
+
+        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions)
+            .Assembly
+            .GetInformationalVersion()
+            .RequireNonEmpty("Blazor extensions assembly version");
+        _blazorScriptSuffix = "." + version.Hash().SHA1().AlphaNumeric().ToLowerInvariant();
+        return _blazorScriptSuffix;
+    }
+}

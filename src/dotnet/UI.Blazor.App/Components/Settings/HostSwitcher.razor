@@ -54,7 +54,9 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+
     [Parameter, EditorRequired] public IMauiHostSwitcher NativeHostSwitcher { get; set; } = null!;
 
     protected override void OnInitialized() {

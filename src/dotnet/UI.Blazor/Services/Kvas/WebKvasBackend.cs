@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class WebKvasBackend : IBatchingKvasBackend
 {
-    private readonly bool _isPrerendering;
+    private readonly bool _isDisabled;
     private readonly string _getManyName;
     private readonly string _setManyName;
     private readonly string _clearName;
@@ -17,18 +17,19 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     public WebKvasBackend(string name, IServiceProvider services)
     {
         Services = services;
-        JS = services.JSRuntime();
+        var uiHub = services.UIHub();
+        JS = uiHub.JSRuntime();
         _getManyName = $"{name}.getMany";
         _setManyName = $"{name}.setMany";
         _clearName = $"{name}.clear";
-        _isPrerendering = services.GetRequiredService<BlazorRenderMode>().IsPrerendering;
-        WhenReady = _isPrerendering ? Task.CompletedTask
+        _isDisabled = !uiHub.IsInteractive;
+        WhenReady = _isDisabled ? Task.CompletedTask
             : JS.InvokeVoidAsync("window.App.isBundleReady").AsTask();
     }
 
     public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
-        if (_isPrerendering)
+        if (_isDisabled)
             return new byte[]?[keys.Length];
 
         if (!WhenReady.IsCompleted)
@@ -46,7 +47,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
 
     public async Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
-        if (_isPrerendering)
+        if (_isDisabled)
             return;
 
         if (!WhenReady.IsCompleted)
@@ -70,7 +71,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
 
     public async Task Clear(CancellationToken cancellationToken = default)
     {
-        if (_isPrerendering)
+        if (_isDisabled)
             return;
 
         if (!WhenReady.IsCompleted)

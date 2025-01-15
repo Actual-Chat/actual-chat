@@ -75,6 +75,7 @@ public class RecordDiffHandler<
         public Func<object, TRecordProperty> RecordPropertyGetter { get; }
         public Action<object, TRecordProperty>? RecordPropertySetter { get; }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
         public RecordDiffPropertyInfo(DiffEngine engine, PropertyInfo diffProperty, PropertyInfo recordProperty)
             : base(engine, diffProperty, recordProperty)
         {

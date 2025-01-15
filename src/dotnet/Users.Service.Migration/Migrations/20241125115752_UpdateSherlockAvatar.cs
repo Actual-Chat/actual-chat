@@ -13,9 +13,9 @@ namespace ActualChat.Users.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
- #pragma warning disable VSTHRD002
+#pragma warning disable VSTHRD002
             UpAsync(migrationBuilder, default).Wait();
- #pragma warning restore VSTHRD002
+#pragma warning restore VSTHRD002
         }
 
         /// <inheritdoc />

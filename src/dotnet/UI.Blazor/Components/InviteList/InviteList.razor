@@ -42,12 +42,11 @@
 }
 
 @code {
-    [Inject] private UIHub UIHub { get; init; } = null!;
-
-    private ShareUI ShareUI => UIHub.ShareUI;
-    private UrlMapper UrlMapper => UIHub.UrlMapper();
-    private UICommander UICommander => UIHub.UICommander();
-    private Session Session => UIHub.Session();
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private ShareUI ShareUI => Hub.ShareUI;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private UICommander UICommander => Hub.UICommander();
+    private Session Session => Hub.Session();
 
     [Parameter, EditorRequired] public List<Invite> Invites { get; set; } = [];
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
@@ -83,7 +82,7 @@
             }
             case ChatInviteOption chatDetails: {
                 // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
-                var chats = UIHub.GetRequiredService<IChats>();
+                var chats = Hub.GetRequiredService<IChats>();
                 var chatId = chatDetails.ChatId;
                 var chat = await chats.Get(Session, chatId, default);
                 if (chat == null || !chat.CanInvite())
@@ -91,7 +90,7 @@
 
                 Place? place = null;
                 if (!chatId.PlaceChatId.IsNone) {
-                    var places = UIHub.GetRequiredService<IPlaces>();
+                    var places = Hub.GetRequiredService<IPlaces>();
                     place = await places.Get(Session, chatId.PlaceChatId.PlaceId, default).ConfigureAwait(false);
                     if (place is null)
                         return; // We should be able to get chat's place. Return if it's not like that.
@@ -109,7 +108,7 @@
                 return;
             }
             case PlaceInviteOption placeDetails: {
-                var places = UIHub.GetRequiredService<IPlaces>();
+                var places = Hub.GetRequiredService<IPlaces>();
                 var place = await places.Get(Session, placeDetails.PlaceId, default);
                 if (place == null || !place.Rules.CanInvite())
                     return;

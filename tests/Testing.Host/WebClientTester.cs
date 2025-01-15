@@ -134,7 +134,7 @@ public class WebClientTester : IWebClientTester
 public class TestDispatcherResolver(IServiceProvider services) : IDispatcherResolver
 {
     public IServiceProvider Services { get; } = services;
-    public Task WhenReady { get; } = Task.CompletedTask;
+    public Task WhenInitialized { get; } = Task.CompletedTask;
     public Dispatcher Dispatcher { get; } = Dispatcher.CreateDefault();
     public CancellationToken StopToken { get; } = CancellationToken.None;
 }

@@ -85,10 +85,10 @@
     private IReadOnlyCollection<TimeZone> _timeZones = [];
     private AccountFull _account = AccountFull.Loading;
 
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ITimeZones TimeZones { get; init; } = null!;
     [Inject] private UIHub Hub { get; init; } = null!;
+    [Inject] private ITimeZones TimeZones { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     protected override async Task OnInitializedAsync() {
         _timeZones = await TimeZones.List("en-US", CancellationToken.None);

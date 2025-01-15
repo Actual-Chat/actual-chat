@@ -7,7 +7,7 @@ public sealed class AsyncDataAnnotationsValidator : ComponentBase, IAsyncDisposa
 
     [CascadingParameter] private EditContext? CurrentEditContext { get; set; }
 
-    [Inject] private UIHub UIHub { get; set; } = default!;
+    [Inject] private UIHub Hub { get; set; } = null!;
 
     protected override void OnInitialized()
     {
@@ -16,7 +16,7 @@ public sealed class AsyncDataAnnotationsValidator : ComponentBase, IAsyncDisposa
                 + $"parameter of type {nameof(EditContext)}. For example, you can use {nameof(AsyncDataAnnotationsValidator)} "
                 + $"inside an EditForm.");
 
-        _subscriptions = new EditContextAsyncValidator(CurrentEditContext, UIHub).Start();
+        _subscriptions = new EditContextAsyncValidator(CurrentEditContext, Hub).Start();
         _originalEditContext = CurrentEditContext;
     }
 

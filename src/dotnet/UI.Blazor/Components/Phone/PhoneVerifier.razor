@@ -45,14 +45,14 @@
     private TotpVerifier? _totpVerifier;
     private ValidationState _validationState = ValidationState.None;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private ICaptcha Captcha { get; init; } = null!;
-    [Inject] private TotpUI TotpUI { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private TotpUI TotpUI => Hub.TotpUI;
+    private CaptchaUI CaptchaUI => Hub.CaptchaUI;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private MomentClockSet Clocks => Hub.Clocks();
 
     [Parameter, EditorRequired] public string Phone { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";

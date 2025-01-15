@@ -21,8 +21,11 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     private Features? _features;
     private ICommander? _commander;
     private RpcHub? _rpcHub;
+    private Tracer? _tracer;
 
     public IServiceProvider Services { get; }
+    [field: AllowNull, MaybeNull]
+    public DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
     public HostInfo HostInfo() => _hostInfo;
@@ -33,6 +36,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     public Features Features() => _features ??= Services.GetRequiredService<Features>();
     public ICommander Commander() => _commander ??= Services.Commander();
     public RpcHub RpcHub() => _rpcHub ??= Services.GetRequiredService<RpcHub>();
+    public Tracer Tracer() => _tracer ??= Services.Tracer();
 
     public CancellationToken StopToken { get; }
     public Task? WhenDisposed => _whenDisposed;

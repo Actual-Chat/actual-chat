@@ -246,9 +246,6 @@ public partial class AppHost
 
     public sealed class BuildContext(AppHost appHost) : IConfigureAppContext
     {
-        private HostInfo? _hostInfo;
-        private ILogger<BuildContext>? _log;
-
         public AppHost AppHost { get; set; } = appHost;
         public WebApplicationBuilder Builder { get; set; } = null!;
         public IWebHostEnvironment Env => Builder.Environment;
@@ -257,8 +254,10 @@ public partial class AppHost
         public IServiceProvider ModuleServices { get; set; } = null!;
         public ModuleHostBuilder ModuleHostBuilder { get; set; } = new();
         public ModuleHost ModuleHost { get; set; } = null!;
-        public HostInfo HostInfo => _hostInfo ??= ModuleServices.GetRequiredService<HostInfo>();
-        public ILogger Log => _log ??= ModuleServices.LogFor<BuildContext>();
+        [field: AllowNull, MaybeNull]
+        public HostInfo HostInfo => field ??= ModuleServices.GetRequiredService<HostInfo>();
+        [field: AllowNull, MaybeNull]
+        public ILogger Log => field ??= ModuleServices.LogFor<BuildContext>();
         public WebApplication App { get; set; } = null!;
     }
 }

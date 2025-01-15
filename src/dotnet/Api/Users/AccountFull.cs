@@ -55,6 +55,7 @@ public sealed partial record AccountFull(
     // Deserialization handlers
 
 #pragma warning disable CS0618
+    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
     private static readonly Action<AccountFull, Phone> PhoneSetter = typeof(AccountFull)
         .GetProperty(nameof(Phone))!
         .GetSetter<AccountFull, Phone>();
