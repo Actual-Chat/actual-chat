@@ -13,6 +13,7 @@
 
   <PropertyGroup Condition=" '$(RunConfiguration)' == 'Debug' " />
   <PropertyGroup Condition=" '$(RunConfiguration)' == 'Blazor Debug' " />
+  
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
@@ -20,7 +21,6 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="ActualLab.Fusion.Server" />
     <!-- Only for adjust Grpc.Core thread pool, for google transcriber & oltp exporter -->
     <PackageReference Include="Grpc.Core" />
     <PackageReference Include="OpenTelemetry" />

@@ -103,7 +103,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
-        // app.UseAntiforgery();
+        app.UseAntiforgery();
 
         app.MapRazorComponents<RootServerPage>()
             .AddInteractiveServerRenderMode()
