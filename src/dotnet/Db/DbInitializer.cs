@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace ActualChat.Db;
 
@@ -62,34 +63,12 @@ public abstract class DbInitializer<
             if (HostInfo.IsTested)
                 mustMigrate = Random.Shared.Next(30) < 1; // 3% migration probability in tests
             if (mustMigrate)
-                await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
+                await MigrateDb(db, cancellationToken).ConfigureAwait(false);
             else
                 await db.EnsureCreatedWithMigrationsMarkedAsCompleted(cancellationToken).ConfigureAwait(false);
         }
-        else if (DbInfo.ShouldMigrateDb) {
-            var migrations = (await db
-                .GetPendingMigrationsAsync(cancellationToken)
-                .ConfigureAwait(false)
-                ).ToList();
-            if (migrations.Count != 0) {
-                Log.LogInformation(
-                    "Migrating DB '{DatabaseName}': applying {Migrations}...",
-                    dbName, migrations.ToDelimitedString());
-                try {
-                    await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
-                    Log.LogInformation(
-                        "Migrating DB '{DatabaseName}': applied {MigrationCount} migration(s)",
-                        dbName, migrations.Count);
-                }
-                catch (Exception e) {
-                    Log.LogError(e, "Failed to migrate DB '{DatabaseName}'", dbName);
-                    throw;
-                }
-            }
-            else
-                Log.LogInformation(
-                    "Migrating DB '{DatabaseName}': no migrations to apply", dbName);
-        }
+        else if (DbInfo.ShouldMigrateDb)
+            await MigrateDb(db, cancellationToken).ConfigureAwait(false);
         else
             throw StandardError.Internal("Either DbInfo.ShouldRecreateDb or ShouldMigrateDb must be true.");
 
@@ -114,9 +93,44 @@ public abstract class DbInitializer<
     public virtual Task VerifyData(CancellationToken cancellationToken)
         => Task.CompletedTask;
 
+    // Protected methods
+
     protected void ConfigureContext(TDbContext dbContext)
     {
         if (!dbContext.Database.IsInMemory())
             dbContext.Database.SetCommandTimeout(CommandTimeout);
+    }
+
+    protected async Task MigrateDb(DatabaseFacade db, CancellationToken cancellationToken)
+    {
+        var dbName = db.GetDbConnection().Database;
+        if (db.IsInMemory()) {
+            Log.LogInformation("MigrateDb '{DatabaseName}': no migrations to apply (in-memory DB)", dbName);
+            return;
+        }
+
+        var migrations = (await db
+            .GetPendingMigrationsAsync(cancellationToken)
+            .ConfigureAwait(false)
+            ).ToList();
+        if (migrations.Count == 0) {
+            Log.LogInformation("MigrateDb '{DatabaseName}': no migrations to apply", dbName);
+            return;
+        }
+
+        // NOTE(AY): We apply migrations one-by-one here, coz EF9+ applies all of them in a single transaction,
+        // and such a behavior doesn't allow WhenEarlierMigrationsCompleted to detect the completion properly.
+        Log.LogInformation("MigrateDb '{DatabaseName}': applying {Count} migration(s):", dbName, migrations.Count);
+        foreach (var migration in migrations) {
+            Log.LogInformation("- MigrateDb '{DatabaseName}': applying '{Migration}'", dbName, migration);
+            try {
+                await db.MigrateAsync(migration, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "MigrateDb '{DatabaseName}' failed on '{Migration}'", dbName, migration);
+                throw;
+            }
+        }
+        Log.LogInformation("MigrateDb '{DatabaseName}': completed", dbName);
     }
 }

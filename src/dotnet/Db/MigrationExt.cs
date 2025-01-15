@@ -16,7 +16,7 @@ public static class MigrationExt
         return attribute.Id;
     }
 
-    public static Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<
+    public static Task<DbInitializer<TDbContext>> WhenEarlierMigrationsCompleted<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>(
         this DbInitializer<TDbContext> dbInitializer,
         Migration migration,
@@ -24,19 +24,19 @@ public static class MigrationExt
         where TDbContext : DbContext
     {
         var log = dbInitializer.Services.LogFor(migration.GetType());
-        return dbInitializer.CompleteEarlierMigrations(migration.GetId(), log, cancellationToken);
+        return dbInitializer.WhenEarlierMigrationsCompleted(migration.GetId(), log, cancellationToken);
     }
 
-    public static Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<
+    public static Task<DbInitializer<TDbContext>> WhenEarlierMigrationsCompleted<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>(
         this DbInitializer<TDbContext> dbInitializer,
         Migration migration,
         ILogger log,
         CancellationToken cancellationToken = default)
         where TDbContext : DbContext
-        => dbInitializer.CompleteEarlierMigrations(migration.GetId(), log, cancellationToken);
+        => dbInitializer.WhenEarlierMigrationsCompleted(migration.GetId(), log, cancellationToken);
 
-    public static async Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<
+    public static async Task<DbInitializer<TDbContext>> WhenEarlierMigrationsCompleted<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>(
         this DbInitializer<TDbContext> dbInitializer,
         string migrationId,
