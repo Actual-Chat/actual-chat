@@ -46,6 +46,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         var expectedEntries = entries.Accessible()
             .Where(x => x.Content.OrdinalIgnoreCaseContains("one"))
             .OrderByDescending(x => x.GetIndexedEntryDate())
+            .ThenBy(x => x.Version)
             .ToArray();
         await WaitUntilIndexed("one",
             expectedFriends,
@@ -85,6 +86,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         expectedEntries = entries.AccessibleFromJoinedPrivatePlace2()
             .Where(x => x.Content.OrdinalIgnoreCaseContains("one"))
             .OrderByDescending(x => x.GetIndexedEntryDate())
+            .ThenBy(x => x.Version)
             .ToArray();
         foundItems = await GetSearchResults(GetExpected());
         AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends).ToList());
