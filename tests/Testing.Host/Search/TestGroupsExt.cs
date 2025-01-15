@@ -2,122 +2,63 @@ namespace ActualChat.Testing.Host;
 
 public static class TestGroupsExt
 {
-    // TODO: generate code
     public static Chat.Chat JoinedPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 0, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat1(null)];
     public static Chat.Chat JoinedPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 1, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat2(null)];
     public static Chat.Chat OtherPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 0, true, false)];
+        => chats[TestGroupKey.OtherPublicChat1(null)];
     public static Chat.Chat OtherPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 1, true, false)];
+        => chats[TestGroupKey.OtherPublicChat2(null)];
     public static Chat.Chat JoinedPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 0, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat1(null)];
     public static Chat.Chat JoinedPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 1, false, true)];
-    public static Chat.Chat OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 0, false, false)];
-    public static Chat.Chat OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (null, 1, false, false)];
+        => chats[TestGroupKey.JoinedPrivateChat2(null)];
 
     public static Chat.Chat JoinedPublicPlace1JoinedPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, true), 0, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat1(TestPlaceKey.JoinedPublicPlace1)];
     public static Chat.Chat JoinedPublicPlace1JoinedPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, true), 1, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat2(TestPlaceKey.JoinedPublicPlace1)];
     public static Chat.Chat JoinedPublicPlace2JoinedPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, true), 0, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat1(TestPlaceKey.JoinedPublicPlace2)];
     public static Chat.Chat JoinedPublicPlace2JoinedPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, true), 1, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat2(TestPlaceKey.JoinedPublicPlace2)];
 
     public static Chat.Chat JoinedPublicPlace1JoinedPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, true), 0, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat1(TestPlaceKey.JoinedPublicPlace1)];
     public static Chat.Chat JoinedPublicPlace1JoinedPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, true), 1, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat2(TestPlaceKey.JoinedPublicPlace1)];
     public static Chat.Chat JoinedPublicPlace2JoinedPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, true), 0, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat1(TestPlaceKey.JoinedPublicPlace2)];
     public static Chat.Chat JoinedPublicPlace2JoinedPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, true), 1, false, true)];
-
-    public static Chat.Chat JoinedPublicPlace1OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, true), 0, false, false)];
-    public static Chat.Chat JoinedPublicPlace1OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, true), 1, false, false)];
-    public static Chat.Chat JoinedPublicPlace2OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, true), 0, false, false)];
-    public static Chat.Chat JoinedPublicPlace2OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, true), 1, false, false)];
-
-    public static Chat.Chat OtherPublicPlace1JoinedPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, false), 0, false, true)];
-    public static Chat.Chat OtherPublicPlace1JoinedPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, false), 1, false, true)];
-    public static Chat.Chat OtherPublicPlace2JoinedPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, false), 0, false, true)];
-    public static Chat.Chat OtherPublicPlace2JoinedPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, false), 1, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat2(TestPlaceKey.JoinedPublicPlace2)];
 
     public static Chat.Chat JoinedPrivatePlace1JoinedPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, true), 0, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat1(TestPlaceKey.JoinedPrivatePlace1)];
     public static Chat.Chat JoinedPrivatePlace1JoinedPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, true), 1, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat2(TestPlaceKey.JoinedPrivatePlace1)];
     public static Chat.Chat JoinedPrivatePlace2JoinedPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, true), 0, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat1(TestPlaceKey.JoinedPrivatePlace2)];
     public static Chat.Chat JoinedPrivatePlace2JoinedPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, true), 1, true, true)];
+        => chats[TestGroupKey.JoinedPublicChat2(TestPlaceKey.JoinedPrivatePlace2)];
 
     public static Chat.Chat JoinedPrivatePlace1JoinedPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, true), 0, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat1(TestPlaceKey.JoinedPrivatePlace1)];
     public static Chat.Chat JoinedPrivatePlace1JoinedPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, true), 1, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat2(TestPlaceKey.JoinedPrivatePlace1)];
     public static Chat.Chat JoinedPrivatePlace2JoinedPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, true), 0, false, true)];
+        => chats[TestGroupKey.JoinedPrivateChat1(TestPlaceKey.JoinedPrivatePlace2)];
     public static Chat.Chat JoinedPrivatePlace2JoinedPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, true), 1, false, true)];
-
-    public static Chat.Chat JoinedPrivatePlace1OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, true), 0, false, false)];
-    public static Chat.Chat JoinedPrivatePlace1OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, true), 1, false, false)];
-    public static Chat.Chat JoinedPrivatePlace2OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, true), 0, false, false)];
-    public static Chat.Chat JoinedPrivatePlace2OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, true), 1, false, false)];
+        => chats[TestGroupKey.JoinedPrivateChat2(TestPlaceKey.JoinedPrivatePlace2)];
 
     public static Chat.Chat OtherPublicPlace1OtherPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, false), 0, true, false)];
+        => chats[TestGroupKey.OtherPublicChat1(TestPlaceKey.OtherPublicPlace1)];
     public static Chat.Chat OtherPublicPlace1OtherPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, false), 1, true, false)];
+        => chats[TestGroupKey.OtherPublicChat2(TestPlaceKey.OtherPublicPlace1)];
     public static Chat.Chat OtherPublicPlace2OtherPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, false), 0, true, false)];
+        => chats[TestGroupKey.OtherPublicChat1(TestPlaceKey.OtherPublicPlace2)];
     public static Chat.Chat OtherPublicPlace2OtherPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, false), 1, true, false)];
-
-    public static Chat.Chat OtherPublicPlace1OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, false), 0, false, false)];
-    public static Chat.Chat OtherPublicPlace1OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, true, false), 1, false, false)];
-    public static Chat.Chat OtherPublicPlace2OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, false), 0, false, false)];
-    public static Chat.Chat OtherPublicPlace2OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, true, false), 1, false, false)];
-
-    public static Chat.Chat OtherPrivatePlace1OtherPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, false), 0, true, false)];
-    public static Chat.Chat OtherPrivatePlace1OtherPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, false), 1, true, false)];
-    public static Chat.Chat OtherPrivatePlace2OtherPublicChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, false), 0, true, false)];
-    public static Chat.Chat OtherPrivatePlace2OtherPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, false), 1, true, false)];
-
-    public static Chat.Chat OtherPrivatePlace1OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, false), 0, false, false)];
-    public static Chat.Chat OtherPrivatePlace1OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(0, false, false), 1, false, false)];
-    public static Chat.Chat OtherPrivatePlace2OtherPrivateChat1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, false), 0, false, false)];
-    public static Chat.Chat OtherPrivatePlace2OtherPrivateChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats[new (new(1, false, false), 1, false, false)];
+        => chats[TestGroupKey.OtherPublicChat2(TestPlaceKey.OtherPublicPlace2)];
 
     public static IEnumerable<Chat.Chat> JoinedGroups1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => [
         chats.JoinedPublicChat1(),
