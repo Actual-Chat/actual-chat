@@ -1,6 +1,5 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch;
-using ActualChat.Search;
 using ActualChat.Users;
 using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 
@@ -9,37 +8,37 @@ namespace ActualChat.Testing.Host;
 public static class TestPeopleExt
 {
     public static AccountFull Friend1FromPublicPlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, true, true), 0, true)];
+        => people[TestChatKey.Friend1(TestPlaceKey.JoinedPublicPlace1)];
     public static AccountFull Friend1FromPublicPlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, true, true), 0, true)];
+        => people[TestChatKey.Friend1(TestPlaceKey.JoinedPublicPlace2)];
     public static AccountFull Friend1FromPrivatePlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, false, true), 0, true)];
+        => people[TestChatKey.Friend1(TestPlaceKey.JoinedPrivatePlace1)];
     public static AccountFull Friend1FromPrivatePlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, false, true), 0, true)];
+        => people[TestChatKey.Friend1(TestPlaceKey.JoinedPrivatePlace2)];
     public static AccountFull Friend2FromPublicPlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, true, true), 1, true)];
+        => people[TestChatKey.Friend2(TestPlaceKey.JoinedPublicPlace1)];
     public static AccountFull Friend2FromPublicPlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, true, true), 1, true)];
+        => people[TestChatKey.Friend2(TestPlaceKey.JoinedPublicPlace2)];
     public static AccountFull Friend2FromPrivatePlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, false, true), 1, true)];
+        => people[TestChatKey.Friend2(TestPlaceKey.JoinedPrivatePlace1)];
     public static AccountFull Friend2FromPrivatePlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, false, true), 1, true)];
+        => people[TestChatKey.Friend2(TestPlaceKey.JoinedPrivatePlace2)];
     public static AccountFull Stranger1FromPublicPlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, true, true), 0, false)];
+        => people[TestChatKey.Stranger1(TestPlaceKey.JoinedPublicPlace1)];
     public static AccountFull Stranger1FromPublicPlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, true, true), 0, false)];
+        => people[TestChatKey.Stranger1(TestPlaceKey.JoinedPublicPlace2)];
     public static AccountFull Stranger1FromPrivatePlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, false, true), 0, false)];
+        => people[TestChatKey.Stranger1(TestPlaceKey.JoinedPrivatePlace1)];
     public static AccountFull Stranger1FromPrivatePlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, false, true), 0, false)];
+        => people[TestChatKey.Stranger1(TestPlaceKey.JoinedPrivatePlace2)];
     public static AccountFull Stranger2FromPublicPlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, true, true), 1, false)];
+        => people[TestChatKey.Stranger2(TestPlaceKey.JoinedPublicPlace1)];
     public static AccountFull Stranger2FromPublicPlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, true, true), 1, false)];
+        => people[TestChatKey.Stranger2(TestPlaceKey.JoinedPublicPlace2)];
     public static AccountFull Stranger2FromPrivatePlace1(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(0, false, true), 1, false)];
+        => people[TestChatKey.Stranger2(TestPlaceKey.JoinedPrivatePlace1)];
     public static AccountFull Stranger2FromPrivatePlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people[new (new TestPlaceKey(1, false, true), 1, false)];
+        => people[TestChatKey.Stranger2(TestPlaceKey.JoinedPrivatePlace2)];
 
     public static IEnumerable<AccountFull> Friends1(this IReadOnlyDictionary<TestChatKey, AccountFull> people) => [
         people.Friend1FromPublicPlace1(),

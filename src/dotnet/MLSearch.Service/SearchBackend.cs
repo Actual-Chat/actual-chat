@@ -139,9 +139,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return;
 
         var (chat, _, changeKind) = eventCommand;
-        await UpdateIndexedChatContacts().ConfigureAwait(false);
         // TODO: Stop indexing removed chats
-        await Flows.GetOrStart<EntryIndexingFlow>(eventCommand.Chat.Id, cancellationToken).ConfigureAwait(false);
+        await StartIndexingEntries();
+        await UpdateIndexedChatContacts().ConfigureAwait(false);
         return;
 
         Task UpdateIndexedChatContacts()
@@ -155,6 +155,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
             return ResumeIndexingFlow<GroupContactIndexingFlow>("", "Chat changed", cancellationToken);
         }
+
+        Task StartIndexingEntries()
+            => chat.Id.IsPlaceRootChat || changeKind != ChangeKind.Create
+                ? Task.CompletedTask
+                : Flows.GetOrStart<EntryIndexingFlow>(chat.Id, cancellationToken);
     }
 
     // [EventHandler]

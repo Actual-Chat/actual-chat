@@ -8,6 +8,10 @@ public static class TestEntriesExt
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries)
         => entries.Where(x => x.Key.ChatKey.MustJoin).Select(x => x.Value);
 
+    public static IEnumerable<ChatEntry> AccessibleFromJoinedPrivatePlace2(
+        this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries)
+        => entries.Where(x => x.Key.ChatKey.PlaceKey == TestPlaceKey.JoinedPrivatePlace2 && x.Key.ChatKey.MustJoin).Select(x => x.Value);
+
     public static IEnumerable<ChatEntry> Accessible1(
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries)
         => entries.Where(x => x.Key.ChatKey.MustJoin && x.Key.Index == 0).Select(x => x.Value);
