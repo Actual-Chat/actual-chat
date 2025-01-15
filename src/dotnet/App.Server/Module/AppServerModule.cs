@@ -24,7 +24,9 @@ using ActualLab.IO;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 using ActualChat.MLSearch.Diagnostics;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Fusion.Server;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -68,6 +70,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             app.UseHsts();
         }
         app.UseStaticFiles();
+        app.UseStaticDistFiles(); // Static files from dist and _content folders
 
         // See
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
@@ -85,15 +88,11 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             KeepAliveInterval = TimeSpan.FromSeconds(30),
         });
 
-        // Static files
-        app.UseBlazorFrameworkFiles();
-        app.UseDistFiles();
         // Explicit rewrite cause files without extension (hence no content-type) are not served due to security reasons
         app.UseRewriter(
             new RewriteOptions().AddRewrite("\\.well-known/apple-app-site-association$",
                 ".well-known/apple-app-site-association.json",
                 true));
-        app.UseStaticFiles();
 
         // Response compression
         if (!Env.IsDevelopment()) // disable compression for local development and hot reload
@@ -104,11 +103,14 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
+        // app.UseAntiforgery();
 
         app.MapRazorComponents<RootServerPage>()
             .AddInteractiveServerRenderMode()
             .AddInteractiveWebAssemblyRenderMode()
-            .AddAdditionalAssemblies(typeof(WebApp).Assembly);
+            .AddAdditionalAssemblies(typeof(WebApp).Assembly) // UI.Blazor.AppPack
+            .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
+            .AddAdditionalAssemblies(typeof(ChatUIHub).Assembly); // UI.Blazor.App
         app.UseEndpoints(endpoints => {
             endpoints.MapAppHealth();
             // Disabled as we disabled prometheus endpoint recently

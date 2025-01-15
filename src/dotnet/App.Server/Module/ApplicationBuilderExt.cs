@@ -36,7 +36,7 @@ public static class ApplicationBuilderExt
         });
     }
 
-    public static IApplicationBuilder UseDistFiles(this IApplicationBuilder builder)
+    public static IApplicationBuilder UseStaticDistFiles(this IApplicationBuilder builder)
     {
         var webHostEnvironment = builder.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
         var options = CreateStaticFilesOptions(webHostEnvironment.WebRootFileProvider);
