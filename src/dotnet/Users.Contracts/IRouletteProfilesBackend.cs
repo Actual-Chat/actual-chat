@@ -13,7 +13,7 @@ public interface IRouletteProfilesBackend : IComputeService, IBackendService
     Task<RouletteUserSettings?> GetUserSettings(UserId userId, CancellationToken cancellationToken);
 
     // Not ComputeMethod
-    Task<ImmutableArray<ProfilePreferencesFull>> FindProfiles(UserId ownUserId, Symbol ownProfileId, Preferences filter, CancellationToken cancellationToken);
+    Task<ApiArray<ProfilePreferencesFull>> FindProfiles(UserId ownUserId, Symbol ownProfileId, Preferences filter, CancellationToken cancellationToken);
 
     // Commands
 

@@ -25,13 +25,13 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
     public ProfilePreferencesFull ToModel()
     {
         var country = CountryCode.IsNullOrEmpty() ? Country.NotSpecified : new Country(CountryCode);
-        ImmutableArray<Language> languages =
+        ApiArray<Language> languages =
             Languages.IsNullOrEmpty()
-                ? ImmutableArray<Language>.Empty
+                ? ApiArray<Language>.Empty
                 : [..Languages.Split(',').Select(l => new Language(l))];
-        ImmutableArray<Interest> interests =
+        ApiArray<Interest> interests =
             Interests.IsNullOrEmpty()
-                ? ImmutableArray<Interest>.Empty
+                ? ApiArray<Interest>.Empty
                 : [..Interests.Split(',').Select(i => new Interest(i))];
         return new ProfilePreferencesFull(new UserId(UserId), Id, Version) {
             Preferences = new Preferences {
@@ -65,7 +65,7 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
         Interests = string.Join(",", Sort(preferences.Interests).Select(c => c.Code));
     }
 
-    private IEnumerable<Interest> Sort(ImmutableArray<Interest> interests)
+    private IEnumerable<Interest> Sort(IEnumerable<Interest> interests)
         => interests
             .Select(c => {
                 var index = Interests.IndexOf(c.Code, StringComparison.Ordinal);

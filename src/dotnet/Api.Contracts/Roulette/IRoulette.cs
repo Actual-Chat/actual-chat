@@ -4,10 +4,7 @@ namespace ActualChat.Roulette;
 
 public interface IRoulette : IComputeService
 {
-    Task<ImmutableArray<ChatCandidate>> FindChatCandidates(Session session, Symbol profileId, Preferences filter, CancellationToken cancellationToken);
-
-    // [ComputeMethod]
-    // Task<ChatRoulette?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<ChatCandidate>> FindChatCandidates(Session session, Symbol profileId, Preferences filter, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ChatRouletteProfiles?> GetProfiles(Session session, ChatId chatId, CancellationToken cancellationToken);

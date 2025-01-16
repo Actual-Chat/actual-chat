@@ -94,8 +94,8 @@
         var preferences = new Preferences {
             Country = Country.ParseOrNone(_form.CountryCode),
             Gender = _form.Gender,
-            Languages = _form.Languages,
-            Interests = _form.Interests,
+            Languages = _form.Languages.ToApiArray(),
+            Interests = _form.Interests.ToApiArray(),
         };
         RouletteUI.ApplyNewFilter(preferences);
     }
@@ -119,8 +119,8 @@
     private void FillInForm(FormModel form, Preferences searchCriteria) {
         form.CountryCode = searchCriteria.Country.Code;
         form.Gender = searchCriteria.Gender;
-        form.Languages = searchCriteria.Languages;
-        form.Interests = searchCriteria.Interests;
+        form.Languages = searchCriteria.Languages.ToImmutableArray();
+        form.Interests = searchCriteria.Interests.ToImmutableArray();
         form.CopyToBase();
     }
 

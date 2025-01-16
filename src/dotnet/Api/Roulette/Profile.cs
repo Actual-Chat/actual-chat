@@ -87,23 +87,21 @@ public partial record Preferences
 
     [DataMember, MemoryPackOrder(0)] public Country Country { get; init; } = Country.NotSpecified;
     [DataMember, MemoryPackOrder(1)] public Gender Gender { get; init; } = Gender.NotSpecified;
-    [DataMember, MemoryPackOrder(2)] public ImmutableArray<Language> Languages { get; init; } = ImmutableArray<Language>.Empty;
-    [DataMember, MemoryPackOrder(3)] public ImmutableArray<Interest> Interests { get; init; } = ImmutableArray<Interest>.Empty;
+    [DataMember, MemoryPackOrder(2)] public ApiArray<Language> Languages { get; init; } = ApiArray<Language>.Empty;
+    [DataMember, MemoryPackOrder(3)] public ApiArray<Interest> Interests { get; init; } = ApiArray<Interest>.Empty;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty =>
         Country == Country.NotSpecified
         && Gender == Gender.NotSpecified
-        && Languages.Length == 0
-        && Interests.Length == 0;
+        && Languages.Count == 0
+        && Interests.Count == 0;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsSufficientForFiltering
-        => !IsEmpty && Languages.Length > 0;
+        => !IsEmpty && Languages.Count > 0;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public partial record ChatCandidate([property: DataMember, MemoryPackOrder(0)] Profile Profile)
-{
-}
+public partial record ChatCandidate([property: DataMember, MemoryPackOrder(0)] Profile Profile);
