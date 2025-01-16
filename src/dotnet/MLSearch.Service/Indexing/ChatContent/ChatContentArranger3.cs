@@ -42,11 +42,8 @@ internal sealed class ChatContentArranger3(
             tailBuilder.Embeddings = await CalculateEmbeddings(tailBuilder.Dialog).ConfigureAwait(false);
         }
 
-        // if (tailBuilder is not null && ShouldCompleteDoc(tailBuilder)) {
-        //     // Should I return it if the document has not changed?
-        //     //yield return new SourceEntries(null, null, tailBuilder.Entries);
-        //     tailBuilder = null;
-        // }
+        if (tailBuilder is not null && ShouldCompleteDoc(tailBuilder))
+            tailBuilder = null;
 
         var wordLimitPerBlock = WordCountPerBlock;
         if (tailBuilder is not null)
