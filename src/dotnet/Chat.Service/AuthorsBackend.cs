@@ -125,14 +125,10 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-#pragma warning disable CA1309 // Use ordinal string comparison
-
         var authorsQuery = query.LastId.IsNone
             ? dbContext.Authors.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
             : dbContext.Authors.Where(x => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
                 || (x.Version==query.MinVersion && string.Compare(x.Id, query.LastId.Value) > 0));
-
-#pragma warning restore CA1309 // Use ordinal string comparison
 
         var dbAuthors = await authorsQuery
             .WhereIf(x => x.IsPlaceAuthor == query.IsPlaceAuthor, query.IsPlaceAuthor != null)

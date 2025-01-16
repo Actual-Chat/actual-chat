@@ -544,7 +544,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return await entriesQuery
             .Where(x => x.ChatId == query.ChatId.Value && x.Kind == ChatEntryKind.Text)
             .OrderBy(x => x.Version)
-            .ThenBy(x => x.Id)
+            .ThenBy(x => x.LocalId)
             .Take(query.Limit)
             .AsAsyncEnumerable()
             .Select(x => x.ToModel())
