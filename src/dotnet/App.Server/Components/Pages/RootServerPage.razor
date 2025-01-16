@@ -9,6 +9,7 @@
 @using ActualLab.Generators
 @using ActualChat.UI.Blazor.App
 @{
+    Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
     var isWasmRenderMode = OrdinalEquals(_renderMode?.Key, "w");
     var blazorMaxReconnectRetries = 0; // 100_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : GetBlazorScriptSuffix();
@@ -238,36 +239,40 @@
             SessionToken="@_sessionToken?.Token"
             RenderModeKey="@(_renderMode?.Key)" />
     </app>
-
     <!-- This block must go right after app, otherwise page content won't be blurred -->
     <div id="components-reconnect-modal"></div>
     <div id="blazor-error-ui"></div>
     <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
+
     <script src="_framework/blazor.web@(blazorScriptSuffix).js" autostart="false"></script>
     <script nonce="@blazorReloadNonce">
         Blazor.start({
-            reconnectionOptions: {
-                 maxRetries: @(blazorMaxReconnectRetries),
-                 retryIntervalMilliseconds: 2000,
+            circuit: {
+                reconnectionOptions: {
+                    maxRetries: @(blazorMaxReconnectRetries),
+                    retryIntervalMilliseconds: 2000,
+                }
             },
-            /*
-           // WASM Profiling & Mono logging
-           configureRuntime: dotnet => {
-               dotnet.withConfig({ browserProfilerOptions: {} });
-               dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
-               dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
-           },
-           */
-            loadBootResource: function (type, name, defaultUri, integrity) {
-                if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
-                    return (async function () {
-                        const hash = encodeURIComponent(integrity);
-                        const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
-                        if (!response.ok) {
-                            throw new Error(response.statusText);
-                        }
-                        return response;
-                    })();
+            webAssembly: {
+                /*
+               // WASM Profiling & Mono logging
+               configureRuntime: dotnet => {
+                   dotnet.withConfig({ browserProfilerOptions: {} });
+                   dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
+                   dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
+               },
+               */
+                loadBootResource: function (type, name, defaultUri, integrity) {
+                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
+                        return (async function () {
+                            const hash = encodeURIComponent(integrity);
+                            const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
+                            if (!response.ok)
+                                throw new Error(response.statusText);
+
+                            return response;
+                        })();
+                    }
                 }
             }
         });
@@ -294,6 +299,7 @@
     [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private IWebHostEnvironment Env { get; init; } = null!;
+    [Inject] private ILogger<RootServerPage> Log { get; init; } = null!;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = null!;

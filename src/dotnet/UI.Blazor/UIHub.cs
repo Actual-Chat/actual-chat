@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
@@ -99,6 +100,10 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public JSRuntimeInfo JSRuntimeInfo => field ??= CircuitContext.JSRuntimeInfo;
     [field: AllowNull, MaybeNull]
     public AppBlazorCircuitContext CircuitContext => field ??= Services.GetRequiredService<AppBlazorCircuitContext>();
+    [field: AllowNull, MaybeNull]
+    public ISessionResolver SessionResolver => field ??= Services.GetRequiredService<ISessionResolver>();
+    [field: AllowNull, MaybeNull]
+    public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
     [field: AllowNull, MaybeNull]
     public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
 

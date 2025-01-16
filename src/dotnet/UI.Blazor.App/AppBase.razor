@@ -40,15 +40,16 @@
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
 
-    [Inject] protected ModuleHost Host { get; init; } = null!;
     [Inject] protected UIHub UIHub { get; init; } = null!;
-    [Inject] protected AppScopedServiceStarter AppServiceStarter { get; init; } = null!;
-    [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
     protected IServiceProvider Services => UIHub.Services;
     protected HostInfo HostInfo => UIHub.HostInfo();
+    protected ISessionResolver SessionResolver => UIHub.SessionResolver;
     protected AppBlazorCircuitContext CircuitContext => UIHub.CircuitContext;
-    protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
+    protected ModuleHost ModuleHost => UIHub.ModuleHost;
 
+    protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
+    [field: AllowNull, MaybeNull]
+    protected AppScopedServiceStarter AppScopedServiceStarter => field ??= Services.GetRequiredService<AppScopedServiceStarter>();
     [field: AllowNull, MaybeNull]
     protected Tracer Tracer => field ??= UIHub.Tracer();
     [field: AllowNull, MaybeNull]
@@ -61,8 +62,11 @@
     public AppBase()
         => LoadingUI.MarkAppCreated();
 
-    protected override void OnInitialized()
-        => CircuitContext.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
+    protected override void OnInitialized() {
+        Log.LogWarning("OnInitialized, Hash: {Hash}", GetHashCode());
+        if (CircuitContext.IsInteractive)
+            CircuitContext.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
+    }
 
     protected override async Task OnInitializedAsync() {
         using var _1 = Tracer.Region();
@@ -81,11 +85,11 @@
         if (!UIHub.IsInteractive)
             return;
 
-        var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender(sessionHash);
+        var prepareFirstRenderTask = AppScopedServiceStarter.PrepareFirstRender(sessionHash);
         if (ReferenceEquals(UIModuleAssemblies, null)) {
             // Evaluate UIModuleAssemblies (just once - it's a static member)
             var uiModuleAssemblies = new HashSet<Assembly>();
-            foreach (var module in Host.Modules) {
+            foreach (var module in ModuleHost.Modules) {
                 if (module.IsUsed && module is IBlazorUIModule)
                     uiModuleAssemblies.Add(module.GetType().Assembly);
             }
@@ -95,7 +99,7 @@
         await prepareFirstRenderTask;
         _readyToRender = true;
         _shouldRender = true;
-        _ = AppServiceStarter.AfterFirstRender(CircuitContext.StopToken);
+        _ = AppScopedServiceStarter.AfterFirstRender(CircuitContext.StopToken);
     }
 
     public void SimulateCrash(Exception error) {
