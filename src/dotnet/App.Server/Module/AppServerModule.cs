@@ -105,6 +105,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseAuthentication();
         app.UseAntiforgery();
 
+        // app.MapStaticAssets();
         app.MapRazorComponents<RootServerPage>()
             .AddInteractiveServerRenderMode()
             .AddInteractiveWebAssemblyRenderMode()

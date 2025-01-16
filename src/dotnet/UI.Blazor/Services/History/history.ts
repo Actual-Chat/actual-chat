@@ -16,13 +16,13 @@ export class History {
     ): void {
         this.backendRef = backendRef1;
         this.navigationManager = window['Blazor']._internal.navigationManager;
-
-        const options = {
-            forceLoad : false,
-            replaceHistoryEntry : true,
-            historyEntryState : historyEntryState
-        };
-        this.navigationManager.navigateTo(url, options);
+        const absoluteUri = toAbsoluteUri(url);
+        if (location.href === absoluteUri)
+            history.replaceState(null, "", absoluteUri);
+        else {
+            history.pushState(historyEntryState, "", absoluteUri);
+            location.replace(absoluteUri);
+        }
         this.whenReady.resolve(undefined);
         globalThis["App"]["history"] = this;
     }
@@ -47,4 +47,16 @@ export class History {
         };
         this.navigationManager.navigateTo(url, options);
     }
+}
+
+let testAnchor: HTMLAnchorElement;
+export function toAbsoluteUri(relativeUri: string): string {
+    testAnchor = testAnchor || document.createElement('a');
+    testAnchor.href = relativeUri;
+    return testAnchor.href;
+}
+
+export function isSamePageWithHash(absoluteHref: string): boolean {
+    const url = new URL(absoluteHref);
+    return url.hash !== '' && location.origin === url.origin && location.pathname === url.pathname && location.search === url.search;
 }

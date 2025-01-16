@@ -7,6 +7,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class AppScopedServiceStarter
 {
     private ILogger? _log;
+    private volatile string? _sessionHash = null;
 
     private ChatUIHub Hub { get; }
     private Tracer Tracer { get; }
@@ -24,6 +25,13 @@ public class AppScopedServiceStarter
 
     public async Task PrepareFirstRender(string sessionHash)
     {
+        var oldSessionHash = Interlocked.CompareExchange(ref _sessionHash, sessionHash, null);
+        if (oldSessionHash == sessionHash)
+            return; // Already prepared
+
+        if (oldSessionHash is not null)
+            throw StandardError.Internal("Session hash is already set");
+
         // Starts in Blazor dispatcher
         using var _1 = Tracer.Region();
         try {
