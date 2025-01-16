@@ -12,7 +12,6 @@ public interface IEmbeddingsCalculator
 
 public class EmbeddingsCalculator : IEmbeddingsCalculator
 {
-    //private const string PredictUrl = "";
     private readonly Uri _predicationsUri;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new (JsonSerializerOptions.Default)
@@ -21,9 +20,7 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
     };
 
     public EmbeddingsCalculator(EmbeddingsCalculatorSettings embeddingsSettings)
-    {
-        _predicationsUri = new Uri(embeddingsSettings.PredicationsUri, UriKind.Absolute);
-    }
+        => _predicationsUri = new Uri(embeddingsSettings.PredicationsUri, UriKind.Absolute);
 
     public async Task<double[]> CalculateVector(string text)
     {
