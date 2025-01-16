@@ -99,7 +99,7 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         if (_activeSearch.Value != search)
             return;
 
-        _activeSearch.Value = search.Complete(candidates);
+        _activeSearch.Value = search.Complete(candidates.ToImmutableArray());
     }
 
     public async Task ReviewState()

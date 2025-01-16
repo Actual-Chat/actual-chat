@@ -16,7 +16,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ChatCandidate>> FindChatCandidates(
+    public virtual async Task<ApiArray<ChatCandidate>> FindChatCandidates(
         Session session,
         Symbol profileId,
         Preferences filter,
@@ -31,7 +31,7 @@ public class Roulette(IServiceProvider services) : IRoulette
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var profile = await RouletteProfilesBackend.GetProfile(profileId, cancellationToken).ConfigureAwait(false);
         if (profile == null || profile.UserId != account.Id)
-            return ImmutableArray<ChatCandidate>.Empty;
+            return ApiArray<ChatCandidate>.Empty;
 
         var result = new List<ChatCandidate>();
 
@@ -55,7 +55,7 @@ public class Roulette(IServiceProvider services) : IRoulette
                 break;
         }
 
-        return result.ToImmutableArray();
+        return result.ToApiArray();
     }
 
     // [ComputeMethod]

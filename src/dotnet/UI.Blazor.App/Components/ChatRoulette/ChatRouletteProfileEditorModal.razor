@@ -114,9 +114,9 @@
             _form.Name = avatar.Name;
             _form.Bio = avatar.Bio;
             _form.CountryCode = preferences.Country.Code;
-            _form.Languages = preferences.Languages;
+            _form.Languages = preferences.Languages.ToImmutableArray();
             _form.Gender = preferences.Gender;
-            _form.Interests = preferences.Interests;
+            _form.Interests = preferences.Interests.ToImmutableArray();
         } else {
             var account = await Accounts.GetOwn(Session, default);
             _form.Name = account.Avatar.Name;
@@ -136,8 +136,8 @@
         var preferences = profile.Preferences.Preferences with {
             Country = Country.ParseOrNone(_form.CountryCode),
             Gender = _form.Gender,
-            Languages = _form.Languages,
-            Interests = _form.Interests,
+            Languages = _form.Languages.ToApiArray(),
+            Interests = _form.Interests.ToApiArray(),
         };
         profile = profile with {
             Avatar = avatar,
