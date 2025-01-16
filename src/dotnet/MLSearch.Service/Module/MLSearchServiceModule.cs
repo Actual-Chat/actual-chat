@@ -19,6 +19,7 @@ using ActualChat.Search;
 using Microsoft.SemanticKernel;
 using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Flows;
+using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -46,7 +47,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             rpcHost.AddBackend<IChatIndexInitializerTrigger, ChatIndexInitializerTrigger>();
             rpcHost.AddBackend<IChatIndexTrigger, ChatIndexTrigger>();
         }
-        InjectIndexingServices(rpcHost, isBackendClient);
+        InjectIndexingServices(rpcHost, isBackendClient, Settings);
         InjectBotServices(rpcHost, isBackendClient);
 
         if (Settings.IsInitialIndexingDisabled) {
@@ -97,7 +98,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .Add<UserContactIndexingFlow>();
     }
 
-    private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)
+    private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient, MLSearchSettings settings)
     {
         var services = rpcHost.Services;
         if (isBackendClient)
@@ -122,6 +123,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IDialogFragmentAnalyzer, DialogFragmentAnalyzer>();
         services.AddSingleton<ChatContentArranger>();
         services.AddSingleton<ChatContentArranger2>();
+        services.AddSingleton<ChatContentArranger3>();
+        services.AddSingleton(settings.Embeddings ?? new EmbeddingsCalculatorSettings());
+        services.AddSingleton<IEmbeddingsCalculator, EmbeddingsCalculator>();
+        services.AddSingleton<IDocumentEntriesLoader, DefaultDocumentEntriesLoader>();
         services.AddAlias<IChatContentArranger, ChatContentArranger>(ServiceLifetime.Scoped);
         services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();
         services.AddSingleton<IChatContentIndexerFactory, ChatContentIndexerFactory>();

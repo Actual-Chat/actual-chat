@@ -14,7 +14,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         var authors = ChatContentArranger2Utils.CreateAuthors(ChatContentArranger2Utils.Messages);
         var entries = ChatContentArranger2Utils.CreateEntries(ChatContentArranger2Utils.Messages, authors).ToList();
         var authorsBackend = ChatContentArranger2Utils.CreateAuthorsBackend(authors.Values);
-        var chatDialogFormatter = new ChatDialogFormatter(authorsBackend);
+        var chatDialogFormatter = new ChatDialogFormatter(new DefaultAuthorNameRetriever(authorsBackend));
         var contentArranger = new ChatContentArranger2(
             Mock.Of<IChatsBackend>(MockBehavior.Loose),
             new DialogFragmentAnalyzer(
