@@ -16,10 +16,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<SystemEntry> SystemEntrySerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<SystemEntry>();
-    private DateTime _beginsAt;
-    private DateTime? _clientSideBeginsAt;
-    private DateTime? _endsAt;
-    private DateTime? _contentEndsAt;
 
     public DbChatEntry() { }
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
@@ -42,23 +38,23 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DateTime? ForwardedChatEntryBeginsAt { get; set; }
 
     public DateTime BeginsAt {
-        get => _beginsAt.DefaultKind(DateTimeKind.Utc);
-        set => _beginsAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime? ClientSideBeginsAt {
-        get => _clientSideBeginsAt?.DefaultKind(DateTimeKind.Utc);
-        set => _clientSideBeginsAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime? EndsAt {
-        get => _endsAt?.DefaultKind(DateTimeKind.Utc);
-        set => _endsAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime? ContentEndsAt {
-        get => _contentEndsAt?.DefaultKind(DateTimeKind.Utc);
-        set => _contentEndsAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public double Duration { get; set; }
@@ -165,6 +161,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>
     {
         public void Configure(EntityTypeBuilder<DbChatEntry> builder)
-            => builder.Property(x => x.AuthorId).IsRequired();
+        {
+            builder.Property(x => x.AuthorId).IsRequired();
+
+            builder.HasIndex(nameof(ChatId), nameof(Version), nameof(LocalId))
+                .HasFilter($"kind = {(byte)ChatEntryKind.Text}");
+        }
     }
 }
