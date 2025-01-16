@@ -20,6 +20,7 @@ public sealed class MLSearchSettings
     public TimeSpan IndexingFlowResumeDelay { get; set; } = TimeSpan.FromSeconds(10);
     public TimeSpan IndexingTailRecheckInterval { get; set; } = TimeSpan.FromSeconds(30);
     public string OpenSearchNamesEnvPrefix { get; set; } = "";
+    public EmbeddingsCalculatorSettings? Embeddings { get; set; }
 }
 
 public sealed class OpenAISettings
@@ -50,4 +51,9 @@ public sealed class OpenSearchSettings
     public string User { get; set; } = "";
     public string Password { get; set; } = "";
     public string ClientCertificatePath { get; set; } = "";
+}
+
+public sealed class EmbeddingsCalculatorSettings
+{
+    public string PredicationsUri { get; set; } = "http://localhost:28080/predictions/Alibaba-NLP_gte-multilingual-base";
 }

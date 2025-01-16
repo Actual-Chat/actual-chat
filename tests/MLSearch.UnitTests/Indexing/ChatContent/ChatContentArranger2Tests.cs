@@ -13,7 +13,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
         var authors = ChatContentArranger2Utils.CreateAuthors(ChatContentArranger2Utils.Messages);
         var entries = ChatContentArranger2Utils.CreateEntries(ChatContentArranger2Utils.Messages, authors).ToList();
         var authorsBackend = ChatContentArranger2Utils.CreateAuthorsBackend(authors.Values);
-        var chatDialogFormatter = new ChatDialogFormatter(authorsBackend);
+        var chatDialogFormatter = new ChatDialogFormatter(new DefaultAuthorNameRetriever(authorsBackend));
 
         var dialog1EntryIds = new long[] { 1, 2, 3, 6 };
         var dialog2EntryIds = new long[] { 4, 5 };

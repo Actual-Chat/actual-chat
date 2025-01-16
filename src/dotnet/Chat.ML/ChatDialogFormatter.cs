@@ -9,7 +9,30 @@ public interface IChatDialogFormatter
     Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry, bool displayTimestamp = false);
 }
 
-internal sealed class ChatDialogFormatter(IAuthorsBackend authorsBackend) : IChatDialogFormatter
+internal interface IAuthorNameRetriever
+{
+    Task<string> GetAuthorName(AuthorId authorId);
+}
+
+internal sealed class DefaultAuthorNameRetriever(IAuthorsBackend authorsBackend) : IAuthorNameRetriever
+{
+    public async Task<string> GetAuthorName(AuthorId authorId)
+    {
+        var author = await authorsBackend
+            .Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, default)
+            .ConfigureAwait(false);
+        var authorName = author?.Avatar.Name ?? "author-" + authorId.LocalId;
+        return authorName;
+    }
+}
+
+internal sealed class DelegateAuthorNameRetriever(Func<AuthorId, Task<string>> del) : IAuthorNameRetriever
+{
+    public  Task<string> GetAuthorName(AuthorId authorId)
+        => del(authorId);
+}
+
+internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriever) : IChatDialogFormatter
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
@@ -52,14 +75,8 @@ internal sealed class ChatDialogFormatter(IAuthorsBackend authorsBackend) : ICha
         return sb.ToString();
     }
 
-    private async Task<string> GetAuthorName(AuthorId authorId)
-    {
-        var author = await authorsBackend
-            .Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, default)
-            .ConfigureAwait(false);
-        var authorName = author?.Avatar.Name ?? "author-" + authorId.LocalId;
-        return authorName;
-    }
+    private Task<string> GetAuthorName(AuthorId authorId)
+        => authorNameRetriever.GetAuthorName(authorId);
 
     private static Task<string> ContentToText(string markup)
         => Task.FromResult(markup); // TODO: add markup parsing
