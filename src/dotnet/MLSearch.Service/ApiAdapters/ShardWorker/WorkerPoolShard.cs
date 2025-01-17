@@ -90,16 +90,22 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                 var assignment = await _assignments.Reader
                     .ReadAsync(cancellationToken)
                     .ConfigureAwait(false);
+
                 switch (assignment) {
-                    case Assignment.RunJob(var job, var otelContext): {
+                    case Assignment.RunJob(var job, var otelContext):
                         DispatchJob(job, otelContext, cancellationToken);
-                    }
-                    break;
-                    case Assignment.CancelJob(var jobId, var otelContext): {
+                        break;
+
+                    case Assignment.CancelJob(var jobId, var otelContext):
                         CancelJob(jobId, otelContext);
-                    }
-                    break;
+                        break;
+
+                    default:
+                        throw new InvalidOperationException("Unexpected assignment type.");
                 }
+            }
+            catch (OperationCanceledException) {
+                break;
             }
             catch (Exception e) {
                 log.LogError(e, "UseAsync failed: {Message}", e.Message);
