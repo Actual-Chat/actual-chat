@@ -1,8 +1,10 @@
 @page "/"
 @using ActualChat.UI.Blazor.App.Pages.Landing
-@layout NoLayout
+@layout BaseLayout
 
-<Landing/>
+<div class="home-page">
+    <Landing/>
+</div>
 
 @code {
     [Inject] private UIHub Hub { get; init; } = null!;

@@ -1,3 +1,8 @@
 .user-page > .c-badge {
     @apply flex-x items-center mt-2 gap-x-3;
 }
+
+.home-page {
+    @apply h-full w-full;
+    @apply overflow-auto custom-scrollbar-hide;
+}
