@@ -16,7 +16,7 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         ModelGroup = "setup-test-group",
     };
     private readonly ClusterSetupResult _setupResult = new(new EmbeddingModelProps(
-        "some-unique-model-id", 1024, "{ some: 'json config'}"
+        "some-unique-model-id", 1024, "unique-model-key"
     ));
 
     [Fact]
@@ -53,8 +53,8 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         await clusterSetup.InitializeAsync(cancellationSource.Token);
 
         // Check model props are retrieved
-        setupActions.Verify(actions => actions.RetrieveEmbeddingModelPropsAsync(
-                It.Is<string>(modelGroup => modelGroup == _openSearchSettings.ModelGroup),
+        setupActions.Verify(actions => actions.EnsureEmbeddingModelDeployedAsync(
+                It.Is<OpenSearchSettings>(settings => ReferenceEquals(settings, _openSearchSettings)),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
             ), Times.Once());
 
@@ -212,8 +212,8 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
         var setupActions = new Mock<IClusterSetupActions>(MockBehavior.Loose);
         setupActions
-            .Setup(actions => actions.RetrieveEmbeddingModelPropsAsync(
-                It.IsAny<string>(),
+            .Setup(actions => actions.EnsureEmbeddingModelDeployedAsync(
+                It.IsAny<OpenSearchSettings>(),
                 It.IsAny<CancellationToken>()
             ))
             .Returns(Task.FromResult(modelProps))
@@ -255,8 +255,8 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         var modelProps = _setupResult.EmbeddingModelProps;
 
         var setupActions = new Mock<IClusterSetupActions>(MockBehavior.Loose);
-        setupActions.Setup(actions => actions.RetrieveEmbeddingModelPropsAsync(
-            It.IsAny<string>(), It.IsAny<CancellationToken>()
+        setupActions.Setup(actions => actions.EnsureEmbeddingModelDeployedAsync(
+            It.IsAny<OpenSearchSettings>(), It.IsAny<CancellationToken>()
         ))
         .Returns(Task.FromResult(modelProps))
         .Verifiable();

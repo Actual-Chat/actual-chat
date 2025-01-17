@@ -1,6 +1,6 @@
 services:
   opensearch-node:
-    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.15.0}
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.18.0}
     container_name: opensearch-node
     environment:
       - node.name=opensearch-node
@@ -13,8 +13,11 @@ services:
       - plugins.ml_commons.only_run_on_ml_node=false # allow running ml tasks on data nodes
       - plugins.ml_commons.allow_registering_model_via_url=true
       - plugins.ml_commons.allow_registering_model_via_local_file=true
+      - plugins.ml_commons.connector.private_ip_enabled=true
       - plugins.ml_commons.model_access_control_enabled=true
+      - plugins.ml_commons.model_auto_redeploy.enable=true
       - plugins.ml_commons.native_memory_threshold=99
+      - plugins.ml_commons.trusted_connector_endpoints_regex=^http://embeddings-service:8080/predictions/.*$, ^https://api\.openai\.com/.*$
     ulimits:
       memlock:
         soft: -1
@@ -69,7 +72,7 @@ services:
       context: .
       dockerfile: opensearch-dashboard-no-security.dockerfile
       args:
-        OPENSEARCH_VERSION: ${OPENSEARCH_VERSION:-2.15.0}
+        OPENSEARCH_VERSION: ${OPENSEARCH_VERSION:-2.18.0}
     container_name: opensearch-dashboards
     ports:
       - 5601:5601

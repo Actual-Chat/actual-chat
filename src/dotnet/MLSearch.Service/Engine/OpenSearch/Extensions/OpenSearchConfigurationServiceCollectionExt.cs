@@ -25,8 +25,6 @@ internal static class OpenSearchConfigurationServiceCollectionExt
         services.AddOptionsWithValidateOnStart<OpenSearchSettings>()
             .Bind(cfg.GetSection($"{nameof(MLSearchSettings)}:{MLSearchSettings.OpenSearch}"))
             .ValidateDataAnnotations()
-            .Validate(options => Uri.IsWellFormedUriString(options.ClusterUri, UriKind.Absolute),
-                $"Value for {nameof(OpenSearchSettings.ClusterUri)} must be valid URI.")
             .PostConfigure(options => {
                 if (options.DefaultNumberOfReplicas is null && hostInfo.IsDevelopmentInstance)
                     options.DefaultNumberOfReplicas = 0;
@@ -63,11 +61,18 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             .AddAlias<IServiceCoordinator, ServiceCoordinator>()
             .AddHostedService(c => c.GetRequiredService<ServiceCoordinator>());
 
-        services
+        _ = services
             .AddSingleton<IClusterSetup>(static c => c.CreateInstance<ClusterSetup>(
                 c.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(ClusterSetup))
             ))
-            .AddSingleton<IClusterSetupActions, ClusterSetupActions>();
+            .AddSingleton<IClusterSetupActions>(static c => {
+                var openSearchSettings = c.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
+                return openSearchSettings.EmbeddingService.EmbeddingServiceType switch {
+                    EmbeddingServiceType.BuiltIn => c.CreateInstance<BuiltInModelClusterSetupActions>(),
+                    EmbeddingServiceType.Custom => c.CreateInstance<CustomRemoteModelClusterSetupActions>(),
+                    _ => throw new InvalidOperationException()
+                };
+            });
 
         services
             .AddSingleton<IOptionsFactory<PlainIndexSettings>, PlainIndexSettingsFactory>()

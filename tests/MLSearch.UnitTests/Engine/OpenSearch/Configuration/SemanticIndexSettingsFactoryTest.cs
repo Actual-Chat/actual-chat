@@ -6,13 +6,13 @@ namespace ActualChat.MLSearch.UnitTests.Engine.OpenSearch.Configuration;
 
 public class SemanticIndexSettingsFactoryTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private const string ModelAllConfig = "__SOME_CONTENT__";
+    private const string UniqueModelKey = "__SOME_UNIQUE_KEY__";
     private const string ModelId = "id_model_qwerty";
     private const int EmbeddingDimension = 1024;
 
     private readonly OpenSearchNames _openSearchNames = new();
     private readonly ClusterSetupResult _setupResult =
-        new(new EmbeddingModelProps(ModelId, EmbeddingDimension, ModelAllConfig));
+        new(new EmbeddingModelProps(ModelId, EmbeddingDimension, UniqueModelKey));
 
     [Fact]
     public void SettingsPropertiesSetAsExpected()

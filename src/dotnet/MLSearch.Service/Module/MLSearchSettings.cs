@@ -1,5 +1,6 @@
 
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Options;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -37,7 +38,7 @@ public sealed class ChatbotSettings {
 
 public sealed class OpenSearchSettings
 {
-    [Required]
+    [Required, Uri]
     public string ClusterUri { get; set; } = "";
 
     [Required]
@@ -50,4 +51,37 @@ public sealed class OpenSearchSettings
     public string User { get; set; } = "";
     public string Password { get; set; } = "";
     public string ClientCertificatePath { get; set; } = "";
+
+    [ValidateObjectMembers]
+    public EmbeddingServiceSettings EmbeddingService { get; set; } = new();
+}
+
+public enum EmbeddingServiceType
+{
+    BuiltIn,
+    Custom
+}
+
+public sealed class EmbeddingServiceSettings
+{
+    public EmbeddingServiceType EmbeddingServiceType { get; set; }
+
+    [ValidateObjectMembers]
+    public CustomEmbeddingServiceSettings? Custom { get; set;}
+}
+
+public sealed class CustomEmbeddingServiceSettings
+{
+    [Required, Uri]
+    public string Uri { get; set; } = "";
+
+    [Required, Uri]
+    public string ManagementUri { get; set; } = "";
+    public string? ModelName { get; set; }
+}
+
+public sealed class UriAttribute(): ValidationAttribute("Value for {0} must be a valid URI.")
+{
+    public override bool IsValid(object? value) => value is string valueAsString
+        && !string.IsNullOrWhiteSpace(valueAsString) && Uri.IsWellFormedUriString(valueAsString, UriKind.Absolute);
 }
