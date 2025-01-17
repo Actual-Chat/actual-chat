@@ -1,0 +1,13 @@
+@page "/fusion/close"
+@using ActualChat.UI.Blazor.Layouts
+@layout LiterallyNoLayout
+@* This attribute is the only reason this component is needed *@
+@attribute [ExcludeFromInteractiveRouting]
+
+@code {
+    [SupplyParameterFromQuery(Name = "flow")]
+    public string Flow { get; set; } = "";
+
+    public FusionCloseServerPage()
+        => throw StandardError.Internal("This component should never be rendered.");
+}
