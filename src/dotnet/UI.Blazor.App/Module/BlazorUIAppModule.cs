@@ -29,9 +29,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
     internal static void ModuleInitializer()
     {
         RenderModeDef.All = [
-            new("a", "Auto") { Mode = new InteractiveAutoRenderMode(prerender: false) },
-            new ("s", "Server") { Mode = new InteractiveServerRenderMode(prerender: false) },
-            new("w", "WASM") { Mode = new InteractiveWebAssemblyRenderMode(prerender: false) },
+            // new("a", "Auto") { Mode = new InteractiveAutoRenderMode(prerender: false) },
+            new("s", "Server") { Mode = new InteractiveServerRenderMode(prerender: true) },
+            // new("w", "WASM") { Mode = new InteractiveWebAssemblyRenderMode(prerender: false) },
         ];
         RenderModeDef.Default = RenderModeDef.All[0];
     }
