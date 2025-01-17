@@ -75,7 +75,7 @@ jobs:
           - 4222:4222
           - 8222:8222
       opensearch:
-        image: opensearchproject/opensearch:2.12.0
+        image: opensearchproject/opensearch:2.18.0
         env:
           node.name: opensearch-node
           discovery.type: single-node
