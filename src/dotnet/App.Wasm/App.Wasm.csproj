@@ -39,6 +39,7 @@ Use:
     <TrimMode Condition="$(UseAppPack)">full</TrimMode>
     <RunAOTCompilation>false</RunAOTCompilation>
     <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <CompressionEnabled>true</CompressionEnabled>
   </PropertyGroup>
 
   <!-- Trimming -->

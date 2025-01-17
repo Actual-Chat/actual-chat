@@ -69,7 +69,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             app.UseExceptionHandler("/Error");
             app.UseHsts();
         }
-        app.UseStaticDistFiles(); // Static files from dist and _content folders
+        //app.UseStaticDistFiles(); // Static files from dist and _content folders
 
         // See
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0

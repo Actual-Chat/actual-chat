@@ -33,6 +33,8 @@ export class Versioning {
 
                 const [key, value] = stripOrigin(href).split('?v=');
                 artifactVersions.set(key, value);
+                if (!key.startsWith('/'))
+                    artifactVersions.set('/' + key, value);
             }
         }
         this._artifactVersions = artifactVersions;
