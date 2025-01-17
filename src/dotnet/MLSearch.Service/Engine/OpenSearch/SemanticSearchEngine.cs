@@ -1,5 +1,4 @@
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
-using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Options;
 using OpenSearch.Client;
@@ -13,7 +12,6 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
     private readonly IOpenSearchClient _openSearch;
     private readonly IOptionsMonitor<SemanticIndexSettings> _indexSettingsMonitor;
     private readonly IServiceCoordinator _serviceCoordinator;
-    private readonly ILogger<SemanticSearchEngine<TDocument>> _log;
     private readonly IDisposable? _indexSettingsChangeSubscription;
     private readonly OpenSearchNamingPolicy _namingPolicy;
     private SemanticIndexSettings? _indexSettings;
@@ -23,15 +21,13 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
         IOpenSearchClient openSearch,
         IOptionsMonitor<SemanticIndexSettings> indexSettingsMonitor,
         IServiceCoordinator serviceCoordinator,
-        OpenSearchNamingPolicy namingPolicy,
-        ILogger<SemanticSearchEngine<TDocument>> log)
+        OpenSearchNamingPolicy namingPolicy)
     {
         _docIndexName = docIndexName;
         _openSearch = openSearch;
         _indexSettingsMonitor = indexSettingsMonitor;
         _serviceCoordinator = serviceCoordinator;
         _namingPolicy = namingPolicy;
-        _log = log;
         _indexSettingsChangeSubscription = _indexSettingsMonitor.OnChange((_, indexName) => {
             if (OrdinalEquals(indexName, _docIndexName)) {
                 _indexSettings = null;
@@ -51,11 +47,6 @@ internal sealed class SemanticSearchEngine<TDocument> : ISearchEngine<TDocument>
     {
         var queryBuilder = new SemanticSearchQueryBuilder(_namingPolicy, IndexSettings);
         var searchRequest = queryBuilder.Build(query);
-
-        // TODO: Make this serialization optional
-        var json = await searchRequest.ToJsonAsync(_openSearch, cancellationToken).ConfigureAwait(false);
-
-        _log.LogInformation(json);
 
         var response = await _openSearch.SearchAsync<TDocument>(searchRequest, cancellationToken).ConfigureAwait(false);
 
