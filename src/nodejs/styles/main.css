@@ -124,9 +124,6 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply overflow-hidden;
     @apply bg-01;
 }
-.no-layout .base-layout-body > .c-layout-content {
-    @apply overflow-auto custom-scrollbar-hide;
-}
 
 .layout-header {
     @apply z-50;
