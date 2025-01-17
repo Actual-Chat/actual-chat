@@ -133,7 +133,7 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
             Baggage.Current = context.Baggage;
             activity = ActivitySource.StartActivity(DispatchJobActivityName, ActivityKind.Consumer, context.ActivityContext);
         }
-        using var _ = activity;
+        using var __ = activity;
 
         if (duplicateJobPolicy == DuplicateJobPolicy.Drop) {
             if (_runningJobs.TryAdd(job.Id, null)) {
@@ -143,7 +143,7 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                     cancellation);
             }
             else {
-                _semaphore.Release();
+                _ = _semaphore.Release();
             }
         }
         if (duplicateJobPolicy == DuplicateJobPolicy.Cancel) {
@@ -164,7 +164,7 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
             Baggage.Current = context.Baggage;
             activity = ActivitySource.StartActivity(CancelJobActivityName, ActivityKind.Consumer, context.ActivityContext);
         }
-        using var _ = activity;
+        using var __ = activity;
 
         if (_runningJobs.TryGetValue(jobId, out var runningJob)) {
             // runningJob can't be null here because if it is in the dictionary
@@ -175,7 +175,7 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
                 };
             }
         }
-        _cancellationSemaphore.Release();
+        _ = _cancellationSemaphore.Release();
     }
 
     private async Task CancelAndRunJobAsync(TJob job, RunningJob runningJob, ActivityContext? parentContext, CancellationToken cancellationToken)
@@ -240,7 +240,7 @@ internal sealed class WorkerPoolShard<TWorker, TJob, TJobId, TShardKey>(
             if (_runningJobs.TryRemove(job.Id, out var runningJob)) {
                 runningJob?.Cancellation.DisposeSilently();
             }
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 }
