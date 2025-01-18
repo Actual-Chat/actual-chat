@@ -54,9 +54,9 @@ export class PlayableTextMarkupView {
         if (this.playableText == null)
             return;
 
-        fromEvent(this.playableText, 'pointerup')
+        fromEvent(this.playableText, 'click')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onClickHandler(event));
+            .subscribe((event: Event) => this.onClickHandler(event));
     }
 
     public dispose() {
@@ -67,41 +67,24 @@ export class PlayableTextMarkupView {
         this.disposed$.complete();
     }
 
-    private onClickHandler = (e: PointerEvent) => {
-        let childNodes = (e.target as Node).childNodes;
-        if (!childNodes)
-            return;
-
-        let clicked: Word = this.findClickedWord(childNodes, e.clientX, e.clientY);
-        if (clicked)
-            void this.blazorRef.invokeMethodAsync("OnMarkupClick", clicked.textRange);
-    }
-
-    private findClickedWord(childNodes: NodeListOf<Node>, x: number, y: number) {
-        const parentNode = this.playableText as Node;
-        for (let i = 0; i < this.words.length; i++) {
-            const range = document.createRange();
-            let currentNode = childNodes[i];
-            if (currentNode.nodeName !== '#text')
-                return null;
-
-            range.setStart(parentNode, 0);
-            range.setEnd(parentNode, childNodes.length);
-            let rects = range.getClientRects();
-            let clickedRectIndex = isClickInRects(rects);
-            if (clickedRectIndex != null)
-                return this.words[clickedRectIndex];
-        }
-
-        function isClickInRects(rects: DOMRectList) {
-            for (let i = 0; i < rects.length; i++) {
-                let r = rects[i]
-                if (r.left < x && r.right > x && r.top < y && r.bottom > y)
-                    return i;
+    private onClickHandler = (e: Event) => {
+        if (this.playableText.childNodes.length > 1) {
+            let selection = getSelection();
+            if (selection.rangeCount) {
+                const targetedNode = selection.focusNode;
+                const targetNodeParent = targetedNode.parentNode;
+                let wordIndex = Array.prototype.indexOf.call(this.playableText.childNodes, targetNodeParent);
+                let word = this.words[wordIndex];
+                void this.blazorRef.invokeMethodAsync("OnMarkupClick", word.textRange);
             }
-            return null;
+        } else {
+            let selection = getSelection();
+            if (selection.rangeCount) {
+                let word = this.words.find(w =>
+                    w.textRange.start <= selection.focusOffset && w.textRange.end >= selection.focusOffset);
+                void this.blazorRef.invokeMethodAsync("OnMarkupClick", word.textRange);
+            }
         }
-        return null;
     }
 }
 

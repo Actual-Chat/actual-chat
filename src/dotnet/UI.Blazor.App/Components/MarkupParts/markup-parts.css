@@ -38,6 +38,7 @@
 
 .playable-text-markup {
     @apply whitespace-break-spaces;
+    @apply select-text;
 }
 .playable-text-markup > span {
     @apply inline-block;
@@ -58,7 +59,10 @@ body.hoverable .playable-text-markup > span:hover {
     border-radius: 6px;
 }
 .playable-text-markup .played-start {
-    border-radius: 6px 0 0 0;
+    border-radius: 6px 0 0 6px;
+}
+.playable-text-markup .played-end {
+    border-radius: 0 6px 6px 0;
 }
 .playable-text-color-blue .playing {
     @apply bg-[var(--blue-50-20)];

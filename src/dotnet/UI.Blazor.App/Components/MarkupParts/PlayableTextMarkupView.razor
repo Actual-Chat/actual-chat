@@ -14,18 +14,19 @@
     var playOnClickIsEnabled = !m.HasSelection;
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
 }
+
 <span @ref="Ref" class="@containerCls @colorCls">
-    @for (var i = 0; i < Markup.Words.Count; i++) {
-        var word = Markup.Words[i];
-        var status = m.Map != null ? m.Map[i] : WordPlayback.None;
-        var cls = GetPlayingClass(status);
-        var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonWord(), StringComparer.OrdinalIgnoreCase)
-            ? "highlight"
-            : "";
-        @if (!playOnClickIsEnabled) {
+    @if (m.Map == null || !m.Map.Contains(WordPlayback.Played)) {
+        @Markup.Text
+    } else {
+        @for (var i = 0; i < Markup.Words.Count; i++) {
+            var word = Markup.Words[i];
+            var status = m.Map != null ? m.Map[i] : WordPlayback.None;
+            var cls = GetPlayingClass(status);
+            var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonWord(), StringComparer.OrdinalIgnoreCase)
+                ? "highlight"
+                : "";
             <span class="@cls @highlightedCls">@word.Value</span>
-        } else {
-            @word.Value
         }
     }
 </span>
@@ -52,7 +53,11 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, BlazorRef, Ref, Markup.Words.ToArray());
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod,
+                BlazorRef,
+                Ref,
+                Markup.Words.ToArray());
         }
     }
 
@@ -219,8 +224,17 @@
         var prev = WordPlayback.None;
         for (int i = 0; i < enrichedMap.Length; i++) {
             var current = enrichedMap[i];
-            if (current == WordPlayback.Played && prev == WordPlayback.None)
+            var next = i < enrichedMap.Length - 1 ? enrichedMap[i + 1] : WordPlayback.None;
+            if (current == WordPlayback.Played && !prev.HasFlag(WordPlayback.Played))
                 enrichedMap[i] = WordPlayback.Played | WordPlayback.PlayedStart;
+
+            if (current == WordPlayback.Played) {
+                if (prev == WordPlayback.None)
+                    enrichedMap[i] |= WordPlayback.PlayedStart;
+                if (!next.HasFlag(WordPlayback.Played))
+                    enrichedMap[i] |= WordPlayback.PlayedEnd;
+            }
+
             prev = current;
         }
 
@@ -251,8 +265,11 @@
         if (status.HasFlag(WordPlayback.Played)) {
             var cls = "played";
             var start = status.HasFlag(WordPlayback.PlayedStart);
+            var end = status.HasFlag(WordPlayback.PlayedEnd);
             if (start)
                 cls += " played-start";
+            if (end)
+                cls += " played-end";
             return cls;
         }
         if (status.HasFlag(WordPlayback.Playing)) {
@@ -286,6 +303,7 @@
         PlayingEnd   = Playing | 0x02,
         Played       = 0x80,
         PlayedStart =  Played | 0x01,
+        PlayedEnd =  Played | 0x02,
     }
 
     public sealed record Model {
