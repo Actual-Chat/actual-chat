@@ -22,12 +22,4 @@
     <ServiceWorker Include="ServiceWorkers\service-worker.ts" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Remove="Components\Account\VerificationStatus.razor" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <UpToDateCheckInput Remove="Components\BlazorModeToggle\BlazorModeToggle.razor" />
-  </ItemGroup>
-
 </Project>

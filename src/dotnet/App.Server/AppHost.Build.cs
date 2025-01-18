@@ -17,6 +17,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualLab.Diagnostics;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Logging.Console;
@@ -121,6 +122,13 @@ public partial class AppHost
             };
         });
 
+        // ApplicationPartManager - if the instance of this service is available,
+        // AddMvcCore uses it instead of populating application parts on each call.
+        // We populate application parts manually - see how applicationPartManager
+        // is used below.
+        var applicationPartManager = new ApplicationPartManager();
+        services.AddSingleton(applicationPartManager);
+
         /////
         // 3. ModuleHost & module service
         /////
@@ -133,10 +141,11 @@ public partial class AppHost
         var hostInfo = ctx.HostInfo;
         ctx.Log.IfEnabled(LogLevel.Information)?.LogInformation("HostInfo: {HostInfo}", hostInfo);
 
+        var moduleHostBuilder = ctx.ModuleHostBuilder;
         if (coreServicesOnly)
-            ctx.ModuleHost = ctx.ModuleHostBuilder.Build(services);
+            ctx.ModuleHost = moduleHostBuilder.Build(services);
         else {
-            ctx.ModuleHost = ctx.ModuleHostBuilder.AddModules(
+            moduleHostBuilder.AddModules(
                 // From less dependent to more dependent!
                 // Core modules
                 new CoreModule(moduleServices),
@@ -161,7 +170,11 @@ public partial class AppHost
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one
                 new AppServerModule(moduleServices)
-            ).Build(services);
+            );
+            // One AssemblyPart per each module's assembly
+            foreach (var assembly in moduleHostBuilder.Modules.Select(m => m.GetType().Assembly).Distinct())
+                applicationPartManager.ApplicationParts.Add(new AssemblyPart(assembly));
+            ctx.ModuleHost = moduleHostBuilder.Build(services);
             ConfigureServices?.Invoke(ctx, services);
             if (hostInfo.IsDevelopmentInstance)
                 ValidateContainerRegistrations(services);

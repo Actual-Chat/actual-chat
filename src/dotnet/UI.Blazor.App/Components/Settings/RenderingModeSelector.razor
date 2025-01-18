@@ -76,17 +76,17 @@
         _formModel = new(ComponentIdGenerator) {
             ModeKey = RenderModeHelper.CurrentMode?.Key ?? "a",
         };
-        _formModel.ModeChanged += OnBlazorModeChanged;
+        _formModel.ModeChanged += OnModeChanged;
     }
 
-    private void OnBlazorModeChanged(string modeKey)
+    private void OnModeChanged(string modeKey)
         => RenderModeHelper.ChangeMode(RenderModeDef.GetOrDefault(modeKey));
 
     private void ChangeMode(string modeKey) {
         if (OrdinalEquals(RenderModeHelper.CurrentMode?.Key, modeKey))
             return;
 
-        OnBlazorModeChanged(modeKey);
+        OnModeChanged(modeKey);
     }
 
     public sealed class FormModel {

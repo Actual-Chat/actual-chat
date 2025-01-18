@@ -8,11 +8,9 @@ using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualLab.CommandR.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Rewrite;
-using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
@@ -66,7 +64,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         if (Env.IsDevelopment())
             app.UseWebAssemblyDebugging();
         else {
-            app.UseExceptionHandler("/Error");
+            app.UseExceptionHandler("/Error", createScopeForErrors: true);
             app.UseHsts();
         }
         //app.UseStaticDistFiles(); // Static files from dist and _content folders
@@ -104,6 +102,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseAuthentication();
         app.UseAntiforgery();
 
+        // Endpoint mapping
         app.MapStaticAssets();
         app.MapRazorComponents<RootServerPage>()
             .AddInteractiveServerRenderMode()
@@ -111,14 +110,18 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddAdditionalAssemblies(typeof(WebApp).Assembly) // UI.Blazor.AppPack
             .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
             .AddAdditionalAssemblies(typeof(ChatUIHub).Assembly); // UI.Blazor.App
-        app.UseEndpoints(endpoints => {
-            endpoints.MapAppHealth();
-            // Disabled as we disabled prometheus endpoint recently
-            // endpoints.MapAppMetrics();
-            endpoints.MapRpcWebSocketServer();
-            endpoints.MapControllers();
-        });
+        app.MapRpcWebSocketServer();
+        if (HostInfo.HasRole(HostRole.Api)) {
+            app.MapFusionAuthEndpoints(); // /signIn, /signOut
+            app.MapFusionRenderModeEndpoints(); // /fusion/renderMode
+        }
+        app.MapControllers();
+
+        // Diagnostic endpoints
         // app.UseOpenTelemetryPrometheusScrapingEndpoint();
+        app.MapAppHealth();
+        // Disabled as we disabled prometheus endpoint recently
+        // endpoints.MapAppMetrics();
     }
 
     protected override void InjectServices(IServiceCollection services)
@@ -230,9 +233,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 o.Providers.Add<BrotliCompressionProvider>();
             });
         }
-
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
 
         // Blazor Server
         services.AddServerSideBlazor(o => {

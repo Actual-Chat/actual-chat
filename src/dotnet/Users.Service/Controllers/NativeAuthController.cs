@@ -16,10 +16,10 @@ namespace ActualChat.Users.Controllers;
 [ApiController, Route("api/native-auth"), JsonifyErrors]
 public sealed class NativeAuthController(IServiceProvider services) : ControllerBase
 {
-    private ILogger? _log;
-
     private IServiceProvider Services { get; } = services;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     [HttpGet("sign-in-apple")]
     public async Task SignInApple(

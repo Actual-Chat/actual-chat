@@ -35,8 +35,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         var fusionWebServer = fusion.AddWebServer();
 
         if (rpcHost.IsApiHost) {
-            services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-
             // ASP.NET Core authentication providers
             var authentication = services.AddAuthentication(options => {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

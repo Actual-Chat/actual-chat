@@ -17,10 +17,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IChatsBackend>().IsClient();
 
-        // ASP.NET Core controllers
-        if (rpcHost.IsApiHost)
-            services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-
         // Chats
         rpcHost.AddApiOrLocal<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();

@@ -130,17 +130,17 @@
     <link rel="preload" href="@Assets["dist/fonts/TT-Commons-Pro-Medium.woff2"]" as="font" crossorigin />
     <link rel="preload" href="@Assets["dist/fonts/TT-Commons-Pro-DemiBold.woff2"]" as="font" crossorigin />
     <link rel="prefetch" href="@Assets["dist/fonts/TT-Commons-Pro-Light.woff2"]" as="font" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/onDeviceAwakeWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/opusDecoderWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/opusEncoderWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/warmUpWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/vadWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/feederWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/opusEncoderWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/vadWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/wasm/codec.wasm")" as="fetch" crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/wasm/webrtc-vad.wasm")" as="fetch"  crossorigin />
-    <link rel="prefetch" href="@GetVersioned("dist/wasm/ort-wasm-simd.wasm")" as="fetch" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/onDeviceAwakeWorker.js")" as="worker" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/opusDecoderWorker.js")" as="worker" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/opusEncoderWorker.js")" as="worker" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/warmUpWorklet.js")" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/vadWorker.js")" as="worker" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/feederWorklet.js")" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/opusEncoderWorklet.js")" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/vadWorklet.js")" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/wasm/codec.wasm")" as="fetch" crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/wasm/webrtc-vad.wasm")" as="fetch"  crossorigin />
+    <link rel="prefetch" href="@AssetVersion("dist/wasm/ort-wasm-simd.wasm")" as="fetch" crossorigin />
 
     <link href="@Assets["dist/bundle.css"]" rel="stylesheet" />
     <ImportMap nonce="@importMapNonce"/>
@@ -289,7 +289,7 @@
     private SecureToken? _sessionToken;
     private RenderModeDef? _renderMode; // Static by default
     private CloseFlowInfo? _closeFlow;
-    private AssetVersioner _assetVersioner = null!;
+    private AssetVersionHelper _assetVersionHelper = null!;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
@@ -320,8 +320,8 @@
     // Private methods
 
     private async Task Initialize() {
-        _assetVersioner = new (Assets);
         var cancellationToken = HttpContext.RequestAborted;
+        _assetVersionHelper = new(Assets);
         (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
         SessionResolver.Session = _session;
         if (_isNewSession)
@@ -339,7 +339,8 @@
         // Activity.Current = null; // We don't want to "infect" Blazor circuit with it
     }
 
-    private string GetVersioned(string assetPath) => _assetVersioner.GetVersionedAsset(assetPath);
+    private string AssetVersion(string assetKey)
+        => _assetVersionHelper.GetVersionedPath(assetKey);
 
     private static string GetBlazorScriptSuffix()
     {

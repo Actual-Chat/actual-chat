@@ -18,7 +18,7 @@
     <NativeAppSettingsView NativeAppSettings="@NativeAppSettings"></NativeAppSettingsView>
 }
 @if (HostInfo.HostKind != HostKind.MauiApp) {
-    <SettingsBlazorModeToggle/>
+    <RenderingModeSelector/>
 }
 <TileTopic Topic="Telemetry Data Collection"/>
 <Tile Class="data-collection-consent">

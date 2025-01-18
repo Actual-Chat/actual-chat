@@ -15,10 +15,6 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IMediaBackend>().IsClient();
 
-        // ASP.NET Core controllers
-        if (rpcHost.IsApiHost)
-            services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-
         // Link previews
         rpcHost.AddApi<IMediaLinkPreviews, MediaLinkPreviews>();
         rpcHost.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
