@@ -32,7 +32,7 @@
                             <ChatFooter @key="@chatKey" Chat="@chat" Model="m.FooterModel" />
                         </div>
                         <div class="layout-subfooter">
-                            <RenderStack Name="SubFooter"/>
+                            <RenderStack Name="@LayoutSlots.SubFooter"/>
                         </div>
                         <div class="layout-body">
                             @if (ReferenceEquals(chat, SpecialChat.Loading)) {

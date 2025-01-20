@@ -26,10 +26,10 @@
     </SkeletonBatch>
 </VirtualList>
 
-<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigationSubFooter">
+<RenderIntoStack Name="@LayoutSlots.SubFooter" Order="-1000_000" Key="NavigationSubFooter">
     <ChatViewNavigationPanel ChatId="@ChatId" ChatView="@this" />
 </RenderIntoStack>
 
-<RenderIntoStack Name="SubHeader" Order="1000_000" Key="DateVisor">
+<RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1000_000" Key="DateVisor">
     <DateVisor ChatId="@ChatId" ChatView="@this"/>
 </RenderIntoStack>

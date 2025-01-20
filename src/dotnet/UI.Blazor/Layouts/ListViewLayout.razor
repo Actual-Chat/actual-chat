@@ -4,14 +4,14 @@
     <BaseLayout>
         <Body>
             <PageWithHeaderAndFooter Class="list-view-layout">
-                <LeftDrawer><RenderSlot Name="MainLeftDrawer"/></LeftDrawer>
-                <Header><RenderSlot Name="MainHeader"/></Header>
-                <SubHeader><RenderStack Name="SubHeader"/></SubHeader>
-                <Footer><RenderSlot Name="MainFooter"/></Footer>
-                <SubFooter><RenderStack Name="SubFooter"/></SubFooter>
+                <LeftDrawer><RenderSlot Name="@LayoutSlots.MainLeftDrawer"/></LeftDrawer>
+                <Header><RenderSlot Name="@LayoutSlots.MainHeader"/></Header>
+                <SubHeader><RenderStack Name="@LayoutSlots.SubHeader"/></SubHeader>
+                <Footer><RenderSlot Name="@LayoutSlots.MainFooter"/></Footer>
+                <SubFooter><RenderStack Name="@LayoutSlots.SubFooter"/></SubFooter>
                 <Body><RerenderRegion>@Body</RerenderRegion>
                 </Body>
-                <RightDrawer><RenderSlot Name="MainRightDrawer"/></RightDrawer>
+                <RightDrawer><RenderSlot Name="@LayoutSlots.MainRightDrawer"/></RightDrawer>
             </PageWithHeaderAndFooter>
         </Body>
     </BaseLayout>

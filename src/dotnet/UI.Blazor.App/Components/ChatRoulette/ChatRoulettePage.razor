@@ -8,20 +8,20 @@
     var isRightPanelVisible = m.IsRightPanelVisible;
 }
 
-<RenderIntoSlot Name="MainHeader">
+<RenderIntoSlot Name="@LayoutSlots.MainHeader">
     <ChatRouletteHeader
         IsRightPanelButtonVisible="@isRightPanelVisible"
         OnHeaderClick="@(() => OnToggleRightPanelClick())"
         OnBackButtonClick="@(() => OnOpenLeftPanelClick())"/>
 </RenderIntoSlot>
 
-<RenderIntoSlot Name="MainFooter">
+<RenderIntoSlot Name="@LayoutSlots.MainFooter">
     <ChatRouletteFooter
         Profile="@m.SelectedProfile"
         OnOptionsClick="@(() => OnToggleRightPanelClick())"/>
 </RenderIntoSlot>
 
-<RenderIntoSlot Name="MainRightDrawer">
+<RenderIntoSlot Name="@LayoutSlots.MainRightDrawer">
     <ChatRouletteRightPanel/>
 </RenderIntoSlot>
 

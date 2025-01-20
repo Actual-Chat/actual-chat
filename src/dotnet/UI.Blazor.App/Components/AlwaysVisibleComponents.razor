@@ -7,11 +7,11 @@
     <TooltipHost />
 }
 
-<RenderIntoSlot Name="MainLeftDrawer">
+<RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
     <LeftPanel/>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubHeader" Order="-1000_000" Key="HistoricalPlaybackSubHeader">
+<RenderIntoStack Name="@LayoutSlots.SubHeader" Order="-1000_000" Key="HistoricalPlaybackSubHeader">
     <HistoricalPlaybackSubHeader/>
     <RecordingSubHeader/>
 </RenderIntoStack>
