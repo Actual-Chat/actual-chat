@@ -138,18 +138,19 @@ class LogLevelController {
     }
 }
 
+const sessionStorage = globalThis?.sessionStorage;
+
 function restore(minLevels: Map<string, LogLevel>): boolean {
-    const storage = globalThis?.sessionStorage;
-    if (!storage)
+    if (!sessionStorage)
         return false;
 
-    const dateJson = storage.getItem(DateStorageKey);
+    const dateJson = sessionStorage.getItem(DateStorageKey);
     if (!dateJson)
         return false;
     if (Date.now() - JSON.parse(dateJson) > MaxStorageAge)
         return false;
 
-    const readJson = storage.getItem(StorageKey);
+    const readJson = sessionStorage.getItem(StorageKey);
     if (!readJson)
         return false;
 
@@ -163,12 +164,11 @@ function restore(minLevels: Map<string, LogLevel>): boolean {
 }
 
 function persist(minLevels: Map<string, LogLevel>): boolean {
-    const storage = globalThis?.sessionStorage;
-    if (!storage)
+    if (!sessionStorage)
         return false;
 
-    storage.setItem(DateStorageKey, JSON.stringify(Date.now()));
-    storage.setItem(StorageKey, JSON.stringify(Array.from(minLevels.entries())));
+    sessionStorage.setItem(DateStorageKey, JSON.stringify(Date.now()));
+    sessionStorage.setItem(StorageKey, JSON.stringify(Array.from(minLevels.entries())));
     return true;
 }
 

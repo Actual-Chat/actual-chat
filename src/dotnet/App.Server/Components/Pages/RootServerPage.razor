@@ -10,15 +10,15 @@
 @using ActualChat.UI.Blazor.App
 @{
     Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
-    var isWasmRenderMode = OrdinalEquals(_renderMode?.Key, "w");
+    var renderModeKey = _renderMode.Key;
     var blazorMaxReconnectRetries = 0; // 100_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : GetBlazorScriptSuffix();
     var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
     var nonceGenerator = RandomStringGenerator.Default;
     var startupNonce = nonceGenerator.Next(12);
     var blazorReloadNonce = nonceGenerator.Next(12);
-    var showOverlayNonce = nonceGenerator.Next(12);
-    var closeLoginNonce = nonceGenerator.Next(12);
+    var webSplashNonce = nonceGenerator.Next(12);
+    var closeFlowNonce = nonceGenerator.Next(12);
     var importMapNonce = nonceGenerator.Next(12);
     // unsafe-eval is required for 'eval-source-map' to debug during local development
     var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
@@ -66,8 +66,8 @@
                     @unsafeEval
                     'nonce-@startupNonce'
                     'nonce-@blazorReloadNonce'
-                    'nonce-@showOverlayNonce'
-                    'nonce-@closeLoginNonce'
+                    'nonce-@webSplashNonce'
+                    'nonce-@closeFlowNonce'
                     'nonce-@recaptchaNonce'
                     'nonce-@importMapNonce'
                     'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
@@ -151,11 +151,14 @@
         history.scrollRestoration = "manual";
         window.App = {
             environment: '@(HostInfo.Environment.Value)',
+            renderMode: '@renderModeKey',
             postMessage: function (data) {
                 throw Error("Internal error: App.postMessage is available only in mobile apps.");
             },
+            whenBlazorReady: null,
             whenBundleReady: null,
-            markBundleReady: function() { },
+            markBlazorReady: function () { },
+            markBundleReady: function () { },
             isBundleReady: async function() {
                 if (!window.App.whenBundleReady)
                     return false;
@@ -168,19 +171,22 @@
                 await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef);
             },
         };
+        window.App.whenBlazorReady = new Promise((resolve, _) => {
+            window.App.markBlazorReady = resolve;
+        });
         window.App.whenBundleReady = new Promise((resolve, _) => {
             window.App.markBundleReady = resolve;
         });
     </script>
     <script async src="@Assets["dist/bundle.js"]"></script>
-    <HeadOutlet @rendermode="@(_renderMode?.Mode)" />
+    <HeadOutlet @rendermode="@(_renderMode.Mode)" />
 </head>
 
 <body class="app-web" style="background-color: #0036A3">
 
-@if (isWasmRenderMode && _closeFlow == null) {
-    <div id="web-splash" class="loading-overlay"></div>
-    <script nonce="@showOverlayNonce">
+@if (_closeFlow == null && !renderModeKey.OrdinalStartsWith("s")) {
+    <div id="web-splash" class="web-splash" style="display: @(OrdinalEquals(renderModeKey, "w") ? "" : "hidden")"></div>
+    <script nonce="@webSplashNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
         const overlay = document.getElementById('web-splash');
         if (overlay) {
@@ -198,7 +204,7 @@
 
 @if (_closeFlow != null) {
     @if (_closeFlow.MustClose) {
-        <script nonce="@closeLoginNonce">
+        <script nonce="@closeFlowNonce">
             setTimeout(function () {
                 window.open('','_self').close();
             }, 500)
@@ -234,10 +240,10 @@
 } else {
     <app id="app" class="flex flex-col h-full">
         <WebApp
-            @rendermode="@(_renderMode?.Mode)"
+            @rendermode="@(_renderMode.Mode)"
             SessionHash="@_session?.Hash"
             SessionToken="@_sessionToken?.Token"
-            RenderModeKey="@(_renderMode?.Key)" />
+            RenderModeKey="@(renderModeKey)" />
     </app>
     <!-- This block must go right after app, otherwise page content won't be blurred -->
     <div id="components-reconnect-modal"></div>
@@ -275,7 +281,7 @@
                     }
                 }
             }
-        });
+        }).then(window.App.markBlazorReady);
     </script>
 }
 </body>
@@ -285,14 +291,15 @@
     private static string? _blazorScriptSuffix;
     private bool _isInitialized;
     private bool _isNewSession;
+    private LocalUrl _url;
     private Session? _session;
+    private Account? _account;
     private SecureToken? _sessionToken;
-    private RenderModeDef? _renderMode; // Static by default
+    private RenderModeDef _renderMode = RenderModeDef.ByKey["ss"]; // Static
     private CloseFlowInfo? _closeFlow;
     private AssetVersionHelper _assetVersionHelper = null!;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
     [Inject] private ISecureTokens SecureTokens { get; init; } = null!;
     [Inject] private ServerAuth ServerAuth { get; init; } = null!;
@@ -304,6 +311,9 @@
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = null!;
+
+    private HostInfo HostInfo => ServerAuth.HostInfo;
+    private IAccounts Accounts => ServerAuth.Accounts;
 
     public override async Task SetParametersAsync(ParameterView parameters)
     {
@@ -322,11 +332,20 @@
     private async Task Initialize() {
         var cancellationToken = HttpContext.RequestAborted;
         _assetVersionHelper = new(Assets);
+        _url = new LocalUrl(HttpContext.Request.Path.Value);
         (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
         SessionResolver.Session = _session;
-        if (_isNewSession)
+        Task<AccountFull> accountTask;
+        if (_isNewSession) {
             HttpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
-        _sessionToken = await SecureTokens.CreateForSession(_session, cancellationToken);
+            accountTask = Task.FromResult(AccountFull.None);
+        } else
+            accountTask = Accounts.GetOwn(_session, cancellationToken);
+
+        var sessionTokenTask = SecureTokens.CreateForSession(_session, cancellationToken);
+        await Task.WhenAll(accountTask, sessionTokenTask);
+        _account = await accountTask;
+        _sessionToken = await sessionTokenTask;
 
         _closeFlow = ServerAuth.IsCloseFlow(HttpContext);
         if (_closeFlow?.RedirectUrl is { } redirectUrl) {
@@ -334,8 +353,12 @@
             return;
         }
 
-        if (HttpContext.AcceptsInteractiveRouting())
-            _renderMode = RenderModeEndpoint.GetRenderMode(HttpContext);
+        if (HttpContext.AcceptsInteractiveRouting() && _closeFlow == null) {
+            var useServerPrerendered = _account.IsGuestOrNone && (_url.IsHome() || _url.IsDocsOrDocsRoot());
+            _renderMode = useServerPrerendered
+                ? RenderModeDef.ByKey["sp"]
+                : RenderModeEndpoint.GetRenderMode(HttpContext);
+        }
         // Activity.Current = null; // We don't want to "infect" Blazor circuit with it
     }
 

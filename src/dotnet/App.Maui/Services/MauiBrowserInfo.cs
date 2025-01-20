@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
@@ -52,7 +51,7 @@ public class MauiBrowserInfo : BrowserInfo
     }
 
     [JSInvokable]
-    public override void OnWebSplashRemoved()
+    public override void OnWebSplashRemoved(bool wasShown)
     {
         MauiLoadingUI.MarkFirstSplashRemoved();
         MauiThemeHandler.Instance.Apply();

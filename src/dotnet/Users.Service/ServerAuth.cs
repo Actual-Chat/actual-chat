@@ -18,12 +18,14 @@ public sealed class ServerAuth
     public Func<ServerAuth, HttpContext, bool> AllowChange = AllowOnCloseFlow;
     public Func<ServerAuth, HttpContext, bool> AllowSignOut = AllowOnCloseFlow;
 
-    private HostInfo HostInfo { get; }
-    private IAuth Auth { get; }
-    private IAccountsBackend AccountsBackend { get; }
+    public HostInfo HostInfo { get; }
+    public IAuth Auth { get; }
+    public IAccounts Accounts { get; }
+    public IAccountsBackend AccountsBackend { get; }
+    public ICommander Commander { get; }
+    public MomentClockSet Clocks { get; }
+
     private ClaimMapper ClaimMapper { get; }
-    private ICommander Commander { get; }
-    private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
     public ServerAuth(IServiceProvider services)
@@ -33,6 +35,7 @@ public sealed class ServerAuth
 
         HostInfo = services.HostInfo();
         Auth = services.GetRequiredService<IAuth>();
+        Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         ClaimMapper = services.GetRequiredService<ClaimMapper>();
         Commander = services.Commander();

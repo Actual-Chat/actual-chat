@@ -87,27 +87,27 @@ export class BrowserInfo {
         void this.backendRef.invokeMethodAsync('OnThemeChanged', themeInfo);
     };
 
-    public static async onWebSplashRemoved(): Promise<void> {
+    public static async onWebSplashRemoved(wasShown: boolean): Promise<void> {
         if (this.isWebSplashRemoved)
             return;
 
         this.isWebSplashRemoved = true;
-        infoLog?.log(`onWebSplashRemoved`);
+        infoLog?.log(`onWebSplashRemoved(${wasShown})`);
         await this.whenReady;
-        void this.backendRef.invokeMethodAsync('OnWebSplashRemoved');
+        void this.backendRef.invokeMethodAsync('OnWebSplashRemoved', wasShown);
     };
 
     private static initBodyClasses() {
         const classList = document.body.classList;
         switch (this.hostKind) {
         case 'WebServer':
-            classList.add('app-web', 'app-server');
+            classList.add('app-server');
             break;
         case 'WasmApp':
-            classList.add('app-web', 'app-wasm');
+            classList.add('app-wasm');
             break;
         case 'MauiApp':
-            classList.add('app-mobile', 'app-maui');
+            classList.add('app-maui');
             break;
         default:
             classList.add('app-unknown');

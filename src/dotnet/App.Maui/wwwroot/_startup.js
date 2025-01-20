@@ -3,6 +3,7 @@
         environment: 'unknown',
         baseUri: null,
         sessionHash: null,
+        renderMode: 'm',
         postMessage: function (data) {
             try {
                 if (window.Android) // post message to android webview
@@ -14,9 +15,10 @@
             }
         },
         /* Bundle/bulk init */
+        whenBlazorReady: null,
         whenBundleReady: null,
-        markBundleReady: function () {
-        },
+        markBlazorReady: function () { },
+        markBundleReady: function () { },
         isBundleReady: async function() {
             if (!window.App.whenBundleReady)
                 return false;
@@ -29,6 +31,9 @@
             await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef);
         },
     };
+    window.App.whenBlazorReady = new Promise((resolve, _) => {
+        window.App.markBlazorReady = resolve;
+    });
     window.App.whenBundleReady = new Promise((resolve, _) => {
         window.App.markBundleReady = resolve;
     });

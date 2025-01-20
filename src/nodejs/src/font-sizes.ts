@@ -4,16 +4,15 @@ import { Log } from 'logging';
 
 const { debugLog } = Log.get('FontSizes');
 
-const StorageKey = 'ui.font-size'
-const AvailableSizes : { [title: string]: string } = {
+const storage = window?.localStorage;
+const storageKey = 'ui.font-size'
+const availableSizes : { [title: string]: string } = {
     '14px': '14px',
     '16px': '16px',
     '18px': '18px',
     '20px': '20px',
     // '24px': '24px',
 }
-const Storage = globalThis?.localStorage;
-const IsEnabled = window != null && Storage != null;
 
 export class FontSizes {
     public static init(): void {
@@ -22,11 +21,11 @@ export class FontSizes {
     }
 
     public static list() {
-        return AvailableSizes;
+        return availableSizes;
     }
 
     public static get(): string {
-        if (!IsEnabled)
+        if (!storage)
             return null;
 
         const root = document.querySelector(':root');
@@ -36,7 +35,7 @@ export class FontSizes {
     }
 
     public static set(size: string): void {
-        if (!IsEnabled)
+        if (!storage)
             return;
 
         size = getValidOrDefault(size);
@@ -56,16 +55,15 @@ function getDefault() {
 }
 
 function getValidOrDefault(size: string): string {
-    return AvailableSizes[size] ?? getDefault();
+    return availableSizes[size] ?? getDefault();
 }
 
 function load(): string | null {
-    return IsEnabled ? Storage.getItem(StorageKey) : null;
+    return storage?.getItem(storageKey);
 }
 
 function save(size: string): void {
-    if (IsEnabled)
-        Storage.setItem(StorageKey, size);
+    storage?.setItem(storageKey, size);
 }
 
 FontSizes.init();

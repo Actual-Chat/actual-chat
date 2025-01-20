@@ -82,7 +82,7 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
         => UpdateThemeInfo(themeInfo);
 
     [JSInvokable]
-    public virtual void OnWebSplashRemoved() { }
+    public virtual void OnWebSplashRemoved(bool wasShown) { }
 
     // Protected & private methods
 

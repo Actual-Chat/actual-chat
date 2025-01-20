@@ -1,5 +1,4 @@
 import { Connectivity } from 'connectivity';
-import { DeviceInfo } from 'device-info';
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { HostKind, BrowserInfo, AppKind } from '../BrowserInfo/browser-info';
@@ -10,8 +9,7 @@ import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
 
-const window = globalThis as undefined as Window;
-const sessionStorage = window.sessionStorage;
+const sessionStorage = globalThis?.sessionStorage;
 
 export class BrowserInit {
     public static apiVersion = "";
@@ -38,6 +36,7 @@ export class BrowserInit {
     ): Promise<void> {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
+            window['App']?.markBlazorReady?.(); // It must be called no matter what at this point
             this.apiVersion = apiVersion;
             this.baseUri = baseUri;
             this.sessionHash = sessionHash;
@@ -175,22 +174,31 @@ export class BrowserInit {
             attachWatchers();
     }
 
-    public static removeWebSplash(instantly = false) {
-        document.body.style.backgroundColor = null;
-        const overlay = document.getElementById('web-splash');
-        if (!overlay)
+    public static showWebSplash() {
+        const splash = document.getElementById('web-splash');
+        if (!splash)
             return;
 
-        if (instantly) {
-            overlay.remove();
-            void BrowserInfo.onWebSplashRemoved();
+        splash.style.display = null;
+    }
+
+    public static removeWebSplash(instantly = false) {
+        document.body.style.backgroundColor = null;
+        const splash = document.getElementById('web-splash');
+        if (!splash)
+            return;
+
+        const wasShown = splash.style.display !== 'none';
+        if (instantly || !wasShown) {
+            splash.remove();
+            void BrowserInfo.onWebSplashRemoved(wasShown);
         }
         else {
-            overlay.classList.add('removing');
-            // Total transition duration: 350ms, see loading-overlay.css
+            splash.classList.add('removing');
+            // Total transition duration: 350ms, see web-splash.css
             setTimeout(function () {
-                void BrowserInfo.onWebSplashRemoved();
-                setTimeout(function () { overlay.remove(); }, 150);
+                void BrowserInfo.onWebSplashRemoved(wasShown);
+                setTimeout(function () { splash.remove(); }, 150);
             }, 200);
         }
     }
@@ -245,19 +253,20 @@ export class BrowserInit {
         // Set App.windowId
         (() => {
             const windowIds = JSON
-                .parse(sessionStorage.windowIds ?? "[]")
+                .parse(sessionStorage?.windowIds ?? "[]")
                 .filter((value, i, a) => value != null);
             this.windowId = windowIds.pop();
             if (this.windowId == null)
                 this.windowId = `${this.sessionHash}-${Math.random().toString(36).slice(2).substring(0, 6)}`;
-            else
+            else if (sessionStorage)
                 sessionStorage.windowIds = JSON.stringify(windowIds);
         })();
 
         window.addEventListener("beforeunload", _ => {
-            const windowIds = JSON.parse(sessionStorage.windowIds ?? "[]");
+            const windowIds = JSON.parse(sessionStorage?.windowIds ?? "[]");
             windowIds.push(this.windowId);
-            sessionStorage.windowIds = JSON.stringify(windowIds);
+            if (sessionStorage)
+                sessionStorage.windowIds = JSON.stringify(windowIds);
             return null;
         });
     }
@@ -357,26 +366,20 @@ export class BrowserInit {
 }
 
 function persistSettingToggle(settingKey: string, value: boolean): boolean {
-    const storage = globalThis?.sessionStorage;
-    if (!storage)
+    if (!sessionStorage)
         return false;
 
-    storage.setItem(settingKey, JSON.stringify(value));
+    sessionStorage.setItem(settingKey, JSON.stringify(value));
     return true;
 }
 
 function readSettingToggle(settingKey: string): boolean | null {
-    const storage = globalThis?.sessionStorage;
-    if (!storage)
+    if (!sessionStorage)
         return null;
 
-    const stringValue = storage.getItem(settingKey);
+    const stringValue = sessionStorage.getItem(settingKey);
     if (stringValue == null)
         return null
 
     return JSON.parse(stringValue);
 }
-
-// This call must be done as soon as possible
-BrowserInit.startReloadWatchers();
-void BrowserInit.startWebSplashRemoval(5_000);
