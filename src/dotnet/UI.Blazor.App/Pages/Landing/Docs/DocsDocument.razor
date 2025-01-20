@@ -1,14 +1,14 @@
-<RenderIntoSlot Name="MainLeftDrawer">
+<RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
     <CascadingValue Value="@Page">
         <DocsLeftPanel/>
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoSlot Name="MainRightDrawer">
+<RenderIntoSlot Name="@LayoutSlots.MainRightDrawer">
     <DocsRightPanel Page="@Page"/>
 </RenderIntoSlot>
 
-<RenderIntoSlot Name="MainHeader">
+<RenderIntoSlot Name="@LayoutSlots.MainHeader">
     <DocsHeader Page="@Page"/>
 </RenderIntoSlot>
 
