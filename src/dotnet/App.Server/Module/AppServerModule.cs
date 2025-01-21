@@ -67,7 +67,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             app.UseExceptionHandler("/Error", createScopeForErrors: true);
             app.UseHsts();
         }
-        //app.UseStaticDistFiles(); // Static files from dist and _content folders
 
         // See
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
@@ -103,6 +102,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseAntiforgery();
 
         // Endpoint mapping
+        app.UseStaticDistCacheHeaders(); // Customized cache headers for Static files from dist and _content folders
         app.MapStaticAssets();
         app.MapRazorComponents<RootServerPage>()
             .AddInteractiveServerRenderMode()

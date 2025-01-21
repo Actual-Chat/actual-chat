@@ -1,8 +1,3 @@
-using ActualChat.Hosting;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Primitives;
-using Microsoft.Net.Http.Headers;
-
 namespace ActualChat.App.Server.Module;
 
 public static class ApplicationBuilderExt
@@ -36,182 +31,61 @@ public static class ApplicationBuilderExt
         });
     }
 
-    public static IApplicationBuilder UseStaticDistFiles(this IApplicationBuilder builder)
+    public static IApplicationBuilder UseStaticDistCacheHeaders(this IApplicationBuilder builder)
     {
-        var webHostEnvironment = builder.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
-        var options = CreateStaticFilesOptions(webHostEnvironment.WebRootFileProvider);
-
-        builder.MapWhen(
-            ctx => ctx.Request.Path.StartsWithSegments("/dist", StringComparison.OrdinalIgnoreCase)
-                || ctx.Request.Path.StartsWithSegments("/_content", StringComparison.OrdinalIgnoreCase),
-            subBuilder => {
-                subBuilder.UseMiddleware<ContentEncodingNegotiator>();
-                subBuilder.UseStaticFiles(options);
-            });
-
+        builder.UseMiddleware<CacheControlMiddleware>();
         return builder;
     }
 
-    private static StaticFileOptions CreateStaticFilesOptions(IFileProvider webRootFileProvider)
+    private class CacheControlMiddleware(RequestDelegate next)
     {
-        var contentTypeProvider = ContentTypeProvider.Instance;
-        return  new StaticFileOptions {
-            FileProvider = webRootFileProvider,
-            ContentTypeProvider = contentTypeProvider,
-            // Static files middleware will try to use application/x-gzip as the content
-            // type when serving a file with a gz extension. We need to correct that before
-            // sending the file.
-            OnPrepareResponse = ctx => {
-                var mustDisable = false;
-                if (Constants.DebugMode.DisableStaticFileCaching) {
-                    var hostInfo = ctx.Context.RequestServices.HostInfo();
-                    mustDisable = hostInfo.IsDevelopmentInstance;
-                }
-
-                var request = ctx.Context.Request;
-                var hasVersion = request.Query.TryGetValue("v", out var version) && version.Count > 0;
-                var requestPath = request.Path.Value ?? "";
-                var fileExtension = Path.GetExtension(requestPath);
-
-                var isJavaScriptOrWasm =
-                    OrdinalIgnoreCaseEquals(fileExtension, ".js")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".wasm");
-                var isVideo =
-                    OrdinalIgnoreCaseEquals(fileExtension, ".mp4")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".webm");
-                var isFont =
-                    OrdinalIgnoreCaseEquals(fileExtension, ".woff")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".woff2")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".ttf")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".otf");
-                var isBin =
-                    OrdinalIgnoreCaseEquals(fileExtension, ".bin");
-                var mustNotCache = mustDisable || (isJavaScriptOrWasm && !hasVersion);
-                if (mustNotCache) {
-                    ctx.Context.Response.Headers.Append(HeaderNames.CacheControl, "no-cache");
-                    return;
-                }
-
-                var cacheControlHeader = hasVersion || isBin || isFont
-                    ? "public, max-age=518400, immutable, stale-while-revalidate=86400, s-maxage=2592000" // immutable, 6 days + up to 1 for revalidation
-                    : isVideo ? "public, max-age=518400, stale-while-revalidate=86400, s-maxage=2592000" // 6 days + up to 1 for revalidation
-                        : "public, max-age=3600, max-stale=86400, stale-while-revalidate=86400, s-maxage=86400"; // 1d + up to 1 day for revalidation
-                ctx.Context.Response.Headers.Append("Cache-Control", cacheControlHeader);
-
-                var isCompressed =
-                    OrdinalIgnoreCaseEquals(fileExtension, ".gz")
-                    || OrdinalIgnoreCaseEquals(fileExtension, ".br");
-                if (!isCompressed)
-                    return;
-
-                // Here we calculate the uncompressed content type by removing the extension and determining
-                // it based on the remainder of the file name.
-                // When we revisit this, we should consider calculating the original content type and storing it
-                // in the request along with the original target path so that we don't have to calculate it here.
-                var preCompressionPath = Path.GetFileNameWithoutExtension(requestPath);
-                if (contentTypeProvider.TryGetContentType(preCompressionPath, out var originalContentType))
-                    ctx.Context.Response.ContentType = originalContentType;
-            },
-        };
-    }
-
-    internal sealed class ContentEncodingNegotiator
-    {
-        // List of encodings by preference order with their associated extension so that we can easily handle "*".
-        private static readonly StringSegment[] _preferredEncodings = { "br", "gzip" };
-
-        private static readonly Dictionary<StringSegment, string> _encodingExtensionMap = new Dictionary<StringSegment, string>(StringSegmentComparer.OrdinalIgnoreCase)
-        {
-            ["br"] = ".br",
-            ["gzip"] = ".gz",
-        };
-
-        private readonly RequestDelegate _next;
-        private readonly IWebHostEnvironment _webHostEnvironment;
-
-        public ContentEncodingNegotiator(RequestDelegate next, IWebHostEnvironment webHostEnvironment)
-        {
-            _next = next;
-            _webHostEnvironment = webHostEnvironment;
-        }
-
         public Task InvokeAsync(HttpContext context)
         {
-            NegotiateEncoding(context);
-            return _next(context);
-        }
+            var requestPath = context.Request.Path;
+            var isDist = requestPath.StartsWithSegments("/dist", StringComparison.OrdinalIgnoreCase);
+            var isContent = requestPath.StartsWithSegments("/_content", StringComparison.OrdinalIgnoreCase);
+            var isFramework = requestPath.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase);
+            if (!isDist && !isContent && !isFramework)
+                return next(context);
 
-        private void NegotiateEncoding(HttpContext context)
-        {
-            var accept = context.Request.Headers.AcceptEncoding;
-
-            if (StringValues.IsNullOrEmpty(accept))
-                return;
-
-            if (!StringWithQualityHeaderValue.TryParseList(accept, out var encodings) || encodings.Count == 0)
-                return;
-
-            var selectedEncoding = StringSegment.Empty;
-            var selectedEncodingQuality = .0;
-
-            foreach (var encoding in encodings)
-            {
-                var encodingName = encoding.Value;
-                var quality = encoding.Quality.GetValueOrDefault(1);
-
-                if (quality >= double.Epsilon && quality >= selectedEncodingQuality)
-                {
-                    if (Math.Abs(quality - selectedEncodingQuality) < 0.001)
-                        selectedEncoding = PickPreferredEncoding(context, selectedEncoding, encoding);
-                    else if (_encodingExtensionMap.TryGetValue(encodingName, out var encodingExtension) && ResourceExists(context, encodingExtension))
-                    {
-                        selectedEncoding = encodingName;
-                        selectedEncodingQuality = quality;
-                    }
-
-                    if (StringSegment.Equals("*", encodingName, StringComparison.Ordinal))
-                    {
-                        // If we *, pick the first preferred encoding for which a resource exists.
-                        selectedEncoding = PickPreferredEncoding(context, default, encoding);
-                        selectedEncodingQuality = quality;
-                    }
-
-                    if (!StringSegment.Equals("identity", encodingName, StringComparison.OrdinalIgnoreCase)) continue;
-
-                    selectedEncoding = StringSegment.Empty;
-                    selectedEncodingQuality = quality;
-                }
+            var mustDisable = false;
+#if DEBUG
+            mustDisable = true;
+#endif
+            if (!mustDisable && Constants.DebugMode.DisableStaticFileCaching) {
+                var hostInfo = context.RequestServices.HostInfo();
+                mustDisable = hostInfo.IsDevelopmentInstance;
             }
+            if (mustDisable)
+                return next(context);
 
-            if (!_encodingExtensionMap.TryGetValue(selectedEncoding, out var extension))
-                return;
+            context.Response.OnStarting(() => {
+                var requestPathValue = requestPath.Value ?? "";
+                var currentCacheControl = (string?)context.Response.Headers.CacheControl;
+                var hasNoCache = string.Equals(currentCacheControl, "no-cache", StringComparison.OrdinalIgnoreCase);
+                if (hasNoCache && isFramework)
+                    return Task.CompletedTask;
 
-            context.Request.Path += extension;
-            context.Response.Headers.ContentEncoding = selectedEncoding.Value;
-            context.Response.Headers.Append(HeaderNames.Vary, HeaderNames.ContentEncoding);
+                var hasImmutable = currentCacheControl?.EndsWith("immutable", StringComparison.OrdinalIgnoreCase) == true;
+                var fileExtension = Path.GetExtension(requestPathValue);
+                var isVideo = OrdinalIgnoreCaseEquals(fileExtension, ".mp4") || OrdinalIgnoreCaseEquals(fileExtension, ".webm");
+                var isMedia = isVideo
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".png")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".svg")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".jpg");
 
-            return;
+                var cacheControlHeader = hasImmutable
+                    ? "public, max-age=5184000, immutable, stale-while-revalidate=86400, s-maxage=2592000" // immutable, 60 days + up to 1 for revalidation
+                    : isMedia ? "public, max-age=518400, stale-while-revalidate=86400, s-maxage=2592000" // 6 days + up to 1 for revalidation
+                        : "public, max-age=3600, max-stale=86400, stale-while-revalidate=86400, s-maxage=86400, must-revalidate"; // 1d + up to 1 day for revalidation
+                context.Response.Headers.Remove("Cache-Control");
+                context.Response.Headers.Append("Cache-Control", cacheControlHeader);
 
-            StringSegment PickPreferredEncoding(
-                HttpContext context1,
-                StringSegment selectedEncoding1,
-                StringWithQualityHeaderValue encoding)
-            {
-                foreach (var preferredEncoding in _preferredEncodings) {
-                    if (preferredEncoding == selectedEncoding1)
-                        return selectedEncoding1;
-
-                    if ((preferredEncoding == encoding.Value || encoding.Value == "*")
-                        && ResourceExists(context1, _encodingExtensionMap[preferredEncoding]))
-                        return preferredEncoding;
-                }
-
-                return StringSegment.Empty;
-            }
+                if (isVideo && context.Response.StatusCode == StatusCodes.Status416RangeNotSatisfiable)
+                    context.Response.StatusCode = StatusCodes.Status206PartialContent; // Temp fix for range request until it is fixed in ASP.NET Core 9+
+                return Task.CompletedTask;
+            });
+            return next(context);
         }
-
-        private bool ResourceExists(HttpContext context, string extension) =>
-            _webHostEnvironment.WebRootFileProvider.GetFileInfo(context.Request.Path + extension).Exists;
     }
-
 }

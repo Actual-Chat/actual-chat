@@ -5,6 +5,7 @@ import { HostKind, BrowserInfo, AppKind } from '../BrowserInfo/browser-info';
 import { Log, LogLevel } from 'logging';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase/analytics';
+import { Versioning } from 'versioning';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
@@ -223,7 +224,8 @@ export class BrowserInit {
         }
 
         try {
-            const response = await fetch('/dist/config/firebase.config.js');
+            const firebaseConfigUrl = Versioning.mapPath('/dist/config/firebase.config.js');
+            const response = await fetch(firebaseConfigUrl);
             if (response.ok || response.status === 304) {
                 const { config, publicKey } = await response.json();
                 const app = BrowserInit.firebaseApp = initializeApp(config, { automaticDataCollectionEnabled: isAnalyticsEnabled ?? false });

@@ -191,13 +191,13 @@ export class OpusMediaRecorder implements RecorderStateServer {
         const hubUrl = new URL('/api/hub/streams', this.origin).toString();
 
         await this.encoderWorker.create(
-            Versioning.artifactVersions,
+            Versioning.assetMap,
             hubUrl,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): encoderWorker created`);
 
         await this.vadWorker.create(
-            Versioning.artifactVersions,
+            Versioning.assetMap,
             canUseNNVad,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): vadWorker created`);

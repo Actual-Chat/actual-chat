@@ -12,7 +12,6 @@
     Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
     var renderModeKey = _renderMode.Key;
     var blazorMaxReconnectRetries = 0; // 100_000_000;
-    var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : GetBlazorScriptSuffix();
     var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
     var nonceGenerator = RandomStringGenerator.Default;
     var startupNonce = nonceGenerator.Next(12);
@@ -29,6 +28,11 @@
     var recaptchaKey = UserSettings.GoogleRecaptchaSiteKey;
     var recaptchaNonce = nonceGenerator.Next(12);
     CaptchaUI.Initialize(UserSettings.GoogleRecaptchaSiteKey);
+
+    // Build custom import map with WASM
+    var defaultImportMap = HttpContext.GetEndpoint()?.Metadata.GetMetadata<ImportMapDefinition>();
+    var wasmImportMap = AssetVersionHelper.GetWasmAssetsImportMap(Assets);
+    var importMap = AssetVersionHelper.StripRelativePaths(defaultImportMap == null ? wasmImportMap : ImportMapDefinition.Combine(defaultImportMap, wasmImportMap));
 }
 
 <!DOCTYPE html>
@@ -125,25 +129,25 @@
     <meta name="twitter:image" content="@image">
 
     @* The version of icon.woff2 must match the version in icons.css! *@
-    <link rel="preload" href="@Assets["dist/fonts/icon.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="@Assets["dist/fonts/TT-Commons-Pro-Regular.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="@Assets["dist/fonts/TT-Commons-Pro-Medium.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="@Assets["dist/fonts/TT-Commons-Pro-DemiBold.woff2"]" as="font" crossorigin />
-    <link rel="prefetch" href="@Assets["dist/fonts/TT-Commons-Pro-Light.woff2"]" as="font" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/onDeviceAwakeWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/opusDecoderWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/opusEncoderWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/warmUpWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/vadWorker.js")" as="worker" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/feederWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/opusEncoderWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/vadWorklet.js")" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/wasm/codec.wasm")" as="fetch" crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/wasm/webrtc-vad.wasm")" as="fetch"  crossorigin />
-    <link rel="prefetch" href="@AssetVersion("dist/wasm/ort-wasm-simd.wasm")" as="fetch" crossorigin />
+    <link rel="preload" href="/@Assets["dist/fonts/icon.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-Regular.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-Medium.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-DemiBold.woff2"]" as="font" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/fonts/TT-Commons-Pro-Light.woff2"]" as="font" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/onDeviceAwakeWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/opusDecoderWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/opusEncoderWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/warmUpWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/vadWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/feederWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/opusEncoderWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/vadWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/wasm/codec.wasm"]" as="fetch" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/wasm/webrtc-vad.wasm"]" as="fetch"  crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/wasm/ort-wasm-simd.wasm"]" as="fetch" crossorigin />
 
-    <link href="@Assets["dist/bundle.css"]" rel="stylesheet" />
-    <ImportMap nonce="@importMapNonce"/>
+    <link href="/@Assets["dist/bundle.css"]" rel="stylesheet" />
+    <ImportMap nonce="@importMapNonce" ImportMapDefinition="importMap"/>
     @if (hasRecaptchaConfigured) {
         <script id="recaptcha-head-script" nonce="@recaptchaNonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaKey" async defer></script>
     }
@@ -178,7 +182,7 @@
             window.App.markBundleReady = resolve;
         });
     </script>
-    <script async src="@Assets["dist/bundle.js"]"></script>
+    <script async src="/@Assets["dist/bundle.js"]"></script>
     <HeadOutlet @rendermode="@(_renderMode.Mode)" />
 </head>
 
@@ -250,45 +254,49 @@
     <div id="blazor-error-ui"></div>
     <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
 
-    <script src="_framework/blazor.web@(blazorScriptSuffix).js" autostart="false"></script>
+    <script src="/@Assets["_framework/blazor.web.js"]" autostart="false"></script>
     <script nonce="@blazorReloadNonce">
-        Blazor.start({
-            circuit: {
-                reconnectionOptions: {
-                    maxRetries: @(blazorMaxReconnectRetries),
-                    retryIntervalMilliseconds: 2000,
-                }
-            },
-            webAssembly: {
-                /*
-               // WASM Profiling & Mono logging
-               configureRuntime: dotnet => {
-                   dotnet.withConfig({ browserProfilerOptions: {} });
-                   dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
-                   dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
-               },
-               */
-                loadBootResource: function (type, name, defaultUri, integrity) {
-                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
-                        return (async function () {
-                            const hash = encodeURIComponent(integrity);
-                            const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
-                            if (!response.ok)
-                                throw new Error(response.statusText);
+        if (!window.Blazor) {
+            console.error('Blazor is not loaded. Please check the script tag for blazor.web.js.');
+        }
+        else {
+            Blazor.start({
+                circuit: {
+                    reconnectionOptions: {
+                        maxRetries: @(blazorMaxReconnectRetries),
+                        retryIntervalMilliseconds: 2000,
+                    }
+                },
+                webAssembly: {
+                    /*
+                   // WASM Profiling & Mono logging
+                   configureRuntime: dotnet => {
+                       dotnet.withConfig({ browserProfilerOptions: {} });
+                       dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
+                       dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
+                   },
+                   */
+                    loadBootResource: function(type, name, defaultUri, integrity) {
+                        if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
+                            return (async function() {
+                                const hash = encodeURIComponent(integrity);
+                                const response = await fetch(defaultUri + '?hash=' + hash, { integrity: integrity });
+                                if (!response.ok)
+                                    throw new Error(response.statusText);
 
-                            return response;
-                        })();
+                                return response;
+                            })();
+                        }
                     }
                 }
-            }
-        }).then(window.App.markBlazorReady);
+            }).then(window.App.markBlazorReady);
+        }
     </script>
 }
 </body>
 </html>
 
 @code {
-    private static string? _blazorScriptSuffix;
     private bool _isInitialized;
     private bool _isNewSession;
     private LocalUrl _url;
@@ -297,7 +305,6 @@
     private SecureToken? _sessionToken;
     private RenderModeDef _renderMode = RenderModeDef.ByKey["ss"]; // Static
     private CloseFlowInfo? _closeFlow;
-    private AssetVersionHelper _assetVersionHelper = null!;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
@@ -331,7 +338,6 @@
 
     private async Task Initialize() {
         var cancellationToken = HttpContext.RequestAborted;
-        _assetVersionHelper = new(Assets);
         _url = new LocalUrl(HttpContext.Request.Path.Value);
         (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
         SessionResolver.Session = _session;
@@ -360,21 +366,5 @@
                 : RenderModeEndpoint.GetRenderMode(HttpContext);
         }
         // Activity.Current = null; // We don't want to "infect" Blazor circuit with it
-    }
-
-    private string AssetVersion(string assetKey)
-        => _assetVersionHelper.GetVersionedPath(assetKey);
-
-    private static string GetBlazorScriptSuffix()
-    {
-        if (_blazorScriptSuffix != null)
-            return _blazorScriptSuffix;
-
-        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions)
-            .Assembly
-            .GetInformationalVersion()
-            .RequireNonEmpty("Blazor extensions assembly version");
-        _blazorScriptSuffix = "." + version.Hash().SHA1().AlphaNumeric().ToLowerInvariant();
-        return _blazorScriptSuffix;
     }
 }
