@@ -74,13 +74,7 @@ COPY --from=dotnet-restore /src/nuget.config ./
 
 FROM nodejs-restore as nodejs-build
 COPY src/dotnet/ /src/src/dotnet/
-RUN npm run build:Release \
-    && find /src/src/dotnet/App.Wasm/wwwroot/dist/wasm/*.wasm -print | xargs gzip -k9 \
-    && find /src/src/dotnet/App.Wasm/wwwroot/dist/wasm/*.wasm -print | xargs brotli -Z \
-    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.js -print | xargs gzip -k9 \
-    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.js -print | xargs brotli -Z \
-    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.css -print | xargs gzip -k9 \
-    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.css -print | xargs brotli -Z
+RUN npm run build:Release
 
 FROM dotnet-restore as base
 COPY src/dotnet/ src/dotnet/
