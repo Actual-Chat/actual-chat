@@ -38,13 +38,15 @@
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private Model? _rendered;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private HighlightUI HighlightUI => Hub.HighlightUI;
+    private IJSRuntime JS => Hub.JSRuntime();
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -161,12 +163,8 @@
         if (startTimeOpt is not { } startTime)
             return;
 
-        // We resolve some of the services lazily here, coz they're supposed to be used quite rarely
-        var session = Services.Session();
-        var chats = Services.GetRequiredService<IChats>();
-
         var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryLid ?? -1, AssumeValid.Option);
-        var audioEntry = await chats.GetEntry(session, audioEntryId);
+        var audioEntry = await Chats.GetEntry(Session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case
