@@ -16,7 +16,7 @@
 }
 
 <span @ref="Ref" class="@containerCls @colorCls">
-    @if (m.Map == null || !m.Map.Contains(WordPlayback.Played)) {
+    @if (m.Map == null) {
         @Markup.Text
     } else {
         @for (var i = 0; i < Markup.Words.Count; i++) {
@@ -67,6 +67,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
                 InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
