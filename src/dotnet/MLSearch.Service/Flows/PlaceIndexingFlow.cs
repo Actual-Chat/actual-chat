@@ -9,7 +9,7 @@ using MemoryPack;
 namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, PlaceId>, IMasterFlow
+public partial class PlaceIndexingFlow : BatchedIndexingFlowBase<Place, PlaceId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
@@ -18,8 +18,9 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, P
     [field: AllowNull, MaybeNull]
     private IPlacesBackend PlacesBackend => field ??= Host.Services.GetRequiredService<IPlacesBackend>();
     [field: AllowNull, MaybeNull]
+    private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
+    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
-
 
     protected override async Task<IReadOnlyList<Place>> GetBatch(
         IndexingFlowCursor<PlaceId>? cursor,
@@ -41,10 +42,9 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Place, P
     protected override async Task ProcessBatch(IReadOnlyList<Place> batch, CancellationToken cancellationToken)
     {
         await WhenReady.ConfigureAwait(false);
-        var indexedDocuments = Host.Services.GetRequiredService<IndexedDocuments>();
 
         var updated = batch.Select(x => x.ToIndexedPlaceContact()).ToApiArray();
-        await indexedDocuments.UpdatePlaceContacts(updated, [], cancellationToken).ConfigureAwait(false);
+        await IndexedDocuments.SavePlaces(updated, [], cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)

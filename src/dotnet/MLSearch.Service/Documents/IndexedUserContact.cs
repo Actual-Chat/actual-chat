@@ -1,13 +1,15 @@
-using ActualLab.Fusion.Blazor;
-using MemoryPack;
+using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Documents;
 
-[ParameterComparer(typeof(ByValueParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record IndexedUserContact : IHasId<UserId>, IHasRoutingKey<UserId>, IRequirementTarget
+public class IndexedUserContact : IHasId<ContactId>, IHasRoutingKey<ContactId>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0)] public UserId Id { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string FullName { get; init; } = ""; // TODO(FC): rename to Name and update inde
-    [DataMember, MemoryPackOrder(4)] public ApiArray<PlaceId> PlaceIds { get; init; }
+    public ContactId Id { get; init; }
+    public UserId OwnerId => Id.OwnerId;
+    public UserId OtherUserId => Id.GetOtherUserId();
+    public string Name { get; init; } = "";
+    public JoinField ContactToUser => JoinField.Link<IndexedUserContact, IndexedUser>(new (OtherUserId));
+
+    public static string GetRoutingKey(ContactId id)
+        => id.GetOtherUserId();
 }

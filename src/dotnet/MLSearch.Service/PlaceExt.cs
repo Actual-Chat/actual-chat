@@ -1,12 +1,11 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
-using ActualChat.Search;
 
 namespace ActualChat.MLSearch;
 
 public static class PlaceExt
 {
-    public static IndexedPlaceContact ToIndexedPlaceContact(this Place place)
+    public static IndexedPlace ToIndexedPlaceContact(this Place place)
         => new() {
             Id = place.Id,
             IsPublic = place.IsPublic,

@@ -59,7 +59,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         var externalContacts = await List(deviceId);
 
         // assert
@@ -80,7 +80,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
 
         externalContact = externalContact.WithoutPhone(new ("1-234567890"))
             .WithPhone(UniqueNames.Phone())
@@ -114,7 +114,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact1, externalContact2);
+        await _tester.SaveExternalContacts(externalContact1, externalContact2);
         await Remove(externalContact1);
         var externalContacts = await List(deviceId);
 
@@ -137,7 +137,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         var bobContacts = await ListContactIds(1);
 
         jack = await _tester.SignIn(jack);
@@ -164,7 +164,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         var bobContacts = await ListContactIds(bobContacts0.Count);
 
         // assert
@@ -197,7 +197,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
                 .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         var bobContacts = await ListContactIds(0);
 
         // assert
@@ -229,7 +229,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         var contacts = await ListContactIds(1);
 
         // assert
@@ -251,7 +251,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         var bobContacts = await ListContactIds(1);
 
         jack = await _tester.SignIn(jack);
@@ -277,7 +277,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         var contacts = await ListContactIds(0);
         contacts.Should().BeEmpty("no matching phones or emails");
     }
@@ -305,7 +305,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
             .WithHash(_hasher);
 
         // act
-        await Add(externalContact);
+        await _tester.SaveExternalContacts(externalContact);
         if (!jackIsCreatedFirst)
             jack = await SignInAsUniqueJack(tester2, jackIdentities);
 
@@ -327,16 +327,6 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
         => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
-
-    private async Task Add(params ExternalContactFull[] externalContacts)
-    {
-        var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
-        var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToApiArray()));
-        results.Select(x => x.Value).Should().NotContainNulls();
-        var errors = results.Select(x => x.Error).SkipNullItems().ToList();
-        if (errors.Count > 0)
-            throw new AggregateException("Failed to create external contacts", errors);
-    }
 
     private Task<ApiArray<Result<ExternalContactFull?>>> Update(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,

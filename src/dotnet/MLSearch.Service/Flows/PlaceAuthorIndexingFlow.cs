@@ -36,6 +36,7 @@ public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFul
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
         cursor ??= new (AuthorId.None, 0);
+        // TODO: index place contacts instead
         var batch = await AuthorsBackend.ListChanged(
                 new ChangedAuthorsQuery {
                     MinVersion = cursor.LastUpdatedVersion,
@@ -53,23 +54,23 @@ public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFul
     {
         await WhenReady.ConfigureAwait(false);
 
-        var userContacts = await batch.Select(x => x.UserId)
+        var indexedUsers = await batch.Select(x => x.UserId)
             .Distinct()
-            .Select(ToIndexedUserContact)
+            .Select(ToIndexedUser)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        var updated = userContacts.SkipNullItems().ToApiArray();
-        await IndexedDocuments.UpdateUserContacts(updated, [], cancellationToken).ConfigureAwait(false);
+        var updated = indexedUsers.SkipNullItems().ToApiArray();
+        await IndexedDocuments.SaveUsers(updated, [], cancellationToken).ConfigureAwait(false);
         return;
 
-        async Task<IndexedUserContact?> ToIndexedUserContact(UserId userId)
+        async Task<IndexedUser?> ToIndexedUser(UserId userId)
         {
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             if (account is null)
                 return null;
 
             var placeIds = await ContactsBackend.ListPlaceIds(account.Id, cancellationToken).ConfigureAwait(false);
-            return account.ToIndexedUserContact(placeIds);
+            return account.ToIndexedUser(placeIds);
         }
     }
 

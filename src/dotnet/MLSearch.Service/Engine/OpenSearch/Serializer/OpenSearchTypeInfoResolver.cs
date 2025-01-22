@@ -27,6 +27,8 @@ public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
                 property.ShouldSerialize = ShouldSerializeQueryContainer;
             else if (typeof(IEnumerable<QueryContainer>).IsAssignableFrom(property.PropertyType))
                 property.ShouldSerialize = ShouldSerializeQueryContainers;
+            else if (property.PropertyType.IsAssignableTo(typeof(AggregateDictionary)) )
+                property.ShouldSerialize = ShouldSerializeAggregateDictionary;
     }
 
     private static bool ShouldSerializeQueryContainer(object o, object? value)
@@ -35,6 +37,9 @@ public class OpenSearchTypeInfoResolver : DefaultJsonTypeInfoResolver
     private static bool ShouldSerializeQueryContainers(object o, object? value)
         => o is not null && value is IEnumerable<QueryContainer> queryContainers
             && queryContainers.Any(q => (q as IQueryContainer)?.IsWritable ?? false);
+
+    private static bool ShouldSerializeAggregateDictionary(object arg1, object? arg2)
+        => false; // to avoid NotSupportedException on response serialization
 
     private void PropertyOverrideModifier(JsonTypeInfo typeInfo)
     {

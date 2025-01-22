@@ -14,11 +14,13 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
     protected override int CurrentFlowSetVersion => 3;
 
     [field: AllowNull, MaybeNull]
-    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
     [field: AllowNull, MaybeNull]
+    private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
+    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
+    [field: AllowNull, MaybeNull]
+    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
         => await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false)
@@ -46,11 +48,10 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
         await WhenReady.ConfigureAwait(false);
-        var indexedDocuments = Host.Services.GetRequiredService<IndexedDocuments>();
 
         var updated = batch.Where(x => x is { IsRemoved: false, IsSystemEntry: false }).Select(x => x.ToIndexedEntry()).ToList();
         var removed = batch.Where(x => x is { IsRemoved: true, IsSystemEntry: false }).Select(x => x.Id.AsTextEntryId()).ToList();
-        await indexedDocuments.UpdateEntries(updated, removed, cancellationToken).ConfigureAwait(false);
+        await IndexedDocuments.SaveEntries(updated, removed, cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
@@ -89,7 +90,7 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         }
 
         var indexedChat = chat.ToIndexedChat(place);
-        await indexedDocuments.UpdateChats([indexedChat], cancellationToken).ConfigureAwait(false);
+        await indexedDocuments.SaveChats([indexedChat], cancellationToken).ConfigureAwait(false);
         return true;
     }
 }

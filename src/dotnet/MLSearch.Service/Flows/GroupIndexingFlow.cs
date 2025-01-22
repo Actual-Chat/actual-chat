@@ -9,14 +9,16 @@ using MemoryPack;
 namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class GroupContactIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, ChatId>, IMasterFlow
+public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, ChatId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
     [field: AllowNull, MaybeNull]
-    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
     [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
+    [field: AllowNull, MaybeNull]
+    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(
         IndexingFlowCursor<ChatId>? cursor,
@@ -43,11 +45,10 @@ public partial class GroupContactIndexingFlow : BatchedIndexingFlowBase<Chat.Cha
     protected override async Task ProcessBatch(IReadOnlyList<Chat.Chat> batch, CancellationToken cancellationToken)
     {
         await WhenReady.ConfigureAwait(false);
-        var indexedDocuments = Host.Services.GetRequiredService<IndexedDocuments>();
 
         var placeMap = await GetPlaceMap(batch, cancellationToken).ConfigureAwait(false);
-        var updated = batch.Select(x => x.ToIndexedGroupContact(placeMap.GetValueOrDefault(x.Id.PlaceId))).ToApiArray();
-        await indexedDocuments.UpdateGroupContacts(updated, [], cancellationToken).ConfigureAwait(false);
+        var updated = batch.Select(x => x.ToIndexedGroup(placeMap.GetValueOrDefault(x.Id.PlaceId))).ToApiArray();
+        await IndexedDocuments.SaveGroups(updated, [], cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
