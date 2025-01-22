@@ -5,10 +5,8 @@ using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Module;
-using ActualChat.Search;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
-using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 namespace ActualChat.MLSearch;
 
@@ -16,17 +14,17 @@ namespace ActualChat.MLSearch;
 public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
-    private MLSearchSettings? _settings;
-    private OpenSearchNames? _openSearchNames;
-    private IOpenSearchClient? _openSearchClient;
-    private ILogger? _log;
 
-    private MLSearchSettings Settings => _settings ??= services.GetRequiredService<MLSearchSettings>();
-    private OpenSearchNames OpenSearchNames => _openSearchNames ??= services.GetRequiredService<OpenSearchNames>();
-    private IOpenSearchClient OpenSearchClient => _openSearchClient ??= services.GetRequiredService<IOpenSearchClient>();
-    private IMeshLocks MeshLocks { get; }
-        = services.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(OpenSearchConfigurator));
-    private ILogger Log => _log ??= services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private MLSearchSettings Settings => field ??= services.GetRequiredService<MLSearchSettings>();
+    [field: AllowNull, MaybeNull]
+    private OpenSearchNames OpenSearchNames => field ??= services.GetRequiredService<OpenSearchNames>();
+    [field: AllowNull, MaybeNull]
+    private IOpenSearchClient OpenSearchClient => field ??= services.GetRequiredService<IOpenSearchClient>();
+    [field: AllowNull, MaybeNull]
+    private IMeshLocks MeshLocks => field ??= services.MeshLocks<MLSearchDbContext>().WithKeyPrefix(nameof(OpenSearchConfigurator));
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
 
     private readonly int _numberOfReplicas = services.GetRequiredService<HostInfo>().IsDevelopmentInstance ? 0 : 1;
 
@@ -100,7 +98,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
     private Task EnsureIndicesUnsafe(CancellationToken cancellationToken)
         => Task.WhenAll(
             EnsureIndex(OpenSearchNames.UserIndexName,
-                ConfigureUserContactIndex,
+                ConfigureUserIndex,
                 cancellationToken),
             EnsureIndex(OpenSearchNames.GroupIndexName,
                 ConfigureGroupContactIndex,
@@ -135,16 +133,28 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
                 .NumberOfReplicas(_numberOfReplicas))
             .IndexPatterns(OpenSearchNames.CommonIndexPattern);
 
-    private ICreateIndexRequest ConfigureUserContactIndex(CreateIndexDescriptor index)
-        => index.Map<IndexedUserContact>(m
-            => m.Properties(pp
-                => pp.Keyword(p => p.Name(x => x.Id))
-                    .Text(p => p.Name(x => x.FullName))
-                    .Keyword(x => x.Name(o => o.PlaceIds))))
+    private ICreateIndexRequest ConfigureUserIndex(CreateIndexDescriptor index)
+        => index
+            .Map<IndexedUser>(m
+                => m.Properties(pp
+                    => pp.Keyword(p => p.Name(x => x.Id))
+                        .Text(p => p.Name(x => x.Name))
+                        .Keyword(x => x.Name(o => o.PlaceIds))
+                        .Join(j => j.Name(x => x.ContactToUser)
+                            .Relations(r => r.Join<IndexedUser, IndexedUserContact>()))))
+            .Map<IndexedUserContact>(m
+                => m.RoutingField(r => r.Required())
+                    .Properties(pp
+                        => pp.Keyword(p => p.Name(x => x.Id))
+                            .Keyword(p => p.Name(x => x.OwnerId))
+                            .Keyword(p => p.Name(x => x.OtherUserId))
+                            .Text(p => p.Name(x => x.Name))
+                            .Join(j => j.Name(x => x.ContactToUser)
+                                .Relations(r => r.Join<IndexedUser, IndexedUserContact>()))))
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigureGroupContactIndex(CreateIndexDescriptor index)
-        => index.Map<IndexedGroupContact>(m
+        => index.Map<IndexedGroup>(m
             => m.Properties(pp
                 => pp.Keyword(p => p.Name(x => x.Id))
                     .Keyword(p => p.Name(x => x.PlaceId))
@@ -152,7 +162,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));
 
     private ICreateIndexRequest ConfigurePlaceContactIndex(CreateIndexDescriptor index)
-        => index.Map<IndexedPlaceContact>(m
+        => index.Map<IndexedPlace>(m
             => m.Properties(pp
                 => pp.Keyword(p => p.Name(x => x.Id))
                     .Boolean(p => p.Name(x => x.IsPublic))

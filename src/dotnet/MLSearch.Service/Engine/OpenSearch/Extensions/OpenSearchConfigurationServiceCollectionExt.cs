@@ -46,7 +46,9 @@ internal static class OpenSearchConfigurationServiceCollectionExt
                 .DefaultMappingFor<ChatInfo>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatInfoName))
                 .DefaultMappingFor<ChatSlice>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatSliceName))
                 .DefaultMappingFor<IndexedChat>(map => map.RoutingProperty(x => x.Id))
-                .DefaultMappingFor<IndexedEntry>(map => map.RoutingProperty(x => x.ChatId));
+                .DefaultMappingFor<IndexedEntry>(map => map.RoutingProperty(x => x.ChatId))
+                .DefaultMappingFor<IndexedUser>(map => map.RoutingProperty(x => x.Id))
+                .DefaultMappingFor<IndexedUserContact>(map => map.RoutingProperty(x => x.OtherUserId));
             if (!openSearchSettings.User.IsNullOrEmpty() && !openSearchSettings.Password.IsNullOrEmpty())
                 connectionSettings.BasicAuthentication(openSearchSettings.User, openSearchSettings.Password);
             else if (!openSearchSettings.ClientCertificatePath.IsNullOrEmpty()) {

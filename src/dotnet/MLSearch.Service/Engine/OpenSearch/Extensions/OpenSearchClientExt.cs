@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using ActualChat.Search;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -149,7 +148,7 @@ internal static class OpenSearchClientExt
         // response received
         var error = response.ServerError;
         if (error != null)
-            throw StandardError.External($"OpenSearch request failed: {error.Error.Reason}");
+            throw StandardError.External($"OpenSearch request failed: {error.Error}");
 
         log ??= StaticLog.For(typeof(OpenSearchClientExt));
         if (response is BulkResponse { IsValid: false } bulkResponse && bulkResponse.ItemsWithErrors.Count() is var failureCount and > 0) {

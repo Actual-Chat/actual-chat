@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
 using ActualChat.Media;
 using ActualLab.Fusion.EntityFramework;
@@ -37,8 +36,6 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
 
     // TODO: since this method does not return Media, we need Place and PlaceFull
     // Not a [ComputeMethod]!
-    [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
-    [SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness")]
     public async Task<ApiArray<Place>> ListChanged(
         long minVersion,
         long maxVersion,

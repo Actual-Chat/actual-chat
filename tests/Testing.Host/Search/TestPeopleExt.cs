@@ -1,7 +1,4 @@
-using ActualChat.Chat;
-using ActualChat.MLSearch;
 using ActualChat.Users;
-using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 
 namespace ActualChat.Testing.Host;
 
@@ -54,30 +51,11 @@ public static class TestPeopleExt
         people.Stranger1FromPrivatePlace2(),
     ];
 
-    public static IEnumerable<AccountFull> Friends(
-        this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people.Where(x => x.Key.MustJoin).Select(x => x.Value);
+    public static IEnumerable<AccountFull> Friends(this IReadOnlyDictionary<TestChatKey, AccountFull> people, string filter = "")
+        => people.Where(x => x.Key.MustJoin).Where(x => filter.IsNullOrEmpty() || x.Value.Name.OrdinalIgnoreCaseContains(filter)).Select(x => x.Value);
 
-    public static IEnumerable<AccountFull> Strangers(
-        this IReadOnlyDictionary<TestChatKey, AccountFull> people)
-        => people.Where(x => !x.Key.MustJoin).Select(x => x.Value);
-
-    public static IEnumerable<IndexedUserContact> ToIndexedUserContacts(
-        this IReadOnlyDictionary<TestChatKey, AccountFull> people,
-        IReadOnlyDictionary<TestPlaceKey, Place> places)
-    {
-        return people.Select(x => x.Value.ToIndexedUserContact(GetPlaces(x)));
-
-        PlaceId[] GetPlaces(KeyValuePair<TestChatKey, AccountFull> pair)
-        {
-            if (pair.Key.PlaceKey is null)
-                return [];
-
-            var place = places.GetValueOrDefault(pair.Key.PlaceKey);
-            if (place == null)
-                return [];
-
-            return [place.Id];
-        }
-    }
+    public static IEnumerable<AccountFull> Strangers(this IReadOnlyDictionary<TestChatKey, AccountFull> people, string filter = "")
+        => people.Where(x => !x.Key.MustJoin)
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Name.OrdinalIgnoreCaseContains(filter))
+            .Select(x => x.Value);
 }

@@ -13,7 +13,7 @@ namespace ActualChat.MLSearch.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, UserId>, IMasterFlow
 {
-    protected override int CurrentFlowSetVersion => 1;
+    protected override int CurrentFlowSetVersion => 2;
     protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
     [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
@@ -47,14 +47,14 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
     {
         await WhenReady.ConfigureAwait(false);
 
-        var updated = await batch.Select(ToIndexedUserContact).Collect(cancellationToken).ConfigureAwait(false);
-        await IndexedDocuments.UpdateUserContacts(updated, [], cancellationToken).ConfigureAwait(false);
+        var updated = await batch.Select(ToIndexedUser).Collect(cancellationToken).ConfigureAwait(false);
+        await IndexedDocuments.SaveUsers(updated, [], cancellationToken).ConfigureAwait(false);
         return;
 
-        async Task<IndexedUserContact> ToIndexedUserContact(AccountFull account)
+        async Task<IndexedUser> ToIndexedUser(AccountFull account)
         {
             var placeIds = await ContactsBackend.ListPlaceIds(account.Id, cancellationToken).ConfigureAwait(false);
-            return account.ToIndexedUserContact(placeIds);
+            return account.ToIndexedUser(placeIds);
         }
     }
 

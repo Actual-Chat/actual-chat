@@ -71,6 +71,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.OwnerId).IsRequired();
+            builder.HasIndex(nameof(Version), nameof(Id)).HasFilter("user_id IS NOT NULL");
         }
     }
 }

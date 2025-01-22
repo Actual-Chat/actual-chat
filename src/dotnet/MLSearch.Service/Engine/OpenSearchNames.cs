@@ -7,7 +7,7 @@ internal sealed class OpenSearchNames
     private const string IngestPipelineNameSuffix = "ingest-pipeline";
     private const string IndexNameSuffix = "index";
     public const string EntryIndexVersion = "v4";
-    public const string UserIndexVersion = "v5";
+    public const string UserIndexVersion = "v6";
     public const string GroupIndexVersion = "v5";
     public const string PlaceIndexVersion = "v3";
 

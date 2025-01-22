@@ -56,16 +56,25 @@ public static partial class StringExt
         => source.IsNullOrEmpty() ? source : source.Capitalize(0);
 
     public static string Capitalize(this string source, int position)
+        => ChangeCase(source, position, char.ToUpperInvariant);
+
+    public static string Decapitalize(this string source)
+        => source.IsNullOrEmpty() ? source : source.Decapitalize(0);
+
+    public static string Decapitalize(this string source, int position)
+        => ChangeCase(source, position, char.ToLowerInvariant);
+
+    private static string ChangeCase(string source, int position, Func<char, char> changeCase)
     {
         var firstLetter = source[position];
-        var firstLetterUpper = char.ToUpperInvariant(firstLetter);
-        if (firstLetter == firstLetterUpper)
+        var firstLetterChanged = changeCase(firstLetter);
+        if (firstLetter == firstLetterChanged)
             return source;
 
         using var sb = ZString.CreateStringBuilder(true);
         if (position > 0)
             sb.Append(source.AsSpan(0, position));
-        sb.Append(firstLetterUpper);
+        sb.Append(firstLetterChanged);
         sb.Append(source.AsSpan(position + 1));
         return sb.ToString();
     }

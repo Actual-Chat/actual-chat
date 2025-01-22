@@ -505,9 +505,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Not a [ComputeMethod]!
-    [SuppressMessage("Usage", "MA0074:Avoid implicit culture-sensitive methods")]
-    [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
-    [SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness")]
     public async Task<ApiArray<Chat>> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);

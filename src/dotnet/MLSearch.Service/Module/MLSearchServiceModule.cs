@@ -90,10 +90,11 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddFlows()
             .Add<EntryIndexingFlow>()
             .Add<EntryIndexingMasterFlow>()
-            .Add<PlaceContactIndexingFlow>()
-            .Add<GroupContactIndexingFlow>()
+            .Add<PlaceIndexingFlow>()
+            .Add<GroupIndexingFlow>()
             .Add<AccountIndexingFlow>()
-            .Add<PlaceAuthorIndexingFlow>();
+            .Add<PlaceAuthorIndexingFlow>()
+            .Add<UserContactIndexingFlow>();
     }
 
     private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient)

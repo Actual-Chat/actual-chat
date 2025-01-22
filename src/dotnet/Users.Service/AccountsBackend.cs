@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
 using ActualChat.Chat;
 using ActualChat.Flows;
@@ -13,26 +12,24 @@ namespace ActualChat.Users;
 
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
-    private IAuthBackend? _authBackend;
-    private IAvatarsBackend? _avatarsBackend;
-    private IServerKvasBackend? _serverKvasBackend;
-    private ContactGreeter? _contactGreeter;
-    private IFlows? _flows;
-    private FlowRegistry? _flowsRegistry;
-    private IDbEntityResolver<string, DbAccount>? _dbAccountResolver;
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
         "alex.yakunin@gmail.com",
         "ustinovas@gmail.com",
     };
 
-    private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
-    private IAvatarsBackend AvatarsBackend => _avatarsBackend ??= Services.GetRequiredService<IAvatarsBackend>();
-    private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
-    private ContactGreeter ContactGreeter => _contactGreeter ??= Services.GetRequiredService<ContactGreeter>();
-    private IFlows Flows => _flows ??= Services.GetRequiredService<IFlows>();
-    private FlowRegistry FlowRegistry => _flowsRegistry ??= Services.GetRequiredService<FlowRegistry>();
-    private IDbEntityResolver<string, DbAccount> DbAccountResolver => _dbAccountResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
+    [field: AllowNull, MaybeNull]
+    private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
+    [field: AllowNull, MaybeNull]
+    private IAvatarsBackend AvatarsBackend => field ??= Services.GetRequiredService<IAvatarsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
+    [field: AllowNull, MaybeNull]
+    private ContactGreeter ContactGreeter => field ??= Services.GetRequiredService<ContactGreeter>();
+    [field: AllowNull, MaybeNull]
+    private FlowRegistry FlowRegistry => field ??= Services.GetRequiredService<FlowRegistry>();
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
@@ -106,7 +103,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // Not a [ComputeMethod]!
-    [SuppressMessage("Globalization", "CA1309:Use ordinal string comparison")]
     public async Task<ApiArray<UserId>> ListChanged(
         long minVersion,
         long maxVersion,
