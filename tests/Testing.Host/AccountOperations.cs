@@ -14,16 +14,19 @@ public static class AccountOperations
         Func<int, string>? userNameFactory = null,
         Func<int, string>? nameFactory = null,
         Func<int, string>? secondNameFactory = null,
+        Func<int, Phone>? phoneFactory = null,
         CancellationToken cancellationToken = default)
     {
         await using var __ = await tester.BackupAuth();
         userNameFactory ??= UniqueNames.User;
         nameFactory ??= _ => "User";
         secondNameFactory ??= i => $"{i}";
+        phoneFactory ??= i => UniqueNames.Phone();
         var accounts = new AccountFull[count];
         for (int i = 0; i < count; i++) {
             var user = new User("", userNameFactory(i)).WithClaim(ClaimTypes.GivenName, nameFactory(i))
-                .WithClaim(ClaimTypes.Surname, secondNameFactory(i));
+                .WithClaim(ClaimTypes.Surname, secondNameFactory(i))
+                .WithPhone(phoneFactory(i));
             accounts[i] = await tester.SignIn(user, cancellationToken);
         }
         return accounts;

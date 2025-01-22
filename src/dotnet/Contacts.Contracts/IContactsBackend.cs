@@ -21,6 +21,9 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
 
+    // Non-compute methods
+    Task<ApiArray<Contact>> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

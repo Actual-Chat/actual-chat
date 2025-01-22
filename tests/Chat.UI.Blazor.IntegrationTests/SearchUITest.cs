@@ -1,5 +1,3 @@
-using ActualChat.MLSearch;
-using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
 using ActualChat.UI.Blazor.App;
@@ -37,29 +35,26 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await Tester.SignIn(bob);
-        var expectedFriends = people.Friends().Where(x => x.Name.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedStrangers = people.Strangers().Where(x => x.Name.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedJoinedGroups = groups.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedOtherGroups = groups.OtherPublic().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedJoinedPlaces = places.Joined().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedOtherPlaces = places.OtherPublic().Where(x => x.Title.OrdinalIgnoreCaseContains("one")).ToArray();
-        var expectedEntries = entries.Accessible()
-            .Where(x => x.Content.OrdinalIgnoreCaseContains("one"))
-            .OrderByDescending(x => x.GetIndexedEntryDate())
-            .ThenBy(x => x.Version)
-            .ToArray();
+        var expectedFriends = people.Friends("one").ToArray();
+        var expectedStrangers = people.Strangers("one").ToArray();
+        var expectedJoinedGroups = groups.Joined("one").ToArray();
+        var expectedOtherGroups = groups.OtherPublic("one").ToArray();
+        var expectedJoinedPlaces = places.Joined("one").ToArray();
+        var expectedOtherPlaces = places.OtherPublic("one").ToArray();
+        var expectedEntries = entries.Accessible("one").ToArray();
         await WaitUntilIndexed("one",
+            null,
             expectedFriends,
             expectedStrangers,
             expectedJoinedGroups,
             expectedOtherGroups,
+            expectedEntries,
             expectedJoinedPlaces,
-            expectedOtherPlaces,
-            expectedEntries);
+            expectedOtherPlaces);
         SearchUI.Text.Value = $"{UniquePart} one";
 
         // assert
-        var foundItems = await GetSearchResults(GetExpected());
+        var foundItems = await GetSearchResults(GetExpectedCount());
         AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends).ToList());
         AssertFoundItems(3, bob.BuildFoundContacts(false, expectedJoinedGroups).ToList());
         AssertFoundItems(6, bob.BuildFoundContacts(false, expectedJoinedPlaces).ToList());
@@ -69,11 +64,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
             bob.BuildFoundContacts(true, expectedOtherGroups).ToList(),
             bob.BuildFoundContacts(true, expectedOtherPlaces).ToList());
 
-        // act
-        SearchUI.PlaceId.Value = places.JoinedPrivatePlace2().Id;
-        SearchUI.Text.Value = $"{UniquePart} one";
-
-        // assert;
+        // arrange
         expectedFriends = [people.Friend1FromPrivatePlace2()];
         expectedStrangers = [people.Stranger1FromPrivatePlace2()];
         expectedJoinedGroups = [
@@ -83,12 +74,21 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         expectedOtherGroups = [];
         expectedJoinedPlaces = [];
         expectedOtherPlaces = [];
-        expectedEntries = entries.AccessibleFromJoinedPrivatePlace2()
-            .Where(x => x.Content.OrdinalIgnoreCaseContains("one"))
-            .OrderByDescending(x => x.GetIndexedEntryDate())
-            .ThenBy(x => x.Version)
-            .ToArray();
-        foundItems = await GetSearchResults(GetExpected());
+        expectedEntries = entries.AccessibleFromJoinedPrivatePlace2("one").ToArray();
+
+        // act
+        await WaitUntilIndexed("one",
+            places.JoinedPrivatePlace2().Id,
+            expectedFriends,
+            expectedStrangers,
+            expectedJoinedGroups,
+            expectedOtherGroups,
+            expectedEntries);
+        SearchUI.PlaceId.Value = places.JoinedPrivatePlace2().Id;
+        SearchUI.Text.Value = $"{UniquePart} one";
+
+        // assert
+        foundItems = await GetSearchResults(GetExpectedCount());
         AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends).ToList());
         AssertFoundItems(1, bob.BuildFoundContacts(false, expectedJoinedGroups).ToList());
         AssertFoundItems(3, expectedEntries.BuildFoundEntries(["one"], UniquePart).ToArray());
@@ -112,87 +112,63 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
             }
         }
 
-        IEnumerable<Result> GetExpected()
-        {
-            return expectedFriends.Select(x => Result.From(x, bob.Id)).Take(Constants.Search.DefaultPageSize)
-                .Concat(expectedStrangers.Select(x => Result.From(x, bob.Id)).Take(Constants.Search.DefaultPageSize))
-                .Concat(expectedJoinedGroups.Select(Result.From).Take(Constants.Search.DefaultPageSize))
-                .Concat(expectedOtherGroups.Select(Result.From).Take(Constants.Search.DefaultPageSize))
-                .Concat(expectedJoinedPlaces.Select(Result.From).Take(Constants.Search.DefaultPageSize))
-                .Concat(expectedOtherPlaces.Select(Result.From).Take(Constants.Search.DefaultPageSize))
-                .Concat(expectedEntries.Select(Result.From).Take(Constants.Search.DefaultPageSize));
-        }
+        int GetExpectedCount()
+            => expectedFriends.Length.Clamp(0, Constants.Search.DefaultPageSize)
+                + expectedStrangers.Length.Clamp(0, Constants.Search.DefaultPageSize)
+                + expectedJoinedGroups.Length.Clamp(0, Constants.Search.DefaultPageSize)
+                + expectedOtherGroups.Length.Clamp(0, Constants.Search.DefaultPageSize)
+                + expectedJoinedPlaces.Length.Clamp(0, Constants.Search.DefaultPageSize)
+                + expectedOtherPlaces.Length.Clamp(0, Constants.Search.DefaultPageSize)
+                + expectedEntries.Length.Clamp(0, Constants.Search.DefaultPageSize);
     }
 
     private Task WaitUntilIndexed(
         string criteria,
-        AccountFull[] expectedFriends,
-        AccountFull[] expectedStrangers,
-        Chat[] expectedJoinedGroups,
-        Chat[] expectedOtherGroups,
-        Place[] expectedJoinedPlaces,
-        Place[] expectedOtherPlaces,
-        ChatEntry[] expectedEntries)
+        PlaceId? placeId,
+        IReadOnlyCollection<AccountFull> expectedFriends,
+        IReadOnlyCollection<AccountFull> expectedStrangers,
+        IReadOnlyCollection<Chat> expectedJoinedGroups,
+        IReadOnlyCollection<Chat> expectedOtherGroups,
+        IReadOnlyCollection<ChatEntry> expectedEntries,
+        IReadOnlyCollection<Place>? expectedJoinedPlaces = null,
+        IReadOnlyCollection<Place>? expectedOtherPlaces = null)
         => TestExt.When(async () => {
+                var uniqueCriteria = $"{criteria} {UniquePart}";
                 var owner = await Tester.GetOwnAccount();
-                var uniqueCriteria = criteria;
-                var friends = await Tester.FindPeople(uniqueCriteria, true);
+                var friends = await Tester.FindPeople(uniqueCriteria, true, placeId);
                 friends.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedFriends), o => o.ExcludingSearchMatch());
-                var strangers = await Tester.FindPeople(uniqueCriteria, false);
+                var strangers = await Tester.FindPeople(uniqueCriteria, false, placeId);
                 strangers.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedStrangers), o => o.ExcludingSearchMatch());
-                var joinedGroups = await Tester.FindGroups(uniqueCriteria, true);
+                var joinedGroups = await Tester.FindGroups(uniqueCriteria, true, placeId);
                 joinedGroups.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedJoinedGroups), o => o.ExcludingSearchMatch());
-                var otherGroups = await Tester.FindGroups(uniqueCriteria, false);
+                var otherGroups = await Tester.FindGroups(uniqueCriteria, false, placeId);
                 otherGroups.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedOtherGroups), o => o.ExcludingSearchMatch());
-                var joinedPlaces = await Tester.FindPlaces(uniqueCriteria, true);
-                joinedPlaces.Should()
-                    .BeEquivalentTo(owner.BuildSearchResults(expectedJoinedPlaces), o => o.ExcludingSearchMatch());
-                var otherPlaces = await Tester.FindPlaces(uniqueCriteria, false);
-                otherPlaces.Should()
-                    .BeEquivalentTo(owner.BuildSearchResults(expectedOtherPlaces), o => o.ExcludingSearchMatch());
-                var entries = await Tester.FindEntries(criteria);
-                entries.Should().BeEquivalentTo(expectedEntries.BuildSearchResults([criteria]), o => o.ExcludingSearchMatch());
+                var entries = await Tester.FindEntries(uniqueCriteria, placeId);
+                entries.Should().BeEquivalentTo(expectedEntries.BuildSearchResults([criteria, UniquePart]), o => o.ExcludingSearchMatch());
+                if (placeId is null) {
+                    var joinedPlaces = await Tester.FindPlaces(uniqueCriteria, true);
+                    joinedPlaces.Should()
+                        .BeEquivalentTo(owner.BuildSearchResults(expectedJoinedPlaces), o => o.ExcludingSearchMatch());
+                    var otherPlaces = await Tester.FindPlaces(uniqueCriteria, false);
+                    otherPlaces.Should()
+                        .BeEquivalentTo(owner.BuildSearchResults(expectedOtherPlaces), o => o.ExcludingSearchMatch());
+                }
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
             TimeSpan.FromSeconds(30));
 
-    private Task<IReadOnlyList<FoundItem>> GetSearchResults(IEnumerable<Result> expected)
+    private Task<IReadOnlyList<FoundItem>> GetSearchResults(int expectedCount)
         => TestsExt.When(async () => {
                 var results = await SearchUI.GetSearchResults();
-                results.Select(Result.From)
-                    .OrderBy(x => x.Text)
-                    .ThenBy(x => x.Id)
-                    .Should()
-                    .BeEquivalentTo(expected.OrderBy(x => x.Text));
+                results.Should().HaveCount(expectedCount);
                 return results;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
             TimeSpan.FromSeconds(10));
 
     // Nested types
-
-    private sealed record Result(Symbol Id, string Text)
-    {
-        public static Result From(AccountFull account, UserId ownerId)
-            => new (new PeerChatId(ownerId, account.Id), account.Name);
-        public static Result From(Place place)
-            => new (place.Id.ToRootChatId(), place.Title);
-        public static Result From(Chat chat)
-            => new (chat.Id, chat.Title);
-        public static Result From(ChatEntry entry)
-            => new (entry.Id, entry.Content);
-        public static Result From(FoundItem foundItem)
-        {
-            Symbol id = foundItem.SearchResult switch {
-                ContactSearchResult contact => contact.ContactId.ChatId,
-                EntrySearchResult entry => entry.EntryId,
-                _ => throw new ArgumentOutOfRangeException(),
-            };
-            return new Result(id, foundItem.SearchResult.Text);
-        }
-    }
 }

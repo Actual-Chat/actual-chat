@@ -100,9 +100,8 @@ public static class TestSearchDataGenerator
                     var name = string.Join(" ",
                         isExistingContact ? "Friend" : "Stranger",
                         "User",
-                        GetIndexString(i),
-                        uniquePart);
-                    var lastName = "from " + GetPlaceTitle(contactOwner, placeKey);
+                        GetIndexString(i));
+                    var lastName = "from " + GetPlaceTitle(contactOwner, placeKey, uniquePart);
                     var account = await tester.CreateAccount(name, lastName);
                     users.Add(key, account);
                 }

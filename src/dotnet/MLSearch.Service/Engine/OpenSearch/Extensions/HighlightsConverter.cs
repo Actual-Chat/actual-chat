@@ -1,10 +1,10 @@
 using System.Text.RegularExpressions;
+using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.Search;
 using Cysharp.Text;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
-using IndexedUserContact = ActualChat.MLSearch.Documents.IndexedUserContact;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
@@ -13,25 +13,47 @@ public static partial class HighlightsConverter
     public const string PreTag = @"⫷⩧";
     public const string PostTag = @"⩧⫸";
     public const string SkippedPartReplacement = "…";
-    private static readonly string FullNameField = "fullName";
-    private static readonly string TitleField = "title";
-    private static readonly string ContentField = "content";
+    private static readonly string AccountNameField = nameof(IndexedUser.Name).Decapitalize();
+    private static readonly string ContactNameField = nameof(IndexedUserContact.Name).Decapitalize();
+    private static readonly string UserRelationName = nameof(IndexedUser).ToLowerInvariant();
+    private static readonly string TitleField = nameof(Chat.Chat.Title).Decapitalize();
+    private static readonly string ContentField = nameof(ChatEntry.Content).Decapitalize();
 
     [GeneratedRegex(@"[\s^\u200B]+", RegexOptions.Compiled)]
     private static partial Regex SpaceRegexFactory();
 
     private static readonly Regex WordRegex = SpaceRegexFactory();
 
-    public static SearchMatch GetSearchMatch(this IHit<IndexedUserContact> hit)
+    public static SearchMatch GetSearchMatch(this IHit<IndexedUser> hit)
     {
-        var highlight = hit.Highlight[FullNameField].FirstOrDefault(x => !x.IsNullOrEmpty());
+        var highlight = hit.Highlight[AccountNameField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())
-            return SearchMatch.New(hit.Source.FullName);
+            return SearchMatch.New(hit.Source.Name);
 
-        return ToSearchMatch(hit.Source.FullName, highlight, hit.Score ?? 1.0);
+        return ToSearchMatch(hit.Source.Name, highlight, hit.Score ?? 1.0);
     }
 
-    public static SearchMatch GetSearchMatch(this IHit<IndexedGroupContact> hit)
+    public static SearchMatch GetSearchMatch(this IHit<IndexedUserContact> hit)
+    {
+        var (name, highlight) = GetHighlight();
+        return highlight.IsNullOrEmpty()
+            ? SearchMatch.New(hit.Source.Name)
+            : ToSearchMatch(name, highlight, hit.Score ?? 1.0);
+
+        (string Name, string? Higlight) GetHighlight()
+        {
+            if (hit.Highlight.TryGetValue(AccountNameField, out var highlights))
+                return (hit.Source.Name, highlights.FirstOrDefault(x => !x.IsNullOrEmpty()));
+
+            foreach (var userHit in hit.InnerHits[UserRelationName].Hits.Hits)
+                if (userHit.Highlight.TryGetValue(ContactNameField, out highlights))
+                    return (userHit.Source.As<IndexedUser>().Name, highlights.FirstOrDefault(x => !x.IsNullOrEmpty()));
+
+            return (hit.Source.Name, null);
+        }
+    }
+
+    public static SearchMatch GetSearchMatch(this IHit<IndexedGroup> hit)
     {
         var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())
@@ -40,7 +62,7 @@ public static partial class HighlightsConverter
         return ToSearchMatch(hit.Source.Title, highlight, hit.Score ?? 1.0);
     }
 
-    public static SearchMatch GetSearchMatch(this IHit<IndexedPlaceContact> hit)
+    public static SearchMatch GetSearchMatch(this IHit<IndexedPlace> hit)
     {
         var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())

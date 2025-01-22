@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using ActualChat.Contacts;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
@@ -11,6 +13,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 {
     private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
     private string UniquePart { get; } = UniqueNames.Prefix();
+    [field: AllowNull, MaybeNull]
+    private string DeviceId => field ??= $"Device-{UniquePart}";
 
     protected override async Task DisposeAsync()
     {
@@ -66,6 +70,33 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var expected = bob.BuildSearchResults(accounts[..5]).ToList();
         var searchResults = await Find("User", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+
+        // act, assert
+        expected = bob.BuildSearchResults(accounts[5..]).ToList();
+        searchResults = await Find("User", false, null, expected.Count);
+        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+    }
+
+    [Fact]
+    public async Task ShouldFindUsersLinkedByPhone()
+    {
+        // arrange
+        var bob = await Tester.SignInAsUniqueBob();
+        var accounts = await CreateAccounts(10);
+        await Tester.SaveExternalContacts(accounts.Take(5).Select(x => NewExternalContact(bob).WithDisplayName($"Friend {x.Name}").WithPhone(x.Phone)));
+
+        // act, assert
+        var expected = bob.BuildSearchResults(accounts[..5].Select(x => x with { Name = $"Friend {x.Name}" })).ToList();
+        var searchByContactNameResults = await Find("Friend", true, null, expected.Count);
+        searchByContactNameResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+
+        // act, assert
+        var searchResults = await Find("User", true, null, expected.Count);
+        searchResults.Should().BeEquivalentTo(searchByContactNameResults, o => o.ExcludingSearchMatch());
+
+        // act, assert
+        searchResults = await Find("Friend", false, null, 0);
+        searchResults.Should().BeEmpty();
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[5..]).ToList();
@@ -305,6 +336,12 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     // Private methods
+
+    private ExternalContactFull NewExternalContact(AccountFull owner)
+        => new (new ExternalContactId(new UserDeviceId(owner.Id, DeviceId), NewDeviceContactId()));
+
+    private static Symbol NewDeviceContactId()
+        => UniqueNames.Prefix();
 
     private async Task<AccountFull[]> CreateAccounts(int count)
         => await Tester.CreateAccounts(count, secondNameFactory: i => $"{i} {UniquePart}");

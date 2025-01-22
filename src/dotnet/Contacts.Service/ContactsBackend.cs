@@ -1,5 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Contacts.Db;
+using ActualChat.Db;
 using ActualChat.Mesh;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -14,23 +15,21 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     public static readonly TimeSpan GreetTimeout = TimeSpan.FromSeconds(20);
 
     private const string RedisKeyPrefix = ".ContactGreetingLocks.";
-    private IAccountsBackend? _accountsBackend;
-    private IAuthorsBackend? _authorsBackend;
-    private IChatsBackend? _chatsBackend;
-    private IExternalContactsBackend? _externalContactsBackend;
-    private RedisDb<ContactsDbContext>? _redisDb;
 
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
-    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IExternalContactsBackend ExternalContactsBackend
-        => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
-    private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
-        = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
-    private IMeshLocks GreetLocks { get; }
-        = services.MeshLocks<ContactsDbContext>().WithKeyPrefix(nameof(GreetLocks));
-
-    public RedisDb<ContactsDbContext> RedisDb => _redisDb ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
+    [field: AllowNull, MaybeNull]
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IExternalContactsBackend ExternalContactsBackend => field ??= Services.GetRequiredService<IExternalContactsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbContact> DbContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+    [field: AllowNull, MaybeNull]
+    private IMeshLocks GreetLocks => field ??= Services.MeshLocks<ContactsDbContext>().WithKeyPrefix(nameof(GreetLocks));
+    [field: AllowNull, MaybeNull]
+    public RedisDb<ContactsDbContext> RedisDb => field ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
 
     // [ComputeMethod]
     public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
@@ -191,6 +190,27 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         foreach (var placeId in result)
             await PseudoPlaceContact(placeId).ConfigureAwait(false);
         return result;
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<ApiArray<Contact>> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var chatsQuery = query.LastId.IsNone
+            ? dbContext.Contacts.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
+            : dbContext.Contacts.Where(x => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
+                || (x.Version == query.MinVersion && string.Compare(x.Id, query.LastId.Value) > 0));
+
+        var dbContacts = await chatsQuery
+            .Where(x => x.UserId != null)
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.Id)
+            .Take(query.Limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbContacts.Select(x => x.ToModel()).ToApiArray();
     }
 
     // [CommandHandler]
