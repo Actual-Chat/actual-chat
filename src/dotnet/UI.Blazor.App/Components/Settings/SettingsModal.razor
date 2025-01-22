@@ -55,9 +55,11 @@
             <EmailSettings/>
         </SettingsTab>
 
-        <SettingsTab @key="8" TabIndex="8" Title="Chat Roulette" Id="chatRoulette" IconClass="icon-hand">
-            <ChatRouletteSettings/>
-        </SettingsTab>
+        @if (m.EnableChatRouletteUI) {
+            <SettingsTab @key="8" TabIndex="8" Title="Chat Roulette" Id="chatRoulette" IconClass="icon-hand">
+                <ChatRouletteSettings/>
+            </SettingsTab>
+        }
 
         <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="documents" Class="docs-tab" IconClass="icon-file-text">
             <DocumentsPage/>
@@ -108,8 +110,10 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var showDeveloperTools = _developerTools?.IsEnabled(account) ?? false;
+        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
         return new ComputedModel(account) {
             ShowDeveloperTools = showDeveloperTools,
+            EnableChatRouletteUI = enableChatRouletteUI,
         };
     }
 
@@ -120,6 +124,7 @@
 
     public sealed record ComputedModel(AccountFull AccountFull) {
         public bool ShowDeveloperTools { get; init; }
+        public bool EnableChatRouletteUI { get; init; }
     }
 
     public sealed record Model {
