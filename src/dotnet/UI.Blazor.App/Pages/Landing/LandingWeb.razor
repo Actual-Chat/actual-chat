@@ -9,7 +9,9 @@
 }
 
 <div @ref="Ref" class="landing theme-light" xmlns="http://www.w3.org/1999/html">
-    <LandingLeftMenu @ref="_landingLeftMenu" />
+    @if (ScreenSize.IsNarrow()) {
+        <LandingLeftMenu @ref="_landingLeftMenu"/>
+    }
     <CookieSettings/>
 
     <LandingHeader

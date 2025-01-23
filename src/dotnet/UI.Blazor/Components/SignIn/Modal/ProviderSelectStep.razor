@@ -75,7 +75,7 @@
                     <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
                 </div>
             }
-            <FormButtons IsEndAligned="false">
+            <FormButtons IsEndAligned="false" Class="dialog-buttons">
                 <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState == ValidationState.Invalid)">
                     @switch (_validationState) {
                         case ValidationState.Validating:
