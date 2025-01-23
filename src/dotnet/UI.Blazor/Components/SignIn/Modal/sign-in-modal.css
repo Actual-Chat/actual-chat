@@ -67,7 +67,9 @@
 .sign-in-step .c-phone-form .c-info i.icon-info {
     @apply text-sm align-bottom;
 }
-
+.c-phone-form .dialog-buttons {
+    @apply px-0;
+}
 
 /* Sign-in step - verify code step */
 .verify-phone-step .c-text-container {

@@ -406,7 +406,7 @@ body.narrow .landing .page-1 .main-text .c-description {
     @apply font-semibold;
 }
 .landing .page-1 .main-text .c-btn-group {
-    @apply flex-y lg:flex-x gap-4;
+    @apply flex-y gap-4;
     @apply w-auto md:w-100 lg:w-120;
     @apply py-4;
 }
