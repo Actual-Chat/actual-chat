@@ -8,15 +8,16 @@ namespace ActualChat.Contacts;
 public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(services)
 {
     private const int BatchSize = 100;
-    private Tracer? _tracer;
-    private IExternalContactsBackend? _externalContactsBackend;
 
     private DbHub<ContactsDbContext> DbHub { get; } = services.DbHub<ContactsDbContext>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
-    private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
-    private Tracer Tracer => _tracer ??= Services.Tracer(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private IExternalContactsBackend ExternalContactsBackend => field ??= Services.GetRequiredService<IExternalContactsBackend>();
+    [field: AllowNull, MaybeNull]
+    private Tracer Tracer => field ??= Services.Tracer(GetType());
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
     {
@@ -92,20 +93,13 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         if (externalContact == null)
             Log.LogWarning("ExternalContact is not found by id");
 
-        var peerContactName = externalContact?.DisplayName ?? "";
-
-        if (contact.IsStored()) {
-            if (!peerContactName.IsNullOrEmpty()) {
-                contact = contact with { PeerContactName = peerContactName };
-                var updateCmd = new ContactsBackend_Change(contactId, null, Change.Update(contact));
-                await Commander.Call(updateCmd, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        else {
-            contact = new Contact(contactId) { PeerContactName = peerContactName };
+        var peerContactName = externalContact?.DisplayName.NullIfWhiteSpace()
+            ?? $"{externalContact?.NamePrefix} {externalContact?.FamilyName}".Trim().NullIfEmpty() ?? "";
+        if (!contact.IsStored() || !peerContactName.IsNullOrEmpty()) {
+            var change = Change.Upsert(contact with { PeerContactName = peerContactName });
             // This command doesn't throw an exception in case contact already exists
-            var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
-            await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
+            var cmd = new ContactsBackend_Change(contactId, null, change);
+            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
     }
 }
