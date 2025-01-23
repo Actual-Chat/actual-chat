@@ -24,7 +24,6 @@ export class ChatMessageEditor {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
-    private readonly attachButton: HTMLButtonElement;
     private readonly input: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
     private readonly sideNavs: NodeListOf<Element>;
@@ -47,7 +46,6 @@ export class ChatMessageEditor {
         let domClassList = document.documentElement.classList;
         this.editorDiv = editorDiv;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
-        this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
         this.input = this.postPanelDiv.querySelector(':scope .message-input');
         this.isSmooth = !domClassList.contains('device-ios');
         if (this.isSmooth)
@@ -162,9 +160,6 @@ export class ChatMessageEditor {
         fromEvent(this.input, 'paste')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
-        fromEvent(this.attachButton, 'click')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: MouseEvent) => this.onAttachButtonClick(event));
 
         this.markupEditor.changed = () => {
             this.backupRequired$.next();
@@ -193,7 +188,7 @@ export class ChatMessageEditor {
             this.markupEditor.focus();
     });
 
-    private onAttachButtonClick = ((event: MouseEvent) => {
+    private onAttachClick = ((event: Event) => {
         this.attachmentList.showFilePicker();
         if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
