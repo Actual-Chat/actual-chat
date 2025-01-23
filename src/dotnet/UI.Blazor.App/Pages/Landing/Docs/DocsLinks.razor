@@ -14,7 +14,7 @@
 
 @code {
     private string _activeAnchor = "";
-    private (string title, string url)[] _links =  Array.Empty<(string, string)>();
+    private (string title, string url)[] _links = [];
     private string _pageUrl = "";
 
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -28,7 +28,7 @@
     }
 
     protected override void OnParametersSet() {
-        _links = Array.Empty<(string, string)>();
+        _links = [];
         var pagePath = "";
         var cookiesLinks = new[] {
             ("Introduction", "introduction"),
