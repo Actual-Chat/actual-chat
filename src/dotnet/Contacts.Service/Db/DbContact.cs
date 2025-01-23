@@ -10,8 +10,6 @@ namespace ActualChat.Contacts.Db;
 [Index(nameof(OwnerId))]
 public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _touchedAt;
-
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
@@ -23,8 +21,8 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
-        get => _touchedAt.DefaultKind(DateTimeKind.Utc);
-        set => _touchedAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DbContact() { }
