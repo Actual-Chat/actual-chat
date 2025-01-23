@@ -1,45 +1,95 @@
 @implements IDisposable
 
-@{
-    var absoluteUrl = $"docs/{PageUrl}/";
-}
-@foreach(var link in Links) {
+@foreach(var link in _links) {
+    var isActiveLink = _activeAnchor == link.url;
+    var url = _pageUrl + "#" + link.url;
     <a
-        href="@(absoluteUrl + "#" + link.url)"
-        class="c-title @(_activeAnchor == link.url ? "active" : "")">
+        href="@url"
+        class="c-title @(isActiveLink ? "active" : "")"
+        @onclick="@(() => NavigateTo(link.url))"
+        @onclick:preventDefault="true">
         @link.title
     </a>
 }
 
 @code {
     private string _activeAnchor = "";
+    private (string title, string url)[] _links =  Array.Empty<(string, string)>();
+    private string _pageUrl = "";
 
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private IJSRuntime JSRuntime { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
-    [Parameter, EditorRequired] public (string title, string url)[] Links { get; set; } = null!;
-    [Parameter, EditorRequired] public string PageUrl { get; set; } = null!;
+    [Parameter, EditorRequired] public DocsPage Page { get; set; }
 
-    protected override void OnInitialized()
-        => Nav.LocationChanged += OnLocationChanged;
+    protected override void OnInitialized() {
+        UpdateActiveAnchor();
+        Nav.LocationChanged += OnLocationChanged;
+    }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-        => await GetActiveAnchor();
+    protected override void OnParametersSet() {
+        _links = Array.Empty<(string, string)>();
+        var pagePath = "";
+        var cookiesLinks = new[] {
+            ("Introduction", "introduction"),
+            ("Whats in a cookie?", "whats-in"),
+            ("What to do if you do not want cookies to be set", "how-to-set"),
+            ("How can I control cookies?", "control"),
+            ("How Actual.Chat uses cookies", "how-we-use"),
+            ("Blocking and Deleting", "blocking"),
+        };
+        var termsLinks = new[] {
+            ("Interpretation and Definitions", "definitions"),
+            ("Acknowledgment", "acknowledgment"),
+            ("User Accounts", "user-accounts"),
+            ("Content", "content"),
+            ("Copyright Policy", "copyright-policy"),
+            ("Feedback and Limitation of Liability", "feedback"),
+            ("Governing Law", "governing-law"),
+        };
+        var privacyLinks = new[] {
+            ("Introduction", "introduction"),
+            ("Interpretation and Definitions", "definitions"),
+            ("Personal Data", "personal-data"),
+            ("GDPR Privacy", "gdpr"),
+            ("CCPA Privacy", "ccpa"),
+            ("CalOPPA", "caloppa"),
+        };
+
+        if (Page == DocsPage.Cookies) {
+            _links = cookiesLinks;
+            pagePath = "cookies";
+        } else if (Page == DocsPage.Terms) {
+            _links = termsLinks;
+            pagePath = "terms";
+        } else if (Page == DocsPage.Privacy) {
+            _links = privacyLinks;
+            pagePath = "privacy";
+        }
+
+        _pageUrl = $"docs/{pagePath}/";
+
+        UpdateActiveAnchor();
+    }
 
     public void Dispose()
         => Nav.LocationChanged -= OnLocationChanged;
 
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => await GetActiveAnchor();
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => UpdateActiveAnchor(true);
 
-    private async Task GetActiveAnchor()
+    private void UpdateActiveAnchor(bool raiseStateHasChanged = false)
     {
         var uri = Nav.Uri.ToUri();
         var fragment = uri.Fragment;
-        if (fragment.StartsWith('#')) {
-            _activeAnchor = fragment[1..];
+        var oldActiveAnchor = _activeAnchor;
+        _activeAnchor = fragment.StartsWith('#') ? fragment[1..] : "";
+        if (raiseStateHasChanged && !Equals(oldActiveAnchor, _activeAnchor))
             StateHasChanged();
-        }
-        await Task.CompletedTask;
+    }
+
+    private void NavigateTo(string hash) {
+        _activeAnchor = hash;
+        _ = History.NavigateTo(_pageUrl + "#" + hash);
     }
 }
