@@ -176,7 +176,7 @@ public static partial class Constants
     {
         public static readonly TimeSpan ThrottlePeriod = TimeSpan.FromSeconds(0.2);
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(3);
-        public static readonly bool StartWithEllipsis = true;
+        public static readonly bool StartWithEllipsis = false;
 
         public static class Google
         {
