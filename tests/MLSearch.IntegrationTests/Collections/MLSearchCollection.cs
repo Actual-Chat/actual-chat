@@ -18,14 +18,14 @@ public class AppHostFixture(IMessageSink messageSink)
             _ = cfg
                 .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"))
                 .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"))
-                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ChangedEntityIndexingDelay)}", "00:00:03"))
+                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ChangedEntityIndexingDelay)}",  "00:00:03"))
                 .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingFlowResumeDelay)}", "00:00:01"));
         },
         ConfigureServices = (__, services) => {
             _ = services.AddSingleton<OpenSearchInit>()
                 .AddAlias<IModuleInitializer, OpenSearchInit>()
                 .AddSingleton<OpenSearchCleanup>();
-        }
+        },
     })
 {
     public override async Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
