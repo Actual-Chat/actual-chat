@@ -22,7 +22,10 @@
         @for (var i = 0; i < Markup.Words.Count; i++) {
             var word = Markup.Words[i];
             var status = m.Map != null ? m.Map[i] : WordPlayback.None;
-            var cls = GetPlayingClass(status);
+            var nextStatus = m.Map != null && i < Markup.Words.Count - 1
+                ? m.Map[i + 1]
+                : WordPlayback.None;
+            var cls = GetPlayingClass(status, nextStatus);
             var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonWord(), StringComparer.OrdinalIgnoreCase)
                 ? "highlight"
                 : "";
@@ -220,21 +223,18 @@
                 .ToArray();
         }
 
-        var prev = WordPlayback.None;
         for (int i = 0; i < enrichedMap.Length; i++) {
             var current = enrichedMap[i];
+            var prev = i > 0 ? enrichedMap[i - 1] : WordPlayback.None;
             var next = i < enrichedMap.Length - 1 ? enrichedMap[i + 1] : WordPlayback.None;
-            if (current == WordPlayback.Played && !prev.HasFlag(WordPlayback.Played))
-                enrichedMap[i] = WordPlayback.Played | WordPlayback.PlayedStart;
-
+            var actual = current;
             if (current == WordPlayback.Played) {
                 if (prev == WordPlayback.None)
-                    enrichedMap[i] |= WordPlayback.PlayedStart;
-                if (!next.HasFlag(WordPlayback.Played))
-                    enrichedMap[i] |= WordPlayback.PlayedEnd;
+                    actual |= WordPlayback.PlayedStart;
+                if (next == WordPlayback.None)
+                    actual |= WordPlayback.PlayedEnd;
             }
-
-            prev = current;
+            enrichedMap[i] = actual;
         }
 
         return enrichedMap;
@@ -258,7 +258,7 @@
         return colorLease;
     }
 
-    private string GetPlayingClass(WordPlayback status) {
+    private string GetPlayingClass(WordPlayback status, WordPlayback nextStatus) {
         if (status == WordPlayback.None)
             return "";
         if (status.HasFlag(WordPlayback.Played)) {
@@ -281,6 +281,8 @@
                 cls += " playing-start";
             else if (end)
                 cls += " playing-end";
+            if (nextStatus == WordPlayback.None)
+                cls += " played-end";
             return cls;
         }
         return "";
@@ -301,8 +303,8 @@
         PlayingStart = Playing | 0x01,
         PlayingEnd   = Playing | 0x02,
         Played       = 0x80,
-        PlayedStart =  Played | 0x01,
-        PlayedEnd =  Played | 0x02,
+        PlayedStart  = Played | 0x01,
+        PlayedEnd    = Played | 0x02,
     }
 
     public sealed record Model {
