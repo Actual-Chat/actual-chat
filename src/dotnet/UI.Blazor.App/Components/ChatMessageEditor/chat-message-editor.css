@@ -142,7 +142,7 @@ body.narrow .post-panel-btn.attach-btn {
 .post-panel .c-left-buttons {
     @apply relative;
     @apply flex-x items-center self-end gap-x-2;
-    @apply my-2 mx-1;
+    @apply my-2 ml-1 mr-2;
 }
 body.narrow .post-panel .c-left-buttons {
     @apply my-0;

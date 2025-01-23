@@ -14,6 +14,8 @@
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
+<OnUIEvent TEvent="@AttachButtonClickEvent" Handler="OnAttachButtonClickEvent" />
+<OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         @if (ScreenSize.IsWide()) {
@@ -32,17 +34,11 @@
                  data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
                 <div class="c-left-buttons">
                     <ButtonRound
-                        Class="post-panel-btn attach-btn btn-transparent btn-xxs"
-                        Tooltip="Attach"
-                        TooltipPosition="FloatingPosition.Top">
+                        data-menu="@(MenuRef.New<ChatMessageEditorMenu>())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.Top.ToPositionString())"
+                        Class="post-panel-btn attach-btn btn-transparent btn-xxs">
                         <i class="icon-plus text-2xl"></i>
-                    </ButtonRound>
-                    <ButtonRound
-                        Class="post-panel-btn btn-xxs btn-transparent mention-btn"
-                        Tooltip="Mention"
-                        TooltipPosition="FloatingPosition.Top"
-                        Click="@OnMentionButtonClick">
-                        <i class="icon-at text-2xl"></i>
                     </ButtonRound>
                 </div>
                 <label for="message-input" class="message-input-label">
@@ -251,6 +247,9 @@
         await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
     }
 
+    private async Task OnAttachClick()
+        => await JSRef.InvokeVoidAsync("onAttachClick");
+
     // Event handlers
 
     private Task OnOpenPrevious()
@@ -292,4 +291,10 @@
     private async Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken) {
         await OnCancel(cancellationToken);
     }
+
+    private async Task OnAttachButtonClickEvent(AttachButtonClickEvent @event, CancellationToken cancellationToken)
+        => await OnAttachClick();
+
+    private async Task OnMentionButtonClickEvent(MentionButtonClickEvent @event, CancellationToken cancellationToken)
+        => await OnMentionButtonClick();
 }

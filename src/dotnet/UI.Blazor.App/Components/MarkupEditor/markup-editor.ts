@@ -198,8 +198,8 @@ export class MarkupEditor {
             this.undoStack.clear();
     }
 
-    public insertHtml(html: string, listId?: string) {
-        if (!this.hasFocus()) {
+    public insertHtml(html: string, listId?: string, needToFocus: boolean = true) {
+        if (!this.hasFocus() && needToFocus) {
             this.focus();
             this.restoreSelection();
         }
@@ -235,9 +235,9 @@ export class MarkupEditor {
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
             if (prevChar.trim() != '')
-                this.insertHtml(" @");
+                this.insertHtml(" @", null, false);
             else
-                this.insertHtml("@");
+                this.insertHtml("@", null, false);
         }
         else {
             if (prevChar == "@") {
@@ -252,7 +252,6 @@ export class MarkupEditor {
             newRange.collapse(true);
             selection.removeAllRanges();
             selection.addRange(newRange);
-            this.contentDiv.focus();
         }
     }
 
