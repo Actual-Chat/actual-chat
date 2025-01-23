@@ -1,0 +1,27 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Events
+@inherits MenuBase
+
+<div class="chat-message-editor-menu">
+    <MenuEntry
+        Icon="icon-attach-2"
+        Text="Attach file"
+        Click="@OnAttachClick">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-at"
+        Text="Mention author"
+        Click="@OnMentionClick">
+    </MenuEntry>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    public UIEventHub UIEventHub => Hub.UIEventHub();
+
+    private void OnAttachClick()
+        => UIEventHub.Publish(new AttachButtonClickEvent());
+
+    private void OnMentionClick()
+        => UIEventHub.Publish(new MentionButtonClickEvent());
+}
