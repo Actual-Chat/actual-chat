@@ -49,44 +49,59 @@ body.hoverable .playable-text-markup > span:hover {
 .playable-text-markup .highlight {
     @apply text-primary;
 }
-.playable-text-markup .playing-start {
+.playable-text-markup .playing-start:after {
     border-radius: 6px 0 0 6px;
 }
-.playable-text-markup .playing-end {
+.playable-text-markup .playing-end:after {
     border-radius: 0 6px 6px 0;
 }
-.playable-text-markup .playing-start-end {
+.playable-text-markup .playing-start-end:after {
     border-radius: 6px;
 }
 .playable-text-markup .played-start {
-    border-radius: 6px 0 0 6px;
+    border-bottom-left-radius: 6px;
+    border-top-left-radius: 6px;
 }
 .playable-text-markup .played-end {
-    border-radius: 0 6px 6px 0;
+    border-bottom-right-radius: 6px;
+    border-top-right-radius: 6px;
 }
-.playable-text-color-blue .playing {
-    @apply bg-[var(--blue-50-20)];
+
+.playable-text-markup .playing {
+    @apply relative;
 }
+.playable-text-markup .playing:after {
+    @apply content-empty;
+    @apply absolute z-minus inset-0;
+    filter: opacity(0.2);
+}
+.playable-text-color-blue .playing,
 .playable-text-color-blue .played {
     @apply bg-[var(--blue-80-20)];
 }
-.playable-text-color-green .playing {
-    @apply bg-[var(--green-50-20)];
+.playable-text-color-blue .playing:after {
+    @apply bg-[var(--blue-50)];
 }
+.playable-text-color-green .playing,
 .playable-text-color-green .played {
     @apply bg-[var(--green-80-20)];
 }
-.playable-text-color-purple .playing {
-    @apply bg-[var(--violet-50-20)];
+.playable-text-color-green .playing:after {
+    @apply bg-[var(--green-50)];
 }
+.playable-text-color-purple .playing,
 .playable-text-color-purple .played {
     @apply bg-[var(--violet-80-20)];
 }
-.playable-text-color-yellow .playing {
-    @apply bg-[var(--sienna-50-20)];
+.playable-text-color-purple .playing:after {
+    @apply bg-[var(--violet-50)];
 }
+.playable-text-color-yellow .playing,
 .playable-text-color-yellow .played {
     @apply bg-[var(--sienna-80-20)];
+}
+.playable-text-color-yellow .playing:after {
+    @apply bg-[var(--sienna-50)];
 }
 
 .preformatted-text-markup {
