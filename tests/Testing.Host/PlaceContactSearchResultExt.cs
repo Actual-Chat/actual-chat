@@ -8,17 +8,17 @@ namespace ActualChat.Testing.Host;
 
 public static class PlaceContactSearchResultExt
 {
-    public static IEnumerable<FoundItem> BuildFoundContacts(
+    public static List<FoundItem> BuildFoundContacts(
         this Account owner,
         bool areGlobalSearchResults,
         params IEnumerable<Place> places)
-        => places.Select(x => owner.BuildFoundContact(x, areGlobalSearchResults));
+        => places.Select(x => owner.BuildFoundContact(x, areGlobalSearchResults)).ToList();
 
     public static FoundItem BuildFoundContact(this Account owner, Place place, bool isGlobalSearchResult)
         => new (owner.BuildSearchResult(place), SearchScope.Places, isGlobalSearchResult);
 
-    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<Place> places)
-        => places.Select(x => owner.BuildSearchResult(x));
+    public static List<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<Place> places)
+        => places.Select(x => owner.BuildSearchResult(x)).ToList();
 
     public static ContactSearchResult BuildSearchResult(this Account owner, Place place, string uniquePart = "", Range<int>[]? searchMatchPartRanges = null)
         => place.BuildSearchResult(owner.Id, uniquePart, searchMatchPartRanges);

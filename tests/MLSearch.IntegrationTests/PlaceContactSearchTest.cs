@@ -27,19 +27,19 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         await Tester.SignIn(bob);
 
         // act, assert
-        var expected = bob.BuildSearchResults(places.Joined()).ToList();
+        var expected = bob.BuildSearchResults(places.Joined());
         var searchResults = await Find("pla", true, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
-        expected = bob.BuildSearchResults(places.OtherPublic()).ToList();
+        expected = bob.BuildSearchResults(places.OtherPublic());
         searchResults = await Find("pla", false, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
-        expected = bob.BuildSearchResults(places.Joined1()).ToList();
+        expected = bob.BuildSearchResults(places.Joined1());
         searchResults = await Find("one", true, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
-        expected = bob.BuildSearchResults([places.OtherPublicPlace1()]).ToList();
+        expected = bob.BuildSearchResults(places.OtherPublicPlace1());
         searchResults = await Find("one", false, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
@@ -66,11 +66,11 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         await Tester.SignIn(bob);
 
         // act, assert
-        var expected = bob.BuildSearchResults(places.Joined()).ToList();
+        var expected = bob.BuildSearchResults(places.Joined());
         var searchResults = await Find("pla", true, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
-        expected = bob.BuildSearchResults(places.OtherPublic()).ToList();
+        expected = bob.BuildSearchResults(places.OtherPublic());
         searchResults = await Find("pla", false, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
@@ -80,7 +80,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         await Tester.SignIn(bob);
 
         // assert
-        expected = bob.BuildSearchResults(places.Joined().Except([places.JoinedPrivatePlace1()])).ToList();
+        expected = bob.BuildSearchResults(places.Joined().Except([places.JoinedPrivatePlace1()]));
         searchResults = await Find("pla", true, expected.Count);
         searchResults.Should()
             .BeEquivalentTo(
@@ -88,7 +88,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
                 o => o.ExcludingSearchMatch());
 
         // assert
-        expected = bob.BuildSearchResults([updatedPlace]).ToList();
+        expected = bob.BuildSearchResults(updatedPlace);
         searchResults = await Find("bbb", true, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
@@ -103,11 +103,11 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         await Tester.SignIn(bob);
 
         // act, assert
-        var expected = bob.BuildSearchResults(places.Joined()).ToList();
+        var expected = bob.BuildSearchResults(places.Joined());
         var searchResults = await Find("pla", true, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
-        expected = bob.BuildSearchResults(places.OtherPublic()).ToList();
+        expected = bob.BuildSearchResults(places.OtherPublic());
         searchResults = await Find("pla", false, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
@@ -117,7 +117,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         await Tester.SignIn(bob);
 
         // assert
-        expected = bob.BuildSearchResults(places.Joined().Except([places.JoinedPrivatePlace1()])).ToList();
+        expected = bob.BuildSearchResults(places.Joined().Except([places.JoinedPrivatePlace1()]));
         searchResults = await Find("pla", true, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }

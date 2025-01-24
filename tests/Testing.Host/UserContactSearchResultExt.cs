@@ -7,14 +7,14 @@ namespace ActualChat.Testing.Host;
 
 public static class UserContactSearchResultExt
 {
-    public static IEnumerable<FoundItem> BuildFoundContacts(this Account owner, bool areGlobalSearchResults, params IEnumerable<AccountFull> others)
-        => others.Select(x => owner.BuildFoundContact(x, areGlobalSearchResults));
+    public static List<FoundItem> BuildFoundContacts(this Account owner, bool areGlobalSearchResults, params IEnumerable<AccountFull> others)
+        => others.Select(x => owner.BuildFoundContact(x, areGlobalSearchResults)).ToList();
 
     public static FoundItem BuildFoundContact(this Account owner, AccountFull other, bool isGlobalSearchResult)
         => new (owner.BuildSearchResult(other), SearchScope.People, isGlobalSearchResult);
 
-    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<AccountFull> others)
-        => others.Select(x => owner.BuildSearchResult(x));
+    public static List<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<AccountFull> others)
+        => others.Select(x => owner.BuildSearchResult(x)).ToList();
 
     public static ContactSearchResult BuildSearchResult(this Account owner, AccountFull other, Range<int>[]? searchMatchPartRanges = null)
         => owner.Id.BuildSearchResult(other.Id, other.Name, searchMatchPartRanges);

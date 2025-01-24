@@ -60,7 +60,7 @@ public static class TestGroupsExt
     public static Chat.Chat OtherPublicPlace2OtherPublicChat2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
         => chats[TestGroupKey.OtherPublicChat2(TestPlaceKey.OtherPublicPlace2)];
 
-    public static IEnumerable<Chat.Chat> JoinedGroups1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => [
+    public static List<Chat.Chat> JoinedGroups1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => [
         chats.JoinedPublicChat1(),
         chats.JoinedPrivateChat1(),
         chats.JoinedPublicPlace1JoinedPublicChat1(),
@@ -69,7 +69,8 @@ public static class TestGroupsExt
         chats.JoinedPrivatePlace1JoinedPrivateChat1(),
     ];
 
-    public static IEnumerable<Chat.Chat> JoinedGroups2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => chats.JoinedGroups1()
+    public static List<Chat.Chat> JoinedGroups2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => chats
+        .JoinedGroups1()
         .Concat([
             chats.JoinedPublicChat2(),
             chats.JoinedPrivateChat2(),
@@ -85,68 +86,78 @@ public static class TestGroupsExt
             chats.JoinedPrivatePlace2JoinedPublicChat2(),
             chats.JoinedPrivatePlace2JoinedPrivateChat1(),
             chats.JoinedPrivatePlace2JoinedPrivateChat2(),
-        ]);
+        ])
+        .ToList();
 
-    public static IEnumerable<Chat.Chat> JoinedPrivatePlace1JoinedChats(
+    public static List<Chat.Chat> JoinedPrivatePlace1JoinedChats(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
         => chats.Where(x => x.Key is { PlaceKey: { Index: 0, IsPublic: false, MustJoin: true }, MustJoin: true })
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> JoinedPublicPlace1JoinedChats(
+    public static List<Chat.Chat> JoinedPublicPlace1JoinedChats(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
         => chats.Where(x => x.Key is { PlaceKey: { Index: 0, IsPublic: true, MustJoin: true }, MustJoin: true })
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> OtherPublicGroups1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => [
+    public static List<Chat.Chat> OtherPublicGroups1(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => [
         chats.OtherPublicChat1(),
         chats.OtherPublicPlace1OtherPublicChat1(),
     ];
 
-    public static IEnumerable<Chat.Chat> OtherPublicGroups2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => chats.OtherPublicGroups1()
+    public static List<Chat.Chat> OtherPublicGroups2(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats) => chats
+        .OtherPublicGroups1()
         .Concat([
             chats.OtherPublicChat2(),
             chats.OtherPublicPlace1OtherPublicChat2(),
             chats.OtherPublicPlace2OtherPublicChat1(),
             chats.OtherPublicPlace2OtherPublicChat2(),
-        ]);
+        ])
+        .ToList();
 
-    public static IEnumerable<Chat.Chat> Joined(
+    public static List<Chat.Chat> Joined(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key.MustJoin)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> PrivateJoined(
+    public static List<Chat.Chat> PrivateJoined(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key is { MustJoin: true, IsPublic: false })
             .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> OtherPrivate(
+    public static List<Chat.Chat> OtherPrivate(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => !x.Key.IsPublic && x.Key.PlaceKey?.IsPublic != true && !x.Key.MustJoin)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> OtherPublic(
+    public static List<Chat.Chat> OtherPublic(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key.IsPublic && x.Key.PlaceKey?.IsPublic != false && !x.Key.MustJoin)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> VisibleInPlace(
+    public static List<Chat.Chat> VisibleInPlace(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         TestPlaceKey placeKey,
         string? filter = null)
         => chats.Where(x => x.Key.PlaceKey == placeKey && (x.Key.MustJoin || x.Key.IsPublic))
             .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> PrivateJoinedInPlace(
+    public static List<Chat.Chat> PrivateJoinedInPlace(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         TestPlaceKey placeKey,
         string? filter = null)
@@ -155,15 +166,17 @@ public static class TestGroupsExt
                 && x.Key.PlaceKey.MustJoin
                 && x.Key is { MustJoin: true, IsPublic: false })
             .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> NonPlacePrivateJoined(
+    public static List<Chat.Chat> NonPlacePrivateJoined(
         this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats,
         string? filter = null)
         => chats.Where(x => x.Key.PlaceKey is null && x.Key.MustJoin && !x.Key.IsPublic)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Title.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<Chat.Chat> NonPlaceJoined(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
-        => chats.Where(x => x.Key.PlaceKey is null && x.Key.MustJoin).Select(x => x.Value);
+    public static List<Chat.Chat> NonPlaceJoined(this IReadOnlyDictionary<TestGroupKey, Chat.Chat> chats)
+        => chats.Where(x => x.Key.PlaceKey is null && x.Key.MustJoin).Select(x => x.Value).ToList();
 }
