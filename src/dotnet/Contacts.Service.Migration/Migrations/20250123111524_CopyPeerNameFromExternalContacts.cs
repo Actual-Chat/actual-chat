@@ -12,7 +12,7 @@ namespace ActualChat.Contacts.Migrations
         {
             migrationBuilder.Sql("""
                                  update external_contact_links
-                                 set is_checked = 0
+                                 set is_checked = FALSE
                                  where is_checked
                                  """);
         }
