@@ -35,13 +35,13 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await Tester.SignIn(bob);
-        var expectedFriends = people.Friends("one").ToArray();
-        var expectedStrangers = people.Strangers("one").ToArray();
-        var expectedJoinedGroups = groups.Joined("one").ToArray();
-        var expectedOtherGroups = groups.OtherPublic("one").ToArray();
-        var expectedJoinedPlaces = places.Joined("one").ToArray();
-        var expectedOtherPlaces = places.OtherPublic("one").ToArray();
-        var expectedEntries = entries.Accessible("one").ToArray();
+        var expectedFriends = people.Friends("one");
+        var expectedStrangers = people.Strangers("one");
+        var expectedJoinedGroups = groups.Joined("one");
+        var expectedOtherGroups = groups.OtherPublic("one");
+        var expectedJoinedPlaces = places.Joined("one");
+        var expectedOtherPlaces = places.OtherPublic("one");
+        var expectedEntries = entries.Accessible("one");
         await WaitUntilIndexed("one",
             null,
             expectedFriends,
@@ -55,14 +55,14 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         var foundItems = await GetSearchResults(GetExpectedCount());
-        AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends).ToList());
-        AssertFoundItems(3, bob.BuildFoundContacts(false, expectedJoinedGroups).ToList());
-        AssertFoundItems(6, bob.BuildFoundContacts(false, expectedJoinedPlaces).ToList());
-        AssertFoundItems(8, expectedEntries.BuildFoundEntries(["one"], UniquePart).ToArray());
+        AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends));
+        AssertFoundItems(3, bob.BuildFoundContacts(false, expectedJoinedGroups));
+        AssertFoundItems(6, bob.BuildFoundContacts(false, expectedJoinedPlaces));
+        AssertFoundItems(8, expectedEntries.BuildFoundEntries(["one"], UniquePart));
         AssertFoundItems(11,
-            bob.BuildFoundContacts(true, expectedStrangers).ToList(),
-            bob.BuildFoundContacts(true, expectedOtherGroups).ToList(),
-            bob.BuildFoundContacts(true, expectedOtherPlaces).ToList());
+            bob.BuildFoundContacts(true, expectedStrangers),
+            bob.BuildFoundContacts(true, expectedOtherGroups),
+            bob.BuildFoundContacts(true, expectedOtherPlaces));
 
         // arrange
         expectedFriends = [people.Friend1FromPrivatePlace2()];
@@ -74,7 +74,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         expectedOtherGroups = [];
         expectedJoinedPlaces = [];
         expectedOtherPlaces = [];
-        expectedEntries = entries.AccessibleFromJoinedPrivatePlace2("one").ToArray();
+        expectedEntries = entries.AccessibleFromJoinedPrivatePlace2("one");
 
         // act
         await WaitUntilIndexed("one",
@@ -89,12 +89,12 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         foundItems = await GetSearchResults(GetExpectedCount());
-        AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends).ToList());
-        AssertFoundItems(1, bob.BuildFoundContacts(false, expectedJoinedGroups).ToList());
-        AssertFoundItems(3, expectedEntries.BuildFoundEntries(["one"], UniquePart).ToArray());
+        AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends));
+        AssertFoundItems(1, bob.BuildFoundContacts(false, expectedJoinedGroups));
+        AssertFoundItems(3, expectedEntries.BuildFoundEntries(["one"], UniquePart));
         AssertFoundItems(6,
-            bob.BuildFoundContacts(true, expectedStrangers).ToList(),
-            bob.BuildFoundContacts(true, expectedOtherGroups).ToList());
+            bob.BuildFoundContacts(true, expectedStrangers),
+            bob.BuildFoundContacts(true, expectedOtherGroups));
         return;
 
         void AssertFoundItems(int iStart, params IReadOnlyCollection<IReadOnlyCollection<FoundItem>> expectedFoundItemLists)
@@ -113,13 +113,15 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         }
 
         int GetExpectedCount()
-            => expectedFriends.Length.Clamp(0, Constants.Search.DefaultPageSize)
-                + expectedStrangers.Length.Clamp(0, Constants.Search.DefaultPageSize)
-                + expectedJoinedGroups.Length.Clamp(0, Constants.Search.DefaultPageSize)
-                + expectedOtherGroups.Length.Clamp(0, Constants.Search.DefaultPageSize)
-                + expectedJoinedPlaces.Length.Clamp(0, Constants.Search.DefaultPageSize)
-                + expectedOtherPlaces.Length.Clamp(0, Constants.Search.DefaultPageSize)
-                + expectedEntries.Length.Clamp(0, Constants.Search.DefaultPageSize);
+            => new ICollection[] {
+                expectedFriends,
+                expectedStrangers,
+                expectedJoinedGroups,
+                expectedOtherGroups,
+                expectedJoinedPlaces,
+                expectedOtherPlaces,
+                expectedEntries
+            }.Sum(x => x.Count.Clamp(0, Constants.Search.DefaultPageSize));
     }
 
     private Task WaitUntilIndexed(

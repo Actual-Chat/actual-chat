@@ -7,20 +7,20 @@ namespace ActualChat.Testing.Host;
 
 public static class GroupContactSearchResultExt
 {
-    public static IEnumerable<FoundItem> BuildFoundContacts(
+    public static List<FoundItem> BuildFoundContacts(
         this Account owner,
         bool isGlobalSearchResult,
-        params Chat.Chat[] chats)
-        => chats.Select(x => owner.BuildFoundContact(x, isGlobalSearchResult));
+        params IEnumerable<Chat.Chat> chats)
+        => chats.Select(x => owner.BuildFoundContact(x, isGlobalSearchResult)).ToList();
 
     public static FoundItem BuildFoundContact(this Account owner, Chat.Chat chat, bool isGlobalSearchResult)
         => new (owner.BuildSearchResult(chat), SearchScope.Groups, isGlobalSearchResult);
 
-    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<Chat.Chat> chats)
-        => chats.Select(x => BuildSearchResult(owner, x));
+    public static List<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<Chat.Chat> chats)
+        => chats.Select(x => BuildSearchResult(owner, x)).ToList();
 
-    public static IEnumerable<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<(Chat.Chat Chat, Range<int>[]? SearchMatchPartRanges)> chats)
-        => chats.Select(x => BuildSearchResult(owner, x.Chat, x.SearchMatchPartRanges));
+    public static List<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<(Chat.Chat Chat, Range<int>[]? SearchMatchPartRanges)> chats)
+        => chats.Select(x => BuildSearchResult(owner, x.Chat, x.SearchMatchPartRanges)).ToList();
 
     public static ContactSearchResult BuildSearchResult(this Account owner, Chat.Chat chat, Range<int>[]? searchMatchPartRanges = null)
         => BuildSearchResult(chat, owner.Id, "", searchMatchPartRanges);

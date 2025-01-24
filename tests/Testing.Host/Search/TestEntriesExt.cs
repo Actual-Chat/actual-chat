@@ -4,31 +4,35 @@ namespace ActualChat.Testing.Host;
 
 public static class TestEntriesExt
 {
-    public static IEnumerable<ChatEntry> Accessible(
+    public static List<ChatEntry> Accessible(
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => x.Key.ChatKey.MustJoin)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<ChatEntry> AccessibleFromJoinedPrivatePlace2(
+    public static List<ChatEntry> AccessibleFromJoinedPrivatePlace2(
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => x.Key.ChatKey.PlaceKey == TestPlaceKey.JoinedPrivatePlace2 && x.Key.ChatKey.MustJoin)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<ChatEntry> Accessible1(
+    public static List<ChatEntry> Accessible1(
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => x.Key.ChatKey.MustJoin && x.Key.Index == 0)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<ChatEntry> Other(
+    public static List<ChatEntry> Other(
         this IReadOnlyDictionary<TestEntryKey, ChatEntry> entries,
         string? filter = null)
         => entries.Where(x => !x.Key.ChatKey.MustJoin)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Content.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 }

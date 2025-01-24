@@ -37,25 +37,33 @@ public static class TestPeopleExt
     public static AccountFull Stranger2FromPrivatePlace2(this IReadOnlyDictionary<TestChatKey, AccountFull> people)
         => people[TestChatKey.Stranger2(TestPlaceKey.JoinedPrivatePlace2)];
 
-    public static IEnumerable<AccountFull> Friends1(this IReadOnlyDictionary<TestChatKey, AccountFull> people) => [
+    public static List<AccountFull> Friends1(this IReadOnlyDictionary<TestChatKey, AccountFull> people) => [
         people.Friend1FromPublicPlace1(),
         people.Friend1FromPublicPlace2(),
         people.Friend1FromPrivatePlace1(),
         people.Friend1FromPrivatePlace2(),
     ];
 
-    public static IEnumerable<AccountFull> Strangers1(this IReadOnlyDictionary<TestChatKey, AccountFull> people) => [
+    public static List<AccountFull> Strangers1(this IReadOnlyDictionary<TestChatKey, AccountFull> people) => [
         people.Stranger1FromPublicPlace1(),
         people.Stranger1FromPublicPlace2(),
         people.Stranger1FromPrivatePlace1(),
         people.Stranger1FromPrivatePlace2(),
     ];
 
-    public static IEnumerable<AccountFull> Friends(this IReadOnlyDictionary<TestChatKey, AccountFull> people, string filter = "")
-        => people.Where(x => x.Key.MustJoin).Where(x => filter.IsNullOrEmpty() || x.Value.Name.OrdinalIgnoreCaseContains(filter)).Select(x => x.Value);
+    public static List<AccountFull> Friends(
+        this IReadOnlyDictionary<TestChatKey, AccountFull> people,
+        string filter = "")
+        => people.Where(x => x.Key.MustJoin)
+            .Where(x => filter.IsNullOrEmpty() || x.Value.Name.OrdinalIgnoreCaseContains(filter))
+            .Select(x => x.Value)
+            .ToList();
 
-    public static IEnumerable<AccountFull> Strangers(this IReadOnlyDictionary<TestChatKey, AccountFull> people, string filter = "")
+    public static List<AccountFull> Strangers(
+        this IReadOnlyDictionary<TestChatKey, AccountFull> people,
+        string filter = "")
         => people.Where(x => !x.Key.MustJoin)
             .Where(x => filter.IsNullOrEmpty() || x.Value.Name.OrdinalIgnoreCaseContains(filter))
-            .Select(x => x.Value);
+            .Select(x => x.Value)
+            .ToList();
 }
