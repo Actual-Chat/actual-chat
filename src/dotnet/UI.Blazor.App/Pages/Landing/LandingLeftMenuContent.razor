@@ -2,7 +2,6 @@
 @{
     var m = State.Value;
     var account = m.Account;
-    var isGuest = account is not {IsGuestOrNone: false };
     const string privacyUrl = "/docs/privacy";
     const string termsUrl = "/docs/terms";
     const string cookiesUrl = "/docs/cookies";
@@ -17,7 +16,7 @@
     </div>
 </div>
 <div class="menu-content">
-    @if (isGuest) {
+    @if (account.IsGuestOrNone) {
         <Button Class="btn-transparent sign-in-btn" Click="SignIn">
             <Icon><i class="icon-log-in text-2xl"></i></Icon>
             <Title>Sign in</Title>
@@ -28,7 +27,7 @@
             Home
         </Button>
     }
-    @if (!isGuest) {
+    @if (!account.IsGuestOrNone) {
         <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Chats))">
             Go to Chats
         </Button>
@@ -62,12 +61,13 @@
 </div>
 
 @code {
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private History History => Hub.History;
+    private Features Features => Hub.Features();
 
-    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // Use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
     // ReSharper disable once RedundantNameQualifier
     [Parameter] public  ActualChat.UI.Blazor.App.Pages.Landing.LandingLeftMenu Owner { get; set; } = null!;
     [Parameter] public bool ShowHome { get; set; }

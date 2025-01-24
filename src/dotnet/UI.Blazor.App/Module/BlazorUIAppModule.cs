@@ -16,26 +16,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace ActualChat.UI.Blazor.App.Module;
 
 #pragma warning disable IL2026 // Fine for modules
-#pragma warning disable CA2255 // Module initializer is intended to be used in...
 
 public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
     : HostModule(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "blazorApp";
-
-    [ModuleInitializer]
-    internal static void ModuleInitializer()
-    {
-        RenderModeDef.All = [
-            new("a", "Auto") { Mode = new InteractiveAutoRenderMode(prerender: true) },
-            new("w", "WASM") { Mode = new InteractiveWebAssemblyRenderMode(prerender: false) },
-            new("s", "Server") { Mode = new InteractiveServerRenderMode(prerender: false) },
-            new("sp", "Server Prerendered") { Mode = new InteractiveServerRenderMode(prerender: true) },
-            new("ss", "Server Static") { Mode = null! },
-            new("m", "MAUI") { Mode = null! },
-        ];
-        RenderModeDef.Default = RenderModeDef.All[0];
-    }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
     protected override void InjectServices(IServiceCollection services)

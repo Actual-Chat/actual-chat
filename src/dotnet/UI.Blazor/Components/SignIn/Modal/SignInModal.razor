@@ -21,7 +21,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    [Inject] UIHub Hub { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
 
     protected override void OnInitialized() {

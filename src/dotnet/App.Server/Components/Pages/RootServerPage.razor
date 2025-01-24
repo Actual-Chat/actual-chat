@@ -189,7 +189,7 @@
 <body class="app-web" style="background-color: #0036A3">
 
 @if (_closeFlow == null && !renderModeKey.OrdinalStartsWith("s")) {
-    <div id="web-splash" class="web-splash" style="display: @(OrdinalEquals(renderModeKey, "w") ? "" : "hidden")"></div>
+    <div id="web-splash" class="web-splash"></div>
     <script nonce="@webSplashNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
         const overlay = document.getElementById('web-splash');

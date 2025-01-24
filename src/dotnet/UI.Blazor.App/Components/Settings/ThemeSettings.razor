@@ -61,7 +61,7 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] UIHub Hub { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     private ThemeUI ThemeUI => Hub.ThemeUI;
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 

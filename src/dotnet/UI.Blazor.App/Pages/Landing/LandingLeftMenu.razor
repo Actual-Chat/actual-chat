@@ -1,8 +1,10 @@
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Hosting
-@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 @{
+    if (Hub.IsPrerendering)
+        return;
+
     var cls = _isMenuOpen ? "open" : "closed";
 }
 
@@ -19,8 +21,9 @@
     private DotNetObjectReference<LandingLeftMenu> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private IJSRuntime JS => Hub.JSRuntime();
 
     [Parameter] public bool ShowHome { get; set; }
 

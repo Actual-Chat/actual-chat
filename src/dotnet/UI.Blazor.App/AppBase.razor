@@ -1,9 +1,10 @@
 @using ActualChat.Hosting
 @using ActualChat.Security
+@using ActualChat.UI.Blazor.App.Pages.Landing
 @implements IRootComponent
 @{
     if (!UIHub.IsInteractive) {
-        <LandingWeb/>
+        <LandingForWeb/>
         return;
     }
     if (!_readyToRender)

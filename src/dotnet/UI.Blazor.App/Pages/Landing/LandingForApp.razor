@@ -1,33 +1,35 @@
-@namespace ActualChat.UI.Blazor
-@using ActualChat.Hosting
-@using ActualChat.UI.Blazor.App.Pages.Landing
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
-    var isGuest = account is not { IsGuest: false };
 }
 
 <div @ref="Ref" class="landing theme-light" xmlns="http://www.w3.org/1999/html">
-    <LandingLeftMenu @ref="_landingLeftMenu" />
+    <LandingLeftMenu @ref="LandingLeftMenuRef" />
 
     <LandingHeader Click="@OnMenuHandleClick"/>
 
     <LandingPage Class="page-1">
         <LandingPage1
-            IsGuest="@isGuest"
+            IsGuest="@account.IsGuestOrNone"
             SignInClick="@SignIn"
             ShowVideoClick="@OnShowVideoClick"/>
     </LandingPage>
 </div>
 
 @code {
-    private IJSObjectReference JSRef { get; set; } = null!;
-    private ElementReference Ref { get; set; }
-    private LandingLeftMenu? _landingLeftMenu;
+    protected IJSObjectReference JSRef { get; set; } = null!;
+    protected ElementReference Ref { get; set; }
+    protected LandingLeftMenu? LandingLeftMenuRef { get; set; }
 
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] protected UIHub Hub { get; init; } = null!;
+    protected AccountUI AccountUI => Hub.AccountUI;
+    protected ModalUI ModalUI => Hub.ModalUI;
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        await base.DisposeAsync();
+    }
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
@@ -38,18 +40,12 @@
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
 
-    public override async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        await base.DisposeAsync();
-    }
-
-    private Task SignIn()
+    protected virtual Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
 
-    private Task OnShowVideoClick()
+    protected virtual Task OnShowVideoClick()
         => ModalUI.Show(new LandingVideoModal.Model());
 
-    private void OnMenuHandleClick()
-        => _landingLeftMenu?.Open();
+    protected virtual void OnMenuHandleClick()
+        => LandingLeftMenuRef?.Open();
 }

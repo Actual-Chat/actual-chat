@@ -50,7 +50,7 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] UIHub Hub { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     private AccountSettings AccountSettings => Hub.AccountSettings();
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 

@@ -79,6 +79,8 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public TotpUI TotpUI => field ??= Services.GetRequiredService<TotpUI>();
     [field: AllowNull, MaybeNull]
     public CaptchaUI CaptchaUI => field ??= Services.GetRequiredService<CaptchaUI>();
+    [field: AllowNull, MaybeNull]
+    public IDataCollectionSettingsUI DataCollectionSettingsUI => field ??= Services.GetRequiredService<IDataCollectionSettingsUI>();
 
     [field: AllowNull, MaybeNull]
     public Escapist Escapist => field ??= Services.GetRequiredService<Escapist>();

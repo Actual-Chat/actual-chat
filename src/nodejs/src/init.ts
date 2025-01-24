@@ -2,7 +2,6 @@ import { DeviceInfo } from 'device-info';
 import { Interactive } from 'interactive';
 import { Gestures } from 'gestures';
 import { ServiceWorker } from 'service-worker';
-import { areWasmResourcesLikelyCached } from 'resources';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 
 DeviceInfo.init();
@@ -33,7 +32,5 @@ void (async () => {
         await app.whenBlazorReady;
         BrowserInit.startReloadWatchers();
         void BrowserInit.startWebSplashRemoval(5_000);
-        if (app.renderMode === 'a' && !areWasmResourcesLikelyCached())
-            BrowserInit.showWebSplash();
     }
 })();

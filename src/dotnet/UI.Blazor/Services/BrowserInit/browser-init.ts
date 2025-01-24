@@ -175,30 +175,21 @@ export class BrowserInit {
             attachWatchers();
     }
 
-    public static showWebSplash() {
-        const splash = document.getElementById('web-splash');
-        if (!splash)
-            return;
-
-        splash.style.display = null;
-    }
-
     public static removeWebSplash(instantly = false) {
         document.body.style.backgroundColor = null;
         const splash = document.getElementById('web-splash');
         if (!splash)
             return;
 
-        const wasShown = splash.style.display !== 'none';
-        if (instantly || !wasShown) {
+        if (instantly) {
             splash.remove();
-            void BrowserInfo.onWebSplashRemoved(wasShown);
+            void BrowserInfo.onWebSplashRemoved();
         }
         else {
             splash.classList.add('removing');
             // Total transition duration: 350ms, see web-splash.css
             setTimeout(function () {
-                void BrowserInfo.onWebSplashRemoved(wasShown);
+                void BrowserInfo.onWebSplashRemoved();
                 setTimeout(function () { splash.remove(); }, 150);
             }, 200);
         }

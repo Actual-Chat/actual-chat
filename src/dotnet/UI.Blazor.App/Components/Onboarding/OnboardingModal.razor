@@ -84,9 +84,9 @@
     private readonly Mutable<ElementReference> _nextButtonRef = new();
     private bool _canMoveForward = true;
 
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private IDataCollectionSettingsUI DataCollectionSettingsUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

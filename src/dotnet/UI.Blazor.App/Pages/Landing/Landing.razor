@@ -1,10 +1,11 @@
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.App.Pages.Landing
 @layout NoLayout
 
 @if (HostInfo.HostKind.IsMauiApp()) {
-    <LandingApp/>
+    <LandingForApp/>
 } else {
-    <LandingWeb/>
+    <LandingForWeb/>
 }
 
 @code {
