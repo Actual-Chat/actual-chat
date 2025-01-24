@@ -190,7 +190,7 @@ internal sealed class ChatContentIndexer(
         // Update cursor value
         _cursor = _nextCursor = _buffer.Select(e => new ChatContentCursor(e)).Append(_nextCursor).Max()!;
 
-        log.LogInformation("Indexing of chat {}: {} docs updated, {} docs removed.", chatId, _outUpdates.Count, _outRemoves.Count);
+        log.LogInformation("SMIDX: Indexing of chat {} - {} docs updated, {} docs removed.", chatId, _outUpdates.Count, _outRemoves.Count);
 
         // Clear output buffers
         _outUpdates.Clear();
