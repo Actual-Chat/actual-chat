@@ -122,7 +122,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
-    Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
 }

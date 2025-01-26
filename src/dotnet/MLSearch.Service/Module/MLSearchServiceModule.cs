@@ -93,7 +93,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .Add<PlaceIndexingFlow>()
             .Add<GroupIndexingFlow>()
             .Add<AccountIndexingFlow>()
-            .Add<PlaceAuthorIndexingFlow>()
+            .Add<PlaceContactIndexingFlow>()
             .Add<UserContactIndexingFlow>();
     }
 
