@@ -213,6 +213,27 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         return dbContacts.Select(x => x.ToModel()).ToApiArray();
     }
 
+    // Not a [ComputeMethod]!
+    public async Task<ApiArray<Contact>> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var lastSid = DbPlaceContact.FormatId(query.LastId);
+        var placeContactsQuery = query.LastId.IsNone
+            ? dbContext.PlaceContacts.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
+            : dbContext.PlaceContacts.Where(x => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
+                || (x.Version == query.MinVersion && string.Compare(x.Id, lastSid) > 0));
+
+        var dbContacts = await placeContactsQuery
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.Id)
+            .Take(query.Limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbContacts.Select(x => x.ToModel()).ToApiArray();
+    }
+
     // [CommandHandler]
     public virtual async Task<Contact?> OnChange(
         ContactsBackend_Change command,
@@ -503,13 +524,15 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbPlaceContact.FormatId(ownerId, placeId);
-
         var dbPlaceContact = await dbContext.PlaceContacts.ForUpdate()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             .ConfigureAwait(false);
+        var hasChanges = false;
         if (dbPlaceContact != null) {
-            if (hasLeft)
+            if (hasLeft) {
                 dbContext.Remove(dbPlaceContact);
+                hasChanges = true;
+            }
         }
         else {
             if (!hasLeft) {
@@ -517,11 +540,14 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                     Version = VersionGenerator.NextVersion(),
                 };
                 dbContext.Add(newDbPlaceContact);
+                hasChanges = true;
             }
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(ownerId);
+        if (hasChanges) {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            context.Operation.Items.Set(ownerId);
+            context.Operation.AddEvent(new PlaceMembershipChangedEvent(ownerId, placeId, hasLeft));
+        }
     }
 
     // [CommandHandler]
@@ -591,7 +617,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [EventHandler]
-    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -642,7 +668,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var change = new Change<Contact> {
             Create = new Contact(contactId) {
                 SystemTag = isChatRoulette ? Constants.Contact.SystemTags.ChatRoulette : Symbol.Empty
-            }
+            },
         };
         var command = new ContactsBackend_Change(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);

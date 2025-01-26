@@ -17,7 +17,7 @@ public interface IRouletteBackend : IComputeService, IBackendService
 
     // Events
     [EventHandler]
-    Task OnAuthorLeftEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnAuthorLeftEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 

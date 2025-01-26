@@ -116,7 +116,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // [EventHandler]
-    public virtual Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnPlaceMembershipChangedEvent(PlaceMembershipChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return Task.CompletedTask; // It just spawns other commands, so nothing to do here
@@ -126,10 +126,21 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         return UpdateIndexedUsers();
 
-        Task UpdateIndexedUsers()
-            => eventCommand.Author.IsPlaceAuthor
-                ? ResumeIndexingFlow<PlaceAuthorIndexingFlow>("", "Author changed", cancellationToken)
-                : Task.CompletedTask;
+        async Task UpdateIndexedUsers()
+        {
+            if (!eventCommand.HasLeft) {
+                await ResumeIndexingFlow<PlaceContactIndexingFlow>("", "Place membership changed", cancellationToken);
+                return;
+            }
+
+            var ownerId = eventCommand.UserId;
+            var placeIds = await ContactsBackend.ListPlaceIds(ownerId, cancellationToken).ConfigureAwait(false);
+            await IndexedDocuments.UpsertPartially<IndexedUser, IIndexedUserUpsertForPlacesOnly, UserId>(
+                    x => x.UserIndexName,
+                    [IndexedUser.ForPartialPlacesUpsert(ownerId, placeIds)],
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     // [EventHandler]

@@ -1,4 +1,3 @@
-using ActualChat.Contacts;
 using ActualChat.Flows;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
@@ -17,8 +16,6 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
     protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
     [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
-    private IContactsBackend ContactsBackend => field ??= Host.Services.GetRequiredService<IContactsBackend>();
     [field: AllowNull, MaybeNull]
     private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
     [field: AllowNull, MaybeNull]
@@ -47,15 +44,12 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
     {
         await WhenReady.ConfigureAwait(false);
 
-        var updated = await batch.Select(ToIndexedUser).Collect(cancellationToken).ConfigureAwait(false);
-        await IndexedDocuments.SaveUsers(updated, [], cancellationToken).ConfigureAwait(false);
-        return;
-
-        async Task<IndexedUser> ToIndexedUser(AccountFull account)
-        {
-            var placeIds = await ContactsBackend.ListPlaceIds(account.Id, cancellationToken).ConfigureAwait(false);
-            return account.ToIndexedUser(placeIds);
-        }
+        var updated = batch.Select(x => x.ToIndexedUser()).ToApiArray();
+        await IndexedDocuments
+            .UpsertPartially<IndexedUser, IIndexedUserUpsertWithoutPlaces, UserId>(x => x.UserIndexName,
+                updated,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)

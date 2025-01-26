@@ -334,7 +334,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
             // Raise events
             if (!doNotNotify)
-                context.Operation.AddEvent(new AuthorChangedEvent(author, existingAuthor));
+                context.Operation.AddEvent(new AuthorUpsertedEvent(author, existingAuthor));
             return author;
         }
     }
@@ -541,7 +541,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // [EventHandler]
-    public virtual async Task OnAuthorLeftPlaceEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnAuthorLeftPlaceEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
