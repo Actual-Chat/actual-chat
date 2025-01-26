@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Flows;
 using ActualChat.MLSearch.Documents;
@@ -6,23 +5,18 @@ using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
 using ActualChat.Search;
-using ActualChat.Users;
 using MemoryPack;
 
 namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFull, AuthorId>, IMasterFlow
+public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Contact, ContactId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
 
     [field: AllowNull, MaybeNull]
-    private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= Host.Services.GetRequiredService<IContactsBackend>();
-    [field: AllowNull, MaybeNull]
-    private IAuthorsBackend AuthorsBackend => field ??= Host.Services.GetRequiredService<IAuthorsBackend>();
     [field: AllowNull, MaybeNull]
     private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
     [field: AllowNull, MaybeNull]
@@ -30,15 +24,14 @@ public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFul
     [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
-    protected override async Task<IReadOnlyList<AuthorFull>> GetBatch(
-        IndexingFlowCursor<AuthorId>? cursor,
+    protected override async Task<IReadOnlyList<Contact>> GetBatch(
+        IndexingFlowCursor<ContactId>? cursor,
         CancellationToken cancellationToken)
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        cursor ??= new (AuthorId.None, 0);
-        // TODO: index place contacts instead
-        var batch = await AuthorsBackend.ListChanged(
-                new ChangedAuthorsQuery {
+        cursor ??= new (ContactId.None, 0);
+        var batch = await ContactsBackend.ListChangedPlaceContacts(
+                new ChangedContactsQuery {
                     MinVersion = cursor.LastUpdatedVersion,
                     MaxVersion = maxVersion,
                     LastId = cursor.LastUpdatedId,
@@ -50,27 +43,27 @@ public partial class PlaceAuthorIndexingFlow : BatchedIndexingFlowBase<AuthorFul
         return batch;
     }
 
-    protected override async Task ProcessBatch(IReadOnlyList<AuthorFull> batch, CancellationToken cancellationToken)
+    protected override async Task ProcessBatch(IReadOnlyList<Contact> batch, CancellationToken cancellationToken)
     {
         await WhenReady.ConfigureAwait(false);
 
-        var indexedUsers = await batch.Select(x => x.UserId)
+        var indexedUsers = await batch.Select(x => x.OwnerId)
             .Distinct()
             .Select(ToIndexedUser)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
         var updated = indexedUsers.SkipNullItems().ToApiArray();
-        await IndexedDocuments.SaveUsers(updated, [], cancellationToken).ConfigureAwait(false);
+        await IndexedDocuments
+            .UpsertPartially<IndexedUser, IIndexedUserUpsertForPlacesOnly, UserId>(x => x.UserIndexName,
+                updated,
+                cancellationToken)
+            .ConfigureAwait(false);
         return;
 
         async Task<IndexedUser?> ToIndexedUser(UserId userId)
         {
-            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account is null)
-                return null;
-
-            var placeIds = await ContactsBackend.ListPlaceIds(account.Id, cancellationToken).ConfigureAwait(false);
-            return account.ToIndexedUser(placeIds);
+            var placeIds = await ContactsBackend.ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
+            return IndexedUser.ForPartialPlacesUpsert(userId, placeIds);
         }
     }
 

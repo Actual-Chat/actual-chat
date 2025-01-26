@@ -39,12 +39,6 @@ internal static class IndexedDocumentsExt
         CancellationToken cancellationToken = default)
         => indexedDocuments.Save(x => x.UserIndexName, updatedDocuments, deleted, cancellationToken);
 
-    public static Task UpsertUsersPartially(
-        this IndexedDocuments indexedDocuments,
-        IReadOnlyCollection<IndexedUser> updatedDocuments,
-        CancellationToken cancellationToken = default)
-        => indexedDocuments.UpsertPartially<IndexedUser, IHasId<UserId>, UserId>(x => x.UserIndexName, updatedDocuments, cancellationToken);
-
     public static Task SaveUserContacts(
         this IndexedDocuments indexedDocuments,
         IReadOnlyCollection<IndexedUserContact> updatedDocuments,

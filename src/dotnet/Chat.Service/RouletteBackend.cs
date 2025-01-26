@@ -132,7 +132,7 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
 
     // Events
     // [EventHandler]
-    public virtual async Task OnAuthorLeftEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnAuthorLeftEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return;

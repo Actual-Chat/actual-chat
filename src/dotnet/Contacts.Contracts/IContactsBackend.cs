@@ -23,6 +23,7 @@ public interface IContactsBackend : IComputeService, IBackendService
 
     // Non-compute methods
     Task<ApiArray<Contact>> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
+    Task<ApiArray<Contact>> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
 
     // Commands
 
@@ -46,7 +47,7 @@ public interface IContactsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
-    Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }

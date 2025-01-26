@@ -32,7 +32,7 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
-    Task OnAuthorLeftPlaceEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnAuthorLeftPlaceEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 // Commands
