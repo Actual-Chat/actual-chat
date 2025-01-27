@@ -247,8 +247,8 @@
         await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
     }
 
-    private async Task OnAttachClick()
-        => await JSRef.InvokeVoidAsync("onAttachClick");
+    private async Task OnAttachClick(string acceptTypes)
+        => await JSRef.InvokeVoidAsync("onAttachClick", acceptTypes);
 
     // Event handlers
 
@@ -293,7 +293,7 @@
     }
 
     private async Task OnAttachButtonClickEvent(AttachButtonClickEvent @event, CancellationToken cancellationToken)
-        => await OnAttachClick();
+        => await OnAttachClick(@event.AcceptTypes);
 
     private async Task OnMentionButtonClickEvent(MentionButtonClickEvent @event, CancellationToken cancellationToken)
         => await OnMentionButtonClick();

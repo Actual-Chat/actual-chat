@@ -7,8 +7,11 @@ using ActualChat.UI.Blazor.Services;
 using Android.Views;
 using AndroidX.Activity.Result;
 using AndroidX.Activity.Result.Contract;
+using Activity = Android.App.Activity;
+using ArrayList = Java.Util.ArrayList;
 using AView = Android.Views.View;
 using JObject = Java.Lang.Object;
+using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
@@ -53,6 +56,8 @@ public partial class MainActivity : MauiAppCompatActivity
 
     private ActivityResultLauncher _permissionRequestLauncher = null!;
     private TaskCompletionSource? _permissionRequestCompletedSource;
+    private ActivityResultLauncher _pickVisualMediaLauncher = null!;
+    private Action<Uri[]>? _onReceivePickVisualMedialResult;
 
     private ILogger Log { get; } = StaticLog.For<MainActivity>();
 
@@ -101,6 +106,21 @@ public partial class MainActivity : MauiAppCompatActivity
                 _permissionRequestCompletedSource = null;
             }));
 
+        _pickVisualMediaLauncher = RegisterForActivityResult(
+            new ActivityResultContracts.PickMultipleVisualMedia(10),
+            new AndroidActivityResultCallback(obj => {
+                var list = new List<Uri>();
+                if (obj is Android.Runtime.JavaList javaList) {
+                    for (var i = 0; i < javaList.Count; i++) {
+                        var obj2 = javaList.Get(i);
+                        if (obj2 is Uri uri)
+                            list.Add(uri);
+                    }
+                }
+                _onReceivePickVisualMedialResult?.Invoke(list.ToArray());
+                _onReceivePickVisualMedialResult = null;
+            }));
+
         // Keep the splash screen on-screen for longer periods
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
         var contentView = FindViewById(Android.Resource.Id.Content);
@@ -126,6 +146,22 @@ public partial class MainActivity : MauiAppCompatActivity
         _permissionRequestCompletedSource = whenCompletedSource;
         _permissionRequestLauncher.Launch(permission);
         return whenCompletedSource.Task;
+    }
+
+    public void PickVisualMedia(PickVisualMediaKind kind, Action<Uri[]> onReceiveResult)
+    {
+        _onReceivePickVisualMedialResult?.Invoke(Array.Empty<Uri>());
+        _onReceivePickVisualMedialResult = onReceiveResult;
+
+        ActivityResultContracts.PickVisualMedia.IVisualMediaType visualMediaType = kind switch {
+            PickVisualMediaKind.Image => ActivityResultContracts.PickVisualMedia.ImageOnly.Instance,
+            PickVisualMediaKind.Video => ActivityResultContracts.PickVisualMedia.VideoOnly.Instance,
+            _ => ActivityResultContracts.PickVisualMedia.ImageAndVideo.Instance,
+        };
+        var pickVisualMediaRequest = new PickVisualMediaRequest.Builder()
+             .SetMediaType(visualMediaType)
+             .Build();
+        _pickVisualMediaLauncher.Launch(pickVisualMediaRequest);
     }
 
     public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
@@ -172,3 +208,5 @@ public partial class MainActivity : MauiAppCompatActivity
         }
     }
 }
+
+public enum PickVisualMediaKind { Image, Video, Both }
