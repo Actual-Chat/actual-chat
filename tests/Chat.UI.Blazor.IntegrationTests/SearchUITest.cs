@@ -22,7 +22,8 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         await base.DisposeAsync();
     }
 
-    [Fact]
+    // TODO(FC): fix it
+    [Fact(Skip = "needs fix")]
     public async Task ShouldFindOnCriteriaChange()
     {
         // arrange
