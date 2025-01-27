@@ -142,8 +142,9 @@ export class AttachmentList {
     }
 
     /** Called by Blazor */
-    public showFilePicker = () => {
+    public showFilePicker = (acceptTypes: string = "") => {
         TuneUI.play(Tune.ChangeAttachments);
+        this.filePickerElement.accept = acceptTypes;
         this.filePickerElement.click();
     };
 

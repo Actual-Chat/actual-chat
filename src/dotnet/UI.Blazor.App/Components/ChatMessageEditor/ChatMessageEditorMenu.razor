@@ -1,12 +1,24 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Events
 @inherits MenuBase
 
 <div class="chat-message-editor-menu">
+    @if (HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Android) {
+        <MenuEntry
+            Icon="icon-attach-2"
+            Text="Image file"
+            Click="@(() => OnAttachClick("image/*"))"/>
+
+        <MenuEntry
+            Icon="icon-attach-2"
+            Text="Video file"
+            Click="@(() => OnAttachClick("video/*"))"/>
+    }
     <MenuEntry
         Icon="icon-attach-2"
         Text="Attach file"
-        Click="@OnAttachClick">
+        Click="@(() => OnAttachClick())">
     </MenuEntry>
     <MenuEntry
         Icon="icon-at"
@@ -18,9 +30,10 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     public UIEventHub UIEventHub => Hub.UIEventHub();
+    public HostInfo HostInfo => Hub.HostInfo();
 
-    private void OnAttachClick()
-        => UIEventHub.Publish(new AttachButtonClickEvent());
+    private void OnAttachClick(string acceptTypes = "")
+        => UIEventHub.Publish(new AttachButtonClickEvent(acceptTypes));
 
     private void OnMentionClick()
         => UIEventHub.Publish(new MentionButtonClickEvent());

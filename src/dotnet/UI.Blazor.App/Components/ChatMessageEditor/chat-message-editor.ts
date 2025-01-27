@@ -188,8 +188,8 @@ export class ChatMessageEditor {
             this.markupEditor.focus();
     });
 
-    private onAttachClick = ((event: Event) => {
-        this.attachmentList.showFilePicker();
+    private onAttachClick = ((acceptTypes: string) => {
+        this.attachmentList.showFilePicker(acceptTypes);
         if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
             this.updateHasContent();

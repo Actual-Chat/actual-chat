@@ -59,13 +59,13 @@ public class AndroidWebChromeClient : WebChromeClient
     private static Action<bool>? _pendingPermissionRequestCallback;
 
     private readonly WebChromeClient _client;
-    private readonly AndroidFileChooser _fileChooser;
+    private readonly VisualMediaFileChooser _visualMediaFileChooser;
 
-    public AndroidWebChromeClient(WebChromeClient client, ComponentActivity activity, AndroidFileChooser fileChooser)
+    public AndroidWebChromeClient(WebChromeClient client, ComponentActivity activity, VisualMediaFileChooser visualMediaFileChooser)
     {
         _activity = activity;
         _client = client;
-        _fileChooser = fileChooser;
+        _visualMediaFileChooser = visualMediaFileChooser;
 
         // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
         _requestPermissionLauncher ??= _activity.RegisterForActivityResult(
@@ -123,9 +123,13 @@ public class AndroidWebChromeClient : WebChromeClient
         WebView? webView,
         IValueCallback? filePathCallback,
         FileChooserParams? fileChooserParams)
-        => filePathCallback == null
-            ? _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams)
-            : _fileChooser.OnShowFileChooser(_activity, filePathCallback);
+    {
+        var acceptTypes = fileChooserParams?.GetAcceptTypes() ?? [];
+        if (_visualMediaFileChooser.OnShowFileChooser(acceptTypes, filePathCallback))
+            return true;
+
+        return _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams);
+    }
 
     #region Unremarkable overrides
     // See: https://github.com/dotnet/maui/issues/6565

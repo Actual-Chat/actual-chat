@@ -46,9 +46,10 @@ public partial class MauiWebView
         var blazorWebView = (BlazorWebView)sender!;
         var webView = eventArgs.WebView;
         SetPlatformWebView(webView);
-        if (webView.Context?.GetActivity() is not ComponentActivity activity)
+        var mainActivity = webView.Context!.GetActivity() as MainActivity;
+        if (mainActivity is null)
             throw StandardError.Constraint(
-                $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");
+                $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(MainActivity)}'.");
 
         var settings = webView.Settings;
         settings.JavaScriptEnabled = true;
@@ -76,8 +77,8 @@ public partial class MauiWebView
         webView.SetWebChromeClient(
             new AndroidWebChromeClient(
                 webView.WebChromeClient!,
-                activity,
-                new AndroidFileChooser(services.LogFor<AndroidFileChooser>())));
+                mainActivity,
+                new VisualMediaFileChooser(mainActivity)));
     }
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
