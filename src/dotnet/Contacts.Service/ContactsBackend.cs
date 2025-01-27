@@ -588,11 +588,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (chatId.Kind == ChatKind.Peer && author.HasLeft) // Users can't leave peer chats
             return;
 
-        if (chatId.IsPlaceChat) {
+        if (chatId.IsPlaceRootChat) {
             var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(chatId.PlaceId, userId, author.HasLeft);
             await Commander.Call(changePlaceMembership, true, cancellationToken).ConfigureAwait(false);
-            if (chatId.PlaceChatId.IsRoot)
-                return;
+            return;
         }
 
         var contactId = new ContactId(userId, chatId, AssumeValid.Option);
