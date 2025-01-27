@@ -1,4 +1,4 @@
-﻿(function() {
+(function() {
     window.App = {
         environment: 'unknown',
         baseUri: null,
@@ -31,15 +31,6 @@
     };
     window.App.whenBundleReady = new Promise((resolve, _) => {
         window.App.markBundleReady = resolve;
-    });
-
-    document.addEventListener("DOMContentLoaded", function (event) {
-        // console.log("DOM is fully loaded and parsed");
-        try {
-            window?.Android?.DOMContentLoaded?.();
-        } catch (e) {
-            console.log(e);
-        }
     });
 
     // Clear history state in case page reload was invoked
