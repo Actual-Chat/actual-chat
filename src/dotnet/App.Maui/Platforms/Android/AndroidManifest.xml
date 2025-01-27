@@ -16,6 +16,20 @@
     <meta-data
       android:name="google_analytics_adid_collection_enabled"
       android:value="false" />
+    <!--
+    The photo picker is not available on devices before ANDROID 11 (API level 30).
+    See https://developer.android.com/training/data-storage/shared/photopicker#device-availability for details.
+    The service declaration below triggers Google Play services to install the backported photo picker module.
+    -->
+    <service android:name="com.google.android.gms.metadata.ModuleDependencies"
+             android:enabled="false"
+             android:exported="false"
+             tools:ignore="MissingClass">
+      <intent-filter>
+        <action android:name="com.google.android.gms.metadata.MODULE_DEPENDENCIES" />
+      </intent-filter>
+      <meta-data android:name="photopicker_activity:0:required" android:value="" />
+    </service>
 	</application>
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.CAMERA" />
@@ -27,9 +41,6 @@
   <uses-permission android:name="android.permission.READ_CONTACTS" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="34" />
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="34" />
-  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
   <uses-permission android:name="android.permission.VIBRATE" />
   <uses-permission
     android:name="com.google.android.gms.permission.AD_ID"
