@@ -17,10 +17,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task TryGetNonExistingPlace()
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var places = services.GetRequiredService<IPlaces>();
@@ -33,10 +32,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true)]
     public async Task CreateNewPlace(bool isPublicPlace)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var places = services.GetRequiredService<IPlaces>();
@@ -61,9 +59,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             placeIds.Should().Contain(place.Id);
         });
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var anotherSession = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
 
         await ComputedTest.When(async ct => {
             var place2 = await places.Get(anotherSession, place.Id, ct);
@@ -81,10 +79,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true, true)]
     public async Task CreatePlaceChat(bool isPublicPlace, bool isPublicChat)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
@@ -125,10 +122,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true)]
     public async Task WelcomeChatShouldBeAccessible(bool isPublicPlace)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var places = services.GetRequiredService<IPlaces>();
@@ -142,10 +138,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             welcomeChatId.Should().Be(welcomeChat.Id);
         }
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var anotherSession = tester2.Session;
         var commander2 = tester2.Commander;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
 
         {
             var welcomeChatId = await places.GetWelcomeChatId(anotherSession, place.Id, default);
@@ -170,19 +166,18 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true)]
     public async Task JoinPlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost(nameof(JoinPlace));
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var commander = tester.Commander;
 
         var place = await CreatePlace(commander, session, isPublicPlace);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var anotherSession = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var contacts = services.GetRequiredService<IContacts>();
 
         {
@@ -210,18 +205,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true)]
     public async Task LeavePlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost(nameof(LeavePlace));
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
         var commander = tester.Commander;
 
         var place = await CreatePlace(commander, session, isPublicPlace);
         var placeId = place.Id;
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var anotherSession = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var services = tester2.AppServices;
         var contacts = services.GetRequiredService<IContacts>();
         var places = services.GetRequiredService<IPlaces>();
@@ -286,20 +280,19 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true, true)]
     public async Task JoinPlaceChat(bool isPublicPlace, bool isPublicChat)
     {
-        var appHost = AppHost;
-        var services = appHost.Services;
-        await using var tester = appHost.NewBlazorTester(Out);
+        var services = AppHost.Services;
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander = tester.Commander;
 
         var (place, chat) = await CreatePlaceWithDefaultChat(commander, session, isPublicPlace, isPublicChat);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var anotherSession = tester2.Session;
         var commander2 = tester2.Commander;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var contacts = tester2.AppServices.GetRequiredService<IContacts>();
         {
             var placeIds = await contacts.ListPlaceIds(anotherSession, default);
@@ -368,19 +361,18 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false, true, true)] // PossibleToActivateInviteLinkToPrivateChatOnPrivatePlaceIfYouAreMemberOfThePlace
     public async Task ActivateInviteLinkToPrivatePlaceChat(bool isPublicChat, bool addToPlaceMembers, bool shouldSucceed)
     {
-        using var appHost = await NewAppHost("private-place");
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander = tester.Commander;
 
         var (place, chat) = await CreatePlaceWithDefaultChat(commander, session, false, isPublicChat);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
         var commander2 = tester2.Commander;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var contacts = tester2.AppServices.GetRequiredService<IContacts>();
         {
             var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default);
@@ -415,20 +407,18 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task PlaceChatMembership()
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var authors = services.GetRequiredService<IAuthors>();
-        var contacts = services.GetRequiredService<IContacts>();
 
         var (place, chat) = await CreatePlaceWithDefaultChat(tester.Commander, session1);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
 
         await tester2.Commander.Call(new Places_Join(session2, place.Id));
 
@@ -461,14 +451,14 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await using var tester1 = AppHost.NewBlazorTester(Out);
         var session1 = tester1.Session;
-        await tester1.SignInAsBob();
+        await tester1.SignInAsUniqueBob();
 
         var (place, chat) = await CreatePlaceWithDefaultChat(tester1.Commander, session1, true, false);
         var chatAuthor1 = await authors.GetOwn(session1, chat.Id, CancellationToken.None).Require();
 
         await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        var account2 = await tester2.SignInAsAlice();
+        var account2 = await tester2.SignInAsUniqueAlice();
         await tester2.JoinPlace(place.Id);
         var chatAuthor2 = await tester1.InviteToChat(chat.Id, account2.Id);
 
@@ -479,14 +469,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await tester1.LeaveChat(chat.Id);
 
         // assert
-        var chatMembers1 = await authors.ListUserIds(session1, chat.Id, default);
-        chatMembers1.Should().BeEmpty();
-        var chatMembers2 = await authors.ListUserIds(session2, chat.Id, default);
-        chatMembers2.Should().BeEquivalentTo([account2.Id]);
+        await TestExt.When(async () => {
+                var chatMembers1 = await authors.ListUserIds(session1, chat.Id, default);
+                chatMembers1.Should().BeEmpty();
+                var chatMembers2 = await authors.ListUserIds(session2, chat.Id, default);
+                chatMembers2.Should().BeEquivalentTo([account2.Id]);
 
-        var placeIds1 = await contacts.ListPlaceIds(session1, default);
-        var placeIds2 = await contacts.ListPlaceIds(session2, default);
-        placeIds1.Should().BeEquivalentTo(placeIds2).And.BeEquivalentTo([place.Id]);
+                var placeIds1 = await contacts.ListPlaceIds(session1, default);
+                var placeIds2 = await contacts.ListPlaceIds(session2, default);
+                placeIds1.Should().BeEquivalentTo(placeIds2).And.BeEquivalentTo([place.Id]);
+            },
+            TimeSpan.FromSeconds(10));
     }
 
     [Theory]
@@ -494,10 +487,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true)]
     public async Task ItShouldBeNotPossibleToLeavePublicChatOnPlace(bool isPublicPlace)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
@@ -521,18 +513,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task UpsertTextEntry()
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
 
         var (place, chat) = await CreatePlaceWithDefaultChat(commander1, session1);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
 
         await commander2.Call(new Places_Join(session2, place.Id));
@@ -547,18 +538,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task UpsertTextEntryToPublicPlaceChatShouldEnsureThatExplicitAuthorExist()
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
 
         var (place, chat) = await CreatePlaceWithDefaultChat(commander1, session1);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
 
         var account = await tester2.AppServices.GetRequiredService<IAccounts>().GetOwn(session2, default);
         await commander1.Call(new Places_Invite(session1, place.Id, new [] { account.Id }));
@@ -578,17 +568,16 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false)]
     public async Task NonPlaceMembersShouldBeAbleToReadPublicPlacesOnly(bool isPublicPlace)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
         var commander1 = tester.Commander;
 
         var place = await CreatePlace(commander1, session1, isPublicPlace);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var places = tester2.AppServices.GetRequiredService<IPlaces>();
 
         var place1 = await places.Get(session2, place.Id, default);
@@ -603,18 +592,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false)]
     public async Task NonPlaceMembersShouldBeNotAbleToAddChat(bool isPublicChat)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
 
         var place = await CreatePlace(commander1, session1, true);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => CreateChat(
@@ -629,18 +617,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false)]
     public async Task ItShouldBeNotPossibleToAddChatToPlaceYouHaveNoAccessTo(bool isPublicChat)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
 
         var place = await CreatePlace(commander1, session1, false);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
         var places = tester2.AppServices.GetRequiredService<IPlaces>();
         var place1 = await places.Get(session2, place.Id, default);
@@ -660,18 +647,17 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false, false, true)]
     public async Task OnlyPlaceOwnerShouldBeAbleToCreatePublicChats(bool isOwner, bool isPublicChat, bool shouldSucceed)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
 
         var place = await CreatePlace(commander1, session1, true);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
 
         await commander2.Call(new Places_Join(session2, place.Id));
@@ -693,10 +679,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false)]
     public async Task UserShouldNotBeListedInThePlaceChatAfterRemovingFromPlace(bool isPublicChat)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
         var authors = tester.ScopedAppServices.GetRequiredService<IAuthors>();
@@ -704,9 +689,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var place = await CreatePlace(commander1, session1, false);
         var chat = await CreateChat(commander1, session1, place.Id, isPublicChat);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
         var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
         var user2 = await accounts2.GetOwn(session2, default);
@@ -755,10 +740,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false, false)]
     public async Task OnlyPlaceOwnerShouldBeAbleToSwitchChatFromPrivateToPublic(bool isOwner, bool shouldSucceed)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
 
@@ -766,9 +750,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var (session, commander) = (session1, commander1);
 
         if (!isOwner) {
-            await using var tester2 = appHost.NewBlazorTester(Out);
+            await using var tester2 = AppHost.NewBlazorTester(Out);
             var session2 = tester2.Session;
-            await tester2.SignInAsAlice();
+            await tester2.SignInAsUniqueAlice();
             var commander2 = tester2.Commander;
 
             await commander2.Call(new Places_Join(session2, place.Id));
@@ -798,10 +782,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(false)]
     public async Task ChangeAvatar(bool isPublicChat)
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
         var commander1 = tester.Commander;
         var authors = tester.AppServices.GetRequiredService<IAuthors>();
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
@@ -834,10 +817,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task UserShouldBeAbleToSeePublicPlaceChatListAfterLeavingThePlace()
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
         var commander1 = tester.Commander;
 
         var place = await CreatePlace(commander1, session1, true);
@@ -845,9 +827,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var chat = await CreateChat(commander1, session1, placeId, true);
         var chatId = chat.Id;
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
         var user2 = await accounts2.GetOwn(session2, default);
 
@@ -889,10 +871,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [Fact(Skip = "Flaky")]
     public async Task UserShouldBeAbleToRejoinPlacePrivateChatOnlyAfterRejoingPlace()
     {
-        var appHost = AppHost;
-        await using var tester = appHost.NewBlazorTester(Out);
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session1 = tester.Session;
-        await tester.SignInAsBob();
+        await tester.SignInAsUniqueBob();
 
         var commander1 = tester.Commander;
         var chats = tester.ScopedAppServices.GetRequiredService<IChats>();
@@ -902,9 +883,9 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var chat = await CreateChat(commander1, session1, place.Id, false);
         var invite = await invites.GetOrGenerateChatInvite(session1, chat.Id, default).Require();
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
+        await using var tester2 = AppHost.NewBlazorTester(Out);
         var session2 = tester2.Session;
-        await tester2.SignInAsAlice();
+        await tester2.SignInAsUniqueAlice();
         var commander2 = tester2.Commander;
         var accounts2 = tester2.ScopedAppServices.GetRequiredService<IAccounts>();
         var user2 = await accounts2.GetOwn(session2, default);

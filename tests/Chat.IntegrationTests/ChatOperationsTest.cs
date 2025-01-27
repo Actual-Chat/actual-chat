@@ -22,7 +22,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
         var session = tester.Session;
-        var account = await tester.SignInAsBob();
+        var account = await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
@@ -86,7 +86,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     {
         await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        var account = await tester.SignInAsBob();
+        var account = await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
@@ -143,7 +143,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
         var session = tester.Session;
-        var account = await tester.SignInAsBob();
+        var account = await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
@@ -265,10 +265,10 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
 
-        await tester.SignInAsAlice();
+        await tester.SignInAsUniqueAlice();
         var (chatId, inviteId) = await tester.CreateChat(isPublicChat);
 
-        await tester.SignInAsBob("no-admin");
+        await tester.SignInAsUniqueBob();
 
         await tester.JoinChat(chatId, inviteId);
         await tester.AssertJoined(chatId);
@@ -282,11 +282,11 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
 
-        await tester.SignInAsAlice();
+        await tester.SignInAsUniqueAlice();
         var (chatId, inviteId) = await tester.CreateChat(isPublicChat);
 
         var session = tester.Session;
-        var account = await tester.SignInAsBob("no-admin");
+        var account = await tester.SignInAsUniqueBob();
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var authors = tester.AppServices.GetRequiredService<IAuthors>();
@@ -353,12 +353,12 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     {
         var appHost = AppHost;
         await using var ownerTester = appHost.NewBlazorTester(Out);
-        await ownerTester.SignInAsAlice();
+        await ownerTester.SignInAsUniqueAlice();
 
         var (chatId, inviteId) = await ownerTester.CreateChat(isPublicChat);
 
         await using var otherTester = appHost.NewBlazorTester(Out);
-        await otherTester.SignInAsBob();
+        await otherTester.SignInAsUniqueBob();
 
         var author = await otherTester.JoinChat(chatId, inviteId);
 
@@ -386,11 +386,11 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     {
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        await tester.SignInAsAlice();
+        await tester.SignInAsUniqueAlice();
         var (chatId, inviteId) = await tester.CreateChat(true);
 
         await using var otherTester = appHost.NewBlazorTester(Out);
-        await otherTester.SignInAsBob();
+        await otherTester.SignInAsUniqueBob();
 
         var author = await otherTester.JoinChat(chatId, inviteId);
 
@@ -415,7 +415,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     {
         var appHost = AppHost;
         await using var ownerTester = appHost.NewBlazorTester(Out);
-        await ownerTester.SignInAsAlice();
+        await ownerTester.SignInAsUniqueAlice();
 
         var (chatId, _) = await ownerTester.CreateChat(isPublicChat);
 
@@ -431,12 +431,12 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     {
         var appHost = AppHost;
         await using var ownerTester = appHost.NewBlazorTester(Out);
-        await ownerTester.SignInAsAlice();
+        await ownerTester.SignInAsUniqueAlice();
 
         var (chatId, inviteId) = await ownerTester.CreateChat(isPublicChat);
 
         await using var otherTester = appHost.NewBlazorTester(Out);
-        await otherTester.SignInAsBob();
+        await otherTester.SignInAsUniqueBob();
 
         var author = await otherTester.JoinChat(chatId, inviteId);
 
@@ -450,12 +450,12 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     {
         var appHost = AppHost;
         await using var ownerTester = appHost.NewBlazorTester(Out);
-        await ownerTester.SignInAsAlice();
+        await ownerTester.SignInAsUniqueAlice();
 
         var (chatId, inviteId) = await ownerTester.CreateChat(true);
 
         await using var otherTester = appHost.NewBlazorTester(Out);
-        await otherTester.SignInAsBob();
+        await otherTester.SignInAsUniqueBob();
 
         var author = await otherTester.JoinChat(chatId, inviteId);
 
@@ -479,7 +479,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var appHost = AppHost;
         var services = appHost.Services;
         await using var ownerTester = appHost.NewBlazorTester(Out);
-        await ownerTester.SignInAsAlice();
+        await ownerTester.SignInAsUniqueAlice();
         var contacts = services.GetRequiredService<IContacts>();
         var session = ownerTester.Session;
 
@@ -511,7 +511,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var appHost = AppHost;
         var services = appHost.Services;
         await using var ownerTester = appHost.NewBlazorTester(Out);
-        await ownerTester.SignInAsAlice();
+        await ownerTester.SignInAsUniqueAlice();
         var contacts = services.GetRequiredService<IContacts>();
         var session = ownerTester.Session;
 
@@ -523,7 +523,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         });
 
         await using var otherTester = appHost.NewBlazorTester(Out);
-        await otherTester.SignInAsBob();
+        await otherTester.SignInAsUniqueBob();
         var session2 = otherTester.Session;
 
         var author2 = await otherTester.JoinChat(chatId, inviteId);
