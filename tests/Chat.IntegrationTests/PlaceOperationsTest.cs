@@ -422,6 +422,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var services = tester.AppServices;
         var authors = services.GetRequiredService<IAuthors>();
+        var contacts = services.GetRequiredService<IContacts>();
 
         var (place, chat) = await CreatePlaceWithDefaultChat(tester.Commander, session1);
 
@@ -447,6 +448,45 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var ownAuthor2 = await authors.GetOwn(session2, chat.Id, default);
         ownAuthor2.Should().NotBeNull();
         ownAuthor2!.ChatId.Should().Be(chat.Id);
+    }
+
+    [Fact]
+    public async Task ShouldNotLeavePlaceAfterLeavingPrivatePlaceChat()
+    {
+        // arrange
+        var services = AppHost.Services;
+        var authors = services.GetRequiredService<IAuthors>();
+        var contacts = services.GetRequiredService<IContacts>();
+        var roles = services.GetRequiredService<IRoles>();
+
+        await using var tester1 = AppHost.NewBlazorTester(Out);
+        var session1 = tester1.Session;
+        await tester1.SignInAsBob();
+
+        var (place, chat) = await CreatePlaceWithDefaultChat(tester1.Commander, session1, true, false);
+        var chatAuthor1 = await authors.GetOwn(session1, chat.Id, CancellationToken.None).Require();
+
+        await using var tester2 = AppHost.NewBlazorTester(Out);
+        var session2 = tester2.Session;
+        var account2 = await tester2.SignInAsAlice();
+        await tester2.JoinPlace(place.Id);
+        var chatAuthor2 = await tester1.InviteToChat(chat.Id, account2.Id);
+
+        // act
+        await tester1.PromoteToOwner(chatAuthor2.Id);
+        var ownerIds = await roles.ListOwnerIds(session1, chat.Id, default);
+        ownerIds.Should().BeEquivalentTo([chatAuthor1.Id, chatAuthor2.Id]);
+        await tester1.LeaveChat(chat.Id);
+
+        // assert
+        var chatMembers1 = await authors.ListUserIds(session1, chat.Id, default);
+        chatMembers1.Should().BeEmpty();
+        var chatMembers2 = await authors.ListUserIds(session2, chat.Id, default);
+        chatMembers2.Should().BeEquivalentTo([account2.Id]);
+
+        var placeIds1 = await contacts.ListPlaceIds(session1, default);
+        var placeIds2 = await contacts.ListPlaceIds(session2, default);
+        placeIds1.Should().BeEquivalentTo(placeIds2).And.BeEquivalentTo([place.Id]);
     }
 
     [Theory]

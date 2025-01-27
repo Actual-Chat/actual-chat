@@ -24,6 +24,10 @@ public class BlazorTester : TestContext, IWebTester
     [field: AllowNull, MaybeNull]
     public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
+    public IAuthors Authors => field ??= AppServices.GetRequiredService<IAuthors>();
+    [field: AllowNull, MaybeNull]
+    public IAuthorsBackend AuthorsBackend => field ??= AppServices.GetRequiredService<IAuthorsBackend>();
+    [field: AllowNull, MaybeNull]
     public IAccountsBackend AccountsBackend => field ??= AppServices.GetRequiredService<IAccountsBackend>();
     [field: AllowNull, MaybeNull]
     public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
