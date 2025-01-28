@@ -6,23 +6,23 @@
 <div class="chat-message-editor-menu">
     @if (HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Android) {
         <MenuEntry
-            Icon="icon-attach-2"
-            Text="Image file"
+            Icon="icon-image"
+            Text="Choose Photo"
             Click="@(() => OnAttachClick("image/*"))"/>
 
         <MenuEntry
-            Icon="icon-attach-2"
-            Text="Video file"
+            Icon="icon-video"
+            Text="Select Video"
             Click="@(() => OnAttachClick("video/*"))"/>
     }
     <MenuEntry
-        Icon="icon-attach-2"
-        Text="Attach file"
+        Icon="icon-file"
+        Text="Attach File"
         Click="@(() => OnAttachClick())">
     </MenuEntry>
     <MenuEntry
         Icon="icon-at"
-        Text="Mention author"
+        Text="Mention Author"
         Click="@OnMentionClick">
     </MenuEntry>
 </div>
