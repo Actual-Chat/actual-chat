@@ -49,7 +49,7 @@ public class ChatContentArrangerTests(ITestOutputHelper @out) : TestBase(@out)
         var contentArranger = new ChatContentArranger(Mock.Of<IChatsBackend>(MockBehavior.Loose)) {
             MaxEntriesPerDocument = maxEntriesPerDocument,
         };
-        var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
+        var sourceGroups = await contentArranger.Arrange(entries, [], CancellationToken.None).ToListAsync();
         Assert.True(sourceGroups.Count > 0);
         Assert.True(sourceGroups.All(se => se.Entries.Count > 0 && se.Entries.Count <= maxEntriesPerDocument));
         Assert.DoesNotContain(sourceGroups.SelectMany(se => se.Entries).Select(e => e.Id), emptyEntryIds.Contains);
@@ -74,9 +74,9 @@ public class ChatContentArrangerTests(ITestOutputHelper @out) : TestBase(@out)
         var contentArranger = new ChatContentArranger(chats.Object) {
             MaxEntriesPerDocument = maxEntriesPerDocument,
         };
-        var sourceGroups = await contentArranger.ArrangeAsync([], tailDocuments, CancellationToken.None).ToListAsync();
+        var sourceGroups = await contentArranger.Arrange([], tailDocuments, CancellationToken.None).ToListAsync();
         Assert.Empty(sourceGroups);
-        sourceGroups = await contentArranger.ArrangeAsync([.. GetEntries([""])], tailDocuments, CancellationToken.None).ToListAsync();
+        sourceGroups = await contentArranger.Arrange([.. GetEntries([""])], tailDocuments, CancellationToken.None).ToListAsync();
         Assert.Empty(sourceGroups);
 
 

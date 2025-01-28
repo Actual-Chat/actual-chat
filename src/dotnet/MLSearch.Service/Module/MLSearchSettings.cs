@@ -89,5 +89,5 @@ public sealed class UriAttribute(): ValidationAttribute("Value for {0} must be a
 
 public sealed class EmbeddingsCalculatorSettings
 {
-    public string PredicationsUri { get; set; } = "http://localhost:28080/predictions/Alibaba-NLP_gte-multilingual-base";
+    public string PredictionsUri { get; set; } = "";
 }

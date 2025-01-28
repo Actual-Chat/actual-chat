@@ -12,7 +12,7 @@ public interface IEmbeddingsCalculator
 
 public class EmbeddingsCalculator : IEmbeddingsCalculator
 {
-    private readonly Uri _predicationsUri;
+    private readonly Uri? _predictionsUri;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new (JsonSerializerOptions.Default)
     {
@@ -20,16 +20,22 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
     };
 
     public EmbeddingsCalculator(EmbeddingsCalculatorSettings embeddingsSettings)
-        => _predicationsUri = new Uri(embeddingsSettings.PredicationsUri, UriKind.Absolute);
+    {
+        if (!embeddingsSettings.PredictionsUri.IsNullOrEmpty())
+            _predictionsUri = new Uri(embeddingsSettings.PredictionsUri, UriKind.Absolute);
+    }
 
     public async Task<double[]> CalculateVector(string text)
     {
+        if (_predictionsUri is null)
+            throw StandardError.Internal("Predications uri is not configured.");
+
         using var client = new HttpClient();
 
         var json = JsonSerializer.Serialize(new Request(text), _jsonSerializerOptions);
         var jsonContent = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var response = await client.PostAsync(_predicationsUri, jsonContent);
+        var response = await client.PostAsync(_predictionsUri!, jsonContent);
         if (!response.IsSuccessStatusCode)
             throw StandardError.External("Failed to retrieve dense vectors");
 

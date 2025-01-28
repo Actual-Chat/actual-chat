@@ -15,7 +15,7 @@ internal sealed class ChatContentArranger3(
 
     public Action<string>? DebugLog { get; set; }
 
-    public async IAsyncEnumerable<SourceEntries> ArrangeAsync(
+    public async IAsyncEnumerable<SourceEntries> Arrange(
         IReadOnlyCollection<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -33,7 +33,7 @@ internal sealed class ChatContentArranger3(
 
         // Preload document tails
         if (lastTailDocument is not null) {
-            tailBuilder = new DocumentBuilder(lastTailDocument);
+            tailBuilder = new DocumentBuilder();
             var tailEntries = await documentEntriesLoader.LoadTailEntries(lastTailDocument, cancellationToken)
                 .ConfigureAwait(false);
             tailBuilder.Entries.AddRange(tailEntries);
@@ -57,9 +57,7 @@ internal sealed class ChatContentArranger3(
             if (entry.IsSystemEntry)
                 continue;
 
-            builder ??= new DocumentBuilder(null) {
-                HasModified = true
-            };
+            builder ??= new DocumentBuilder();
 
             builder.Entries.Add(entry);
             builder.Dialog = await chatDialogFormatter.EntriesToText(builder.Entries).ConfigureAwait(false);
@@ -77,7 +75,6 @@ internal sealed class ChatContentArranger3(
                             .ConfigureAwait(false);
                         tailBuilder.Embeddings = await CalculateEmbeddings(tailBuilder.Dialog).ConfigureAwait(false);
                         tailBuilder.WordCount = CountWords(tailBuilder.Dialog);
-                        tailBuilder.HasModified = true;
 
                         if (ShouldCompleteDoc(tailBuilder)) {
                             DebugLog?.Invoke($"Should complete merged doc. Doc size is {tailBuilder.Entries.Count}. Word count is {tailBuilder.WordCount}");
@@ -191,9 +188,8 @@ internal sealed class ChatContentArranger3(
         return wordCount;
     }
 
-    private class DocumentBuilder(ChatSlice? relatedChatSlice)
+    private class DocumentBuilder()
     {
-        public bool HasModified { get; set; }
         public List<ChatEntry> Entries { get; } = [];
         public string Dialog { get; set; } = "";
         public int WordCount { get; set; }

@@ -17,8 +17,8 @@ internal sealed class DefaultAuthorNameRetriever(IAuthorsBackend authorsBackend)
     }
 }
 
-internal sealed class DelegateAuthorNameRetriever(Func<AuthorId, Task<string>> del) : IAuthorNameRetriever
+internal sealed class DelegateAuthorNameRetriever(Func<AuthorId, Task<string>> func) : IAuthorNameRetriever
 {
     public  Task<string> GetAuthorName(AuthorId authorId)
-        => del(authorId);
+        => func(authorId);
 }

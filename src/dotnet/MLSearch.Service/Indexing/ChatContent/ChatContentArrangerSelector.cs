@@ -23,9 +23,8 @@ internal sealed class ChatContentArrangerSelector(IServiceProvider services) : I
             useArranger2 = chatSids.Any(c => OrdinalEquals(chatId.Id.Value, c));
         }
 
-        var chatContentArranger3 = services.GetRequiredService<ChatContentArranger3>();
         IChatContentArranger contentArranger = useArranger2
-            ? chatContentArranger3
+            ? services.GetRequiredService<ChatContentArranger3>()
             : services.GetRequiredService<ChatContentArranger>();
         return contentArranger;
     }
