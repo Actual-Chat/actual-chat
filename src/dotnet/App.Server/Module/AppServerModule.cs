@@ -177,6 +177,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             "https://0.0.0.0",
             "https://0.0.0.1",
             "app://0.0.0.0",
+            "app://0.0.0.1",
             "http://localhost",
             "https://localhost",
             "app://localhost",
