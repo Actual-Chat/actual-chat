@@ -56,7 +56,7 @@ public sealed class Crawler(
     {
         // TODO: cache robots.txt
         var robotsUri = new Uri(uri, "/robots.txt");
-        var robotsFile = await RobotsParser.FromUriAsync(robotsUri, cancellationToken).ConfigureAwait(false);
+        var robotsFile = await RobotsParser.FromUriAsync(robotsUri, RobotsFileAccessRules.LikeGoogle, cancellationToken).ConfigureAwait(false);
         return UserAgents.Where(x => robotsFile.IsAllowedAccess(uri, x)).ToList();
     }
 }
