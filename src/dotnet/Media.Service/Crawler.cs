@@ -43,7 +43,7 @@ public sealed class Crawler(
         foreach (var userAgent in userAgents) {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.UserAgent.ParseAdd(userAgent);
-            request.Headers.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
+            request.Headers.AcceptLanguage.ParseAdd("*");
             response = await HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
             log.LogDebug("{ResponseCode}: {Url}. {UserAgent}", response.StatusCode, url, userAgent);
             if (response.IsSuccessStatusCode)
