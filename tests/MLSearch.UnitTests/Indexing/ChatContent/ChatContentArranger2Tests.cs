@@ -23,7 +23,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
             Mock.Of<IChatsBackend>(MockBehavior.Loose),
             dialogFragmentAnalyzer,
             chatDialogFormatter);
-        var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
+        var sourceGroups = await contentArranger.Arrange(entries, [], CancellationToken.None).ToListAsync();
         sourceGroups.Count.Should().Be(2);
         sourceGroups[0].Entries.Select(c => c.Id.LocalId).Should().BeEquivalentTo(dialog1EntryIds);
         sourceGroups[1].Entries.Select(c => c.Id.LocalId).Should().BeEquivalentTo(dialog2EntryIds);
@@ -52,7 +52,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
             Mock.Of<IChatDialogFormatter>(MockBehavior.Loose)) {
             MaxEntriesPerDocument = maxEntriesPerDocument,
         };
-        var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
+        var sourceGroups = await contentArranger.Arrange(entries, [], CancellationToken.None).ToListAsync();
         Assert.Equal(expectedGroupCount, sourceGroups.Count);
         Assert.True(sourceGroups.All(se => se.Entries.Count > 0 && se.Entries.Count <= maxEntriesPerDocument));
     }

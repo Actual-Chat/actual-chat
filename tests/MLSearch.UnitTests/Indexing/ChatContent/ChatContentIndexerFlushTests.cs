@@ -68,7 +68,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
 
         var contentArranger = new Mock<IChatContentArranger>(MockBehavior.Loose);
         contentArranger
-            .Setup(x => x.ArrangeAsync(
+            .Setup(x => x.Arrange(
                 It.IsAny<IReadOnlyCollection<ChatEntry>>(),
                 It.IsAny<IReadOnlyCollection<ChatSlice>>(),
                 It.IsAny<CancellationToken>()))
@@ -169,7 +169,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
             It.IsAny<CancellationToken>()), Times.Exactly(1 + (NewContent.Length / 2)));
 
         contentArranger
-            .Verify(x => x.ArrangeAsync(
+            .Verify(x => x.Arrange(
                 It.IsAny<IReadOnlyCollection<ChatEntry>>(),
                 It.IsAny<IReadOnlyCollection<ChatSlice>>(),
                 It.IsAny<CancellationToken>()), Times.Once);

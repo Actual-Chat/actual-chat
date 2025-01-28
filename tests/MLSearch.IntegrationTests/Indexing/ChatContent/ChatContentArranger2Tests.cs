@@ -23,7 +23,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
                 Mock.Of<IPromptUtils>(MockBehavior.Loose),
                 Mock.Of<IAnthropicClient>(MockBehavior.Loose)),
             chatDialogFormatter);
-        var sourceGroups = await contentArranger.ArrangeAsync(entries, [], CancellationToken.None).ToListAsync();
+        var sourceGroups = await contentArranger.Arrange(entries, [], CancellationToken.None).ToListAsync();
         sourceGroups.Count.Should().Be(2);
 
         // var dialog1 = await chatDialogFormatter.BuildUpDialog(sourceGroups[0].Entries);

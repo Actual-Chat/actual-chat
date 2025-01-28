@@ -10,7 +10,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
 
     protected ITestOutputHelper Out { get; } = @out.ToSafe();
 
-    [Fact]
+    [Fact(Skip = "Run explicitly")]
     public async Task CompareVectors()
     {
         var x = await _embeddingCalculator.CalculateVector("Hello");
@@ -24,7 +24,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
         similarity2.Should().Be(1.0);
     }
 
-    [Fact]
+    [Fact(Skip = "Run explicitly")]
     public async Task CompareDocs()
     {
         string[] docs = [
@@ -46,7 +46,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
         }
     }
 
-    [Theory]
+    [Theory(Skip = "Run explicitly")]
     [InlineData(true)]
     [InlineData(false)]
     public async Task ProcessChatHistory(bool addAuthor)

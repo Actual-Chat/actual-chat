@@ -13,7 +13,7 @@ internal sealed class ChatContentArranger2(
     public int MaxEntriesPerDocument { get; init; } = 12;
     public decimal DocumentSplitFactor { get; init; } = 0.75m;
 
-    public async IAsyncEnumerable<SourceEntries> ArrangeAsync(
+    public async IAsyncEnumerable<SourceEntries> Arrange(
         IReadOnlyCollection<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
         [EnumeratorCancellation] CancellationToken cancellationToken)

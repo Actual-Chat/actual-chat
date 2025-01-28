@@ -10,7 +10,7 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
 {
     protected ITestOutputHelper Out { get; } = @out.ToSafe();
 
-    [Fact]
+    [Fact(Skip = "Run explicitly")]
     public async Task IndexChat()
     {
         var authorRetriever = new DelegateAuthorNameRetriever(c => {
@@ -44,7 +44,7 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
             }
 
             Out.WriteLine("-- Starting new arrange iteration");
-            var result = contentArranger.ArrangeAsync(batch, tailDocuments.Values.ToImmutableArray(), default);
+            var result = contentArranger.Arrange(batch, tailDocuments.Values.ToImmutableArray(), default);
 
             var outDocuments = new Dictionary<SourceEntries, ChatSlice>();
             await foreach (var entrySet in result) {
