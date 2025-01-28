@@ -42,7 +42,6 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private IAuthors Authors => Hub.Authors;
-    private IAudioOutputController AudioOutputController => Hub.AudioOutputController;
     private IJSRuntime JS => Hub.JSRuntime();
 
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
@@ -81,8 +80,7 @@
                 isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
             }
         }
-        var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken).ConfigureAwait(false);
-        return new (chat, audioState, isAnimated, isSpeakerphoneOn);
+        return new (chat, audioState, isAnimated);
     }
 
     private void OnListenClick() {
@@ -92,16 +90,12 @@
         _ = ChatAudioUI.SetListeningState(Chat.Id, !IsListening);
     }
 
-    private void OnToggleAudioOutputClick()
-        => AudioOutputController.ToggleSpeakerphone(!AudioOutputController.IsSpeakerphoneOn.Value);
-
     // Nested types
 
     public sealed record Model(
         Chat Chat,
         ChatAudioState AudioState,
-        bool IsAnimated = false,
-        bool IsSpeakerphoneOn = false
+        bool IsAnimated = false
     ) {
         public static readonly Model Loading = new(SpecialChat.Loading, ChatAudioState.None);
     }
