@@ -49,4 +49,7 @@ public static class PlaceOperations
 
     public static Task InviteToPlace(this IWebTester tester, PlaceId placeId, params IEnumerable<Account> accounts)
         => tester.InviteToPlace(placeId, accounts.Select(x => x.Id).ToArray());
+
+    public static Task JoinPlace(this IWebTester tester, PlaceId placeId, Symbol avatarId = default)
+        => tester.Commander.Call(new Places_Join(tester.Session, placeId, avatarId));
 }

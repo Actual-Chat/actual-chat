@@ -128,14 +128,32 @@ public static class ChatOperations
         authorIds.Should().Contain(author.Id);
     }
 
-    public static Task InviteToChat(this IWebTester tester, ChatId chatId, params Account[] users)
+    public static async Task<AuthorFull> InviteToChat(this IWebTester tester, ChatId chatId, UserId userId)
+    {
+        var authors = await tester.InviteToChat(chatId, [userId]);
+        return authors[0];
+    }
+
+    public static  Task<AuthorFull[]> InviteToChat(this IWebTester tester, ChatId chatId, params IReadOnlyCollection<Account> users)
         => tester.InviteToChat(chatId, users.Select(x => x.Id).ToArray());
 
-    public static async Task InviteToChat(this IWebTester tester, ChatId chatId, params UserId[] userIds)
+    public static async Task<AuthorFull[]> InviteToChat(this IWebTester tester, ChatId chatId, params UserId[] userIds)
     {
         var session = tester.Session;
         var commander = tester.Commander;
 
         await commander.Call(new Authors_Invite(session, chatId, userIds));
+
+        // TODO: return author from command
+        var authorIds = await tester.Authors.ListAuthorIds(tester.Session, chatId, CancellationToken.None);
+        return await userIds
+            .Select(userId
+                => tester.AuthorsBackend
+                    .GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, CancellationToken.None)
+                    .Require())
+            .Collect(CancellationToken.None);
     }
+
+    public static Task LeaveChat(this IWebTester tester, ChatId chatId)
+        => tester.Commander.Call(new Authors_Leave(tester.Session, chatId));
 }

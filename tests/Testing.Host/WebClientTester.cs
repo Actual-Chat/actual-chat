@@ -19,6 +19,8 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     ICommander Commander { get; }
     IAuth Auth { get; }
     IAccounts Accounts { get; }
+    IAuthors Authors { get; }
+    IAuthorsBackend AuthorsBackend { get; }
     IAccountsBackend AccountsBackend { get; }
     IChats Chats { get; }
     IPlaces Places { get; }
@@ -47,6 +49,10 @@ public class WebClientTester : IWebClientTester
     public ICommander Commander => field ??= AppServices.Commander();
     [field: AllowNull, MaybeNull]
     public IAuth Auth => field ??= AppServices.GetRequiredService<IAuth>();
+    [field: AllowNull, MaybeNull]
+    public IAuthors Authors => field ??= AppServices.GetRequiredService<IAuthors>();
+    [field: AllowNull, MaybeNull]
+    public IAuthorsBackend AuthorsBackend => field ??= AppServices.GetRequiredService<IAuthorsBackend>();
     [field: AllowNull, MaybeNull]
     public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
