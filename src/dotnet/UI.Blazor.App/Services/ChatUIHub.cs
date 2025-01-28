@@ -42,7 +42,6 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private AudioRecorder? _audioRecorder;
     private AudioDownloader? _audioDownloader;
     private AudioInitializer? _audioInitializer;
-    private IAudioOutputController? _audioOutputController;
     private IPlaybackFactory? _playbackFactory;
     private ActivePlaybackInfo? _activePlaybackInfo;
     private PlayableTextPaletteProvider? _playableTextPaletteProvider;
@@ -83,7 +82,6 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     public AudioDownloader AudioDownloader => _audioDownloader ??= Services.GetRequiredService<AudioDownloader>();
     public AudioInitializer AudioInitializer => _audioInitializer ??= Services.GetRequiredService<AudioInitializer>();
-    public IAudioOutputController AudioOutputController => _audioOutputController ??= Services.GetRequiredService<IAudioOutputController>();
     public IPlaybackFactory PlaybackFactory => _playbackFactory ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => _activePlaybackInfo ??= Services.GetRequiredService<ActivePlaybackInfo>();
     public PlayableTextPaletteProvider PlayableTextPaletteProvider => _playableTextPaletteProvider ??= Services.GetRequiredService<PlayableTextPaletteProvider>();
