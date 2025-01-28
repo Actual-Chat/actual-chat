@@ -12,6 +12,48 @@
 .image-line .image-item video {
     @apply object-cover;
 }
+.line-height-sm {
+    @apply h-12 md:h-16;
+}
+.line-height-md {
+    @apply h-16 md:h-20;
+}
+.line-height-lg {
+    @apply h-20 md:h-24;
+}
+.line-height-xl {
+    @apply h-32 md:h-48;
+}
+.image-line.sm-sm {
+    @apply h-64 md:h-80;
+}
+.image-line.sm-md {
+    @apply h-48 md:h-64;
+}
+.image-line.md-md {
+    @apply h-32 md:h-40;
+}
+.image-line.lg-lg {
+    @apply h-24 md:h-32;
+}
+.image-line.xl-xl {
+    @apply h-18 md:h-24;
+}
+.one-row .image-line.sm-sm {
+    @apply h-64 md:h-80;
+}
+.one-row .image-line.sm-md {
+    @apply h-48 md:h-64;
+}
+.one-row .image-line.md-md {
+    @apply h-40 md:h-48;
+}
+
+.message-image-attachments.one-row:not(:has(.normal-line)):has(.sm-sm),
+.message-image-attachments.one-row:not(:has(.normal-line)):has(.sm-md) {
+    @apply max-w-80;
+}
+
 /* attachment */
 .image-attachment, .file-attachment {
     @apply flex-x;

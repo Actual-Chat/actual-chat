@@ -1,57 +1,52 @@
-using ActualChat.UI.Blazor.Services;
-
 namespace ActualChat.UI.Blazor.App.Components;
 
 public class ImageRow
 {
-    private readonly float _ratioSum;
     public IReadOnlyList<ImageTile> Tiles { get; }
-    public ImageTile Narrowest => Tiles.OrderBy(x => x.Ratio).First();
 
-    public float GetTileWidthPercent(ImageTile tile)
-        => tile.Ratio / _ratioSum * 100;
-
-    public float GetTileDesiredWidthRem(ImageTile tile, ScreenSize screenSize)
-    {
-        var heightRem = GetHeightRem(screenSize);
-        return heightRem * tile.Ratio;
+    public float GetTileWidthInPercent(ImageRow row, ImageTile tile) {
+        float widthSum = 0;
+        foreach (var item in row.Tiles)
+            widthSum += item.WidthPart;
+        return widthSum == 0 ? 100 : tile.WidthPart / widthSum * 100;
     }
 
-    public string HeightCls => $"h-{GetHeightRem(ScreenSize.Small) * 4} md:h-{GetHeightRem(ScreenSize.Medium) * 4}";
-
-    public float GetHeightRem(ScreenSize screenSize)
-    {
-        var isNarrow = screenSize.IsNarrow();
-        return Narrowest.Proportions switch {
-                ImageProportions.Narrow => isNarrow ? 64 : 120,
-                ImageProportions.Square => isNarrow ? 48 : 80,
-                ImageProportions.Wide => isNarrow ? 36 : 60,
-                _ => isNarrow ? 24 : 40,
-            }
-            / 4F;
+    private float GetRowHeightRatio(ImageRow row) {
+        float ratio = 0;
+        foreach (var item in row.Tiles) {
+            ratio += item.Proportions switch {
+                ImageProportions.Narrow => 8,
+                ImageProportions.Square => 4,
+                ImageProportions.Wide => 2,
+                _ => 1,
+            };
+        }
+        return ratio / row.Tiles.Count;
     }
+
+    private string GetRowHeightInRem(ImageRow row) {
+        var heightRatio = GetRowHeightRatio(row);
+        return heightRatio switch {
+                <= 1 => "line-height-sm",
+                <= 3 => "line-height-md",
+                <= 7 => "line-height-lg",
+                _ => "line-height-xl",
+            };
+    }
+
+    public string LineHeightCls(ImageRow row) => GetRowHeightInRem(row);
 
     public ImageRow(IReadOnlyList<ImageTile> tiles)
-    {
-        Tiles = tiles;
-        _ratioSum = tiles.Sum(x => x.Ratio);
-    }
+        => Tiles = tiles;
 }
 
 public class ImageTile {
     public TextEntryAttachment Attachment { get; }
 
     public ImageProportions Proportions { get; }
+    public int WidthPart { get; }
 
     public float Ratio { get; }
-
-    public int RowQuota => Proportions switch
-    {
-        ImageProportions.ExtraWide => Constants.Chat.ImageRowCapacity,
-        ImageProportions.Wide => Constants.Chat.ImageRowCapacity - 1,
-        ImageProportions.Square => Constants.Chat.ImageRowCapacity - 2,
-        _ => Constants.Chat.ImageRowCapacity - 3,
-    };
 
     public ImageTile(TextEntryAttachment attachment) {
         Attachment = attachment;
@@ -61,6 +56,12 @@ public class ImageTile {
             <= 1.25f => ImageProportions.Square,
             <= 2 => ImageProportions.Wide,
             _ => ImageProportions.ExtraWide,
+        };
+        WidthPart = Ratio switch {
+            <= 0.75f => 1,
+            <= 1.25f => 2,
+            <= 2 => 3,
+            _ => 4,
         };
     }
 }

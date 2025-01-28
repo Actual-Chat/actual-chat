@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-<div class="image-line @Class @Row.HeightCls">
+<div class="image-line @Class @Row.LineHeightCls(Row)">
     @foreach (var tile in Row.Tiles) {
-        <div class="image-item" style="width: @Row.GetTileWidthPercent(tile)%">
+        <div class="image-item" style="width: @Row.GetTileWidthInPercent(Row, tile)%">
             <VisualMediaAttachment Attachment="@tile.Attachment" ChatEntry="@ChatEntry" />
         </div>
     }

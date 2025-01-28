@@ -132,7 +132,7 @@ public static partial class Constants
 
     public static class Attachments
     {
-        public const int FileSizeLimit = 100 * 1024 * 1024;
+        public const int FileSizeLimit = 500 * 1024 * 1024;
         public const int AvatarPictureFileSizeLimit = 50 * 1024 * 1024;
         public const int FileCountLimit = 10;
         public const int MaxImageWidth = 480; // In pixels
