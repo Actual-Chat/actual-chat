@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+using ActualChat.Media.Module;
 using TurnerSoftware.RobotsExclusionTools;
 
 namespace ActualChat.Media;
@@ -6,6 +6,7 @@ namespace ActualChat.Media;
 public sealed class Crawler(
     IHttpClientFactory httpClientFactory,
     IEnumerable<ICrawlingHandler> handlers,
+    MediaSettings settings,
     ILogger<Crawler> log)
 {
     public const string HttpClientName = nameof(Crawler);
@@ -54,6 +55,9 @@ public sealed class Crawler(
 
     private async Task<IReadOnlyCollection<string>> ListSupportedUserAgents(Uri uri, CancellationToken cancellationToken)
     {
+        if (settings.DomainsWithoutRobots.Contains(uri.DnsSafeHost.ToLower()))
+            return UserAgents;
+
         // TODO: cache robots.txt
         var robotsUri = new Uri(uri, "/robots.txt");
         var robotsFile = await RobotsParser.FromUriAsync(robotsUri, RobotsFileAccessRules.LikeGoogle, cancellationToken).ConfigureAwait(false);
