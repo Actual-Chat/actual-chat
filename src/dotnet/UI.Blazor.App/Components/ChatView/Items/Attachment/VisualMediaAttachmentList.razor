@@ -1,32 +1,75 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@{
+    _rows = GetRows();
+    var listCls = GetListClass();
+}
 
-<div class="message-image-attachments">
-    @foreach (var row in GetRows()) {
+<div class="message-image-attachments @listCls">
+    @foreach (var row in _rows) {
+        var cls = GetRowClass(row);
         <VisualMediaAttachmentLine
             Row="@row"
+            Class="@cls"
             ChatEntry="@ChatEntry"/>
     }
 </div>
 
 @code {
+    private IEnumerable<ImageRow> _rows = null!;
+
     [Parameter, EditorRequired] public List<TextEntryAttachment> ImageList { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
 
     private IEnumerable<ImageRow> GetRows() {
-        var remainingWidth = Constants.Chat.ImageRowCapacity;
-        var line = new List<ImageTile>(Constants.Chat.ImageRowCapacity);
+        var line = new List<ImageTile>();
         foreach (var attachment in ImageList) {
             var tile = new ImageTile(attachment);
-            var quota = tile.RowQuota;
-            if (remainingWidth < quota) {
+            if (attachment.Index == 1
+                && attachment.Index == ImageList.Count - 1
+                && line[0].Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
+                && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) {
                 yield return new ImageRow(line);
-                line = new (Constants.Chat.ImageRowCapacity);
-                remainingWidth = Constants.Chat.ImageRowCapacity;
+                line = new();
             }
-            remainingWidth -= quota;
+            if ((attachment.Index != ImageList.Count - 1 && line.Count >= 3)
+                || attachment.Index == ImageList.Count - 1
+                && line.Count == 3
+                && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
+                && line.Count(t => t.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1) {
+                yield return new ImageRow(line);
+                line = new ();
+            }
             line.Add(tile);
         }
         if (line.Count > 0)
             yield return new ImageRow(line);
     }
+
+    private string GetRowClass(ImageRow row) {
+        var tiles = row.Tiles;
+        if (tiles.Count > 2)
+            return "normal-line";
+        if (tiles.Count == 2) {
+            if (tiles.Count(t => t.Proportions is ImageProportions.Square) == 2)
+                return "md-md";
+
+            if (tiles.Count(t => t.Proportions is ImageProportions.Narrow) == 2)
+                return "sm-sm";
+
+            if (tiles.Count(t => t.Proportions is ImageProportions.Narrow) == 1
+                && tiles.Count(t => t.Proportions is ImageProportions.Square) == 1)
+                return "sm-md";
+        }
+        if (tiles.Count == 1) {
+            var tile = tiles[0];
+            if (tile.Proportions is ImageProportions.Wide)
+                return "lg-lg";
+            if (tile.Proportions is ImageProportions.ExtraWide)
+                return "xl-xl";
+        }
+        return "normal-line";
+    }
+
+    private string GetListClass()
+        => _rows.Count() == 1 ? "one-row" : "";
 }
