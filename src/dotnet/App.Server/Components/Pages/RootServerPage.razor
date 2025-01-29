@@ -32,7 +32,10 @@
     // Build custom import map with WASM
     var defaultImportMap = HttpContext.GetEndpoint()?.Metadata.GetMetadata<ImportMapDefinition>();
     var wasmImportMap = AssetVersionHelper.GetWasmAssetsImportMap(Assets);
-    var importMap = AssetVersionHelper.StripRelativePaths(defaultImportMap == null ? wasmImportMap : ImportMapDefinition.Combine(defaultImportMap, wasmImportMap));
+    var combinedImportMap = defaultImportMap == null
+        ? wasmImportMap
+        : ImportMapDefinition.Combine(defaultImportMap, wasmImportMap);
+    var importMap = AssetVersionHelper.StripRelativePaths(combinedImportMap);
 }
 
 <!DOCTYPE html>

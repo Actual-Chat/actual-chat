@@ -12,7 +12,9 @@ public static partial class AssetVersionHelper
     public static string? GetVersion(string assetPath)
     {
         var match = AssetVersionRegex.Match(assetPath);
-        return match.Success ? match.Groups["hash"].Value : null;
+        return match.Success
+            ? match.Groups["hash"].Value
+            : null;
     }
 
     public static ImportMapDefinition StripRelativePaths(ImportMapDefinition importMap)
@@ -25,23 +27,20 @@ public static partial class AssetVersionHelper
                     assetMap[key[1..]] = value[1..];
                 else
                     assetMap[key] = value;
-
         if (importMap.Integrity != null)
             foreach (var (key, value) in importMap.Integrity)
                 if (key.StartsWith("./", StringComparison.Ordinal))
                     integrityMap[key[1..]] = value;
                 else
                     integrityMap[key] = value;
-
-        return new (assetMap, importMap.Scopes, integrityMap);
+        return new(assetMap, importMap.Scopes, integrityMap);
     }
 
     public static ImportMapDefinition GetWasmAssetsImportMap(ResourceAssetCollection assets)
     {
         var assetMap = new Dictionary<string, string>();
         var integrityMap = new Dictionary<string, string>();
-        foreach (var asset in assets)
-        {
+        foreach (var asset in assets) {
             if (!asset.Url.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) ||
                 !asset.Url.StartsWith("dist", StringComparison.OrdinalIgnoreCase) ||
                 asset.Properties == null)
@@ -50,12 +49,10 @@ public static partial class AssetVersionHelper
             var (integrity, label) = GetAssetProperties(asset);
             if (integrity != null)
                 integrityMap[$"./{asset.Url}"] = integrity;
-
             if (label != null)
                 assetMap[$"./{label}"] = $"./{asset.Url}";
         }
-
-        return new (assetMap, new Dictionary<string, IReadOnlyDictionary<string, string>>(), integrityMap);
+        return new(assetMap, new Dictionary<string, IReadOnlyDictionary<string, string>>(), integrityMap);
     }
 
     private static (string? integrity, string? label) GetAssetProperties(ResourceAsset asset) {
@@ -71,7 +68,6 @@ public static partial class AssetVersionHelper
             if (integrity != null && label != null)
                 return (integrity, label);
         }
-
         return (integrity, label);
     }
 }
