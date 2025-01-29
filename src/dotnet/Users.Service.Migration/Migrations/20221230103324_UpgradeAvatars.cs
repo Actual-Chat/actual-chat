@@ -25,9 +25,9 @@ namespace ActualChat.Users.Migrations
             UpAsync(migrationBuilder).Wait();
         }
 
-        private async Task UpAsync(MigrationBuilder migrationBuilder)
+        private Task UpAsync(MigrationBuilder migrationBuilder)
         {
-            return; // Obsolete: applied to all of our DBs
+            return Task.CompletedTask; // Obsolete: applied to all of our DBs
 
             // var dbInitializer = DbInitializer.GetCurrent<UsersDbInitializer>();
             // var chatDbInitializer = await DbInitializer.GetOther<ChatDbInitializer>()
