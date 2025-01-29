@@ -87,6 +87,7 @@
     [Inject] private UIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
+    private IFeatures Features => Hub.Features();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
