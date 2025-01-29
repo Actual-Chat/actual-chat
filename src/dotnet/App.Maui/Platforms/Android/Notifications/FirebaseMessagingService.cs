@@ -1,15 +1,9 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Notification;
-using ActualChat.UI.Blazor.App;
-using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Rpc;
 using Android.App;
 using AndroidX.Core.App;
 using Firebase.Analytics;
 using Firebase.Messaging;
-using OpenTelemetry.Resources;
-using Serilog;
 using DeviceType = ActualChat.Notification.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
@@ -17,7 +11,7 @@ namespace ActualChat.App.Maui;
 
 [Service(Exported = true)]
 #pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
-[IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
+[IntentFilter(["com.google.firebase.MESSAGING_EVENT"])]
 #pragma warning restore CA1861
 public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
@@ -73,7 +67,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
                 message.MessageId, dataAsText);
         }
 
-        var data = new NotificationData(message.MessageId, dataRaw);
+        var data = new NotificationData(message.MessageId ?? "", dataRaw);
 
         if (data.NotificationKind == NotificationKind.GetAttention
             && ShowGetAttentionNotification(data, message.SentTime))

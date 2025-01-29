@@ -7,6 +7,9 @@ namespace ActualChat.App.Maui;
 
 #pragma warning disable CA1822 // Can be static
 
+[UnconditionalSuppressMessage("Trimming",
+    "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access...",
+    Justification = "A part of trimming root project or explicitly retained")]
 public class AndroidJSInterface(Android.Webkit.WebView webView) : JObject
 {
     public event Action<string> MessageReceived = _ => { };

@@ -19,11 +19,13 @@ public class AndroidThemeHandler : MauiThemeHandler
         // See https://developer.android.com/design/ui/mobile/guides/layout-and-content/layout-basics
         // I do it from here because I can not modify theme 'Maui.MainTheme'
         // which is applied after calling base.OnCreate.
+#pragma warning disable CA1422 // "This call site is reachable on Android > 28.0" - we anyway target 28+
         window.SetStatusBarColor(cTopBar);
         var isStatusBarDark = IsDark(cTopBar);
         var wic = new WindowInsetsControllerCompat(window, window.DecorView);
         wic.AppearanceLightStatusBars = !isStatusBarDark;
         window.SetNavigationBarColor(cBottomBar);
+#pragma warning restore CA1422
         return true;
 
         static bool IsDark(Android.Graphics.Color color) {
