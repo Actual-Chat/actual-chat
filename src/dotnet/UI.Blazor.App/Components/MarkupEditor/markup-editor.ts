@@ -235,9 +235,9 @@ export class MarkupEditor {
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
             if (prevChar.trim() != '')
-                this.insertHtml(" @", null, false);
+                this.insertHtml(" @", null, true);
             else
-                this.insertHtml("@", null, false);
+                this.insertHtml("@", null, true);
         }
         else {
             if (prevChar == "@") {
