@@ -19,7 +19,7 @@ public class ChatAttentionService
     private const string NotificationTag = "ChatAttentionNotification";
     private const int MaxNotificationCount = 4;
 
-    private static readonly object ClassSyncObject = new ();
+    private static readonly Lock ClassSyncObject = new ();
     private static ChatAttentionService? _instance;
     public static readonly string AlarmActionPrefix = Context.PackageName + ".ChatAttention.";
     private static readonly string AlarmAction = AlarmActionPrefix + "Alarm";
@@ -28,7 +28,7 @@ public class ChatAttentionService
     private static readonly TimeSpan RemindInterval = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
 
-    private readonly object _syncObject = new();
+    private readonly Lock _syncObject = new();
     private AlarmManager? _alarmManager;
     private Option<State?> _cachedState = Option<State?>.None;
     private bool _isInitialized;

@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui;
 public class AndroidMediaSaver(IServiceProvider services)
     : IMediaSaver
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private ToastUI? _toastUI;
     private ILogger? _log;
     private readonly List<long> _pendingDownloads = new ();

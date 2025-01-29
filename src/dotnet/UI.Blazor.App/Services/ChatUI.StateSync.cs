@@ -201,7 +201,7 @@ public partial class ChatUI
     {
         var visibleChatsChanges = ChatListUI.VisibleChats.Changes(cancellationToken);
         var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        await foreach (var cVisibleChats in visibleChatsChanges.Where(c => c.Value.Count > 0)) {
+        await foreach (var cVisibleChats in visibleChatsChanges.Where(c => c.Value.Count > 0).ConfigureAwait(false)) {
             cts.CancelAndDisposeSilently();
             cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var changeToken = cts.Token;
@@ -210,7 +210,7 @@ public partial class ChatUI
                 _ = BackgroundTask.Run(async () => {
                         var cGet = await Computed.Capture(() => Get(chatId, changeToken), changeToken).ConfigureAwait(false);
                         var chatInfoChanges = cGet.Changes(changeToken);
-                        await foreach (var cChatInfo in chatInfoChanges) {
+                        await foreach (var cChatInfo in chatInfoChanges.ConfigureAwait(false)) {
                             var chatInfo = cChatInfo.Value;
                             if (chatInfo == null)
                                 continue;

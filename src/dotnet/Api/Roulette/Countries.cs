@@ -11,5 +11,5 @@ public static partial class Countries
             All.Select(x => new KeyValuePair<string, Country>(x.Code, x))
                 .Concat(All.Select(x => new KeyValuePair<string, Country>(x.Code.ToLowerInvariant(), x)))
                 .DistinctBy(kv => kv.Key)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+                .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 }

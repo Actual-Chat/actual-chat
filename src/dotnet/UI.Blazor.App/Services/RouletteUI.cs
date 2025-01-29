@@ -136,13 +136,13 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public virtual async Task StartChat(Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken = default)
     {
         var chatId = await Roulette.GetOrCreateChat(Session, ownProfileId, peerProfileId, cancellationToken)
-            .ConfigureAwait(true);
+            .ConfigureAwait(true); // Continue on the Blazor context.
         if (chatId.IsNone) {
             UICommander.ShowError(new Exception("Can't start Roulette chat."));
             return;
         }
 
-        await History.NavigateTo(Links.Chat(chatId));
+        await History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(false);
     }
 
     public record SearchRequest(Symbol ProfileId, Preferences Criteria);

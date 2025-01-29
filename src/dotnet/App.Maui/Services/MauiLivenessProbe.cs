@@ -13,7 +13,7 @@ public class MauiLivenessProbe : WorkerBase
     private static readonly int CheckCount = 2; // 1s
     private static readonly int MainThreadBusyExtraCheckCount = 6; // 3s more
 
-    private static readonly object _lock = new();
+    private static readonly Lock StaticLock = new();
     private static MauiLivenessProbe? _current;
     private static volatile bool _isVeryFirstCheck = true;
 
@@ -29,13 +29,13 @@ public class MauiLivenessProbe : WorkerBase
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiLivenessProbe))]
     public static void Check()
     {
-        lock (_lock)
+        lock (StaticLock)
             _current ??= new MauiLivenessProbe();
     }
 
     public static void CancelCheck(MauiLivenessProbe? expectedCurrent = null)
     {
-        lock (_lock) {
+        lock (StaticLock) {
             if (expectedCurrent != null && expectedCurrent != _current)
                 return;
 

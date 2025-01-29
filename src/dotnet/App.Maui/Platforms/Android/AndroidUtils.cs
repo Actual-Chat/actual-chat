@@ -74,9 +74,9 @@ public static class AndroidUtils
          */
         try {
             var result = Android.Gms.Tasks.TasksClass.Await(
-                imageDownload.GetTask(),
+                imageDownload.GetTask()!,
                 ImageDownloadTimeoutSeconds,
-                TimeUnit.Seconds);
+                TimeUnit.Seconds!);
             return result as Bitmap;
         }
         catch (ExecutionException e) {

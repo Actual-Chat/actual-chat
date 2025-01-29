@@ -5,11 +5,11 @@ namespace ActualChat.App.Maui;
 
 public class BlazorWebViewApp
 {
-    private static readonly object Lock = new();
+    private static readonly Lock Lock = new();
     private static Func<Task<BlazorWebViewApp>>? _initializeFactory;
     private static Task? _startupTask;
     private static BlazorWebViewApp? _current;
-    private static ILogger? _log; // Otherwise Rider assumes we're referencing it from elsewhere
+    private static ILogger? _log; // Otherwise, Rider assumes we're referencing it from elsewhere
     // ReSharper disable once InconsistentNaming
     private static readonly TaskCompletionSource<BlazorWebViewApp> _currentSource =
         TaskCompletionSourceExt.New<BlazorWebViewApp>();

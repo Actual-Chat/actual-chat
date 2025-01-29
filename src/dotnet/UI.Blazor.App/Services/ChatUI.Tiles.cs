@@ -42,7 +42,7 @@ public partial class ChatUI
                 idTile.Range,
                 prevMessage,
                 lastReadEntryLid,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             if (tile.Items.Count == 0)
                 continue;
 
@@ -237,7 +237,8 @@ public partial class ChatUI
                 .Select(e => e.AuthorId)
                 .Distinct()
                 .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                .ConfigureAwait(false);
             await Task.WhenAll(chatTask, idRangeTask, rulesTask, authorsTask, isEmptyTask, tilesTask).ConfigureAwait(false);
         }, Log, "Error prefetching chat tiles.", CancellationToken.None);
     }

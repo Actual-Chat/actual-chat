@@ -15,7 +15,7 @@ namespace ActualChat.App.Maui.Services;
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiContacts))]
 public class MauiContacts(IServiceProvider services) : DeviceContacts
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private StrongBox<Symbol>? _deviceId;
     private Session? _session;
     private IAccounts? _accounts;
