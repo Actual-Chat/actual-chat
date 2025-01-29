@@ -47,10 +47,11 @@ export class Versioning {
                 const href = e['href'] as string;
                 processAsset(href, href);
             }
-            const importMapElement = document.head.querySelector('script[type="importmap"]');
-            const importMap = JSON.parse(importMapElement.innerHTML) as ImportMap;
-            for (const [key, value] of Object.entries(importMap.imports).filter(([k]) => k.startsWith('/dist/'))) {
-                processAsset(key, value);
+            const importMapInnerHtml = document.head.querySelector('script[type="importmap"]')?.innerHTML;
+            if (importMapInnerHtml) {
+                const importMap = JSON.parse(importMapInnerHtml) as ImportMap;
+                for (const [key, value] of Object.entries(importMap.imports).filter(([k]) => k.startsWith('/dist/')))
+                    processAsset(key, value);
             }
         }
         this._assetMap = assetMap;
