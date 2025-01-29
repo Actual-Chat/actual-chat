@@ -234,10 +234,8 @@ export class MarkupEditor {
         const { selection, range, caretPosition, prevChar } = this.getPrevCharInfo();
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
-            if (prevChar.trim() != '')
-                this.insertHtml(" @", null, true);
-            else
-                this.insertHtml("@", null, true);
+            const html = prevChar.trim() != '' ? ' @' : '@';
+            this.insertHtml(html, null);
         }
         else {
             if (prevChar == "@") {
