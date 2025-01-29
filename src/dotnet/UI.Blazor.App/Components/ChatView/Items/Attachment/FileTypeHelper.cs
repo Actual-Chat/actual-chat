@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class FileTypeHelper
+public static class FileTypeHelper
 {
     public static readonly Dictionary<FileType, string> FileClasses = new() {
         { FileType.Image, "file-image" },
@@ -11,7 +11,7 @@ public class FileTypeHelper
         { FileType.Archive, "file-archive" },
     };
 
-    public static readonly Dictionary<string, string> FileColors = new() {
+    public static readonly Dictionary<string, string> FileColors = new(StringComparer.Ordinal) {
         { "png", FileClasses[FileType.Image] },
         { "jpg", FileClasses[FileType.Image] },
         { "jpeg", FileClasses[FileType.Image] },

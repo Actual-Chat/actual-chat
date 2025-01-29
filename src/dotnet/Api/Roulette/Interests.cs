@@ -2,7 +2,7 @@ namespace ActualChat.Roulette;
 
 public static class Interests
 {
-    private static readonly Dictionary<string, string> InterestTitles = new ();
+    private static readonly Dictionary<string, string> InterestTitles = new (StringComparer.Ordinal);
     public static readonly ApiArray<Interest> All;
 
     public static readonly Interest Flexible = new ("flexible");

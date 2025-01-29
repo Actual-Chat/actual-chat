@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.ExceptionServices;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
@@ -16,7 +14,6 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
-using OpenTelemetry.Trace;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
 #if IOS
@@ -93,7 +90,7 @@ public static partial class MauiProgram
 #endif
 
         try {
-            // Maui app plays host role for a blazor app running in a web view.
+            // Maui app plays a host role for a blazor app running in a web view.
             MauiAppBuilder? appBuilder;
             using (Tracer.Region($"{nameof(MauiApp)}.{nameof(MauiApp.CreateBuilder)}")) {
                 appBuilder = MauiApp.CreateBuilder();
