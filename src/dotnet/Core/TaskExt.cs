@@ -73,6 +73,35 @@ public static class TaskExt
         }
     }
 
+    public static Task<T> Catch<T>(
+        this Task<T> task,
+        T defaultValue,
+        ILogger errorLog,
+        string message,
+        params object[] args)
+        => task.Catch(() => defaultValue,
+            errorLog,
+            LogLevel.Error,
+            message,
+            args);
+
+    public static async Task<T> Catch<T>(
+        this Task<T> task,
+        Func<T> defaultValueFactory,
+        ILogger errorLog,
+        LogLevel level,
+        string message,
+        params object[] args)
+    {
+        try {
+            return await task.ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            errorLog.Log(level, e, message, args);
+            return defaultValueFactory();
+        }
+    }
+
     public static ValueTask Catch(this ValueTask task, ILogger errorLog, string message, params object[] args)
         => task.Catch(errorLog, LogLevel.Error, message, args);
 
@@ -86,23 +115,52 @@ public static class TaskExt
         }
     }
 
+    public static ValueTask<T> Catch<T>(
+        this ValueTask<T> task,
+        T defaultValue,
+        ILogger errorLog,
+        string message,
+        params object[] args)
+        => task.Catch(() => defaultValue,
+            errorLog,
+            LogLevel.Error,
+            message,
+            args);
+
+    public static async ValueTask<T> Catch<T>(
+        this ValueTask<T> task,
+        Func<T> defaultValueFactory,
+        ILogger errorLog,
+        LogLevel level,
+        string message,
+        params object[] args)
+    {
+        try {
+            return await task.ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            errorLog.Log(level, e, message, args);
+            return defaultValueFactory();
+        }
+    }
+
     // WithErrorLog
 
-    public static Task WithErrorLog(this Task task, ILogger errorLog, string message)
+    public static Task WithErrorLog(this Task task, ILogger errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message));
+        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
-    public static Task<T> WithErrorLog<T>(this Task<T> task, ILogger errorLog, string message)
+    public static Task<T> WithErrorLog<T>(this Task<T> task, ILogger errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message));
+        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
-    public static ValueTask WithErrorLog(this ValueTask task, ILogger errorLog, string message)
+    public static ValueTask WithErrorLog(this ValueTask task, ILogger errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message));
+        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
-    public static ValueTask<T> WithErrorLog<T>(this ValueTask<T> task, ILogger errorLog, string message)
+    public static ValueTask<T> WithErrorLog<T>(this ValueTask<T> task, ILogger errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message));
+        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
     // WhenAll
 

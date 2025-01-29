@@ -25,6 +25,9 @@ public static class UriExt
         return b.Uri;
     }
 
+    public static Uri ToBase(this Uri uri)
+        => new (uri.GetLeftPart(UriPartial.Authority));
+
     private static string RenderQuery(NameValueCollection @params)
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();

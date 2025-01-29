@@ -1,4 +1,6 @@
 using ActualChat.Media.Module;
+using ActualLab.Diagnostics;
+using ActualLab.Locking;
 using TurnerSoftware.RobotsExclusionTools;
 
 namespace ActualChat.Media;
@@ -7,6 +9,7 @@ public sealed class Crawler(
     IHttpClientFactory httpClientFactory,
     IEnumerable<ICrawlingHandler> handlers,
     MediaSettings settings,
+    RobotsFiles robotsFiles,
     ILogger<Crawler> log)
 {
     public const string HttpClientName = nameof(Crawler);
@@ -16,26 +19,35 @@ public sealed class Crawler(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
     ];
 
-    private HttpClient HttpClient { get; } = httpClientFactory.CreateClient(HttpClientName);
-    private RobotsFileParser RobotsParser { get; } = new (httpClientFactory.CreateClient(HttpClientName));
+    private ILogger? DebugLog { get; } = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Crawler);
+    [field: AllowNull, MaybeNull]
+    private HttpClient HttpClient => field ??= httpClientFactory.CreateClient(HttpClientName);
 
-    private IReadOnlyList<ICrawlingHandler> Handlers { get; } = handlers.ToList();
+    [field: AllowNull, MaybeNull]
+    private IReadOnlyList<ICrawlingHandler> Handlers => field ??= handlers.ToList();
 
     public async Task<CrawledLink> Crawl(string url, CancellationToken cancellationToken)
     {
-        var userAgents = await ListSupportedUserAgents(new Uri(url), cancellationToken).ConfigureAwait(false);
-        if (userAgents.Count == 0)
-            return CrawledLink.None;
+        try {
+            var userAgents = await ListSupportedUserAgents(new Uri(url), cancellationToken).ConfigureAwait(false);
+            if (userAgents.Count == 0)
+                return CrawledLink.None;
 
-        var response = await SendRequest(url, userAgents, cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-            return CrawledLink.None;
+            var response = await SendRequest(url, userAgents, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return CrawledLink.None;
 
-        var handler = Handlers.FirstOrDefault(x => x.Supports(response));
-        if (handler is null)
-            return CrawledLink.None;
+            var handler = Handlers.FirstOrDefault(x => x.Supports(response));
+            if (handler is null)
+                return CrawledLink.None;
 
-        return await handler.Handle(response, cancellationToken).ConfigureAwait(false);
+            return await handler.Handle(response, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            var logLevel = e is HttpRequestException ? LogLevel.Debug : LogLevel.Error;
+            log.Log(logLevel, e, "Failed to crawl '{Url}'", url);
+            return CrawledLink.None;
+        }
     }
 
     private async Task<HttpResponseMessage> SendRequest(string url, IReadOnlyCollection<string> userAgents, CancellationToken cancellationToken)
@@ -46,7 +58,7 @@ public sealed class Crawler(
             request.Headers.UserAgent.ParseAdd(userAgent);
             request.Headers.AcceptLanguage.ParseAdd("*");
             response = await HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            log.LogDebug("{ResponseCode}: {Url}. {UserAgent}", response.StatusCode, url, userAgent);
+            DebugLog?.LogDebug("{ResponseCode}: {Url}. {UserAgent}", response.StatusCode, url, userAgent);
             if (response.IsSuccessStatusCode)
                 return response;
         }
@@ -58,9 +70,7 @@ public sealed class Crawler(
         if (settings.DomainsWithoutRobots.Contains(uri.DnsSafeHost.ToLower()))
             return UserAgents;
 
-        // TODO: cache robots.txt
-        var robotsUri = new Uri(uri, "/robots.txt");
-        var robotsFile = await RobotsParser.FromUriAsync(robotsUri, RobotsFileAccessRules.LikeGoogle, cancellationToken).ConfigureAwait(false);
+        var robotsFile = await robotsFiles.Get(uri, cancellationToken).ConfigureAwait(false);
         return UserAgents.Where(x => robotsFile.IsAllowedAccess(uri, x)).ToList();
     }
 }

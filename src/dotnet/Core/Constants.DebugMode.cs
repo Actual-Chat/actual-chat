@@ -60,6 +60,10 @@ public static partial class Constants
         // Search
         public static readonly bool OpenSearchRequest = false;
 
+        // Link previews
+        public static readonly bool Crawler = false;
+        public static readonly bool RobotsFiles = false;
+
         // Database
         public static readonly bool Npgsql = false;
 
