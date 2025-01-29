@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;

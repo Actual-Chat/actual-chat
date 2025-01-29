@@ -6,7 +6,7 @@ namespace ActualChat.App.Maui;
 public static class BlazorWebViewHandlerExt
 {
     [UnconditionalSuppressMessage("Trimming",
-        "IL2075:IL2075: X argument does not satisfy 'DynamicallyAccessedMemberTypes.NonPublicFields' in call to 'System.Type.GetField...",
+        "IL2075: Call argument does not satisfy 'DynamicallyAccessedMemberTypes.NonPublicFields' in call to 'System.Type.GetField...",
         Justification = "This field should be there for sure")]
     public static WebViewManager? GetWebViewManager(this BlazorWebViewHandler webViewHandler)
     {
