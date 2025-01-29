@@ -1,7 +1,7 @@
 // using WKWebView = global::WebKit.WKWebView;
 
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 
@@ -45,6 +45,11 @@ public sealed partial class MauiWebView: IDisposable
         BlazorWebView.UrlLoading += OnLoading;
         BlazorWebView.Loaded += OnLoaded;
         BlazorWebView.Unloaded += OnUnloaded;
+        BlazorWebView.RootComponents.Add(
+            new RootComponent {
+                ComponentType = typeof(HeadOutlet),
+                Selector = "head::after",
+            });
         BlazorWebView.RootComponents.Add(
             new RootComponent {
                 ComponentType = typeof(MauiBlazorApp),
