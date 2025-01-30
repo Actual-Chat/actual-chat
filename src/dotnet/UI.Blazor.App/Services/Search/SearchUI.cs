@@ -117,7 +117,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     private async Task<ChatId?> CreateSearchChat() {
         var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
-        var title = "Search on " + now.ToString("g", CultureInfo.InvariantCulture);
+        var title = "Search on " + now.ToInvariantString("g");
         var createSearchChatCommand = new MLSearch_CreateChat(Session, title, default);
         var (searchChat, error) = await UICommander.Run(createSearchChatCommand).ConfigureAwait(false);
         if (error != null)

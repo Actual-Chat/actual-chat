@@ -18,11 +18,11 @@ public class VisualMediaFileChooser
             return false;
 
         var acceptType = acceptTypes[0];
-        if (acceptType.StartsWith("image", StringComparison.Ordinal)) {
+        if (acceptType.OrdinalStartsWith("image")) {
             PickVisualMedia(PickVisualMediaKind.Image, filePathCallback);
             return true;
         }
-        if (acceptType.StartsWith("video", StringComparison.Ordinal)) {
+        if (acceptType.OrdinalStartsWith("video")) {
             PickVisualMedia(PickVisualMediaKind.Video, filePathCallback);
             return true;
         }
