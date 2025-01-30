@@ -7,8 +7,6 @@ using ActualChat.UI.Blazor.Services;
 using Android.Views;
 using AndroidX.Activity.Result;
 using AndroidX.Activity.Result.Contract;
-using Activity = Android.App.Activity;
-using ArrayList = Java.Util.ArrayList;
 using AView = Android.Views.View;
 using JObject = Java.Lang.Object;
 using Uri = Android.Net.Uri;
@@ -55,8 +53,8 @@ public partial class MainActivity : MauiAppCompatActivity
     private static readonly Tracer Tracer = Tracer.Default[nameof(MainActivity)];
 
     private ActivityResultLauncher _permissionRequestLauncher = null!;
-    private TaskCompletionSource? _permissionRequestCompletedSource;
     private ActivityResultLauncher _pickVisualMediaLauncher = null!;
+    private Action<bool>? _onReceivePermissionRequestResult;
     private Action<Uri[]>? _onReceivePickVisualMedialResult;
 
     private ILogger Log { get; } = StaticLog.For<MainActivity>();
@@ -101,9 +99,9 @@ public partial class MainActivity : MauiAppCompatActivity
         // Create launcher to request permissions
         _permissionRequestLauncher = RegisterForActivityResult(
             new ActivityResultContracts.RequestPermission(),
-            new AndroidActivityResultCallback(_ => {
-                _permissionRequestCompletedSource?.TrySetResult();
-                _permissionRequestCompletedSource = null;
+            new AndroidActivityResultCallback(isGranted => {
+                _onReceivePermissionRequestResult?.Invoke(isGranted != null && (bool)isGranted);
+                _onReceivePermissionRequestResult = null;
             }));
 
         _pickVisualMediaLauncher = RegisterForActivityResult(
@@ -140,12 +138,14 @@ public partial class MainActivity : MauiAppCompatActivity
         base.OnTrimMemory(level);
     }
 
-    public Task RequestPermission(string permission, TaskCompletionSource whenCompletedSource)
+    public void RequestPermission(string permission, Action<bool> onReceiveResult, bool throwIfHavePendingRequest = false)
     {
-        _permissionRequestCompletedSource?.TrySetResult();
-        _permissionRequestCompletedSource = whenCompletedSource;
+        if (throwIfHavePendingRequest && _onReceivePermissionRequestResult is not null)
+            throw StandardError.Constraint("Cannot perform multiple permission requests simultaneously.");
+
+        _onReceivePermissionRequestResult?.Invoke(false);
+        _onReceivePermissionRequestResult = onReceiveResult;
         _permissionRequestLauncher.Launch(permission);
-        return whenCompletedSource.Task;
     }
 
     public void PickVisualMedia(PickVisualMediaKind kind, Action<Uri[]> onReceiveResult)
@@ -162,13 +162,6 @@ public partial class MainActivity : MauiAppCompatActivity
              .SetMediaType(visualMediaType)
              .Build();
         _pickVisualMediaLauncher.Launch(pickVisualMediaRequest);
-    }
-
-    public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
-    {
-        base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
-        _permissionRequestCompletedSource?.TrySetResult();
-        _permissionRequestCompletedSource = null;
     }
 
     private void DumpMemoryInfo()

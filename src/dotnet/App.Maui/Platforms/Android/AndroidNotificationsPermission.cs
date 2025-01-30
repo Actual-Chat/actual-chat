@@ -38,9 +38,9 @@ public class AndroidNotificationsPermission(UIHub hub) : INotificationsPermissio
             if (Platform.CurrentActivity is not MainActivity activity)
                 return;
 
-            var whenCompletedSource = TaskCompletionSourceExt.New();
+            var whenCompletedSource = TaskCompletionSourceExt.New<bool>();
             _ = Task.Delay(MainActivity.MaxPermissionRequestDuration, cancellationToken)
-                .ContinueWith(_ => whenCompletedSource.TrySetResult(), TaskScheduler.Default);
+                .ContinueWith(_ => whenCompletedSource.TrySetResult(false), TaskScheduler.Default);
             if (!activity.ShouldShowRequestPermissionRationale(Manifest.Permission.PostNotifications))
                 RequestPermission();
             else
@@ -51,7 +51,7 @@ public class AndroidNotificationsPermission(UIHub hub) : INotificationsPermissio
 
                                 Do you want to allow Actual Chat sending notifications to this device?
                                 """)!
-                    .SetNegativeButton("Decline", (_, _) => whenCompletedSource.TrySetResult())!
+                    .SetNegativeButton("Decline", (_, _) => whenCompletedSource.TrySetResult(false))!
                     .SetPositiveButton("Allow", (_, _) => RequestPermission())!
                     .Show();
             await whenCompletedSource.Task.ConfigureAwait(false);
@@ -61,7 +61,7 @@ public class AndroidNotificationsPermission(UIHub hub) : INotificationsPermissio
             NotificationUI.SetIsGranted(isGranted);
 
             void RequestPermission()
-                => activity.RequestPermission(Manifest.Permission.PostNotifications, whenCompletedSource);
+                => activity.RequestPermission(Manifest.Permission.PostNotifications, c => whenCompletedSource.TrySetResult(c));
         }, Log, "Notifications permission request failed", cancellationToken);
 
 }

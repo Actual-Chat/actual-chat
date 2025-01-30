@@ -4,12 +4,8 @@ using Android.Content.PM;
 using Android.Graphics;
 using Android.OS;
 using Android.Webkit;
-using AndroidX.Activity;
-using AndroidX.Activity.Result;
-using AndroidX.Activity.Result.Contract;
 using AndroidX.Core.Content;
 using Java.Interop;
-using JObject = Java.Lang.Object;
 using View = Android.Views.View;
 using WebView = Android.Webkit.WebView;
 
@@ -41,36 +37,29 @@ public class AndroidWebChromeClient : WebChromeClient
         = "Actual Chat uses your microphone to record and transcribe your audio messages. "
         + "Please grant access to your microphone when requested.";
 
-    private static readonly Dictionary<string, string> _rationalesByPermission = new(StringComparer.Ordinal) {
+    private static readonly Dictionary<string, string> RationalesByPermission = new(StringComparer.Ordinal) {
         [Manifest.Permission.Camera] = CameraAccessRationale,
         [Manifest.Permission.AccessFineLocation] = LocationAccessRationale,
         [Manifest.Permission.RecordAudio] = MicrophoneAccessRationale,
         // Add more rationales as you add more supported permissions.
     };
 
-    private static readonly Dictionary<string, string[]> _requiredPermissionsByWebkitResource = new(StringComparer.Ordinal) {
+    private static readonly Dictionary<string, string[]> RequiredPermissionsByWebkitResource = new(StringComparer.Ordinal) {
         [PermissionRequest.ResourceVideoCapture] = new[] { Manifest.Permission.Camera },
         [PermissionRequest.ResourceAudioCapture] = new[] { Manifest.Permission.ModifyAudioSettings, Manifest.Permission.RecordAudio },
         // Add more Webkit resource -> Android permission mappings as needed.
     };
 
-    private static ComponentActivity _activity = null!;
-    private static ActivityResultLauncher _requestPermissionLauncher = null!;
-    private static Action<bool>? _pendingPermissionRequestCallback;
+    private readonly MainActivity _activity;
 
     private readonly WebChromeClient _client;
     private readonly VisualMediaFileChooser _visualMediaFileChooser;
 
-    public AndroidWebChromeClient(WebChromeClient client, ComponentActivity activity, VisualMediaFileChooser visualMediaFileChooser)
+    public AndroidWebChromeClient(WebChromeClient client, MainActivity activity, VisualMediaFileChooser visualMediaFileChooser)
     {
         _activity = activity;
         _client = client;
         _visualMediaFileChooser = visualMediaFileChooser;
-
-        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-        _requestPermissionLauncher ??= _activity.RegisterForActivityResult(
-            new ActivityResultContracts.RequestPermission(),
-            new ActivityResultCallback());
     }
 
     public override void OnGeolocationPermissionsShowPrompt(string? origin, GeolocationPermissions.ICallback? callback)
@@ -98,16 +87,16 @@ public class AndroidWebChromeClient : WebChromeClient
 
     // Private methods
 
-    private static void RequestAllResources(Memory<string> requestedResources, Action<List<string>> callback)
+    private void RequestAllResources(Memory<string> requestedResources, Action<List<string>> callback)
     {
         if (requestedResources.Length == 0) {
             // No resources to request - invoke the callback with an empty list.
-            callback.Invoke(new());
+            callback.Invoke([]);
             return;
         }
 
         var currentResource = requestedResources.Span[0];
-        var requiredPermissions = _requiredPermissionsByWebkitResource.GetValueOrDefault(currentResource, []);
+        var requiredPermissions = RequiredPermissionsByWebkitResource.GetValueOrDefault(currentResource, []);
 
         RequestAllPermissions(requiredPermissions, isGranted => {
             // Recurse with the remaining resources. If the first resource was granted, use a modified callback
@@ -180,7 +169,7 @@ public class AndroidWebChromeClient : WebChromeClient
 
     // Private methods
 
-    private static void RequestAllPermissions(Memory<string> requiredPermissions, Action<bool> callback)
+    private void RequestAllPermissions(Memory<string> requiredPermissions, Action<bool> callback)
     {
         if (requiredPermissions.Length == 0) {
             // No permissions left to request - success!
@@ -201,7 +190,7 @@ public class AndroidWebChromeClient : WebChromeClient
         });
     }
 
-    private static void RequestPermission(string permission, Action<bool> callback)
+    private void RequestPermission(string permission, Action<bool> callback)
     {
         // This method implements the workflow described here:
         // https://developer.android.com/training/permissions/requesting#workflow_for_requesting_permissions
@@ -209,7 +198,7 @@ public class AndroidWebChromeClient : WebChromeClient
         if (ContextCompat.CheckSelfPermission(_activity, permission) == Permission.Granted) {
             callback.Invoke(true);
         }
-        else if (_activity.ShouldShowRequestPermissionRationale(permission) && _rationalesByPermission.TryGetValue(permission, out var rationale)) {
+        else if (_activity.ShouldShowRequestPermissionRationale(permission) && RationalesByPermission.TryGetValue(permission, out var rationale)) {
             new AlertDialog.Builder(_activity)
                 .SetTitle("Enable app permissions")!
                 .SetMessage(rationale)!
@@ -222,24 +211,6 @@ public class AndroidWebChromeClient : WebChromeClient
         }
     }
 
-    private static void LaunchPermissionRequestActivity(string permission, Action<bool> callback)
-    {
-        if (_pendingPermissionRequestCallback is not null)
-            throw StandardError.Constraint("Cannot perform multiple permission requests simultaneously.");
-
-        _pendingPermissionRequestCallback = callback;
-        _requestPermissionLauncher.Launch(permission);
-    }
-
-    // Nested types
-
-    public sealed class ActivityResultCallback : JObject, IActivityResultCallback
-    {
-        public void OnActivityResult(JObject? isGranted)
-        {
-            var callback = _pendingPermissionRequestCallback;
-            _pendingPermissionRequestCallback = null;
-            callback?.Invoke(isGranted != null && (bool)isGranted);
-        }
-    }
+    private void LaunchPermissionRequestActivity(string permission, Action<bool> callback)
+        => _activity.RequestPermission(permission, callback, true);
 }
