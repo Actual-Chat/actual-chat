@@ -110,15 +110,14 @@ export class MarkupEditor {
     }
 
     public focus(force = false) {
-        if (!force) {
-            if (this.hasFocus())
-                return;
-
-            if (!DeviceInfo.isIos) {
-                debugLog?.log('focus');
-                this.contentDiv.focus();
-                return;
-            }
+        if (!force && this.hasFocus()){
+            debugLog?.log(`focus: already in focus, skipped`);
+            return;
+        }
+        if (!DeviceInfo.isIos) {
+            debugLog?.log('focus: setting focus on contentDiv');
+            this.contentDiv.focus();
+            return;
         }
 
         // The code blow makes sure mobile keyboard is shown on iOS.
