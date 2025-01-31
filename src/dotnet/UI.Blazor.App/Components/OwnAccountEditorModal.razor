@@ -247,6 +247,7 @@
         [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = "";
         public Phone ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
+        [UserLinkId]
         public string UserLinkId { get; set; } = "";
         public string CurrentUserLinkId { get; set; } = "";
         public string UserLinkIdFormId { get; set; } = "";
