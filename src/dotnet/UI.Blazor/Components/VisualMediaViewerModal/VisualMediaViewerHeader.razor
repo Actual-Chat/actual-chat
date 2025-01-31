@@ -25,26 +25,39 @@
     }
     <div class="c-control-panel">
         @if (_enableIncompleteUI) {
-            <HeaderButton Class="bleached">
+            <HeaderButton
+                Class="bleached"
+                Tooltip="Share"
+                TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-share"></i>
             </HeaderButton>
         }
         @if (!DownloadUrl.IsNullOrEmpty()) {
             if (Saver != null && canSave) {
                 <a href="#" download class="c-link" @onclick="@(_ => Saver.Save(DownloadUrl, ContentType))" @onclick:preventDefault>
-                    <HeaderButton Class="bleached">
+                    <HeaderButton
+                        Class="bleached"
+                        Tooltip="Download"
+                        TooltipPosition="FloatingPosition.Bottom">
                         <i class="icon-download"></i>
                     </HeaderButton>
                 </a>
             } else {
                 <a href="@DownloadUrl" target="_blank" download class="c-link">
-                    <HeaderButton Class="bleached">
+                    <HeaderButton
+                        Class="bleached"
+                        Tooltip="Download"
+                        TooltipPosition="FloatingPosition.Bottom">
                         <i class="icon-download"></i>
                     </HeaderButton>
                 </a>
             }
         }
-        <HeaderButton Class="desktop bleached" Click="CloseClick">
+        <HeaderButton
+            Class="desktop bleached"
+            Tooltip="Close"
+            TooltipPosition="FloatingPosition.Bottom"
+            Click="CloseClick">
             <i class="icon-close"></i>
         </HeaderButton>
     </div>
@@ -59,6 +72,7 @@
     private HostInfo HostInfo => Hub.HostInfo();
     private Session Session => Hub.Session();
     private IAuthors Authors => _authors ??= Hub.GetRequiredService<IAuthors>();
+    private ToastUI ToastUI => Hub.ToastUI;
     private IMediaSaver? Saver { get; set; }
 
     private Features Features => Hub.Features();

@@ -71,9 +71,12 @@
                 var authorName = ContactExt.GetPeerContactName(m.PeerChatContact, m.Author.Avatar.Name);
                 if (!m.OnlyAnonymousChatAllowed) {
                     if (_anonymousChat) {
-                        <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
-                            <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
-                            <Title>New Anonymous chat with @authorName</Title>
+                        <Button Class="btn-modal btn-primary" ContentClass="overflow-hidden" Click="OnStartAnonymousPeerChat">
+                            <i class="icon-question-mark-bubble text-xl"></i>
+                            <div class="btn-with-caption">
+                                <span class="c-title">New Anonymous chat</span>
+                                <span class="c-caption">with @authorName</span>
+                            </div>
                         </Button>
                     } else {
                         <Button
@@ -85,9 +88,12 @@
                     }
                 } else {
                     if (m.EnableIncompleteUI) {
-                        <Button Class="btn-modal btn-primary" Click="OnStartAnonymousPeerChat">
-                            <Icon><i class="icon-question-mark-bubble text-xl"></i></Icon>
-                            <Title>New Anonymous chat with @authorName</Title>
+                        <Button Class="btn-modal btn-primary" ContentClass="overflow-hidden" Click="OnStartAnonymousPeerChat">
+                            <i class="icon-question-mark-bubble text-xl"></i>
+                            <div class="btn-with-caption">
+                                <span class="c-title">New Anonymous chat</span>
+                                <span class="c-caption">with @authorName</span>
+                            </div>
                         </Button>
                     }
                 }
