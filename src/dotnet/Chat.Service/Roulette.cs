@@ -14,6 +14,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private IRouletteBackend Backend { get; } = services.GetRequiredService<IRouletteBackend>();
     private ICommander Commander { get; } = services.Commander();
+    private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<ChatCandidate>> FindChatCandidates(
@@ -178,7 +179,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     }
 
     public virtual Task<bool> EnableChatRouletteUI(Session session, CancellationToken cancellationToken)
-        => Task.FromResult(false);
+        => Task.FromResult(!UrlMapper.IsActualChat);
 
     // Commands
 
