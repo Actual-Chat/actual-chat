@@ -6,6 +6,7 @@ public class Form : EditForm
 {
     private readonly Func<Task> _handleSubmitCached;
     private readonly EventHandler<FieldChangedEventArgs> _editContextFieldChangedCached;
+    private readonly EventHandler<ValidationStateChangedEventArgs> _editContextValidationStateChanged;
     private EditContext? _editContext;
 
     [Parameter] public string Class { get; set; } = "";
@@ -19,10 +20,20 @@ public class Form : EditForm
         _handleSubmitCached = (Func<Task>)typeof(EditForm)
             .GetField("_handleSubmitDelegate", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(this)!;
-        _editContextFieldChangedCached = (sender, args) => {
+        _editContextFieldChangedCached = (sender, e) => {
             if (sender is not EditContext editContext)
                 return;
+
+            // NOTE: though it triggers async validation as well, but only synchronous validation results are returned here.
+            // For async results we listen ValidationStateChanged event below
             IsValid = editContext.Validate();
+        };
+        // handling async validation results
+        _editContextValidationStateChanged = (sender, e) => {
+            if (sender is not EditContext editContext)
+                return;
+
+            IsValid = !editContext.GetValidationMessages().Any();
             StateHasChanged();
         };
     }
@@ -36,6 +47,7 @@ public class Form : EditForm
         _editContext = editContext;
         IsValid = editContext.Validate();
         editContext.OnFieldChanged += _editContextFieldChangedCached;
+        editContext.OnValidationStateChanged += _editContextValidationStateChanged;
         StateHasChanged();
     }
 
