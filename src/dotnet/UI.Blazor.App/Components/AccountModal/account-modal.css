@@ -168,3 +168,13 @@ body.hoverable .author-modal .tile:hover {
     @apply bg-[var(--sienna-50-20)];
     @apply text-caption-6 font-normal text-03;
 }
+
+.btn-with-caption {
+    @apply flex-y items-start;
+    @apply overflow-hidden;
+}
+.btn-with-caption .c-caption {
+    @apply w-full;
+    @apply text-caption-8;
+    @apply truncate;
+}
