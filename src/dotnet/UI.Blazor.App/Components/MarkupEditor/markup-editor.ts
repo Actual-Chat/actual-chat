@@ -114,6 +114,7 @@ export class MarkupEditor {
             debugLog?.log(`focus: already in focus, skipped`);
             return;
         }
+
         if (!DeviceInfo.isIos) {
             debugLog?.log('focus: setting focus on contentDiv');
             this.contentDiv.focus();
