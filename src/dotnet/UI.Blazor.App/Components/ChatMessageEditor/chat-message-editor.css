@@ -22,7 +22,7 @@ body.narrow .chat-message-editor > .c-content {
 /* Bottom Panel, Mobile, Landscape */
 .post-panel {
     @apply relative;
-    @apply flex-auto flex-x justify-between items-center;
+    @apply flex-auto flex-x justify-between items-center md:gap-x-2;
     @apply min-h-12;
     @apply py-1 md:py-0 px-2;
     @apply border-bg-01 md:rounded-3xl outline-none;
@@ -142,7 +142,7 @@ body.narrow .post-panel-btn.attach-btn {
 .post-panel .c-left-buttons {
     @apply relative;
     @apply flex-x items-center self-end gap-x-2;
-    @apply my-2 ml-1 mr-2;
+    @apply my-2 mx-1;
 }
 body.narrow .post-panel .c-left-buttons {
     @apply my-0;

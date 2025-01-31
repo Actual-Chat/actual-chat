@@ -1,5 +1,8 @@
 .chat-entry-kind-marker {
-    @apply inline-block relative top-0.5 -bottom-0.5 mr-1;
+    @apply relative top-0.5 -bottom-0.5;
+    @apply inline-block;
+    @apply mr-1;
+    @apply text-base;
 }
 
 .mention-markup {
