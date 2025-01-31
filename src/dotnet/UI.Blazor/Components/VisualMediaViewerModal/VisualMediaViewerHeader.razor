@@ -34,7 +34,7 @@
         }
         @if (!DownloadUrl.IsNullOrEmpty()) {
             if (Saver != null && canSave) {
-                <a href="#" download class="c-link" @onclick="@SaveImage" @onclick:preventDefault>
+                <a href="#" download class="c-link" @onclick="@(_ => Saver.Save(DownloadUrl, ContentType))" @onclick:preventDefault>
                     <HeaderButton
                         Class="bleached"
                         Tooltip="Download"
@@ -43,7 +43,7 @@
                     </HeaderButton>
                 </a>
             } else {
-                <a href="@DownloadUrl" target="_blank" download class="c-link" @onclick="@ShowToast">
+                <a href="@DownloadUrl" target="_blank" download class="c-link">
                     <HeaderButton
                         Class="bleached"
                         Tooltip="Download"
@@ -91,12 +91,4 @@
         if (ChatEntry != null)
             _author = await Authors.Get(Session, ChatEntry.ChatId, ChatEntry.AuthorId, CancellationToken.None).ConfigureAwait(false);
     }
-
-    private void SaveImage() {
-        Saver!.Save(DownloadUrl, ContentType);
-        ShowToast();
-    }
-
-    private void ShowToast()
-        => ToastUI.Show("Media file saved!", ToastDismissDelay.Long);
 }
