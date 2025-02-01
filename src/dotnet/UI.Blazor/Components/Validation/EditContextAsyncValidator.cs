@@ -1,12 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Components;
 
 public sealed class EditContextAsyncValidator : WorkerBase
 {
-    private readonly SemaphoreSlim _lock = new (1);
+    private readonly AsyncLock _lock = new ();
     private readonly Channel<FieldIdentifier?> _validationRequests = Channel.CreateBounded<FieldIdentifier?>(
         new BoundedChannelOptions(100) {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -53,14 +52,19 @@ public sealed class EditContextAsyncValidator : WorkerBase
     {
         await foreach (var fieldIdentifier in _validationRequests.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             try {
-                if (fieldIdentifier is null)
-                    await ValidateAll(cancellationToken);
-                else
-                    await ValidateProperty(fieldIdentifier.Value, cancellationToken);
+                using var cts = cancellationToken.CreateDelayedTokenSource(TimeSpan.FromSeconds(10));
+                await Handle(fieldIdentifier, cts.Token).ConfigureAwait(false);
             }
+            catch (OperationCanceledException e) when (e.IsCancellationOf(cancellationToken)) { }
             catch (Exception e) {
                 Log.LogError(e, "Failed to validate {ModelType}", _editContext.Model.GetType());
             }
+        return;
+
+        Task Handle(FieldIdentifier? fieldIdentifier, CancellationToken cancellationToken1)
+            => fieldIdentifier is null
+                ? ValidateAll(cancellationToken1)
+                : ValidateProperty(fieldIdentifier.Value, cancellationToken1);
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
@@ -70,14 +74,14 @@ public sealed class EditContextAsyncValidator : WorkerBase
         var validationContext = new ValidationContext(_editContext.Model, UIHub, null) {
             MemberName = fieldIdentifier.FieldName,
         };
-        var ctx = ValidationModelStore.Get(fieldIdentifier.FieldName, validationContext);
+        var ctx = ValidationModelStore.Get(validationContext);
         if (ctx == null)
             return;
 
         var results = new List<ValidationResult>();
         Validator.TryValidateProperty(ctx.Value, validationContext, results);
         _messages.Clear(fieldIdentifier);
-        await AddValidationResults(results);
+        await AddValidationResults(results).ConfigureAwait(false);
         var asyncValidationResults = await AsyncValidator
             .ValidateProperty(validationContext.ObjectInstance, validationContext, cancellationToken)
             .ConfigureAwait(false);
@@ -104,7 +108,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private void OnValidationRequested(object? sender, ValidationRequestedEventArgs e)
         => _validationRequests.Writer.TryWrite(null);
 
-    private Task AddValidationResults(IEnumerable<ValidationResult> validationResults)
+    private Task AddValidationResults(IReadOnlyCollection<ValidationResult> validationResults)
         => UIHub.Dispatcher.InvokeAsync(() => {
             foreach (var validationResult in validationResults) {
                 var hasMemberNames = false;
