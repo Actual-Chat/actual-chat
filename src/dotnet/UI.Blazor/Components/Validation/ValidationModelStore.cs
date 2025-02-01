@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -9,10 +8,10 @@ public sealed class ValidationModelStore
 
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
     [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
-    public IReadOnlyCollection<PropertyValidationContext> List(ValidationContext validationContext)
+    public IReadOnlyCollection<PropertyValidationContext> ListForAsyncValidationOnly(ValidationContext validationContext)
     {
         var result = new List<PropertyValidationContext>();
-        foreach (var property in _cache.GetOrAdd(validationContext.ObjectType, BuildModel).Values) {
+        foreach (var property in _cache.GetOrAdd(validationContext.ObjectType, BuildModel).Values.Where(x => x.AsyncAttributes.Count > 0)) {
             var ctx = GetForProperty(validationContext, property);
             result.Add(ctx);
         }
@@ -20,13 +19,10 @@ public sealed class ValidationModelStore
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
-    public PropertyValidationContext? Get(string propertyName, ValidationContext validationContext)
+    public PropertyValidationContext? Get(ValidationContext validationContext)
     {
         var property = _cache.GetOrAdd(validationContext.ObjectType, BuildModel)!.GetValueOrDefault(validationContext.MemberName);
-        if (property is null)
-            return null;
-
-        return GetForProperty(validationContext, property);
+        return property is null ? null : GetForProperty(validationContext, property);
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
@@ -37,15 +33,15 @@ public sealed class ValidationModelStore
         var context = new ValidationContext(validationContext.ObjectInstance, validationContext, validationContext.Items) {
             MemberName = property.Property.Name,
         };
-        var ctx = new PropertyValidationContext(context, propertyValue, property);
-        return ctx;
+        return new PropertyValidationContext(context, propertyValue, property);
     }
 
     private static Dictionary<string, ValidatedProperty> BuildModel(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type modelType)
         => (from property in modelType.GetProperties()
             let asyncValidationAttributes = property.GetCustomAttributes<AsyncValidationAttribute>().ToList()
-            where asyncValidationAttributes.Count != 0
+            let hasValidationAttributes = property.GetCustomAttributes<ValidationAttribute>().Any()
+            where hasValidationAttributes || asyncValidationAttributes.Count != 0
             select new ValidatedProperty(property, asyncValidationAttributes)).ToDictionary(x => x.Property.Name, StringComparer.Ordinal);
 
     public sealed record ValidatedProperty(PropertyInfo Property, IReadOnlyList<AsyncValidationAttribute> AsyncAttributes);
