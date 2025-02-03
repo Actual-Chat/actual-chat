@@ -2,7 +2,6 @@
 @using ActualChat.Hosting
 @using ActualChat.Media
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
 @{
     var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
@@ -33,10 +32,11 @@
             </HeaderButton>
         }
         @if (!DownloadUrl.IsNullOrEmpty()) {
-            if (Saver != null && canSave) {
-                <a href="#" download class="c-link" @onclick="@(_ => Saver.Save(DownloadUrl, ContentType))" @onclick:preventDefault>
+            if (SaveMediaActionHandler != null && canSave) {
+                <a href="#" download class="c-link" @onclick="@SaveMediaActionHandler.Execute" @onclick:preventDefault>
                     <HeaderButton
                         Class="bleached"
+                        IsDisabled="@SaveMediaActionHandler.IsBusy"
                         Tooltip="Download"
                         TooltipPosition="FloatingPosition.Bottom">
                         <i class="icon-download"></i>
@@ -66,16 +66,14 @@
 @code {
     private Author? _author;
     private bool _enableIncompleteUI;
-    private IAuthors? _authors;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
     private Session Session => Hub.Session();
-    private IAuthors Authors => _authors ??= Hub.GetRequiredService<IAuthors>();
-    private ToastUI ToastUI => Hub.ToastUI;
-    private IMediaSaver? Saver { get; set; }
-
     private Features Features => Hub.Features();
+    [field: AllowNull, MaybeNull]
+    private IAuthors Authors => field ??= Hub.GetRequiredService<IAuthors>();
+    private IUIActionHandler? SaveMediaActionHandler { get; set; }
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
@@ -83,7 +81,12 @@
     [Parameter] public string ContentType { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
-        Saver = Hub.GetService<IMediaSaver>();
+        var saver = Hub.GetService<IMediaSaver>();
+        if (saver != null) {
+            SaveMediaActionHandler = UIActionHandler.Create(
+                this,
+                () => saver.Save(DownloadUrl, ContentType));
+        }
         _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
     }
 
