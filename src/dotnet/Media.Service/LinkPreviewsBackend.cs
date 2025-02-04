@@ -31,12 +31,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
+        var dbLinkPreview = await dbContext.LinkPreviews.GetAsNoTracking(id, cancellationToken).ConfigureAwait(false);
         var linkPreview = dbLinkPreview?.ToModel();
 
-        await ScheduleRefreshIfRequired();
+        await ScheduleRefreshIfRequired().ConfigureAwait(false);
         if (linkPreview?.PreviewMediaId.IsNone != false)
             return linkPreview;
 
@@ -46,7 +44,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         Task ScheduleRefreshIfRequired()
             => mustScheduleRefreshIfRequired && linkPreview != null && NeedsUpdate(linkPreview.ModifiedAt)
-                ? Flows.GetAndResume<LinkPreviewFlow>(linkPreview.Url,
+                ? Flows.GetAndResume<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(linkPreview.Url),
                     Settings.LinkPreviewUpdatePeriod,
                     "Get link preview",
                     null,
@@ -129,7 +127,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
             foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks))
-                await Flows.GetOrStart<LinkPreviewFlow>(link.ToBase64(), cancellationToken);
+                await Flows.GetOrStart<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(link), cancellationToken);
         }
     }
 

@@ -14,6 +14,9 @@ public sealed partial class LinkPreviewFlow : Flow
     [field: AllowNull, MaybeNull]
     private Crawler Crawler => field ??= Host.Services.GetRequiredService<Crawler>();
 
+    public static string BuildArgs(string url)
+        => url.ToBase64();
+
     protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
         await Run(cancellationToken).ConfigureAwait(false);
