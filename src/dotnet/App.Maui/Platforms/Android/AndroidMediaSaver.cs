@@ -154,12 +154,7 @@ public class AndroidMediaSaver(IServiceProvider services)
                 }
             }
             var filePath = Path.Combine(directory.AbsolutePath, fileName);
-            var exists = System.IO.File.Exists(filePath);
-            var exists2 = new File(filePath).Exists();
-            if (exists != exists2) {
-
-            }
-            if (exists2)
+            if (System.IO.File.Exists(filePath))
                 filePath = EnsureFilePathIsFree(directory.AbsolutePath, fileName);
             await using var outputStream = System.IO.File.OpenWrite(filePath);
             await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
