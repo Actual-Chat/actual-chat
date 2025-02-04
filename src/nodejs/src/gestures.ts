@@ -2,7 +2,7 @@ import { DeviceInfo } from 'device-info';
 import { DisposableBag } from 'disposable';
 import { DocumentEvents, preventDefaultForEvent, stopEvent } from 'event-handling';
 import { fromEvent } from 'rxjs';
-import { getOrInheritData } from 'dom-helpers';
+import { getOrInheritAttribute, getOrInheritData } from 'dom-helpers';
 import { History } from '../../dotnet/UI.Blazor/Services/History/history';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
@@ -10,6 +10,7 @@ import { Timeout } from 'timeout';
 import { Tune, TuneName, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 import { Vector2D } from 'math';
 import { Log } from 'logging';
+import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 
 const { debugLog } = Log.get('Gestures');
 
@@ -97,11 +98,19 @@ class DataHrefGesture extends Gesture {
         if (event.defaultPrevented)
             return;
 
-        const [element, href] = getOrInheritData(event.target, 'href');
+        let [element, href] = getOrInheritData(event.target, 'href');
+        const target = event.target as HTMLElement;
+        // TODO: Remove this workaround when MAUI issue is fixed: https://github.com/dotnet/maui/issues/25602
+        if (!href && DeviceInfo.isIos && BrowserInfo.hostKind === 'MauiApp') {
+            const [anchor, aHref] = getOrInheritAttribute(event.target, 'href');
+            if (anchor instanceof HTMLAnchorElement && anchor.target === '_blank') {
+                element = anchor;
+                href = aHref as string;
+            }
+        }
         if (href === null)
             return;
 
-        const target = event.target as HTMLElement;
         if (target && target.closest('div.pulling')) {
             // Do not trigger navigation during side-nav pulling
             return;
