@@ -30,7 +30,6 @@ public static class FlowsExt
         CancellationToken cancellationToken = default)
     {
         Flow.RequireCorrectType(flowType);
-        var services = flows.GetServices();
         var flowId = flows.GetFlowId(flowType, arguments);
         return await flows.GetOrStart(flowId, cancellationToken).ConfigureAwait(false);
     }
@@ -51,13 +50,56 @@ public static class FlowsExt
                 cancellationToken)
             .ConfigureAwait(false);
 
-    public static async Task<Flow?> GetAndResume(
+    public static Task<Flow?> GetAndResume(
         this IFlows flows,
         Type flowType,
         string arguments,
         TimeSpan? maxLastRunIn = null,
         string? tag = null,
         TimeSpan? delay = null,
+        CancellationToken cancellationToken = default)
+        => flows.GetAndSendEvent(flowType,
+            arguments,
+            (id, now) => new FlowResumeEvent(id,
+                false,
+                tag,
+                now + maxLastRunIn,
+                now + delay),
+            cancellationToken);
+
+    public static async Task<TFlow?> GetAndReset<TFlow>(
+        this IFlows flows,
+        string arguments,
+        TimeSpan? maxLastRunIn = null,
+        string? tag = null,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => (TFlow?)await flows.GetAndReset(typeof(TFlow),
+                arguments,
+                maxLastRunIn,
+                tag,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public static Task<Flow?> GetAndReset(
+        this IFlows flows,
+        Type flowType,
+        string arguments,
+        TimeSpan? maxLastRunIn = null,
+        string? tag = null,
+        CancellationToken cancellationToken = default)
+        => flows.GetAndSendEvent(flowType,
+            arguments,
+            (id, now) => new FlowResetEvent(id,
+                tag,
+                now + maxLastRunIn),
+            cancellationToken);
+
+    private static async Task<Flow?> GetAndSendEvent(
+        this IFlows flows,
+        Type flowType,
+        string arguments,
+        Func<FlowId, Moment, IFlowEvent> eventFactory,
         CancellationToken cancellationToken = default)
     {
         Flow.RequireCorrectType(flowType);
@@ -72,13 +114,10 @@ public static class FlowsExt
             log.LogInformation("`{Id}`.GetAndResume: skip resume because the flow was not found", flowId);
             return null;
         }
+
         var now = clocks.SystemClock.Now;
-        var flowResumeEvent = new FlowResumeEvent(flowId,
-            false,
-            tag,
-            now + maxLastRunIn,
-            now + delay);
-        await queues.Enqueue(flowResumeEvent, cancellationToken).ConfigureAwait(false);
+        var flowEvent = eventFactory(flowId, now);
+        await queues.Enqueue(flowEvent, cancellationToken).ConfigureAwait(false);
         return flow;
     }
 
