@@ -62,6 +62,10 @@
         }
         if (tiles.Count == 1) {
             var tile = tiles[0];
+            if (tile.Proportions is ImageProportions.Narrow)
+                return "sm-sm";
+            if (tile.Proportions is ImageProportions.Square)
+                return "md-md";
             if (tile.Proportions is ImageProportions.Wide)
                 return "lg-lg";
             if (tile.Proportions is ImageProportions.ExtraWide)
