@@ -80,7 +80,7 @@ body.narrow .narrow-panel .post-panel .message-input-label {
 }
 
 .post-panel .message-input .editor-content {
-    @apply mr-0 md:mr-2;
+    @apply mr-0 md:mr-2 md:py-0.5;
     @apply custom-scrollbar-hide;
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
@@ -286,15 +286,12 @@ body.narrow .attachment-list-wrapper > .c-btn-group {
     @apply hidden;
 }
 .attachment-list {
-    @apply flex-1 flex-x justify-start gap-x-4;
+    @apply flex-1 flex-x justify-start gap-x-0.5;
     @apply p-1 md:p-2;
     @apply overflow-x-auto;
 }
-body.narrow .attachment-list {
-    @apply gap-x-2;
-}
 .narrow-panel .attachment-list {
-    @apply gap-x-1 items-center;
+    @apply items-center;
 }
 
 .attachment-list-btn.btn {

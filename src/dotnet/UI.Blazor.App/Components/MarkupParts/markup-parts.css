@@ -6,7 +6,7 @@
 }
 
 .mention-markup {
-    @apply inline-flex align-middle items-center;
+    @apply inline-flex items-center;
     @apply max-w-48 h-5;
     @apply px-1.5;
     @apply rounded-full bg-mention-other;

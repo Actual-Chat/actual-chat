@@ -138,7 +138,11 @@ body.hoverable .author-modal .tile:hover {
 .author-modal .dialog-buttons {
     @apply mt-2;
 }
-.start-chat-btn p {
+.start-chat-btn .c-title {
+    @apply flex-x gap-x-1;
+    @apply overflow-hidden;
+}
+.start-chat-btn .c-title > .c-name {
     @apply truncate;
 }
 
@@ -157,9 +161,22 @@ body.hoverable .author-modal .tile:hover {
     @apply flex-y gap-y-2;
 }
 .author-modal .tile-wrapper > .c-incut {
-    @apply flex-1;
-    @apply min-h-16;
+    @apply flex-none;
+    @apply duration-250 ease-in-out;
+    height: 0;
+    filter: opacity(0);
+    transition-behavior: allow-discrete;
+    transition-property: filter, height;
 }
+.author-modal .tile-wrapper > .c-incut:has(.c-info) {
+    height: 4.5rem;
+    filter: opacity(1);
+    @starting-style {
+        filter: opacity(0);
+        height: 0;
+    }
+}
+
 .author-modal .tile-wrapper > .c-incut > .c-info {
     @apply flex-x items-start gap-x-2;
     @apply px-4 py-2;
@@ -168,13 +185,19 @@ body.hoverable .author-modal .tile:hover {
     @apply bg-[var(--sienna-50-20)];
     @apply text-caption-6 font-normal text-03;
 }
-
+.btn.anonymous-chat-btn {
+    @apply justify-start;
+}
 .btn-with-caption {
     @apply flex-y items-start;
     @apply overflow-hidden;
 }
 .btn-with-caption .c-caption {
+    @apply flex-x gap-x-1;
     @apply w-full;
     @apply text-caption-8;
+    @apply truncate;
+}
+.btn-with-caption .c-caption > .c-name {
     @apply truncate;
 }
