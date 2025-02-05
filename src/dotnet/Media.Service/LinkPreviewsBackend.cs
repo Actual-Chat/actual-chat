@@ -3,7 +3,6 @@ using ActualChat.Flows;
 using ActualChat.Media.Db;
 using ActualChat.Media.Flows;
 using ActualChat.Media.Module;
-using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
@@ -19,6 +18,9 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
     [field: AllowNull, MaybeNull]
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbLinkPreview> EntityResolver
+        => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbLinkPreview>>();
 
     private Moment SystemNow => Clocks.SystemClock.Now;
 
@@ -28,10 +30,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         bool mustScheduleRefreshIfRequired,
         CancellationToken cancellationToken)
     {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbLinkPreview = await dbContext.LinkPreviews.GetAsNoTracking(id, cancellationToken).ConfigureAwait(false);
+        var dbLinkPreview = await EntityResolver.Get(id, cancellationToken).ConfigureAwait(false);
         var linkPreview = dbLinkPreview?.ToModel();
 
         await ScheduleRefreshIfRequired().ConfigureAwait(false);
@@ -69,9 +68,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.LinkPreviews.SharedLock(id, cancellationToken).ConfigureAwait(false);
-        var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
+        var dbLinkPreview = await dbContext.LinkPreviews.GetAsNoTracking(id, cancellationToken).ConfigureAwait(false);
 
         if (change.IsCreate(out var linkPreview)) {
             if (dbLinkPreview != null)
