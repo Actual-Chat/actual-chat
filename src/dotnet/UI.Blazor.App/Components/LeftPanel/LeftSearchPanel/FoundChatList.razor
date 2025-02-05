@@ -6,8 +6,8 @@
         // TODO: loading view
         return;
 
-    _isPlace = Place is { Id.IsNone: false };
-    var listCls = _isPlace ? "place" : "";
+    var isPlace = Place is { Id.IsNone: false };
+    var listCls = isPlace ? "place" : "";
 }
 
 @if (foundItems.Count == 0) {
@@ -24,7 +24,7 @@
                 IsGlobalSearchResult="foundItem.IsGlobalSearchResult" />
         }
 
-        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@_isPlace"/>
+        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@isPlace"/>
 
         @if (foundItem.IsLastInGroup) {
             <Divider Class="mx-1 my-1.5" />
@@ -33,8 +33,6 @@
 </div>
 
 @code {
-    private bool _isPlace;
-
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
     private NavbarUI NavbarUI => Hub.NavbarUI;
