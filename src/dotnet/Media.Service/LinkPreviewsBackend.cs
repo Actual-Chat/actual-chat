@@ -83,14 +83,13 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 return null;
 
             dbLinkPreview.RequireVersion(expectedVersion);
+            dbContext.LinkPreviews.Attach(dbLinkPreview);
             linkPreview = linkPreview with {
                 CreatedAt = dbLinkPreview.CreatedAt,
-            };
-            dbLinkPreview = new DbLinkPreview(linkPreview) {
                 Version = VersionGenerator.NextVersion(dbLinkPreview.Version),
                 ModifiedAt = SystemNow,
             };
-            dbContext.Add(dbLinkPreview);
+            dbLinkPreview.UpdateFrom(linkPreview);
         }
         else
             throw StandardError.NotSupported("Link previews cannot be removed.");
@@ -98,10 +97,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbLinkPreview.ToModel();
     }
-
-    // [CommandHandler]
-
-    // Event handlers
 
     // [EventHandler]
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
