@@ -85,27 +85,31 @@ public static class FlowsExt
     public static Task<Flow> StartOrReset<TFlow>(
         this IFlows flows,
         string arguments,
+        TimeSpan? maxLastRunIn = null,
         string? tag = null,
         CancellationToken cancellationToken = default)
-        => flows.StartOrReset(typeof(TFlow), arguments, tag, cancellationToken);
+        => flows.StartOrReset(typeof(TFlow), arguments, maxLastRunIn, tag, cancellationToken);
 
     public static async Task<Flow> StartOrReset(
         this IFlows flows,
         Type flowType,
         string arguments,
+        TimeSpan? maxLastRunIn = null,
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
         Flow.RequireCorrectType(flowType);
         var services = flows.GetServices();
         var queues = services.Queues();
+        var clocks = services.Clocks();
 
         var flowId = flows.GetFlowId(flowType, arguments);
         var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
         if (flow == null)
             return await flows.GetOrStart(flowType, arguments, cancellationToken).ConfigureAwait(false);
 
-        var resetEvent = new FlowResetEvent(flowId, tag);
+        var now = clocks.SystemClock.Now;
+        var resetEvent = new FlowResetEvent(flowId, tag, now + maxLastRunIn);
         await queues.Enqueue(resetEvent, cancellationToken).ConfigureAwait(false);
         return flow;
     }

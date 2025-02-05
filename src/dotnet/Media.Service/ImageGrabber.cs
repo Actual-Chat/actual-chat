@@ -80,7 +80,7 @@ public class ImageGrabber(IServiceProvider services)
     private async Task<MediaId> GrabUnsafe(string imageUrl, CancellationToken cancellationToken)
     {
         var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
-        if (!NeedsUpdate()) {
+        if (!NeedsUpdate(grabStatus)) {
             var media = await MediaBackend.GetByMediaIdScope(GetMediaIdScope(imageUrl), cancellationToken).ConfigureAwait(false);
             if (media != null)
                 return media.Id;
@@ -89,21 +89,20 @@ public class ImageGrabber(IServiceProvider services)
         // TODO: image size limit
         var processedFile = await DownloadImageToFile(imageUrl, cancellationToken).ConfigureAwait(false);
         return await SaveFileToMedia(imageUrl, processedFile, cancellationToken).ConfigureAwait(false);
-
-        bool NeedsUpdate()
-            => grabStatus is null || grabStatus.ModifiedAt + GetUpdatePeriod(grabStatus) < Clocks.SystemClock.Now;
     }
 
     private async Task ScheduleUpdateIfRequired(string imageUrl, CancellationToken cancellationToken)
     {
         var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
-        var period = GetUpdatePeriod(grabStatus);
-        var arguments = PreviewThumbnailUpdateFlow.BuildArgs(imageUrl);
-        var flow = await Flows
-            .GetAndResume<PreviewThumbnailUpdateFlow>(arguments, period, cancellationToken: cancellationToken)
+        if (!NeedsUpdate(grabStatus))
+            return;
+
+        await Flows.StartOrReset<PreviewThumbnailUpdateFlow>(
+                PreviewThumbnailUpdateFlow.BuildArgs(imageUrl),
+                GetUpdatePeriod(grabStatus),
+                "Schedule update",
+                cancellationToken)
             .ConfigureAwait(false);
-        if (flow == null)
-            await Flows.GetOrStart<PreviewThumbnailUpdateFlow>(arguments, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ProcessedFile?> DownloadImageToFile(string imageUrl, CancellationToken cancellationToken)
@@ -195,6 +194,9 @@ public class ImageGrabber(IServiceProvider services)
         => Commander.Call(new GrabStatusesBackend_Change(GrabStatus.ComposeId(imageUrl), success),
             true,
             cancellationToken);
+
+    private bool NeedsUpdate(GrabStatus? grabStatus) => grabStatus is null
+        || grabStatus.ModifiedAt + GetUpdatePeriod(grabStatus) < Clocks.SystemClock.Now;
 
     private TimeSpan GetUpdatePeriod(GrabStatus? grabStatus)
         => grabStatus?.Success != false ? Settings.LinkPreviewUpdatePeriod : TimeSpan.FromHours(1);
