@@ -9,7 +9,7 @@ public partial class ChatIndexInitializerShardTests
     [Fact]
     public void HandleCompletionEventMethodIncrementsEventCounter()
     {
-        var evt = new MLSearch_TriggerChatIndexingCompletion(ChatId.None);
+        var evt = new MLSearch_SignalChatIndexingCompletion(ChatId.None);
         var state = new ChatIndexInitializerShard.SharedState(_fakeCursor, 1);
 
         var expected = state.EventCount + 1;
@@ -30,7 +30,7 @@ public partial class ChatIndexInitializerShardTests
         state.Semaphore.Wait();
         state.Semaphore.Wait();
 
-        var evt = new MLSearch_TriggerChatIndexingCompletion(chatId1);
+        var evt = new MLSearch_SignalChatIndexingCompletion(chatId1);
         ChatIndexInitializerShard.HandleCompletionEvent(evt, state);
 
         Assert.False(state.ScheduledJobs.ContainsKey(chatId1));
@@ -54,7 +54,7 @@ public partial class ChatIndexInitializerShardTests
 
         foreach (var _ in Enumerable.Range(0, 2)) {
             // Handle completion event for the same chat twice
-            var evt = new MLSearch_TriggerChatIndexingCompletion(chatId1);
+            var evt = new MLSearch_SignalChatIndexingCompletion(chatId1);
             ChatIndexInitializerShard.HandleCompletionEvent(evt, state);
         }
         // Verify only one semaphore slot is released
@@ -74,7 +74,7 @@ public partial class ChatIndexInitializerShardTests
         state.MaxVersion = 0;
         while (!state.ScheduledJobs.IsEmpty) {
             var chatId = state.ScheduledJobs.Keys.First();
-            var evt = new MLSearch_TriggerChatIndexingCompletion(chatId);
+            var evt = new MLSearch_SignalChatIndexingCompletion(chatId);
             ChatIndexInitializerShard.HandleCompletionEvent(evt, state);
         }
         Assert.Equal(versions.Max(), state.MaxVersion);

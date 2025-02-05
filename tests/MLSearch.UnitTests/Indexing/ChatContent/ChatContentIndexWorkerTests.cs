@@ -301,9 +301,9 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             .Setup(f => f.Create(It.IsAny<ChatId>()))
             .Returns(Task.FromResult(contentIndexer.Object));
 
-        QueuedCommand? command = null;
+        var commands = new List<QueuedCommand>();
         var queues = QueuesMock.Create((cmd, _) => {
-            command = cmd;
+            commands.Add(cmd);
             return Task.CompletedTask;
         });
 
@@ -330,13 +330,15 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
         ), Times.Exactly(Math.Min(updateCount, maxUpdateCount)));
 
-        Assert.NotNull(command);
+        Assert.NotEmpty(commands);
         if (updateCount < maxUpdateCount) {
-            var completionEvent = Assert.IsType<MLSearch_TriggerChatIndexingCompletion>(command.UntypedCommand);
+            var completionEvent = Assert.IsType<MLSearch_SignalChatIndexingCompletion>(commands[0].UntypedCommand);
             Assert.Equal(chatId, completionEvent.Id);
         }
         else {
-            Assert.Equal(job, command.UntypedCommand);
+            Assert.Equal(2, commands.Count);
+            Assert.Contains(commands, cmd => cmd.UntypedCommand is MLSearch_TriggerChatIndexing evt && evt.Id == (chatId, IndexingKind.ChatContent));
+            Assert.Contains(commands, cmd => cmd.UntypedCommand is MLSearch_SignalChatIndexingContinuation evt && evt.Id == chatId);
         }
     }
 

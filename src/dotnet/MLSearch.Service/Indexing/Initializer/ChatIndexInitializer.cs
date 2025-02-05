@@ -5,7 +5,8 @@ namespace ActualChat.MLSearch.Indexing.Initializer;
 
 internal interface IChatIndexInitializer
 {
-    ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion job, CancellationToken cancellationToken);
+    ValueTask PostAsync(MLSearch_SignalChatIndexingContinuation evt, CancellationToken cancellationToken);
+    ValueTask PostAsync(MLSearch_SignalChatIndexingCompletion evt, CancellationToken cancellationToken);
 }
 
 internal sealed class ChatIndexInitializer(
@@ -26,13 +27,24 @@ internal sealed class ChatIndexInitializer(
     private int? _activeShardIndex;
     private int ActiveShardIndex => _activeShardIndex ??= shardIndexResolver.Resolve(new DummyEvent(), ShardScheme);
 
-    public async ValueTask PostAsync(MLSearch_TriggerChatIndexingCompletion evt, CancellationToken cancellationToken)
+    public async ValueTask PostAsync(MLSearch_SignalChatIndexingContinuation evt, CancellationToken cancellationToken)
+    {
+        CheckForActiveShard();
+        await chatIndexInitializerShard.PostAsync(evt, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async ValueTask PostAsync(MLSearch_SignalChatIndexingCompletion evt, CancellationToken cancellationToken)
+    {
+        CheckForActiveShard();
+        await chatIndexInitializerShard.PostAsync(evt, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void CheckForActiveShard()
     {
         if (!_isHostingActiveShard) {
             throw StandardError.NotFound<ChatIndexInitializerShard>(
                 $"There is no active {nameof(ChatIndexInitializerShard)} at this node.");
         }
-        await chatIndexInitializerShard.PostAsync(evt, cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)

@@ -105,10 +105,12 @@ internal sealed class ChatContentIndexWorker(
         if (eventCount == MaxEventCount) {
             log.LogInformation("SMIDX: Rescheduling of semantic indexing of chat {}.", chatId);
             await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
+            var continuationNotification = new MLSearch_SignalChatIndexingContinuation(chatId);
+            await queues.Enqueue(continuationNotification, cancellationToken).ConfigureAwait(false);
         }
         else if (!cancellationToken.IsCancellationRequested) {
             log.LogInformation("SMIDX: Semantic indexing of chat {} is completed.", chatId);
-            var completionNotification = new MLSearch_TriggerChatIndexingCompletion(chatId);
+            var completionNotification = new MLSearch_SignalChatIndexingCompletion(chatId);
             await queues.Enqueue(completionNotification, cancellationToken).ConfigureAwait(false);
         }
         return;
