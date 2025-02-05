@@ -21,7 +21,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
     [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbLinkPreview> EntityResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbLinkPreview>>();
-
     private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
@@ -50,8 +49,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
                     cancellationToken)
                 : Task.CompletedTask;
     }
-
-    // [ComputeMethod]
 
     // [CommandHandler]
     public virtual async Task<LinkPreview?> OnChange(LinkPreviewsBackend_Change command, CancellationToken cancellationToken)
