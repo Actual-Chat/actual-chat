@@ -98,11 +98,12 @@ public class ImageGrabber(IServiceProvider services)
     {
         var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
         var period = GetUpdatePeriod(grabStatus);
-        var flow = await Flows.GetAndResume<PreviewThumbnailUpdateFlow>(imageUrl.ToBase64(),
+        var arguments = PreviewThumbnailUpdateFlow.BuildArgs(imageUrl);
+        var flow = await Flows.GetAndResume<PreviewThumbnailUpdateFlow>(arguments,
             period,
             cancellationToken: cancellationToken);
         if (flow == null)
-            await Flows.GetOrStart<PreviewThumbnailUpdateFlow>(imageUrl.ToBase64(), cancellationToken).ConfigureAwait(false);
+            await Flows.GetOrStart<PreviewThumbnailUpdateFlow>(arguments, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ProcessedFile?> DownloadImageToFile(string imageUrl, CancellationToken cancellationToken)

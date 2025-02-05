@@ -69,7 +69,7 @@ public static class FlowsExt
         var flowId = flows.GetFlowId(flowType, arguments);
         var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
         if (flow is null) {
-            log.LogInformation("`{Id}`.GetAndResume: unable to resume because the flow was not found", flowId);
+            log.LogInformation("`{Id}`.GetAndResume: skip resume because the flow was not found", flowId);
             return null;
         }
         var now = clocks.SystemClock.Now;
