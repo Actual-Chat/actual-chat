@@ -99,9 +99,9 @@ public class ImageGrabber(IServiceProvider services)
         var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
         var period = GetUpdatePeriod(grabStatus);
         var arguments = PreviewThumbnailUpdateFlow.BuildArgs(imageUrl);
-        var flow = await Flows.GetAndResume<PreviewThumbnailUpdateFlow>(arguments,
-            period,
-            cancellationToken: cancellationToken);
+        var flow = await Flows
+            .GetAndResume<PreviewThumbnailUpdateFlow>(arguments, period, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
         if (flow == null)
             await Flows.GetOrStart<PreviewThumbnailUpdateFlow>(arguments, cancellationToken).ConfigureAwait(false);
     }
