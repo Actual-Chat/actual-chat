@@ -96,13 +96,13 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new HistoryItemIdFormatter());
         services.AddScoped(c => new ModalUI(c.UIHub()));
         services.AddScoped(c => new BannerUI(c.UIHub()));
-        services.AddScoped(c => new FocusUI(c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped(c => new KeepAwakeUI(c));
+        services.AddScoped(c => new FocusUI(c.UIHub()));
+        services.AddScoped(c => new KeepAwakeUI(c.UIHub()));
         services.AddScoped(c => new DeviceAwakeUI(c.UIHub()));
         services.AddScoped(c => (ISleepDurationProvider)c.GetRequiredService<DeviceAwakeUI>());
         services.AddScoped(c => new UserActivityUI(c.UIHub()));
         services.AddScoped(c => new Escapist(c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped(c => new TuneUI(c));
+        services.AddScoped(c => new TuneUI(c.UIHub()));
         services.AddScoped(c => new BubbleUI(c.UIHub()));
         services.AddScoped(c => new ShareUI(c.UIHub()));
         services.AddScoped(_ => new ToastUI());

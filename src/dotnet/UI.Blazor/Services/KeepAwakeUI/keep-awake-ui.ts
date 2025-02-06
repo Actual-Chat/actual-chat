@@ -14,6 +14,7 @@ export class KeepAwakeUI {
     private static mustKeepAwake: boolean;
     private static isSubscribedOnClick = false;
 
+    /** Called by Blazor */
     public static setKeepAwake(mustKeepAwake: boolean) {
         debugLog?.log(`setKeepAwake(${mustKeepAwake})`);
         this.mustKeepAwake = mustKeepAwake;
