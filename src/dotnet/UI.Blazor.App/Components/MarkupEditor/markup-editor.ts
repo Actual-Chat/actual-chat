@@ -110,15 +110,15 @@ export class MarkupEditor {
     }
 
     public focus(force = false) {
-        if (!force) {
-            if (this.hasFocus())
-                return;
+        if (!force && this.hasFocus()){
+            debugLog?.log(`focus: already in focus, skipped`);
+            return;
+        }
 
-            if (!DeviceInfo.isIos) {
-                debugLog?.log('focus');
-                this.contentDiv.focus();
-                return;
-            }
+        if (!DeviceInfo.isIos) {
+            debugLog?.log('focus: setting focus on contentDiv');
+            this.contentDiv.focus();
+            return;
         }
 
         // The code blow makes sure mobile keyboard is shown on iOS.
@@ -234,10 +234,8 @@ export class MarkupEditor {
         const { selection, range, caretPosition, prevChar } = this.getPrevCharInfo();
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
-            if (prevChar.trim() != '')
-                this.insertHtml(" @", null, false);
-            else
-                this.insertHtml("@", null, false);
+            const html = prevChar.trim() != '' ? ' @' : '@';
+            this.insertHtml(html, null);
         }
         else {
             if (prevChar == "@") {

@@ -2,10 +2,9 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public class Form : EditForm
+public class Form : EditForm, IDisposable
 {
     private readonly Func<Task> _handleSubmitCached;
-    private readonly EventHandler<FieldChangedEventArgs> _editContextFieldChangedCached;
     private EditContext? _editContext;
 
     [Parameter] public string Class { get; set; } = "";
@@ -19,23 +18,35 @@ public class Form : EditForm
         _handleSubmitCached = (Func<Task>)typeof(EditForm)
             .GetField("_handleSubmitDelegate", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(this)!;
-        _editContextFieldChangedCached = (sender, args) => {
-            if (sender is not EditContext editContext)
-                return;
-            IsValid = editContext.Validate();
-            StateHasChanged();
-        };
+    }
+
+    public void Dispose()
+    {
+        if (_editContext is { } ctx) {
+            ctx.OnFieldChanged -= EditContextFieldChangedCached;
+            ctx.OnValidationStateChanged -= OnEditContextValidationStateChanged;
+        }
     }
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        if (EditContext is not { } editContext || ReferenceEquals(editContext, _editContext))
+        var editContext = EditContext;
+        if (ReferenceEquals(editContext, _editContext))
             return;
 
+        if (_editContext != null) {
+            _editContext.OnFieldChanged -= EditContextFieldChangedCached;
+            _editContext.OnValidationStateChanged -= OnEditContextValidationStateChanged;
+        }
+
         _editContext = editContext;
+        if (editContext == null)
+            return;
+
+        editContext.OnFieldChanged += EditContextFieldChangedCached;
+        editContext.OnValidationStateChanged += OnEditContextValidationStateChanged;
         IsValid = editContext.Validate();
-        editContext.OnFieldChanged += _editContextFieldChangedCached;
         StateHasChanged();
     }
 
@@ -75,5 +86,26 @@ public class Form : EditForm
 
         builder.CloseRegion();
 #pragma warning restore MA0123
+    }
+
+    private void OnEditContextValidationStateChanged(object? o, object? sender)
+    {
+        if (sender is not EditContext editContext)
+            return;
+
+        // handling async validation results
+        IsValid = !editContext.GetValidationMessages().Any();
+        StateHasChanged();
+    }
+
+    private void EditContextFieldChangedCached(object? sender, FieldChangedEventArgs e)
+    {
+        if (sender is not EditContext editContext)
+            return;
+
+        // NOTE: though it triggers async validation as well, but only synchronous validation results are returned here.
+        // For async results we listen ValidationStateChanged event below
+        IsValid = editContext.Validate();
+        StateHasChanged();
     }
 }

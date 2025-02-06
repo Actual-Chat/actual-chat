@@ -6,16 +6,17 @@ public sealed class AsyncValidator(ValidationModelStore modelStore)
 {
     public async Task<IReadOnlyCollection<ValidationResult>> Validate(ValidationContext validationContext, CancellationToken cancellationToken)
     {
-        var asyncValidationResults = await modelStore.List(validationContext)
+        var asyncValidationResults = await modelStore.ListForAsyncValidationOnly(validationContext)
             .Select(x => ValidateProperty(x, cancellationToken))
-            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken);
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
         return asyncValidationResults.SelectMany(x => x).SkipNullItems().ToList();
     }
 
     public async Task<IReadOnlyCollection<ValidationResult>> ValidateProperty(
         object? value, ValidationContext validationContext, CancellationToken cancellationToken)
     {
-        var ctx = modelStore.Get(validationContext.MemberName!, validationContext);
+        var ctx = modelStore.Get(validationContext);
         if (ctx is null)
             return [];
 

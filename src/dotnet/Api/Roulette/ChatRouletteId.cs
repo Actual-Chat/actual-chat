@@ -5,6 +5,8 @@ using MemoryPack;
 
 namespace ActualChat.Roulette;
 
+#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatRouletteId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ChatRouletteId>))]
@@ -33,7 +35,6 @@ public readonly partial struct ChatRouletteId : ISymbolIdentifier<ChatRouletteId
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
-
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatRouletteId(Symbol id) => this = Parse(id);

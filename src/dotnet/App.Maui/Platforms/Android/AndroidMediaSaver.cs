@@ -1,100 +1,223 @@
 ﻿using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using Android.App;
+using Android;
 using Android.Content;
+using Android.Content.PM;
+using Android.Media;
+using Android.OS;
+using Android.Provider;
+using File = Java.IO.File;
+using Environment = Android.OS.Environment;
+using Stream = System.IO.Stream;
+using JObject = Java.Lang.Object;
+using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
 public class AndroidMediaSaver(IServiceProvider services)
     : IMediaSaver
 {
-    private readonly object _lock = new();
-    private ToastUI? _toastUI;
-    private ILogger? _log;
-    private readonly List<long> _pendingDownloads = new ();
-    private DownloadCompletedBroadcastReceiver? _downloadCompletedReceiver;
+    private const string AppSubFolder = "Actual Chat";
 
-    private ToastUI ToastUI => _toastUI ??= services.GetRequiredService<ToastUI>();
-    private ILogger Log => _log ??= services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ToastUI ToastUI => field ??= services.GetRequiredService<ToastUI>();
+    [field: AllowNull, MaybeNull]
+    private IHttpClientFactory HttpClientFactory => field ??= services.GetRequiredService<IHttpClientFactory>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
 
-    public Task Save(string sUri, string contentType)
+    public async Task Save(string sUri, string contentType)
     {
-        var uri = Android.Net.Uri.Parse(sUri);
-        if (uri == null) {
-            Log.LogWarning("Invalid uri provided '{Uri}'", sUri);
-            return Task.CompletedTask;
-        }
+        // TODO(DF): Add special handling to ensure reliable file loading. Provide visual feedback for long loading files.
+        var sourceFile = new File(sUri);
+        var fileName = sourceFile.Name;
+        var succeeded = await BackgroundTask.Run(
+                () => SaveInternally(sUri, contentType, fileName),
+            CancellationToken.None)
+            .ConfigureAwait(true); // Continue on Blazor context.
 
-        EnsureDownloadCompletedReceiverRegistered();
+        if (succeeded)
+            ToastUI.Show("1 file saved to the gallery", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+        else
+            ToastUI.Show("Failed to save to the gallery", "icon-alert-circle", ToastDismissDelay.Long);
+    }
 
-        var appContext = Platform.AppContext;
+    private async Task<bool> SaveInternally(string sUri, string contentType, string fileName)
+    {
+        var succeeded = false;
         try {
-            var request = new DownloadManager.Request(uri);
-            request.SetNotificationVisibility(DownloadVisibility.VisibleNotifyCompleted);
-            var dir = Android.OS.Environment.DirectoryPictures;
-            var fileName = uri.PathSegments?.LastOrDefault() ?? "download";
-            request.SetDestinationInExternalPublicDir(dir, Path.Combine("ActualChat", fileName));
-            var dm = (DownloadManager)appContext.GetSystemService(Android.Content.Context.DownloadService)!;
-            lock (_lock) {
-                var downloadRef = dm.Enqueue(request);
-                _pendingDownloads.Add(downloadRef);
+            await using var inputStream = await GetStreamFromUrl(sUri).ConfigureAwait(false);
+            if (inputStream is not null)
+                succeeded = await SaveImageToGallery(inputStream, fileName, contentType).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to save media. ContentType: '{ContentType}', Uri: '{Uri}'", contentType, sUri);
+        }
+        return succeeded;
+    }
+
+    private async Task<Stream?> GetStreamFromUrl(string url)
+    {
+        try {
+            using var client = HttpClientFactory.CreateClient(nameof(AndroidMediaSaver));
+            var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStreamAsync();
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "Failed to get stream from url: '{Url}'", url);
+            return null;
+        }
+    }
+
+    private async Task<bool> SaveImageToGallery(Stream inputStream, string fileName, string contentType)
+    {
+        if (Build.VERSION.SdkInt < BuildVersionCodes.Q)
+            return await SaveImageToGalleryCompat(inputStream, fileName, contentType);
+
+        var contentKind = GetContentKind(contentType);
+        var contentValues = new ContentValues();
+        var dirDest = new File(GetSubDirectoryForContentKind(contentKind), AppSubFolder);
+        contentValues.Put(MediaStore.IMediaColumns.RelativePath, dirDest + File.Separator);
+        contentValues.Put(MediaStore.IMediaColumns.DisplayName, fileName);
+        contentValues.Put(MediaStore.IMediaColumns.MimeType, contentType);
+
+        var uriToInsert = contentKind switch {
+            ContentKind.Image => MediaStore.Images.Media.GetContentUri(MediaStore.VolumeExternalPrimary)!,
+            ContentKind.Video => MediaStore.Video.Media.GetContentUri(MediaStore.VolumeExternalPrimary)!,
+            _ => MediaStore.Downloads.GetContentUri(MediaStore.VolumeExternalPrimary)
+        };
+        var context = Platform.AppContext;
+        var contentResolver = context.ContentResolver!;
+        var dstUri = contentResolver.Insert(uriToInsert, contentValues);
+
+        if (dstUri == null) {
+            Log.LogError("Failed to save media file");
+            return false;
+        }
+
+        try {
+            await using var outputStream = contentResolver.OpenOutputStream(dstUri)!;
+            await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
+            Log.LogDebug("File saved to the gallery: {FileName}", fileName);
+            return true;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to save file to the gallery");
+            return false;
+        }
+    }
+
+    private static ContentKind GetContentKind(string contentType)
+    {
+        var contentKind = contentType.StartsWith("image/")
+            ? ContentKind.Image
+            : contentType.StartsWith("video/")
+                ? ContentKind.Video
+                : ContentKind.Other;
+        return contentKind;
+    }
+
+    private static string GetSubDirectoryForContentKind(ContentKind contentKind)
+    {
+        var contentTypeSubDirectory = contentKind switch {
+            ContentKind.Image => Environment.DirectoryPictures!,
+            ContentKind.Video => Environment.DirectoryMovies!,
+            _ => Environment.DirectoryDownloads!
+        };
+        return contentTypeSubDirectory;
+    }
+
+    private async Task<bool> SaveImageToGalleryCompat(Stream inputStream, string fileName, string contentType)
+    {
+        try {
+            var activity = MainActivity.Current.Require();
+            var writeStoragePermission = activity.CheckSelfPermission(Manifest.Permission.WriteExternalStorage);
+            if (writeStoragePermission != Permission.Granted) {
+                var completionSource = new TaskCompletionSource<bool>();
+                activity.RequestPermission(Manifest.Permission.WriteExternalStorage, hasGranted1 => completionSource.TrySetResult(hasGranted1));
+                var hasGranted = await completionSource.Task.ConfigureAwait(false);
+                if (!hasGranted) {
+                    Log.LogInformation("Permission to store files to external storage was not granted");
+                    return false;
+                }
             }
-            return Task.CompletedTask;
+
+            var contentKind = GetContentKind(contentType);
+            var directory = new File(Environment.GetExternalStoragePublicDirectory(GetSubDirectoryForContentKind(contentKind)), AppSubFolder);
+            var directoryExists = directory.Exists();
+            if (!directoryExists) {
+                directoryExists = directory.Mkdirs();
+                if (!directoryExists) {
+                    Log.LogWarning("Failed to create directory '{Dir}'", directory.AbsolutePath);
+                    return false;
+                }
+            }
+            var filePath = Path.Combine(directory.AbsolutePath, fileName);
+            if (System.IO.File.Exists(filePath))
+                filePath = EnsureFilePathIsFree(directory.AbsolutePath, fileName);
+            await using var outputStream = System.IO.File.OpenWrite(filePath);
+            await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
+            Log.LogDebug("File saved to: '{FilePath}'", filePath);
+
+            var contentValues = new ContentValues();
+            contentValues.Put(MediaStore.IMediaColumns.Data, filePath);
+            contentValues.Put(MediaStore.IMediaColumns.MimeType, contentType);
+            var uriToInsert = contentKind switch {
+                ContentKind.Image => MediaStore.Images.Media.ExternalContentUri!,
+                ContentKind.Video => MediaStore.Video.Media.ExternalContentUri!,
+                _ => MediaStore.Downloads.ExternalContentUri
+            };
+            var contentResolver = activity.ContentResolver!;
+            contentResolver.Insert(uriToInsert, contentValues);
+
+            MediaScannerConnection.ScanFile(activity,
+                [filePath],
+                [contentType],
+                new ScanCompletedListener(
+                    (path, uri) => Log.LogDebug("Scanned '{Path}' -> uri='{Uri}'", path, uri)));
+
+            return true;
         }
-        catch(Exception e) {
-            Log.LogError(e, "Failed to start file downloading");
-            return Task.CompletedTask;
+        catch (Exception e) {
+            Log.LogError(e, "Failed to save file");
+            return false;
         }
     }
 
-    private void EnsureDownloadCompletedReceiverRegistered()
+    private static string EnsureFilePathIsFree(string directoryAbsolutePath, string fileName)
     {
-        if (_downloadCompletedReceiver != null)
-            return;
+        var extension = Path.GetExtension(fileName);
+        var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
 
-        _downloadCompletedReceiver = new DownloadCompletedBroadcastReceiver(OnDownloadCompleted);
-        Platform.AppContext.RegisterReceiver(
-            _downloadCompletedReceiver,
-            new IntentFilter(DownloadManager.ActionDownloadComplete));
-    }
-
-    private void OnDownloadCompleted(long downloadRef)
-    {
-        lock (_lock) {
-            var removed = _pendingDownloads.Remove(downloadRef);
-            if (!removed)
-                downloadRef = -1;
+        for (int i = 1; i <= 20; i++) {
+            var filePath = Path.Combine(directoryAbsolutePath, NewFileName(i));
+            if (!System.IO.File.Exists(filePath))
+                return filePath;
         }
-        if (downloadRef < 0)
-            return;
+        return Path.Combine(directoryAbsolutePath, NewFileName(System.Environment.TickCount64));
 
-        var dm = Platform.AppContext.GetSystemService(Context.DownloadService) as DownloadManager;
-        if (dm.IsNull())
-            return;
-
-        var uri = dm.GetUriForDownloadedFile(downloadRef);
-        if (uri == null)
-            return;
-
-        MainThread.BeginInvokeOnMainThread(() => {
-            ToastUI.Show("1 file downloaded", "icon-checkmark-circle-2", ToastDismissDelay.Short);
-        });
-    }
-
-    [BroadcastReceiver(Enabled = true, Exported = false, Label = "Download completion Broadcast Receiver")]
-    private class DownloadCompletedBroadcastReceiver(Action<long>? onDownloadCompleted) : BroadcastReceiver
-    {
-        public DownloadCompletedBroadcastReceiver() : this(null)
-        { }
-
-        public override void OnReceive(Context? context, Intent? intent)
+        string NewFileName(long index)
         {
-            if (intent.IsNull())
-                return;
-
-            var id = intent.GetLongExtra(DownloadManager.ExtraDownloadId, -1);
-            if (id >= 0)
-                onDownloadCompleted?.Invoke(id);
+            var newFileName = fileNameWithoutExtension + " (" + index.ToInvariantString() + ")";
+            if (!extension.IsNullOrEmpty())
+                newFileName += extension;
+            return newFileName;
         }
+    }
+
+    // Nested types
+
+    private enum ContentKind { Image, Video, Other }
+
+    private class ScanCompletedListener : JObject, MediaScannerConnection.IOnScanCompletedListener
+    {
+        private readonly Action<string, Uri> _onScanCompleted;
+
+        public ScanCompletedListener(Action<string, Uri> onScanCompleted)
+            => _onScanCompleted = onScanCompleted;
+
+        public void OnScanCompleted(string? path, Uri? uri)
+            => _onScanCompleted(path!, uri!);
     }
 }

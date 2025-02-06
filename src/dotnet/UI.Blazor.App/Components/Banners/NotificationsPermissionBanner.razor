@@ -12,7 +12,7 @@
 }
 
 @if (isVisible) {
-    <RenderIntoSlot Name="PermissionBanner">
+    <RenderIntoSlot Name="@PermissionBannerSwitch.SlotName">
         <Banner
             @key="@GetType()"
             IsVisible="@isVisible"

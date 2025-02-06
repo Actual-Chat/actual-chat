@@ -30,6 +30,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         services.AddHttpClient(Crawler.HttpClientName)
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
         services.AddSingleton<Crawler>();
+        services.AddSingleton<RobotsFiles>();
         services.AddSingleton<ICrawlingHandler, WebSiteHandler>();
         services.AddSingleton<ICrawlingHandler, ImageLinkHandler>();
         services.AddSingleton<ImageGrabber>();

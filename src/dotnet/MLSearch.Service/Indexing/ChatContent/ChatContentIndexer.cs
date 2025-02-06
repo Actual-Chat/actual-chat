@@ -198,7 +198,7 @@ internal sealed class ChatContentIndexer(
     }
 
     private IAsyncEnumerable<SourceEntries> ArrangeBufferedEntriesAsync(CancellationToken cancellationToken)
-        => contentArranger.ArrangeAsync(_buffer, _tailDocs.Values, cancellationToken);
+        => contentArranger.Arrange(_buffer, _tailDocs.Values, cancellationToken);
 
     private ValueTask<IReadOnlyList<ChatEntry>> LoadByIdsAsync(
         IEnumerable<ChatEntryId> entryIds,

@@ -24,7 +24,7 @@ internal sealed class ChatContentArrangerSelector(IServiceProvider services) : I
         }
 
         IChatContentArranger contentArranger = useArranger2
-            ? services.GetRequiredService<ChatContentArranger2>()
+            ? services.GetRequiredService<ChatContentArranger3>()
             : services.GetRequiredService<ChatContentArranger>();
         return contentArranger;
     }

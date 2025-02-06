@@ -17,11 +17,15 @@
 }
 .markup-editor .editor-content .editor-mention {
     @apply inline-block;
-    @apply px-1.5 py-0.25 mx-[1px] -mb-1.5;
-    @apply rounded-full bg-mention-other;
+    @apply max-w-48;
+    @apply px-1.5 mx-px -mb-1.5;
+    @apply rounded-full;
+    @apply bg-mention-other;
     @apply text-mention-other-text font-medium;
     @apply truncate;
-    max-width: 12rem;
+}
+body.narrow .markup-editor .editor-content .editor-mention {
+    @apply -mb-1;
 }
 .markup-editor .editor-hidden {
     @apply inline-block overflow-hidden w-[1px] h-[1px];

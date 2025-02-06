@@ -1,6 +1,10 @@
 @page "/test/skeletons"
-@layout NoLayout
+@layout BaseLayout
 
 <RequireAccount MustBeAdmin="true"/>
 
-<SkeletonPage/>
+<div class="skeleton-page">
+    <SkeletonLeftPanel/>
+    <SkeletonChatPanel/>
+    @* <SkeletonRightPanel/> *@
+</div>

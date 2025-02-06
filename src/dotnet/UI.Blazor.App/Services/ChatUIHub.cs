@@ -81,8 +81,6 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public AudioInitializer AudioInitializer => field ??= Services.GetRequiredService<AudioInitializer>();
     [field: AllowNull, MaybeNull]
-    public IAudioOutputController AudioOutputController => field ??= Services.GetRequiredService<IAudioOutputController>();
-    [field: AllowNull, MaybeNull]
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     [field: AllowNull, MaybeNull]
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();

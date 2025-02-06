@@ -154,7 +154,6 @@
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.Google.Dagger" />
-    <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
     <PackageReference Include="System.Net.WebSockets" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">

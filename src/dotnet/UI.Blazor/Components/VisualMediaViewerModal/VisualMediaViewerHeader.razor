@@ -2,7 +2,6 @@
 @using ActualChat.Hosting
 @using ActualChat.Media
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
 @{
     var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
@@ -25,26 +24,40 @@
     }
     <div class="c-control-panel">
         @if (_enableIncompleteUI) {
-            <HeaderButton Class="bleached">
+            <HeaderButton
+                Class="bleached"
+                Tooltip="Share"
+                TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-share"></i>
             </HeaderButton>
         }
         @if (!DownloadUrl.IsNullOrEmpty()) {
-            if (Saver != null && canSave) {
-                <a href="#" download class="c-link" @onclick="@(_ => Saver.Save(DownloadUrl, ContentType))" @onclick:preventDefault>
-                    <HeaderButton Class="bleached">
+            if (SaveMediaActionHandler != null && canSave) {
+                <a href="#" download class="c-link" @onclick="@SaveMediaActionHandler.Execute" @onclick:preventDefault>
+                    <HeaderButton
+                        Class="bleached"
+                        IsDisabled="@SaveMediaActionHandler.IsBusy"
+                        Tooltip="Download"
+                        TooltipPosition="FloatingPosition.Bottom">
                         <i class="icon-download"></i>
                     </HeaderButton>
                 </a>
             } else {
                 <a href="@DownloadUrl" target="_blank" download class="c-link">
-                    <HeaderButton Class="bleached">
+                    <HeaderButton
+                        Class="bleached"
+                        Tooltip="Download"
+                        TooltipPosition="FloatingPosition.Bottom">
                         <i class="icon-download"></i>
                     </HeaderButton>
                 </a>
             }
         }
-        <HeaderButton Class="desktop bleached" Click="CloseClick">
+        <HeaderButton
+            Class="desktop bleached"
+            Tooltip="Close"
+            TooltipPosition="FloatingPosition.Bottom"
+            Click="CloseClick">
             <i class="icon-close"></i>
         </HeaderButton>
     </div>
@@ -53,15 +66,14 @@
 @code {
     private Author? _author;
     private bool _enableIncompleteUI;
-    private IAuthors? _authors;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
     private Session Session => Hub.Session();
-    private IAuthors Authors => _authors ??= Hub.GetRequiredService<IAuthors>();
-    private IMediaSaver? Saver { get; set; }
-
     private Features Features => Hub.Features();
+    [field: AllowNull, MaybeNull]
+    private IAuthors Authors => field ??= Hub.GetRequiredService<IAuthors>();
+    private IUIActionHandler? SaveMediaActionHandler { get; set; }
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
@@ -69,7 +81,12 @@
     [Parameter] public string ContentType { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
-        Saver = Hub.GetService<IMediaSaver>();
+        var saver = Hub.GetService<IMediaSaver>();
+        if (saver != null) {
+            SaveMediaActionHandler = UIActionHandler.Create(
+                this,
+                () => saver.Save(DownloadUrl, ContentType));
+        }
         _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
     }
 

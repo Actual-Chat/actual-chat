@@ -283,18 +283,17 @@
     private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
         => await MarkupEditorRef.Focus();
 
-    private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
+    private Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
         var chatEntry = @event.Entry;
-        await Edit(chatEntry, cancellationToken);
+        return Edit(chatEntry, cancellationToken);
     }
 
-    private async Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken) {
-        await OnCancel(cancellationToken);
-    }
+    private Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken)
+        => OnCancel(cancellationToken);
 
-    private async Task OnAttachButtonClickEvent(AttachButtonClickEvent @event, CancellationToken cancellationToken)
-        => await OnAttachClick(@event.AcceptTypes);
+    private Task OnAttachButtonClickEvent(AttachButtonClickEvent @event, CancellationToken cancellationToken)
+        => OnAttachClick(@event.AcceptTypes);
 
-    private async Task OnMentionButtonClickEvent(MentionButtonClickEvent @event, CancellationToken cancellationToken)
-        => await OnMentionButtonClick();
+    private Task OnMentionButtonClickEvent(MentionButtonClickEvent @event, CancellationToken cancellationToken)
+        => OnMentionButtonClick();
 }

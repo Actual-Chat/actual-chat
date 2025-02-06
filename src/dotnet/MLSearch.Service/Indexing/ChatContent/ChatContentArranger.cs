@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal interface IChatContentArranger
 {
-    IAsyncEnumerable<SourceEntries> ArrangeAsync(IReadOnlyCollection<ChatEntry> bufferedEntries, IReadOnlyCollection<ChatSlice> tailDocuments, CancellationToken cancellationToken);
+    IAsyncEnumerable<SourceEntries> Arrange(IReadOnlyCollection<ChatEntry> bufferedEntries, IReadOnlyCollection<ChatSlice> tailDocuments, CancellationToken cancellationToken);
 }
 
 internal sealed class ChatContentArranger(
@@ -14,7 +14,7 @@ internal sealed class ChatContentArranger(
 {
     public int MaxEntriesPerDocument { get; init; } = 3;
 
-    public async IAsyncEnumerable<SourceEntries> ArrangeAsync(
+    public async IAsyncEnumerable<SourceEntries> Arrange(
         IReadOnlyCollection<ChatEntry> bufferedEntries,
         IReadOnlyCollection<ChatSlice> tailDocuments,
         [EnumeratorCancellation] CancellationToken cancellationToken)

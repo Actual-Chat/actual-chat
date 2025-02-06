@@ -12,7 +12,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private readonly MutableState<PlaybackState?> _playbackState;
 
-    private IAudioOutputController AudioOutputController => Hub.AudioOutputController;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private TuneUI TuneUI => Hub.TuneUI;
 
@@ -131,7 +130,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
         async Task EnterState(PlaybackState? state, CancellationToken ct)
         {
-            await AudioOutputController.ToggleAudio(state != null).ConfigureAwait(false);
             if (state is HistoricalPlaybackState historical) {
                 _ = TuneUI.Play(Tune.StartHistoricalPlayback);
                 var startTask = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);

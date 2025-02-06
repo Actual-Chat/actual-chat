@@ -10,7 +10,7 @@ namespace ActualChat.App.Maui;
 public sealed partial class MauiWebView: IDisposable
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiWebView)];
-    private static readonly object StaticLock = new();
+    private static readonly Lock StaticLock = new();
     private static MauiWebView? _current;
     private static int _lastId;
     private static long _lastResumeAt = CpuTimestamp.Now.Value;
@@ -21,7 +21,7 @@ public sealed partial class MauiWebView: IDisposable
     public static MauiWebView? Current => _current;
     public static CpuTimestamp LastResumeAt => new(Interlocked.Read(ref _lastResumeAt));
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     public long Id { get; }
     public BlazorWebView BlazorWebView { get; }
     public object PlatformWebView { get; private set; } = null!;

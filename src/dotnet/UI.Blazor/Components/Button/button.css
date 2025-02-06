@@ -45,6 +45,7 @@ body.device-ios * {
 }
 .btn > .btn-content {
     @apply flex-x items-center justify-center gap-x-2;
+    @apply overflow-hidden;
 }
 .btn > .btn-content i {
     @apply flex-none;

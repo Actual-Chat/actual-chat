@@ -16,7 +16,7 @@
 }
 
 @if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
-     <RenderIntoSlot Name="MainLeftDrawer">
+     <RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
          <LeftPanel IsSkeletonWidePanel="@true">
              <WidePanelBottomContent>
                  <SendJoinPlaceRequestWidget/>
@@ -25,7 +25,7 @@
      </RenderIntoSlot>
 }
 
-<RenderIntoSlot Name="MainHeader">
+<RenderIntoSlot Name="@LayoutSlots.MainHeader">
     @if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
         <SkeletonChatHeader/>
     } else {
@@ -33,15 +33,15 @@
     }
 </RenderIntoSlot>
 
-<RenderIntoSlot Name="MainFooter">
+<RenderIntoSlot Name="@LayoutSlots.MainFooter">
     <ChatFooter Chat="@chat" Model="m.FooterModel" />
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
+<RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1000_000" Key="BannersSubHeader">
     <Banners Chat="@chat"/>
 </RenderIntoStack>
 
-<RenderIntoSlot Name="MainRightDrawer">
+<RenderIntoSlot Name="@LayoutSlots.MainRightDrawer">
     <ChatRightPanel Chat="@chat"/>
 </RenderIntoSlot>
 

@@ -12,8 +12,8 @@ public class AppServicesAccessor
 {
     private static readonly TimeSpan WhenRenderedTimeout = TimeSpan.FromSeconds(3);
 
-    private static readonly object AppServicesLock = new(); // Otherwise Rider assumes we're referencing it from elsewhere
-    private static ILogger? _log; // Otherwise Rider assumes we're referencing it from elsewhere
+    private static readonly Lock AppServicesLock = new(); // Otherwise, Rider assumes we're referencing it from elsewhere
+    private static ILogger? _log; // Otherwise, Rider assumes we're referencing it from elsewhere
     private static volatile IServiceProvider? _scopedServices;
     // ReSharper disable once InconsistentNaming
     private static readonly TaskCompletionSource<IServiceProvider> _appServicesSource =
@@ -23,7 +23,7 @@ public class AppServicesAccessor
     private static volatile TaskCompletionSource<IServiceProvider> _blazorAppServicesChangedSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
 
-    private static ILogger Log // Otherwise Rider assumes we're referencing it from elsewhere
+    private static ILogger Log // Otherwise, Rider assumes we're referencing it from elsewhere
         => _log ??= StaticLog.Factory.CreateLogger<AppServicesAccessor>();
 
     public static IServiceProvider BlazorAppServices {
