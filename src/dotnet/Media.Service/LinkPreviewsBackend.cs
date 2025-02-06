@@ -3,7 +3,6 @@ using ActualChat.Flows;
 using ActualChat.Media.Db;
 using ActualChat.Media.Flows;
 using ActualChat.Media.Module;
-using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
@@ -19,7 +18,9 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
     [field: AllowNull, MaybeNull]
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
-
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbLinkPreview> EntityResolver
+        => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbLinkPreview>>();
     private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
@@ -28,15 +29,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
         bool mustScheduleRefreshIfRequired,
         CancellationToken cancellationToken)
     {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
+        var dbLinkPreview = await EntityResolver.Get(id, cancellationToken).ConfigureAwait(false);
         var linkPreview = dbLinkPreview?.ToModel();
 
-        await ScheduleRefreshIfRequired();
+        await ScheduleRefreshIfRequired().ConfigureAwait(false);
         if (linkPreview?.PreviewMediaId.IsNone != false)
             return linkPreview;
 
@@ -46,15 +42,12 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         Task ScheduleRefreshIfRequired()
             => mustScheduleRefreshIfRequired && linkPreview != null && NeedsUpdate(linkPreview.ModifiedAt)
-                ? Flows.GetAndResume<LinkPreviewFlow>(linkPreview.Url,
+                ? Flows.GetAndReset<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(linkPreview.Url),
                     Settings.LinkPreviewUpdatePeriod,
                     "Get link preview",
-                    null,
                     cancellationToken)
                 : Task.CompletedTask;
     }
-
-    // [ComputeMethod]
 
     // [CommandHandler]
     public virtual async Task<LinkPreview?> OnChange(LinkPreviewsBackend_Change command, CancellationToken cancellationToken)
@@ -71,9 +64,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.LinkPreviews.SharedLock(id, cancellationToken).ConfigureAwait(false);
-        var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
+        var dbLinkPreview = await dbContext.LinkPreviews.GetAsNoTracking(id, cancellationToken).ConfigureAwait(false);
 
         if (change.IsCreate(out var linkPreview)) {
             if (dbLinkPreview != null)
@@ -92,14 +83,13 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 return null;
 
             dbLinkPreview.RequireVersion(expectedVersion);
+            dbContext.LinkPreviews.Attach(dbLinkPreview);
             linkPreview = linkPreview with {
                 CreatedAt = dbLinkPreview.CreatedAt,
-            };
-            dbLinkPreview = new DbLinkPreview(linkPreview) {
                 Version = VersionGenerator.NextVersion(dbLinkPreview.Version),
                 ModifiedAt = SystemNow,
             };
-            dbContext.Add(dbLinkPreview);
+            dbLinkPreview.UpdateFrom(linkPreview);
         }
         else
             throw StandardError.NotSupported("Link previews cannot be removed.");
@@ -107,10 +97,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbLinkPreview.ToModel();
     }
-
-    // [CommandHandler]
-
-    // Event handlers
 
     // [EventHandler]
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
@@ -129,7 +115,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
             foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks))
-                await Flows.GetOrStart<LinkPreviewFlow>(link.ToBase64(), cancellationToken);
+                await Flows.GetOrStart<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(link), cancellationToken);
         }
     }
 

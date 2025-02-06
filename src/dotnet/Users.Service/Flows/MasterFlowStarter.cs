@@ -1,18 +1,19 @@
 using ActualChat.Flows;
 using ActualChat.Flows.Infrastructure;
-using ActualChat.Queues;
 
 namespace ActualChat.Users.Flows;
 
 internal class MasterFlowStarter(IServiceProvider services)
     : ShardWorker(services, ShardScheme.FlowsBackend)
 {
-    private FlowRegistry FlowRegistry { get; } = services.GetRequiredService<FlowRegistry>();
-    private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
-    private IQueues Queues { get; } = services.Queues();
-
     private readonly Dictionary<Type, (FlowId FlowId, int RequiredShardIndex)> _masterFlows = new ();
     private bool _isCompleted;
+
+    [field: AllowNull, MaybeNull]
+    private FlowRegistry FlowRegistry => field ??= Services.GetRequiredService<FlowRegistry>();
+    [field: AllowNull, MaybeNull]
+    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
+
 
     protected override Task OnStart(CancellationToken cancellationToken)
     {
@@ -36,7 +37,11 @@ internal class MasterFlowStarter(IServiceProvider services)
         }
 
         foreach (var (masterFlowType, (flowId, _)) in _masterFlows)
-            await Flows.StartOrReset(masterFlowType, flowId.Arguments, "MasterFlowStarter", cancellationToken)
+            await Flows.StartOrReset(masterFlowType,
+                    flowId.Arguments,
+                    null,
+                    "MasterFlowStarter",
+                    cancellationToken)
                 .ConfigureAwait(false);
         _isCompleted = true;
     }

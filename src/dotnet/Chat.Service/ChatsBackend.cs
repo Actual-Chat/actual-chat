@@ -527,6 +527,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return dbChats.Select(x => x.ToModel()).ToApiArray();
     }
 
+    // Not a [ComputeMethod]!
     public async Task<ApiArray<ChatEntry>> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -549,6 +550,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
     }
 
+    // Not a [ComputeMethod]!
     public async Task<ApiArray<ChatEntry>> ListNewEntries(
         ChatId chatId,
         long minLocalIdExclusive,
@@ -571,6 +573,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToApiArray();
     }
 
+    // Not a [ComputeMethod]!
     public async Task<ApiArray<ChatEntry>> ListEntries(
         ChatId chatId,
         Moment from,

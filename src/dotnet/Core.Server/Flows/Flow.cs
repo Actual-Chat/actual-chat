@@ -19,7 +19,6 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     private static readonly bool DebugMode = Constants.DebugMode.Flows;
     private FlowWorklet? _worklet;
-    private ILogger? _log;
 
     // Persisted to the DB directly
     [IgnoreDataMember, MemoryPackIgnore]
@@ -41,7 +40,8 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     protected FlowWorklet Worklet => RequireWorklet();
     protected FlowEventBin Event { get; private set; } = null!;
     protected MomentClockSet Clocks => Host.Clocks;
-    protected ILogger Log => _log ??= Host.Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Host.Services.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, DebugMode);
 
     public void Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, FlowWorklet? worklet = null)
