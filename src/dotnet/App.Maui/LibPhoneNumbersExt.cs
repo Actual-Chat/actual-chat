@@ -51,10 +51,16 @@ public static class PhoneNumberExt
         [NotNullWhen(true)] out PhoneNumber? phoneNumber)
     {
         try {
+            var firstChar = source.Trim().FirstOrDefault();
+            if (!char.IsDigit(firstChar) && firstChar is not '+') {
+                phoneNumber = null;
+                return false;
+            }
             phoneNumber = phoneNumberUtil.Parse(source, region);
             return true;
         }
-        catch (Exception) {
+        catch (Exception e) {
+            StaticLog.For<PhoneNumberUtil>().LogWarning(e, "!!! {Phone}", source);
             phoneNumber = null;
             return false;
         }
