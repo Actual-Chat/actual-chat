@@ -47,6 +47,7 @@ public static class ClientStartup
         "Microsoft.JSInterop.Infrastructure.ArrayBuilder`1", "Microsoft.JSInterop")]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All,
         "Microsoft.JSInterop.Infrastructure.DotNetObjectReferenceJsonConverter`1", "Microsoft.JSInterop")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HeadOutlet))]
     // Diffs
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
