@@ -11,24 +11,18 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
     private const int BatchSize = 100;
     private static readonly RandomTimeSpan BatchInterval = TimeSpan.FromSeconds(1).ToRandom(0.1);
 
-    private AccountUI? _accountUI;
-    private IExternalContacts? _externalContacts;
-    private IExternalContactHashes? _externalContactHashes;
-    private DeviceContacts? _deviceContacts;
-    private ExternalContactHasher? _externalContactHasher;
-    private ContactsPermissionHandler? _contactsPermission;
-
-    private AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
-    private IExternalContacts ExternalContacts
-        => _externalContacts ??= Services.GetRequiredService<IExternalContacts>();
-    private IExternalContactHashes ExternalContactHashes
-        => _externalContactHashes ??= Services.GetRequiredService<IExternalContactHashes>();
-    private ExternalContactHasher ExternalContactHasher
-        => _externalContactHasher ??= Services.GetRequiredService<ExternalContactHasher>();
-    private DeviceContacts DeviceContacts
-        => _deviceContacts ??= Services.GetRequiredService<DeviceContacts>();
-    private ContactsPermissionHandler ContactsPermission
-        => _contactsPermission ??= Services.GetRequiredService<ContactsPermissionHandler>();
+    [field: AllowNull, MaybeNull]
+    private AccountUI AccountUI => field ??= Services.GetRequiredService<AccountUI>();
+    [field: AllowNull, MaybeNull]
+    private IExternalContacts ExternalContacts => field ??= Services.GetRequiredService<IExternalContacts>();
+    [field: AllowNull, MaybeNull]
+    private IExternalContactHashes ExternalContactHashes => field ??= Services.GetRequiredService<IExternalContactHashes>();
+    [field: AllowNull, MaybeNull]
+    private ExternalContactHasher ExternalContactHasher => field ??= Services.GetRequiredService<ExternalContactHasher>();
+    [field: AllowNull, MaybeNull]
+    private DeviceContacts DeviceContacts => field ??= Services.GetRequiredService<DeviceContacts>();
+    [field: AllowNull, MaybeNull]
+    private ContactsPermissionHandler ContactsPermission => field ??= Services.GetRequiredService<ContactsPermissionHandler>();
 
     protected override Task OnRun(CancellationToken cancellationToken)
         => AsyncChain.From(TrySync)
