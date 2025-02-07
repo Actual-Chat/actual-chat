@@ -18,6 +18,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
         [Tune.SelectNavbarItem] = new (new[] { 20 }/*, "select-navbar-item"*/),
         [Tune.ShowInputError] = new (new[] { 80 }/*, "show-input-error"*/),
         [Tune.DragStart] = new (new[] { 100 }/*, "drag-start"*/),
+        [Tune.ChangeToggle] = new (new[] { 20 }/*, "change-toggle"*/),
         // Recording
         [Tune.BeginRecording] = new (new[] { 100, 50, 50 }, "begin-recording"),
         [Tune.ConfirmRecording] = new (new[] { 50, 50, 100 }/*, "confirm-recording"*/),
@@ -129,6 +130,7 @@ public enum Tune
     ShowMenu,
     React,
     DragStart,
+    ChangeToggle,
 }
 
 public record TuneInfo(int[] Vibration, string Sound = "");

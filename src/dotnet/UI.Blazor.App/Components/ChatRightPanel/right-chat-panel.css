@@ -61,9 +61,7 @@
 }
 .right-panel-close-btn.btn.btn-round {
     @apply bg-[var(--white-05)];
-}
-.right-panel-close-btn.btn.btn-round .btn-content {
-    @apply text-toast-text;
+    @apply text-[var(--white-90)];
 }
 .right-chat-panel > .c-header > .c-top {
     @apply relative;

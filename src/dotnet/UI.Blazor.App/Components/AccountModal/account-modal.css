@@ -25,7 +25,7 @@
     @apply h-full;
 }
 .author-modal .c-header > .c-bottom {
-    @apply flex-y items-start justify-end;
+    @apply flex-y items-start justify-end gap-y-1;
     @apply w-full;
     @apply px-4 pt-10;
     @apply bg-modal;
