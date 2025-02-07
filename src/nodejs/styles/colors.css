@@ -553,9 +553,9 @@
     --text-banner-error: var(--magenta-80);
 
     /* Toasts */
-    --toast-body: var(--ash-40);
-    --toast-text: var(--ash-99);
-    --toast-action: var(--blue-80);
+    --toast-body: var(--ash-95);
+    --toast-text: var(--gray-05);
+    --toast-action: var(--blue-60);
 
     /* Modals */
     --modal-background: var(--ash-22);

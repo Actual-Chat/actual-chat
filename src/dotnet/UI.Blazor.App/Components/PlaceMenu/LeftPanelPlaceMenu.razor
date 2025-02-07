@@ -7,6 +7,13 @@
     Text="New chat"
     Click="OnCreateChatClick">
 </MenuEntry>
+@if (_canInvite) {
+    <MenuEntry
+        Icon="icon-person-add"
+        Text="Add members"
+        Click="OnInviteMembersClick">
+    </MenuEntry>
+}
 @if (_isOwner) {
     <MenuEntry
         Icon="icon-cloud-upload"
@@ -33,6 +40,7 @@
     private PlaceId _placeId;
     private bool _isOwner;
     private bool _canLeave;
+    private bool _canInvite;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
@@ -49,6 +57,7 @@
         var session = Session;
         var place = await Places.Get(session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;
+        _canInvite = place?.Rules.CanInvite() ?? false;
         var canLeave = place != null && place.Rules.CanLeave();
         if (canLeave && _isOwner) {
             var ownerIds = await Places.ListOwnerIds(session, _placeId, default).ConfigureAwait(false);
@@ -69,4 +78,7 @@
 
     private void OnImportChatsClick()
         => _ = ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
+
+    private void OnInviteMembersClick()
+        => _ = ModalUI.Show(new AddMemberModal.Model(_placeId));
 }
