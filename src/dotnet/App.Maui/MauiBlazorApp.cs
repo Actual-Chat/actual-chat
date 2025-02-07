@@ -2,22 +2,26 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Security;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui;
 
 public sealed class MauiBlazorApp : AppBase, IDisposable
 {
     private MauiWebView? _mauiWebView;
-
-    [Inject] private ScopedServicesDisposeTracker ScopedServicesDisposeTracker { get; init; } = null!;
+    private MauiWebViewPageContextTracker? _pageContextTracker;
 
     public void Dispose()
-        => _mauiWebView?.ResetScopedServices(Services);
+    {
+        Log.LogInformation("Dispose MauiBlazorApp");
+        _pageContextTracker?.OnMauiBlazorAppDisposing();
+        _mauiWebView?.ResetScopedServices(Services);
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        _pageContextTracker = Services.GetRequiredService<MauiWebViewPageContextTracker>();
         _mauiWebView = MauiWebView.Current;
+        _pageContextTracker.AttachTo(_mauiWebView);
         TrueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
         var session = await TrueSessionResolver.SessionTask.ConfigureAwait(true);
         _mauiWebView?.SetScopedServices(Services, session);

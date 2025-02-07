@@ -1,3 +1,4 @@
+using System.Net.WebSockets;
 using System.Runtime.ExceptionServices;
 
 namespace ActualChat.UI.Blazor.App;
@@ -6,14 +7,21 @@ public static class FirstChanceExceptionLogger
 {
     private static readonly ILogger Log = StaticLog.Factory.CreateLogger("FCE");
 
+    public static Func<Exception, bool> ShouldSkip { get; set; } = _ => false;
+
     public static void Use()
         => AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
 
     private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
     {
         var error = e.Exception;
-        if (error is OperationCanceledException)
+        if (error is OperationCanceledException or WebSocketException)
             return; // This one has to be skipped
+
+        foreach (var func in ShouldSkip.GetInvocationList().OfType<Func<Exception, bool>>()) {
+            if (func(error))
+                return; // This one has to be skipped
+        }
 
         var withStackTrace = true;
         // Handles System.IO.FileNotFoundException and Java.IO.FileNotFoundException exceptions as well

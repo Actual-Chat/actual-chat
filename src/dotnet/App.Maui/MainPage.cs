@@ -20,8 +20,9 @@ public class MainPage : ContentPage
     public void RecreateWebView()
     {
         var oldWebView = MauiWebView.Current;
+        Content = null;
+        oldWebView?.Disconnect();
         Content = new MauiWebView().BlazorWebView;
-        oldWebView?.Dispose();
     }
 
     // NOTE(AY): Currently unused

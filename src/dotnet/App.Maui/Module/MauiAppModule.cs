@@ -25,7 +25,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         // System
-        services.AddScoped<ScopedServicesDisposeTracker>(c => new ScopedServicesDisposeTracker(c));
+        services.AddScoped<MauiWebViewPageContextTracker>(c => new MauiWebViewPageContextTracker(c));
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
