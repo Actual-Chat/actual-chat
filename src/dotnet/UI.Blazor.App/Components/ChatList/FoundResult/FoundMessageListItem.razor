@@ -58,22 +58,36 @@
                     } else {
                         // Place chat message
                         @if (!IsPlace) {
+                            // Global search
                             <div class="c-second-line message">
                                 In <span class="c-place-title">@m.Place?.Title</span>
                             </div>
-                        }
-                        <div class="c-third-line place-chat">
-                            <span class="c-name">
-                                <AuthorName
-                                    AuthorSid="@m.Entry.AuthorId"
-                                    ShowDetailsOnClick="false"
-                                    ShowAsYou="true"/>
-                            </span>
-                            <span class="c-colon">:</span>
-                            <div class="c-entry">
+                            <div class="c-third-line place-chat">
+                                <span class="c-name">
+                                    <AuthorName
+                                        AuthorSid="@m.Entry.AuthorId"
+                                        ShowDetailsOnClick="false"
+                                        ShowAsYou="true"/>
+                                </span>
+                                <span class="c-colon">:</span>
+                                <div class="c-entry">
+                                    <SearchMatchHighlighter Match="@m.MessageMatch"/>
+                                </div>
+                            </div>
+                        } else {
+                            // Search in place
+                            <div class="c-second-line">
+                                <span class="c-name">
+                                    <AuthorName
+                                        AuthorSid="@m.Entry.AuthorId"
+                                        ShowDetailsOnClick="false"
+                                        ShowAsYou="true"/>
+                                </span>
+                            </div>
+                            <div class="c-third-line public-chat">
                                 <SearchMatchHighlighter Match="@m.MessageMatch"/>
                             </div>
-                        </div>
+                        }
                     }
                 </div>
             </div>

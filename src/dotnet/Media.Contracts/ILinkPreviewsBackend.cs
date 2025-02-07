@@ -5,7 +5,7 @@ namespace ActualChat.Media;
 
 public interface ILinkPreviewsBackend : IComputeService, IBackendService
 {
-    [ComputeMethod]
+    [ComputeMethod(AutoInvalidationDelay = 25 * 60 * 60 * 1000)]
     Task<LinkPreview?> Get(
         Symbol id,
         bool mustScheduleRefreshIfRequired,

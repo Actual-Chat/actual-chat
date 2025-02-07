@@ -7,6 +7,16 @@ namespace ActualChat;
 
 public static class DbSetExt
 {
+    public static Task<TEntity?> GetAsNoTracking<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
+        this DbSet<TEntity> set,
+        string id,
+        CancellationToken cancellationToken)
+        where TEntity : class, IHasId<string>
+    {
+        id.RequireNonEmpty(nameof(id));
+        return set.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
     public static ValueTask<TEntity?> Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
         this DbSet<TEntity> set,
         Symbol key,

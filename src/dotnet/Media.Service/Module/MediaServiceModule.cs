@@ -45,6 +45,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         dbModule.AddDbContextServices<MediaDbContext>(services, db => {
             db.AddEntityResolver<string, DbMedia>();
             db.AddEntityResolver<string, DbGrabStatus>();
+            db.AddEntityResolver<string, DbLinkPreview>();
         });
 
         // Flows

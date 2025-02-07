@@ -17,6 +17,9 @@ public sealed partial class PreviewThumbnailUpdateFlow : Flow, IHasLastRunAt
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Moment LastRunAt { get; private set; }
 
+    public static string BuildArgs(string url)
+        => url.ToBase64();
+
     protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
         await Run(cancellationToken).ConfigureAwait(false);

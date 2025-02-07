@@ -2,16 +2,13 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class KeepAwakeUI(IServiceProvider services)
+public class KeepAwakeUI(UIHub hub)
 {
     private static readonly string JSSetKeepAwakeMethod = $"{BlazorUICoreModule.ImportName}.KeepAwakeUI.setKeepAwake";
 
-    private IJSRuntime? _js;
-    private ILogger? _log;
-
-    protected IServiceProvider Services { get; } = services;
-    protected IJSRuntime JS => _js ??= Services.JSRuntime();
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+    protected IJSRuntime JS => hub.JSRuntime();
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public virtual ValueTask SetKeepAwake(bool value)
     {

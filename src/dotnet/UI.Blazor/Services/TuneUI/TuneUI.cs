@@ -44,20 +44,19 @@ public class TuneUI : ITuneUIBackend, IDisposable
 #pragma warning restore CA1861
 
     private DotNetObjectReference<ITuneUIBackend> _blazorRef = null!;
-    private ILogger? _log;
 
     protected virtual bool UseJsVibration => true;
 
-    private IServiceProvider Services { get; }
-    private IJSRuntime JS { get; }
-    private ILogger Log => _log ??= Services.LogFor<TuneUI>();
+    private UIHub Hub { get; }
+    private IJSRuntime JS => Hub.JSRuntime();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor<TuneUI>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneUI))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneInfo))]
-    public TuneUI(IServiceProvider services)
+    public TuneUI(UIHub hub)
     {
-        Services = services;
-        JS = services.JSRuntime();
+        Hub = hub;
         _ = Initialize();
     }
 
