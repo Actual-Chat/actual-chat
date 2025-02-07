@@ -18,7 +18,7 @@
 </label>
 
 @code {
-    private bool _previousValue;
+    private bool? _previousValue;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private TuneUI TuneUI => Hub.TuneUI;
@@ -33,21 +33,18 @@
 
     public bool CurrentValue { get; set; }
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (firstRender) {
+    protected override void OnParametersSet() {
+        if (_previousValue is null) {
             _previousValue = IsChecked;
-            return;
+        } else {
+            if (_previousValue.Value != IsChecked) {
+                _previousValue = IsChecked;
+                _ = TuneUI.Play(Tune.ChangeToggle);
+            }
         }
 
-        if (_previousValue == IsChecked)
-            return;
-
-        _ = TuneUI.Play(Tune.ChangeToggle);
-        _previousValue = IsChecked;
+        CurrentValue = IsChecked;
     }
-
-    protected override void OnParametersSet()
-        => CurrentValue = IsChecked;
 
     private void OnChange(ChangeEventArgs eventArgs) {
         CurrentValue = eventArgs.Value is true;
