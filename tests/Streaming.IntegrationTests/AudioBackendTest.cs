@@ -91,7 +91,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         readSize.Should().BeGreaterThan(100);
         var transcribed = await readTranscriptTask;
         transcribed.Should().BeGreaterThan(0);
-        readSize.Should().BeLessOrEqualTo(writtenSize);
+        readSize.Should().BeLessThanOrEqualTo(writtenSize);
     }
 
     [Fact(Skip = "Depends on Google API")]
@@ -147,7 +147,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         readSize.Should().BeGreaterThan(100);
         var transcribed = await readTranscriptTask;
         transcribed.Should().BeGreaterThan(0);
-        readSize.Should().BeLessOrEqualTo(writtenSize);
+        readSize.Should().BeLessThanOrEqualTo(writtenSize);
 
         var idRange = await chats.GetIdRange(chat.Id, ChatEntryKind.Text, true, CancellationToken.None);
         var lastIdTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(idRange.End - 1);
@@ -217,7 +217,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         readSize.Should().BeGreaterThan(100);
         var transcribed = await readTranscriptTask;
         transcribed.Should().BeGreaterThan(0);
-        readSize.Should().BeLessOrEqualTo(writtenSize);
+        readSize.Should().BeLessThanOrEqualTo(writtenSize);
 
         var idRange = await chats.GetIdRange(chat.Id, ChatEntryKind.Text, true, CancellationToken.None);
         var lastIdTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(idRange.End - 1);

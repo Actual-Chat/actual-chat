@@ -61,7 +61,7 @@ public abstract class DbInitializer<
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             var mustMigrate = false;
             if (HostInfo.IsTested)
-                mustMigrate = Random.Shared.Next(30) < 1; // 3% migration probability in tests
+                mustMigrate = Random.Shared.Next(100) < 3; // 3% migration probability in tests
             if (mustMigrate)
                 await MigrateDb(db, cancellationToken).ConfigureAwait(false);
             else

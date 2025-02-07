@@ -342,7 +342,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private async Task<List<ContactId>> ListContactIds(Session session,int expectedCount)
         => await ComputedTest.When(async ct => {
             var contactIds = await ListContactIds(session, ct);
-            contactIds.Should().HaveCountGreaterOrEqualTo(expectedCount);
+            contactIds.Should().HaveCountGreaterThanOrEqualTo(expectedCount);
             return contactIds;
         }, TimeSpan.FromSeconds(10));
 
@@ -364,7 +364,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)
         => ContactId.Peer(owner.Id, friendAccount.Id);
 
-    private static EquivalencyAssertionOptions<ExternalContactFull> Including(EquivalencyAssertionOptions<ExternalContactFull> o)
+    private static EquivalencyOptions<ExternalContactFull> Including(EquivalencyOptions<ExternalContactFull> o)
         => o.Including(x => x.Id).Including(x => x.Hash);
 
     private Task<AccountFull> SignInAsUniqueJack(Identities identities)

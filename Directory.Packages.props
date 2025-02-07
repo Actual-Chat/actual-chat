@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>9.8.17</ActualLabFusionVersion>
+    <ActualLabFusionVersion>9.8.26</ActualLabFusionVersion>
     <AspNetCoreVersion>9.0.1</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>9.0.1</EntityFrameworkCoreVersion>
@@ -13,7 +13,7 @@
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>[9.0.1,)</MicrosoftExtensionsVersion>
     <NpgsqlVersion>9.0.2</NpgsqlVersion>
-    <RedisVersion>2.8.16</RedisVersion>
+    <RedisVersion>2.8.24</RedisVersion>
     <SignalRVersion>[9.0.0,)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenSearchClientVersion>1.6.0</OpenSearchClientVersion>
@@ -21,7 +21,7 @@
     <SentryVersion>4.4.0</SentryVersion>
     <!-- NOTE(AY): v1.20.X is broken, please don't upgrade to it! -->
     <MemoryPackVersion>1.21.3</MemoryPackVersion>
-    <MessagePackVersion>3.1.1</MessagePackVersion>
+    <MessagePackVersion>3.1.3</MessagePackVersion>
     <XamarinAndroidLifecycle>2.8.7.1</XamarinAndroidLifecycle>
   </PropertyGroup>
 
@@ -142,7 +142,7 @@
     <PackageVersion Include="Grpc.Core" Version="2.46.6" /> <!-- Used by OLTP exporter -->
     <PackageVersion Include="HtmlAgilityPack" Version="1.11.71" />
     <PackageVersion Include="libphonenumber-csharp" Version="8.13.51" />
-    <PackageVersion Include="MailKit" Version="4.8.0" />
+    <PackageVersion Include="MailKit" Version="4.10.0" />
     <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Generator" Version="$(MemoryPackVersion)" />
@@ -182,7 +182,7 @@
     <PackageVersion Include="RestEase" Version="1.6.4" />
     <PackageVersion Include="Pidgin" Version="3.3.0" />
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.8" />
-    <PackageVersion Include="Polly" Version="8.5.0" />
+    <PackageVersion Include="Polly" Version="8.5.2" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
     <PackageVersion Include="Sentry" Version="$(SentryVersion)" />
     <PackageVersion Include="Sentry.Extensions.Logging" Version="$(SentryVersion)" />
@@ -239,14 +239,14 @@
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.0.0" />
     <!-- For the build project -->
-    <PackageVersion Include="CliWrap" Version="3.7.0" />
+    <PackageVersion Include="CliWrap" Version="3.7.1" />
     <PackageVersion Include="Bullseye" Version="4.1.1" />
     <PackageVersion Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1" />
     <PackageVersion Include="System.Management" Version="7.0.0-rc.2.22472.3" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
     <PackageVersion Include="bunit" Version="1.27.17" />
-    <PackageVersion Include="FluentAssertions" Version="6.12.2" />
+    <PackageVersion Include="AwesomeAssertions" Version="8.0.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
@@ -257,17 +257,17 @@
     <PackageVersion Include="Microsoft.Playwright" Version="1.48.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" />
-    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" />
-    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.7.115" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="Xunit.DependencyInjection" Version="9.5.0" />
     <PackageVersion Include="Xunit.DependencyInjection.Logging" Version="9.0.0" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <!-- Analyzers -->
     <PackageVersion Include="Moq.Analyzers" Version="0.2.0" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.12.19" />
     <PackageVersion Include="Meziantou.Analyzer" Version="2.0.180" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.12.9" />
-    <PackageVersion Include="xunit.analyzers" Version="1.17.0" />
+    <PackageVersion Include="xunit.analyzers" Version="1.20.0" />
     <!-- Generators -->
     <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.4" />
     <PackageVersion Include="ActualLab.Generators" Version="$(ActualLabFusionVersion)" />

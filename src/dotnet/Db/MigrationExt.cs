@@ -91,18 +91,16 @@ public static class MigrationExt
         await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 
         // Creating migration history table
-        if (!await historyRepository.ExistsAsync(cancellationToken).ConfigureAwait(false)) {
-            var command = rawSqlCommandBuilder.Build(historyRepository.GetCreateScript());
-            await command.ExecuteNonQueryAsync(
-                    new RelationalCommandParameterObject(
-                        connection,
-                        null,
-                        null,
-                        currentContext.Context,
-                        commandLogger, CommandSource.Migrations),
-                    cancellationToken)
-                .ConfigureAwait(false);
-        }
+        var command = rawSqlCommandBuilder.Build(historyRepository.GetCreateIfNotExistsScript());
+        await command.ExecuteNonQueryAsync(
+                new RelationalCommandParameterObject(
+                    connection,
+                    null,
+                    null,
+                    currentContext.Context,
+                    commandLogger, CommandSource.Migrations),
+                cancellationToken)
+            .ConfigureAwait(false);
 
         // Adding rows to migration history table
         var productVersion = ProductInfo.GetVersion();

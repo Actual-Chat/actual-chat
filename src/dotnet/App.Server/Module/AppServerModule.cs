@@ -103,13 +103,15 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
 
         // Endpoint mapping
         app.UseStaticDistCacheHeaders(); // Customized cache headers for Static files from dist and _content folders
-        app.MapStaticAssets();
-        app.MapRazorComponents<RootServerPage>()
-            .AddInteractiveServerRenderMode()
-            .AddInteractiveWebAssemblyRenderMode()
-            .AddAdditionalAssemblies(typeof(WebApp).Assembly) // UI.Blazor.AppPack
-            .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
-            .AddAdditionalAssemblies(typeof(ChatUIHub).Assembly); // UI.Blazor.App
+        if (!HostInfo.IsTested) {
+            app.MapStaticAssets();
+            app.MapRazorComponents<RootServerPage>()
+                .AddInteractiveServerRenderMode()
+                .AddInteractiveWebAssemblyRenderMode()
+                .AddAdditionalAssemblies(typeof(WebApp).Assembly) // UI.Blazor.AppPack
+                .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
+                .AddAdditionalAssemblies(typeof(ChatUIHub).Assembly); // UI.Blazor.App
+        }
         app.MapRpcWebSocketServer();
         if (HostInfo.HasRole(HostRole.Api)) {
             app.MapFusionAuthEndpoints(); // /signIn, /signOut
