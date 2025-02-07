@@ -17,7 +17,8 @@ internal sealed class ChatContentIndexer(
     IChatContentDocumentLoader documentLoader,
     IChatContentMapper documentMapper,
     IChatContentArranger contentArranger,
-    ISink<ChatSlice, string> sink
+    ISink<ChatSlice, string> sink,
+    ILogger<ChatContentIndexer> log
 ) : IChatContentIndexer
 {
     private enum ChatEventType
@@ -142,9 +143,9 @@ internal sealed class ChatContentIndexer(
             foreach (var docId in existingDocuments.Select(doc => doc.Id)) {
                 var isDeleted = isEmptyContent || newDoc?.Id.Equals(docId, StringComparison.Ordinal) != true;
                 if (isDeleted) {
-                    _tailDocs.Remove(docId);
-                    _outUpdates.Remove(docId);
-                    _outRemoves.Add(docId);
+                    _ = _tailDocs.Remove(docId);
+                    _ = _outUpdates.Remove(docId);
+                    _ = _outRemoves.Add(docId);
                 }
             }
             // Add new document to output buffer and update caches
@@ -188,6 +189,8 @@ internal sealed class ChatContentIndexer(
 
         // Update cursor value
         _cursor = _nextCursor = _buffer.Select(e => new ChatContentCursor(e)).Append(_nextCursor).Max()!;
+
+        log.LogInformation("Indexing of chat {}: {} docs updated, {} docs removed.", chatId, _outUpdates.Count, _outRemoves.Count);
 
         // Clear output buffers
         _outUpdates.Clear();

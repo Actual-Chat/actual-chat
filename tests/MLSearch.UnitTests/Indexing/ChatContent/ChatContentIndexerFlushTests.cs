@@ -38,7 +38,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
 
         var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
         // Emulate loading tail documents
-        docLoader
+        _ = docLoader
             .Setup(x => x.LoadTailAsync(
                 It.IsAny<ChatId>(),
                 It.IsAny<ChatContentCursor>(),
@@ -46,7 +46,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(tailDocuments);
         // On update, we get the document from index by entry id
-        docLoader
+        _ = docLoader
             .Setup(x => x.LoadByEntryIdsAsync(It.IsAny<IEnumerable<ChatEntryId>>(), It.IsAny<CancellationToken>()))
             .Returns<IEnumerable<ChatEntryId>, CancellationToken>(
                 (ids, _) => {
@@ -67,7 +67,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
         });
 
         var contentArranger = new Mock<IChatContentArranger>(MockBehavior.Loose);
-        contentArranger
+        _ = contentArranger
             .Setup(x => x.Arrange(
                 It.IsAny<IReadOnlyCollection<ChatEntry>>(),
                 It.IsAny<IReadOnlyCollection<ChatSlice>>(),
@@ -83,7 +83,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
         IReadOnlyCollection<ChatSlice>? actualUpdates = null;
         IReadOnlyCollection<string>? actualRemoves = null;
         var sink = new Mock<ISink<ChatSlice, string>>(MockBehavior.Loose);
-        sink.Setup(x => x.ExecuteAsync(
+        _ = sink.Setup(x => x.ExecuteAsync(
                 It.IsAny<IReadOnlyCollection<ChatSlice>>(),
                 It.IsAny<IReadOnlyCollection<string>>(),
                 It.IsAny<CancellationToken>()))
@@ -94,9 +94,10 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
                     return Task.CompletedTask;
                 }
             );
+        var log = LogMock.Create<ChatContentIndexer>();
 
         var maxTailSetSize = NewContent.Length / 2;
-        var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper.Object, contentArranger.Object, sink.Object) {
+        var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper.Object, contentArranger.Object, sink.Object, log.Object) {
             MaxTailSetSize = maxTailSetSize,
         };
 
@@ -143,9 +144,9 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
 
         // Check our buffers are in expected state
         Assert.Equal(NewContent.Length, contentIndexer.Buffer.Count);
-        Assert.Single(contentIndexer.OutUpdates);
+        _ = Assert.Single(contentIndexer.OutUpdates);
         Assert.True(contentIndexer.OutUpdates.ContainsKey(updatedDoc.Id));
-        Assert.Single(contentIndexer.OutRemoves);
+        _ = Assert.Single(contentIndexer.OutRemoves);
         Assert.Contains(removedDoc.Id, contentIndexer.OutRemoves);
 
         var contentCursor = await contentIndexer.FlushAsync(CancellationToken.None);

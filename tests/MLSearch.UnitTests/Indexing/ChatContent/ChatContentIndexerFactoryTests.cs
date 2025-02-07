@@ -11,22 +11,25 @@ public class ChatContentIndexerFactoryTests(ITestOutputHelper @out) : TestBase(@
     public async Task CreateMethodReturnsIndexerInstance()
     {
         var serviceProvider = new Mock<IServiceProvider>(MockBehavior.Loose);
-        serviceProvider
+        _ = serviceProvider
             .Setup(x => x.GetService(typeof(IChatContentArrangerSelector)))
             .Returns(Mock.Of<IChatContentArrangerSelector>(MockBehavior.Loose));
         var chatsBackend = Mock.Of<IChatsBackend>(MockBehavior.Loose);
-        serviceProvider
+        _ = serviceProvider
             .Setup(x => x.GetService(typeof(IChatsBackend)))
             .Returns(chatsBackend);
-        serviceProvider
+        _ = serviceProvider
             .Setup(x => x.GetService(typeof(IChatContentDocumentLoader)))
             .Returns(Mock.Of<IChatContentDocumentLoader>(MockBehavior.Loose));
-        serviceProvider
+        _ = serviceProvider
             .Setup(x => x.GetService(typeof(IChatContentMapper)))
             .Returns(Mock.Of<IChatContentMapper>(MockBehavior.Loose));
-        serviceProvider
+        _ = serviceProvider
             .Setup(x => x.GetService(typeof(ISink<ChatSlice, string>)))
             .Returns(Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose));
+        _ = serviceProvider
+            .Setup(x => x.GetService(typeof(ILogger<ChatContentIndexer>)))
+            .Returns(LogMock.Create<ChatContentIndexer>().Object);
 
         var factory = new ChatContentIndexerFactory(serviceProvider.Object);
 

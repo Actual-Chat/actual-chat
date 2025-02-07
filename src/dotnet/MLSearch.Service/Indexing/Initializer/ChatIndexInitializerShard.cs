@@ -211,12 +211,12 @@ internal sealed class ChatIndexInitializerShard(
     public static void HandleCompletionEvent(
         MLSearch_TriggerChatIndexingCompletion evt, SharedState state)
     {
-        Interlocked.Increment(ref state.EventCount);
+        _ = Interlocked.Increment(ref state.EventCount);
         if (state.ScheduledJobs.TryRemove(evt.Id, out var info) && info is var (version, _)) {
             if (Volatile.Read(ref state.MaxVersion) < version) {
                 Volatile.Write(ref state.MaxVersion, version);
             }
-            state.Semaphore.Release();
+            _ = state.Semaphore.Release();
         }
     }
 
@@ -282,7 +282,7 @@ internal sealed class ChatIndexInitializerShard(
                 if (state.ScheduledJobs.TryRemove(jobId, out var info) && info is var (_, timestamp)) {
                     log.LogWarning("Evicting indexing job for chat #{JobId} which is stall for {Interval}.",
                         jobId, updateMoment - timestamp);
-                    state.Semaphore.Release();
+                    _ = state.Semaphore.Release();
                 }
             }
             await cursorStates.SaveAsync(CursorKey, new Cursor(nextVersion), cancellationToken).ConfigureAwait(false);

@@ -66,12 +66,9 @@ internal sealed class ChatContentIndexWorker(
             await foreach (var entry in GetUpdatedEntriesAsync(chatId, cursor, cancellationToken).ConfigureAwait(false)) {
                 await indexer.ApplyAsync(entry, cancellationToken).ConfigureAwait(false);
                 if (++eventCount % FlushInterval == 0) {
-                    applyActivity?.SetTag(NumOfAppliedEventsTag, FlushInterval);
-                    applyActivity?.Dispose();
-                    applyActivity = null;
-
                     await FlushAsync().ConfigureAwait(false);
 
+                    applyActivity?.SetTag(NumOfAppliedEventsTag, FlushInterval).Dispose();
                     applyActivity = ActivitySource.StartActivity(ApplyActivityName, ActivityKind.Internal);
                 }
                 if (eventCount == MaxEventCount) {
@@ -79,12 +76,16 @@ internal sealed class ChatContentIndexWorker(
                 }
             }
 
-            applyActivity?.SetTag(NumOfAppliedEventsTag, eventCount % FlushInterval);
+            await FlushAsync().ConfigureAwait(false);
+            _ = applyActivity?.SetTag(NumOfAppliedEventsTag, eventCount % FlushInterval);
+        }
+        catch (Exception ex) {
+            _ = applyActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
         }
         finally {
             applyActivity?.Dispose();
         }
-        await FlushAsync().ConfigureAwait(false);
 
         if (eventCount == MaxEventCount) {
             await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);

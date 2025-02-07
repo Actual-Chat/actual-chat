@@ -14,7 +14,7 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
         var tailDocuments = ChatContentTestHelpers.CreateDocuments();
         var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
-        docLoader
+        _ = docLoader
             .Setup(x => x.LoadTailAsync(
                 It.IsAny<ChatId>(),
                 It.IsAny<ChatContentCursor>(),
@@ -24,9 +24,10 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
         var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
         var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
         var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
+        var log = LogMock.Create<ChatContentIndexer>();
 
         var chatId = new ChatId(Generate.Option);
-        var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink) {
+        var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink, log.Object) {
             MaxTailSetSize = maxTailSetSize,
         };
 
@@ -53,7 +54,7 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
     {
         var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
-        docLoader
+        _ = docLoader
             .Setup(x => x.LoadTailAsync(
                 It.IsAny<ChatId>(),
                 It.IsAny<ChatContentCursor>(),
@@ -63,10 +64,11 @@ public class ChatContentIndexerInitTests(ITestOutputHelper @out) : TestBase(@out
         var docMapper = Mock.Of<IChatContentMapper>(MockBehavior.Loose);
         var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
         var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
+        var log = LogMock.Create<ChatContentIndexer>();
 
-        var contentIndexer = new ChatContentIndexer(ChatId.None, chats, docLoader.Object, docMapper, contentArranger, sink);
+        var contentIndexer = new ChatContentIndexer(ChatId.None, chats, docLoader.Object, docMapper, contentArranger, sink, log.Object);
 
         var cursor = new ChatContentCursor(0, 0);
-        await Assert.ThrowsAsync<UniqueException>(() => contentIndexer.InitAsync(cursor, CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UniqueException>(() => contentIndexer.InitAsync(cursor, CancellationToken.None));
     }
 }
