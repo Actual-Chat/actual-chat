@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+using ActualChat.UI.Blazor.App;
 using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
@@ -35,6 +35,9 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
     public bool IsReady => _state != 0;
 
     internal IJSRuntime WebViewJSRuntime { get; } = webViewJSRuntime;
+
+    static SafeJSRuntime()
+        => FirstChanceExceptionLogger.ShouldSkip += e => e.IsDisconnectedException();
 
     public bool MarkReady()
         => Interlocked.CompareExchange(ref _state, 1, 0) == 0;

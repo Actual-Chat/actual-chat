@@ -51,15 +51,33 @@ public class AndroidWebChromeClient : WebChromeClient
     };
 
     private readonly MainActivity _activity;
-
     private readonly WebChromeClient _client;
     private readonly VisualMediaFileChooser _visualMediaFileChooser;
+    private ILogger Log { get; }
 
-    public AndroidWebChromeClient(WebChromeClient client, MainActivity activity, VisualMediaFileChooser visualMediaFileChooser)
+    public AndroidWebChromeClient(
+        WebChromeClient client,
+        MainActivity activity,
+        VisualMediaFileChooser visualMediaFileChooser,
+        ILogger<AndroidWebChromeClient> log)
     {
         _activity = activity;
         _client = client;
         _visualMediaFileChooser = visualMediaFileChooser;
+        Log = log;
+    }
+
+    private bool HasDisconnected { get; set; }
+
+    public void MarkDisconnected()
+        => HasDisconnected = true;
+
+    protected override void Dispose(bool disposing)
+    {
+        Log.LogDebug("Dispose. Disposing={Disposing}", disposing);
+        if (disposing && _client.IsNotNull())
+            _client.Dispose();
+        base.Dispose(disposing);
     }
 
     public override void OnGeolocationPermissionsShowPrompt(string? origin, GeolocationPermissions.ICallback? callback)
@@ -128,7 +146,13 @@ public class AndroidWebChromeClient : WebChromeClient
     public override void GetVisitedHistory(IValueCallback? callback)
         => _client.GetVisitedHistory(callback);
     public override bool OnConsoleMessage(ConsoleMessage? consoleMessage)
-        => _client.OnConsoleMessage(consoleMessage);
+    {
+        if (HasDisconnected)
+            return false;
+
+        return _client.OnConsoleMessage(consoleMessage);
+    }
+
     public override bool OnCreateWindow(WebView? view, bool isDialog, bool isUserGesture, Message? resultMsg)
         => _client.OnCreateWindow(view, isDialog, isUserGesture, resultMsg);
     public override void OnCloseWindow(WebView? window)
@@ -146,13 +170,37 @@ public class AndroidWebChromeClient : WebChromeClient
     public override void OnPermissionRequestCanceled(PermissionRequest? request)
         => _client.OnPermissionRequestCanceled(request);
     public override void OnProgressChanged(WebView? view, int newProgress)
-        => _client.OnProgressChanged(view, newProgress);
+    {
+        if (HasDisconnected)
+            return;
+
+        _client.OnProgressChanged(view, newProgress);
+    }
+
     public override void OnReceivedIcon(WebView? view, Bitmap? icon)
-        => _client.OnReceivedIcon(view, icon);
+    {
+        if (HasDisconnected)
+            return;
+
+        _client.OnReceivedIcon(view, icon);
+    }
+
     public override void OnReceivedTitle(WebView? view, string? title)
-        => _client.OnReceivedTitle(view, title);
+    {
+        if (HasDisconnected)
+            return;
+
+        _client.OnReceivedTitle(view, title);
+    }
+
     public override void OnReceivedTouchIconUrl(WebView? view, string? url, bool precomposed)
-        => _client.OnReceivedTouchIconUrl(view, url, precomposed);
+    {
+        if (HasDisconnected)
+            return;
+
+        _client.OnReceivedTouchIconUrl(view, url, precomposed);
+    }
+
     public override void OnRequestFocus(WebView? view)
         => _client.OnRequestFocus(view);
     #endregion

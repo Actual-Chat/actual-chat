@@ -26,9 +26,6 @@ public partial class MauiWebView
     public partial void HardNavigateTo(string url)
         => AndroidWebView.LoadUrl(url);
 
-    public partial void Dispose()
-        => AndroidWebView.Dispose();
-
     public partial Task EvaluateJavaScript(string javaScript)
     {
         var request = new EvaluateJavaScriptAsyncRequest(javaScript);
@@ -42,44 +39,7 @@ public partial class MauiWebView
     { }
 
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
-    {
-        var blazorWebView = (BlazorWebView)sender!;
-        var webView = eventArgs.WebView;
-        SetPlatformWebView(webView);
-        var mainActivity = webView.Context!.GetActivity() as MainActivity;
-        if (mainActivity is null)
-            throw StandardError.Constraint(
-                $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(MainActivity)}'.");
-
-        var settings = webView.Settings;
-        settings.JavaScriptEnabled = true;
-        settings.AllowFileAccess = true;
-        settings.MediaPlaybackRequiresUserGesture = false;
-        settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
-        settings.CacheMode = CacheModes.Default;
-        // settings.OffscreenPreRaster = true;
-#pragma warning disable CS0618
-        settings.EnableSmoothTransition();
-#pragma warning restore CS0618
-        webView.SetRendererPriorityPolicy(RendererPriority.Important, true);
-
-        // AndroidJSInterface methods will be available for invocation in js via 'window.Android' object.
-        var jsInterface = new AndroidJSInterface(webView);
-        webView.AddJavascriptInterface(jsInterface, "Android");
-
-        var services = blazorWebView.Handler!.MauiContext!.Services;
-        webView.SetWebViewClient(
-            new AndroidWebViewClient(
-                webView.WebViewClient,
-                services.GetRequiredService<AndroidContentDownloader>(),
-                services.LogFor<AndroidWebViewClient>()));
-
-        webView.SetWebChromeClient(
-            new AndroidWebChromeClient(
-                webView.WebChromeClient!,
-                mainActivity,
-                new VisualMediaFileChooser(mainActivity)));
-    }
+        => SetPlatformWebView(eventArgs.WebView);
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
 
