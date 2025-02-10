@@ -1,9 +1,10 @@
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using CoreHaptics;
 
 namespace ActualChat.App.Maui;
 
-public class IosTuneUI(IServiceProvider services) : TuneUI(services)
+public class IosTuneUI(UIHub hub) : TuneUI(hub)
 {
     private const float Intensity = 0.5f;
     private const float Sharpness = 0.5f;
@@ -13,7 +14,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services)
     private CHHapticEngine HapticEngine => _hapticEngine ??= CreateHapticEngine();
 
     protected override bool UseJsVibration => false;
-    private ILogger Log { get; } = services.LogFor<IosTuneUI>();
+    private ILogger Log { get; } = hub.LogFor<IosTuneUI>();
 
     public override void Dispose()
     {
