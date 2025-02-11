@@ -24,10 +24,8 @@ public sealed class RedisModule(IServiceProvider moduleServices)
                 return field;
 
             var value = Settings.MeshLockSubspace;
-            if (OrdinalEquals(value, "?")) {
-                var useRandomKeyPrefix = HostInfo.IsDevelopmentInstance || HostInfo.IsTested;
-                value = useRandomKeyPrefix ? Alphabet.AlphaNumeric.Generator8.Next() : "";
-            }
+            if (OrdinalEquals(value, "?"))
+                value = Alphabet.AlphaNumeric.Generator8.Next();
             return field = value;
         }
     }
