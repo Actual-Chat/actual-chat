@@ -180,6 +180,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply h-full w-full;
     @apply overflow-hidden;
     @apply isolate;
+    filter: opacity(1);
 }
 .list-view-layout > .layout-header > .c-content {
     @apply md:p-2.5;
@@ -324,7 +325,6 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
     @apply sm:w-full md:w-0 lg:w-full;
-    @apply opacity-100;
     @apply md:transition-width;
     @apply md:duration-200;
 }
@@ -334,26 +334,27 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 @media (min-width: 820px) and (max-width: 1280px) {
     .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
         animation: hide-layout 200ms forwards;
+        filter: opacity(0);
     }
 }
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .list-view-layout {
     @apply w-full;
-    @apply opacity-100;
     @apply md:transition-width;
     @apply md:duration-200;
 }
 @media (min-width: 820px) and (max-width: 1280px) {
     .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .list-view-layout {
-        animation: show-layout 400ms forwards;
+        animation: show-layout 100ms forwards 200ms;
+        filter: opacity(0);
     }
 }
 @keyframes hide-layout {
-    0% { opacity: 1; }
-    20%, 100% { opacity: 0;}
+    0% { filter: opacity(1); }
+    20%, 100% { filter: opacity(0);}
 }
 @keyframes show-layout  {
-    0%, 80% { opacity: 0; }
-    100% { opacity: 1;}
+    0%, 80% { filter: opacity(0); }
+    100% { filter: opacity(1);}
 }
 
 /* Hide Google Recaptcha V3 anchor badge */
