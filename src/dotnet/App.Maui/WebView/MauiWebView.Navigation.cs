@@ -77,7 +77,7 @@ public partial class MauiWebView
                 : UrlLoadingStrategy.OpenExternally;
             // TODO: Remove this workaround when MAUI issue is fixed: https://github.com/dotnet/maui/issues/25602
             if (OperatingSystem.IsIOSVersionAtLeast(18) && eventArgs.UrlLoadingStrategy == UrlLoadingStrategy.OpenExternally)
-                ForegroundTask.Run(() => Browser.Default.OpenAsync(uri, BrowserLaunchMode.External));
+                _ = ForegroundTask.Run(() => Browser.Default.OpenAsync(uri, BrowserLaunchMode.External));
             return false;
         }
 

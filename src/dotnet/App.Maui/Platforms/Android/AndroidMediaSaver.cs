@@ -46,9 +46,11 @@ public class AndroidMediaSaver(IServiceProvider services)
     {
         var succeeded = false;
         try {
-            await using var inputStream = await GetStreamFromUrl(sUri).ConfigureAwait(false);
-            if (inputStream is not null)
+            var inputStream = await GetStreamFromUrl(sUri).ConfigureAwait(false);
+            if (inputStream is not null) {
+                await using var _1 = inputStream.ConfigureAwait(false);
                 succeeded = await SaveImageToGallery(inputStream, fileName, contentType).ConfigureAwait(false);
+            }
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to save media. ContentType: '{ContentType}', Uri: '{Uri}'", contentType, sUri);
@@ -60,9 +62,9 @@ public class AndroidMediaSaver(IServiceProvider services)
     {
         try {
             using var client = HttpClientFactory.CreateClient(nameof(AndroidMediaSaver));
-            var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStreamAsync();
+            return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to get stream from url: '{Url}'", url);
@@ -73,7 +75,7 @@ public class AndroidMediaSaver(IServiceProvider services)
     private async Task<bool> SaveImageToGallery(Stream inputStream, string fileName, string contentType)
     {
         if (Build.VERSION.SdkInt < BuildVersionCodes.Q)
-            return await SaveImageToGalleryCompat(inputStream, fileName, contentType);
+            return await SaveImageToGalleryCompat(inputStream, fileName, contentType).ConfigureAwait(false);
 
         var contentKind = GetContentKind(contentType);
         var contentValues = new ContentValues();
@@ -97,7 +99,8 @@ public class AndroidMediaSaver(IServiceProvider services)
         }
 
         try {
-            await using var outputStream = contentResolver.OpenOutputStream(dstUri)!;
+            var outputStream = contentResolver.OpenOutputStream(dstUri)!;
+            await using var _1 = outputStream.ConfigureAwait(false);
             await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
             Log.LogDebug("File saved to the gallery: {FileName}", fileName);
             return true;
@@ -110,9 +113,9 @@ public class AndroidMediaSaver(IServiceProvider services)
 
     private static ContentKind GetContentKind(string contentType)
     {
-        var contentKind = contentType.StartsWith("image/")
+        var contentKind = contentType.OrdinalStartsWith("image/")
             ? ContentKind.Image
-            : contentType.StartsWith("video/")
+            : contentType.OrdinalStartsWith("video/")
                 ? ContentKind.Video
                 : ContentKind.Other;
         return contentKind;
@@ -156,7 +159,8 @@ public class AndroidMediaSaver(IServiceProvider services)
             var filePath = Path.Combine(directory.AbsolutePath, fileName);
             if (System.IO.File.Exists(filePath))
                 filePath = EnsureFilePathIsFree(directory.AbsolutePath, fileName);
-            await using var outputStream = System.IO.File.OpenWrite(filePath);
+            var outputStream = System.IO.File.OpenWrite(filePath);
+            await using var _1 = outputStream.ConfigureAwait(false);
             await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
             Log.LogDebug("File saved to: '{FilePath}'", filePath);
 
