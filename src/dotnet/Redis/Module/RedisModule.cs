@@ -11,6 +11,27 @@ namespace ActualChat.Redis.Module;
 public sealed class RedisModule(IServiceProvider moduleServices)
     : HostModule<RedisSettings>(moduleServices), IServerModule
 {
+    private readonly Lock _lock = new();
+
+    [field: AllowNull, MaybeNull]
+    public string MeshLockSubspace {
+        get {
+            if (field != null)
+                return field;
+
+            using var _ = _lock.EnterScope();
+            if (field != null)
+                return field;
+
+            var value = Settings.MeshLockSubspace;
+            if (OrdinalEquals(value, "?")) {
+                var useRandomKeyPrefix = HostInfo.IsDevelopmentInstance || HostInfo.IsTested;
+                value = useRandomKeyPrefix ? Alphabet.AlphaNumeric.Generator8.Next() : "";
+            }
+            return field = value;
+        }
+    }
+
     public void AddRedisDb<TContext>(
         IServiceCollection services,
         string? connectionString = null)
@@ -36,19 +57,29 @@ public sealed class RedisModule(IServiceProvider moduleServices)
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
             typeof(TContext).GetName(), configuration, keyPrefix);
 
+        // RedisDb<TContext>
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(cfg, keyPrefix);
-        services.AddSingleton<IMeshLocks<TContext>>(
-            c => new RedisMeshLocks<TContext>(c) {
+
+        // IMeshLocks<TContext>
+        services.AddSingleton<IMeshLocks<TContext>>(c => {
+            var meshLockSubspace = MeshLockSubspace;
+            Log.LogInformation("IMeshLocks<{Context}>: subspace = '{MeshLockSubspace}'",
+                typeof(TContext).GetName(), meshLockSubspace);
+            var meshLockKeyPrefix = meshLockSubspace.IsNullOrEmpty()
+                ? RedisMeshLocks.DefaultKeyPrefix
+                : $"{RedisMeshLocks.DefaultKeyPrefix}-{meshLockSubspace}"; // Must not use "." as a delimiter!
+            return new RedisMeshLocks<TContext>(c, meshLockKeyPrefix) {
                 LockOptions = c.GetRequiredService<MeshLockOptions>(),
-            });
+            };
+        });
     }
 
     protected override void InjectServices(IServiceCollection services)
-        => services.TryAddSingleton(c => {
+        => services.TryAddSingleton(_ => {
             var lockOptions = MeshLockOptions.Default;
-            if (c.HostInfo().IsTested)
+            if (HostInfo.IsTested) // Tests use mesh locks which expire faster
                 lockOptions = lockOptions with {
                     ExpirationPeriod = TimeSpan.FromSeconds(10),
                     UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),

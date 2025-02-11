@@ -7,15 +7,12 @@ namespace ActualChat.Redis;
 public class RedisMeshLocks<TContext> : RedisMeshLocks, IMeshLocks<TContext>
 {
     public RedisMeshLocks(IServiceProvider services)
-        : base(
-            services.GetRequiredService<RedisDb<TContext>>(),
-            services.Clocks().SystemClock,
-            services.LogFor<RedisMeshLocks>())
+        : base(services, services.GetRequiredService<RedisDb<TContext>>())
     { }
-    public RedisMeshLocks(RedisDb redisDb, MomentClock? clock = null)
-        : base(redisDb, DefaultKeyPrefix, clock) { }
-    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, MomentClock? clock = null)
-        : base(redisDb, keyPrefix, clock) { }
+
+    public RedisMeshLocks(IServiceProvider services, string keyPrefix)
+        : base(services, services.GetRequiredService<RedisDb<TContext>>(), keyPrefix)
+    { }
 }
 
 public class RedisMeshLocks : MeshLocksBase
@@ -105,21 +102,19 @@ public class RedisMeshLocks : MeshLocksBase
         return count;
         """;
 
-    protected static readonly string DefaultKeyPrefix = "MeshLocks";
+    public static readonly string DefaultKeyPrefix = "MeshLocks";
 
     private readonly Func<ChannelMessage, string> _changeMessageMapper;
     private readonly string _fullKeyPrefix;
 
     private RedisDb RedisDb { get; }
 
-    public RedisMeshLocks(RedisDb redisDb, MomentClock? clock = null, ILogger? log = null)
-        : this(redisDb, DefaultKeyPrefix, clock, log) { }
-    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, MomentClock? clock = null, ILogger? log = null)
-        : base(clock, log)
+    public RedisMeshLocks(IServiceProvider services, RedisDb redisDb)
+        : this(services, redisDb, DefaultKeyPrefix) { }
+    public RedisMeshLocks(IServiceProvider services, RedisDb redisDb, string keyPrefix = "")
+        : base(services)
     {
-        if (!keyPrefix.IsNullOrEmpty())
-            redisDb = redisDb.WithKeyPrefix(keyPrefix);
-        RedisDb = redisDb;
+        RedisDb = redisDb.WithKeyPrefix(keyPrefix);
         _fullKeyPrefix = RedisDb.FullKey("");
         _changeMessageMapper = m => {
             var key = (string?)m.Message ?? "";
@@ -213,7 +208,7 @@ public class RedisMeshLocks : MeshLocksBase
         if (keyPrefix.IsNullOrEmpty() && ReferenceEquals(lockOptions, null))
             return this;
 
-        return new RedisMeshLocks(RedisDb, keyPrefix ?? "", Clock, Log) {
+        return new RedisMeshLocks(Services, RedisDb, keyPrefix ?? "") {
             LockOptions = lockOptions ?? LockOptions,
         };
     }

@@ -3,22 +3,33 @@ using Cysharp.Text;
 
 namespace ActualChat.Mesh;
 
-public abstract class MeshLocksBase(MomentClock? clock = null, ILogger? log = null) : IMeshLocksBackend
+public abstract class MeshLocksBase : IMeshLocksBackend
 {
     private static bool DebugMode => Constants.DebugMode.MeshLocks;
 
+    private readonly LazySlim<ILogger?>? _debugLog;
+
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     protected long LastHolderId;
-    protected ILogger? Log { get; init; } = log;
-    protected ILogger? DebugLog { get; init; } = DebugMode ? log.IfEnabled(LogLevel.Debug) : null;
-    ILogger? IMeshLocksBackend.Log => Log;
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Services.LogFor(GetType());
+    protected ILogger? DebugLog => _debugLog?.Value;
+    ILogger IMeshLocksBackend.Log => Log;
     ILogger? IMeshLocksBackend.DebugLog => DebugLog;
 
     public MeshLockOptions LockOptions { get; init; } = MeshLockOptions.Default;
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
-    public MomentClock Clock { get; init; } = clock ?? MomentClockSet.Default.SystemClock;
+    public IServiceProvider Services { get; init; }
+    [field: AllowNull, MaybeNull]
+    public MomentClock Clock => field ??= Services.Clocks().SystemClock;
     public IMeshLocksBackend Backend => this;
+
+    protected MeshLocksBase(IServiceProvider services)
+    {
+        Services = services;
+        _debugLog = DebugMode ? new LazySlim<ILogger?>(Log.IfEnabled(LogLevel.Debug)) : null;
+    }
 
     public virtual async Task<MeshLockHolder?> TryLock(
         string key, string value,
@@ -68,7 +79,7 @@ public abstract class MeshLocksBase(MomentClock? clock = null, ILogger? log = nu
                         var completedTask = await Task.WhenAny(tryLockTask, warningDelayTask).ConfigureAwait(false);
                         if (completedTask == warningDelayTask) {
                             if (warningDelayTask.IsCompletedSuccessfully)
-                                Log?.LogWarning("Lock takes too long: {Key} = {StoredValue}", key, holder.StoredValue);
+                                Log.LogWarning("Lock takes too long: {Key} = {StoredValue}", key, holder.StoredValue);
                             warningDelayTask = null; // We report it just once per Lock call
                         }
                     }
@@ -103,7 +114,7 @@ public abstract class MeshLocksBase(MomentClock? clock = null, ILogger? log = nu
             if (e.IsCancellationOf(cancellationToken))
                 DebugLog?.LogDebug("Lock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
             else
-                Log?.LogError(e, "Lock failed: {Key} = {StoredValue}", key, holder.StoredValue);
+                Log.LogError(e, "Lock failed: {Key} = {StoredValue}", key, holder.StoredValue);
             throw;
         }
         finally {

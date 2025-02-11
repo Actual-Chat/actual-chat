@@ -13,6 +13,7 @@ public static class CommandLineHandler
     private const string RoleGroupDelimiter = ":";
     private const string UrlsEnvVar = "URLS";
     private const string ServerRoleEnvVar = "HostSettings__ServerRole";
+    private const string MeshLockSubspaceEnvVar = "RedisSettings__MeshLockSubspace";
 
     private static readonly Dictionary<Symbol, HostRole[]> AllRoleGroups = new() {
         { "1", [HostRole.OneServer] },
@@ -44,6 +45,11 @@ public static class CommandLineHandler
             Environment.SetEnvironmentVariable(UrlsEnvVar, urlOverride);
         }
 
+        // Mesh lock subspace - from env. var
+        var meshLockSubspace = Environment.GetEnvironmentVariable(MeshLockSubspaceEnvVar);
+        if (!meshLockSubspace.IsNullOrEmpty())
+            WriteLine($"MeshLock subspace override: {meshLockSubspace}");
+
         // -role:<role-group>:<own-role> argument
         if (TryParseRoleArgument(args, RoleArgPrefix)) {
             if (TryParseRoleArgument(args, MultiHostRoleArgPrefix))
@@ -57,6 +63,12 @@ public static class CommandLineHandler
 
         // -multihost-role:<role-group>:<own-role> argument
         if (TryParseRoleArgument(args, MultiHostRoleArgPrefix)) {
+            if (meshLockSubspace.IsNullOrEmpty()) {
+                meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
+                WriteLine($"MeshLock subspace: {meshLockSubspace}");
+                Environment.SetEnvironmentVariable(MeshLockSubspaceEnvVar, meshLockSubspace);
+            }
+
             var (host, defaultPort) = GetDefaultHostAndPort();
             var ownUrl = $"http://{host}:{defaultPort + OwnRoleIndex}";
             WriteLine($"MultiHost mode. Own role: {OwnRole} of role group '{RoleGroupName}' @ {ownUrl}");

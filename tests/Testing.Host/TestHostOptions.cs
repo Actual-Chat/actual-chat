@@ -10,7 +10,7 @@ namespace ActualChat.Testing.Host;
 public record TestAppHostOptions
 {
     public static readonly TestAppHostOptions None = new();
-    public static readonly TestAppHostOptions Default = new() {
+    public static readonly TestAppHostOptions Default = None with {
         MustInitializeDb = true,
         MustStart = true,
     };
@@ -42,8 +42,8 @@ public record TestAppHostOptions
     public Action<AppHost.IConfigureAppContext, WebApplication>? ConfigureApp { get; set; }
     public DbInitializeOptions DbInitializeOptions { get; init; } = DbInitializeOptions.Default;
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
+    public string MeshLockSubspace { get; init; } = Alphabet.AlphaNumeric.Generator8.Next();
     public bool? UseNatsQueues { get; init; }
-    public bool MustCleanupRedis { get; init; }
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }
 
@@ -57,4 +57,9 @@ public record TestAppHostOptions
             InstanceName = instanceName,
             Output = new MessageSinkTestOutput(messageSink),
         };
+
+    public TestAppHostOptions WithMeshLockSubspace(string meshLockSubspace)
+        => this with { MeshLockSubspace = meshLockSubspace };
+    public TestAppHostOptions WithRandomMeshLockSubspace()
+        => this with { MeshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next() };
 }

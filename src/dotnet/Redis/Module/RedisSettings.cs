@@ -4,4 +4,5 @@ public sealed class RedisSettings
 {
     public string DefaultRedis { get; set; } = "localhost|{instance.}{context}";
     public string OverrideRedis { get; set; } = "";
+    public string MeshLockSubspace { get; set; } = "?";
 }
