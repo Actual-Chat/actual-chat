@@ -162,5 +162,5 @@ public sealed partial class MauiWebView
     }
 
     internal void LinkTo(MauiWebViewPageContextTracker mauiWebViewPageContextTracker)
-        => this._pageContextTracker = mauiWebViewPageContextTracker;
+        => _pageContextTracker = mauiWebViewPageContextTracker;
 }

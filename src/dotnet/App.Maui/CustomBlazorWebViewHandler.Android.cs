@@ -1,3 +1,4 @@
+using Android.Views;
 using Android.Webkit;
 using WebView = Android.Webkit.WebView;
 using MixedContentHandling = Android.Webkit.MixedContentHandling;
