@@ -32,7 +32,7 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
         await base.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "2025.02+ AppHost doesn't serve web pages.")]
     public async Task ShouldNotAuthorizeForInactiveUser()
     {
         // arrange
@@ -51,7 +51,7 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
         notAuthorizedView.Should().NotBeNull();
     }
 
-    [Fact]
+    [Fact(Skip = "2025.02+ AppHost doesn't serve web pages.")]
     public async Task ShouldAuthorizeForActiveUser()
     {
         // arrange
