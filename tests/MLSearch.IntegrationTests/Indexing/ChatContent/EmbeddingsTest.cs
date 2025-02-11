@@ -1,3 +1,4 @@
+using ActualChat.Chat.ML;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.Module;
 using Cysharp.Text;
@@ -6,14 +7,14 @@ namespace ActualChat.MLSearch.IntegrationTests.Indexing.ChatContent;
 
 public class EmbeddingsTest(ITestOutputHelper @out)
 {
-    private readonly EmbeddingsCalculator _embeddingCalculator = new (new EmbeddingsCalculatorSettings());
+    private readonly EmbeddingsCalculator _embeddingCalculator = new (new EmbeddingSettings());
 
     protected ITestOutputHelper Out { get; } = @out.ToSafe();
 
     [Fact(Skip = "Run explicitly")]
     public async Task CompareVectors()
     {
-        var x = await _embeddingCalculator.CalculateVector("Hello");
+        var x = await _embeddingCalculator.CalculateVector("Hello", CancellationToken.None);
         x.Should().NotBeEmpty();
 
         var similarity1 = _embeddingCalculator.CosineSimilarity(x, x);
@@ -36,7 +37,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
             "Пекин"
         ];
 
-        var vectors = await docs.Select(c => _embeddingCalculator.CalculateVector(c)).Collect();
+        var vectors = await docs.Select(c => _embeddingCalculator.CalculateVector(c, CancellationToken.None)).Collect();
         var vectors2 = vectors.Select(_embeddingCalculator.Normalize).ToArray();
         for (var i = 0; i < vectors2.Length - 1; i++) {
             for (int j = i + 1; j < vectors2.Length; j++) {
@@ -82,7 +83,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
             Out.WriteLine("Iteration " + i);
             Out.WriteLine("Fragment:");
             Out.WriteLine(fragment);
-            var vector = await _embeddingCalculator.CalculateVector(fragment);
+            var vector = await _embeddingCalculator.CalculateVector(fragment, CancellationToken.None);
             vector = _embeddingCalculator.Normalize(vector);
             // if (prevVector.Length > 0) {
             //     var similarity1 = CosineSimilarity(prevVector, vector);

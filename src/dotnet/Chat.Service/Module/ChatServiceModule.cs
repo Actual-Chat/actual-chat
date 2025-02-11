@@ -1,6 +1,7 @@
 using System.Net;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
+using ActualChat.Chat.ML;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -9,6 +10,7 @@ using ActualChat.Redis.Module;
 using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Chat.Module;
 
@@ -93,6 +95,16 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddFlows()
             .Add<LanguageDetectionFlow>()
             .Add<LanguageDetectionMasterFlow>();
+
+        // Embeddings
+        var embeddingSettings = Cfg.Settings<EmbeddingSettings>();
+        services.TryAddSingleton(embeddingSettings);
+        services.TryAddSingleton<IEmbeddingsCalculator, EmbeddingsCalculator>();
+
+        // Flows
+        services.AddFlows()
+            .Add<ChatMasterFlow>()
+            .Add<ConversationSplitFlow>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

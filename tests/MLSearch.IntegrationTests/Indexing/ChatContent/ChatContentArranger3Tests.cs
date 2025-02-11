@@ -26,7 +26,7 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
         var chatDialogFormatter = new ChatDialogFormatter(authorRetriever);
         var tailDocuments = new Dictionary<SourceEntries, ChatSlice>();
         var documentLoader = new DocumentLoader(tailDocuments);
-        var embeddingsCalculator = new EmbeddingsCalculator(new EmbeddingsCalculatorSettings());
+        var embeddingsCalculator = new EmbeddingsCalculator(new EmbeddingSettings());
         var contentArranger = new ChatContentArranger3(documentLoader, embeddingsCalculator, chatDialogFormatter);
         //contentArranger.DebugLog = c => Out.WriteLine(c);
         var fragmentId = 0;
