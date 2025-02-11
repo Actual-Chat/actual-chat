@@ -195,7 +195,9 @@ public static partial class MauiProgram
         if (contentTypeProvider == null)
             throw StandardError.Constraint("'ContentTypeProvider' field has null value.");
 
+ #pragma warning disable IL2075
         var mappingsPropertyInfo = contentTypeProviderType.GetProperty("Mappings", BindingFlags.Instance | BindingFlags.Public);
+ #pragma warning restore IL2075
         var mapping = (IDictionary<string,string>)mappingsPropertyInfo!.GetValue(contentTypeProvider)!;
         mapping[".mjs"] = "text/javascript";
     }
