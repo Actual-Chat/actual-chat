@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
 <label class="@Class toggle"
@@ -17,6 +18,11 @@
 </label>
 
 @code {
+    private bool? _previousValue;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private TuneUI TuneUI => Hub.TuneUI;
+
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Label { get; set; } = "";
@@ -27,8 +33,18 @@
 
     public bool CurrentValue { get; set; }
 
-    protected override void OnParametersSet()
-        => CurrentValue = IsChecked;
+    protected override void OnParametersSet() {
+        if (_previousValue is null) {
+            _previousValue = IsChecked;
+        } else {
+            if (_previousValue.Value != IsChecked) {
+                _previousValue = IsChecked;
+                _ = TuneUI.Play(Tune.ChangeToggle);
+            }
+        }
+
+        CurrentValue = IsChecked;
+    }
 
     private void OnChange(ChangeEventArgs eventArgs) {
         CurrentValue = eventArgs.Value is true;

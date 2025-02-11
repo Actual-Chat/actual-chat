@@ -270,10 +270,17 @@ body.hoverable .chat-header-title:hover {
     @apply overflow-hidden;
 }
 .message-image-attachments {
+    @apply relative;
     @apply flex-y flex-wrap gap-px;
     @apply w-fit max-w-96 /*lg:w-180*/ /*xl:w-240*//* 2xl:w-320*/;
+    @apply p-0.5;
     @apply rounded-xl;
     @apply overflow-hidden;
+}
+.message-image-attachments:before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply bg-03;
 }
 .message-file-attachments {
     @apply flex-y gap-y-1;

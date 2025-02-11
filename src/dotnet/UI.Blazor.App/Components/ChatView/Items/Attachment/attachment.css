@@ -1,10 +1,20 @@
 /* image line */
 .image-line {
     @apply flex-x gap-x-px;
+    @apply overflow-hidden;
 }
+.message-image-attachments .image-line:first-child {
+    @apply rounded-t-xl;
+}
+.message-image-attachments .image-line:last-child {
+    @apply rounded-b-xl;
+}
+
 .image-line .image-item {
     @apply /*flex-1*/ flex-x;
-    @apply bg-01;
+}
+body.hoverable .image-line .image-item:hover {
+    filter: brightness(1.1);
 }
 .image-line .image-item a {
     @apply flex-1 flex;
@@ -77,7 +87,6 @@
     @apply w-full;
 }
 .image-attachment image-skeleton {
-    @apply rounded-md;
     @apply w-full;
 }
 .message-image-attachments:has(image-skeleton.loading) {

@@ -9,6 +9,7 @@ public class LibPhoneNumbersExtTest
     [InlineData("+1 (650) 456-78-90", "+1 (123) 456-78-90", "1-1234567890")]
     [InlineData("+1 (650) 456-78-90", "(123) 456-78-90", "1-1234567890")]
     [InlineData("+1 (650) 456-78-90", "456-78-90", "1-4567890")]
+    [InlineData("+1 (650) 456-78-90", "*111#", "")]
     [InlineData("+41 (123) 456-789", "+41 (123) 456-789", "41-123456789")]
     [InlineData("+41 (123) 456-789", "(123) 456-789", "41-123456789")]
     [InlineData("+41 (123) 456-789", "456-789", "41-456789")]
@@ -27,6 +28,7 @@ public class LibPhoneNumbersExtTest
     [InlineData("+41 (123) 456-789", "41-123456789")]
     [InlineData("+65 (123) 456-78", "65-12345678")]
     [InlineData("+65", "")]
+    [InlineData("*111#", "")]
     // TODO(DF): wierd test case, do we really need to support it?
     // [InlineData("65((!111)123456", "65-111123456")]
     public void ParseTest(string source, string expected)

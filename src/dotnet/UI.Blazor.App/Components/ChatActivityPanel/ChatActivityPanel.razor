@@ -10,7 +10,7 @@
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
     var isActive = m.IsAnyoneTalking;
     var iconColor = IsListening ? "primary" : "text-03";
-    var btnCls = m is { IsAnyoneTalking: true, AudioState.IsListening: true } ? "btn-transparent c-glow" : "btn-transparent";
+    var btnCls = m is { IsAnyoneTalking: true, AudioState.IsListening: true } ? "btn-transparent btn-sm c-glow" : "btn-transparent btn-sm";
 }
 
 <div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">

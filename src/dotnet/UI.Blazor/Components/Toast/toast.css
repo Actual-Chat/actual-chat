@@ -23,10 +23,12 @@ body.wide .toast-container {
 /* Toast */
 
 .toast {
-    @apply flex-x items-center z-50;
-    @apply px-3 py-2 gap-x-2 overflow-hidden;
+    @apply z-50;
+    @apply flex-x items-center gap-x-2;
     @apply min-h-10 w-full md:w-fit md:max-w-110;
+    @apply px-3 py-2;
     @apply rounded-3xl;
+    @apply overflow-hidden;
     @apply text-toast-text;
     @apply bg-toast-body;
 }

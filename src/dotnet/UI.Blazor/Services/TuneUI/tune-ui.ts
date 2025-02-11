@@ -34,6 +34,7 @@ export enum Tune
     ShowMenu,
     React,
     DragStart,
+    ChangeToggle,
 }
 
 export type TuneName = keyof typeof Tune;

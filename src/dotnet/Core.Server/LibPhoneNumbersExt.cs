@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 // Phone helpers depending on LibPhoneNumbers.
 // !!! The identical copies file must be located in:
 // - Core.Server project root
@@ -38,6 +36,7 @@ public class PhoneParser
 
 public static class PhoneNumberExt
 {
+    private static readonly HashSet<char> AllowedStartChars = ['+', '(', '-'];
     public static Phone ToPhone(this PhoneNumber phoneNumber)
         => new(
             phoneNumber.CountryCode.Format(),
@@ -51,6 +50,11 @@ public static class PhoneNumberExt
         [NotNullWhen(true)] out PhoneNumber? phoneNumber)
     {
         try {
+            var firstChar = source.Trim().FirstOrDefault();
+            if (!char.IsDigit(firstChar) && !AllowedStartChars.Contains(firstChar)) {
+                phoneNumber = null;
+                return false;
+            }
             phoneNumber = phoneNumberUtil.Parse(source, region);
             return true;
         }

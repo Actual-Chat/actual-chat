@@ -25,10 +25,12 @@ body.wide .chat-activity-panel {
     @apply flex-none;
 }
 .chat-activity-panel > .c-buttons > .btn {
-    @apply h-10 w-10 md:h-8 md:w-8;
-    @apply px-2;
+    @apply px-0;
     @apply text-base;
     @apply rounded-full;
+}
+.chat-activity-panel > .c-buttons > .btn > .btn-content {
+    @apply gap-0;
 }
 .chat-activity-panel > .c-buttons > .btn .btn-title {
     @apply flex-1;
