@@ -12,7 +12,7 @@
         _ => throw StandardError.Internal("Invalid Model.Color value."),
         };
     var playOnClickIsEnabled = !m.HasSelection;
-    var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
+    var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : " play-disabled");
 }
 
 <span @ref="Ref" class="@containerCls @colorCls">

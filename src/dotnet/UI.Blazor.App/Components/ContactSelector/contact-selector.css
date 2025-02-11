@@ -19,27 +19,29 @@
 }
 
 /* List item badges */
-.contact-selector-badges {
-    @apply flex-none flex-x flex-wrap;
-    @apply gap-1;
+.contact-selector-wrapper {
+    @apply flex-none;
     @apply max-h-40 md:max-h-32;
-    @apply mx-4 px-0.5;
-    @apply overflow-y-auto custom-scrollbar;
-    @apply border-separator;
-    @apply bg-modal;
+    @apply overflow-y-auto;
+    @apply custom-scrollbar;
+}
+.contact-selector-badges {
+    @apply flex-none flex-x flex-wrap gap-1;
+    @apply rounded-lg border-none;
+    @apply bg-square;
+    scrollbar-width: none;
 }
 .contact-selector-badges:has(.c-contact) {
-    @apply pt-2;
-    @apply border-t;
+    @apply p-1;
 }
 .contact-selector-badges > .c-contact {
     @apply relative;
-    @apply flex-1 flex-x items-center;
-    @apply min-w-28 max-w-1/2;
+    @apply flex-x items-center;
+    @apply min-w-16 max-w-[48%] h-6;
     @apply px-0.5;
-    @apply rounded-full border border-separator;
+    @apply rounded-lg border-none;
     @apply overflow-hidden;
-    @apply bg-01;
+    @apply bg-toggle-circle;
 }
 .contact-selector-badges > .c-contact,
 .contact-selector-badges > .c-contact * {
@@ -48,20 +50,29 @@
 .contact-selector-badges > .c-contact > .c-remove {
     @apply absolute inset-0 z-10;
     @apply hidden items-center justify-start gap-x-2;
-    @apply px-2;
-    @apply bg-danger;
+    @apply rounded-lg;
+    @apply bg-transparent;
     @apply text-white;
+    background: linear-gradient(to right, var(--toggle-circle) 5%, transparent);
+    outline: 1px solid var(--magenta-90);
+    outline-offset: -1px;
 }
 .contact-selector-badges > .c-contact > .c-remove > i {
+    @apply flex items-center justify-center;
+    @apply w-4 h-4;
+    @apply ml-1;
+    @apply rounded-md;
+    @apply bg-[var(--magenta-60)];
     @apply text-base leading-4;
-}
-.contact-selector-badges > .c-contact > .c-remove > .c-text {
-    @apply text-caption-1;
 }
 .contact-selector-badges > .c-contact > .c-name {
     @apply px-1;
     @apply truncate;
-    @apply text-caption-1;
+    @apply text-caption-6 text-01;
+}
+body.hoverable .contact-selector-badges > .c-contact:hover {
+    outline: 1px solid var(--magenta-90);
+    outline-offset: -1px;
 }
 body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
     @apply flex;

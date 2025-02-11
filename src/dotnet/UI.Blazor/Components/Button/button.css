@@ -356,9 +356,6 @@ body.hoverable .btn-h.bleached:hover,
 .btn.bleached:active {
     @apply text-white;
 }
-.btn.btn-round.show-on-hover {
-    @apply invisible z-10 absolute;
-}
 
 /*Button Group */
 .btn-group {
@@ -366,12 +363,8 @@ body.hoverable .btn-h.bleached:hover,
     @apply max-w-none md:max-w-fit w-full md:w-auto;
 }
 .btn-group .btn {
-    @apply flex-1;
+    @apply flex-1 justify-items-stretch;
     @apply min-w-0 md:min-w-24;
-    @apply justify-items-stretch;
-}
-.btn-group.vertical {
-    @apply flex-col gap-y-2;
 }
 
 /* Suffixes */
@@ -415,15 +408,6 @@ body.hoverable .btn-h.unhovered:hover {
 .btn-h.btn-lg {
     @apply h-10 w-10;
 }
-.btn-h.inverted {
-    @apply text-03;
-}
-body.hoverable .btn-h.inverted:hover {
-    @apply text-06;
-}
-body.narrow .btn-h.inverted {
-    @apply text-06;
-}
 
 /* Header Button Sizes */
 .btn-h, .btn-h.btn-md {
@@ -461,4 +445,9 @@ body.narrow .btn-h.inverted {
     @apply absolute top-1/2 left-1/2;
     @apply -translate-x-1/2 -translate-y-1/2;
     @apply text-02 text-xl;
+}
+
+.close-btn.btn.btn-round {
+    @apply bg-[var(--white-05)];
+    @apply text-[var(--white-90)];
 }

@@ -68,6 +68,10 @@ export class PlayableTextMarkupView {
     }
 
     private onClickHandler = (e: Event) => {
+        const isPlayDisabled = this.playableText.classList.contains('play-disabled');
+        if (isPlayDisabled)
+            return;
+
         if (this.playableText.childNodes.length > 1) {
             let selection = getSelection();
             if (selection.rangeCount) {
