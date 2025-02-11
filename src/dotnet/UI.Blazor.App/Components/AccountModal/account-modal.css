@@ -64,10 +64,6 @@
 }
 .author-modal-close-btn.btn.btn-round {
     @apply absolute top-2 right-4 z-10;
-    @apply bg-[var(--white-10)];
-}
-.author-modal-close-btn.btn.btn-round .btn-content {
-    @apply text-03;
 }
 
 .author-modal .form-block {

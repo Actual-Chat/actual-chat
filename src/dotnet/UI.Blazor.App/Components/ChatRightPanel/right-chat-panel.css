@@ -59,10 +59,6 @@
     @apply absolute top-2 right-4 z-10;
     @apply flex-x items-center justify-center gap-x-3;
 }
-.right-panel-close-btn.btn.btn-round {
-    @apply bg-[var(--white-05)];
-    @apply text-[var(--white-90)];
-}
 .right-chat-panel > .c-header > .c-top {
     @apply relative;
     @apply flex-none;

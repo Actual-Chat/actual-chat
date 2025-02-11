@@ -173,7 +173,7 @@ body.hoverable .chat-message:hover .message-reactions-add {
 }
 .chat-message-transcript .changes .change-item {
     filter: opacity(1);
-    transition-property: filter, --webkit-filter;
+    transition-property: filter, -webkit-filter;
     transition-timing-function: linear;
     transition-duration: 200ms;
     @starting-style {
