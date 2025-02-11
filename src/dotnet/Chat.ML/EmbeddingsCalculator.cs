@@ -1,11 +1,10 @@
 using System.Text;
-using ActualChat.MLSearch.Module;
 
-namespace ActualChat.MLSearch.Indexing.ChatContent;
+namespace ActualChat.Chat.ML;
 
 public interface IEmbeddingsCalculator
 {
-    Task<double[]> CalculateVector(string text);
+    Task<double[]> CalculateVector(string text, CancellationToken cancellationToken);
     double CosineSimilarity(double[] vector1, double[] vector2);
     double[] Normalize(double[] vector);
 }
@@ -19,13 +18,13 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public EmbeddingsCalculator(EmbeddingsCalculatorSettings embeddingsSettings)
+    public EmbeddingsCalculator(EmbeddingSettings embeddingSettings)
     {
-        if (!embeddingsSettings.PredictionsUri.IsNullOrEmpty())
-            _predictionsUri = new Uri(embeddingsSettings.PredictionsUri, UriKind.Absolute);
+        if (!embeddingSettings.PredictionsUri.IsNullOrEmpty())
+            _predictionsUri = new Uri(embeddingSettings.PredictionsUri, UriKind.Absolute);
     }
 
-    public async Task<double[]> CalculateVector(string text)
+    public async Task<double[]> CalculateVector(string text, CancellationToken cancellationToken)
     {
         if (_predictionsUri is null)
             throw StandardError.Internal("Predications uri is not configured.");
@@ -35,11 +34,11 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
         var json = JsonSerializer.Serialize(new Request(text), _jsonSerializerOptions);
         var jsonContent = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var response = await client.PostAsync(_predictionsUri!, jsonContent).ConfigureAwait(false);
+        var response = await client.PostAsync(_predictionsUri!, jsonContent, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
             throw StandardError.External("Failed to retrieve dense vectors");
 
-        var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<double[][]>(responseBody, _jsonSerializerOptions);
         return result![0];
     }

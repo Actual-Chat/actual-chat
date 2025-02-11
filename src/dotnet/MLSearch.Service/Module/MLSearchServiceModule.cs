@@ -19,7 +19,7 @@ using ActualChat.Search;
 using Microsoft.SemanticKernel;
 using ActualChat.MLSearch.Bot.Services;
 using ActualChat.MLSearch.Flows;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -99,7 +99,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices)
             .Add<UserContactIndexingFlow>();
     }
 
-    private static void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient, MLSearchSettings settings)
+    private void InjectIndexingServices(RpcHostBuilder rpcHost, bool isBackendClient, MLSearchSettings settings)
     {
         var services = rpcHost.Services;
         if (isBackendClient)
@@ -117,6 +117,11 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices)
 
         // Chat content indexing
 
+        // Embeddings
+        var embeddingSettings = Cfg.Settings<EmbeddingSettings>();
+        services.TryAddSingleton(embeddingSettings);
+        services.TryAddSingleton<IEmbeddingsCalculator, EmbeddingsCalculator>();
+
         // Common types
         services.AddSingleton<IChatContentDocumentLoader, ChatContentDocumentLoader>();
         services.AddSingleton<IChatContentMapper, ChatContentMapper>();
@@ -125,8 +130,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<ChatContentArranger>();
         services.AddSingleton<ChatContentArranger2>();
         services.AddSingleton<ChatContentArranger3>();
-        services.AddSingleton(settings.Embeddings ?? new EmbeddingsCalculatorSettings());
-        services.AddSingleton<IEmbeddingsCalculator, EmbeddingsCalculator>();
         services.AddSingleton<IDocumentEntriesLoader, DefaultDocumentEntriesLoader>();
         services.AddAlias<IChatContentArranger, ChatContentArranger>(ServiceLifetime.Scoped);
         services.AddSingleton<IChatInfoIndexer, ChatInfoIndexer>();

@@ -21,7 +21,6 @@ public sealed class MLSearchSettings
     public TimeSpan IndexingFlowResumeDelay { get; set; } = TimeSpan.FromSeconds(10);
     public TimeSpan IndexingTailRecheckInterval { get; set; } = TimeSpan.FromSeconds(30);
     public string OpenSearchNamesEnvPrefix { get; set; } = "";
-    public EmbeddingsCalculatorSettings? Embeddings { get; set; }
 }
 
 public sealed class OpenAISettings
@@ -86,9 +85,4 @@ public sealed class UriAttribute(): ValidationAttribute("Value for {0} must be a
 {
     public override bool IsValid(object? value) => value is string valueAsString
         && !string.IsNullOrWhiteSpace(valueAsString) && Uri.IsWellFormedUriString(valueAsString, UriKind.Absolute);
-}
-
-public sealed class EmbeddingsCalculatorSettings
-{
-    public string PredictionsUri { get; set; } = "";
 }

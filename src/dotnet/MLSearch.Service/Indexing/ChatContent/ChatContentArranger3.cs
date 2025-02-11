@@ -39,7 +39,7 @@ internal sealed class ChatContentArranger3(
             tailBuilder.Entries.AddRange(tailEntries);
             tailBuilder.Dialog = await chatDialogFormatter.EntriesToText(tailEntries).ConfigureAwait(false);
             tailBuilder.WordCount = CountWords(tailBuilder.Dialog); // Incorrect way to count words. Take in account author name.
-            tailBuilder.Embeddings = await CalculateEmbeddings(tailBuilder.Dialog).ConfigureAwait(false);
+            tailBuilder.Embeddings = await CalculateEmbeddings(tailBuilder.Dialog, cancellationToken).ConfigureAwait(false);
         }
 
         if (tailBuilder is not null && ShouldCompleteDoc(tailBuilder))
@@ -65,7 +65,7 @@ internal sealed class ChatContentArranger3(
 
             if (builder.WordCount > wordLimitPerBlock) {
                 DebugLog?.Invoke("-> Block size is reached");
-                builder.Embeddings = await CalculateEmbeddings(builder.Dialog).ConfigureAwait(false);
+                builder.Embeddings = await CalculateEmbeddings(builder.Dialog, cancellationToken).ConfigureAwait(false);
                 if (tailBuilder is not null) {
                     DebugLog?.Invoke($"Comparing with tail doc. Doc size is {builder.Entries.Count}. Tail doc size is {tailBuilder.Entries.Count}");
                     if (ShouldMerge(builder, tailBuilder)) {
@@ -73,7 +73,7 @@ internal sealed class ChatContentArranger3(
                         tailBuilder.Entries.AddRange(builder.Entries);
                         tailBuilder.Dialog = await chatDialogFormatter.EntriesToText(tailBuilder.Entries)
                             .ConfigureAwait(false);
-                        tailBuilder.Embeddings = await CalculateEmbeddings(tailBuilder.Dialog).ConfigureAwait(false);
+                        tailBuilder.Embeddings = await CalculateEmbeddings(tailBuilder.Dialog, cancellationToken).ConfigureAwait(false);
                         tailBuilder.WordCount = CountWords(tailBuilder.Dialog);
 
                         if (ShouldCompleteDoc(tailBuilder)) {
@@ -107,7 +107,7 @@ internal sealed class ChatContentArranger3(
 
         DebugLog?.Invoke("End of buffer is reached");
         if (builder is not null && tailBuilder is not null) {
-            builder.Embeddings = await CalculateEmbeddings(builder.Dialog).ConfigureAwait(false);
+            builder.Embeddings = await CalculateEmbeddings(builder.Dialog, cancellationToken).ConfigureAwait(false);
             DebugLog?.Invoke($"Comparing with tail doc. Doc size is {builder.Entries.Count}. Tail doc size is {tailBuilder.Entries.Count}");
             if (ShouldMerge(builder, tailBuilder)) {
                 DebugLog?.Invoke("Current doc should be merged with tail doc");
@@ -161,8 +161,8 @@ internal sealed class ChatContentArranger3(
         return similarity > 0.9d;
     }
 
-    private Task<double[]> CalculateEmbeddings(string dialog)
-        => embeddingsCalculator.CalculateVector(dialog);
+    private Task<double[]> CalculateEmbeddings(string dialog, CancellationToken cancellationToken)
+        => embeddingsCalculator.CalculateVector(dialog, cancellationToken);
 
     public static int CountWords(string input)
     {

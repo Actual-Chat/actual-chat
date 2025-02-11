@@ -12,4 +12,6 @@ public sealed class ChatSettings
     public FilePath DetectLanguagesPromptFile { get; set; } = "";
     public FilePath TranslatePromptFile { get; set; } = "";
     public bool IsTranslationEnabled { get; set; }
+    public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
+
 }
