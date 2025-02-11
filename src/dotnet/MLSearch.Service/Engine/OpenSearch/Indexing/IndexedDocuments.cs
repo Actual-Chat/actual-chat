@@ -49,7 +49,7 @@ internal sealed class IndexedDocuments(
         if (updatedCount == 0)
             return;
 
-        log.LogInformation("Upserted {DocumentType} documents to opensearch index #{IndexName}: {Count}", typeof(TDocument).Name, indexName, updatedCount);
+        log.LogInformation("Upserting {DocumentType} documents as {PartialDocumentType} to opensearch index #{IndexName}: {Count}", typeof(TDocument).Name, typeof(TPartialDocument).Name, indexName, updatedCount);
         var result = await openSearch
             .BulkAsync(r
                     => r.UpdateMany<TDocument, TPartialDocument>(updatedDocuments,

@@ -271,6 +271,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var dbContact = await dbContext.Contacts.ForUpdate()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             .ConfigureAwait(false);
+        var existing = dbContact?.ToModel();
 
         bool isChatRoulette;
         if (change.IsCreate(out var contact)) {
@@ -320,6 +321,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         context.Operation.Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
         context.Operation.Items.Set(IsChatRouletteOperationItemKey, isChatRoulette);
         contact = dbContact.ToModel();
+        context.Operation.AddEvent(new ContactChangedEvent(contact, existing, change.Kind));
         return contact;
     }
 
