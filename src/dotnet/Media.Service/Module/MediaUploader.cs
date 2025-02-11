@@ -8,15 +8,17 @@ using Microsoft.AspNetCore.StaticFiles;
 
 namespace ActualChat.Media.Module;
 
-public class ImagesUploader(Type owner)
+public sealed class MediaUploader(Type ownerType)
 {
-    public async Task Execute(Func<UploadBuilderContext, Task> uploadBuilder)
+    public async Task Upload(Func<UploadBuilderContext, Task> uploadBuilder)
     {
         var contentTypeProvider = new FileExtensionContentTypeProvider();
         var dbInitializer = DbInitializer.GetCurrent<MediaDbInitializer>();
-        var log = dbInitializer.Services.LogFor(owner);
+        var services = dbInitializer.Services;
+        var hostInfo = services.HostInfo();
+        var log = services.LogFor(ownerType);
 
-        var blobStorageProvider = dbInitializer.Services.GetRequiredService<IBlobStorages>();
+        var blobStorageProvider = services.GetRequiredService<IBlobStorages>();
         var blobStorage = blobStorageProvider[BlobScope.ContentRecord];
 
         await using var dbContext = dbInitializer.CreateDbContext(true);
@@ -58,10 +60,26 @@ public class ImagesUploader(Type owner)
                 // ReSharper disable once AccessToDisposedClosure
                 dbContext.Media.Add(new DbMedia(media));
 
-            var mediaExists = await blobStorage.Exists(media.ContentId, default).ConfigureAwait(false);
-            if (mediaExists)
-                await blobStorage.Delete(media.ContentId, default).ConfigureAwait(false);
-            await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, default).ConfigureAwait(false);
+            // Tests may race to create default media, so the logic below retries that
+            var tryCount = hostInfo.IsTested ? 3 : 1;
+            var randomDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
+            for (var tryIndex = 0; tryIndex < tryCount; tryIndex++) {
+                try {
+                    var mediaExists = await blobStorage.Exists(media.ContentId, default).ConfigureAwait(false);
+                    if (mediaExists)
+                        await blobStorage.Delete(media.ContentId, default).ConfigureAwait(false);
+                    await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, default).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    if (e is not (InvalidOperationException or UnauthorizedAccessException))
+                        throw;
+                    if (tryIndex == tryCount - 1)
+                        throw;
+
+                    // Continue after delay
+                    await Task.Delay(randomDelay.Next(), CancellationToken.None).ConfigureAwait(false);
+                }
+            }
         }
     }
 
