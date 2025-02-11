@@ -62,26 +62,22 @@ public sealed class RedisModule(IServiceProvider moduleServices)
 
         // IMeshLocks<TContext>
         services.AddSingleton<IMeshLocks<TContext>>(c => {
-            var meshLockSubspace = MeshLockSubspace;
-            Log.LogInformation("IMeshLocks<{Context}>: subspace = '{MeshLockSubspace}'",
-                typeof(TContext).GetName(), meshLockSubspace);
-            var meshLockKeyPrefix = meshLockSubspace.IsNullOrEmpty()
+            var subspace = MeshLockSubspace;
+            var optionsPreset = Settings.MeshLockOptionsPreset.NullIfEmpty()
+                ?? nameof(MeshLockOptions.Default);
+            Log.LogInformation("IMeshLocks<{Context}>: '{Subspace}' subspace, '{OptionsPreset}' lock options preset",
+                typeof(TContext).GetName(), subspace, optionsPreset);
+
+            // ReSharper disable once VariableHidesOuterVariable
+            var keyPrefix = subspace.IsNullOrEmpty()
                 ? RedisMeshLocks.DefaultKeyPrefix
-                : $"{RedisMeshLocks.DefaultKeyPrefix}-{meshLockSubspace}"; // Must not use "." as a delimiter!
-            return new RedisMeshLocks<TContext>(c, meshLockKeyPrefix) {
-                LockOptions = c.GetRequiredService<MeshLockOptions>(),
+                : $"{RedisMeshLocks.DefaultKeyPrefix}-{subspace}"; // Must not use "." as a delimiter!
+            return new RedisMeshLocks<TContext>(c, keyPrefix) {
+                LockOptions = MeshLockOptions.Presets[optionsPreset],
             };
         });
     }
 
     protected override void InjectServices(IServiceCollection services)
-        => services.TryAddSingleton(_ => {
-            var lockOptions = MeshLockOptions.Default;
-            if (HostInfo.IsTested) // Tests use mesh locks which expire faster
-                lockOptions = lockOptions with {
-                    ExpirationPeriod = TimeSpan.FromSeconds(10),
-                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
-                };
-            return lockOptions;
-        });
+    { }
 }

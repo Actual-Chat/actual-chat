@@ -6,14 +6,28 @@ public sealed record MeshLockOptions(
     TimeSpan ExpirationPeriod,
     float RenewalPeriodRatio = 0.5f
 ) {
-    public static MeshLockOptions Default { get; set; } = GetDefaultOptions();
+    public static readonly MeshLockOptions Default = new(10);
+    public static readonly MeshLockOptions DebugFriendly = new(180);
+    public static readonly MeshLockOptions TestFriendly = new(10) { UnconditionalCheckPeriod = TimeSpan.FromSeconds(3) };
+    public static readonly IReadOnlyDictionary<string, MeshLockOptions> Presets
+        = new Dictionary<string, MeshLockOptions>(StringComparer.OrdinalIgnoreCase) {
+            [nameof(Default)] = Default,
+            [nameof(DebugFriendly)] = DebugFriendly,
+            [nameof(TestFriendly)] = TestFriendly,
+            ["Debug"] = DebugFriendly,
+            ["Test"] = TestFriendly,
+        };
 
     public TimeSpan UnconditionalCheckPeriod { get; init; } = TimeSpan.FromSeconds(10);
-    public TimeSpan WarningDelay { get; init; } // Negative or zero = no warning
+    public TimeSpan WarningDelay { get; init; } = TimeSpan.FromSeconds(15); // Negative or zero = no warning
 
     // Computed properties
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public TimeSpan RenewalPeriod => ExpirationPeriod * RenewalPeriodRatio;
+
+    public MeshLockOptions(double expirationPeriod, float renewalPeriodRatio = 0.5f)
+        : this(TimeSpan.FromSeconds(expirationPeriod), renewalPeriodRatio)
+    { }
 
     public void RequireValid()
     {
@@ -21,16 +35,5 @@ public sealed record MeshLockOptions(
             throw StandardError.Constraint<MeshLockOptions>($"{nameof(ExpirationPeriod)} is zero or negative.");
         if (RenewalPeriodRatio is <= 0f or >= 1f)
             throw StandardError.Constraint<MeshLockOptions>($"{nameof(RenewalPeriodRatio)} must be in (0, 1) range.");
-    }
-
-    // Private methods
-
-    private static MeshLockOptions GetDefaultOptions()
-    {
-#if DEBUG
-        if (Debugger.IsAttached)
-            return new(TimeSpan.FromSeconds(60)) { WarningDelay = TimeSpan.FromSeconds(65) };
-#endif
-        return new(TimeSpan.FromSeconds(10)) { WarningDelay = TimeSpan.FromSeconds(15) };
     }
 }

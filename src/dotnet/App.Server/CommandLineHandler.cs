@@ -1,4 +1,6 @@
 using ActualChat.Hosting;
+using ActualChat.Mesh;
+using ActualChat.Redis.Module;
 using static System.Console;
 
 namespace ActualChat.App.Server;
@@ -14,13 +16,12 @@ public static class CommandLineHandler
     private const string UrlsEnvVar = "URLS";
     private const string ServerRoleEnvVar = "HostSettings__ServerRole";
     private const string MeshLockSubspaceEnvVar = "RedisSettings__MeshLockSubspace";
+    private const string MeshLockOptionsPresetEnvVar = "RedisSettings__MeshLockOptionsPreset";
 
     private static readonly Dictionary<Symbol, HostRole[]> AllRoleGroups = new() {
         { "1", [HostRole.OneServer] },
         { "2", [HostRole.OneApiServer, HostRole.OneBackendServer] },
     };
-
-    private static (string, int)? _defaultHostAndPort;
 
     private static bool UseKeyboard { get; set; }
     private static bool ForceDistributed { get; set; }
@@ -45,17 +46,21 @@ public static class CommandLineHandler
             Environment.SetEnvironmentVariable(UrlsEnvVar, urlOverride);
         }
 
-        // Mesh lock subspace - from env. var
-        var meshLockSubspace = Environment.GetEnvironmentVariable(MeshLockSubspaceEnvVar);
-        if (!meshLockSubspace.IsNullOrEmpty())
-            WriteLine($"MeshLock subspace override: {meshLockSubspace}");
-
         // -role:<role-group>:<own-role> argument
         if (TryParseRoleArgument(args, RoleArgPrefix)) {
             if (TryParseRoleArgument(args, MultiHostRoleArgPrefix))
                 throw StandardError.CommandLine($"{RoleArgPrefix} and {MultiHostRoleArgPrefix} can't be used together.");
 
+            var meshLockSubspace = Environment.GetEnvironmentVariable(MeshLockSubspaceEnvVar);
+            if (meshLockSubspace.IsNullOrEmpty())
+                throw StandardError.CommandLine($"{RoleArgPrefix} requires '{MeshLockSubspaceEnvVar}' env. var.");
+
+            var meshLockOptionsPreset = Environment.GetEnvironmentVariable(MeshLockOptionsPresetEnvVar);
+            if (meshLockOptionsPreset.IsNullOrEmpty())
+                throw StandardError.CommandLine($"{RoleArgPrefix} requires '{MeshLockOptionsPresetEnvVar}' env. var.");
+
             WriteLine($"Role override: {OwnRole} of role group '{RoleGroupName}'.");
+            WriteLine($"IMeshLocks settings: '{meshLockSubspace}' subspace, '{meshLockOptionsPreset}' options preset");
             Environment.SetEnvironmentVariable(ServerRoleEnvVar, OwnRole.Value);
             StartKeyboardWatcher();
             return;
@@ -63,11 +68,16 @@ public static class CommandLineHandler
 
         // -multihost-role:<role-group>:<own-role> argument
         if (TryParseRoleArgument(args, MultiHostRoleArgPrefix)) {
-            if (meshLockSubspace.IsNullOrEmpty()) {
+            var redisSettings = ConfigOnlyAppHost.Configuration.Settings<RedisSettings>();
+            var meshLockSubspace = redisSettings.MeshLockSubspace;
+            if (OrdinalEquals(meshLockSubspace, "?"))
                 meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
-                WriteLine($"MeshLock subspace: {meshLockSubspace}");
-                Environment.SetEnvironmentVariable(MeshLockSubspaceEnvVar, meshLockSubspace);
-            }
+            var meshLockOptionsPreset =
+                redisSettings.MeshLockOptionsPreset.NullIfEmpty()
+                ?? nameof(MeshLockOptions.Default);
+            WriteLine($"IMeshLocks settings: '{meshLockSubspace}' subspace, '{meshLockOptionsPreset}' options preset");
+            Environment.SetEnvironmentVariable(MeshLockSubspaceEnvVar, meshLockSubspace);
+            Environment.SetEnvironmentVariable(MeshLockOptionsPresetEnvVar, meshLockOptionsPreset);
 
             var (host, defaultPort) = GetDefaultHostAndPort();
             var ownUrl = $"http://{host}:{defaultPort + OwnRoleIndex}";
@@ -108,14 +118,8 @@ public static class CommandLineHandler
 
     private static (string Host, int Port) GetDefaultHostAndPort()
     {
-        if (_defaultHostAndPort is { } defaultHostAndPort)
-            return defaultHostAndPort;
-
-        // Building a similar host to get our own http:// endpoint
-        var appHost = new AppHost().Build(coreServicesOnly: true);
-        var endpoint = ServerEndpoints.List(appHost.Services, "http://").FirstOrDefault();
-        _defaultHostAndPort = ServerEndpoints.Parse(endpoint);
-        return _defaultHostAndPort.GetValueOrDefault();
+        var endpoint = ServerEndpoints.List(ConfigOnlyAppHost.Services, "http://").FirstOrDefault();
+        return ServerEndpoints.Parse(endpoint);
     }
 
     private static void LaunchAppHost(HostRole role, string host, int port)

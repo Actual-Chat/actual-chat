@@ -55,7 +55,8 @@ public static class TestAppHostFactory
                     (WebHostDefaults.StaticWebAssetsKey, manifestPath),
                     ($"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName),
                     ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", useNatsQueues.ToString()),
-                    ($"{nameof(RedisSettings)}:{nameof(RedisSettings.MeshLockSubspace)}", options.MeshLockSubspace)
+                    ($"{nameof(RedisSettings)}:{nameof(RedisSettings.MeshLockSubspace)}", options.MeshLockSubspace),
+                    ($"{nameof(RedisSettings)}:{nameof(RedisSettings.MeshLockOptionsPreset)}", options.MeshLockOptionsPreset)
                 );
 
                 // Overrides from options
