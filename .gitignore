@@ -5,6 +5,7 @@ build/Build.sln
 ActualChat.CI.slnf
 Nerdbank.GitVersioning.*
 *.snk
+services/opensearch/snapshots
 
 # IDE folders & files
 .vs/

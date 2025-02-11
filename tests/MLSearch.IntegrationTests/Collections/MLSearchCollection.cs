@@ -32,7 +32,8 @@ public class AppHostFixture(IMessageSink messageSink)
     {
         var appHost = await base.NewAppHost(optionOverrider);
         // Ensure cleanup service is instantiated
-        _ = appHost.Services.GetRequiredService<OpenSearchCleanup>();
+        if (!TestRunnerInfo.IsBuildAgent())
+            _ = appHost.Services.GetRequiredService<OpenSearchCleanup>();
         return appHost;
     }
 }

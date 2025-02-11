@@ -25,7 +25,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
     private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
-    private ILogger? DebugLog => Constants.DebugMode.OpenSearchRequest ? Log : null;
+    private ILogger? OpenSearchDebugLog => Constants.DebugMode.OpenSearchRequestResponse ? Log : null;
 
     // Not a [ComputeMethod]!
     public async Task<ContactSearchResultPage> FindContacts(
@@ -214,6 +214,26 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId, "TextEntry changed", cancellationToken);
     }
 
+    // [EventHandler]
+    public virtual Task OnContactChangedEvent(ContactChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
+
+        var (contact, _, changeKind) = eventCommand;
+        return UpdateIndexedUserContacts();
+
+        Task UpdateIndexedUserContacts()
+        {
+            if (contact.Kind != ContactKind.User)
+                return Task.CompletedTask;
+
+            return changeKind is ChangeKind.Remove
+                ? IndexedDocuments.SaveUserContacts([], [contact.Id], cancellationToken)
+                : ResumeIndexingFlow<UserContactIndexingFlow>("", "Contact changed", cancellationToken);
+        }
+    }
+
     // Private methods
 
     private async Task<ContactSearchResultPage> FindPeopleFromContacts(
@@ -229,9 +249,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Name)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "People", OpenSearchNames.UserIndexName),
+                            .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName),
                     cancellationToken)
                 .Assert(Log)
+                .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
@@ -288,9 +309,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Name)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "People", OpenSearchNames.UserIndexName),
+                            .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName),
                     cancellationToken)
                 .Assert(Log)
+                .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
@@ -337,7 +359,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Title)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "Group", OpenSearchNames.GroupIndexName),
+                            .Log(OpenSearchClient, OpenSearchDebugLog, "Group", OpenSearchNames.GroupIndexName),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -383,7 +405,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Title)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "Place", OpenSearchNames.PlaceIndexName),
+                            .Log(OpenSearchClient, OpenSearchDebugLog, "Place", OpenSearchNames.PlaceIndexName),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
@@ -428,7 +450,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Sort(s => s.Descending(x => x.At))
                             .IgnoreUnavailable()
                             .Highlight(h => h.Fields(f => f.Field(x => x.Content)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
-                            .Log(OpenSearchClient, DebugLog, "Entry", OpenSearchNames.EntryIndexName),
+                            .Log(OpenSearchClient, OpenSearchDebugLog, "Entry", OpenSearchNames.EntryIndexName),
                     cancellationToken)
                 .Assert(Log)
                 .ConfigureAwait(false);
