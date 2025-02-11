@@ -13,10 +13,10 @@ public class AndroidWebViewClient(
     private ILogger Log => log;
     private WebViewClient Original { get; } = original;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
-    private bool HasDisconnected { get; set; }
+    private bool IsDisconnected { get; set; }
 
     public void MarkDisconnected()
-        => HasDisconnected = true;
+        => IsDisconnected = true;
 
 #pragma warning disable CA2215, MA0084
     protected override void Dispose(bool disposing)
@@ -44,7 +44,7 @@ public class AndroidWebViewClient(
 
     public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return false;
 
         return Original.IfNotNull()?.ShouldOverrideUrlLoading(view, request) ?? false;
@@ -55,7 +55,7 @@ public class AndroidWebViewClient(
         const string contentTypeKey = "Content-Type";
         const string cacheControlKey = "Cache-Control";
 
-        if (HasDisconnected)
+        if (IsDisconnected)
             return null;
 
         var requestUrl = request?.Url;
@@ -90,7 +90,7 @@ public class AndroidWebViewClient(
 
     public override void OnPageFinished(WebView? view, string? url)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return;
 
         Original.OnPageFinished(view, url);
@@ -98,7 +98,7 @@ public class AndroidWebViewClient(
 
     public override void DoUpdateVisitedHistory(WebView? view, string? url, bool isReload)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return;
 
         base.DoUpdateVisitedHistory(view, url, isReload);

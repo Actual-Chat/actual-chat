@@ -54,6 +54,7 @@ public class AndroidWebChromeClient : WebChromeClient
     private readonly WebChromeClient _client;
     private readonly VisualMediaFileChooser _visualMediaFileChooser;
     private ILogger Log { get; }
+    private bool IsDisconnected { get; set; }
 
     public AndroidWebChromeClient(
         WebChromeClient client,
@@ -67,10 +68,8 @@ public class AndroidWebChromeClient : WebChromeClient
         Log = log;
     }
 
-    private bool HasDisconnected { get; set; }
-
     public void MarkDisconnected()
-        => HasDisconnected = true;
+        => IsDisconnected = true;
 
     protected override void Dispose(bool disposing)
     {
@@ -147,7 +146,7 @@ public class AndroidWebChromeClient : WebChromeClient
         => _client.GetVisitedHistory(callback);
     public override bool OnConsoleMessage(ConsoleMessage? consoleMessage)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return false;
 
         return _client.OnConsoleMessage(consoleMessage);
@@ -171,7 +170,7 @@ public class AndroidWebChromeClient : WebChromeClient
         => _client.OnPermissionRequestCanceled(request);
     public override void OnProgressChanged(WebView? view, int newProgress)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return;
 
         _client.OnProgressChanged(view, newProgress);
@@ -179,7 +178,7 @@ public class AndroidWebChromeClient : WebChromeClient
 
     public override void OnReceivedIcon(WebView? view, Bitmap? icon)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return;
 
         _client.OnReceivedIcon(view, icon);
@@ -187,7 +186,7 @@ public class AndroidWebChromeClient : WebChromeClient
 
     public override void OnReceivedTitle(WebView? view, string? title)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return;
 
         _client.OnReceivedTitle(view, title);
@@ -195,7 +194,7 @@ public class AndroidWebChromeClient : WebChromeClient
 
     public override void OnReceivedTouchIconUrl(WebView? view, string? url, bool precomposed)
     {
-        if (HasDisconnected)
+        if (IsDisconnected)
             return;
 
         _client.OnReceivedTouchIconUrl(view, url, precomposed);
