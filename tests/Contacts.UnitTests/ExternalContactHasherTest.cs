@@ -56,7 +56,7 @@ public class ExternalContactHasherTest
         // act
         var sut = new ExternalContactHasher();
         var hash = sut.Compute(externalContacts);
-        var hashOfReversed = sut.Compute(externalContacts.Reverse());
+        var hashOfReversed = sut.Compute(externalContacts.Revert());
 
         // assert
         hash.Should().Be(hashOfReversed);
