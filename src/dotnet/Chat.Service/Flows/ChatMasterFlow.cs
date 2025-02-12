@@ -40,7 +40,9 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)
     {
         foreach (var item in batch)
-            await Host.Flows.StartOrReset<ConversationSplitFlow>(item.Id, null, "ChatMasterFlow", cancellationToken).ConfigureAwait(false);
+            await Host.Flows
+                .StartOrReset<ConversationSplitFlow>(item.Id, null, "ChatMasterFlow", cancellationToken)
+                .ConfigureAwait(false);
     }
 
     protected override Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)

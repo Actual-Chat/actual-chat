@@ -5,7 +5,7 @@ using ActualChat.MLSearch.Documents;
 namespace ActualChat.MLSearch.Indexing.ChatContent;
 
 internal class ChatContentArranger4(
-    IEntryGroupExtractor entryGroupExtractor,
+    [FromKeyedServices(EntryGroupLimit.Medium)]IEntryGroupExtractor entryGroupExtractor,
     IDocumentEntriesLoader documentEntriesLoader
 ): IChatContentArranger
 {
