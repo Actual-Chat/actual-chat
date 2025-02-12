@@ -22,8 +22,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await base.DisposeAsync();
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldNotFindFriendsIfNotInContacts()
     {
         // arrange
@@ -39,8 +38,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEmpty();
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldNotFindOtherUserContactsIfAllInContacts()
     {
         // arrange
@@ -58,8 +56,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEmpty();
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldFindUsers()
     {
         // arrange
@@ -80,8 +77,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldFindUsersLinkedByPhone()
     {
         // arrange
@@ -108,8 +104,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldFindByPrefix()
     {
         // arrange
@@ -140,8 +135,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldFindByPrefixInPlace()
     {
         // arrange
@@ -174,8 +168,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldFindByMultipleWords()
     {
         // arrange
@@ -208,8 +201,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldFindUpdatedUsers()
     {
         // arrange
@@ -244,8 +236,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldNotFindDeletedUsers()
     {
         // arrange
@@ -283,8 +274,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldFindOnlyPlaceMembers()
     {
         // arrange
@@ -305,8 +295,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    // TODO(FC): fix it
-    [Fact(Skip = "needs fix")]
+    [Fact]
     public async Task ShouldTakeOnlyFromSpecifiedPlace()
     {
         // arrange

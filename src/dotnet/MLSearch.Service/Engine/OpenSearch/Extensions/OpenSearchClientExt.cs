@@ -188,6 +188,50 @@ internal static class OpenSearchClientExt
         return request;
     }
 
+    public static Task<ISearchResponse<T>> Log<T>(this Task<ISearchResponse<T>> responseTask, IOpenSearchClient client, ILogger? log, string scope, string indexName) where T : class
+    {
+        return log == null ? responseTask : LogTaskResult();
+
+        async Task<ISearchResponse<T>> LogTaskResult()
+        {
+            if (responseTask.IsCompletedSuccessfully)
+                return responseTask.Result.Log(client, log, scope, indexName);
+
+            var response = await responseTask.ConfigureAwait(false);
+            return response.Log(client, log, scope, indexName);
+        }
+    }
+
+    public static ISearchResponse<T> Log<T>(this ISearchResponse<T> response, IOpenSearchClient client, ILogger? log, string scope, string indexName) where T : class
+    {
+        if (log == null)
+            return response;
+
+        // creating mini response due to serialization issues - ok since it's for debug purpose
+        var toSerialize = new {
+            response.Took,
+            response.TimedOut,
+            response.Shards,
+            response.Hits,
+        };
+        LogResponse(toSerialize, client, log, $"{scope} search in {indexName} response:\n");
+        return response;
+    }
+
+    private static void LogResponse<T>(T response, IOpenSearchClient client, ILogger? log, string description)
+    {
+        if (log == null)
+            return;
+
+        try {
+            var s = client.RequestResponseSerializer.SerializeToString(response);
+            log.LogDebug("{Description}{Request}", description, s);
+        }
+        catch (Exception e) {
+            log.LogWarning(e, "Could not log {Description}", description);
+        }
+    }
+
     public static MultiMatchQueryDescriptor<TDocument> Fields<TDocument, TValue>(
         this MultiMatchQueryDescriptor<TDocument> multiMatchQueryDescriptor,
         params Expression<Func<TDocument, TValue>>[] fields)
