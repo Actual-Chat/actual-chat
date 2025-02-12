@@ -2,6 +2,10 @@ namespace ActualChat;
 
 public static class EnumerableExt
 {
+    // TODO: remove this workaround when linq Reverse for arrays does not overlap with System.MemoryExtensions
+    public static IEnumerable<T> Revert<T>(this IEnumerable<T> source)
+        => source.Reverse();
+
     public static IEnumerable<T> Concat<T>(this IEnumerable<T> prefix, T suffix)
     {
         foreach (var item in prefix)
