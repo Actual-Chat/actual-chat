@@ -28,7 +28,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
 
 #if ANDROID
         if (OrdinalEquals(schema, AuthSchema.Google)) {
-            var googleAuth = Hub.GetRequiredService<NativeGoogleAuth>();
+            var googleAuth = hub.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
                 await googleAuth.SignIn().ConfigureAwait(false);
                 return;
@@ -52,7 +52,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
     public async Task SignOut()
     {
 #if ANDROID
-        var googleAuth = Hub.GetRequiredService<NativeGoogleAuth>();
+        var googleAuth = hub.GetRequiredService<NativeGoogleAuth>();
         if (googleAuth.IsSignedIn())
             await googleAuth.SignOut().ConfigureAwait(true);
 #endif
