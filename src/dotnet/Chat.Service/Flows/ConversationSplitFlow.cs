@@ -1,3 +1,4 @@
+using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using MemoryPack;
@@ -15,6 +16,11 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
 
+    [field: AllowNull, MaybeNull]
+    private IEntryGroupExtractor EntryGroupExtractor => field ??= Host.Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
+
+    [DataMember(Order = 0), MemoryPackOrder(0)]
+    public ExtractorState? ExtractorState { get; protected set; }
 
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,
@@ -41,6 +47,15 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
 
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
+        var state = ExtractorState;
+        var extractResult = await EntryGroupExtractor.ExtractGroups(state, batch, cancellationToken).ConfigureAwait(false);
+        ExtractorState = extractResult.State;
+
+        var groups = extractResult.Groups;
+        var replySequences = extractResult.ReplySequences;
+        if (groups.Count == 0)
+            return;
+
         // TODO(AK): Implement the logic to split the conversation into documents
     }
 }

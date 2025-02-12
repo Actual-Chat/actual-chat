@@ -1,19 +1,32 @@
+using MemoryPack;
+
 namespace ActualChat.Chat.ML;
 
 public record EntryGroup(IReadOnlyList<ChatEntry> Entries, int WordCount = 0, bool IsCompleted = false);
 
 public record ReplySequence(IReadOnlyList<ChatEntry> Entries);
 
-public record ExtractorState(EntryGroupBuilder? CurrentGroup, EntryGroupBuilder? CurrentChunk);
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record ExtractorState(
+    [property: DataMember, MemoryPackOrder(0)] EntryGroupBuilder? CurrentGroup,
+    [property: DataMember, MemoryPackOrder(1)] EntryGroupBuilder? CurrentChunk);
 
 public record ExtractResult(ExtractorState State, IReadOnlyList<EntryGroup> Groups, IReadOnlyList<ReplySequence> ReplySequences);
 
 public interface IEntryGroupExtractor
 {
     Task<ExtractResult> ExtractGroups(
-        ExtractorState state,
+        ExtractorState? state,
         IReadOnlyCollection<ChatEntry> entries,
         CancellationToken cancellationToken);
+}
+
+public enum EntryGroupLimit
+{
+    None = 0,
+    Small = 100,
+    Medium = 400,
+    Large = 2000,
 }
 
 public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, int? groupWordCount = null) : IEntryGroupExtractor
@@ -24,10 +37,11 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, int
     public IEmbeddingsCalculator EmbeddingsCalculator { get; } = embeddingsCalculator;
 
     public async Task<ExtractResult> ExtractGroups(
-        ExtractorState state,
+        ExtractorState? state,
         IReadOnlyCollection<ChatEntry> entries,
         CancellationToken cancellationToken)
     {
+        state ??= new ExtractorState(null, null);
         if (entries.Count == 0)
             return new ExtractResult(state, Array.Empty<EntryGroup>(), Array.Empty<ReplySequence>());
 

@@ -1,8 +1,10 @@
 using Cysharp.Text;
+using MemoryPack;
 
 namespace ActualChat.Chat.ML;
 
-public class EntryGroupBuilder
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial class EntryGroupBuilder
 {
     private readonly List<ChatEntry> _entries = [];
     private Utf16ValueStringBuilder _stringBuilder = ZString.CreateStringBuilder();
@@ -12,13 +14,25 @@ public class EntryGroupBuilder
     private long _minLid = long.MaxValue;
     private long _maxLid = 0;
 
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public IReadOnlyList<ChatEntry> Entries => _entries;
+
+    [IgnoreDataMember, MemoryPackIgnore]
     public int WordCount => _wordCount;
+
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public double[] Embeddings { get; set; } = [];
+
+    [IgnoreDataMember, MemoryPackIgnore]
     public int AveragePauseBetweenEntries => _averagePauseBetweenEntries;
+
+    [IgnoreDataMember, MemoryPackIgnore]
     public long MinLid => _minLid;
+
+    [IgnoreDataMember, MemoryPackIgnore]
     public long MaxLid => _maxLid;
 
+    [IgnoreDataMember, MemoryPackIgnore]
     public string Text {
         get {
             if (_text is not null)
@@ -43,6 +57,7 @@ public class EntryGroupBuilder
         Initialize();
     }
 
+    [JsonConstructor, MemoryPackConstructor]
     public EntryGroupBuilder(IReadOnlyCollection<ChatEntry> entries)
     {
         _entries = [.. entries];

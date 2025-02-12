@@ -117,6 +117,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices)
 
         // Chat content indexing
 
+        // Keyed registration for ChatContentArranger4
+        services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.Medium,
+            (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), (int)EntryGroupLimit.Medium));
+
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();
         services.TryAddSingleton(embeddingSettings);

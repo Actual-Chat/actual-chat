@@ -62,6 +62,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApiOrLocal<ITranslations, Translations>();
         rpcHost.AddBackend<ITranslationsBackend, TranslationsBackend>();
 
+        // Conversations
+        // rpcHost.AddApi<IConversations, Conversations>();
+        rpcHost.AddBackend<IConversationsBackend, ConversationsBackend>();
+        
         // IBackendChatMarkupHub
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
@@ -95,6 +99,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddFlows()
             .Add<LanguageDetectionFlow>()
             .Add<LanguageDetectionMasterFlow>();
+		
+        // Keyed registration for ConversationSplitFlow
+        services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
+            (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>()));
 
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();

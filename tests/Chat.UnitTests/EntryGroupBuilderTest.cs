@@ -1,4 +1,5 @@
 using ActualChat.Chat.ML;
+using MemoryPack;
 
 namespace ActualChat.Chat.UnitTests;
 
@@ -91,5 +92,26 @@ public class EntryGroupBuilderTest
         builder.Add(entry2);
 
         Assert.NotEqual(textBefore, builder.Text);
+    }
+
+    [Fact]
+    public void SerializeAndDeserialize_EntryGroupBuilder()
+    {
+        var builder = new EntryGroupBuilder();
+        var entry1 = new ChatEntry { Content = "Hello" };
+        var entry2 = new ChatEntry { Content = "world" };
+        builder.Add(entry1);
+        builder.Add(entry2);
+
+        // Serialize
+        var serializedData = MemoryPackSerializer.Serialize(builder);
+
+        // Deserialize
+        var deserializedBuilder = MemoryPackSerializer.Deserialize<EntryGroupBuilder>(serializedData);
+
+        // Assert
+        deserializedBuilder!.Entries.Count.Should().Be(builder.Entries.Count);
+        deserializedBuilder.WordCount.Should().Be(builder.WordCount);
+        deserializedBuilder.Text.Should().Be(builder.Text);
     }
 }
