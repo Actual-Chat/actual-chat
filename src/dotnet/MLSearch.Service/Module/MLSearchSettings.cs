@@ -81,6 +81,7 @@ public sealed class CustomEmbeddingServiceSettings
     public string? ModelName { get; set; }
 }
 
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class UriAttribute(): ValidationAttribute("Value for {0} must be a valid URI.")
 {
     public override bool IsValid(object? value) => value is string valueAsString

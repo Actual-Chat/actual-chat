@@ -129,7 +129,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         async Task UpdateIndexedUsers()
         {
             if (!eventCommand.HasLeft) {
-                await ResumeIndexingFlow<PlaceContactIndexingFlow>("", "Place membership changed", cancellationToken);
+                await ResumeIndexingFlow<PlaceContactIndexingFlow>("", "Place membership changed", cancellationToken)
+                    .ConfigureAwait(false);
                 return;
             }
 
@@ -154,7 +155,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         var (chat, _, changeKind) = eventCommand;
         // TODO: Stop indexing removed chats
-        await StartIndexingEntries();
+        await StartIndexingEntries().ConfigureAwait(false);
         await UpdateIndexedChatContacts().ConfigureAwait(false);
         return;
 
@@ -186,7 +187,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return;
 
         var (place, _, changeKind) = eventCommand;
-        await UpdatedIndexedPlaces();
+        await UpdatedIndexedPlaces().ConfigureAwait(false);
         return;
 
         Task UpdatedIndexedPlaces()

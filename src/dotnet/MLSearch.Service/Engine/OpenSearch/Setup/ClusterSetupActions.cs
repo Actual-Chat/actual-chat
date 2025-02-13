@@ -115,7 +115,7 @@ internal abstract class ClusterSetupActions(
                 if (modelDeployTaskState.OrdinalStartsWith("COMPLETED"))
                     break;
 
-                await Task.Delay(2000, cancellationToken);
+                await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
             }
         }
     }

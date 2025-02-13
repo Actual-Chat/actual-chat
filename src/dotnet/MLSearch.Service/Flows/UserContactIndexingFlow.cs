@@ -35,7 +35,8 @@ public partial class UserContactIndexingFlow : BatchedIndexingFlowBase<Contact, 
                 LastId = cursor.LastUpdatedId,
                 Limit = BatchSize,
             },
-            cancellationToken);
+            cancellationToken
+            ).ConfigureAwait(false);
     }
 
     protected override async Task ProcessBatch(IReadOnlyList<Contact> batch, CancellationToken cancellationToken)

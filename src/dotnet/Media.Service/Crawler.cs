@@ -1,7 +1,5 @@
 using ActualChat.Media.Module;
 using ActualLab.Diagnostics;
-using ActualLab.Locking;
-using TurnerSoftware.RobotsExclusionTools;
 
 namespace ActualChat.Media;
 
@@ -67,7 +65,7 @@ public sealed class Crawler(
 
     private async Task<IReadOnlyCollection<string>> ListSupportedUserAgents(Uri uri, CancellationToken cancellationToken)
     {
-        if (settings.DomainsWithoutRobots.Contains(uri.DnsSafeHost.ToLower()))
+        if (settings.DomainsWithoutRobots.Contains(uri.DnsSafeHost.ToLowerInvariant(), StringComparer.Ordinal))
             return UserAgents;
 
         var robotsFile = await robotsFiles.Get(uri, cancellationToken).ConfigureAwait(false);

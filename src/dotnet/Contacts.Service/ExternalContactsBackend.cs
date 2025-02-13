@@ -1,4 +1,5 @@
 using ActualChat.Contacts.Db;
+using ActualChat.Db;
 using ActualChat.Hashing;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -9,15 +10,14 @@ namespace ActualChat.Contacts;
 public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {
-    private IAccountsBackend? _accountsBackend;
-    private ContactLinker? _contactLinker;
-
     private HostId HostId { get; } = services.GetRequiredService<HostId>();
     private ExternalContactHasher Hasher { get; } = services.GetRequiredService<ExternalContactHasher>();
     private IDbEntityResolver<string, DbExternalContact> DbExternalContactResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExternalContact>>();
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private ContactLinker ContactLinker => _contactLinker ??= Services.GetRequiredService<ContactLinker>();
+    [field: AllowNull, MaybeNull]
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    [field: AllowNull, MaybeNull]
+    private ContactLinker ContactLinker => field ??= Services.GetRequiredService<ContactLinker>();
 
     // [ComputeMethod]
     [Obsolete("2024.04: Replaced with List - contact info list")]

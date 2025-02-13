@@ -20,7 +20,7 @@ public class UserLinks(IServiceProvider services) : IUserLinks
         return new UserLinkRef(userLink.Kind, userLink.TargetId);
     }
 
-    public virtual Task<PlaceChatId> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken)
+    public virtual Task<PlaceChatId> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken = default)
     {
         if (placeId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(placeId));
@@ -30,7 +30,7 @@ public class UserLinks(IServiceProvider services) : IUserLinks
         return ChatsBackend.GetPlaceChatIdByUserLink(placeId, userLinkId.ToLower(), cancellationToken);
     }
 
-    public virtual Task<UserId> GetUserIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken)
+    public virtual Task<UserId> GetUserIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken = default)
     {
         if (userLinkId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userLinkId));

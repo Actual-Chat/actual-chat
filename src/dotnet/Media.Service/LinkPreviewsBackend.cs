@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Media.Db;
 using ActualChat.Media.Flows;
@@ -63,7 +64,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        await dbContext.LinkPreviews.SharedLock(id, cancellationToken).ConfigureAwait(false);
+        await dbContext.LinkPreviews.LockShared(id, cancellationToken).ConfigureAwait(false);
         var dbLinkPreview = await dbContext.LinkPreviews.GetAsNoTracking(id, cancellationToken).ConfigureAwait(false);
 
         if (change.IsCreate(out var linkPreview)) {
@@ -107,15 +108,14 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         return ScheduleNewLinksCrawling();
 
-        async Task ScheduleNewLinksCrawling()
-        {
+        async Task ScheduleNewLinksCrawling() {
             if(changeKind is ChangeKind.Remove)
                 return;
 
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
-            foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks))
-                await Flows.GetOrStart<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(link), cancellationToken);
+            foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks, StringComparer.Ordinal))
+                await Flows.GetOrStart<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(link), cancellationToken).ConfigureAwait(false);
         }
     }
 

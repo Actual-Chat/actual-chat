@@ -19,8 +19,8 @@ public static partial class AssetVersionHelper
 
     public static ImportMapDefinition StripRelativePaths(ImportMapDefinition importMap)
     {
-        var assetMap = new Dictionary<string, string>();
-        var integrityMap = new Dictionary<string, string>();
+        var assetMap = new Dictionary<string, string>(StringComparer.Ordinal);
+        var integrityMap = new Dictionary<string, string>(StringComparer.Ordinal);
         if (importMap.Imports != null)
             foreach (var (key, value) in importMap.Imports)
                 if (key.StartsWith("./", StringComparison.Ordinal))
@@ -38,8 +38,8 @@ public static partial class AssetVersionHelper
 
     public static ImportMapDefinition GetWasmAssetsImportMap(ResourceAssetCollection assets)
     {
-        var assetMap = new Dictionary<string, string>();
-        var integrityMap = new Dictionary<string, string>();
+        var assetMap = new Dictionary<string, string>(StringComparer.Ordinal);
+        var integrityMap = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var asset in assets) {
             if (!asset.Url.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) ||
                 !asset.Url.StartsWith("dist", StringComparison.OrdinalIgnoreCase) ||
@@ -52,7 +52,7 @@ public static partial class AssetVersionHelper
             if (label != null)
                 assetMap[$"./{label}"] = $"./{asset.Url}";
         }
-        return new(assetMap, new Dictionary<string, IReadOnlyDictionary<string, string>>(), integrityMap);
+        return new(assetMap, new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal), integrityMap);
     }
 
     private static (string? integrity, string? label) GetAssetProperties(ResourceAsset asset) {

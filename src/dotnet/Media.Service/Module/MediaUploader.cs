@@ -21,7 +21,8 @@ public sealed class MediaUploader(Type ownerType)
         var blobStorageProvider = services.GetRequiredService<IBlobStorages>();
         var blobStorage = blobStorageProvider[BlobScope.ContentRecord];
 
-        await using var dbContext = dbInitializer.CreateDbContext(true);
+        var dbContext = dbInitializer.CreateDbContext(true);
+        await using var _ = dbContext.ConfigureAwait(false);
 
         log.LogInformation("Uploading chat pictures");
         var uploadBuilderContext = new UploadBuilderContext(AddMedia);
