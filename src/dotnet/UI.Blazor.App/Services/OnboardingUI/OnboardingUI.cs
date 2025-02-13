@@ -96,6 +96,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
         await _userSettings.Synchronize(cancellationToken).ConfigureAwait(false);
         await _localSettings.WhenRead.ConfigureAwait(false);
         await _localSettings.Synchronize(cancellationToken).ConfigureAwait(false);
+        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
 
         // If there was a recent account change, add a delay to let them hit the client
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
@@ -103,7 +104,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        if (_userSettings.Value.HasUncompletedSteps)
+        if (_userSettings.Value.HasUncompletedSteps(enableChatRouletteUI))
             return true;
 
         if (!_localSettings.Value.IsPermissionsStepCompleted) {
@@ -115,7 +116,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
                 await Task.Yield(); // Just in case
             }
         }
-        return _localSettings.Value.HasUncompletedSteps;
+        return _localSettings.Value.HasUncompletedSteps();
     }
 
     public void ResetSettings()
