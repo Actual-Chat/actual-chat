@@ -1,4 +1,3 @@
-@using ActualChat.Hashing
 @using ActualChat.Hosting
 @using ActualChat.Security
 @using ActualChat.UI.Blazor.Services
@@ -9,7 +8,7 @@
 @using ActualLab.Generators
 @using ActualChat.UI.Blazor.App
 @{
-    Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
+    // Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
     var renderModeKey = _renderMode.Key;
     var blazorMaxReconnectRetries = 0; // 100_000_000;
     var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
