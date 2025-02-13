@@ -10,57 +10,53 @@ public class AndroidWebViewClient(
     ILogger log
     ) : WebViewClient
 {
-    private ILogger? _log;
-
-    private ILogger Log => _log ??= StaticLog.Factory.CreateLogger(GetType());
+    private ILogger Log => log;
     private WebViewClient Original { get; } = original;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
+    private bool IsDisconnected { get; set; }
+
+    public void MarkDisconnected()
+        => IsDisconnected = true;
 
 #pragma warning disable CA2215, MA0084
     protected override void Dispose(bool disposing)
     {
+        Log.LogDebug("Dispose. Disposing={Disposing}", disposing);
         var original = Original;
         if (disposing && original.IsNotNull())
             original.Dispose();
+        base.Dispose(disposing);
     }
 #pragma warning restore CA2215, MA0084
 
     public override bool OnRenderProcessGone(WebView? view, RenderProcessGoneDetail? detail)
     {
+        // NOTE(DF): after removing specifying renderer importance, termination handling api should not be invoked.
+        // https://developer.android.com/develop/ui/views/layout/webapps/managing-webview#renderer-importance
+        // https://developer.android.com/develop/ui/views/layout/webapps/managing-webview#termination-handle
+
         var didCrash = detail?.DidCrash() == true;
         var details = $"DidCrash: {didCrash}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}, {detail}";
-        log.LogWarning("OnRenderProcessGone: {Details}", details);
+        Log.LogWarning("OnRenderProcessGone: {Details}", details);
 
-        if (view.IsNotNull()
-            && MauiWebView.Current is { } mauiWebView
-            && mauiWebView.AndroidWebView.IfNotNull() is { } androidWebView
-            && ReferenceEquals(androidWebView, view)) {
-            if (mauiWebView.MarkDead()) {
-                androidWebView.ClearCache(false);
-                androidWebView.RemoveAllViews();
-                androidWebView.OnPause();
-                androidWebView.ClearHistory();
-                MainThread.BeginInvokeOnMainThread(() => {
-                    if (didCrash)
-                        MainPage.Current.RecreateWebView();
-                    else
-                        MainPage.Current.Unload();
-                    androidWebView.Destroy();
-                    androidWebView.DisposeSilently();
-                });
-            }
-            return true; // Indicates that we've handled this gracefully
-        }
         return base.OnRenderProcessGone(view, detail);
     }
 
     public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
-        => Original.IfNotNull()?.ShouldOverrideUrlLoading(view, request) ?? false;
+    {
+        if (IsDisconnected)
+            return false;
+
+        return Original.IfNotNull()?.ShouldOverrideUrlLoading(view, request) ?? false;
+    }
 
     public override WebResourceResponse? ShouldInterceptRequest(WebView? view, IWebResourceRequest? request)
     {
         const string contentTypeKey = "Content-Type";
         const string cacheControlKey = "Cache-Control";
+
+        if (IsDisconnected)
+            return null;
 
         var requestUrl = request?.Url;
         if (request != null && requestUrl != null
@@ -93,10 +89,18 @@ public class AndroidWebViewClient(
     }
 
     public override void OnPageFinished(WebView? view, string? url)
-        => Original.OnPageFinished(view, url);
+    {
+        if (IsDisconnected)
+            return;
+
+        Original.OnPageFinished(view, url);
+    }
 
     public override void DoUpdateVisitedHistory(WebView? view, string? url, bool isReload)
     {
+        if (IsDisconnected)
+            return;
+
         base.DoUpdateVisitedHistory(view, url, isReload);
         var canGoBack = view!.CanGoBack();
         // It seems at this point we can not trust CanGoBack value, when it's navigated to a new address.

@@ -59,7 +59,7 @@
         <string-skeleton firstWidth="2" secondWidth="4" height="6" system="true"/>
     } else {
         <div class="@cls"
-             data-hover-menu="@(MenuRef.New<MessageHoverMenu>(entry.Id, bool.TrueString))"
+             data-hover-menu="@(m.IsSelected ? null : MenuRef.New<MessageHoverMenu>(entry.Id, bool.TrueString))"
              data-menu="@(MenuRef.New<MessageMenu>(entry.Id, bool.TrueString, "", ""))"
              data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="chat-message group">
@@ -83,7 +83,7 @@
 
 <div class="@cls"
      data-chat-entry-id="@(entry.Id)"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(entry.Id, bool.FalseString))"
+     data-hover-menu="@(m.HasSelection ? null : MenuRef.New<MessageHoverMenu>(entry.Id, bool.FalseString))"
      data-menu="@(MenuRef.New<MessageMenu>(entry.Id, bool.FalseString, "", ""))"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <div class="chat-message group">
@@ -340,6 +340,7 @@
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
+        var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
@@ -347,6 +348,7 @@
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
             IsSelected = selectedChatEntries.Contains(entry.Id),
+            HasSelection = hasSelection,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
             ForwardedChatEntryId = forwardedChatEntryId,
@@ -521,6 +523,7 @@
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
         public bool IsSelected { get; init; }
+        public bool HasSelection { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
         public ChatEntryId ForwardedChatEntryId { get; init; }

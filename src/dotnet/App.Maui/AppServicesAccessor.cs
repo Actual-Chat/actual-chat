@@ -14,7 +14,7 @@ public class AppServicesAccessor
 
     private static readonly Lock AppServicesLock = new(); // Otherwise, Rider assumes we're referencing it from elsewhere
     private static ILogger? _log; // Otherwise, Rider assumes we're referencing it from elsewhere
-    private static volatile IServiceProvider? _scopedServices;
+    private static volatile ScopeServicesInfo? _scopedServicesInfo;
     // ReSharper disable once InconsistentNaming
     private static readonly TaskCompletionSource<IServiceProvider> _appServicesSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
@@ -27,17 +27,25 @@ public class AppServicesAccessor
         => _log ??= StaticLog.Factory.CreateLogger<AppServicesAccessor>();
 
     public static IServiceProvider BlazorAppServices {
-        get => _scopedServices ?? throw Errors.NotInitialized(nameof(BlazorAppServices));
+        get => _scopedServicesInfo?.Services ?? throw Errors.NotInitialized(nameof(BlazorAppServices));
         set {
             lock (AppServicesLock) {
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
-                if (ReferenceEquals(_scopedServices, value))
+                if (ReferenceEquals(_scopedServicesInfo?.Services, value))
                     return;
-                if (_scopedServices != null)
-                    TryDiscardActiveBlazorAppServices(_scopedServices, "BlazorAppServices.set");
 
-                _scopedServices = value;
+                if (_scopedServicesInfo != null) {
+                    var contextTracker = _scopedServicesInfo.ContextTracker;
+                    _blazorAppServicesSource.TrySetCanceled();
+                    _blazorAppServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
+                    _scopedServicesInfo = null;
+                    Log.LogInformation("Active BlazorAppServices are discarded ({Reason})", "BlazorAppServices.set");
+                    contextTracker.OnDiscardingActiveBlazorAppServices();
+                }
+
+                var tracker = value.GetRequiredService<MauiWebViewPageContextTracker>();
+                _scopedServicesInfo = new ScopeServicesInfo(value, tracker);
                 _blazorAppServicesSource.TrySetResult(value);
                 _blazorAppServicesChangedSource.TrySetResult(value);
                 _blazorAppServicesChangedSource = TaskCompletionSourceExt.New<IServiceProvider>();
@@ -48,7 +56,7 @@ public class AppServicesAccessor
 
     public static bool TryGetScopedServices([NotNullWhen(true)] out IServiceProvider? scopedServices)
     {
-        scopedServices = _scopedServices;
+        scopedServices = _scopedServicesInfo?.Services;
         return scopedServices != null;
     }
 
@@ -115,22 +123,6 @@ public class AppServicesAccessor
         return await dispatcher.InvokeAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
     }
 
-    public static void TryDiscardActiveBlazorAppServices(IServiceProvider? scopedServices, string reason)
-    {
-        if (scopedServices == null)
-            return;
-        lock (AppServicesLock) {
-            if (!ReferenceEquals(_scopedServices, scopedServices))
-                return;
-
-            _blazorAppServicesSource.TrySetCanceled();
-            _blazorAppServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
-            _scopedServices = null;
-        }
-        Log.LogInformation("Active BlazorAppServices are discarded ({Reason})", reason);
-        EnsureDisposed(scopedServices);
-    }
-
     // Private methods
 
     private static async Task<IServiceProvider> WhenBlazorAppServicesReadyAsync(
@@ -169,27 +161,5 @@ public class AppServicesAccessor
         }
     }
 
-    private static void EnsureDisposed(IServiceProvider scopedServices)
-    {
-        try {
-            if (scopedServices.GetService<SafeJSRuntime>() is { } safeJSRuntime)
-                safeJSRuntime.MarkDisconnected();
-        }
-        catch {
-            return; // Already disposed
-        }
-        _ = DelayedEnsureDisposed(scopedServices);
-    }
-
-    private static async Task DelayedEnsureDisposed(IServiceProvider scopedServices)
-    {
-        try {
-            var cancellationToken = scopedServices.GetRequiredService<AppBlazorCircuitContext>().StopToken;
-            await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception) {
-            return; // Already disposed
-        }
-        Log.LogWarning("ScopedServices aren't disposed in 15 seconds!");
-    }
+    private record ScopeServicesInfo(IServiceProvider Services, MauiWebViewPageContextTracker ContextTracker);
 }

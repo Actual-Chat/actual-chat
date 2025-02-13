@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
-public class CustomBlazorWebViewHandler : BlazorWebViewHandler
+public partial class CustomBlazorWebViewHandler : BlazorWebViewHandler
 {
     public override void SetMauiContext(IMauiContext mauiContext)
     {

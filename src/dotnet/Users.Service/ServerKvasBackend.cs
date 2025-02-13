@@ -63,7 +63,7 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
 
         var items = command.Items.Length <= 1
             ? command.Items
-            : command.Items.Reverse().DistinctBy(e => e.Key, StringComparer.Ordinal);
+            : command.Items.Revert().DistinctBy(e => e.Key, StringComparer.Ordinal);
         foreach (var (key, value) in items) {
             var fullKey = prefix + key;
             var dbKvasEntry = dbKvasEntries.GetValueOrDefault(fullKey);

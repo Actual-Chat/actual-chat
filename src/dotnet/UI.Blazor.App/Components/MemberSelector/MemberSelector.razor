@@ -43,24 +43,25 @@
     }
 </div>
 
-<div class="contact-selector-badges">
-    @foreach (var userId in _selectedUserIds.Value) {
-        var contact = AllItems.FirstOrDefault(c => c.Account.Id.Equals(userId));
-        if (contact == null)
-            continue;
+<div class="contact-selector-wrapper">
+    <div class="contact-selector-badges">
+        @foreach (var userId in _selectedUserIds.Value) {
+            var contact = AllItems.FirstOrDefault(c => c.Account.Id.Equals(userId));
+            if (contact == null)
+                continue;
 
-        var account = contact.Account;
-        <div class="c-contact" @onclick="() => Remove(contact)">
-            <div class="c-remove">
-                <i class="icon-close c-close"></i>
-                <span class="c-text">Remove</span>
+            var account = contact.Account;
+            <div class="c-contact" @onclick="() => Remove(contact)">
+                <div class="c-remove">
+                    <i class="icon-close c-close"></i>
+                </div>
+                <AccountCircle UserSid="@userId" Size="@SquareSize.Size5"/>
+                <div class="c-name">
+                    @account.Avatar.Name
+                </div>
             </div>
-            <AccountCircle UserSid="@userId" Size="@SquareSize.Size5"/>
-            <div class="c-name">
-                @account.Avatar.Name
-            </div>
-        </div>
-    }
+        }
+    </div>
 </div>
 
 @code {

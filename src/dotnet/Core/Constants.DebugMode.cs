@@ -58,7 +58,7 @@ public static partial class Constants
         public static readonly bool TranscriberDeepgram = false;
 
         // Search
-        public static readonly bool OpenSearchRequest = false;
+        public static readonly bool OpenSearchRequestResponse = false;
 
         // Link previews
         public static readonly bool Crawler = false;
