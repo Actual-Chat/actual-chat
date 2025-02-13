@@ -2,7 +2,10 @@ using MemoryPack;
 
 namespace ActualChat.Chat.ML;
 
-public record EntryGroup(IReadOnlyList<ChatEntry> Entries, int WordCount = 0, bool IsCompleted = false);
+public record EntryGroup(IReadOnlyList<ChatEntry> Entries, int WordCount = 0, bool IsCompleted = false)
+{
+    public ChatId ChatId = Entries.Count > 0 ? Entries[0].ChatId : ChatId.None;
+}
 
 public record ReplySequence(IReadOnlyList<ChatEntry> Entries);
 
