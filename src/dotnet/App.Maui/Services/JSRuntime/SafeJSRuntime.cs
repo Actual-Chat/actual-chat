@@ -37,7 +37,7 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
     internal IJSRuntime WebViewJSRuntime { get; } = webViewJSRuntime;
 
     static SafeJSRuntime()
-        => FirstChanceExceptionLogger.ShouldSkip += e => e.IsDisconnectedException();
+        => FirstChanceExceptionLogger.ShouldSkip += e => e.IsJSDisconnectedException();
 
     public bool MarkReady()
         => Interlocked.CompareExchange(ref _state, 1, 0) == 0;

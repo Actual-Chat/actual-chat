@@ -18,6 +18,6 @@ public static class JSRuntimeErrors
     public static Exception Disconnected(Exception innerException)
         => new JSException(FailedMessage, innerException);
 
-    public static bool IsDisconnectedException(this Exception e)
+    public static bool IsJSDisconnectedException(this Exception e)
         => e is JSDisconnectedException or JSException { Message: FailedMessage };
 }
