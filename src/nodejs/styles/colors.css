@@ -367,6 +367,7 @@
     --background-recording-countdown: var(--background-banner-warning);
     --shadow-main: var(--background-05);
     --shadow-modal-header-button: var(--black-10);
+    --shadow-alert: var(--gray-20-20);
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-40);
     --avatar: var(--gray-30);
@@ -658,6 +659,7 @@
     --background-recording-countdown: var(--background-banner-warning);
     --shadow-main: var(--background-05);
     --shadow-modal-header-button: var(--transparent);
+    --shadow-alert: var(--ash-99-10);
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-60);
     --avatar: var(--ash-70);
@@ -949,6 +951,7 @@
     --background-recording-countdown: var(--background-banner-warning);
     --shadow-main: var(--background-05);
     --shadow-modal-header-button: var(--black-10);
+    --shadow-alert: var(--gray-20-20);
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-40);
     --avatar: var(--gray-30);

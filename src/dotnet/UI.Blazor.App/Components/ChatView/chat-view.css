@@ -1,23 +1,27 @@
 .message-wrapper {
-    @apply relative flex-y;
+    @apply relative;
+    @apply flex-y;
     @apply border-l-2 border-bg-01;
     @apply md:select-text;
     @apply translate-z-0;
 }
 body.hoverable .message-wrapper:hover {
-    @apply bg-message-hover border-message-hover;
+    @apply bg-message-hover;
+    @apply border-message-hover;
 }
 body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-message-hover;
 }
 body.hoverable .system-entry.message-wrapper:hover {
-    @apply bg-transparent border-transparent;
+    @apply bg-transparent;
+    @apply border-transparent;
 }
 
 .chat-message {
     @apply relative;
-    @apply flex-1 flex-x items-stretch gap-x-1 overflow-hidden;
-    @apply text-current break-words;
+    @apply flex-1 flex-x items-stretch gap-x-1;
+    @apply break-words;
+    @apply text-current;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
 
@@ -73,7 +77,8 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply font-normal text-primary;
 }
 .forwarded-message .forwarded-chat-header-name {
-    @apply max-h-6 truncate;
+    @apply max-h-6;
+    @apply truncate;
     @apply font-medium text-primary;
 }
 .forwarded-message .forwarded-author-header {
@@ -81,7 +86,8 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply min-w-0;
 }
 .forwarded-message .forwarded-author-header-name {
-    @apply max-h-6 truncate;
+    @apply max-h-6;
+    @apply truncate;
     @apply font-medium text-primary;
 }
 .message-link {
@@ -112,11 +118,13 @@ body.hoverable .message-wrapper:hover .avatar-badge {
 
 .message-wrapper.replied-message,
 .message-wrapper.mention.replied-message {
-    @apply bg-replied-message border-l-2 border-replied-message-border;
+    @apply border-l-2 border-replied-message-border;
+    @apply bg-replied-message;
 }
 body.hoverable .message-wrapper.replied-message:hover,
 body.hoverable .message-wrapper.mention.replied-message:hover {
-    @apply bg-replied-message-hover border-l-2 border-replied-message-border;
+    @apply border-l-2 border-replied-message-border;
+    @apply bg-replied-message-hover;
 }
 
 .chat-message-timestamp,
@@ -166,7 +174,7 @@ body.hoverable .chat-message:hover .message-reactions-add {
     filter: opacity(0);
 }
 .chat-message-transcript .changes {
-    @apply underline;
+    @apply underline underline-offset-2 decoration-1;
 }
 .change-item {
     transition-behavior: allow-discrete;
@@ -192,14 +200,14 @@ body.hoverable .chat-header-title:hover {
 }
 
 .message-content {
-    @apply flex-1 overflow-hidden;
+    @apply flex-1;
     @apply py-0.5;
+    @apply overflow-hidden;
 }
 .system-entry {
     @apply self-center;
     @apply w-full;
-    @apply px-6;
-    @apply mt-0.5;
+    @apply px-6 mt-0.5;
 }
 .system-entry .chat-message {
     @apply flex-y items-center justify-center;
@@ -217,10 +225,10 @@ body.hoverable .chat-header-title:hover {
 }
 .system-entry .message-content {
     @apply flex-x flex-wrap justify-center items-center gap-x-2;
-    @apply bg-03;
     @apply w-fit;
     @apply px-2;
     @apply rounded-lg;
+    @apply bg-03;
 }
 .system-entry .message-content .avatar-name {
     @apply font-semibold;
@@ -242,7 +250,8 @@ body.hoverable .chat-header-title:hover {
 }
 
 .chat-message-quote {
-    @apply flex-x gap-x-2 h-11;
+    @apply flex-x gap-x-2;
+    @apply h-11;
     @apply text-03 cursor-pointer;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
@@ -363,7 +372,8 @@ body.narrow .chat-link .c-link-buttons {
     @apply text-lg;
 }
 .chat-link .c-link-wrapper {
-    @apply flex-y overflow-hidden;
+    @apply flex-y;
+    @apply overflow-hidden;
 }
 .chat-link .link-url {
     @apply truncate;
@@ -378,7 +388,8 @@ body.narrow .chat-link .c-link-buttons {
     @apply flex-x gap-x-3;
 }
 body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
-    @apply bg-transparent border-transparent;
+    @apply border-transparent;
+    @apply bg-transparent;
 }
 
 .message-links {
@@ -416,19 +427,61 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
 }
 .notify-mentioned-members-line {
     @apply flex;
-    @apply mb-0.5;
+    @apply mb-1 mx-0.5;
 }
 .notify-mentioned-members {
+    @apply relative;
     @apply flex-x flex-wrap items-center;
     @apply min-h-5;
     @apply px-1.5;
-    @apply rounded-full bg-danger-outline-hover;
-    @apply text-danger text-xs;
+    @apply rounded-full border border-modal;
     @apply select-none;
+    @apply overflow-hidden;
+    @apply text-01 text-xs;
+    box-shadow: 0 2px 4px 0 var(--shadow-alert);
+    background: linear-gradient(-45deg, var(--background-01) 40%, var(--hover) 50%, var(--background-01) 60%);
+    background-size: 300%;
+    background-position-x: 100%;
+    animation: shimmer 5s infinite linear;
+    transition: width 150ms;
 }
-
+.notify-mentioned-members .c-icon {
+    @apply flex-none flex items-center justify-center;
+    @apply w-5 h-5;
+    @apply -ml-1;
+}
+body.hoverable .notify-mentioned-members:has(.not-mentioned) {
+    @apply w-7;
+}
+body.hoverable .notify-mentioned-members:has(.not-mentioned):hover {
+    @apply w-30;
+    transition: width 150ms;
+}
+.notify-mentioned-members.has-notified {
+    @apply rounded-lg;
+}
+body.hoverable .notify-mentioned-members .not-mentioned {
+    @apply flex items-center;
+    @apply w-0 h-0;
+    filter: opacity(0);
+    transition: filter 0ms linear 0ms, width 0ms linear 0ms;
+}
+body.hoverable .notify-mentioned-members:hover .not-mentioned {
+    width: auto;
+    filter: opacity(1);
+    transition: filter 150ms linear 150ms, width 150ms linear 150ms;
+}
+@keyframes shimmer {
+    0%, 90% {
+        background-position-x: 100%;
+    }
+    100% {
+        background-position-x: 0;
+    }
+}
 .notify-mentioned-members.has-notified {
     @apply bg-transparent;
+    @apply animate-none;
 }
 body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply bg-transparent;

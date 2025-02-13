@@ -17,8 +17,10 @@
 }
 <div class="notify-mentioned-members @cls" @onclick="@clickHandler">
     @if (!m.HasNotified) {
-        <i class="icon-notify-phone self-center text-xs"></i>
-        <span>&nbsp;Alert mentioned</span>
+        <span class="c-icon">
+            <i class="icon-notify-phone self-center text-xs"></i>
+        </span>
+        <span class="not-mentioned">Alert mentioned</span>
     } else {
         <span class="text-primary font-semibold">You</span><span class="default-text">&nbsp;notified&nbsp;</span>
         @for (var i = 0; i < AuthorIds.Length; i++) {
