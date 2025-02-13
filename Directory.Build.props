@@ -152,7 +152,7 @@
     <AnalysisLevel>preview</AnalysisLevel>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <!-- Roslynator and Meziantou analyzers -->
-    <EnableExtraAnalyzers>false</EnableExtraAnalyzers>
+    <EnableExtraAnalyzers Condition="'$(EnableExtraAnalyzers)' == ''">false</EnableExtraAnalyzers>
     <EnableExtraAnalyzers Condition="'$(Configuration)' == 'Release'">true</EnableExtraAnalyzers>
     <!-- Warnings -->
     <WarningLevel>4</WarningLevel>
