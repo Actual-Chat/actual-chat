@@ -3,22 +3,22 @@
 #pragma warning disable IL2091
 
     var modeKey = RenderModeHelper.CurrentMode?.Key ?? "a";
-    var isAuto = OrdinalEquals(modeKey, "a");
     var isServer = OrdinalEquals(modeKey, "s");
     var isWasm = OrdinalEquals(modeKey, "w");
-    var autoClass = isAuto ? "selected transparent" : "transparent";
+    var isAuto = !(isServer || isWasm); // Technically it's "a" or anything else
     var serverClass = isServer ? "selected transparent" : "transparent";
     var wasmClass = isWasm ? "selected transparent" : "transparent";
+    var autoClass = isAuto ? "selected transparent" : "transparent";
 }
 
-<TileTopic Topic="Blazor Mode"/>
-<Tile Class="blazor-mode-tile">
+<TileTopic Topic="Rendering Mode"/>
+<Tile Class="render-mode-tile">
     <Form Model="@_formModel">
         <DataAnnotationsValidator/>
 
         <FormBlock>
             <InputRadioGroup
-                Name="rendering-mode"
+                Name="render-mode"
                 DisplayName="Rendering Mode"
                 @bind-Value="_formModel.ModeKey">
 
@@ -110,7 +110,7 @@
         public event Action<string>? ModeChanged;
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("blazor-mode-form");
+            FormId = componentIdGenerator.Next("render-mode-form");
             AutoModeFormId = $"{FormId}-auto-mode";
             ServerModeFormId = $"{FormId}-server-mode";
             WasmModeFormId = $"{FormId}-wasm-mode";
