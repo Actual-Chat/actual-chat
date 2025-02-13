@@ -140,7 +140,7 @@ public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
         var bytesRead = await inputStream.ReadAsync(buffer);
         while (bytesRead < 50 * 1024)
             bytesRead += await inputStream.ReadAsync(buffer[bytesRead..]);
-        bytesRead.Should().BeGreaterOrEqualTo(50 * 1024);
+        bytesRead.Should().BeGreaterThanOrEqualTo(50 * 1024);
 
         var entries = Parse(buffer.Span[..bytesRead]).ToList();
         entries.Should().HaveCount(4);
