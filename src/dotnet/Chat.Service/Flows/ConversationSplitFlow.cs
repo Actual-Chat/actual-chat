@@ -1,6 +1,7 @@
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
+using ActualChat.Queues;
 using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
@@ -8,6 +9,7 @@ namespace ActualChat.Chat.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
 {
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     protected override int CurrentFlowSetVersion => 1;
 
     [field: AllowNull, MaybeNull]
@@ -15,6 +17,9 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
 
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
+
+    [field: AllowNull, MaybeNull]
+    private IConversationsBackend ConversationsBackend => field ??= Host.Services.GetRequiredService<IConversationsBackend>();
 
     [field: AllowNull, MaybeNull]
     private IEntryGroupExtractor EntryGroupExtractor => field ??= Host.Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
@@ -53,9 +58,35 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
 
         var groups = extractResult.Groups;
         var replySequences = extractResult.ReplySequences;
+        foreach (var replySequence in replySequences) {
+            var firstEntry = replySequence.Entries[0];
+            if (firstEntry.RepliedEntryLid is not {} entryLid)
+                continue; // First entry in the sequence is not a reply!
+
+            var chatId = firstEntry.ChatId;
+            var tileRange = IdTileStack.FirstLayer.GetTile(entryLid).Range;
+            var existingConversations = await ConversationsBackend.List(chatId, tileRange, cancellationToken).ConfigureAwait(false);
+            var appendReply = new ConversationBackend_AppendReply(
+                existingConversations.Count == 0 ? ConversationId.None : existingConversations[0].Id,
+                entryLid,
+                [..replySequence.Entries]
+            ) {
+                DelayUntil = existingConversations.Count == 0
+                    ? Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay
+                    : null,
+            };
+            await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
+        }
+
         if (groups.Count == 0)
             return;
 
-        // TODO(AK): Implement the logic to split the conversation into documents
+        foreach (var group in groups) {
+            var chatId = group.ChatId;
+            var summarize = new ConversationBackend_Summarize(chatId, [..group.Entries]) {
+                DelayUntil = Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay,
+            };
+            await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+        }
     }
 }
