@@ -19,5 +19,5 @@ public static class JSRuntimeErrors
         => new JSException(FailedMessage, innerException);
 
     public static bool IsJSDisconnectedException(this Exception e)
-        => e is JSDisconnectedException or JSException { Message: FailedMessage };
+        => e is JSDisconnectedException || (e is JSException jse && OrdinalEquals(jse.Message, FailedMessage));
 }
