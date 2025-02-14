@@ -10,6 +10,7 @@ export class VisualMediaViewer {
     private isHeaderAndFooterVisible: boolean = true;
     private isHeaderAndFooterVisibilityForced: boolean = false;
     private readonly jumpTime: number = 5;
+    private videos: HTMLCollectionOf<HTMLVideoElement>;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -22,9 +23,8 @@ export class VisualMediaViewer {
         this.overlay = this.imageViewer.closest('.modal-overlay');
         this.header = this.overlay.querySelector('.image-viewer-header');
         this.footer = this.overlay.querySelector('.image-viewer-footer');
-
-        const allVideos = this.imageViewer.getElementsByTagName('video');
-        [...allVideos].forEach((video: HTMLMediaElement) => {
+        this.videos = this.imageViewer.getElementsByTagName('video');
+        [...this.videos].forEach((video: HTMLMediaElement) => {
             this.addVideoListeners(video);
         });
 
@@ -157,8 +157,7 @@ export class VisualMediaViewer {
 
     private updateVideoPlayback(): void {
         setTimeout(() => {
-            const allVideos = this.imageViewer.getElementsByTagName('video');
-            [...allVideos].forEach((video: HTMLMediaElement) => {
+            [...this.videos].forEach((video: HTMLMediaElement) => {
                 video.pause();
             });
 
@@ -219,7 +218,7 @@ export class VisualMediaViewer {
 
     private updateTimeline(video: HTMLMediaElement, control: HTMLElement, progressBar: HTMLProgressElement) {
         let current = video.currentTime;
-        let percentage = Math.round(video.currentTime / video.duration * 100);
+        let percentage = Math.round(current / video.duration * 100);
         progressBar.value = percentage;
         progressBar.innerHTML = percentage + '% played';
         let currentTimeDiv = control.querySelector('.c-current');
@@ -249,10 +248,13 @@ export class VisualMediaViewer {
         video.paused ? video.play() : video.pause();
     }
 
-    private onJumpBtnClick(event: PointerEvent | MouseEvent, video: HTMLMediaElement, forward: boolean) {
+    private onJumpBtnClick(
+        event: PointerEvent | MouseEvent,
+        video: HTMLMediaElement,
+        forward: boolean) {
         event.stopPropagation();
         const timeDelta = forward ? this.jumpTime : -this.jumpTime;
-        video.currentTime = video.currentTime + timeDelta;
+        video.currentTime += timeDelta
     }
 
     private seekVideoPoint(event: PointerEvent | MouseEvent, video: HTMLMediaElement, progressBar: HTMLProgressElement) {
