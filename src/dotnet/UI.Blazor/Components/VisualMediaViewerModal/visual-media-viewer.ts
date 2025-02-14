@@ -9,6 +9,7 @@ export class VisualMediaViewer {
     private readonly footer: HTMLElement | undefined;
     private isHeaderAndFooterVisible: boolean = true;
     private isHeaderAndFooterVisibilityForced: boolean = false;
+    private readonly jumpTime: number = 5;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -21,6 +22,11 @@ export class VisualMediaViewer {
         this.overlay = this.imageViewer.closest('.modal-overlay');
         this.header = this.overlay.querySelector('.image-viewer-header');
         this.footer = this.overlay.querySelector('.image-viewer-footer');
+
+        const allVideos = this.imageViewer.getElementsByTagName('video');
+        [...allVideos].forEach((video: HTMLMediaElement) => {
+            this.addVideoListeners(video);
+        });
 
          fromEvent(this.overlay, 'click')
              .pipe(takeUntil(this.disposed$))
@@ -152,13 +158,123 @@ export class VisualMediaViewer {
     private updateVideoPlayback(): void {
         setTimeout(() => {
             const allVideos = this.imageViewer.getElementsByTagName('video');
-            [...allVideos].forEach((video: HTMLMediaElement) => video.pause());
+            [...allVideos].forEach((video: HTMLMediaElement) => {
+                video.pause();
+            });
 
             const activeSlides = this.imageViewer.getElementsByClassName('swiper-slide-active');
             [...activeSlides].forEach((element: HTMLElement) => {
                 const videos = element.getElementsByTagName('video');
-                [...videos].forEach((video: HTMLMediaElement) => video.play());
+                [...videos].forEach((video: HTMLMediaElement) => video.play()
+                    .then(_ => {
+                        let control = video.parentElement.querySelector('.video-control');
+                        if (control && control.classList.contains('hide-control')) {
+                            control.classList.remove('hide-control');
+                        }
+                    }));
             });
         }, 0);
+    }
+
+    private addVideoListeners(video: HTMLMediaElement) {
+        const control = video.parentElement.querySelector('.video-control') as HTMLElement;
+        const playBtn = control.querySelector('.play-btn') as HTMLElement;
+        const rewindBtn = control.querySelector('.rewind-btn') as HTMLElement;
+        const forwardBtn = control.querySelector('.forward-btn') as HTMLElement;
+        const progressBar = control.querySelector('progress') as HTMLProgressElement;
+        if (!control || !playBtn || !rewindBtn || !forwardBtn || !progressBar)
+            return;
+
+        video.removeAttribute('controls');
+        control.classList.remove('invisible');
+
+        fromEvent(video, 'play')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: Event) => this.playAndPauseHandler(event, playBtn));
+
+        fromEvent(video, 'pause')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: Event) => this.playAndPauseHandler(event, playBtn));
+
+        fromEvent(video, 'timeupdate')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: Event) => this.updateTimeline(video, control, progressBar));
+
+        fromEvent(playBtn, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent | MouseEvent) => this.onPlayBtnClick(event, video));
+
+        fromEvent(rewindBtn, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent | MouseEvent) => this.onJumpBtnClick(event, video, false));
+
+        fromEvent(forwardBtn, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent | MouseEvent) => this.onJumpBtnClick(event, video, true));
+
+        fromEvent(progressBar, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent | MouseEvent) => this.seekVideoPoint(event, video, progressBar));
+    }
+
+    private updateTimeline(video: HTMLMediaElement, control: HTMLElement, progressBar: HTMLProgressElement) {
+        let current = video.currentTime;
+        let percentage = Math.round(video.currentTime / video.duration * 100);
+        progressBar.value = percentage;
+        progressBar.innerHTML = percentage + '% played';
+        let currentTimeDiv = control.querySelector('.c-current');
+        currentTimeDiv.innerHTML = this.formatTime(current);
+        let durationDiv = control.querySelector('.c-duration');
+        durationDiv.innerHTML = this.formatTime(video.duration);
+    }
+
+    private formatTime(time: number) : string {
+        let minutes = '';
+        let seconds = '';
+        let minNum = Math.floor((time / 60));
+        let secNum = Math.round(time - (minNum * 60));
+        if (minNum.toString().length < 2)
+            minutes = `0${minNum}`;
+        else
+            minutes = minNum.toString();
+        if (secNum.toString().length < 2)
+            seconds = `0${secNum}`;
+        else
+            seconds = secNum.toString();
+        return `${minutes}:${seconds}`;
+    }
+
+    private onPlayBtnClick(event: PointerEvent | MouseEvent, video: HTMLMediaElement) {
+        event.stopPropagation();
+        video.paused ? video.play() : video.pause();
+    }
+
+    private onJumpBtnClick(event: PointerEvent | MouseEvent, video: HTMLMediaElement, forward: boolean) {
+        event.stopPropagation();
+        const timeDelta = forward ? this.jumpTime : -this.jumpTime;
+        video.currentTime = video.currentTime + timeDelta;
+    }
+
+    private seekVideoPoint(event: PointerEvent | MouseEvent, video: HTMLMediaElement, progressBar: HTMLProgressElement) {
+        event.stopPropagation();
+        let percent = event.offsetX / progressBar.offsetWidth;
+        video.currentTime = percent * video.duration;
+        let value = progressBar.value = Math.floor(percent * 100);
+        progressBar.innerHTML = value + '% played';
+    }
+
+    private playAndPauseHandler(e: Event, btn: HTMLElement) {
+        switch (e.type) {
+            case 'play':
+                btn.classList.remove('is-paused');
+                if (!btn.classList.contains('is-playing'))
+                    btn.classList.add('is-playing');
+                break;
+            case 'pause':
+                btn.classList.remove('is-playing');
+                if (!btn.classList.contains('is-paused'))
+                    btn.classList.add('is-paused');
+                break;
+        }
     }
 }

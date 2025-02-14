@@ -49,14 +49,39 @@
             } else if (attachment.IsSupportedVideo()) {
                 <swiper-slide>
                     <div class="swiper-zoom-container">
-                        <video
-                            playsinline
-                            controls
-                            width="@attachment.Media.Width"
-                            height="@attachment.Media.Height"
-                            preload="auto">
-                            <source src="@url" type="@attachment.Media.ContentType"/>
-                        </video>
+                        <div class="video-wrapper">
+                            <video
+                                class="swiper-active-video"
+                                playsinline
+                                controls
+                                width="auto"
+                                height="auto"
+                                preload="auto">
+                                <source src="@url" type="@attachment.Media.ContentType"/>
+                            </video>
+                            <div class="video-control hide-control invisible">
+                                <div class="c-line-1">
+                                    <HeaderButton Class="btn-sm rewind-btn">
+                                        <i class="icon-rewind-left-fill"></i>
+                                    </HeaderButton>
+                                    <HeaderButton Class="btn-sm play-btn">
+                                        <i class="icon-play-fill play-icon"></i>
+                                        <i class="icon-pause-fill pause-icon"></i>
+                                    </HeaderButton>
+                                    <HeaderButton Class="btn-sm forward-btn">
+                                        <i class="icon-rewind-right-fill"></i>
+                                    </HeaderButton>
+                                </div>
+                                <div class="c-line-2">
+                                    <progress class="c-progress-bar" min="0" max="100" value="0">0% progress</progress>
+                                    <div class="c-timeline">
+                                        <div class="c-current"></div>
+                                        <div>/</div>
+                                        <div class="c-duration"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </swiper-slide>
             }
