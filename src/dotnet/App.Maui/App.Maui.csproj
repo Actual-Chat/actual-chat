@@ -383,11 +383,15 @@
     <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Debug'">
+    <!-- <WindowsPackageType>None</WindowsPackageType>-->
+  </PropertyGroup>
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishReadyToRun>true</PublishReadyToRun>
-<!--    <PublishSingleFile>true</PublishSingleFile>-->
-<!--    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
+    <!-- <PublishSingleFile>true</PublishSingleFile>-->
+    <!-- <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
     <SelfContained>true</SelfContained>
     <PublishAot>false</PublishAot>
     <PublishTrimmed>false</PublishTrimmed>

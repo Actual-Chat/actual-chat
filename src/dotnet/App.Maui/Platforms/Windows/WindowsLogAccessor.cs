@@ -9,7 +9,7 @@ public class WindowsLogAccessor : IMauiLogAccessor
     public WindowsLogAccessor(ILogger<WindowsLogAccessor> log)
     {
         _log = log;
-        if (!MauiDiagnostics.LogFilePath.IsNullOrEmpty())
+        if (!MauiDiagnostics.AppDataLogFilePath.IsEmpty)
             GetLogFile = OpenLogFileInternal;
     }
 
@@ -23,16 +23,15 @@ public class WindowsLogAccessor : IMauiLogAccessor
     {
         try {
             var started = new Process {
-                StartInfo = new ProcessStartInfo(MauiDiagnostics.LogFilePath) {
-                    UseShellExecute = true
+                StartInfo = new ProcessStartInfo(MauiDiagnostics.AppDataLogFilePath) {
+                    UseShellExecute = true,
                 },
             }.Start();
             if (started)
                 return Task.FromResult(true);
         }
-        catch(Exception e) {
-            _log.LogWarning(e, "Failed to open log file '{FilePath}'",
-                MauiDiagnostics.LogFilePath);
+        catch (Exception e) {
+            _log.LogWarning(e, "Failed to open log file: {FilePath}", MauiDiagnostics.AppDataLogFilePath);
         }
         return Task.FromResult(false);
     }

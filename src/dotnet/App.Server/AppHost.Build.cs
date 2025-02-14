@@ -85,19 +85,20 @@ public partial class AppHost
             logging.AddOpenTelemetry(options => options.AddOtlpExporter());
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
-            if (!ClientLogging.DevLog.IsEmpty && appKind.IsServer() && !isTested) {
-                var serilog = new LoggerConfiguration()
-                    .MinimumLevel.Is(LogEventLevel.Verbose)
-                    .Enrich.FromLogContext()
-                    .Enrich.With(new ProcessIdLogEventEnricher())
-                    .Enrich.With(new ThreadIdLogEventEnricher())
-                    .WriteTo.File(ClientLogging.DevLog,
-                        outputTemplate: ClientLogging.DevLogOutputTemplate,
-                        fileSizeLimitBytes: ClientLogging.DevLogFileSizeLimit,
-                        shared: true)
-                    .CreateLogger();
-                logging.AddFilteringSerilog(serilog, true);
-            }
+            if (LoggingExt.DevLog.IsEmpty || !appKind.IsServer() || isTested)
+                return;
+
+            var serilog = new LoggerConfiguration()
+                .MinimumLevel.Is(LogEventLevel.Verbose)
+                .Enrich.FromLogContext()
+                .Enrich.With(new ProcessIdLogEventEnricher())
+                .Enrich.With(new ThreadIdLogEventEnricher())
+                .WriteTo.File(LoggingExt.DevLog,
+                    outputTemplate: LoggingExt.OutputTemplate,
+                    fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit,
+                    shared: true)
+                .CreateLogger();
+            logging.AddFilteringSerilog(serilog, true);
         });
 
         // HostInfo

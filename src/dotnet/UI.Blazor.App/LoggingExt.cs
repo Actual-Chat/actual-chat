@@ -4,29 +4,30 @@ using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App;
 
-public static class ClientLogging
+public static class LoggingExt
 {
     public const string OutputTemplate = "{Timestamp:HH:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
-    public const string DebugOutputTemplate = "{Timestamp:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
     public const long FileSizeLimit = 10_000_000L;
-    public const string DevLogOutputTemplate = "{ProcessID}: {Timestamp:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
     public const long DevLogFileSizeLimit = 100_000_000L;
 
     public static readonly FilePath DevLog;
     public static LogLevel MinLevel { get; private set; }
 
-    static ClientLogging()
+    static LoggingExt()
     {
         var devLogEnvVar = Environment.GetEnvironmentVariable("ActualChat_DevLog");
         DevLog = FilePath.New(devLogEnvVar);
+#if DEBUG
+        MinLevel = LogLevel.Debug;
+#else
+        MinLevel = DevLog.IsEmpty
+            ? LogLevel.Information
+            : LogLevel.Debug;
+#endif
     }
 
     public static ILoggingBuilder ConfigureClientFilters(this ILoggingBuilder logging, AppKind appKind)
     {
-        MinLevel = DevLog.IsEmpty ? LogLevel.Information : LogLevel.Debug;
-#if DEBUG
-        MinLevel = LogLevel.Debug;
-#endif
         logging.SetMinimumLevel(MinLevel);
         // We can't use appsettings*.json on the client, so client-side log filters are configured here
         logging

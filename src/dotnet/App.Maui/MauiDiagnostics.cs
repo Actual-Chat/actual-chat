@@ -6,6 +6,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.IO;
 using OpenTelemetry.Trace;
 using Sentry;
 using Sentry.Maui.Internal;
@@ -22,8 +23,6 @@ namespace ActualChat.App.Maui;
 
 public static class MauiDiagnostics
 {
-    private const string LogFolder = "Logs";
-    private const string LogFile = "ActualChat.log";
     private const string AndroidOutputTemplate = "({ThreadID}) [{SourceContext}] {Message:l}{NewLine:l}{Exception}";
     private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(10);
 
@@ -32,7 +31,7 @@ public static class MauiDiagnostics
     public static readonly string LogTag;
     public static readonly Tracer Tracer;
     public static TracerProvider? TracerProvider { get; private set; }
-    public static string LogFilePath { get; private set; } = "";
+    public static FilePath AppDataLogFilePath { get; private set; }
     public static bool IsAnalyticsCollectionEnabled { get; private set; }
 
     static MauiDiagnostics()
@@ -103,11 +102,15 @@ public static class MauiDiagnostics
     {
         // We should not use FilePath here, since it triggers MemoryPack formatter registration for FilePath
 #if WINDOWS
-        LogFilePath = Path.Combine(FileSystem.AppDataDirectory, LogFolder, LogFile);
-        logging = logging.WriteTo.Debug(outputTemplate: ClientLogging.DebugOutputTemplate);
-        logging = logging.WriteTo.File(LogFilePath,
-            outputTemplate: ClientLogging.OutputTemplate,
-            fileSizeLimitBytes: ClientLogging.FileSizeLimit);
+        AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
+        logging = logging.WriteTo.Debug(outputTemplate: LoggingExt.OutputTemplate);
+        logging = logging.WriteTo.File(AppDataLogFilePath,
+            outputTemplate: LoggingExt.OutputTemplate,
+            fileSizeLimitBytes: LoggingExt.FileSizeLimit);
+        if (!LoggingExt.DevLog.IsEmpty)
+            logging = logging.WriteTo.File(LoggingExt.DevLog,
+                outputTemplate: LoggingExt.OutputTemplate,
+                fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit);
 #elif ANDROID
         logging = logging.WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate);
 #elif IOS
