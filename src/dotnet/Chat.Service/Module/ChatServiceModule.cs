@@ -65,7 +65,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // Conversations
         // rpcHost.AddApi<IConversations, Conversations>();
         rpcHost.AddBackend<IConversationsBackend, ConversationsBackend>();
-        
+
         // IBackendChatMarkupHub
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
@@ -162,6 +162,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbUserLink
             db.AddEntityResolver<string, DbChatRoulette>();
+
+            // DbConversation
+            db.AddEntityResolver<string, DbConversation>();
         });
     }
 }

@@ -22,6 +22,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbReadPositionsStat> ReadPositionsStats { get; protected set; } = null!;
     public DbSet<DbUserLink> UserLinks { get; protected set; } = null!;
     public DbSet<DbChatRoulette> ChatRoulettes { get; protected set; } = null!;
+    public DbSet<DbConversation> Conversations { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -99,6 +100,13 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatRoulette.Property(e => e.ProfileId2).UseCollation("C");
         chatRoulette.Property(e => e.UserId1).UseCollation("C");
         chatRoulette.Property(e => e.UserId2).UseCollation("C");
+
+        var conversation = model.Entity<DbConversation>();
+        conversation.Property(e => e.Id).UseCollation("C");
+        conversation.Property(e => e.Title).UseCollation("C");
+        conversation.Property(e => e.Description).UseCollation("C");
+        conversation.Property(e => e.Summary).UseCollation("C");
+        conversation.Property(e => e.AuthorIds).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

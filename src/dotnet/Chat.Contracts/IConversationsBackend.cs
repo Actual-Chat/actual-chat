@@ -11,12 +11,12 @@ public interface IConversationsBackend : IComputeService, IBackendService
     Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<Conversation>> List(ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken);
+    Task<ApiArray<ConversationId>> List(ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken);
 
     // Commands
 
     [CommandHandler]
-    Task<Conversation> OnUpsert(ConversationBackend_Upsert command, CancellationToken cancellationToken);
+    Task<Conversation> OnChange(ConversationBackend_Change command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Conversation> OnSummarize(ConversationBackend_Summarize command, CancellationToken cancellationToken);
@@ -27,14 +27,14 @@ public interface IConversationsBackend : IComputeService, IBackendService
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ConversationBackend_Upsert(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+public sealed partial record ConversationBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] ConversationId ConversationId,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] ConversationDiff Diff
+    [property: DataMember, MemoryPackOrder(2)] Change<ConversationDiff> Change
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => ChatId;
+    public ChatId ShardKey => ConversationId.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
