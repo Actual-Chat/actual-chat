@@ -1,5 +1,6 @@
 import { PromiseSource } from 'promises';
 import { Log } from 'logging';
+import { BrowserInfo } from '../BrowserInfo/browser-info';
 
 const { infoLog } = Log.get('History');
 
@@ -17,11 +18,28 @@ export class History {
         this.backendRef = backendRef1;
         this.navigationManager = window['Blazor']._internal.navigationManager;
         const absoluteUri = toAbsoluteUri(url);
-        if (location.href === absoluteUri)
+        if (location.href === absoluteUri) {
+            infoLog?.log(`init: replaceState branch, url:`, absoluteUri);
             history.replaceState(null, "", absoluteUri);
+        }
         else {
-            history.pushState(historyEntryState, "", absoluteUri);
-            location.replace(absoluteUri);
+            infoLog?.log(`init: pushState branch, url:`, absoluteUri);
+            const appKind = BrowserInfo.appKind;
+            const isMauiApp = !(appKind === 'Wasm' || appKind === 'Unknown');
+            if (isMauiApp) {
+                const options = {
+                    forceLoad : false,
+                    replaceHistoryEntry : true,
+                    historyEntryState : historyEntryState
+                };
+                this.navigationManager.navigateTo(url, options);
+            }
+            else {
+                history.pushState(historyEntryState, "", absoluteUri);
+                // The call below triggers WebView reload on .NET 9 MAUI & the disposal of Blazor container.
+                // That's why there is a dedicated branch for MAUI above.
+                location.replace(absoluteUri);
+            }
         }
         this.whenReady.resolve(undefined);
         globalThis["App"]["history"] = this;
