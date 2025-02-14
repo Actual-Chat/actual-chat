@@ -21,10 +21,10 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string Description { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public string Summary { get; init; } = "";
-    [IgnoreDataMember, MemoryPackIgnore] public long StartEntryLid { get; init; } = Id.StartEntryLid;
+    [IgnoreDataMember, MemoryPackIgnore] public Range<long> EntryRange => new(Id.StartEntryLid, EndEntryLid);
     [DataMember, MemoryPackOrder(5)] public long EndEntryLid { get; init; } = Id.StartEntryLid;
-    [DataMember, MemoryPackOrder(6)] public Moment Start { get; init; }
-    [DataMember, MemoryPackOrder(7)] public Moment End { get; init; }
+    [DataMember, MemoryPackOrder(6)] public Moment StartsAt { get; init; }
+    [DataMember, MemoryPackOrder(7)] public Moment EndsAt { get; init; }
     [DataMember, MemoryPackOrder(8)] public int MessageCount { get; init; }
 
     [DataMember, MemoryPackOrder(9)] public ApiArray<AuthorId> AuthorIds { get; init; } = [];
@@ -51,8 +51,8 @@ public sealed partial record ConversationDiff() : RecordDiff
         Title = conversation.Title;
         Description = conversation.Description;
         Summary = conversation.Summary;
-        EndEntryLid = conversation.EndEntryLid;
-        End = conversation.End;
+        EndEntryLid = conversation.EntryRange.End;
+        End = conversation.EndsAt;
         MessageCount = conversation.MessageCount;
         AuthorIds = conversation.AuthorIds;
     }

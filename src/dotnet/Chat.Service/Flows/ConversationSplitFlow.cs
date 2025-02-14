@@ -67,7 +67,7 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
             var tileRange = IdTileStack.FirstLayer.GetTile(entryLid).Range;
             var existingConversations = await ConversationsBackend.List(chatId, tileRange, cancellationToken).ConfigureAwait(false);
             var appendReply = new ConversationBackend_AppendReply(
-                existingConversations.Count == 0 ? ConversationId.None : existingConversations[0].Id,
+                existingConversations.Count == 0 ? ConversationId.None : existingConversations[0],
                 entryLid,
                 [..replySequence.Entries]
             ) {

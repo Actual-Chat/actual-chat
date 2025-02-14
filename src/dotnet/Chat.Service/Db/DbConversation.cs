@@ -15,18 +15,19 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
+    public string ChatId { get; set; } = "";
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
     public string Summary { get; set; } = "";
     public long StartEntryLid { get; set; }
     public long EndEntryLid { get; set; }
     public int MessageCount { get; set; }
-    public DateTime Start {
+    public DateTime StartsAt {
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public DateTime End {
+    public DateTime EndsAt {
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
@@ -41,10 +42,9 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
             Title = Title,
             Description = Description,
             Summary = Summary,
-            StartEntryLid = StartEntryLid,
             EndEntryLid = EndEntryLid,
-            Start = new Moment(Start),
-            End = new Moment(End),
+            StartsAt = new Moment(StartsAt),
+            EndsAt = new Moment(EndsAt),
             MessageCount = MessageCount,
             AuthorIds = authorIds,
         };
@@ -56,16 +56,16 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
         model.RequireSomeVersion();
 
         Id = model.Id.Value;
+        ChatId = model.Id.ChatId;
         Version = model.Version;
         Title = model.Title;
         Description = model.Description;
         Summary = model.Summary;
-        StartEntryLid = model.StartEntryLid;
-        EndEntryLid = model.EndEntryLid;
-        Start = model.Start.ToDateTime();
-        End = model.End.ToDateTime();
+        StartEntryLid = model.EntryRange.Start;
+        EndEntryLid = model.EntryRange.End;
+        StartsAt = model.StartsAt.ToDateTime();
+        EndsAt = model.EndsAt.ToDateTime();
         MessageCount = model.MessageCount;
         AuthorIds = JsonSerializer.Serialize(model.AuthorIds);
     }
-
 }
