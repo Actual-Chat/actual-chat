@@ -383,11 +383,15 @@
     <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Debug'">
+    <!-- <WindowsPackageType>None</WindowsPackageType>-->
+  </PropertyGroup>
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishReadyToRun>true</PublishReadyToRun>
-<!--    <PublishSingleFile>true</PublishSingleFile>-->
-<!--    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
+    <!-- <PublishSingleFile>true</PublishSingleFile>-->
+    <!-- <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
     <SelfContained>true</SelfContained>
     <PublishAot>false</PublishAot>
     <PublishTrimmed>false</PublishTrimmed>
@@ -417,6 +421,11 @@
 
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
+
+    <!-- UNUSED: Raw Assets (also remove the "Resources\Raw" prefix) -->
+    <!--
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+    -->
   </ItemGroup>
 
   <!-- Platform-specific files to compile -->
@@ -488,7 +497,7 @@
   <ItemGroup>
     <!--
       MAUI msbuild tasks doesn't work with
-      <Content Include="..\UI.Blazor.Host\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
+      <Content Include="..\App.Wasm\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
       so we copy dist files from webpack build
       issue: [Web Workers API doesn't work](https://github.com/MicrosoftEdge/WebView2Feedback/issues/2296)
      -->

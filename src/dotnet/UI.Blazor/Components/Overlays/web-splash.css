@@ -1,56 +1,56 @@
 /* Loading overlay */
 
 :root, .theme-light, .theme-dark, .theme-ash {
-    --loading-overlay-bg-color: var(--blue-30); /* Old: --background-01 */
-    --loading-overlay-box-size: 24rem;
-    --loading-overlay-shine-size: 30%;
-    --loading-overlay-logo-size: 12rem;
+    --web-splash-bg-color: var(--blue-30); /* Old: --background-01 */
+    --web-splash-box-size: 24rem;
+    --web-splash-shine-size: 30%;
+    --web-splash-logo-size: 12rem;
 }
 @media (min-width: 1024px) {
     :root {
-        --loading-overlay-logo-size: 18rem;
+        --web-splash-logo-size: 18rem;
     }
 }
 
-.loading-overlay {
+.web-splash {
     @apply absolute inset-0 z-[1900] overflow-hidden;
     @apply flex items-center justify-center;
     @apply transition-opacity ease-in duration-300;
-    background-color: var(--loading-overlay-bg-color);
+    background-color: var(--web-splash-bg-color);
     will-change: transform;
 }
-.loading-overlay.removing {
+.web-splash.removing {
     @apply transition-opacity ease-out duration-350 opacity-0;
 }
 
-.loading-overlay .c-content {
+.web-splash .c-content {
     @apply flex-y items-center justify-center;
     min-height: 220px;
     min-width: 220px;
     max-height: 220px;
     max-width: 220px;
 }
-.loading-overlay .c-content > img {
+.web-splash .c-content > img {
     @apply mb-4;
     min-height: 200px;
     min-width: 200px;
     max-height: 200px;
     max-width: 200px;
 }
-body.app-maui.device-ios .loading-overlay .c-content > img {
+body.app-maui.device-ios .web-splash .c-content > img {
     @apply hidden;
 }
-body.app-maui.device-android .loading-overlay .c-content > img {
+body.app-maui.device-android .web-splash .c-content > img {
     @apply hidden;
 }
-.loading-overlay .progress {
+.web-splash .progress {
     @apply relative;
     @apply flex justify-start items-center;
     @apply min-w-full max-w-full min-h-1 overflow-hidden;
     @apply rounded-full;
     @apply bg-[var(--white-05)];
 }
-.loading-overlay .progress-value {
+.web-splash .progress-value {
     @apply w-full h-1;
     @apply rounded-full;
     @apply bg-[var(--white)];

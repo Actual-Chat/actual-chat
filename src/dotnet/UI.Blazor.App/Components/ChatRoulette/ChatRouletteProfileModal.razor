@@ -40,8 +40,8 @@
 
     private Session Session => Hub.Session();
     private IAvatars Avatars => Hub.Avatars;
-    private RouletteUI RouletteUI => Hub.RouletteUI;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+    private RouletteUI RouletteUI => Hub.RouletteUI;
     private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;

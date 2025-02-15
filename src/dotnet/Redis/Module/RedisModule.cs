@@ -11,6 +11,25 @@ namespace ActualChat.Redis.Module;
 public sealed class RedisModule(IServiceProvider moduleServices)
     : HostModule<RedisSettings>(moduleServices), IServerModule
 {
+    private readonly Lock _lock = new();
+
+    [field: AllowNull, MaybeNull]
+    public string MeshLockSubspace {
+        get {
+            if (field != null)
+                return field;
+
+            using var _ = _lock.EnterScope();
+            if (field != null)
+                return field;
+
+            var value = Settings.MeshLockSubspace;
+            if (OrdinalEquals(value, "?"))
+                value = Alphabet.AlphaNumeric.Generator8.Next();
+            return field = value;
+        }
+    }
+
     public void AddRedisDb<TContext>(
         IServiceCollection services,
         string? connectionString = null)
@@ -36,23 +55,29 @@ public sealed class RedisModule(IServiceProvider moduleServices)
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
             typeof(TContext).GetName(), configuration, keyPrefix);
 
+        // RedisDb<TContext>
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(cfg, keyPrefix);
-        services.AddSingleton<IMeshLocks<TContext>>(
-            c => new RedisMeshLocks<TContext>(c) {
-                LockOptions = c.GetRequiredService<MeshLockOptions>(),
-            });
+
+        // IMeshLocks<TContext>
+        services.AddSingleton<IMeshLocks<TContext>>(c => {
+            var subspace = MeshLockSubspace;
+            var optionsPreset = Settings.MeshLockOptionsPreset.NullIfEmpty()
+                ?? nameof(MeshLockOptions.Default);
+            Log.LogInformation("IMeshLocks<{Context}>: '{Subspace}' subspace, '{OptionsPreset}' lock options preset",
+                typeof(TContext).GetName(), subspace, optionsPreset);
+
+            // ReSharper disable once VariableHidesOuterVariable
+            var keyPrefix = subspace.IsNullOrEmpty()
+                ? RedisMeshLocks.DefaultKeyPrefix
+                : $"{RedisMeshLocks.DefaultKeyPrefix}-{subspace}"; // Must not use "." as a delimiter!
+            return new RedisMeshLocks<TContext>(c, keyPrefix) {
+                LockOptions = MeshLockOptions.Presets[optionsPreset],
+            };
+        });
     }
 
     protected override void InjectServices(IServiceCollection services)
-        => services.TryAddSingleton(c => {
-            var lockOptions = MeshLockOptions.Default;
-            if (c.HostInfo().IsTested)
-                lockOptions = lockOptions with {
-                    ExpirationPeriod = TimeSpan.FromSeconds(10),
-                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
-                };
-            return lockOptions;
-        });
+    { }
 }

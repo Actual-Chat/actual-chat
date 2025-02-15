@@ -47,6 +47,7 @@ public static class ClientStartup
         "Microsoft.JSInterop.Infrastructure.ArrayBuilder`1", "Microsoft.JSInterop")]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All,
         "Microsoft.JSInterop.Infrastructure.DotNetObjectReferenceJsonConverter`1", "Microsoft.JSInterop")]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HeadOutlet))]
     // Diffs
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
@@ -73,8 +74,8 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RenderSlotTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FeaturesTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InfoToastTestPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoadingOverlayTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReconnectOverlayTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebSplashTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SkeletonsTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SvgCatsTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SystemTestPage))]

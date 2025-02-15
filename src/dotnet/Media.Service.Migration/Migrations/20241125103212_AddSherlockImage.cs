@@ -1,4 +1,5 @@
-﻿using ActualChat.Media.Resources;
+﻿using ActualChat.Media.Module;
+using ActualChat.Media.Resources;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

@@ -1350,7 +1350,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.Chats
-            .SharedLock(userId, Constants.Chat.SystemTags.Notes, cancellationToken)
+            .LockShared(userId, Constants.Chat.SystemTags.Notes, cancellationToken)
             .ConfigureAwait(false);
 
         var hasNotesChat = await dbContext.Chats

@@ -6,7 +6,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 {
     protected readonly IMeshLocksBackend Backend;
     protected MomentClock Clock => Backend.Clock;
-    protected ILogger? Log => Backend.Log;
+    protected ILogger Log => Backend.Log;
     protected ILogger? DebugLog => Backend.DebugLog;
     protected HashSet<Task>? Dependencies;
 
@@ -93,7 +93,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             await Clock.Delay(Options.RenewalPeriod, cancellationToken).ConfigureAwait(false);
             isRenewed = await TryRenew(cancellationToken).ConfigureAwait(false);
         }
-        Log?.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
+        Log.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
         _ = DisposeAsync();
     }
 
@@ -123,7 +123,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             var now = Clock.Now;
             var expiresIn = ExpiresAt - now;
             if (expiresIn < MinExpiresIn) {
-                Log?.LogError("[+*] {Key}: renewal failed - too late to renew", FullKey);
+                Log.LogError("[+*] {Key}: renewal failed - too late to renew", FullKey);
                 return false;
             }
 
@@ -141,16 +141,16 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                     // Log?.LogDebug("[+*] {Key}: renewed", FullKey);
                 }
                 else
-                    Log?.LogError("[+*] {Key}: renewal failed - key already expired", FullKey);
+                    Log.LogError("[+*] {Key}: renewal failed - key already expired", FullKey);
                 return isRenewed;
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 if (cts.Token.IsCancellationRequested) {
-                    Log?.LogError(e, "[+*] {Key}: renewal failed - timeout", FullKey);
+                    Log.LogError(e, "[+*] {Key}: renewal failed - timeout", FullKey);
                     return false;
                 }
 
-                Log?.LogError(e, "[+*] {Key}: renewal failed, will retry", FullKey);
+                Log.LogError(e, "[+*] {Key}: renewal failed, will retry", FullKey);
             }
             finally {
                 cts.CancelAndDisposeSilently();
@@ -163,7 +163,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         while (true) {
             var expiresIn = ExpiresAt - Clock.Now;
             if (expiresIn < MinExpiresIn) {
-                Log?.LogError("[+-] {Key}: release failed - too late to release", FullKey);
+                Log.LogError("[+-] {Key}: release failed - too late to release", FullKey);
                 return MeshLockReleaseResult.Expired;
             }
 
@@ -177,16 +177,16 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                     // Log?.LogDebug("[+*] {Key}: released", FullKey);
                 }
                 else
-                    Log?.LogError("[+-] {Key}: release failed - {Result}", FullKey, result);
+                    Log.LogError("[+-] {Key}: release failed - {Result}", FullKey, result);
                 return result;
             }
             catch (Exception e) {
                 if (cts.Token.IsCancellationRequested) {
-                    Log?.LogError(e, "[+-] {Key}: release failed - timeout", FullKey);
+                    Log.LogError(e, "[+-] {Key}: release failed - timeout", FullKey);
                     return MeshLockReleaseResult.Expired;
                 }
 
-                Log?.LogError(e, "[+-] {Key}: release failed, will retry", FullKey);
+                Log.LogError(e, "[+-] {Key}: release failed, will retry", FullKey);
             }
             finally {
                 cts.CancelAndDisposeSilently();

@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using ActualChat.App.Server.Components.Pages;
 using ActualChat.App.Server.Health;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
@@ -7,11 +8,9 @@ using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualLab.CommandR.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Rewrite;
-using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
@@ -23,6 +22,9 @@ using ActualLab.IO;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 using ActualChat.MLSearch.Diagnostics;
+using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Fusion.Server;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -34,11 +36,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
     public static readonly string AppVersion =
         typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
-    private IWebHostEnvironment? _env;
+    [field: AllowNull, MaybeNull]
+    public IWebHostEnvironment Env => field ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
-    public IWebHostEnvironment Env => _env ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
-
-    public void ConfigureApp(IApplicationBuilder app)
+    public void ConfigureApp(WebApplication app)
     {
         if (Settings.AssumeHttps) {
             Log.LogWarning("AssumeHttps is on");
@@ -52,18 +53,18 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
         // and set it as this server's content root.
+        /*
         Env.WebRootPath =  Settings.WebRootPath.NullIfEmpty() ?? AppPathResolver.GetWebRootPath();
         Env.ContentRootPath = AppPathResolver.GetContentRootPath();
         Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
         Env.ContentRootFileProvider = new PhysicalFileProvider(Env.ContentRootPath);
         StaticWebAssetsLoader.UseStaticWebAssets(Env, Cfg);
+        */
 
-        if (Env.IsDevelopment()) {
-            app.UseDeveloperExceptionPage();
+        if (Env.IsDevelopment())
             app.UseWebAssemblyDebugging();
-        }
         else {
-            app.UseExceptionHandler("/Error");
+            app.UseExceptionHandler("/Error", createScopeForErrors: true);
             app.UseHsts();
         }
 
@@ -83,23 +84,11 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             KeepAliveInterval = TimeSpan.FromSeconds(30),
         });
 
-        // Static files
-        app.UseBlazorFrameworkFiles();
-        app.UseDistFiles();
         // Explicit rewrite cause files without extension (hence no content-type) are not served due to security reasons
         app.UseRewriter(
             new RewriteOptions().AddRewrite("\\.well-known/apple-app-site-association$",
                 ".well-known/apple-app-site-association.json",
                 true));
-        app.UseStaticFiles();
-
-        // Swagger
-        /*
-        app.UseSwagger();
-        app.UseSwaggerUI(c => {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
-        });
-        */
 
         // Response compression
         if (!Env.IsDevelopment()) // disable compression for local development and hot reload
@@ -110,16 +99,31 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
-        app.UseEndpoints(endpoints => {
-            endpoints.MapAppHealth();
-            // Disabled as we disabled prometheus endpoint recently
-            // endpoints.MapAppMetrics();
-            endpoints.MapBlazorHub();
-            endpoints.MapRpcWebSocketServer();
-            endpoints.MapControllers();
-            endpoints.MapFallbackToPage("/_Host");
-        });
+        app.UseAntiforgery();
+
+        // Endpoint mapping
+        app.UseStaticDistCacheHeaders(); // Customized cache headers for Static files from dist and _content folders
+        if (!HostInfo.IsTested) {
+            app.MapStaticAssets();
+            app.MapRazorComponents<RootServerPage>()
+                .AddInteractiveServerRenderMode()
+                .AddInteractiveWebAssemblyRenderMode()
+                .AddAdditionalAssemblies(typeof(WebApp).Assembly) // UI.Blazor.AppPack
+                .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
+                .AddAdditionalAssemblies(typeof(ChatUIHub).Assembly); // UI.Blazor.App
+        }
+        app.MapRpcWebSocketServer();
+        if (HostInfo.HasRole(HostRole.Api)) {
+            app.MapFusionAuthEndpoints(); // /signIn, /signOut
+            app.MapFusionRenderModeEndpoints(); // /fusion/renderMode
+        }
+        app.MapControllers();
+
+        // Diagnostic endpoints
         // app.UseOpenTelemetryPrometheusScrapingEndpoint();
+        app.MapAppHealth();
+        // Disabled as we disabled prometheus endpoint recently
+        // endpoints.MapAppMetrics();
     }
 
     protected override void InjectServices(IServiceCollection services)
@@ -232,9 +236,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             });
         }
 
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-
         // Blazor Server
         services.AddServerSideBlazor(o => {
             if (HostInfo.IsDevelopmentInstance) {
@@ -251,6 +252,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             o.MaximumParallelInvocationsPerClient = 4;
             o.StatefulReconnectBufferSize = 1000;
         });
+        services.AddRazorComponents()
+            .AddInteractiveServerComponents()
+            .AddInteractiveWebAssemblyComponents();
         services.AddBlazorCircuitActivitySuppressor();
 
         // Open Telemetry

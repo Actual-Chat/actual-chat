@@ -35,11 +35,11 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
         var json = JsonSerializer.Serialize(new Request(text), _jsonSerializerOptions);
         var jsonContent = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var response = await client.PostAsync(_predictionsUri!, jsonContent);
+        var response = await client.PostAsync(_predictionsUri!, jsonContent).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
             throw StandardError.External("Failed to retrieve dense vectors");
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<double[][]>(responseBody, _jsonSerializerOptions);
         return result![0];
     }

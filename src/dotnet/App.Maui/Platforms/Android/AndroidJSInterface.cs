@@ -12,6 +12,7 @@ public class AndroidJSInterface : JObject
     private readonly Android.Webkit.WebView _webView;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidJSInterface))]
+    // ReSharper disable once ConvertToPrimaryConstructor
     public AndroidJSInterface(Android.Webkit.WebView webView)
         => _webView = webView;
 

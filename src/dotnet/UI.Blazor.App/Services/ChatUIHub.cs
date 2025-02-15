@@ -14,15 +14,13 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public IChats Chats => field ??= Services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
-    public IUserLinks UserLinks => field ??= Services.GetRequiredService<IUserLinks>();
-    [field: AllowNull, MaybeNull]
     public IChatPositions ChatPositions => field ??= Services.GetRequiredService<IChatPositions>();
     [field: AllowNull, MaybeNull]
     public IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
     [field: AllowNull, MaybeNull]
     public IMentions Mentions => field ??= Services.GetRequiredService<IMentions>();
     [field: AllowNull, MaybeNull]
-    public IMLSearch MLSearch => field ??= Services.GetRequiredService<IMLSearch>();
+    public IUserLinks UserLinks => field ??= Services.GetRequiredService<IUserLinks>();
     [field: AllowNull, MaybeNull]
     public IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     [field: AllowNull, MaybeNull]
@@ -40,7 +38,8 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();
     [field: AllowNull, MaybeNull]
-    public ChatActivity ChatActivity => field ??= Services.GetRequiredService<ChatActivity>();
+    public IMLSearch MLSearch => field ??= Services.GetRequiredService<IMLSearch>();
+
     [field: AllowNull, MaybeNull]
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
     [field: AllowNull, MaybeNull]
@@ -62,9 +61,15 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public EditMembersUI EditMembersUI => field ??= Services.GetRequiredService<EditMembersUI>();
     [field: AllowNull, MaybeNull]
+    public HighlightUI HighlightUI => field ??= Services.GetRequiredService<HighlightUI>();
+    public new OnboardingUI OnboardingUI => (OnboardingUI)base.OnboardingUI;
+    [field: AllowNull, MaybeNull]
     public SearchUI SearchUI => field ??= Services.GetRequiredService<SearchUI>();
     [field: AllowNull, MaybeNull]
-    public HighlightUI HighlightUI => field ??= Services.GetRequiredService<HighlightUI>();
+    public RouletteUI RouletteUI => field ??= Services.GetRequiredService<RouletteUI>();
+
+    [field: AllowNull, MaybeNull]
+    public ChatActivity ChatActivity => field ??= Services.GetRequiredService<ChatActivity>();
     [field: AllowNull, MaybeNull]
     public ChatPlayers ChatPlayers => field ??= Services.GetRequiredService<ChatPlayers>();
     [field: AllowNull, MaybeNull]
@@ -86,9 +91,6 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     [field: AllowNull, MaybeNull]
     public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
-    [field: AllowNull, MaybeNull]
-    public RouletteUI RouletteUI => field ??= Services.GetRequiredService<RouletteUI>();
-    public new OnboardingUI OnboardingUI => (OnboardingUI)base.OnboardingUI;
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -25,15 +25,21 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(10)] public bool IsDataCollectionStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(11)] public bool IsChatRouletteStepCompleted { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool HasUncompletedSteps
-        => this is not {
+    public bool HasUncompletedSteps(bool enableChatRouletteUI)
+    {
+        var areAllFeatureIndependentStepsCompleted = this is {
             IsAvatarStepCompleted: true,
             IsVerifyPhoneStepCompleted: true,
             IsCreateChatsStepCompleted: true,
             IsVerifyEmailStepCompleted: true,
             IsTimeZoneStepCompleted: true,
             IsDataCollectionStepCompleted: true,
-            IsChatRouletteStepCompleted: true,
         };
+        if (!areAllFeatureIndependentStepsCompleted)
+            return true;
+        if (enableChatRouletteUI && !IsChatRouletteStepCompleted)
+            return true;
+
+        return false;
+    }
 }

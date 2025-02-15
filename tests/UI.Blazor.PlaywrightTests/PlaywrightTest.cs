@@ -7,7 +7,7 @@ namespace ActualChat.UI.Blazor.PlaywrightTests;
 public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [Fact]
+    [Fact(Skip = "2025.02+ AppHost doesn't serve web pages.")]
     public async Task CloseBrowserTest()
     {
         var appHost = AppHost;
@@ -16,7 +16,7 @@ public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
         await browser.CloseAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "2025.02+ AppHost doesn't serve web pages.")]
     public async Task AddMessageTest()
     {
         const float timeout = 20_000f;
@@ -70,7 +70,7 @@ public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
             => await messages.Last().TextContentAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "2025.02+ AppHost doesn't serve web pages.")]
     public async Task ChatPageTest()
     {
         var appHost = AppHost;

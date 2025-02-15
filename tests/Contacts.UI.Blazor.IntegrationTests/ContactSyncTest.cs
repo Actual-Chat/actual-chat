@@ -98,7 +98,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     private async Task<ApiArray<ExternalContact>> ListExternalContacts(int expectedCount)
         => await ComputedTest.When(async ct => {
             var externalContacts = await ListExternalContacts(ct);
-            externalContacts.Should().HaveCountGreaterOrEqualTo(expectedCount);
+            externalContacts.Should().HaveCountGreaterThanOrEqualTo(expectedCount);
             return externalContacts;
         }, TimeSpan.FromSeconds(10));
 

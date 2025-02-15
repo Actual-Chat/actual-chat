@@ -47,7 +47,7 @@ public class LinearMapTest(ITestOutputHelper @out) : TestBase(@out)
         var last = 0f;
         for (var i = 0; i <= 98; i++) {
             var current = map.TryMap(i)!.Value;
-            current.Should().BeGreaterOrEqualTo(last);
+            current.Should().BeGreaterThanOrEqualTo(last);
             last = current;
         }
     }

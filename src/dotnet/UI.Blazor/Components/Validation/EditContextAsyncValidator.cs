@@ -15,19 +15,19 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private readonly EditContext _editContext;
     private readonly ValidationMessageStore _messages;
 
+    private UIHub Hub { get; }
+    private ILogger Log { get; }
     private ValidationModelStore ValidationModelStore { get; }
     private AsyncValidator AsyncValidator { get; }
-    private UIHub UIHub { get; }
-    private ILogger Log { get; }
 
-    public EditContextAsyncValidator(EditContext editContext, UIHub uiHub)
+    public EditContextAsyncValidator(EditContext editContext, UIHub hub)
     {
         _editContext = editContext ?? throw new ArgumentNullException(nameof(editContext));
         _messages = new ValidationMessageStore(_editContext);
-        UIHub = uiHub;
-        ValidationModelStore = uiHub.GetRequiredService<ValidationModelStore>();
-        AsyncValidator = uiHub.GetRequiredService<AsyncValidator>();
-        Log = uiHub.LogFor(GetType());
+        Hub = hub;
+        ValidationModelStore = hub.GetRequiredService<ValidationModelStore>();
+        AsyncValidator = hub.GetRequiredService<AsyncValidator>();
+        Log = hub.LogFor(GetType());
 
         _editContext.OnFieldChanged += OnFieldChanged;
         _editContext.OnValidationRequested += OnValidationRequested;
@@ -71,7 +71,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private async Task ValidateProperty(FieldIdentifier fieldIdentifier, CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        var validationContext = new ValidationContext(_editContext.Model, UIHub, null) {
+        var validationContext = new ValidationContext(_editContext.Model, Hub, null) {
             MemberName = fieldIdentifier.FieldName,
         };
         var ctx = ValidationModelStore.Get(validationContext);
@@ -92,7 +92,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private async Task<bool> ValidateAll(CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        var validationContext = new ValidationContext(_editContext.Model, UIHub, null);
+        var validationContext = new ValidationContext(_editContext.Model, Hub, null);
         _messages.Clear();
         var validationResults = new List<ValidationResult>();
         Validator.TryValidateObject(_editContext.Model, validationContext, validationResults, true);
@@ -109,7 +109,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
         => _validationRequests.Writer.TryWrite(null);
 
     private Task AddValidationResults(IReadOnlyCollection<ValidationResult> validationResults)
-        => UIHub.Dispatcher.InvokeAsync(() => {
+        => Hub.Dispatcher.InvokeAsync(() => {
             foreach (var validationResult in validationResults) {
                 var hasMemberNames = false;
                 foreach (var memberName in validationResult.MemberNames) {

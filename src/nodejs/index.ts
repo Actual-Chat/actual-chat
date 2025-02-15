@@ -22,4 +22,4 @@ export * as blazorApp from '../dotnet/UI.Blazor.App/exports';
 export * from './src/kvas';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-globalThis?.App?.markBundleReady?.(); // "?." here ensures this code won't fail in workers, etc.
+window['App']?.markBundleReady?.(); // "?." here ensures this code won't fail in workers, etc.

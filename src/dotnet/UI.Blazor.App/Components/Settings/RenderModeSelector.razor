@@ -1,0 +1,119 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+#pragma warning disable IL2091
+
+    var modeKey = RenderModeHelper.CurrentMode?.Key ?? "a";
+    var isServer = OrdinalEquals(modeKey, "s");
+    var isWasm = OrdinalEquals(modeKey, "w");
+    var isAuto = !(isServer || isWasm); // Technically it's "a" or anything else
+    var serverClass = isServer ? "selected transparent" : "transparent";
+    var wasmClass = isWasm ? "selected transparent" : "transparent";
+    var autoClass = isAuto ? "selected transparent" : "transparent";
+}
+
+<TileTopic Topic="Rendering Mode"/>
+<Tile Class="render-mode-tile">
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+
+        <FormBlock>
+            <InputRadioGroup
+                Name="render-mode"
+                DisplayName="Rendering Mode"
+                @bind-Value="_formModel.ModeKey">
+
+                <TileItem Class="@autoClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("a"))">
+                    <Icon>
+                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@("a")"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.ServerModeFormId" Text="Auto"></Label>
+                        <div class="c-comment">
+                            Starts in Server-Side Rendering mode and loads WebAssembly Client in the background.
+                            Switches to WebAssembly Client once it's loaded.
+                        </div>
+                    </Content>
+                </TileItem>
+
+                <TileItem Class="@serverClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("s"))">
+                    <Icon>
+                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@("s")"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.ServerModeFormId" Text="Server-Side Rendering"></Label>
+                        <div class="c-comment">
+                            Works best for less powerful devices; less responsive if you're outside of the U.S.
+                        </div>
+                    </Content>
+                </TileItem>
+
+                <TileItem Class="@wasmClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("w"))">
+                    <Icon>
+                        <FormRadio Id="@_formModel.WasmModeFormId" Value="@("w")"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.WasmModeFormId" Text="WebAssembly Client"></Label>
+                        <div class="c-comment">
+                            Works best on more powerful devices; more responsive, requires less bandwidth,
+                            but downloads ~10MB once you enable this mode.
+                        </div>
+                    </Content>
+                </TileItem>
+
+            </InputRadioGroup>
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private FormModel _formModel = null!;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private RenderModeHelper RenderModeHelper => Hub.GetRequiredService<RenderModeHelper>();
+
+    protected override void OnInitialized() {
+        _formModel = new(ComponentIdGenerator) {
+            ModeKey = RenderModeHelper.CurrentMode?.Key ?? "a",
+        };
+        _formModel.ModeChanged += OnModeChanged;
+    }
+
+    private void OnModeChanged(string modeKey)
+        => RenderModeHelper.ChangeMode(RenderModeDef.GetOrDefault(modeKey));
+
+    private void ChangeMode(string modeKey) {
+        if (OrdinalEquals(RenderModeHelper.CurrentMode?.Key, modeKey))
+            return;
+
+        OnModeChanged(modeKey);
+    }
+
+    public sealed class FormModel {
+        private string FormId { get; }
+        public string AutoModeFormId { get; }
+        public string ServerModeFormId { get; }
+        public string WasmModeFormId { get; }
+
+        [field: AllowNull, MaybeNull]
+        public string ModeKey {
+            get;
+            set {
+                if (field == value)
+                    return;
+
+                field = value;
+                ModeChanged?.Invoke(value);
+            }
+        }
+
+        public event Action<string>? ModeChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("render-mode-form");
+            AutoModeFormId = $"{FormId}-auto-mode";
+            ServerModeFormId = $"{FormId}-server-mode";
+            WasmModeFormId = $"{FormId}-wasm-mode";
+        }
+    }
+}

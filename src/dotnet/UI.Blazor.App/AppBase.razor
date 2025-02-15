@@ -1,9 +1,10 @@
 @using ActualChat.Hosting
 @using ActualChat.Security
+@using ActualChat.UI.Blazor.App.Pages.Landing
 @implements IRootComponent
 @{
-    if (_isPrerendering) {
-        <LandingWeb/>
+    if (!UIHub.IsInteractive) {
+        <LandingForWeb/>
         return;
     }
     if (!_readyToRender)
@@ -36,33 +37,36 @@
     private static Assembly UIAssembly { get; } = typeof(AppBase).Assembly;
     private static Assembly[] UIModuleAssemblies { get; set; } = null!;
 
-    private bool _isPrerendering;
     private bool _readyToRender;
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
-    private ILogger? _log;
 
-    [Inject] protected IServiceProvider Services { get; init; } = null!;
+    [Inject] protected UIHub UIHub { get; init; } = null!;
+    protected IServiceProvider Services => UIHub.Services;
+    protected HostInfo HostInfo => UIHub.HostInfo();
+    protected ISessionResolver SessionResolver => UIHub.SessionResolver;
+    protected AppBlazorCircuitContext CircuitContext => UIHub.CircuitContext;
+    protected ModuleHost ModuleHost => UIHub.ModuleHost;
 
-    [Inject] protected HostInfo HostInfo { get; init; } = null!;
-    [Inject] protected ModuleHost Host { get; init; } = null!;
-    [Inject] protected BlazorRenderMode RenderMode { get; init; } = null!;
-    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject] protected AppScopedServiceStarter AppServiceStarter { get; init; } = null!;
-    [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
-    [Inject] protected Tracer Tracer { get; init; } = null!;
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    protected AppScopedServiceStarter AppScopedServiceStarter => field ??= Services.GetRequiredService<AppScopedServiceStarter>();
+    [field: AllowNull, MaybeNull]
+    protected Tracer Tracer => field ??= UIHub.Tracer();
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= UIHub.LogFor(GetType());
 
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";
+    [Parameter] public string RenderModeKey { get; set; } = "";
 
     public AppBase()
         => LoadingUI.MarkAppCreated();
 
     protected override void OnInitialized() {
-        CircuitContext.RootComponent = this;
-        _isPrerendering = RenderMode.IsPrerendering;
+        Log.LogWarning("OnInitialized, Hash: {Hash}", GetHashCode());
+        if (CircuitContext.IsInteractive)
+            CircuitContext.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
     }
 
     protected override async Task OnInitializedAsync() {
@@ -79,14 +83,14 @@
         else if (hostKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
         }
-        if (_isPrerendering)
+        if (!UIHub.IsInteractive)
             return;
 
-        var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender(sessionHash);
+        var prepareFirstRenderTask = AppScopedServiceStarter.PrepareFirstRender(sessionHash);
         if (ReferenceEquals(UIModuleAssemblies, null)) {
             // Evaluate UIModuleAssemblies (just once - it's a static member)
             var uiModuleAssemblies = new HashSet<Assembly>();
-            foreach (var module in Host.Modules) {
+            foreach (var module in ModuleHost.Modules) {
                 if (module.IsUsed && module is IBlazorUIModule)
                     uiModuleAssemblies.Add(module.GetType().Assembly);
             }
@@ -96,7 +100,7 @@
         await prepareFirstRenderTask;
         _readyToRender = true;
         _shouldRender = true;
-        _ = AppServiceStarter.AfterFirstRender(CircuitContext.StopToken);
+        _ = AppScopedServiceStarter.AfterFirstRender(CircuitContext.StopToken);
     }
 
     public void SimulateCrash(Exception error) {

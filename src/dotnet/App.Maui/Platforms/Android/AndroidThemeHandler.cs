@@ -7,6 +7,9 @@ public class AndroidThemeHandler : MauiThemeHandler
 {
     private static Android.Views.Window? Window => (Platform.CurrentActivity as MainActivity)?.Window;
 
+    [UnconditionalSuppressMessage("Trimming",
+        "CA1422: Call site is reachable on Android >= v.X, obsolete on >= v.Y",
+        Justification = "Fine for Window.SetStatusBarColor && Window.SetNavigationBarColor")]
     protected override bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
     {
         var cTopBar = Android.Graphics.Color.ParseColor(topBarColor);

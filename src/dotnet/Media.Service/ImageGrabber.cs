@@ -40,27 +40,30 @@ public class ImageGrabber(IServiceProvider services)
         if (imageUrl.IsNullOrEmpty())
             return MediaId.None;
 
-        var existingId = await GetExisting();
+        var existingId = await GetExisting().ConfigureAwait(false);
         if (existingId != MediaId.None) {
             await ScheduleUpdateIfRequired(imageUrl, cancellationToken).ConfigureAwait(false);
             return existingId;
         }
 
-        var (_, mediaId) = await MeshLocks.RunLocked(imageUrl.Hash().SHA256().AlphaNumeric(),
+        var (_, mediaId) = await MeshLocks.RunLocked(
+            imageUrl.Hash().SHA256().AlphaNumeric(),
             RunLockedOptions.Default,
             async ct => {
-                existingId = await GetExisting();
+                existingId = await GetExisting().ConfigureAwait(false);
                 if (existingId != MediaId.None)
                     return existingId;
 
-                return await GrabUnsafe(imageUrl, ct);
+                return await GrabUnsafe(imageUrl, ct).ConfigureAwait(false);
             },
-            cancellationToken);
+            cancellationToken
+            ).ConfigureAwait(false);
         return mediaId;
 
-        async Task<MediaId> GetExisting()
-        {
-            var existingMedia = await MediaBackend.GetByMediaIdScope(GetMediaIdScope(imageUrl), cancellationToken);
+        async Task<MediaId> GetExisting() {
+            var existingMedia = await MediaBackend
+                .GetByMediaIdScope(GetMediaIdScope(imageUrl), cancellationToken)
+                .ConfigureAwait(false);
             return existingMedia?.Id ?? MediaId.None;
         }
     }

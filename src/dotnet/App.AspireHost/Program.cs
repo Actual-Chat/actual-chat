@@ -1,5 +1,9 @@
+using ActualChat;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+
+var meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
+var meshLockOptionsPreset = "Default"; // Change it to "DebugFriendly" for debugging purposes
 
 var builder = DistributedApplication.CreateBuilder(args);
 // AddHost("aio", 7080, "1:OneServer");
@@ -16,5 +20,7 @@ IResourceBuilder<ProjectResource> AddHost(string name, int port, string role)
         .WithHttpEndpoint(port)
         .WithEnvironment("HostSettings__IsAspireManaged", "true")
         .WithEnvironment("DOTNET_ENVIRONMENT", "Development") // Optional
+        .WithEnvironment("RedisSettings__MeshLockSubspace", meshLockSubspace)
+        .WithEnvironment("RedisSettings__MeshLockOptionsPreset", meshLockOptionsPreset)
         .WithArgs(args);
 }

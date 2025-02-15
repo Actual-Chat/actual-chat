@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Roulette;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
@@ -75,7 +76,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var filterLanguageIds = filter.Languages.Select(l => l.Id.Value).ToArray();
         queryable = queryable.Where(c => filterLanguageIds.Any(l => c.Languages.Contains(l)));
         if (filter.Interests.Count > 0) {
-            var hasFlexible = filter.Interests.Any(c => c.Code == Interests.Flexible.Code);
+            var hasFlexible = filter.Interests.Any(c => Equals(c.Code, Interests.Flexible.Code));
             if (hasFlexible) {
                 // Flexible interest indicates that profiles with any interests will suite.
                 queryable = queryable.Where(c => c.Interests.Length > 0);

@@ -24,7 +24,8 @@ using Microsoft.Extensions.Options;
 namespace ActualChat.MLSearch.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : HostModule<MLSearchSettings>(moduleServices)
+public sealed class MLSearchServiceModule(IServiceProvider moduleServices)
+    : HostModule<MLSearchSettings>(moduleServices), IServerModule
 {
     private readonly ILogger<MLSearchServiceModule> _log = moduleServices.LogFor<MLSearchServiceModule>();
 

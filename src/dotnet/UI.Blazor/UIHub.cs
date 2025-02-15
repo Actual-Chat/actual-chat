@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
@@ -20,13 +21,14 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
     [field: AllowNull, MaybeNull]
+    public Media.IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
+    [field: AllowNull, MaybeNull]
     public IRoulette Roulette => field ??= Services.GetRequiredService<IRoulette>();
     [field: AllowNull, MaybeNull]
     public IRouletteProfiles RouletteProfiles => field ??= Services.GetRequiredService<IRouletteProfiles>();
     [field: AllowNull, MaybeNull]
-    public Media.IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
-    [field: AllowNull, MaybeNull]
     public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
+
     [field: AllowNull, MaybeNull]
     public LoadingUI LoadingUI => field ??= Services.GetRequiredService<LoadingUI>();
     [field: AllowNull, MaybeNull]
@@ -50,11 +52,13 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public ShareUI ShareUI => field ??= Services.GetRequiredService<ShareUI>();
     [field: AllowNull, MaybeNull]
-    public ModalUI ModalUI => field ??= Services.GetRequiredService<ModalUI>();
-    [field: AllowNull, MaybeNull]
     public FocusUI FocusUI => field ??= Services.GetRequiredService<FocusUI>();
     [field: AllowNull, MaybeNull]
+    public ModalUI ModalUI => field ??= Services.GetRequiredService<ModalUI>();
+    [field: AllowNull, MaybeNull]
     public FontSizeUI FontSizeUI => field ??= Services.GetRequiredService<FontSizeUI>();
+    [field: AllowNull, MaybeNull]
+    public ThemeUI ThemeUI => field ??= Services.GetRequiredService<ThemeUI>();
     [field: AllowNull, MaybeNull]
     public TuneUI TuneUI => field ??= Services.GetRequiredService<TuneUI>();
     [field: AllowNull, MaybeNull]
@@ -72,15 +76,22 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public VisualMediaViewerUI VisualMediaViewerUI => field ??= Services.GetRequiredService<VisualMediaViewerUI>();
     [field: AllowNull, MaybeNull]
+    public TotpUI TotpUI => field ??= Services.GetRequiredService<TotpUI>();
+    [field: AllowNull, MaybeNull]
+    public CaptchaUI CaptchaUI => field ??= Services.GetRequiredService<CaptchaUI>();
+    [field: AllowNull, MaybeNull]
+    public IDataCollectionSettingsUI DataCollectionSettingsUI => field ??= Services.GetRequiredService<IDataCollectionSettingsUI>();
+
+    [field: AllowNull, MaybeNull]
     public Escapist Escapist => field ??= Services.GetRequiredService<Escapist>();
     [field: AllowNull, MaybeNull]
     public RenderVars RenderVars => field ??= Services.GetRequiredService<RenderVars>();
     [field: AllowNull, MaybeNull]
-    public BlazorRenderMode RenderMode => field ??= Services.GetRequiredService<BlazorRenderMode>();
-    [field: AllowNull, MaybeNull]
     public BrowserInfo BrowserInfo => field ??= Services.GetRequiredService<BrowserInfo>();
     [field: AllowNull, MaybeNull]
     public DateTimeConverter DateTimeConverter => field ??= Services.GetRequiredService<DateTimeConverter>();
+    [field: AllowNull, MaybeNull]
+    public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
     [field: AllowNull, MaybeNull]
     public NavigationManager Nav => field ??= Services.GetRequiredService<NavigationManager>();
     [field: AllowNull, MaybeNull]
@@ -88,11 +99,19 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public Dispatcher Dispatcher => field ??= Services.GetRequiredService<Dispatcher>();
     [field: AllowNull, MaybeNull]
+    public JSRuntimeInfo JSRuntimeInfo => field ??= CircuitContext.JSRuntimeInfo;
+    [field: AllowNull, MaybeNull]
     public AppBlazorCircuitContext CircuitContext => field ??= Services.GetRequiredService<AppBlazorCircuitContext>();
     [field: AllowNull, MaybeNull]
-    public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
+    public ISessionResolver SessionResolver => field ??= Services.GetRequiredService<ISessionResolver>();
     [field: AllowNull, MaybeNull]
-    public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
+    public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
+    [field: AllowNull, MaybeNull]
+    public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
+
+    // Shortcuts
+    public bool IsPrerendering => JSRuntimeInfo.IsPrerendering;
+    public bool IsInteractive => JSRuntimeInfo.IsInteractive;
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
     public UICommander UICommander() => _uiCommander ??= Services.UICommander();

@@ -161,11 +161,11 @@
     private string _copyUserLinkFormatString = "";
     private Action<ElementReference> _setUserLinkCopySource = null!;
 
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
-    [Inject] private UIHub UIHub { get; init; } = null!;
-    private Session Session => UIHub.Session();
-    private UrlMapper UrlMapper => UIHub.UrlMapper();
+    private Session Session => Hub.Session();
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -179,7 +179,7 @@
         _copyUserLinkFormatString = UrlMapper.ToAbsolute(_userLinkLocalPrefix) + "{0}";
 
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        _account = await UIHub.Accounts.GetOwn(Session, default);
+        _account = await Hub.Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
         _form.Email = _account.Email.NullIfEmpty();
         _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : "";
@@ -193,7 +193,7 @@
         if (!await _validator.Validate())
             return;
 
-        var account = await UIHub.Accounts.GetOwn(Session, default);
+        var account = await Hub.Accounts.GetOwn(Session, default);
         var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, default);
         if (phone != account.Phone) {
             if (!phone.IsValid)
@@ -208,7 +208,7 @@
                 UserLinkId = UserLinkId.ParseOrNone(_form.UserLinkId),
             },
             account.Version);
-        var (_, error) = await UIHub.UICommander().Run(updateAccountCommand);
+        var (_, error) = await Hub.UICommander().Run(updateAccountCommand);
         if (error != null)
             return;
 
@@ -227,13 +227,13 @@
     }
 
     private async Task OnPhoneVerified()
-        => _account = await UIHub.Accounts.GetOwn(Session, default);
+        => _account = await Hub.Accounts.GetOwn(Session, default);
 
     private async Task OnEmailVerified()
-        => _account = await UIHub.Accounts.GetOwn(Session, default);
+        => _account = await Hub.Accounts.GetOwn(Session, default);
 
     private Task OnDeleteAccountClick()
-        => UIHub.ModalUI.Show(new DeleteAccountModal.Model());
+        => Hub.ModalUI.Show(new DeleteAccountModal.Model());
 
     // Nested types
 

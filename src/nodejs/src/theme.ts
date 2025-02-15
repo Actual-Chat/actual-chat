@@ -3,10 +3,9 @@ import { EventHandlerSet } from 'event-handling';
 
 const { debugLog } = Log.get('Theme');
 
-const StorageKey = 'ui.theme'
-const AvailableThemes = ['light', 'dark', 'ash'];
-const Storage = globalThis?.localStorage;
-const IsEnabled = window != null && Storage != null;
+const storage = window?.localStorage;
+const storageKey = 'ui.theme'
+const availableThemes = ['light', 'dark', 'ash'];
 
 export interface ThemeInfo {
     theme: string | null;
@@ -34,7 +33,7 @@ export class Theme {
     }
 
     public static set(theme: string | null): void {
-        if (!AvailableThemes.find(x => x === theme))
+        if (!availableThemes.find(x => x === theme))
             theme = null;
 
         if (this.theme === theme)
@@ -51,7 +50,7 @@ export class Theme {
         if (this.currentTheme === this.info?.currentTheme && this.defaultTheme === this.info?.defaultTheme)
             return;
 
-        if (IsEnabled) {
+        if (document?.body) {
             const classList = document.body.classList;
             const oldClass = `theme-${this.info?.currentTheme ?? ''}`;
             const newClass = `theme-${this.currentTheme}`;
@@ -75,7 +74,7 @@ function createThemeInfo(): ThemeInfo {
 }
 
 function detectDefaultTheme() {
-    if (!IsEnabled)
+    if (!storage)
         return 'light';
 
     const defaultThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -83,7 +82,7 @@ function detectDefaultTheme() {
 }
 
 function getColors(): string {
-    if (!IsEnabled)
+    if (!storage)
         return '';
 
     const style = getComputedStyle(document.body);
@@ -99,23 +98,23 @@ function normalizeColor(hexColor: string): string {
 }
 
 function load(): string | null {
-    if (!IsEnabled)
+    if (!storage)
         return;
 
-    const theme = Storage.getItem(StorageKey) ?? null;
+    const theme = storage.getItem(storageKey) ?? null;
     debugLog?.log('load:', theme);
     return theme;
 }
 
 function save(theme: string | null): void {
-    if (!IsEnabled)
+    if (!storage)
         return;
 
     debugLog?.log('save:', theme);
     if (theme)
-        Storage.setItem(StorageKey, theme);
+        storage.setItem(storageKey, theme);
     else
-        Storage.removeItem(StorageKey);
+        storage.removeItem(storageKey);
 }
 
 Theme.init();

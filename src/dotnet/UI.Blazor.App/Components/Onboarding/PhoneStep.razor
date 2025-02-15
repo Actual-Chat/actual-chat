@@ -61,16 +61,16 @@
     private bool? _skipped;
     private AsyncDataAnnotationsValidator _validator = null!;
 
-    [Inject] private UIHub UIHub { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
     [Inject] private ICaptcha Captcha { get; init; } = null!;
-    [Inject] private TotpUI TotpUI { get; init; } = null!;
-    private Session Session => UIHub.Session();
-    private IAccounts Accounts => UIHub.Accounts;
-    private UICommander UICommander => UIHub.UICommander();
-    private ModalUI ModalUI => UIHub.ModalUI;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private TotpUI TotpUI => Hub.TotpUI;
+    private CaptchaUI CaptchaUI => Hub.CaptchaUI;
+    private UICommander UICommander => Hub.UICommander();
+    private ModalUI ModalUI => Hub.ModalUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 

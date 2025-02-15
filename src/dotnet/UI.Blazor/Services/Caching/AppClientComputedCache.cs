@@ -39,7 +39,6 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
         ForceFlushFor = [..Settings.ForceFlushFor]; // Read-only copy
     }
 
-    [RequiresUnreferencedCode(UnreferencedCode.Serialization)]
     public async ValueTask<RpcCacheEntry<T>?> Get<T>(
         ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
     {

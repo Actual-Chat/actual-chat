@@ -1,6 +1,5 @@
 using ActualChat.Search;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Users;
 using ActualLab.Versioning;
 using FluentAssertions.Equivalency;
 
@@ -8,48 +7,48 @@ namespace ActualChat.Testing.Host.Assertion;
 
 public static class AssertOptionsExt
 {
-    public static EquivalencyAssertionOptions<Chat.Chat> IdTitle(
-        this EquivalencyAssertionOptions<Chat.Chat> options)
+    public static EquivalencyOptions<Chat.Chat> IdTitle(
+        this EquivalencyOptions<Chat.Chat> options)
         => options.Including(x => x.Id).Including(x => x.Title);
 
-    public static EquivalencyAssertionOptions<T> ExcludingSystemProperties<T>(
-        this EquivalencyAssertionOptions<T> options) where T : notnull
+    public static EquivalencyOptions<T> ExcludingSystemProperties<T>(
+        this EquivalencyOptions<T> options) where T : notnull
         => options.Excluding(mi => OrdinalEquals(mi.Name, nameof(IHasVersion<T>.Version)))
             .Excluding(mi => OrdinalEquals(mi.Name, "CreatedAt"))
             .Excluding(mi => OrdinalEquals(mi.Name, "ModifiedAt"));
 
-    public static EquivalencyAssertionOptions<ContactSearchResult> ExcludingRank(
-        this EquivalencyAssertionOptions<ContactSearchResult> options)
+    public static EquivalencyOptions<ContactSearchResult> ExcludingRank(
+        this EquivalencyOptions<ContactSearchResult> options)
         => options.Excluding(x => x.SearchMatch.Rank)
             .For(x => x.SearchMatch.Parts)
             .Exclude(x => x.Rank);
 
-    public static EquivalencyAssertionOptions<ContactSearchResult> ExcludingUniquePart(
-        this EquivalencyAssertionOptions<ContactSearchResult> options)
+    public static EquivalencyOptions<ContactSearchResult> ExcludingUniquePart(
+        this EquivalencyOptions<ContactSearchResult> options)
         => options.Excluding(x => x.SearchMatch.Rank)
             .For(x => x.SearchMatch.Parts)
             .Exclude(x => x.Rank);
 
-    public static EquivalencyAssertionOptions<ContactSearchResult> ExcludingSearchMatch(
-        this EquivalencyAssertionOptions<ContactSearchResult> options)
+    public static EquivalencyOptions<ContactSearchResult> ExcludingSearchMatch(
+        this EquivalencyOptions<ContactSearchResult> options)
         => options.Excluding(x => x.SearchMatch);
 
-    public static EquivalencyAssertionOptions<EntrySearchResult> ExcludingSearchMatch(
-        this EquivalencyAssertionOptions<EntrySearchResult> options)
+    public static EquivalencyOptions<EntrySearchResult> ExcludingSearchMatch(
+        this EquivalencyOptions<EntrySearchResult> options)
         => options.Excluding(x => x.SearchMatch);
 
-    public static EquivalencyAssertionOptions<Notification.Notification> Text(
-        this EquivalencyAssertionOptions<Notification.Notification> options)
+    public static EquivalencyOptions<Notification.Notification> Text(
+        this EquivalencyOptions<Notification.Notification> options)
         => options.Including(x => x.Title).Including(x => x.Content);
 
-    public static EquivalencyAssertionOptions<FoundItem> ExcludingSearchMatch(
-        this EquivalencyAssertionOptions<FoundItem> options)
+    public static EquivalencyOptions<FoundItem> ExcludingSearchMatch(
+        this EquivalencyOptions<FoundItem> options)
         => options.Excluding(x => x.SearchResult.SearchMatch)
             .Excluding(x => x.ContactSearchMatch)
             .Excluding(x => x.MessageSearchMatch);
 
-    public static EquivalencyAssertionOptions<FoundItem> ExcludingBorders(
-        this EquivalencyAssertionOptions<FoundItem> options)
+    public static EquivalencyOptions<FoundItem> ExcludingBorders(
+        this EquivalencyOptions<FoundItem> options)
         => options.Excluding(x => x.IsFirstInGroup)
             .Excluding(x => x.IsLastInGroup)
             .Excluding(x => x.CanScopeBeExpanded);

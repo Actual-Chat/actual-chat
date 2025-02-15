@@ -163,6 +163,6 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     private static Symbol NewDeviceContactId()
         => new (Guid.NewGuid().ToString());
 
-    private static EquivalencyAssertionOptions<ExternalContactFull> Including(EquivalencyAssertionOptions<ExternalContactFull> o)
+    private static EquivalencyOptions<ExternalContactFull> Including(EquivalencyOptions<ExternalContactFull> o)
         => o.Including(x => x.Id);
 }

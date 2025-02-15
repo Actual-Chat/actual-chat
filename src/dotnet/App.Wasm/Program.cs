@@ -1,16 +1,9 @@
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor;
-// ReSharper disable once RedundantUsingDirective
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Diagnostics;
-using ActualLab.Fusion.Blazor;
 // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
-using ActualLab.Internal;
-using ActualLab.Trimming;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-// ReSharper disable once RedundantUsingDirective
-using Microsoft.Extensions.Configuration;
 // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Tracer = ActualChat.Performance.Tracer;
 
@@ -18,7 +11,7 @@ namespace ActualChat.App.Wasm;
 
 public static class Program
 {
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebApp))]
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Main is an entry point.")]
     public static async Task Main(string[] args)
     {
@@ -28,7 +21,6 @@ public static class Program
         AppUIOtelSetup.SetupConditionalPropagator();
         // NOTE(AY): This thing takes 1 second on Windows!
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
         var baseUrl = builder.HostEnvironment.BaseAddress;
         var services = builder.Services;
         services.AddTracers(Tracer.Default, useScopedTracers: false);

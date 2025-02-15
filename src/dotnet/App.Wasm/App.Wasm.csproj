@@ -7,6 +7,11 @@ Use:
 
   <!-- Publish & runtime properties -->
   <PropertyGroup>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+    <!-- Required for WASM+Server projects -->
+    <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+    <!-- Reduces WASM size + we assume this mode is used on the client -->
+    <InvariantGlobalization>true</InvariantGlobalization>
     <!-- These settings allows to build dotnet.js w/ symbols, but it takes like 1H or so -->
     <!--
     <RunAOTCompilation>true</RunAOTCompilation>
@@ -14,7 +19,6 @@ Use:
     <WasmEmitSymbolMap>true</WasmEmitSymbolMap>
     <WasmNativeStrip>false</WasmNativeStrip>
     -->
-    <InvariantGlobalization>true</InvariantGlobalization>
     <WasmEnableWebcil>true</WasmEnableWebcil>
     <!-- Startup is 50-100ms slower when enabled: -->
     <WasmEnableSIMD>true</WasmEnableSIMD>
@@ -35,6 +39,7 @@ Use:
     <TrimMode Condition="$(UseAppPack)">full</TrimMode>
     <RunAOTCompilation>false</RunAOTCompilation>
     <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <CompressionEnabled>true</CompressionEnabled>
   </PropertyGroup>
 
   <!-- Trimming -->
@@ -94,8 +99,12 @@ Use:
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Properties\" />
     <Folder Include="wwwroot\dist" />
-    <Folder Include="wwwroot\landing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Properties\launchSettings.json" />
   </ItemGroup>
 
 </Project>

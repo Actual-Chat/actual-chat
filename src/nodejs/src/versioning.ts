@@ -2,49 +2,67 @@ import { Log } from 'logging';
 
 const { debugLog, warnLog } = Log.get('Versioning');
 
-export class Versioning {
-    private static _artifactVersions: Map<string, string> = null;
+interface ImportMap {
+    imports: Record<string, string>;
+    integrity: Record<string, string>;
+}
 
-    public static get artifactVersions(): Map<string, string> {
-        if (this._artifactVersions)
-            return this._artifactVersions;
+export class Versioning {
+    private static _assetMap: Map<string, string> = null;
+
+    public static get assetMap(): Map<string, string> {
+        if (this._assetMap)
+            return this._assetMap;
 
         this.init();
-        return this._artifactVersions;
+        return this._assetMap;
     }
 
-    public static init(artifactVersions: Map<string, string> = null) {
-        if (this._artifactVersions) {
+    public static init(assetMap: Map<string, string> = null) {
+        if (this._assetMap) {
             warnLog?.log('init: skipped (already initialized)');
             return;
         }
 
-        if (artifactVersions === null) {
+        if (assetMap === null) {
             const origin = document.location.origin;
             const stripOrigin = (s: string) => s.startsWith(origin) ? s.slice(origin.length) : s;
 
-            artifactVersions = new Map<string, string>();
+            const processAsset = (key: string, value: string) => {
+                const assetMatch = value.match(/\.(?<hash>[a-z0-9]{10})\.(js|wasm)$/);
+                if (!assetMatch)
+                    return;
+
+                const assetPath = stripOrigin(value);
+                const simpleKey = assetPath.replace(assetMatch.groups['hash']+'.', '');
+                assetMap.set(simpleKey, assetPath);
+                if (!simpleKey.startsWith('/')) assetMap.set('/' + simpleKey, assetPath);
+            };
+
+            assetMap = new Map<string, string>();
             for (const e of document.head.children) {
                 if (e.localName !== 'link')
                     continue;
-                const href = e['href'] as string;
-                if (!href || !href.includes('?v='))
-                    continue;
 
-                const [key, value] = stripOrigin(href).split('?v=');
-                artifactVersions.set(key, value);
+                const href = e['href'] as string;
+                processAsset(href, href);
+            }
+            const importMapInnerHtml = document.head.querySelector('script[type="importmap"]')?.innerHTML;
+            if (importMapInnerHtml) {
+                const importMap = JSON.parse(importMapInnerHtml) as ImportMap;
+                for (const [key, value] of Object.entries(importMap.imports).filter(([k]) => k.startsWith('/dist/')))
+                    processAsset(key, value);
             }
         }
-        this._artifactVersions = artifactVersions;
-        debugLog?.log('init: artifact versions:', artifactVersions);
+        this._assetMap = assetMap;
+        debugLog?.log('init: artifact versions:', assetMap);
     }
 
     public static mapPath(path: string): string {
-        const version = this.artifactVersions.get(path);
-        if (version) {
-            const result = path + '?v=' + version;
-            debugLog?.log(`mapPath: '${path}' -> v'${version}'`);
-            return result;
+        const versionedPath = this.assetMap.get(path);
+        if (versionedPath) {
+            debugLog?.log(`mapPath: '${path}' -> '${versionedPath}'`);
+            return versionedPath;
         }
         else {
             warnLog?.log(`mapPath: '${path}' - no version found`);

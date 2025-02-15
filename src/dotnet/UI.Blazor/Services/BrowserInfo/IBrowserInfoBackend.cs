@@ -6,6 +6,7 @@ public interface IBrowserInfoBackend
     void OnIsVisibleChanged(bool isVisible);
     void OnThemeChanged(ThemeInfo themeInfo);
     void OnWebSplashRemoved();
+    void OnWasmReady();
 
     // Nested types
 
@@ -24,6 +25,7 @@ public interface IBrowserInfoBackend
         bool IsEdge,
         bool IsWebKit,
         bool IsTouchCapable,
+        bool? IsWasmReady,
         string WindowId);
 
     public sealed record ThemeInfo(

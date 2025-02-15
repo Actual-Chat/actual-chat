@@ -52,12 +52,12 @@ public class DeepgramOfflineTranscriber  : ITranscriber
             };
             var byteFrameStream = OggOpusStreamConverter.ToByteFrameStream(audioSource, cancellationToken);
             var audioStream = byteFrameStream.Select(f => f.Buffer);
-            await foreach (var chunk in audioStream)
+            await foreach (var chunk in audioStream.ConfigureAwait(false))
                 stream.Write(chunk);
             stream.Position = 0;
 
             var response = await deepgramClient.TranscribeFile(stream, schema, transcribeTcs).ConfigureAwait(false);
-            ProcessResponse(transcriptState, response);
+            await ProcessResponse(transcriptState, response).ConfigureAwait(false);
         }
         catch (Exception e) {
             error = e;
@@ -91,7 +91,7 @@ public class DeepgramOfflineTranscriber  : ITranscriber
         }
     }
 
-    private void ProcessResponse(DeepgramTranscribeState state, SyncResponse response)
+    private async Task ProcessResponse(DeepgramTranscribeState state, SyncResponse response)
     {
         var result = response.Results;
         if (result == null || result.Channels == null || result.Channels.Count == 0 || result.Channels[0].Alternatives == null) {
@@ -126,6 +126,6 @@ public class DeepgramOfflineTranscriber  : ITranscriber
         var timeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
         state.Append(text, timeMap);
         state.MakeStable();
-        state.Output.WriteAsync(state.Unstable);
+        await state.Output.WriteAsync(state.Unstable).ConfigureAwait(false);
     }
 }

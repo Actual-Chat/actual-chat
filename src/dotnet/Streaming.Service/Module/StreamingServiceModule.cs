@@ -13,14 +13,12 @@ namespace ActualChat.Streaming.Module;
 public sealed class StreamingServiceModule(IServiceProvider moduleServices)
     : HostModule<StreamingSettings>(moduleServices), IWebServerModule
 {
-    public void ConfigureApp(IApplicationBuilder app)
+    public void ConfigureApp(WebApplication app)
     {
         if (HostInfo.HasRole(HostRole.Api)) {
             // SignalR hub endpoints
-            app.UseEndpoints(endpoints => {
-                endpoints.MapHub<StreamHub>("/api/hub/streams");
-                endpoints.MapHub<StreamHub>("/api/hub/audio"); // For backward compatibility!
-            });
+            app.MapHub<StreamHub>("/api/hub/streams");
+            app.MapHub<StreamHub>("/api/hub/audio"); // For backward compatibility!
         }
     }
 

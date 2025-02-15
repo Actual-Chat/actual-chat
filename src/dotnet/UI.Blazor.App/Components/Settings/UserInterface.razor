@@ -46,10 +46,10 @@
     private string? _fontSize;
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private ILogger<UserInterface> Log { get; init; } = null!;
-
     private FontSizeUI FontSizeUI => Hub.FontSizeUI;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    [field: AllowNull, MaybeNull]
+    private ILogger<UserInterface> Log => field ??= Hub.LogFor<UserInterface>();
 
     protected override void OnInitialized() {
         _formModel = new (ComponentIdGenerator);

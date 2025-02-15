@@ -2,7 +2,7 @@ namespace ActualChat.Mesh;
 
 public interface IMeshLocks<TContext> : IMeshLocks;
 
-public interface IMeshLocks
+public interface IMeshLocks : IHasServices
 {
     MeshLockOptions LockOptions { get; }
     RetryDelaySeq RetryDelays { get; }
@@ -22,7 +22,7 @@ public interface IMeshLocks
 
 public interface IMeshLocksBackend : IMeshLocks
 {
-    ILogger? Log { get; }
+    ILogger Log { get; }
     ILogger? DebugLog { get; }
 
     // Methods MUST NOT auto-retry in case they can't reach the lock service

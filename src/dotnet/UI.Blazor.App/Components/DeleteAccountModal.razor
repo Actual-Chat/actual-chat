@@ -37,12 +37,12 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private AccountUI AccountUI => Hub.AccountUI;
+    private UICommander UICommander => Hub.UICommander();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private History History => Hub.History;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

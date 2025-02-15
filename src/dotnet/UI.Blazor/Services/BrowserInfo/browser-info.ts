@@ -1,6 +1,6 @@
 import { BrowserInit } from '../BrowserInit/browser-init';
 import { DeviceInfo } from 'device-info';
-import { PromiseSource } from 'promises';
+import { delayAsync, PromiseSource } from 'promises';
 import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
 import { Log } from 'logging';
@@ -22,6 +22,7 @@ export class BrowserInfo {
             ? 'WasmApp'
             : "WebServer";
     public static appKind: AppKind = 'Unknown';
+    public static renderMode = window?.['App']?.renderMode;
     public static utcOffset: number;
     public static timeZone: string;
     public static windowId = "";
@@ -39,8 +40,10 @@ export class BrowserInfo {
         if (this.hostKind == 'MauiApp')
             Interactive.isAlwaysInteractive = true;
         this.initBodyClasses();
+        globalThis["browserInfo"] = this;
 
         // Call OnInitialized
+        const isWasmReady = this.isWasmReady();
         const initResult: InitResult = {
             screenSizeText: ScreenSize.size,
             isVisible: !document.hidden,
@@ -56,6 +59,7 @@ export class BrowserInfo {
             isFirefox: DeviceInfo.isFirefox,
             isWebKit: DeviceInfo.isWebKit,
             isTouchCapable: DeviceInfo.isTouchCapable,
+            isWasmReady: isWasmReady,
             windowId: this.windowId,
         };
         infoLog?.log(`init:`, JSON.stringify(initResult), hostKind);
@@ -64,7 +68,8 @@ export class BrowserInfo {
 
         ScreenSize.change$.subscribe(_ => void this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable));
         DocumentEvents.passive.visibilityChange$.subscribe(_ => void this.onVisibilityChanged());
-        globalThis["browserInfo"] = this;
+        if (isWasmReady === false)
+            void this.startWasmReadyWatcher();
     }
 
     // Backend methods
@@ -97,21 +102,49 @@ export class BrowserInfo {
         void this.backendRef.invokeMethodAsync('OnWebSplashRemoved');
     };
 
+    public static async onWasmReady(): Promise<void> {
+        infoLog?.log(`onWasmReady`);
+        await this.whenReady;
+        void this.backendRef.invokeMethodAsync('OnWasmReady');
+    }
+
+    // Other methods
+
     private static initBodyClasses() {
         const classList = document.body.classList;
         switch (this.hostKind) {
         case 'WebServer':
-            classList.add('app-web', 'app-server');
+            classList.add('app-server');
             break;
         case 'WasmApp':
-            classList.add('app-web', 'app-wasm');
+            classList.add('app-wasm');
             break;
         case 'MauiApp':
-            classList.add('app-mobile', 'app-maui');
+            classList.add('app-maui');
             break;
         default:
             classList.add('app-unknown');
             break;
+        }
+    }
+
+    private static isWasmReady(): boolean | null {
+        if (this.renderMode === 'w')
+            return true;
+        if (this.renderMode !== 'a')
+            return null;
+
+        const p = window.getComputedStyle(document.body).getPropertyValue('--blazor-load-percentage');
+        return p === '100%';
+    }
+
+    private static async startWasmReadyWatcher(): Promise<void> {
+        while (true) {
+            await delayAsync(1000);
+            if (this.isWasmReady() === true) {
+                void this.onWasmReady();
+                break;
+            }
         }
     }
 }
@@ -131,5 +164,6 @@ export interface InitResult {
     isFirefox: boolean;
     isWebKit: boolean;
     isTouchCapable: boolean;
+    isWasmReady: boolean | null;
     windowId: string;
 }

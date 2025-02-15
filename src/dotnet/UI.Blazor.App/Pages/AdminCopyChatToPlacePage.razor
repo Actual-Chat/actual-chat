@@ -36,7 +36,7 @@
     private FormModel _form = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     protected override void OnInitialized()
         => _form = new FormModel(ComponentIdGenerator);

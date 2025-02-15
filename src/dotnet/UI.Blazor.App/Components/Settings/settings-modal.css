@@ -13,7 +13,7 @@
 }
 
 .settings-tab .theme-tile .tile-item:hover,
-.settings-tab .blazor-mode-tile .tile-item:hover {
+.settings-tab .render-mode-tile .tile-item:hover {
     @apply bg-transparent;
 }
 
@@ -26,18 +26,18 @@
     @apply text-base mr-2;
 }
 
-.blazor-mode-tile .label {
+.render-mode-tile .label {
     @apply whitespace-normal;
     @apply text-headline-1 text-02;
 }
-.blazor-mode-tile .c-comment {
+.render-mode-tile .c-comment {
     @apply whitespace-normal;
     @apply text-caption-6 text-03;
 }
-.blazor-mode-tile .tile-item:not(.selected):hover label {
+.render-mode-tile .tile-item:not(.selected):hover label {
     @apply text-01;
 }
-.blazor-mode-tile .tile-item:not(.selected):hover .c-comment {
+.render-mode-tile .tile-item:not(.selected):hover .c-comment {
     @apply text-02;
 }
 

@@ -3,6 +3,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
+// ReSharper disable once InconsistentNaming
 public class Features_EnableChatRouletteUI : FeatureDef<bool>, IClientFeatureDef
 {
     private static readonly HashSet<string> FocusGroupEmails = new(StringComparer.Ordinal) { "grigory.yakushev@gmail.com" };

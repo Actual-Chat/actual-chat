@@ -176,7 +176,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Can't use .ForUpdate() here due to join
-        await dbContext.Authors.SharedLock(chatId, userId, cancellationToken).ConfigureAwait(false);
+        await dbContext.Authors.LockShared(chatId, userId, cancellationToken).ConfigureAwait(false);
         var dbAuthors = dbContext.Authors.Include(a => a.Roles);
         var dbAuthor = await (authorId.IsNone
             ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)

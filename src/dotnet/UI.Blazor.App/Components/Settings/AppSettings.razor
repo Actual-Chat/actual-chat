@@ -18,7 +18,7 @@
     <NativeAppSettingsView NativeAppSettings="@NativeAppSettings"></NativeAppSettingsView>
 }
 @if (HostInfo.HostKind != HostKind.MauiApp) {
-    <SettingsBlazorModeToggle/>
+    <RenderModeSelector/>
 }
 <TileTopic Topic="Telemetry Data Collection"/>
 <Tile Class="data-collection-consent">
@@ -81,10 +81,10 @@
     private INativeAppSettings? NativeAppSettings { get; set; }
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private IDataCollectionSettingsUI DataCollectionSettingsUI { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private ToastUI ToastUI => Hub.ToastUI;
 

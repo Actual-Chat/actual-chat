@@ -376,7 +376,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var (userId, chatId, lastEntryLocalId) = command;
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        await NotifyMembersInternal(userId, chatId, lastEntryLocalId, userIds, cancellationToken);
+        await NotifyMembersInternal(userId, chatId, lastEntryLocalId, userIds, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

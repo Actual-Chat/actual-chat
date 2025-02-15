@@ -74,7 +74,7 @@ public class AppServicesAccessor
         if (scopedServicesTask.IsCompletedSuccessfully) {
             var c = scopedServicesTask.Result;
             var circuitContext = c.GetRequiredService<AppBlazorCircuitContext>();
-            if (circuitContext.WhenReady.IsCompletedSuccessfully) {
+            if (circuitContext.WhenInitialized.IsCompletedSuccessfully) {
                 if (!whenRendered)
                     return scopedServicesTask;
 
@@ -151,11 +151,11 @@ public class AppServicesAccessor
             }
             else {
                 var circuitContext = c.GetRequiredService<AppBlazorCircuitContext>();
-                await circuitContext.WhenReady
+                await circuitContext.WhenInitialized
                     .WaitAsync(WhenRenderedTimeout, cancellationToken)
                     .SilentAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
-                if (circuitContext.WhenReady.IsCompletedSuccessfully)
+                if (circuitContext.WhenInitialized.IsCompletedSuccessfully)
                     return c;
             }
         }

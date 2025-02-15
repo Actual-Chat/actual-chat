@@ -22,7 +22,7 @@ namespace ActualChat.Users.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            //UpAsync(migrationBuilder).Wait();
+            // UpAsync(migrationBuilder).Wait();
         }
 
         // private async Task UpAsync(MigrationBuilder migrationBuilder)
@@ -69,7 +69,7 @@ namespace ActualChat.Users.Migrations
             // log.LogInformation("- Saving changes");
             // await dbContext.SaveChangesAsync().ConfigureAwait(false);
             // log.LogInformation("Upgrading avatars: done");
-        //}
+        // }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)

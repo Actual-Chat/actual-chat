@@ -65,11 +65,10 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
 
         // Controllers, etc.
         services.AddRouting();
-        var mvc = services.AddMvc(options => {
+        services.AddMvcCore(options => {
             options.ModelBinderProviders.Add(new MvcModelBinderProvider());
             options.ModelMetadataDetailsProviders.Add(new MvcValidationMetadataProvider());
         });
-        mvc.AddApplicationPart(GetType().Assembly);
         services.AddResponseCaching();
 
         // Health-related services

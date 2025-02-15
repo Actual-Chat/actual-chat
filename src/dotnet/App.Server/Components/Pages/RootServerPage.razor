@@ -1,0 +1,372 @@
+@using ActualChat.Hosting
+@using ActualChat.Security
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@using ActualChat.Users.Module
+@using ActualLab.Fusion.Blazor
+@using ActualLab.Fusion.Server.Endpoints
+@using ActualLab.Generators
+@using ActualChat.UI.Blazor.App
+@{
+    // Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
+    var renderModeKey = _renderMode.Key;
+    var blazorMaxReconnectRetries = 0; // 100_000_000;
+    var isLocal = HostInfo.BaseUrlKind == BaseUrlKind.Local;
+    var nonceGenerator = RandomStringGenerator.Default;
+    var startupNonce = nonceGenerator.Next(12);
+    var blazorReloadNonce = nonceGenerator.Next(12);
+    var webSplashNonce = nonceGenerator.Next(12);
+    var closeFlowNonce = nonceGenerator.Next(12);
+    var importMapNonce = nonceGenerator.Next(12);
+    // unsafe-eval is required for 'eval-source-map' to debug during local development
+    var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
+    var extraConnectSrc = Env.IsDevelopment() ? "ws://localhost:* wss://localhost:*" : "";
+
+    // Re-captcha setup
+    var hasRecaptchaConfigured = !UserSettings.GoogleRecaptchaSiteKey.IsNullOrEmpty();
+    var recaptchaKey = UserSettings.GoogleRecaptchaSiteKey;
+    var recaptchaNonce = nonceGenerator.Next(12);
+    CaptchaUI.Initialize(UserSettings.GoogleRecaptchaSiteKey);
+
+    // Build custom import map with WASM
+    var defaultImportMap = HttpContext.GetEndpoint()?.Metadata.GetMetadata<ImportMapDefinition>();
+    var wasmImportMap = AssetVersionHelper.GetWasmAssetsImportMap(Assets);
+    var combinedImportMap = defaultImportMap == null
+        ? wasmImportMap
+        : ImportMapDefinition.Combine(defaultImportMap, wasmImportMap);
+    var importMap = AssetVersionHelper.StripRelativePaths(combinedImportMap);
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        img-src 'self'
+                    https://actual.chat
+                    https://*.actual.chat
+                    https://*.local.actual.chat
+                    https://*.dev.actual.chat
+                    https://*.stg.local.actual.chat
+                    https://*.dicebear.com
+                    https://i.ytimg.com
+                    https://www.googletagmanager.com
+                    blob: data:;
+        media-src 'self'
+                    https://*.actual.chat
+                    https://*.local.actual.chat
+                    https://*.dev.actual.chat
+                    https://*.stg.actual.chat
+                    blob: data:;
+        style-src 'self'
+                    'unsafe-inline'
+                    https://fonts.googleapis.com/css;
+        font-src 'self'
+                    https://fonts.gstatic.com/s/ubuntu/;
+        frame-src https://www.youtube.com/
+                  https://www.google.com/recaptcha/;
+        object-src 'none';
+        script-src 'self'
+                    @unsafeEval
+                    'nonce-@startupNonce'
+                    'nonce-@blazorReloadNonce'
+                    'nonce-@webSplashNonce'
+                    'nonce-@closeFlowNonce'
+                    'nonce-@recaptchaNonce'
+                    'nonce-@importMapNonce'
+                    'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
+                    'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
+                    https://www.youtube.com/iframe_api
+                    https://www.youtube.com/s/player/
+                    https://www.googletagmanager.com/gtag/js
+                    https://www.gstatic.com/recaptcha/releases/;
+        connect-src 'self'
+                    @extraConnectSrc
+                    https://actual.chat
+                    https://*.actual.chat
+                    https://*.dicebear.com
+                    https://*.ingest.sentry.io
+                    https://firebaseinstallations.googleapis.com
+                    https://fcmregistrations.googleapis.com
+                    https://firebase.googleapis.com
+                    https://*.google-analytics.com/g/collect;
+        upgrade-insecure-requests;
+        " />
+    <link rel="icon" href="/favicon.svg">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#0036a3">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="msapplication-TileColor" content="#0036a3">
+    <meta name="theme-color" content="#444444">
+    <title>Actual Chat</title>
+    <base href="/" />
+
+    @{
+        var title = "Actual Chat: The New Voice of Everyday Communication";
+        var description =
+            "We fuse real-time audio, live transcription, and AI assistance to let you communicate with utmost efficiency. " +
+            "Reply 5x faster, read for quick context, defer without fear of losing clarity, " +
+            "and connect more frequently to deepen ties with those you cherish most — all free from the stress of traditional calls.";
+        var image = UrlMapper.BaseUrl + "actual-chat-site-preview.jpg";
+    }
+
+    @* Essential Meta Tags *@
+    <meta name="description" content="@description">
+
+    @* Open Graph Tags *@
+    <meta property="og:title" content="@title" />
+    <meta property="og:description" content="@description" />
+    <meta property="og:image" content="@image" />
+    <meta property="og:url" content="@(UrlMapper.BaseUrl)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Actual Chat" />
+    <meta property="og:locale" content="en_US" />
+
+    @* Twitter Cards (they can be beneficial too) *@
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@title">
+    <meta name="twitter:description" content="@description">
+    <meta name="twitter:image" content="@image">
+
+    @* The version of icon.woff2 must match the version in icons.css! *@
+    <link rel="preload" href="/@Assets["dist/fonts/icon.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-Regular.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-Medium.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-DemiBold.woff2"]" as="font" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/fonts/TT-Commons-Pro-Light.woff2"]" as="font" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/onDeviceAwakeWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/opusDecoderWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/opusEncoderWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/warmUpWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/vadWorker.js"]" as="worker" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/feederWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/opusEncoderWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/vadWorklet.js"]" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/wasm/codec.wasm"]" as="fetch" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/wasm/webrtc-vad.wasm"]" as="fetch"  crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/wasm/ort-wasm-simd.wasm"]" as="fetch" crossorigin />
+
+    <link href="/@Assets["dist/bundle.css"]" rel="stylesheet" />
+    <ImportMap nonce="@importMapNonce" ImportMapDefinition="importMap"/>
+    @if (hasRecaptchaConfigured) {
+        <script id="recaptcha-head-script" nonce="@recaptchaNonce" src="https://www.google.com/recaptcha/enterprise.js?render=@recaptchaKey" async defer></script>
+    }
+    <script nonce="@startupNonce">
+        history.scrollRestoration = "manual";
+        window.App = {
+            environment: '@(HostInfo.Environment.Value)',
+            renderMode: '@renderModeKey',
+            postMessage: function (data) {
+                throw Error("Internal error: App.postMessage is available only in mobile apps.");
+            },
+            whenBlazorReady: null,
+            whenBundleReady: null,
+            markBlazorReady: function () { },
+            markBundleReady: function () { },
+            isBundleReady: async function() {
+                if (!window.App.whenBundleReady)
+                    return false;
+
+                await window.App.whenBundleReady;
+                return true;
+            },
+            browserInit: async function(hostKind, appKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef) {
+                await window.App.whenBundleReady;
+                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef);
+            },
+        };
+        window.App.whenBlazorReady = new Promise((resolve, _) => {
+            window.App.markBlazorReady = resolve;
+        });
+        window.App.whenBundleReady = new Promise((resolve, _) => {
+            window.App.markBundleReady = resolve;
+        });
+    </script>
+    <script async src="/@Assets["dist/bundle.js"]"></script>
+    <HeadOutlet @rendermode="@(_renderMode.Mode)" />
+</head>
+
+<body class="app-web" style="background-color: #0036A3">
+
+@if (_closeFlow == null && !renderModeKey.OrdinalStartsWith("s")) {
+    <div id="web-splash" class="web-splash"></div>
+    <script nonce="@webSplashNonce">
+        @* We use script here to make sure this overlay isn't used as content image by crawlers *@
+        const overlay = document.getElementById('web-splash');
+        if (overlay) {
+          overlay.innerHTML = `
+            <div class="c-content">
+                <img draggable="false" src="/dist/images/splashscreen.svg" alt="Loading...">
+                <div class="progress">
+                    <div class="progress-value"></div>
+                </div>
+            </div>
+          `;
+        }
+    </script>
+}
+
+@if (_closeFlow != null) {
+    @if (_closeFlow.MustClose) {
+        <script nonce="@closeFlowNonce">
+            setTimeout(function () {
+                window.open('','_self').close();
+            }, 500)
+        </script>
+    }
+    <div class="fusion-close" data-flow-name="@_closeFlow.Name">
+        <div class="c-content">
+            <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
+            <div class="c-title">
+                <span>@_closeFlow.Name</span>
+                <span>completed.</span>
+            </div>
+            <div class="c-footer">
+                <div>
+                    <span class="a0">You</span>
+                    <span class="a1">can</span>
+                    <span class="a2">close</span>
+                    <span class="a3">this</span>
+                    <span class="a4">window</span><span class="a5">/tab</span>
+                    <span class="a6">now</span>
+                </div>
+                <div>
+                    <span class="a7">and</span>
+                    <span class="a8">return</span>
+                    <span class="a9">back</span>
+                    <span class="a0">to</span>
+                    <span class="a1">the</span>
+                    <span class="a2">app.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+} else {
+    <app id="app" class="flex flex-col h-full">
+        <WebApp
+            @rendermode="@(_renderMode.Mode)"
+            SessionHash="@_session?.Hash"
+            SessionToken="@_sessionToken?.Token"
+            RenderModeKey="@(renderModeKey)" />
+    </app>
+    <!-- This block must go right after app, otherwise page content won't be blurred -->
+    <div id="components-reconnect-modal"></div>
+    <div id="blazor-error-ui"></div>
+    <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
+
+    <script src="/@Assets["_framework/blazor.web.js"]" autostart="false"></script>
+    <script nonce="@blazorReloadNonce">
+        if (!window.Blazor) {
+            console.error('Blazor is not loaded. Please check the script tag for blazor.web.js.');
+        }
+        else {
+            Blazor.start({
+                circuit: {
+                    reconnectionOptions: {
+                        maxRetries: @(blazorMaxReconnectRetries),
+                        retryIntervalMilliseconds: 2000,
+                    }
+                },
+                webAssembly: {
+                    /*
+                   // WASM Profiling & Mono logging
+                   configureRuntime: dotnet => {
+                       dotnet.withConfig({ browserProfilerOptions: {} });
+                       dotnet.withEnvironmentVariable("MONO_LOG_LEVEL", "debug");
+                       dotnet.withEnvironmentVariable("MONO_LOG_MASK", "gc");
+                   },
+                   */
+                    loadBootResource: function(type, name, defaultUri, integrity) {
+                        if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration' && integrity) {
+                            return (async function() {
+                                const hash = encodeURIComponent(integrity);
+                                const response = await fetch(defaultUri + '?hash=' + hash, { integrity: integrity });
+                                if (!response.ok)
+                                    throw new Error(response.statusText);
+
+                                return response;
+                            })();
+                        }
+                    }
+                }
+            }).then(window.App.markBlazorReady);
+        }
+    </script>
+}
+</body>
+</html>
+
+@code {
+    private bool _isInitialized;
+    private bool _isNewSession;
+    private LocalUrl _url;
+    private Session? _session;
+    private Account? _account;
+    private SecureToken? _sessionToken;
+    private RenderModeDef _renderMode = RenderModeDef.ByKey["ss"]; // Static
+    private CloseFlowInfo? _closeFlow;
+
+    [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private ISessionResolver SessionResolver { get; init; } = null!;
+    [Inject] private ISecureTokens SecureTokens { get; init; } = null!;
+    [Inject] private ServerAuth ServerAuth { get; init; } = null!;
+    [Inject] private UsersSettings UserSettings { get; init; } = null!;
+    [Inject] private CaptchaUI CaptchaUI { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private IWebHostEnvironment Env { get; init; } = null!;
+    [Inject] private ILogger<RootServerPage> Log { get; init; } = null!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = null!;
+
+    private HostInfo HostInfo => ServerAuth.HostInfo;
+    private IAccounts Accounts => ServerAuth.Accounts;
+
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        // We want to postpone the very first render till the moment async code below completes.
+        // That's why we override SetParametersAsync instead of OnInitializedAsync.
+        if (!_isInitialized) {
+            _isInitialized = true;
+            parameters.SetParameterProperties(this); // This call must be executed ASAP
+            await Initialize();
+        }
+        await base.SetParametersAsync(parameters);
+    }
+
+    // Private methods
+
+    private async Task Initialize() {
+        var cancellationToken = HttpContext.RequestAborted;
+        _url = new LocalUrl(HttpContext.Request.Path.Value);
+        (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
+        SessionResolver.Session = _session;
+        Task<AccountFull> accountTask;
+        if (_isNewSession) {
+            HttpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
+            accountTask = Task.FromResult(AccountFull.None);
+        } else
+            accountTask = Accounts.GetOwn(_session, cancellationToken);
+
+        var sessionTokenTask = SecureTokens.CreateForSession(_session, cancellationToken);
+        await Task.WhenAll(accountTask, sessionTokenTask);
+        _account = await accountTask;
+        _sessionToken = await sessionTokenTask;
+
+        _closeFlow = ServerAuth.IsCloseFlow(HttpContext);
+        if (_closeFlow?.RedirectUrl is { } redirectUrl) {
+            HttpContext.Response.Redirect(redirectUrl, false);
+            return;
+        }
+
+        if (HttpContext.AcceptsInteractiveRouting() && _closeFlow == null) {
+            var useServerPrerendered = _account.IsGuestOrNone && (_url.IsHome() || _url.IsDocsOrDocsRoot());
+            _renderMode = useServerPrerendered
+                ? RenderModeDef.ByKey["sp"]
+                : RenderModeEndpoint.GetRenderMode(HttpContext);
+        }
+        // Activity.Current = null; // We don't want to "infect" Blazor circuit with it
+    }
+}

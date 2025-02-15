@@ -147,15 +147,14 @@
     private bool _isPlaceWelcomeChat;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
-
     private Session Session => Hub.Session(); // Shortcut
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
     private AccountUI AccountUI => Hub.AccountUI;
     private IAuthors Authors => Hub.Authors;
     private Features Features => Hub.Features();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 

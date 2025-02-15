@@ -168,6 +168,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\connectivity.ts = src\nodejs\src\connectivity.ts
 		src\nodejs\src\_constants.ts = src\nodejs\src\_constants.ts
 		src\nodejs\src\permissions.ts = src\nodejs\src\permissions.ts
+		src\nodejs\src\resources.ts = src\nodejs\src\resources.ts
+		src\nodejs\src\dotnet.d.ts = src\nodejs\src\dotnet.d.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
@@ -485,8 +487,8 @@ Global
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Release|Any CPU.ActiveCfg = Release|Any CPU

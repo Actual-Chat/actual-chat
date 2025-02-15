@@ -23,8 +23,6 @@ public partial class EditChatTypeModalPage
     private bool _placeUserLinkRequiredFirst;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
@@ -33,6 +31,8 @@ public partial class EditChatTypeModalPage
     private UICommander UICommander => Hub.UICommander();
     private Features Features => Hub.Features();
     private MomentClockSet Clocks => Hub.Clocks();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
     private ChatId ChatId { get; set; }

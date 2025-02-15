@@ -1,0 +1,84 @@
+@using ActualChat.UI.Blazor.App.Module
+@inherits LandingForApp
+@{
+    var account = State.Value;
+}
+
+<div @ref="Ref" class="landing theme-light" xmlns="http://www.w3.org/1999/html">
+    <LandingLeftMenu @ref="LandingLeftMenuRef" />
+    <CookieSettings/>
+
+    <LandingHeader
+        Click="OnMenuHandleClick"
+        DownloadClick="@OnDownloadButtonClick"
+        BackToMainPageClick="@OnBackToMainPageButtonClick"
+        WhyUsClick="@OnWhyUsButtonClick"
+        PricingClick="OnPremiumFeaturesClick"/>
+
+    @* Page 1 *@
+    <LandingPage Class="page-1">
+        <LandingPage1
+            IsGuest="@account.IsGuestOrNone"
+            SignInClick="@SignIn"
+            DownloadClick="@OnDownloadButtonClick"
+            ShowVideoClick="@OnShowVideoClick"/>
+    </LandingPage>
+
+    @* Page 2 *@
+    <LandingPage Class="page-2">
+        <LandingPage2/>
+    </LandingPage>
+
+    @* Page 3 *@
+    <LandingPage Class="page-3">
+        <LandingPage3/>
+    </LandingPage>
+
+    @* Page 4 *@
+    <LandingPage Class="page-4">
+        <LandingPage4/>
+    </LandingPage>
+
+    @* Page 5 *@
+    <LandingPage Class="page-5">
+        <LandingPage5/>
+    </LandingPage>
+
+    @* Page 6 *@
+    <LandingPage Class="page-6">
+        <LandingPage6
+            IsGuest="@account.IsGuestOrNone"
+            PremiumFeaturesClick="@OnPremiumFeaturesClick"
+            DownloadClick="@OnDownloadButtonClick"
+            SignInClick="@SignIn"/>
+    </LandingPage>
+
+    <LandingFooter/>
+
+    <LandingDownloadLinks BackToMainPageClick="@OnBackToMainPageButtonClick"/>
+</div>
+
+@code {
+    private IJSRuntime JS => Hub.JSRuntime();
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUIAppModule.ImportName}.Landing.create", Ref);
+        }
+    }
+
+    private Task OnDownloadButtonClick()
+        => JSRef.InvokeVoidAsync("scrollToPageLinks").AsTask();
+
+    private Task OnBackToMainPageButtonClick()
+        => JSRef.InvokeVoidAsync("scrollFromPageLinks").AsTask();
+
+    private Task OnWhyUsButtonClick()
+        => JSRef.InvokeVoidAsync("scrollToWhyUs").AsTask();
+
+    private Task OnPremiumFeaturesClick()
+        => ModalUI.Show(new PremiumFeaturesModal.Model(() => JSRef.InvokeVoidAsync("showLinksPage")));
+}

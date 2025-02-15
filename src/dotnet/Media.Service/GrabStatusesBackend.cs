@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Media.Db;
 using ActualLab.Fusion.EntityFramework;
 

@@ -50,10 +50,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddAlias<Hub, UIHub>(ServiceLifetime.Scoped); // Required for PermissionHandler descendants
         if (!hostKind.IsServer())
             services.TryAddSingleton<IHostApplicationLifetime>(_ => new FakeHostApplicationLifetime());
-        if (hostKind.IsApp())
-            services.AddSingleton(_ => new BlazorRenderMode()); // No-op on the client
-        else
-            services.AddScoped(_ => new BlazorRenderMode());
         services.AddScoped(c => new BrowserInit(c));
         services.AddScoped(c => new CaptchaUI(c.UIHub()));
         services.AddScoped(c => new BrowserInfo(c.UIHub()));

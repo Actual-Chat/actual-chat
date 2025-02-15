@@ -58,9 +58,10 @@
     private ElementReference _dropZoneRef;
     private IJSObjectReference _jsRef = null!;
 
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private IJSRuntime JS => Hub.JSRuntime();
 
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }

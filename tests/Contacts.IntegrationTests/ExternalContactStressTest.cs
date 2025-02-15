@@ -136,7 +136,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         await TestExt.When(async () => {
                 var peerContactIds = await ListContactIds();
-                peerContactIds.Should().HaveCountGreaterOrEqualTo(expectedCount, $"for {account.User.Name}");
+                peerContactIds.Should().HaveCountGreaterThanOrEqualTo(expectedCount, $"for {account.User.Name}");
             },
             TimeSpan.FromSeconds(10));
 

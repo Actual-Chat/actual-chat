@@ -4,7 +4,7 @@ namespace ActualChat.UI;
 
 public interface IDispatcherResolver : IHasServices
 {
-    Task WhenReady { get; }
+    Task WhenInitialized { get; }
     Dispatcher Dispatcher { get; }
     CancellationToken StopToken { get; }
 }

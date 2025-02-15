@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Flows.Db;
 using ActualChat.Flows.Infrastructure;
 using ActualLab.Diagnostics;
@@ -81,7 +82,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         await using var _1 = dbContext.ConfigureAwait(false);
         dbContext.EnableChangeTracking(true);
 
-        await dbContext.Set<DbFlow>().SharedLock(flowId, cancellationToken).ConfigureAwait(false);
+        await dbContext.Set<DbFlow>().LockShared(flowId, cancellationToken).ConfigureAwait(false);
         var dbFlow = await dbContext.Set<DbFlow>().ForUpdate()
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);

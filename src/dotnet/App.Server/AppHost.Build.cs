@@ -17,6 +17,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualLab.Diagnostics;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Logging.Console;
@@ -84,19 +85,20 @@ public partial class AppHost
             logging.AddOpenTelemetry(options => options.AddOtlpExporter());
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
-            if (!ClientLogging.DevLog.IsEmpty && appKind.IsServer() && !isTested) {
-                var serilog = new LoggerConfiguration()
-                    .MinimumLevel.Is(LogEventLevel.Verbose)
-                    .Enrich.FromLogContext()
-                    .Enrich.With(new ProcessIdLogEventEnricher())
-                    .Enrich.With(new ThreadIdLogEventEnricher())
-                    .WriteTo.File(ClientLogging.DevLog,
-                        outputTemplate: ClientLogging.DevLogOutputTemplate,
-                        fileSizeLimitBytes: ClientLogging.DevLogFileSizeLimit,
-                        shared: true)
-                    .CreateLogger();
-                logging.AddFilteringSerilog(serilog, true);
-            }
+            if (LoggingExt.DevLog.IsEmpty || !appKind.IsServer() || isTested)
+                return;
+
+            var serilog = new LoggerConfiguration()
+                .MinimumLevel.Is(LogEventLevel.Verbose)
+                .Enrich.FromLogContext()
+                .Enrich.With(new ProcessIdLogEventEnricher())
+                .Enrich.With(new ThreadIdLogEventEnricher())
+                .WriteTo.File(LoggingExt.DevLog,
+                    outputTemplate: LoggingExt.OutputTemplate,
+                    fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit,
+                    shared: true)
+                .CreateLogger();
+            logging.AddFilteringSerilog(serilog, true);
         });
 
         // HostInfo
@@ -121,6 +123,13 @@ public partial class AppHost
             };
         });
 
+        // ApplicationPartManager - if the instance of this service is available,
+        // AddMvcCore uses it instead of populating application parts on each call.
+        // We populate application parts manually - see how applicationPartManager
+        // is used below.
+        var applicationPartManager = new ApplicationPartManager();
+        services.AddSingleton(applicationPartManager);
+
         /////
         // 3. ModuleHost & module service
         /////
@@ -133,10 +142,11 @@ public partial class AppHost
         var hostInfo = ctx.HostInfo;
         ctx.Log.IfEnabled(LogLevel.Information)?.LogInformation("HostInfo: {HostInfo}", hostInfo);
 
+        var moduleHostBuilder = ctx.ModuleHostBuilder;
         if (coreServicesOnly)
-            ctx.ModuleHost = ctx.ModuleHostBuilder.Build(services);
+            ctx.ModuleHost = moduleHostBuilder.Build(services);
         else {
-            ctx.ModuleHost = ctx.ModuleHostBuilder.AddModules(
+            moduleHostBuilder.AddModules(
                 // From less dependent to more dependent!
                 // Core modules
                 new CoreModule(moduleServices),
@@ -161,7 +171,11 @@ public partial class AppHost
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one
                 new AppServerModule(moduleServices)
-            ).Build(services);
+            );
+            // One AssemblyPart per each module's assembly
+            foreach (var assembly in moduleHostBuilder.Modules.Select(m => m.GetType().Assembly).Distinct())
+                applicationPartManager.ApplicationParts.Add(new AssemblyPart(assembly));
+            ctx.ModuleHost = moduleHostBuilder.Build(services);
             ConfigureServices?.Invoke(ctx, services);
             if (hostInfo.IsDevelopmentInstance)
                 ValidateContainerRegistrations(services);
@@ -246,9 +260,6 @@ public partial class AppHost
 
     public sealed class BuildContext(AppHost appHost) : IConfigureAppContext
     {
-        private HostInfo? _hostInfo;
-        private ILogger<BuildContext>? _log;
-
         public AppHost AppHost { get; set; } = appHost;
         public WebApplicationBuilder Builder { get; set; } = null!;
         public IWebHostEnvironment Env => Builder.Environment;
@@ -257,8 +268,10 @@ public partial class AppHost
         public IServiceProvider ModuleServices { get; set; } = null!;
         public ModuleHostBuilder ModuleHostBuilder { get; set; } = new();
         public ModuleHost ModuleHost { get; set; } = null!;
-        public HostInfo HostInfo => _hostInfo ??= ModuleServices.GetRequiredService<HostInfo>();
-        public ILogger Log => _log ??= ModuleServices.LogFor<BuildContext>();
+        [field: AllowNull, MaybeNull]
+        public HostInfo HostInfo => field ??= ModuleServices.GetRequiredService<HostInfo>();
+        [field: AllowNull, MaybeNull]
+        public ILogger Log => field ??= ModuleServices.LogFor<BuildContext>();
         public WebApplication App { get; set; } = null!;
     }
 }

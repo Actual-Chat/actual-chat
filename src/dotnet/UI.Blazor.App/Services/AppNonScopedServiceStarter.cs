@@ -8,13 +8,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppNonScopedServiceStarter
 {
-    private HostInfo? _hostInfo;
-    private ILogger? _log;
-
     private IServiceProvider Services { get; }
     private Tracer Tracer { get; }
-    private HostInfo HostInfo => _hostInfo ??= Services.HostInfo();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private HostInfo HostInfo => field ??= Services.HostInfo();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public AppNonScopedServiceStarter(IServiceProvider services)
     {

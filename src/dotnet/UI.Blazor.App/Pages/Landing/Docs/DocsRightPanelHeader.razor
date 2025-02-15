@@ -1,12 +1,10 @@
 @inherits ComputedStateComponent<AccountFull>
-
 @{
     var account = State.Value;
-    var isGuest = account is not {IsGuestOrNone: false };
 }
 
 <div class="c-header">
-    @if (isGuest) {
+    @if (account.IsGuestOrNone) {
         <button class="signin-button-group" @onclick="@SignIn">
             <span class="px-2">Sign in</span>
         </button>
@@ -24,8 +22,9 @@
 </div>
 
 @code {
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions() {
         return new() {

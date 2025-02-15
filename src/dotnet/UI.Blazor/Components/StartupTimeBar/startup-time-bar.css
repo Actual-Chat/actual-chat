@@ -1,0 +1,46 @@
+.startup-time-bar {
+    @apply flex-x;
+    @apply my-1;
+    @apply overflow-hidden;
+    @apply rounded-full border border-separator;
+    @apply outline-none;
+    @apply bg-01;
+}
+.startup-time-bar .btn.btn-square {
+    @apply min-w-0;
+    @apply p-0 m-0;
+    @apply rounded-none;
+    @apply text-01;
+}
+.startup-time-bar .btn.btn-square.is-active,
+.startup-time-bar .btn.btn-square.is-active * {
+    @apply cursor-default;
+}
+.startup-time-bar .btn.btn-square .btn-content,
+.startup-time-bar .btn.btn-square:disabled .btn-content {
+    @apply p-0 m-0;
+    @apply !bg-02;
+}
+.startup-time-bar .btn.btn-square .btn-content-inner {
+    @apply text-xs;
+}
+.startup-time-bar .btn.btn-square:first-child .btn-content-inner {
+    @apply ml-1;
+}
+.startup-time-bar .btn.btn-square:last-child .btn-content-inner {
+    @apply mr-1;
+}
+.startup-time-bar .btn.btn-square .btn-content {
+    @apply rounded-none;
+    @apply subpixel-antialiased;
+    @apply bg-round;
+}
+.startup-time-bar .btn.btn-square:disabled .btn-content,
+body.hoverable .startup-time-bar .btn.btn-square:disabled:hover .btn-content {
+    @apply opacity-80;
+    @apply bg-round;
+}
+body.hoverable .startup-time-bar .btn.btn-square:hover:not(:disabled) .btn-content {
+    @apply bg-hover;
+    @apply underline;
+}

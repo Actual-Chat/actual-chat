@@ -1,11 +1,7 @@
-@using ActualChat.UI.Blazor.App.Pages.Landing
 @using ActualChat.Hosting
-@inherits LandingApp
-@namespace ActualChat.UI.Blazor
+@inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
-    var isGuest = account is not {IsGuestOrNone: false };
-    var avatar = account.Avatar;
 }
 
 @* Header *@
@@ -43,7 +39,7 @@
             </div>
         </div>
         <div class="c-right">
-            @if (isGuest) {
+            @if (account.IsGuestOrNone) {
                 <ButtonRound Class="signin-button btn-sm" Click="@(SignIn)">
                     <i class="icon-log-in text-xl"></i>
                 </ButtonRound>
@@ -54,7 +50,7 @@
                     data-menu-trigger="@MenuTrigger.Primary"
                     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                     <AvatarCircle
-                        Avatar="@avatar"
+                        Avatar="@account.Avatar"
                         Size="SquareSize.Size9"/>
                 </button>
             }
@@ -119,7 +115,7 @@
                 </div>
             </div>
             <div class="c-btn-group">
-                @if (isGuest) {
+                @if (account.IsGuestOrNone) {
                     <button class="signin-button-group items-center lg-icon" @onclick="@SignIn">
                         <span class="font-medium">Sign in</span>
                         <i class="icon-monitor text-2xl font-thin"></i>
@@ -138,7 +134,7 @@
                         data-menu-trigger="@MenuTrigger.Primary"
                         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                         <AvatarCircle
-                            Avatar="@avatar"
+                            Avatar="@account.Avatar"
                             Size="SquareSize.Size10"/>
                     </div>
                 }
@@ -148,9 +144,11 @@
 </div>
 
 @code {
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private AccountUI AccountUI => Hub.AccountUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private History History => Hub.History;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public EventCallback PricingClick { get; set; }
@@ -159,6 +157,18 @@
     [Parameter] public EventCallback WhyUsClick { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = ComputedStateComponent.GetStateCategory(GetType()),
+        };
+
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
+
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
+
+    private Task OnShowVideoClick()
+        => ModalUI.Show(new LandingVideoModal.Model());
 }

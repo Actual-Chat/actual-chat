@@ -123,15 +123,14 @@
     private Action<ElementReference> _setUserLinkCopySource = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
-
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
     private UICommander UICommander => Hub.UICommander();
     private IInvites Invites => Hub.Invites;
     private MomentClockSet Clocks => Hub.Clocks();
     private UrlMapper UrlMapper => Hub.UrlMapper();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 

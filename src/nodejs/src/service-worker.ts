@@ -1,4 +1,5 @@
 import { Log } from 'logging';
+import { Versioning } from 'versioning';
 
 const { warnLog } = Log.get('ServiceWorker');
 
@@ -7,7 +8,8 @@ export class ServiceWorker {
         if (!('serviceWorker' in navigator))
             return;
 
-        const response = await fetch('/dist/config/firebase.config.js');
+        const firebaseConfigUrl = Versioning.mapPath('/dist/config/firebase.config.js');
+        const response = await fetch(firebaseConfigUrl);
         if (response.ok || response.status === 304) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const { config } = await response.json();

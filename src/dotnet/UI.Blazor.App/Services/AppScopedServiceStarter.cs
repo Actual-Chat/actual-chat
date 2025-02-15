@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppScopedServiceStarter
 {
-    private ILogger? _log;
+    private volatile string? _sessionHash;
 
     private ChatUIHub Hub { get; }
     private Tracer Tracer { get; }
@@ -14,7 +14,8 @@ public class AppScopedServiceStarter
     private History History => Hub.History;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public AppScopedServiceStarter(ChatUIHub hub)
     {
@@ -24,6 +25,15 @@ public class AppScopedServiceStarter
 
     public async Task PrepareFirstRender(string sessionHash)
     {
+        var oldSessionHash = Interlocked.CompareExchange(ref _sessionHash, sessionHash, null);
+        if (OrdinalEquals(oldSessionHash, sessionHash)) {
+            Log.LogError("{Method} is called more than once", nameof(PrepareFirstRender));
+            return; // Already prepared
+        }
+
+        if (oldSessionHash is not null)
+            throw StandardError.Internal("Session hash is already set.");
+
         // Starts in Blazor dispatcher
         using var _1 = Tracer.Region();
         try {

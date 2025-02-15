@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
@@ -10,6 +8,7 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
     private readonly MutableState<ThemeInfo> _themeInfo;
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
+    protected readonly TaskCompletionSource WhenWasmReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();
 
     protected UICommander UICommander => Hub.UICommander();
@@ -31,6 +30,7 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
     public bool IsTouchCapable { get; protected set; }
     public string WindowId { get; protected set; } = "";
     public Task WhenReady => WhenReadySource.Task;
+    public Task WhenWasmReady => WhenWasmReadySource.Task;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BrowserInfo))]
     public BrowserInfo(UIHub hub) : base(hub)
@@ -62,6 +62,8 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
         IsWebKit = initResult.IsWebKit;
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
+        if (initResult.IsWasmReady == true)
+            WhenWasmReadySource.TrySetResult();
         WhenReadySource.TrySetResult();
     }
 
@@ -83,6 +85,10 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
 
     [JSInvokable]
     public virtual void OnWebSplashRemoved() { }
+
+    [JSInvokable]
+    public void OnWasmReady()
+        => WhenWasmReadySource.TrySetResult();
 
     // Protected & private methods
 

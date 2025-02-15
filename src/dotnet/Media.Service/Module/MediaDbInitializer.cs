@@ -10,8 +10,8 @@ public class MediaDbInitializer(IServiceProvider services) : DbInitializer<Media
     public override async Task InitializeData(CancellationToken cancellationToken)
     {
         // Add default chat images
-        await new ImagesUploader(GetType())
-            .Execute(async x => {
+        await new MediaUploader(GetType())
+            .Upload(async x => {
                 await x.AddMedia("system-icons:family", Resource.FamilySvg).ConfigureAwait(false);
                 await x.AddMedia("system-icons:coworkers", Resource.CoworkersSvg).ConfigureAwait(false);
                 await x.AddMedia("system-icons:friends", Resource.FriendsSvg).ConfigureAwait(false);
@@ -20,14 +20,14 @@ public class MediaDbInitializer(IServiceProvider services) : DbInitializer<Media
             }).ConfigureAwait(false);
 
         // Add Sherlock image
-        await new ImagesUploader(GetType())
-            .Execute(async c => {
+        await new MediaUploader(GetType())
+            .Upload(async c => {
                 await c.AddMedia(Constants.User.Sherlock.MediaId.Value, Resource.Sherlock).ConfigureAwait(false);
             }).ConfigureAwait(false);
 
         // Add Chat Roulette image
-        await new ImagesUploader(GetType())
-            .Execute(async c => {
+        await new MediaUploader(GetType())
+            .Upload(async c => {
                 await c.AddMedia(ChatRoulette.MediaId.Value, Resource.ChatRoulette).ConfigureAwait(false);
             }).ConfigureAwait(false);
     }

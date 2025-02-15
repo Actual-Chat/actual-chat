@@ -16,7 +16,7 @@ public class AudioSourceTest(ILogger log)
         await foreach (var frame in audio.GetFrames(default)) {
             frame.Data.Should().NotBeNull();
             frame.Data.Should().NotBeEmpty();
-            frame.Offset.Should().BeGreaterOrEqualTo(offset);
+            frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             offset = frame.Offset > offset
                 ? frame.Offset
                 : offset;
@@ -33,7 +33,7 @@ public class AudioSourceTest(ILogger log)
         await foreach (var frame in audio.GetFrames(default)) {
             frame.Data.Should().NotBeNull();
             frame.Data.Should().NotBeEmpty();
-            frame.Offset.Should().BeGreaterOrEqualTo(offset);
+            frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             frame.Offset.Should().BeLessThan(offset.Add(TimeSpan.FromMilliseconds(150)));
             offset = frame.Offset > offset
                 ? frame.Offset
@@ -49,7 +49,7 @@ public class AudioSourceTest(ILogger log)
         await foreach (var frame in audio.GetFrames(default)) {
             frame.Data.Should().NotBeNull();
             frame.Data.Should().NotBeEmpty();
-            frame.Offset.Should().BeGreaterOrEqualTo(offset);
+            frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             offset = frame.Offset > offset
                 ? frame.Offset
                 : offset;
@@ -68,7 +68,7 @@ public class AudioSourceTest(ILogger log)
         await foreach (var frame in audio.GetFrames(default)) {
             frame.Data.Should().NotBeNull();
             frame.Data.Should().NotBeEmpty();
-            frame.Offset.Should().BeGreaterOrEqualTo(offset);
+            frame.Offset.Should().BeGreaterThanOrEqualTo(offset);
             frame.Offset.Should().BeLessThan(offset.Add(TimeSpan.FromMilliseconds(150)));
             offset = frame.Offset > offset
                 ? frame.Offset

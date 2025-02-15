@@ -1,5 +1,6 @@
 ﻿@page "/test/toasts"
 @using ActualChat.UI.Blazor.Services
+@using Microsoft.AspNetCore.Components.RenderTree
 @using System.Text
 
 <RequireAccount MustBeAdmin="true"/>
@@ -76,10 +77,12 @@
 </div>
 
 @code {
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
-    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private ILogger<InfoToastTestPage> Log { get; init; } = null!;
+    [Inject] UIHub UIHub { get; init; } = null!;
+    private ToastUI ToastUI => UIHub.ToastUI;
+    private AppBlazorCircuitContext CircuitContext => UIHub.CircuitContext;
+    private UICommander UICommander => UIHub.UICommander();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= UIHub.LogFor(GetType());
 
     private void OnClick(int count) {
         var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();

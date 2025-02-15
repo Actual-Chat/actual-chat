@@ -3,6 +3,7 @@ using ActualChat.Blobs.Internal;
 using ActualChat.MLSearch.Engine;
 using ActualChat.Module;
 using ActualChat.Redis;
+using ActualChat.Redis.Module;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
@@ -53,7 +54,9 @@ public static class TestAppHostFactory
                 cfg.AddInMemoryCollection(
                     (WebHostDefaults.StaticWebAssetsKey, manifestPath),
                     ($"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName),
-                    ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", useNatsQueues.ToString())
+                    ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", useNatsQueues.ToString()),
+                    ($"{nameof(RedisSettings)}:{nameof(RedisSettings.MeshLockSubspace)}", options.MeshLockSubspace),
+                    ($"{nameof(RedisSettings)}:{nameof(RedisSettings.MeshLockOptionsPreset)}", options.MeshLockOptionsPreset)
                 );
 
                 // Overrides from options
@@ -89,13 +92,6 @@ public static class TestAppHostFactory
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);
         _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
-
-        // Clean up infrastructure MeshLocks
-        var meshLocks = appHost.Services.MeshLocks<InfrastructureDbContext>();
-        if (options.MustCleanupRedis && meshLocks is RedisMeshLocks redisMeshLocks) {
-            var keyCount = await redisMeshLocks.RemoveKeys("*");
-            outputAccessor.Output?.WriteLine($"Removed {keyCount} Redis keys.");
-        }
 
         // Cleanup existing queues
         await appHost.Services.Queues().Purge();

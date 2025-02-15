@@ -18,12 +18,14 @@ public sealed class ServerAuth
     public Func<ServerAuth, HttpContext, bool> AllowChange = AllowOnCloseFlow;
     public Func<ServerAuth, HttpContext, bool> AllowSignOut = AllowOnCloseFlow;
 
-    private HostInfo HostInfo { get; }
-    private IAuth Auth { get; }
-    private IAccountsBackend AccountsBackend { get; }
+    public HostInfo HostInfo { get; }
+    public IAuth Auth { get; }
+    public IAccounts Accounts { get; }
+    public IAccountsBackend AccountsBackend { get; }
+    public ICommander Commander { get; }
+    public MomentClockSet Clocks { get; }
+
     private ClaimMapper ClaimMapper { get; }
-    private ICommander Commander { get; }
-    private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
     public ServerAuth(IServiceProvider services)
@@ -33,6 +35,7 @@ public sealed class ServerAuth
 
         HostInfo = services.HostInfo();
         Auth = services.GetRequiredService<IAuth>();
+        Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         ClaimMapper = services.GetRequiredService<ClaimMapper>();
         Commander = services.Commander();
@@ -41,22 +44,27 @@ public sealed class ServerAuth
             AllowSignIn = AllowAnywhere;
     }
 
-    public bool IsCloseFlow(HttpContext httpContext, out string flowName, out string redirectUrl, out bool mustClose)
+    public CloseFlowInfo? IsCloseFlow(HttpContext httpContext)
     {
         var request = httpContext.Request;
-        var result =
-            OrdinalEquals(request.Path.Value, CloseFlowRequestPath)
-            || OrdinalEquals(request.Path.Value, AppCloseFlowRequestPath);
-        flowName = "";
-        if (result && request.Query.TryGetValue("flow", out var flowValues))
-            flowName = (flowValues.FirstOrDefault() ?? "").Capitalize();
-        redirectUrl = "";
-        if (result && request.Query.TryGetValue("redirectUrl", out var returnUrlValues))
-            redirectUrl = returnUrlValues.FirstOrDefault() ?? "";
-        mustClose = true;
-        if (result && request.Query.TryGetValue("mustClose", out var mustCloseValues))
+        if (!OrdinalEquals(request.Path.Value, CloseFlowRequestPath)
+            && !OrdinalEquals(request.Path.Value, AppCloseFlowRequestPath))
+            return null;
+
+        var name = "";
+        if (request.Query.TryGetValue("flow", out var flowValues))
+            name = (flowValues.FirstOrDefault() ?? "").Capitalize();
+        if (name.IsNullOrEmpty())
+            return null;
+
+        string? redirectUrl = null;
+        if (request.Query.TryGetValue("redirectUrl", out var returnUrlValues))
+            redirectUrl = returnUrlValues.FirstOrDefault().NullIfEmpty();
+
+        var mustClose = true;
+        if (request.Query.TryGetValue("mustClose", out var mustCloseValues))
             mustClose = int.TryParse(mustCloseValues.FirstOrDefault(), CultureInfo.InvariantCulture, out var x) && x != 0;
-        return result;
+        return new CloseFlowInfo(name, redirectUrl, mustClose);
     }
 
     public Task<(Session Session, bool IsNew)> Authenticate(
@@ -273,5 +281,5 @@ public sealed class ServerAuth
         => true;
 
     private static bool AllowOnCloseFlow(ServerAuth h, HttpContext httpContext)
-        => h.IsCloseFlow(httpContext, out _, out _, out _);
+        => h.IsCloseFlow(httpContext) != null;
 }

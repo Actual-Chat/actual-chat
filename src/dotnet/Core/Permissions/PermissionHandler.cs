@@ -43,8 +43,8 @@ public abstract class PermissionHandler : ScopedWorkerBase<Hub>
             return true;
 
         releaser.MarkLockedLocally();
-        if (!DispatcherResolver.WhenReady.IsCompleted)
-            await DispatcherResolver.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (!DispatcherResolver.WhenInitialized.IsCompleted)
+            await DispatcherResolver.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
             Log.LogDebug("Check");
             var isGranted = await Get(cancellationToken).ConfigureAwait(true);
@@ -80,8 +80,8 @@ public abstract class PermissionHandler : ScopedWorkerBase<Hub>
             return true;
 
         releaser.MarkLockedLocally();
-        if (!DispatcherResolver.WhenReady.IsCompleted)
-            await DispatcherResolver.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (!DispatcherResolver.WhenInitialized.IsCompleted)
+            await DispatcherResolver.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
             Log.LogDebug("Check");
             var isGranted = await Get(cancellationToken).ConfigureAwait(false);
