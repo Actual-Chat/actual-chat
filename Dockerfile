@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:9.0.0-bookworm-slim as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0.2-bookworm-slim AS runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -12,7 +12,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
 RUN apt update && apt install -y ffmpeg && apt clean
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0.100-bookworm-slim as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:9.0.200-bookworm-slim AS dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -50,7 +50,7 @@ RUN dotnet workload install wasm-tools aspire \
     && ./run-build.cmd restore
 
 # node:20-alpine because it's [cached on gh actions VM](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#cached-docker-images)
-FROM node:20-alpine as nodejs-restore
+FROM node:20-alpine AS nodejs-restore
 ARG NPM_READ_TOKEN
 ENV NPM_READ_TOKEN=$NPM_READ_TOKEN
 WORKDIR /src/src/nodejs
@@ -68,25 +68,26 @@ COPY src/nodejs/package-lock.json src/nodejs/package.json src/nodejs/.npmrc ./
 RUN cat .npmrc && npm ci
 COPY src/nodejs/ ./
 
-FROM scratch as all-restore
+FROM scratch AS all-restore
 COPY --from=nodejs-restore /src/src/nodejs/package.json ./
 COPY --from=dotnet-restore /src/nuget.config ./
 
-FROM nodejs-restore as nodejs-build
+FROM nodejs-restore AS nodejs-build
 COPY src/dotnet/ /src/src/dotnet/
 RUN npm run build:Release
 
-FROM dotnet-restore as base
+FROM dotnet-restore AS base
 COPY src/dotnet/ src/dotnet/
 COPY tests/ tests/
 COPY *.props *.targets ./
 # we need to regenerate ThisAssembly files with the new version info
 RUN dotnet msbuild /t:GenerateAssemblyNBGVVersionInfo ActualChat.CI.slnf
 
-FROM base as dotnet-build
+FROM base AS dotnet-build
+COPY --from=nodejs-build /src/src/dotnet/App.Wasm/wwwroot/ /src/src/dotnet/App.Wasm/wwwroot/
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/App.Server/App.Server.csproj
 
-FROM dotnet-build as migrations-build
+FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
 RUN dotnet tool restore
 RUN dotnet build --runtime linux-x64 src/dotnet/Chat.Service.Migration/Chat.Service.Migration.csproj \
@@ -105,7 +106,7 @@ RUN ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artif
     && ./ef-migrations.cmd Users.Service bundle --runtime linux-x64 --output ./artifacts/Users.Service.Migration.exe \
     && ls -lha /src/artifacts
 
-FROM runtime as migrations-app
+FROM runtime AS migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
 COPY <<EOF /migrations/entrypoint.sh
 #!/bin/bash
@@ -126,7 +127,7 @@ ENV USER=postgres
 ENV PASSWORD=postgres
 ENTRYPOINT ["./entrypoint.sh"]
 
-FROM runtime as app
+FROM runtime AS app
 COPY --from=dotnet-build /app .
 COPY --from=nodejs-build /src/src/dotnet/App.Wasm/wwwroot/ /app/wwwroot/
 ENV ASPNETCORE_URLS=http://*:80
