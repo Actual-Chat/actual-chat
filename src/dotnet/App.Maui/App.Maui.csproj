@@ -182,6 +182,10 @@
     <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
     -->
     <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
+    <TrimmerRootAssembly Include="ActualChat.Api" RootMode="All" />
+    <TrimmerRootAssembly Include="ActualChat.Api.Contracts" RootMode="All" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="All" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
   </ItemGroup>
 
@@ -395,8 +399,8 @@
     <SelfContained>true</SelfContained>
     <PublishAot>false</PublishAot>
     <PublishTrimmed>false</PublishTrimmed>
-    <TrimMode Condition="!$(UseAppPack)">partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">full</TrimMode>
+    <TrimMode>partial</TrimMode>
+    <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
     <OptimizationPreference>Size</OptimizationPreference>
     <IlcGenerateStackTraceData>true</IlcGenerateStackTraceData>
     <IlcDisableReflection>false</IlcDisableReflection>

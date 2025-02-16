@@ -7,7 +7,6 @@ Use:
 
   <!-- Publish & runtime properties -->
   <PropertyGroup>
-    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <!-- Required for WASM+Server projects -->
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
     <!-- Reduces WASM size + we assume this mode is used on the client -->
@@ -23,6 +22,7 @@ Use:
     <!-- Startup is 50-100ms slower when enabled: -->
     <WasmEnableSIMD>true</WasmEnableSIMD>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
   </PropertyGroup>
 
   <!-- WASM Profiling -->
@@ -35,8 +35,8 @@ Use:
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
-    <TrimMode Condition="$(UseAppPack)">full</TrimMode>
+    <TrimMode>full</TrimMode>
+    <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode>-->
     <RunAOTCompilation>false</RunAOTCompilation>
     <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
     <CompressionEnabled>true</CompressionEnabled>
@@ -46,6 +46,10 @@ Use:
   <ItemGroup>
     <!-- <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />-->
     <TrimmerRootAssembly Include="ActualChat.App.Wasm" RootMode="EntryPoint" />
+    <TrimmerRootAssembly Include="ActualChat.Api" RootMode="All" />
+    <TrimmerRootAssembly Include="ActualChat.Api.Contracts" RootMode="All" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="All" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="All" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.AppPack" RootMode="All" />
   </ItemGroup>
 
