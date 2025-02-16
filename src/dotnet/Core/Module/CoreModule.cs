@@ -137,12 +137,16 @@ public sealed class CoreModule(IServiceProvider moduleServices)
             InjectClientServices(services);
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "API types are expected to be untrimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "API types are expected to be untrimmed.")]
     private void InjectServerServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();
         fusion.AddService<IServerFeatures, ServerFeatures>();
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "API types are expected to be untrimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "API types are expected to be untrimmed.")]
     private void InjectClientServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();

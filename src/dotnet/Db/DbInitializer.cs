@@ -9,17 +9,19 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace ActualChat.Db;
 
 public abstract class DbInitializer<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>
-    (IServiceProvider services)
-    : DbServiceBase<TDbContext>(services), IDbInitializer
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>(
+    IServiceProvider services
+    ) : DbServiceBase<TDbContext>(services), IDbInitializer
     where TDbContext : DbContext
 {
     private const int CommandTimeout = 30;
 
     private new DbHub<TDbContext> DbHub => base.DbHub;
     public new IServiceProvider Services => base.Services;
-    public DbInfo<TDbContext> DbInfo { get; } = services.GetRequiredService<DbInfo<TDbContext>>();
-    public HostInfo HostInfo { get; } = services.HostInfo();
+    [field: AllowNull, MaybeNull]
+    public DbInfo<TDbContext> DbInfo => field ??= Services.GetRequiredService<DbInfo<TDbContext>>();
+    [field: AllowNull, MaybeNull]
+    public HostInfo HostInfo => field ??= Services.HostInfo();
     public Dictionary<IDbInitializer, Task> RunningTasks { get; set; } = null!;
 
     public bool ShouldRepairData => DbInfo.ShouldRepairDb;

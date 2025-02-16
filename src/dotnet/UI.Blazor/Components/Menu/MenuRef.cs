@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.Components;
@@ -46,6 +45,7 @@ public readonly struct MenuRef(
     public static MenuRef Parse(string value)
         => TryParse(value, out var result) ? result : throw StandardError.Format<MenuRef>();
 
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "UI types are expected to be untrimmed.")]
     public static bool TryParse(string value, out MenuRef result)
     {
         var parts = value.Split(Delimiter);
@@ -59,10 +59,8 @@ public readonly struct MenuRef(
 
         var typeId = parts[0];
         result = parts.Length == 1
-#pragma warning disable IL2072
             ? new MenuRef(MenuRegistry.GetType(typeId))
             : new MenuRef(MenuRegistry.GetType(typeId), parts[1..]);
-#pragma warning restore IL2072
         return true;
     }
 }

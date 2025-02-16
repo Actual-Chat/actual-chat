@@ -11,14 +11,13 @@ public interface IBlazorUIModule
 
 public abstract class HostModule(IServiceProvider moduleServices)
 {
-    private HostInfo? _hostInfo;
-    private IConfiguration? _cfg;
-    private ILogger? _log;
-
     public IServiceProvider ModuleServices { get; } = moduleServices;
-    public HostInfo HostInfo => _hostInfo ??= ModuleServices.HostInfo();
-    public IConfiguration Cfg => _cfg ??= ModuleServices.Configuration();
-    public ILogger Log => _log ??= ModuleServices.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    public HostInfo HostInfo => field ??= ModuleServices.HostInfo();
+    [field: AllowNull, MaybeNull]
+    public IConfiguration Cfg => field ??= ModuleServices.Configuration();
+    [field: AllowNull, MaybeNull]
+    public ILogger Log => field ??= ModuleServices.LogFor(GetType());
 
     public ModuleHost Host { get; private set; } = null!;
     public bool IsUsed { get; protected set; } = true;
@@ -38,14 +37,14 @@ public abstract class HostModule(IServiceProvider moduleServices)
     protected internal abstract void InjectServices(IServiceCollection services);
 }
 
-public abstract class HostModule<TSettings>(IServiceProvider moduleServices) : HostModule(moduleServices)
+public abstract class HostModule<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TSettings>(
+    IServiceProvider moduleServices
+    ) : HostModule(moduleServices)
     where TSettings : class, new()
 {
-    private TSettings? _settings;
-
-#pragma warning disable CA1721
-    public TSettings Settings => _settings ??= GetSettings();
-#pragma warning restore CA1721
+    [field: AllowNull, MaybeNull]
+    public TSettings Settings => field ??= GetSettings();
 
     protected virtual TSettings GetSettings()
         => Cfg.Settings<TSettings>();

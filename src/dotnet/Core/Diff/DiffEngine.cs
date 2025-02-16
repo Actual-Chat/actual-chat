@@ -41,12 +41,15 @@ public class DiffEngine(
     public IDiffHandler GetHandler(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type sourceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type diffType)
-        => _cachedHandlers.GetOrAdd((sourceType, diffType),
-            static (key, self) => {
-                var (tSource, tDiff) = key;
-                return self.CreateHandler(tSource, tDiff);
-            },
-            this);
+    {
+        [UnconditionalSuppressMessage("Trimming", "IL2077", Justification = "Covered by DynamicallyAccessedMemberTypes.All above")]
+        static IDiffHandler HandlerFactory((Type SourceType, Type DiffType) key, DiffEngine self) {
+            var (tSource, tDiff) = key;
+            return self.CreateHandler(tSource, tDiff);
+        }
+
+        return _cachedHandlers.GetOrAdd((sourceType, diffType), HandlerFactory, this);
+    }
 
     // Diff & Patch
 

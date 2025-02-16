@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
 @typeparam TValue;
-@* This component is needed to customize InputRadio styles in a custom themes, with hover, etc. *@
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 @{
-    #pragma warning disable IL2091
     var cls = "form-radio-hidden";
     cls += IsDisabled ? " form-radio-disabled" : " form-radio-active";
 }
+
 <label class="@cls">
     <InputRadio id="@Id" disabled="@IsDisabled" Name="@Name" Value="@Value" />
     <span class="radio"></span>

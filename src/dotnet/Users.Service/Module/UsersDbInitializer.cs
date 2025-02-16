@@ -18,7 +18,6 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         await EnsureSherlockPicUpdated(cancellationToken).ConfigureAwait(false);
     }
 
-
     // Private methods
 
     private async Task EnsureAdminExists(CancellationToken cancellationToken)
@@ -204,7 +203,9 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
     private async Task EnsureSherlockPicUpdated(CancellationToken cancellationToken)
     {
         var dbInitializer = this;
+ #pragma warning disable MA0084
         var services = dbInitializer.Services;
+ #pragma warning restore MA0084
         var log = services.LogFor(GetType());
         var accountsBackend = services.GetRequiredService<IAccountsBackend>();
 

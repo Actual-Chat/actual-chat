@@ -1,9 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
-
-@{
-#pragma warning disable IL2091
-#pragma warning disable IL2111
-}
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
 
 <LayoutView Layout="@typeof(DefaultLayout)">
     <MainHeader>Not found</MainHeader>

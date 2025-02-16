@@ -43,11 +43,11 @@ public sealed class EditContextAsyncValidator : WorkerBase
         return base.DisposeAsyncCore();
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
     public Task<bool> Validate(CancellationToken cancellationToken = default)
         => ValidateAll(cancellationToken);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         await foreach (var fieldIdentifier in _validationRequests.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
@@ -67,7 +67,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
                 : ValidateProperty(fieldIdentifier.Value, cancellationToken1);
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
     private async Task ValidateProperty(FieldIdentifier fieldIdentifier, CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
@@ -88,7 +88,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
         await AddValidationResults(asyncValidationResults).ConfigureAwait(false);
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
     private async Task<bool> ValidateAll(CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);

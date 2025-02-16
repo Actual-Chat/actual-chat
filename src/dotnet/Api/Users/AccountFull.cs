@@ -27,6 +27,11 @@ public sealed partial record AccountFull(
         (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin),
         new(() => StandardError.Account.Inactive()));
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
+    [field: AllowNull, MaybeNull]
+    private static Action<AccountFull, Phone> PhoneSetter
+        => field ??= typeof(AccountFull).GetProperty(nameof(Phone))!.GetSetter<AccountFull, Phone>();
+
     [DataMember, MemoryPackOrder(5)] public bool IsAdmin { get; init; }
     [Obsolete("2023.07: Allows legacy clients to deserialize new version of this type.")]
     [DataMember, MemoryPackOrder(6)] public string LegacyPhone { get; private set; } = "";
@@ -52,14 +57,9 @@ public sealed partial record AccountFull(
     public bool Equals(AccountFull? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 
-    // Deserialization handlers
+    // Private methods
 
 #pragma warning disable CS0618
-    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
-    private static readonly Action<AccountFull, Phone> PhoneSetter = typeof(AccountFull)
-        .GetProperty(nameof(Phone))!
-        .GetSetter<AccountFull, Phone>();
-
     [MemoryPackOnSerializing]
     private void OnSerializing()
         => LegacyPhone = Phone.Value;

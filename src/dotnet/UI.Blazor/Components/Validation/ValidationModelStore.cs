@@ -6,8 +6,8 @@ public sealed class ValidationModelStore
 {
     private readonly ConcurrentDictionary<Type, Dictionary<string, ValidatedProperty>> _cache = new ();
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
     public IReadOnlyCollection<PropertyValidationContext> ListForAsyncValidationOnly(ValidationContext validationContext)
     {
         var result = new List<PropertyValidationContext>();
@@ -18,15 +18,15 @@ public sealed class ValidationModelStore
         return result;
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
     public PropertyValidationContext? Get(ValidationContext validationContext)
     {
         var property = _cache.GetOrAdd(validationContext.ObjectType, BuildModel)!.GetValueOrDefault(validationContext.MemberName);
         return property is null ? null : GetForProperty(validationContext, property);
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Model types are expected to be untrimmed.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be untrimmed.")]
     private static PropertyValidationContext GetForProperty(ValidationContext validationContext, ValidatedProperty property)
     {
         var propertyValue = property.Property.GetValue(validationContext.ObjectInstance);

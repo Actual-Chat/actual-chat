@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using Microsoft.AspNetCore.Components.Rendering;
 
@@ -12,15 +11,12 @@ public class MarkupView : MarkupViewBase<Markup>
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputedMarkupViewBase<,>))]
     public MarkupView() { }
 
-#pragma warning disable IL2072
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "UI types are expected to be untrimmed.")]
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        var componentType = ViewResolver.TryGet(Markup.GetType())
-            ?? typeof(UnknownMarkupView);
-
+        var componentType = ViewResolver.TryGet(Markup.GetType()) ?? typeof(UnknownMarkupView);
         builder.OpenComponent(0, componentType);
         builder.AddAttribute(1, nameof(IMarkupView.Markup), Markup);
         builder.CloseComponent();
     }
-#pragma warning restore IL2072
 }

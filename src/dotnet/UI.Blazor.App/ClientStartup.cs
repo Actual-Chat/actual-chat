@@ -103,6 +103,9 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListRenderState))]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Covered by other attributes")]
+    [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "Covered by other attributes")]
+    [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Covered by other attributes")]
     public static void Initialize()
     {
         // AppContext feature switches

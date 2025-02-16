@@ -3,10 +3,10 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using ActualLab.Generators
-@using ActualChat.Kvas
 @using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
-@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Model types are expected to be defined in assemblies that do not get trimmed.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
 
 <div class="ac-bubble-host">
     <CascadingValue Value="@this" IsFixed="true">

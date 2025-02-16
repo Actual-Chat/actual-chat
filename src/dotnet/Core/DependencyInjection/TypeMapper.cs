@@ -33,19 +33,19 @@ public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         if (source == null)
             throw new ArgumentNullException(nameof(source));
 
-        return _cache.GetOrAdd(source, static (key, self) => {
+        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "Covered by DynamicallyAccessedMemberTypes.All above")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Covered by DynamicallyAccessedMemberTypes.All above")]
+        static Type? MappedTypeFactory(Type key, TypeMapper<TScope> self) {
             var source1 = key;
-#pragma warning disable IL2067
             var baseTypes = source1.GetAllBaseTypes(true, true);
-#pragma warning restore IL2067
             foreach (var cType in baseTypes) {
                 var match = self._map.GetValueOrDefault(cType);
                 if (match != null) {
                     if (match.IsGenericTypeDefinition)
-                        throw StandardError.Internal(
-                            $"A generic match '{match.GetName()}' is found for non-generic type '{cType.GetName()}'.");
+                        throw StandardError.Internal($"A generic match '{match.GetName()}' is found for non-generic type '{cType.GetName()}'.");
                     if (!match.IsAssignableTo(typeof(TScope)))
                         throw ActualLab.Internal.Errors.MustBeAssignableTo<TScope>(match);
+
                     return match;
                 }
                 if (!cType.IsConstructedGenericType)
@@ -58,18 +58,17 @@ public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMe
                     continue;
 
                 if (!match.IsGenericTypeDefinition)
-                    throw StandardError.Internal(
-                        $"A non-generic match '{match.GetName()}' is found for generic type '{gType.GetName()}'.");
+                    throw StandardError.Internal($"A non-generic match '{match.GetName()}' is found for generic type '{gType.GetName()}'.");
 
-#pragma warning disable IL2055
                 match = match.MakeGenericType(gTypeArgs);
-#pragma warning restore IL2055
-
                 if (!match.IsAssignableTo(typeof(TScope)))
                     throw ActualLab.Internal.Errors.MustBeAssignableTo<TScope>(match);
+
                 return match;
             }
             return null;
-        }, this);
+        }
+
+        return _cache.GetOrAdd(source, MappedTypeFactory, this);
     }
 }

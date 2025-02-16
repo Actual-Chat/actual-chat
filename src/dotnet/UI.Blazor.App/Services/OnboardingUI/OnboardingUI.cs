@@ -96,7 +96,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
         await _userSettings.Synchronize(cancellationToken).ConfigureAwait(false);
         await _localSettings.WhenRead.ConfigureAwait(false);
         await _localSettings.Synchronize(cancellationToken).ConfigureAwait(false);
-        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
+        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken).ConfigureAwait(false);
 
         // If there was a recent account change, add a delay to let them hit the client
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);

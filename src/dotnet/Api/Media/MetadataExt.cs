@@ -8,8 +8,9 @@ public interface IHasMetadata
 internal static class MetadataExt
 {
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Ok here")]
-    private static readonly Action<IHasMetadata, PropertyBag> MetadataSetter
-        = typeof(IHasMetadata).GetProperty("Metadata")!.GetSetter<IHasMetadata, PropertyBag>();
+    [field: AllowNull, MaybeNull]
+    private static Action<IHasMetadata, PropertyBag> MetadataSetter
+        => field ??= typeof(IHasMetadata).GetProperty("Metadata")!.GetSetter<IHasMetadata, PropertyBag>();
 
     public static T GetMetadataValue<T>(this IHasMetadata source, T @default = default!, [CallerMemberName] string symbol = "") {
         var value = source.Metadata[symbol];

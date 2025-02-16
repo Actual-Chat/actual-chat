@@ -2,11 +2,9 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Pages.Emails
-@attribute [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2091", Justification = "String type should be preserved.")]
-@{
-#pragma warning disable IL2091
-#pragma warning disable IL2111
-}
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2071", Justification = "UI types are expected to be untrimmed.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Email templates</MainHeader>

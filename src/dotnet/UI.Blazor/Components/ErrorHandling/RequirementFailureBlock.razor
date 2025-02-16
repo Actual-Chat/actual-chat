@@ -3,9 +3,9 @@
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @inherits FusionComponentBase
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
 @{
-#pragma warning disable IL2111, IL2110
-
     var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
     if (needsSignIn) {
         _ = History.NavigateTo(Links.Home);
