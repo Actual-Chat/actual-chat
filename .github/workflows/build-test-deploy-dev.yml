@@ -435,6 +435,8 @@ jobs:
 
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
+        with:
+          restore-workloads: true # TODO: Investigate why App.Maui.csproj is influencing dotnet pack command
 
       - name: Prepare snk file
         run: echo -n "${{secrets.SNK_BASE64}}" | base64 -d | tee ActualChat.snk >/dev/null
