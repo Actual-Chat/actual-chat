@@ -435,8 +435,9 @@ jobs:
 
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
-        with:
-          restore-workloads: true # TODO: Investigate why App.Maui.csproj is influencing dotnet pack command
+
+      - name: Install workloads
+        run: dotnet workload install maui-android # TODO: investigate why it's required by dotnet pack command
 
       - name: Prepare snk file
         run: echo -n "${{secrets.SNK_BASE64}}" | base64 -d | tee ActualChat.snk >/dev/null
