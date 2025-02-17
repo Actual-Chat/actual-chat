@@ -52,6 +52,11 @@
         <div class="c-title">
             <AuthorName AuthorSid="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
+        @if (!_peerOwnName.IsNullOrEmpty()) {
+            <span class="c-public">
+                @_peerOwnName
+            </span>
+        }
         <div class="c-public">
             @if (!Author.Avatar.Bio.IsNullOrEmpty()) {
                 @Author.Avatar.Bio
@@ -62,10 +67,12 @@
 
 @code {
     private ShareModalModel? _shareModalModel;
+    private string? _peerOwnName;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
+    private IAvatars Avatars => Hub.Avatars;
     private ShareUI ShareUI => Hub.ShareUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -73,8 +80,17 @@
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
     [Parameter] public EventCallback OnEditClick { get; set; }
 
-    protected override async Task OnParametersSetAsync()
-        => _shareModalModel = await GetShareModalModel(default);
+    protected override async Task OnParametersSetAsync() {
+        var cancellationToken = CancellationToken.None;
+        _shareModalModel = await GetShareModalModel(cancellationToken);
+        _peerOwnName = await GetPeerOwnName(cancellationToken);
+    }
+
+    private async Task<string?> GetPeerOwnName(CancellationToken cancellationToken) {
+        var avatar = await Avatars.Get(Session, Author.Avatar.Id, cancellationToken).ConfigureAwait(false);
+        var peerOwnName = avatar?.Name ?? "";
+        return !OrdinalEquals(Author.Avatar.Name, peerOwnName) ? peerOwnName : "";
+    }
 
     private async Task<ShareModalModel?> GetShareModalModel(CancellationToken cancellationToken) {
         if (Author.IsAnonymous)

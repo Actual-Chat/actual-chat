@@ -3,19 +3,21 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DataAnnotationsValidator/>
     <DialogFrame
         Class="peer-contact-editor-modal"
         Title="Edit peer contact"
         HasCloseButton="true"
         ButtonsClass="full-width">
         <Body>
-            <FormBlock>
-                <DataAnnotationsValidator/>
-
-                <FormSection For="() => _form.DisplayName" InputId="@_form.DisplayNameFieldId" Label="Display Name" IsLabelInsideInput="true">
-                    <TextBox @bind-Value="@_form.DisplayName" Id="@_form.DisplayNameFieldId" />
-                </FormSection>
-            </FormBlock>
+        <FormBlock>
+            <FormSection For="() => _form.UserName" InputId="@_form.UserNameFieldId" Label="User name" IsLabelInsideInput="true">
+                <TextBox ValueExpression="() => _form.UserName" Value="@_peerOwnName" Id="@_form.UserNameFieldId" readonly />
+            </FormSection>
+            <FormSection For="() => _form.DisplayName" InputId="@_form.DisplayNameFieldId" Label="Display Name" IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.DisplayName" Id="@_form.DisplayNameFieldId" Placeholder="@_peerExtContactDisplayName" />
+            </FormSection>
+        </FormBlock>
         </Body>
         <Buttons>
             <FormButtons>
@@ -33,10 +35,13 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private Contact? _contact;
+    private string? _peerOwnName;
+    private string? _peerExtContactDisplayName;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
+    private IChats Chats => Hub.Chats;
     private UICommander UICommander => Hub.UICommander();
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
@@ -44,10 +49,23 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
+        var cancellationToken = CancellationToken.None;
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        _contact = await Contacts.Get(Session, ModalModel.PeerContactId, default).ConfigureAwait(false);
-        _form.DisplayName = _contact?.PeerContactName ?? "";
+        var peerContactId = ModalModel.PeerContactId;
+        _contact = await Contacts.Get(Session, peerContactId, cancellationToken).ConfigureAwait(false);
+        var peerContactName = _contact?.PeerContactName ?? "";
+        _form.DisplayName = peerContactName;
         _form.CopyToBase();
+        if (_contact is null)
+            return;
+
+        var peerAvatar = _contact.Account?.Avatar;
+        _peerOwnName = peerAvatar?.Name ?? "";
+        if (peerContactName.IsNullOrEmpty()) {
+            var chat = await Chats.Get(Session, peerContactId.ChatId, cancellationToken).ConfigureAwait(false);
+            if (chat != null && !OrdinalEquals(chat.Title, _peerOwnName))
+                _peerExtContactDisplayName = chat.Title;
+        }
     }
 
     private async Task OnSave() {
@@ -72,7 +90,9 @@
 
     public sealed class FormModel : FormModel<FormModel> {
         public string DisplayName { get; set; } = "";
+        public string UserName { get; set; } = "";
         public string DisplayNameFieldId { get; set; } = "";
+        public string UserNameFieldId { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("peer-contact-editor", componentIdGenerator) {

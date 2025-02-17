@@ -70,6 +70,61 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ToApiArray();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<string> GetDisplayNameFor(
+        UserId ownerId,
+        UserId peerUserId,
+        CancellationToken cancellationToken)
+    {
+        var account = await AccountsBackend.Get(peerUserId, cancellationToken).ConfigureAwait(false);
+        if (account is null)
+            return "";
+
+        var links = GetLinksFor(account.User);
+        if (links.Length == 0)
+            return "";
+
+        var list = new List<ExternalContactId>();
+        foreach (var link in links) {
+            var extContactIds = await List(ownerId, link, cancellationToken).ConfigureAwait(false);
+            list.AddRange(extContactIds);
+        }
+        if (list.Count == 0)
+            return string.Empty;
+
+        var extContacts = await list
+            .Select(c => Get(c, cancellationToken))
+            .Collect(cancellationToken)
+            .ToApiArray()
+            .ConfigureAwait(false);
+
+        var extContact = extContacts
+            .SkipNullItems()
+            .OrderByDescending(c => c.ModifiedAt)
+            .FirstOrDefault(c => !c.DisplayName.IsNullOrEmpty());
+
+        return extContact?.DisplayName ?? "";
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ImmutableArray<ExternalContactId>> List(UserId ownerId, string link, CancellationToken cancellationToken)
+    {
+        Log.LogInformation("-> List ('{OwnerId}', '{Link}')", ownerId, link);
+        var idPrefix = ExternalContactId.Prefix(ownerId);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var externalContactIds = await dbContext.ExternalContactLinks
+            .Where(x => x.DbExternalContactId.StartsWith(idPrefix))
+            .Where(x => x.Value == link)
+            .Select(x => x.DbExternalContactId)
+            .Distinct()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return externalContactIds.Select(sid => new ExternalContactId(sid)).ToImmutableArray();
+    }
+
     // Not compute method!
     public async Task<ApiSet<ExternalContactId>> ListReferencingContactIds(UserId userId, CancellationToken cancellationToken)
     {
@@ -80,7 +135,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var links = GetLinks().ToList();
+        var links = GetLinksFor(account.User);
         var externalContactIds = await dbContext.ExternalContactLinks
             .Where(x => links.Contains(x.Value))
             .Select(x => x.DbExternalContactId)
@@ -88,17 +143,18 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ConfigureAwait(false);
 
         return externalContactIds.Select(sid => new ExternalContactId(sid)).ToApiSet();
+    }
 
-        IEnumerable<string> GetLinks()
-        {
-            var phoneHash = account.User.GetPhoneHash();
-            if (!phoneHash.IsNullOrEmpty())
-                yield return DbExternalContactLink.GetPhoneLink(phoneHash);
-
-            var emailHash = account.User.GetEmailHash();
-            if (!emailHash.IsNullOrEmpty())
-                yield return DbExternalContactLink.GetEmailLink(emailHash);
-        }
+    private static ImmutableArray<string> GetLinksFor(User user)
+    {
+        var list = ImmutableArray<string>.Empty;
+        var phoneHash = user.GetPhoneHash();
+        if (!phoneHash.IsNullOrEmpty())
+            list = list.Add(DbExternalContactLink.GetPhoneLink(phoneHash));
+        var emailHash = user.GetEmailHash();
+        if (!emailHash.IsNullOrEmpty())
+            list = list.Add(DbExternalContactLink.GetEmailLink(emailHash));
+        return list;
     }
 
     // [CommandHandler]
@@ -106,22 +162,36 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
+        const string hashesItemKey = "ModifiedItemHashesKey";
+        var context = CommandContext.GetCurrent();
+
         if (Invalidation.IsActive) {
-            var invIds = command.Changes.Select(x => x.Id.UserDeviceId).Distinct();
-            foreach (var invId in invIds) {
+            var invUserDeviceIds = command.Changes.Select(x => x.Id.UserDeviceId).Distinct();
+            foreach (var invId in invUserDeviceIds) {
  #pragma warning disable CS0618 // Type or member is obsolete
                 _ = ListFull(invId.OwnerId, invId.DeviceId, default);
  #pragma warning restore CS0618 // Type or member is obsolete
                 _ = List(invId, default);
             }
+            var invIds = command.Changes.Select(x => x.Id);
+            foreach (var invId in invIds)
+                _ = Get(invId, default);
+
+            var ownerId = command.Changes[0].Id.UserDeviceId.OwnerId;
+            var invModifiedItemHashes = context.Operation.Items.Get<List<string>>(hashesItemKey)!;
+            foreach (var hash in invModifiedItemHashes) {
+                Log.LogInformation("-> OnBulkChange. Invalidate By hash ('{OwnerId}', '{Link}')", ownerId, hash);
+                _ = List(ownerId, hash, default);
+            }
+
             // NOTE(DF): force sync after changes are committed
-            var context = CommandContext.GetCurrent();
             var isLocal = context.Operation.HostId == HostId.Id;
             if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
                 ContactLinker.Activate();
             return default!;
         }
 
+        var modifiedItemHashes = new HashSet<string>();
         var result = new List<Result<ExternalContactFull?>>(command.Changes.Count);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -131,7 +201,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         foreach (var itemChange in command.Changes)
             try {
-                var externalContact = await ChangeItem(itemChange, dbContext, cancellationToken).ConfigureAwait(false);
+                var externalContact = await ChangeItem(dbContext, itemChange, modifiedItemHashes, cancellationToken).ConfigureAwait(false);
                 result.Add(new Result<ExternalContactFull?>(externalContact, null));
             }
             catch (Exception e) {
@@ -141,12 +211,16 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                     itemChange.Id);
                 result.Add(new Result<ExternalContactFull?>(null, e));
             }
+
+        context.Operation.Items.Set(hashesItemKey, modifiedItemHashes.ToList());
+
         return result.ToApiArray();
     }
 
     private async Task<ExternalContactFull?> ChangeItem(
-        ExternalContactChange itemChange,
         ContactsDbContext dbContext,
+        ExternalContactChange itemChange,
+        ICollection<string> modifiedItemHashes,
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = itemChange;
@@ -192,7 +266,17 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false); // TODO(FC): bulk save
-        return dbExternalContact.ToModel();
+        var externalContactFull = dbExternalContact.ToModel();
+        if (change.IsUpdate(out _))
+            AddHashes(existing!);
+        AddHashes(externalContactFull);
+        return externalContactFull;
+
+        void AddHashes(ExternalContactFull externalContact1)
+        {
+            modifiedItemHashes.AddRange(externalContact1.PhoneHashes.Select(DbExternalContactLink.GetPhoneLink));
+            modifiedItemHashes.AddRange(externalContact1.EmailHashes.Select(DbExternalContactLink.GetEmailLink));
+        }
     }
 
     // [CommandHandler]

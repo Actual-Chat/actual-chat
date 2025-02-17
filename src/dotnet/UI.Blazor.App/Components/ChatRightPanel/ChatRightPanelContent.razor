@@ -50,6 +50,7 @@
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private ShareUI ShareUI => Hub.ShareUI;
 
+    [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
