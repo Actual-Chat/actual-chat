@@ -437,7 +437,7 @@ jobs:
         uses: ./.github/actions/setup-dotnet
 
       - name: Install workloads
-        run: dotnet workload install maui-android # TODO: investigate why it's required by dotnet pack command
+        run: dotnet workload install maui # TODO: investigate why it's required by dotnet pack command
 
       - name: Prepare snk file
         run: echo -n "${{secrets.SNK_BASE64}}" | base64 -d | tee ActualChat.snk >/dev/null
