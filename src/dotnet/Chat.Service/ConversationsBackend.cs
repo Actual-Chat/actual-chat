@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.ML;
 using ActualChat.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,10 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbConversation> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
+    [field: AllowNull, MaybeNull]
+    private IConversationSummarizer ConversationSummarizer { get; } = services.GetRequiredService<IConversationSummarizer>();
+    [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken)
@@ -135,25 +140,42 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         if (delay > TimeSpan.Zero)
             throw StandardError.Postpone(delay.Value);
 
-        var range = new Range<long>(entries[0].Id.LocalId, entries[^1].Id.LocalId);
+        var firstEntry = entries[0];
+        var lastEntry = entries[^1];
+        var startEntryLid = firstEntry.Id.LocalId;
+        var endEntryLid = lastEntry.Id.LocalId;
+        var range = new Range<long>(startEntryLid, endEntryLid + 1);
         var coveringTiles = IdTileStack.FirstLayer.GetCoveringTiles(range);
         // Take tile not on the edge, otherwise it can find more than one conversation
         var someTile = coveringTiles.Length > 1 ? coveringTiles[1] : coveringTiles[0];
         var existingConversations = await List(chatId, someTile.Range, cancellationToken)
             .ConfigureAwait(false);
-        if (existingConversations.Count != 0) {
-            // Update existing conversation with the new entries
-            var conversationId = existingConversations[0];
-            var conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
-            conversation.Require();
-        }
+        var hasConversation = existingConversations.Count > 0;
+        var conversationId = hasConversation
+            ? existingConversations[0]
+            : new ConversationId(chatId, firstEntry.LocalId, AssumeValid.Option);
 
-        // var summary = conversation.Summarize(entries);
-        // var diff = conversation.Diff(summary);
-        // var change = new Change<ConversationDiff>(diff);
-        // var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
-        // return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
-        throw new NotImplementedException();
+        var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
+        var conversation = new Conversation(conversationId) {
+            Title = summaryResult.Title,
+            Description = summaryResult.Description,
+            Summary = summaryResult.Summary,
+            MessageCount = entries.Count,
+            EndEntryLid = endEntryLid,
+            StartsAt = firstEntry.BeginsAt,
+            EndsAt = lastEntry.EndsAt ?? lastEntry.BeginsAt,
+            AuthorIds = entries
+                .GroupBy(a => a.AuthorId)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .ToApiArray()
+        };
+        var diff = new ConversationDiff(conversation);
+        var change = hasConversation
+            ? Change.Update(diff)
+            : Change.Create(diff);
+        var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
+        return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -162,7 +184,7 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return default; // No invalidation there as we call other commands
+            return null!; // No invalidation there as we call other commands
 
         var (conversationId, entryLid, replySequence) = command;
         var chatId = conversationId.ChatId;
@@ -171,20 +193,42 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         if (delay > TimeSpan.Zero)
             throw StandardError.Postpone(delay.Value);
 
-        Conversation? conversation;
-        if (!conversationId.IsNone)
-            conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
-        else {
+        if (conversationId.IsNone) {
             var existingConversations = await List(chatId, IdTileStack.FirstLayer.GetTile(entryLid).Range, cancellationToken)
-                    .ConfigureAwait(false);
+                .ConfigureAwait(false);
             if (existingConversations.Count == 0)
                 throw StandardError.Internal("Conversation not found.");
 
             conversationId = existingConversations[0];
-            conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
-            conversation.Require();
         }
-        // Get summarization and call OnChange
-        throw new NotImplementedException();
+        var conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
+        conversation.Require();
+
+        var idTiles = IdTileStack.FirstLayer.GetCoveringTiles(conversation.EntryRange);
+        var tiles = await idTiles
+            .Select(idTile => ChatsBackend.GetTile(chatId,
+                ChatEntryKind.Text,
+                idTile.Range,
+                false,
+                cancellationToken))
+            .Collect(cancellationToken);
+        var entries = tiles.SelectMany(t => t.Entries).ToList();
+        entries.AddRange(replySequence);
+        var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
+        // Do not update EndEntryLid, StartsAt, EndsAt as the conversation is not continuous
+        var diff = new ConversationDiff {
+            Title = summaryResult.Title,
+            Description = summaryResult.Description,
+            Summary = summaryResult.Summary,
+            MessageCount = entries.Count,
+            AuthorIds = entries
+                .GroupBy(a => a.AuthorId)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .ToApiArray()
+        };
+        var change = Change.Update(diff);
+        var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
+        return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }
 }
