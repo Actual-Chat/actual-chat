@@ -444,7 +444,7 @@ jobs:
 
       - name: Create nuget packages
         # workaround: generating slnf without App.* projects to avoid extra workloads installation
-        run: ./run-build.cmd slnf && dotnet pack -c Release -p:PUBLIC_BUILD=true
+        run: ./run-build.cmd slnf && dotnet pack -c Release -p:PUBLIC_BUILD=true ActualChat.CI.slnf
 
       - uses: actions/upload-artifact@v4
         with:
