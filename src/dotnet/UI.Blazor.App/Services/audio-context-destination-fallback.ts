@@ -6,9 +6,9 @@ import { resetMediaSessionMetadata } from './audio-context-source';
 
 const { debugLog, errorLog } = Log.get('FallbackPlayback');
 
-export class AudioContextDestinationFallback {
+export class AudioContextDestinationFallback implements Disposable {
     private readonly audio: HTMLAudioElement;
-    private destinationNode?: MediaStreamAudioDestinationNode = null;
+    private destinationNode: MediaStreamAudioDestinationNode;
     private aecStream: MediaStream & Disposable = null;
 
     // Allows to expose mediaSession metadata at the lock screen
@@ -18,10 +18,7 @@ export class AudioContextDestinationFallback {
 
     private get audioStream() { return this.aecStream ?? this.destinationNode.stream; }
 
-    constructor() {
-        if (!AudioContextDestinationFallback.isRequired)
-            return;
-
+    constructor(context: AudioContext) {
         this.audio = new Audio();
         this.audio.id = 'audio-context-destination';
         this.audio.preload = "none";
@@ -29,56 +26,16 @@ export class AudioContextDestinationFallback {
         this.audio.hidden = true;
         this.audio.muted = false;
         this.audio.controls = false;
+        document.body.append(this.audio);
+
+        this.destinationNode = context.createMediaStreamDestination();
+        this.destinationNode.channelInterpretation = 'speakers';
+        this.audio.srcObject = this.audioStream;
         resetMediaSessionMetadata();
-    }
-
-    public async attach(context: AudioContext): Promise<void> {
-        if (!AudioContextDestinationFallback.isRequired)
-            return;
-
-        debugLog?.log('-> attach(): ', Log.ref(context));
-        try {
-            document.body.append(this.audio);
-
-            if (!this.destinationNode) {
-                await this.createDestinationNode(context);
-            } else if (this.destinationNode.context !== context) {
-                this.detach();
-                await this.createDestinationNode(context);
-            }
-            debugLog?.log('attach(): success')
-        } catch (e) {
-            errorLog?.log('attach(): failed to connect feeder node to fallback output:', e);
-        }
-        debugLog?.log('<- attach()');
-    }
-
-    public detach() {
-        if (!AudioContextDestinationFallback.isRequired)
-            return;
-
-        debugLog?.log('-> detach()');
-        try {
-            debugLog?.log('detach(): removing audio.srcObject');
-            this.audio.pause();
-            this.audio.srcObject = undefined;
-            this.audio.src = undefined;
-            document.body.removeChild(this.audio);
-
-            if (this.destinationNode) {
-                this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
-                this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
-                this.destinationNode.disconnect();
-                this.destinationNode = null;
-            }
-            if (this.aecStream) {
-                this.aecStream.dispose();
-                this.aecStream = null;
-            }
-        } catch (e) {
-            errorLog?.log('detach(): failed to disconnect feeder node from fallback output:', e);
-        }
-        debugLog?.log('<- detach()');
+        if (isWebRtcAecRequired)
+            void createWebRtcAecStream(this.destinationNode.stream)
+                .then(x => this.aecStream = x)
+                .then(_ => this.audio.srcObject = this.audioStream);
     }
 
     public async play(): Promise<void> {
@@ -104,11 +61,21 @@ export class AudioContextDestinationFallback {
         debugLog?.log('<- pause()', this.audio?.paused);
     }
 
-    private async createDestinationNode(context: AudioContext): Promise<void> {
-        this.destinationNode = context.createMediaStreamDestination();
-        this.destinationNode.channelInterpretation = 'speakers';
-        if (isWebRtcAecRequired)
-            this.aecStream = await createWebRtcAecStream(this.destinationNode.stream);
-        this.audio.srcObject = this.audioStream;
+    public dispose(): void {
+        this.audio.pause();
+        this.audio.srcObject = undefined;
+        this.audio.src = undefined;
+        document.body.removeChild(this.audio);
+
+        if (this.destinationNode) {
+            this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
+            this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
+            this.destinationNode.disconnect();
+            this.destinationNode = null;
+        }
+        if (this.aecStream) {
+            this.aecStream.dispose();
+            this.aecStream = null;
+        }
     }
 }

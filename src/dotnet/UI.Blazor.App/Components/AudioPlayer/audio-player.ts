@@ -115,7 +115,7 @@ export class AudioPlayer implements Resettable {
             // Create decoder worker
             await decoderWorker.init(this.internalId, this.decoderToFeederWorkletChannel.port1);
 
-            const destinationOverride = context.destinationOverride ?? context.destination;
+            const destinationOverride = context.destination_ ?? context.destination;
             feederNode.connect(destinationOverride);
         };
 
