@@ -436,9 +436,6 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
-      - name: Install workloads
-        run: dotnet workload install maui # TODO: investigate why it's required by dotnet pack command
-
       - name: Prepare snk file
         run: echo -n "${{secrets.SNK_BASE64}}" | base64 -d | tee ActualChat.snk >/dev/null
 
@@ -446,7 +443,8 @@ jobs:
         run: ./run-build.cmd generate-version
 
       - name: Create nuget packages
-        run: dotnet pack -c Release -p:PUBLIC_BUILD=true
+        # workaround: generating slnf without App.* projects to avoid extra workloads installation
+        run: ./run-build.cmd slnf && dotnet pack -c Release -p:PUBLIC_BUILD=true
 
       - uses: actions/upload-artifact@v4
         with:
