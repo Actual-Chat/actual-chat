@@ -104,6 +104,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>()));
 
+        services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
+
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();
         services.TryAddSingleton(embeddingSettings);
