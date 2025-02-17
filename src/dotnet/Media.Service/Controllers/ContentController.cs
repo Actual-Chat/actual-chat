@@ -27,7 +27,7 @@ public sealed class ContentController(IBlobStorages blobStorages, IMediaBackend 
             var mediaContentType = media.ContentType.IsNullOrEmpty()
                 ? MediaTypeNames.Application.Octet
                 : media.ContentType;
-            return File(byteStream, mediaContentType, media.FileName);
+            return File(byteStream, mediaContentType, media.FileName, enableRangeProcessing: true);
         }
 
         var contentType = await blobStorage.GetContentType(blobId, cancellationToken).ConfigureAwait(false);
