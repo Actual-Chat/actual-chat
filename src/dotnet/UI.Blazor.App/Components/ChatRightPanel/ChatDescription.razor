@@ -5,6 +5,11 @@
     var m = State.Value;
 }
 
+@if (!m.PeerOwnName.IsNullOrEmpty()) {
+    <span class="c-chat-description">
+        @m.PeerOwnName
+    </span>
+}
 <span class="c-chat-description">
     @m.Description
 </span>
@@ -41,11 +46,13 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
+    private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private IRoulette Roulette => Hub.Roulette;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
     private AccountUI AccountUI => Hub.AccountUI;
 
+    [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -69,8 +76,8 @@
         };
     }
 
-    private async Task<Model> GetPeerChatModel(PeerChatId peerChatId, CancellationToken cancellationToken)
-    {
+    private async Task<Model> GetPeerChatModel(PeerChatId peerChatId, CancellationToken cancellationToken) {
+        var chat = Chat;
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var peerAccountId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
         if (peerAccountId.IsNone)
@@ -84,8 +91,11 @@
             return Model.Loading;
 
         var bio = anotherAuthor.Avatar.Bio;
+        var avatar = await Avatars.Get(Session, anotherAuthor.Avatar.Id, cancellationToken).ConfigureAwait(false);
+        var peerOwnName = avatar?.Name ?? "";
         return new() {
             Description = bio,
+            PeerOwnName = !OrdinalEquals(chat.Title, peerOwnName) ? peerOwnName : ""
         };
     }
 
@@ -117,6 +127,7 @@
         public static readonly Model Loading = new();
 
         public string Description { get; init; } = "";
+        public string PeerOwnName { get; init; } = "";
         public ChatRouletteInfo? ChatRouletteInfo { get; init; }
     }
 

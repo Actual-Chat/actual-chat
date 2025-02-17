@@ -25,6 +25,7 @@
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private ILogger Log => Hub.LogFor<ChatRightPanel>();
 
+    [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()

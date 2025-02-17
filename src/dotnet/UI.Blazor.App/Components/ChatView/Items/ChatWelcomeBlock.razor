@@ -84,6 +84,7 @@
     private ShareUI ShareUI => Hub.ShareUI;
     private UrlMapper UrlMapper => Hub.UrlMapper();
 
+    [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {

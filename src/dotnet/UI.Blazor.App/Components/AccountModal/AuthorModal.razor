@@ -68,7 +68,7 @@
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                var authorName = ContactExt.GetPeerContactName(m.PeerChatContact, m.Author.Avatar.Name);
+                var authorName = m.Author.Avatar.Name;
                 if (!m.OnlyAnonymousChatAllowed) {
                     if (_anonymousChat) {
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">

@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<RightPanelHeader.Model>
 @{
     var m = State.Value;
@@ -31,6 +32,11 @@
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
             }
+            else if (m.PeerContact is not null) {
+                <ButtonRound Class="btn-sm" Click="@(() => OnEditPeerContactClick(m.PeerContact))">
+                    <i class="icon-edit text-2xl"></i>
+                </ButtonRound>
+            }
             @if (EditMembersUI.CanAddMembers(Chat)) {
                 <ButtonRound Class="btn-sm" Click="@OnInviteClick">
                     <i class="icon-person-add text-2xl"></i>
@@ -59,11 +65,13 @@
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
+    private IContacts Contacts => Hub.Contacts;
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private ModalUI ModalUI => Hub.ModalUI;
     private ShareUI ShareUI => Hub.ShareUI;
     private EditMembersUI EditMembersUI => Hub.EditMembersUI;
 
+    [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -80,24 +88,30 @@
 
         var authorRules = await Chats.GetRules(Session, chatId, default).ConfigureAwait(false);
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(authorRules, shareModel);
+        Contact? peerContact = null;
+        if (chatId.IsPeerChat(out _))
+            peerContact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(authorRules, shareModel, peerContact);
     }
 
     private void OnHideRightPanelClick()
         => PanelsUI.Right.SetIsVisible(false);
 
-    private Task OnEditChatSettingsClick()
-        => ModalUI.Show(new ChatSettingsModal.Model(Chat.Id));
+    private void OnEditChatSettingsClick()
+        => _ = ModalUI.Show(new ChatSettingsModal.Model(Chat.Id));
 
     private void OnShareClick(ShareModalModel shareModel)
         => ShareUI.Share(shareModel);
 
-    private Task OnInviteClick()
-        => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
+    private void OnInviteClick()
+        => _ = ModalUI.Show(new AddMemberModal.Model(Chat.Id));
+
+    private void OnEditPeerContactClick(Contact peerContact)
+        => _ = ModalUI.Show(new PeerContactEditorModal.Model(peerContact.Id));
 
     // Nested types
 
-    public sealed record Model(AuthorRules AuthorRules, ShareModalModel? ShareModel) {
-        public static readonly Model Loading = new (AuthorRules.None(ChatId.None), null);
+    public sealed record Model(AuthorRules AuthorRules, ShareModalModel? ShareModel, Contact? PeerContact) {
+        public static readonly Model Loading = new (AuthorRules.None(ChatId.None), null, null);
     }
 }

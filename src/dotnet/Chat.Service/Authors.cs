@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Users;
@@ -13,6 +14,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IAvatars? _avatars;
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
+    private IContactsBackend? _contactsBackend;
+    private IExternalContactsBackend? _externalContactsBackend;
     private IRoles? _roles;
     private IRolesBackend? _rolesBackend;
 
@@ -24,6 +27,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IServerKvas ServerKvas { get; } = services.ServerKvas();
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
+    private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
+    private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
     private IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();
     private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
 
@@ -36,8 +41,33 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat == null)
             return null;
 
-        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-        return author.ToAuthor();
+        var authorFull = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        if (authorFull is null)
+            return null;
+
+        var author = authorFull.ToAuthor();
+        var peerUserId = authorFull.UserId;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.Id != peerUserId) {
+            var peerChatId = new PeerChatId(account.Id, peerUserId);
+            var contactId = new ContactId(account.Id, peerChatId);
+            string? peerRename = null;
+            var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(contact.PeerContactName))
+                peerRename = contact.PeerContactName;
+            if (peerRename.IsNullOrEmpty()) {
+                var extContactDisplayName = await ExternalContactsBackend
+                    .GetDisplayNameFor(account.Id, peerUserId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(extContactDisplayName))
+                    peerRename = extContactDisplayName;
+            }
+            if (!peerRename.IsNullOrEmpty() && !OrdinalEquals(peerRename, author.Avatar.Name)) {
+                var avatar = author.Avatar with { Name = peerRename };
+                author = author with { Avatar = avatar };
+            }
+        }
+        return author;
     }
 
     public virtual async Task<AuthorFull?> GetOwn(

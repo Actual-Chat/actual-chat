@@ -17,6 +17,7 @@ public class Chats(IServiceProvider services) : IChats
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IExternalContactsBackend ExternalContactsBackend { get; } = services.GetRequiredService<IExternalContactsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
@@ -33,21 +34,24 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.Kind == ChatKind.Peer) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            var contactId = new ContactId(account.Id, chatId, ParseOrNone.Option);
-            if (contactId.IsNone)
-                return null;
-
+            var contactId = new ContactId(account.Id, chatId);
             var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
-            if (contact.Account == null)
+            var peerAccount = contact.Account;
+            if (peerAccount == null)
                 return null; // No peer account
 
             chat ??= new Chat(chatId);
-            var avatar = contact.Account.Avatar;
-            var avatarName = avatar.Name;
-            if (chat.Kind == ChatKind.Peer)
-                avatarName = ContactExt.GetPeerContactName(contact, avatarName);
+            var avatar = peerAccount.Avatar;
+            var peerName = avatar.Name;
+            if (!string.IsNullOrWhiteSpace(contact.PeerContactName))
+                peerName = contact.PeerContactName;
+            else {
+                var extContactDisplayName = await ExternalContactsBackend.GetDisplayNameFor(account.Id, peerAccount.Id, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(extContactDisplayName))
+                    peerName = extContactDisplayName;
+            }
             chat = chat with {
-                Title = avatarName,
+                Title = peerName,
                 Picture = avatar.Media,
             };
         }

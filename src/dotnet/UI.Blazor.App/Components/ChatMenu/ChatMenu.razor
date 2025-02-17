@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Contacts
 @inherits ComputedMenuBase<ChatState?>
 @{
     var m = State.Value;
@@ -22,6 +23,11 @@
 
     @if (isPeerChat) {
         <ChatMenuStartAnonymous />
+        <MenuEntry
+            Icon="icon-edit"
+            Text="Edit peer contact"
+            Click="@(() => OnEditPeerContact(m.Contact))">
+        </MenuEntry>
     }
     <ChatMenuPin/>
     <ChatMenuNavbarPin/>
@@ -38,7 +44,9 @@
     private ChatId _chatId;
     private ChatListKind _listKind;
 
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sChatId, var sListKind ])
@@ -51,4 +59,9 @@
 
     protected override Task<ChatState?> ComputeState(CancellationToken cancellationToken)
         => ChatUI.GetState(_chatId, false, cancellationToken);
+
+    private async Task OnEditPeerContact(Contact peerContact) {
+        await WhenClosed;
+        _ = ModalUI.Show(new PeerContactEditorModal.Model(peerContact.Id));
+    }
 }

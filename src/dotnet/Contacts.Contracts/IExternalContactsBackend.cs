@@ -11,6 +11,8 @@ public interface IExternalContactsBackend : IComputeService, IBackendService
     Task<ExternalContactFull?> Get(ExternalContactId externalContactId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<ExternalContact>> List(UserDeviceId userDeviceId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<string> GetDisplayNameFor(UserId ownerId, UserId peerUserId, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(ExternalContactsBackend_BulkChange command, CancellationToken cancellationToken);
     [CommandHandler]
