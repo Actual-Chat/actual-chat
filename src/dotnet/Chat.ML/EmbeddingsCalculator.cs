@@ -27,7 +27,7 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
     public async Task<double[]> CalculateVector(string text, CancellationToken cancellationToken)
     {
         if (_predictionsUri is null)
-            throw StandardError.Internal("Predications uri is not configured.");
+            throw StandardError.Internal("PredictionsUri is not configured at EmbeddingSettings.");
 
         using var client = new HttpClient();
 

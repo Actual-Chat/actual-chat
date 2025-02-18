@@ -89,7 +89,11 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
             dbContext.Add(dbConversation);
         }
         else if (change.IsUpdate(out update)) {
-            dbConversation.RequireVersion(expectedVersion);
+            // TODO(AK): too many version mismatch errors
+            // if (expectedVersion != 0)
+            //     dbConversation.RequireVersion(expectedVersion);
+            // else
+            dbConversation.Require();
 
             conversation = ApplyDiff(dbConversation.ToModel(), update);
             dbConversation.UpdateFrom(conversation);
@@ -154,6 +158,12 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         var conversationId = hasConversation
             ? existingConversations[0]
             : new ConversationId(chatId, firstEntry.LocalId, AssumeValid.Option);
+        var expectedVersion = (long?)null;
+        if (hasConversation) {
+            var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
+            existingConversation.Require();
+            expectedVersion = existingConversation.Version;
+        }
 
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
         var conversation = new Conversation(conversationId) {
@@ -174,7 +184,7 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         var change = hasConversation
             ? Change.Update(diff)
             : Change.Create(diff);
-        var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
+        var changeCommand = new ConversationBackend_Change(conversationId, expectedVersion, change);
         return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }
 

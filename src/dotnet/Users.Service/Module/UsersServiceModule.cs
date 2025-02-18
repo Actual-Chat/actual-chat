@@ -182,8 +182,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddFlows()
                 .Add<MasterFlow>()
                 .Add<DigestFlow>();
-            services.AddSingleton<MasterFlowStarter>()
-                .AddHostedService(c => c.GetRequiredService<MasterFlowStarter>());
         }
 
         // TOTP codes - used by IPhoneAuth (API)

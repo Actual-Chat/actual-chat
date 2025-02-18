@@ -1,7 +1,6 @@
-using ActualChat.Flows;
 using ActualChat.Flows.Infrastructure;
 
-namespace ActualChat.Users.Flows;
+namespace ActualChat.Flows;
 
 internal class MasterFlowStarter(IServiceProvider services)
     : ShardWorker(services, ShardScheme.FlowsBackend)

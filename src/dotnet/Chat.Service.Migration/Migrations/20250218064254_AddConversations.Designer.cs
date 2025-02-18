@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250218064254_AddConversations")]
+    partial class AddConversations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -309,11 +312,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("content_ends_at");
 
-                    b.Property<string>("ContentHash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content_hash");
-
                     b.Property<double>("Duration")
                         .HasColumnType("double precision")
                         .HasColumnName("duration");
@@ -363,10 +361,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("kind");
 
-                    b.Property<string>("Languages")
-                        .HasColumnType("text")
-                        .HasColumnName("languages");
-
                     b.Property<string>("LinkPreviewIds")
                         .HasColumnType("text")
                         .HasColumnName("link_preview_ids")
@@ -404,10 +398,6 @@ namespace ActualChat.Chat.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_chat_entries");
-
-                    b.HasIndex("ChatId")
-                        .HasDatabaseName("ix_chat_entries_chat_id")
-                        .HasFilter("kind = 0 and not is_system_entry and not is_removed and languages is not null and languages != '' and  content != ''");
 
                     b.HasIndex("ChatId", "Kind", "LocalId")
                         .IsUnique()
@@ -918,41 +908,6 @@ namespace ActualChat.Chat.Migrations
                         .HasName("pk_text_entry_attachments");
 
                     b.ToTable("text_entry_attachments");
-                });
-
-            modelBuilder.Entity("ActualChat.Chat.Db.DbTranslation", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<string>("SourceContentHash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("source_content_hash");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_translations");
-
-                    b.ToTable("translations");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbUserLink", b =>

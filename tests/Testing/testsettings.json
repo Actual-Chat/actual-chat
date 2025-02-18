@@ -67,5 +67,8 @@
       "NATS.Client.Core": "Warning",
       "NATS.Client": "Warning"
     }
+  },
+  "EmbeddingSettings": {
+    "PredictionsUri" : "http://localhost:28080/predictions/Alibaba-NLP_gte-multilingual-base"
   }
 }

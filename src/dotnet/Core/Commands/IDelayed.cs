@@ -1,4 +1,4 @@
-namespace ActualChat.Flows;
+namespace ActualChat;
 
 public interface IDelayed
 {

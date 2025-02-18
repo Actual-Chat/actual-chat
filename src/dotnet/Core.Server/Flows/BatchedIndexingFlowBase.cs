@@ -26,7 +26,7 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
             var first = batch[0];
             var last = batch[^1];
             DebugLog?.LogDebug(
-                "`{Id}`.Process: processed batch: {Count} items, first=(#{FirstId},v{LastId}), last=(#{LastId},v{LastId})",
+                "`{Id}`.Process: processed batch: {Count} items, first=(#{FirstId},v{FirstIdVersion}), last=(#{LastId},v{LastIdVersion})",
                 Id,
                 batch.Count,
                 first.Id,
