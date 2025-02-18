@@ -119,16 +119,10 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 
     protected constructor(public readonly purpose: AudioContextPurpose) {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(durationMs => this.onDeviceAwake(durationMs));
-        if (purpose === 'playback') {
+        if (purpose === 'playback')
             resetMediaSessionMetadata();
-            if ('audioSession' in navigator) {
-                navigator.audioSession['type'] = 'playback'; // 'playback'
-            }
-        }
-        else {
-            if ('audioSession' in navigator) {
-                navigator.audioSession['type'] = 'play-and-record'; // 'recording'
-            }
+        if ('audioSession' in navigator) {
+            navigator.audioSession['type'] = 'play-and-record'; // 'playback'
         }
     }
 

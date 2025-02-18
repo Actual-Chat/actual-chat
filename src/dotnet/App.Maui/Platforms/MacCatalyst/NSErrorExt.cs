@@ -10,7 +10,7 @@ public static class NSErrorExt
             ? new InternalError($"{error.LocalizedDescription}. {error.Description}", new NSErrorException(error))
             : null;
 
-    public static void ThrowIfError(this NSError? error)
+    public static void Assert(this NSError? error)
     {
         if (error != null)
             throw new InternalError($"{error.LocalizedDescription}. {error.Description}", new NSErrorException(error));

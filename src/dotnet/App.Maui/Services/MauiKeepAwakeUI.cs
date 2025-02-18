@@ -6,7 +6,18 @@ namespace ActualChat.App.Maui.Services;
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiKeepAwakeUI))]
 public class MauiKeepAwakeUI(UIHub hub) : KeepAwakeUI(hub)
 {
-    public override ValueTask SetKeepAwake(bool value)
+    [field: AllowNull, MaybeNull]
+    private KeepWebViewAliveUI KeepWebViewAliveUI => field ??= Hub.GetRequiredService<KeepWebViewAliveUI>();
+
+    public override async ValueTask SetKeepAwake(bool mustKeepAwake)
+    {
+        await SetKeepDisplayAwake(mustKeepAwake).ConfigureAwait(false);
+        KeepWebViewAliveUI.IsEnabled.Value = mustKeepAwake;
+        if (mustKeepAwake)
+            KeepWebViewAliveUI.Start();
+    }
+
+    private ValueTask SetKeepDisplayAwake(bool value)
         => OperatingSystem.IsAndroid()
             ? base.SetKeepAwake(value)
             : MainThread.InvokeOnMainThreadAsync(() => {
