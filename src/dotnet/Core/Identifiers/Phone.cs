@@ -98,7 +98,7 @@ public readonly partial struct Phone : ISymbolIdentifier<Phone>
     public static implicit operator Symbol(Phone source) => source.Id;
     public static implicit operator string(Phone source) => source.Id.Value;
 
-    public string ToInternational()
+    public string ToE164()
         => $"+{Code}{Number}";
 
     // Equality

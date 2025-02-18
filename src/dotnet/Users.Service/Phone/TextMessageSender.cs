@@ -19,7 +19,7 @@ public sealed class TwilioTextMessageSender(IServiceProvider services) : ITextMe
     {
         try {
             await MessageResource
-                .CreateAsync(new Twilio.Types.PhoneNumber(phone.ToInternational()),
+                .CreateAsync(new Twilio.Types.PhoneNumber(phone.ToE164()),
                     from: UsersSettings.TwilioSmsFrom,
                     body: text,
                     client: Client)
@@ -44,7 +44,7 @@ public sealed class LogOnlyTextMessageSender(IServiceProvider services) : ITextM
     public Task Send(Phone phone, string text)
     {
         // just for debugging purpose
-        Log.LogWarning("!!! Text message to {Phone}: {Text}", phone.ToInternational(), text);
+        Log.LogWarning("!!! Text message to {Phone}: {Text}", phone.ToE164(), text);
         return Task.CompletedTask;
     }
 }

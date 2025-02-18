@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
 using System.Text;
 using ActualChat.Contacts;
@@ -17,19 +16,19 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
 {
     private readonly Lock _lock = new();
     private StrongBox<Symbol>? _deviceId;
-    private Session? _session;
-    private IAccounts? _accounts;
-    private ContactsPermissionHandler? _permissions;
-    private ExternalContactHasher? _externalContactHashes;
-    private ILogger? _log;
 
     public override Symbol DeviceId => GetDeviceId();
-    private Session Session => _session ??= services.Session();
-    private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>();
-    private ContactsPermissionHandler Permissions => _permissions ??= services.GetRequiredService<ContactsPermissionHandler>();
-    private ExternalContactHasher ExternalContactHasher => _externalContactHashes ??= services.GetRequiredService<ExternalContactHasher>();
+    [field: AllowNull, MaybeNull]
+    private Session Session => field ??= services.Session();
+    [field: AllowNull, MaybeNull]
+    private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    private ContactsPermissionHandler Permissions => field ??= services.GetRequiredService<ContactsPermissionHandler>();
+    [field: AllowNull, MaybeNull]
+    private ExternalContactHasher ExternalContactHasher => field ??= services.GetRequiredService<ExternalContactHasher>();
     private IDeviceIdProvider DeviceIdProvider { get; } = services.GetRequiredService<IDeviceIdProvider>();
-    private ILogger Log => _log ??= services.LogFor<MauiContacts>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor<MauiContacts>();
 
     public override async Task<ApiArray<ExternalContactFull>> List(CancellationToken cancellationToken)
     {
@@ -41,7 +40,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-            var ownPhone = account.HasVerifiedPhone() ? account.Phone.ToInternational() : "";
+            var ownPhone = account.HasVerifiedPhone() ? account.Phone.ToE164() : "";
             var phoneParser = PhoneParser.ForOwnPhone(ownPhone);
             var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
                 .GetAllAsync(cancellationToken)
