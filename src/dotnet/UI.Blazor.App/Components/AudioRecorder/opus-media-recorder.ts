@@ -104,7 +104,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
         // better integration with native mobile audio pipeline
         if ('audioSession' in navigator) {
-            navigator.audioSession['type'] = 'playback'; // 'play-and-record'
+            navigator.audioSession['type'] = 'play-and-record'; // 'playback'
 
         }
         infoLog?.log('<- stopStreamTracks()');

@@ -6,13 +6,14 @@ public class KeepAwakeUI(UIHub hub)
 {
     private static readonly string JSSetKeepAwakeMethod = $"{BlazorUICoreModule.ImportName}.KeepAwakeUI.setKeepAwake";
 
+    protected UIHub Hub => hub;
     protected IJSRuntime JS => hub.JSRuntime();
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
-    public virtual ValueTask SetKeepAwake(bool value)
+    public virtual ValueTask SetKeepAwake(bool mustKeepAwake)
     {
-        Log.LogInformation("SetKeepAwake({MustKeepAwake})", value);
-        return JS.InvokeVoidAsync(JSSetKeepAwakeMethod, value);
+        Log.LogInformation("SetKeepAwake({MustKeepAwake})", mustKeepAwake);
+        return JS.InvokeVoidAsync(JSSetKeepAwakeMethod, mustKeepAwake);
     }
 }

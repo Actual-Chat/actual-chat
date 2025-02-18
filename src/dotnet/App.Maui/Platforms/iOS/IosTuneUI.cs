@@ -10,8 +10,8 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
     private const float Sharpness = 0.5f;
     private readonly object _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
-    private CHHapticEngine? _hapticEngine;
-    private CHHapticEngine HapticEngine => _hapticEngine ??= CreateHapticEngine();
+    [field: AllowNull, MaybeNull]
+    private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
 
     protected override bool UseJsVibration => false;
     private ILogger Log { get; } = hub.LogFor<IosTuneUI>();
@@ -43,7 +43,7 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
             await HapticEngine.StartAsync().ConfigureAwait(true);
             var player = GetPlayer(tune);
             player.Start(0, out var error);
-            error.ThrowIfError();
+            error.Assert();
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
@@ -57,10 +57,10 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
         lock (_lock)
             try {
                 var engine = new CHHapticEngine(out var error);
-                error.ThrowIfError();
+                error.Assert();
 
                 engine.Start(out error);
-                error.ThrowIfError();
+                error.Assert();
                 return engine;
             }
             catch (Exception e) {
@@ -78,7 +78,7 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
             var vibration = Tunes[tune].Vibration;
             var pattern = BuildPattern(vibration);
             player = HapticEngine.CreatePlayer(pattern, out var error);
-            error.ThrowIfError();
+            error.Assert();
 
             _players.Add(tune, player!);
             return player!;
@@ -90,7 +90,7 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
         var curve = BuildIntensityCurve(vibration);
         var hapticEvent = BuildHapticEvent(vibration);
         var pattern = new CHHapticPattern(new[] { hapticEvent }, new[] { curve, }, out var error);
-        error.ThrowIfError();
+        error.Assert();
         return pattern;
     }
 

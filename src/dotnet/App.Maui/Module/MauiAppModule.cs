@@ -35,6 +35,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.Replace(ServiceDescriptor.Singleton<ReloadUI>(c => new MauiReloadUI(c))); // Replaces scoped ReloadUI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
+        services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
         services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper(), c.GetRequiredService<ReloadUI>()));
         services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());

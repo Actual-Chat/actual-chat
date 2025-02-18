@@ -54,7 +54,7 @@ public partial class MauiWebView
     {
         var webView = eventArgs.WebView;
         SetPlatformWebView(webView);
-        if (DeviceInfo.Version >= new Version("16.4"))
+        if (OperatingSystem.IsIOSVersionAtLeast(16, 4))
             webView.Inspectable = true;
     }
 
