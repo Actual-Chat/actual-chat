@@ -167,6 +167,25 @@ public partial class EditChatTypeModalPage
         return !uiActionResult.HasError;
     }
 
+    private void OnAllowGuestAuthorsClick()
+    {
+        _form!.AllowGuestAuthors = !_form.AllowGuestAuthors;
+        StateHasChanged();
+    }
+
+    private void OnAllowAnonymousAuthorsClick()
+    {
+        _form!.AllowAnonymousAuthors = !_form.AllowAnonymousAuthors;
+        StateHasChanged();
+    }
+
+    private void OnIsTemplateClick()
+    {
+        _form!.IsTemplate = !_form.IsTemplate;
+        StateHasChanged();
+    }
+
+
     private void OnPublicChatClick(bool isPublic)
     {
         if (_form!.IsPublic == isPublic)

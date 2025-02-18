@@ -43,12 +43,21 @@
                 }
             </Right>
         </FormSection>
-        @if (CaptchaUI.IsConfigured) {
-        <div class="c-recaptcha-info">
-            This site is protected by reCAPTCHA and the Google
-            <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-            <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
+        <div class="c-incut">
+            <div class="c-info">
+                <i class="icon-alert-triangle text-lg text-warning"></i>
+                <span>
+                    You can <span class="font-medium">skip</span> this step. The phone number can be filled in later.
+                </span>
+            </div>
         </div>
+
+        @if (CaptchaUI.IsConfigured) {
+            <div class="c-recaptcha-info">
+                This site is protected by reCAPTCHA and the Google
+                <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
+                <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
+            </div>
         }
     </Form>
 </div>

@@ -80,7 +80,7 @@
     @if (PlaceId.IsNone) {
         <FormBlock>
             @if (_isAdmin && _form.IsPublic) {
-                <TileItem Class="field-allow-guest">
+                <TileItem Class="field-allow-guest clickable" Click="OnAllowGuestAuthorsClick">
                     <Icon>
                         <i class="icon-guest"></i>
                     </Icon>
@@ -95,7 +95,7 @@
                     </Right>
                 </TileItem>
             }
-            <TileItem Class="field-allow-anonym">
+            <TileItem Class="field-allow-anonym clickable" Click="@OnAllowAnonymousAuthorsClick">
                 <Icon>
                     <i class="icon-question-mark-bubble"></i>
                 </Icon>
@@ -163,6 +163,18 @@
 
     private void OnImagePicked(MediaContent mediaContent) {
         _form.Picture = new(mediaContent);
+        StateHasChanged();
+    }
+
+    private void OnAllowGuestAuthorsClick()
+    {
+        _form!.AllowGuestAuthors = !_form.AllowGuestAuthors;
+        StateHasChanged();
+    }
+
+    private void OnAllowAnonymousAuthorsClick()
+    {
+        _form!.AllowAnonymousAuthors = !_form.AllowAnonymousAuthors;
         StateHasChanged();
     }
 

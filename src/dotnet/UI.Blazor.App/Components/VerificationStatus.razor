@@ -6,7 +6,7 @@
     var cursorCls = !IsVerified ? "cursor-pointer" : "";
 }
 
-<div class="flex-x items-center justify-center @Class @cursorCls"
+<div class="verification-status @Class @cursorCls"
      @onclick="@(IsVerified ? default : Verify)"
      data-tooltip="@text">
     <i class="@icon text-xl @colorCls" aria-hidden="true"></i>
