@@ -191,3 +191,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply h-full;
     @apply text-02;
 }
+
+.verification-status {
+    @apply flex-x items-center justify-center;
+}

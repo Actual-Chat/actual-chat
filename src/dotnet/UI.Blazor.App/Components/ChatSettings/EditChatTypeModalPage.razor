@@ -117,7 +117,7 @@
     @if (!isPlaceChat) {
         <FormBlock Class="with-input-radio last">
             @if (_isAdmin && _form.IsPublic) {
-                <TileItem Class="field-allow-guest clickable">
+                <TileItem Class="field-allow-guest clickable" Click="OnAllowGuestAuthorsClick">
                     <Icon>
                         <i class="icon-guest"></i>
                     </Icon>
@@ -132,7 +132,7 @@
                     </Right>
                 </TileItem>
             }
-            <TileItem Class="field-allow-anonym clickable">
+            <TileItem Class="field-allow-anonym clickable" Click="@OnAllowAnonymousAuthorsClick">
                 <Icon>
                     <i class="icon-anonym"></i>
                 </Icon>
@@ -149,7 +149,7 @@
         </FormBlock>
         @if (m.AllowEditIsTemplate && _form.IsPublic) {
             <FormBlock Class="with-input-radio first last">
-                <TileItem Class="field-is-template clickable">
+                <TileItem Class="field-is-template clickable" Click="OnIsTemplateClick">
                     <Icon>
                         <i class="icon-file-text"></i>
                     </Icon>
