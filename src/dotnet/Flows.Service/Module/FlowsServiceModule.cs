@@ -28,8 +28,10 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         // Internal services
-        services.AddSingleton(c => new FlowHost(c));
-        services.AddHostedService(c => c.GetRequiredService<FlowHost>());
+        services.AddSingleton(c => new FlowHost(c))
+            .AddHostedService(c => c.GetRequiredService<FlowHost>());
+        services.AddSingleton<MasterFlowStarter>()
+            .AddHostedService(c => c.GetRequiredService<MasterFlowStarter>());
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.Hosting;
 using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
@@ -8,6 +9,9 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
 {
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
+
+    [field: AllowNull, MaybeNull]
+    private HostInfo HostInfo => field ??= Host.Services.GetRequiredService<HostInfo>();
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public long MaxVersion { get; private set; }
@@ -20,6 +24,17 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
             // only created before now + 10sec. New chats are handled from events
             // Note: intentionally set negative number
             MaxVersion = Clocks.GetMaxVersion(TimeSpan.FromSeconds(-10));
+
+        if (HostInfo.BaseUrlKind != BaseUrlKind.Local)
+            return mustContinue;
+
+        // TODO(AK): Start child flow for development purposes - SHOULD BE FIXED FOR GENERAL USE OF FLOWS!!!!!
+        var chat = await ChatsBackend.Get(new ChatId("052w3sgrad", ParseOrNone.Option), cancellationToken)
+            .ConfigureAwait(false);
+        if (chat != null)
+            await Host.Flows
+                .StartOrReset<ConversationSplitFlow>(chat.Id, null, "ChatMasterFlow", cancellationToken)
+                .ConfigureAwait(false);
 
         return mustContinue;
     }

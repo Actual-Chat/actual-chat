@@ -3,28 +3,32 @@
   "isRoot": true,
   "tools": {
     "dotnet-ef": {
-      "version": "8.0.4",
+      "version": "9.0.2",
       "commands": [
         "dotnet-ef"
-      ]
+      ],
+      "rollForward": false
     },
     "nbgv": {
-      "version": "3.6.133",
+      "version": "3.7.115",
       "commands": [
         "nbgv"
-      ]
+      ],
+      "rollForward": false
     },
     "redth.net.maui.check": {
       "version": "2.0.0",
       "commands": [
         "maui-check"
-      ]
+      ],
+      "rollForward": false
     },
     "dotnet-trace": {
-      "version": "8.0.510501",
+      "version": "9.0.607501",
       "commands": [
         "dotnet-trace"
-      ]
+      ],
+      "rollForward": false
     }
   }
 }
