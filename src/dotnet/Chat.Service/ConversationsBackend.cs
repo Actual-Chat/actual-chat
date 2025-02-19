@@ -146,8 +146,8 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
 
         var firstEntry = entries[0];
         var lastEntry = entries[^1];
-        var startEntryLid = firstEntry.Id.LocalId;
-        var endEntryLid = lastEntry.Id.LocalId;
+        var startEntryLid = firstEntry.LocalId;
+        var endEntryLid = lastEntry.LocalId;
         var range = new Range<long>(startEntryLid, endEntryLid + 1);
         var coveringTiles = IdTileStack.FirstLayer.GetCoveringTiles(range);
         // Take tile not on the edge, otherwise it can find more than one conversation
@@ -222,7 +222,10 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
                 false,
                 cancellationToken))
             .Collect(cancellationToken);
-        var entries = tiles.SelectMany(t => t.Entries).ToList();
+        var entries = tiles
+            .SelectMany(t => t.Entries)
+            .Select(c => new TextEntry(c))
+            .ToList();
         entries.AddRange(replySequence);
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
         // Do not update EndEntryLid, StartsAt, EndsAt as the conversation is not continuous

@@ -25,9 +25,9 @@ public class EntryGroupExtractorTest
         // Arrange
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
         var initialState = new ExtractorState(null, null);
-        var entries = new List<ChatEntry>
+        var entries = new List<TextEntry>
         {
-            new ChatEntry { Content = "System message", SystemEntry = new SystemEntry(), BeginsAt = DateTime.Now }
+            new (0, "System message", default, DateTime.Now, null, false, null)
         };
 
         // Act
@@ -42,11 +42,11 @@ public class EntryGroupExtractorTest
     {
         // Arrange
         var baseTime = new DateTime(2024, 1, 1, 12, 0, 0);
-        var entries = new List<ChatEntry>
+        var entries = new List<TextEntry>
         {
-            new() { Content = "Entry 1", BeginsAt = baseTime },
-            new() { Content = "Entry 2", BeginsAt = baseTime.AddHours(1) },
-            new() { Content = "Entry 3", BeginsAt = baseTime.AddHours(13 + 1) }, // 13 hours after entry2
+            new (0, "Entry 1", default, baseTime, null, false, null),
+            new (0, "Entry 2", default, baseTime.AddHours(1), null, false, null),
+            new (0, "Entry 3", default, baseTime.AddHours(13 + 1), null, false, null), // 13 hours after entry2
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
@@ -73,11 +73,14 @@ public class EntryGroupExtractorTest
         // Arrange
         var groupWordCount = 100;
         var entries = Enumerable.Range(0, 10)
-            .Select(i => new ChatEntry
-            {
-                Content = string.Join(" ", Enumerable.Repeat("word", 10)),
-                BeginsAt = DateTime.Now.AddMinutes(i),
-            })
+            .Select(i => new TextEntry(
+                0,
+                string.Join(" ", Enumerable.Repeat("word", 10)),
+                default,
+                DateTime.Now.AddMinutes(i),
+                null,
+                false,
+                null))
             .ToList();
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), groupWordCount);
@@ -96,11 +99,7 @@ public class EntryGroupExtractorTest
         // Arrange
         var groupWordCount = 100;
         var entries = Enumerable.Range(0, 10)
-            .Select(i => new ChatEntry
-            {
-                Content = string.Join(" ", Enumerable.Repeat("word", 10)),
-                BeginsAt = DateTime.Now.AddMinutes(i),
-            })
+            .Select(i => new TextEntry(0, string.Join(" ", Enumerable.Repeat("word", 10)), default, DateTime.Now.AddMinutes(i), null, false, null))
             .ToList();
 
         // Use a custom embeddings calculator with low similarity
@@ -119,11 +118,11 @@ public class EntryGroupExtractorTest
     public async Task ExtractGroups_ReplySequenceWithinGroup_IsNotCaptured()
     {
         // Arrange
-        var entries = new List<ChatEntry>
+        var entries = new List<TextEntry>
         {
-            new() { Id = BuildEntryId(1), Content = "Entry 1", BeginsAt = DateTime.Now },
-            new() { Id = BuildEntryId(2), Content = "Reply to Entry 1", BeginsAt = DateTime.Now.AddSeconds(10), RepliedEntryLid = 1 },
-            new() { Id = BuildEntryId(3), Content = "Entry 2", BeginsAt = DateTime.Now.AddMinutes(1) }
+            new(1, "Entry 1", default, DateTime.Now, null, false, null),
+            new(2, "Reply to Entry 1", default, DateTime.Now.AddSeconds(10), null, false, 1),
+            new(3, "Entry 2", default, DateTime.Now.AddMinutes(1), null, false, null)
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
@@ -146,13 +145,13 @@ public class EntryGroupExtractorTest
     public async Task ExtractGroups_ReplySequenceExceedsLimit_CompletesSequence()
     {
         // Arrange
-        var entries = new List<ChatEntry>
+        var entries = new List<TextEntry>
         {
-            new() { Id = BuildEntryId(2), Content = "Entry 1", BeginsAt = DateTime.Now },
-            new() { Id = BuildEntryId(3), Content = "Reply to Entry 1", BeginsAt = DateTime.Now.AddSeconds(10), RepliedEntryLid = 1 },
-            new() { Id = BuildEntryId(4), Content = "Comment to reply", BeginsAt = DateTime.Now.AddSeconds(20) },
-            new() { Id = BuildEntryId(5), Content = "Another comment", BeginsAt = DateTime.Now.AddSeconds(30) },
-            new() { Id = BuildEntryId(6), Content = "Another comment 2", BeginsAt = DateTime.Now.AddSeconds(30) },
+            new(2, "Entry 1", default, DateTime.Now, null, false, null),
+            new(3, "Reply to Entry 1", default, DateTime.Now.AddSeconds(10), null, false, 1),
+            new(4, "Comment to reply", default, DateTime.Now.AddSeconds(20), null, false, null),
+            new(5, "Another comment", default, DateTime.Now.AddSeconds(30), null, false, null),
+            new(6, "Another comment 2", default, DateTime.Now.AddSeconds(30), null, false, null),
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
@@ -170,11 +169,11 @@ public class EntryGroupExtractorTest
     public async Task ExtractGroups_ReplySequenceWithLongPause_CompletesSequence()
     {
         // Arrange
-        var entries = new List<ChatEntry>
+        var entries = new List<TextEntry>
         {
-            new() { Id = BuildEntryId(2), Content = "Entry 1", BeginsAt = DateTime.Now },
-            new() { Id = BuildEntryId(3), Content = "Reply to Entry 1", BeginsAt = DateTime.Now.AddSeconds(10), RepliedEntryLid = 1 },
-            new() { Id = BuildEntryId(4), Content = "Late Reply", BeginsAt = DateTime.Now.AddMinutes(1) },
+            new(2, "Entry 1", default, DateTime.Now, null, false, null),
+            new(3, "Reply to Entry 1", default, DateTime.Now.AddSeconds(10), null, false, 1),
+            new(4, "Late Reply", default, DateTime.Now.AddMinutes(1), null, false, null),
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());

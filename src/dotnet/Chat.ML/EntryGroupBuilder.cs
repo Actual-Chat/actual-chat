@@ -6,7 +6,7 @@ namespace ActualChat.Chat.ML;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class EntryGroupBuilder
 {
-    private readonly List<ChatEntry> _entries = [];
+    private readonly List<TextEntry> _entries = [];
     private Utf16ValueStringBuilder _stringBuilder = ZString.CreateStringBuilder();
     private int _wordCount;
     private string? _text;
@@ -15,7 +15,7 @@ public partial class EntryGroupBuilder
     private long _maxLid = 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public IReadOnlyList<ChatEntry> Entries => _entries;
+    public IReadOnlyList<TextEntry> Entries => _entries;
 
     [IgnoreDataMember, MemoryPackIgnore]
     public int WordCount => _wordCount;
@@ -58,7 +58,7 @@ public partial class EntryGroupBuilder
     }
 
     [JsonConstructor, MemoryPackConstructor]
-    public EntryGroupBuilder(IReadOnlyCollection<ChatEntry> entries)
+    public EntryGroupBuilder(IReadOnlyCollection<TextEntry> entries)
     {
         _entries = [.. entries];
         _wordCount = entries.Sum(entry => CountWords(entry.Content));
@@ -76,7 +76,7 @@ public partial class EntryGroupBuilder
         }
     }
 
-    public EntryGroupBuilder Add(ChatEntry entry)
+    public EntryGroupBuilder Add(TextEntry entry)
     {
         _entries.Add(entry);
         _wordCount += CountWords(entry.Content);
@@ -100,9 +100,9 @@ public partial class EntryGroupBuilder
         return this;
     }
 
-    public EntryGroupBuilder AddRange(IEnumerable<ChatEntry> entries)
+    public EntryGroupBuilder AddRange(IEnumerable<TextEntry> entries)
     {
-        if (entries is ICollection<ChatEntry> entryList) {
+        if (entries is ICollection<TextEntry> entryList) {
             _entries.AddRange(entryList);
             _wordCount += entryList.Sum(entry => CountWords(entry.Content));
             _text = null;
@@ -123,7 +123,7 @@ public partial class EntryGroupBuilder
         return this;
     }
 
-    public int GetPauseBetween(ChatEntry entry)
+    public int GetPauseBetween(TextEntry entry)
     {
         if (_entries.Count == 0)
             return 0;

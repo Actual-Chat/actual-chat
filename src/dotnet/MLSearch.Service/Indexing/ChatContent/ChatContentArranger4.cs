@@ -23,26 +23,36 @@ internal class ChatContentArranger4(
             .Select(c => c.Document)
             .FirstOrDefault();
 
+        var entryMap = new Dictionary<long, ChatEntry>();
+
         IReadOnlyList<ChatEntry> tailEntries = Array.Empty<ChatEntry>();
         // Preload document tails
         if (lastTailDocument is not null)
             tailEntries = await documentEntriesLoader.LoadTailEntries(lastTailDocument, cancellationToken)
                 .ConfigureAwait(false);
+        foreach (var chatEntry in tailEntries)
+            entryMap[chatEntry.LocalId] = chatEntry;
+        foreach (var chatEntry in bufferedEntries)
+            entryMap[chatEntry.LocalId] = chatEntry;
 
-        var extractorState = new ExtractorState(new EntryGroupBuilder(tailEntries), new EntryGroupBuilder());
-        var extractResult = await entryGroupExtractor.ExtractGroups(extractorState, bufferedEntries, cancellationToken)
+        var currentTextEntries = tailEntries.Select(e => new TextEntry(e)).ToList();
+        var extractorState = new ExtractorState(new EntryGroupBuilder(currentTextEntries), new EntryGroupBuilder());
+        var bufferedTextEntries = bufferedEntries.Select(e => new TextEntry(e)).ToList();
+        var extractResult = await entryGroupExtractor.ExtractGroups(extractorState, bufferedTextEntries, cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (var group in extractResult.Groups)
-            yield return new SourceEntries(null, null, group.Entries);
+        foreach (var group in extractResult.Groups) {
+            var entries = group.Entries.Select(e => entryMap[e.LocalId]).ToList();
+            yield return new SourceEntries(null, null, entries);
+        }
 
         // No other way to preserve tail for processing - so let's return it to be used in the next batch as tail document
         if (extractResult.State.CurrentGroup is null)
             yield break;
 
-        List<ChatEntry> tail = [..extractResult.State.CurrentGroup.Entries];
+        List<ChatEntry> tail = extractResult.State.CurrentGroup.Entries.Select(e => entryMap[e.LocalId]).ToList();
         if (extractResult.State.CurrentChunk is not null)
-            tail.AddRange(extractResult.State.CurrentChunk.Entries);
+            tail.AddRange(extractResult.State.CurrentChunk.Entries.Select(e => entryMap[e.LocalId]));
         if (tail.Count > 0)
             yield return new SourceEntries(null, null, tail);
 
