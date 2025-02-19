@@ -24,7 +24,7 @@ const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
 const MaintainCyclePeriodMs = 2000;
 const FixCyclePeriodMs = 300;
-const MaxResumeTimeMs = 600;
+const MaxResumeTimeMs = 1500;
 const MaxResumeCount = 60;
 const MaxInteractiveResumeCount = 3;
 const MaxSuspendTimeMs = 600;
