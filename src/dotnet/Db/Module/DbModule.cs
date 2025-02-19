@@ -67,7 +67,7 @@ public sealed class DbModule(IServiceProvider moduleServices)
         if (dbKind == DbKind.PostgreSql) {
             var healthChecks = services.AddHealthChecks();
             // due to iap proxy we need to restart pod in case it's not responding anymore
-            if (Settings.ShouldAddLivenessHealthCheck)
+            if (Settings.ShouldAddLivenessHealthCheck && !HostInfo.IsProductionInstance)
                 healthChecks
                     .AddNpgSql(
                         connectionStringSuffix,
