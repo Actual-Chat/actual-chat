@@ -9,7 +9,7 @@ public class EntryGroupBuilderTest
     public void AddEntry_IncreasesWordCount()
     {
         var builder = new EntryGroupBuilder();
-        var entry = new ChatEntry { Content = "Hello world" };
+        var entry = new TextEntry(0, "Hello world", AuthorId.None, new Moment(DateTime.Now), null, false, null);
 
         builder.Add(entry);
 
@@ -20,8 +20,8 @@ public class EntryGroupBuilderTest
     public void AddEntry_UpdatesAveragePauseBetweenEntries()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new ChatEntry { Content = "First entry", BeginsAt = DateTime.Now };
-        var entry2 = new ChatEntry { Content = "Second entry", BeginsAt = DateTime.Now.AddSeconds(10) };
+        var entry1 = new TextEntry(0, "First entry", AuthorId.None, new Moment(DateTime.Now), null, false, null);
+        var entry2 = new TextEntry(0, "Second entry", AuthorId.None, new Moment(DateTime.Now.AddSeconds(10)), null, false, null);
 
         builder.Add(entry1);
         builder.Add(entry2);
@@ -33,9 +33,9 @@ public class EntryGroupBuilderTest
     public void AddRange_AddsMultipleEntries()
     {
         var builder = new EntryGroupBuilder();
-        var entries = new List<ChatEntry> {
-            new() { Content = "First entry" },
-            new() { Content = "Second entry" },
+        var entries = new List<TextEntry> {
+            new TextEntry(0, "First entry", AuthorId.None, new Moment(DateTime.Now), null, false, null),
+            new TextEntry(0, "Second entry", AuthorId.None, new Moment(DateTime.Now), null, false, null),
         };
 
         builder.AddRange(entries);
@@ -47,8 +47,8 @@ public class EntryGroupBuilderTest
     public void Text_ReturnsConcatenatedContent()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new ChatEntry { Content = "Hello" };
-        var entry2 = new ChatEntry { Content = "world" };
+        var entry1 = new TextEntry(0, "Hello", AuthorId.None, new Moment(DateTime.Now), null, false, null);
+        var entry2 = new TextEntry(0, "world", AuthorId.None, new Moment(DateTime.Now), null, false, null);
 
         builder.Add(entry1);
         builder.Add(entry2);
@@ -60,7 +60,7 @@ public class EntryGroupBuilderTest
     public void Build_ReturnsEntryGroup()
     {
         var builder = new EntryGroupBuilder();
-        var entry = new ChatEntry { Content = "Hello world" };
+        var entry = new TextEntry(0, "Hello world", AuthorId.None, new Moment(DateTime.Now), null, false, null);
 
         builder.Add(entry);
         var entryGroup = builder.Build();
@@ -73,7 +73,7 @@ public class EntryGroupBuilderTest
     public void GetPauseBetween_ReturnsZeroForFirstEntry()
     {
         var builder = new EntryGroupBuilder();
-        var entry = new ChatEntry { Content = "Hello world" };
+        var entry = new TextEntry(0, "Hello world", AuthorId.None, new Moment(DateTime.Now), null, false, null);
 
         var pause = builder.GetPauseBetween(entry);
 
@@ -84,8 +84,8 @@ public class EntryGroupBuilderTest
     public void AddEntry_ResetsText()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new ChatEntry { Content = "Hello" };
-        var entry2 = new ChatEntry { Content = "world" };
+        var entry1 = new TextEntry(0, "Hello", AuthorId.None, new Moment(DateTime.Now), null, false, null);
+        var entry2 = new TextEntry(0, "world", AuthorId.None, new Moment(DateTime.Now), null, false, null);
 
         builder.Add(entry1);
         var textBefore = builder.Text;
@@ -98,8 +98,8 @@ public class EntryGroupBuilderTest
     public void SerializeAndDeserialize_EntryGroupBuilder()
     {
         var builder = new EntryGroupBuilder();
-        var entry1 = new ChatEntry { Content = "Hello" };
-        var entry2 = new ChatEntry { Content = "world" };
+        var entry1 = new TextEntry(0, "Hello", AuthorId.None, new Moment(DateTime.Now), null, false, null);
+        var entry2 = new TextEntry(0, "world", AuthorId.None, new Moment(DateTime.Now), null, false, null);
         builder.Add(entry1);
         builder.Add(entry2);
 

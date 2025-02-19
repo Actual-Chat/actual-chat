@@ -2,12 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat.ML;
 
-public record EntryGroup(IReadOnlyList<ChatEntry> Entries, int WordCount = 0, bool IsCompleted = false)
-{
-    public ChatId ChatId = Entries.Count > 0 ? Entries[0].ChatId : ChatId.None;
-}
+public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bool IsCompleted = false);
 
-public record ReplySequence(IReadOnlyList<ChatEntry> Entries);
+public record ReplySequence(IReadOnlyList<TextEntry> Entries);
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ExtractorState(
@@ -20,7 +17,7 @@ public interface IEntryGroupExtractor
 {
     Task<ExtractResult> ExtractGroups(
         ExtractorState? state,
-        IReadOnlyCollection<ChatEntry> entries,
+        IReadOnlyCollection<TextEntry> entries,
         CancellationToken cancellationToken);
 }
 
@@ -41,7 +38,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, int
 
     public async Task<ExtractResult> ExtractGroups(
         ExtractorState? state,
-        IReadOnlyCollection<ChatEntry> entries,
+        IReadOnlyCollection<TextEntry> entries,
         CancellationToken cancellationToken)
     {
         state ??= new ExtractorState(null, null);
@@ -55,10 +52,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, int
         var chunkBuilder = state.CurrentChunk ?? new EntryGroupBuilder();
 
         foreach (var entry in entries) {
-            if (string.IsNullOrWhiteSpace(entry.Content) || entry.IsSystemEntry)
-                continue;
-
-            if (entry.IsRemoved)
+            if (string.IsNullOrWhiteSpace(entry.Content))
                 continue;
 
             if (entry.RepliedEntryLid is { } repliedEntryLocalId)

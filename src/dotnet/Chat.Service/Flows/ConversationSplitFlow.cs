@@ -11,6 +11,7 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     protected override int CurrentFlowSetVersion => 1;
+    private ChatId ChatId => field != ChatId.None ? field : field = new ChatId(Id.Arguments, ParseOrNone.Option);
 
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Host.Services.GetRequiredService<ChatSettings>();
@@ -31,7 +32,7 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
-        var chatId = new ChatId(Id.Arguments);
+        var chatId = ChatId;
         cursor ??= new (new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option), 0);
         IReadOnlyList<ChatEntry> batch = await ChatsBackend
             .ListNewEntries(chatId, cursor.LastUpdatedId.LocalId, BatchSize, cancellationToken)
@@ -53,7 +54,9 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
         var state = ExtractorState;
-        var extractResult = await EntryGroupExtractor.ExtractGroups(state, batch, cancellationToken).ConfigureAwait(false);
+        var chatId = ChatId;
+        var entries = batch.Select(c => new TextEntry(c)).ToList();
+        var extractResult = await EntryGroupExtractor.ExtractGroups(state, entries, cancellationToken).ConfigureAwait(false);
         ExtractorState = extractResult.State;
 
         var groups = extractResult.Groups;
@@ -63,7 +66,6 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
             if (firstEntry.RepliedEntryLid is not {} entryLid)
                 continue; // First entry in the sequence is not a reply!
 
-            var chatId = firstEntry.ChatId;
             var tileRange = IdTileStack.FirstLayer.GetTile(entryLid).Range;
             var existingConversations = await ConversationsBackend.List(chatId, tileRange, cancellationToken).ConfigureAwait(false);
             var appendReply = new ConversationBackend_AppendReply(
@@ -82,7 +84,6 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
             return;
 
         foreach (var group in groups) {
-            var chatId = group.ChatId;
             var summarize = new ConversationBackend_Summarize(chatId, [..group.Entries]) {
                 DelayUntil = Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay,
             };

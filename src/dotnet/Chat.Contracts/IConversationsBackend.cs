@@ -1,4 +1,3 @@
-using ActualChat.Flows;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -41,7 +40,7 @@ public sealed partial record ConversationBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<ChatEntry> Entries
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<TextEntry> Entries
     ): ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
 {
     [IgnoreDataMember, MemoryPackIgnore]
@@ -56,7 +55,7 @@ public sealed partial record ConversationBackend_Summarize(
 public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, MemoryPackOrder(0)] ConversationId ConversationId,
     [property: DataMember, MemoryPackOrder(1)] long EntryLid,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<ChatEntry> ReplySequence
+    [property: DataMember, MemoryPackOrder(2)] ApiArray<TextEntry> ReplySequence
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
 {
     [IgnoreDataMember, MemoryPackIgnore]
