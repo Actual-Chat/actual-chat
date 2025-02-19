@@ -9,6 +9,7 @@ using ActualLab.Fusion.EntityFramework.Operations;
 using ActualLab.Fusion.EntityFramework.Operations.LogProcessing;
 using ActualLab.Fusion.EntityFramework.Redis;
 using ActualLab.Fusion.Operations.Internal;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ActualChat.Db.Module;
 
@@ -63,8 +64,17 @@ public sealed class DbModule(IServiceProvider moduleServices)
         };
 
         // Adding services
-        if (dbKind == DbKind.PostgreSql)
-            services.AddHealthChecks();
+        if (dbKind == DbKind.PostgreSql) {
+            var healthChecks = services.AddHealthChecks();
+            // due to iap proxy we need to restart pod in case it's not responding anymore
+            if (Settings.ShouldAddLivenessHealthCheck)
+                healthChecks
+                    .AddNpgSql(
+                        connectionStringSuffix,
+                        name: $"db_{contextName}_live",
+                        failureStatus: HealthStatus.Unhealthy,
+                        tags: [HealthTags.Live]);
+        }
         /*
             .AddNpgSql(
                 connectionStringSuffix,
