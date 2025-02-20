@@ -18,14 +18,14 @@
 
     <RequirementChecker>
         <Success>
-            <Router AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
+            <TweakedRouter AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
                 <Found Context="routeData">
                     <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
                 </Found>
                 <NotFound>
                     <PageNotFoundBlock/>
                 </NotFound>
-            </Router>
+            </TweakedRouter>
         </Success>
         <Failure Context="failures">
             <ErrorBlock Failures="@failures"/>
@@ -40,7 +40,9 @@
     private bool _readyToRender;
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
+    private readonly TaskCompletionSource _whenFirstRendered = TaskCompletionSourceExt.New();
 
+    [Inject] protected INavigationInterception NavigationInterception { get; init; } = null!;
     [Inject] protected UIHub UIHub { get; init; } = null!;
     protected IServiceProvider Services => UIHub.Services;
     protected HostInfo HostInfo => UIHub.HostInfo();
@@ -86,6 +88,18 @@
         if (!UIHub.IsInteractive)
             return;
 
+        // Navigation has changed in Blazor Web apps.
+        // Router component enables navigation interception for such an app in its OnAfterRenderAsync method.
+        // https://github.com/dotnet/aspnetcore/blob/a2e367760e2e4f52861767461833a12782192a19/src/Components/Components/src/Routing/Router.cs#L328
+        // When it's enabled, we can receive LocationChanged event as before with HistoryEntryState filled in;
+        // otherwise HistoryEntryState is always null.
+        // Since we don't render a Router component before History is initialized, we need to enable interception manually.
+        Log.LogInformation("Before checking _whenFirstRendered={IsRendered}", _whenFirstRendered.Task.IsCompleted);
+        await _whenFirstRendered.Task.ConfigureAwait(true); // Continue on the Blazor context.
+        Log.LogInformation("After checking _whenFirstRendered");
+        // I am not sure if it should be done both on server and wasm.
+        if (!hostKind.IsMauiApp())
+            await NavigationInterception.EnableNavigationInterceptionAsync().ConfigureAwait(true); // Continue on the Blazor context.
         var prepareFirstRenderTask = AppScopedServiceStarter.PrepareFirstRender(sessionHash);
         if (ReferenceEquals(UIModuleAssemblies, null)) {
             // Evaluate UIModuleAssemblies (just once - it's a static member)
@@ -113,5 +127,10 @@
         var shouldRender = _shouldRender;
         _shouldRender = false;
         return shouldRender;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (_whenFirstRendered.TrySetResult())
+            Log.LogInformation("OnAfterRender");
     }
 }
