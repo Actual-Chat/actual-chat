@@ -58,8 +58,7 @@ public static class PhoneNumberExt
             phoneNumber = phoneNumberUtil.Parse(source, region);
             return true;
         }
-        catch (Exception e) {
-            StaticLog.For<PhoneNumberUtil>().LogWarning(e, "!!! {Phone}", source);
+        catch (Exception) {
             phoneNumber = null;
             return false;
         }
