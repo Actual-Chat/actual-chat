@@ -11,6 +11,8 @@ public interface IEmbeddingsCalculator
 
 public class EmbeddingsCalculator : IEmbeddingsCalculator
 {
+    private const int MaxTokenCount = 8192;
+
     private readonly Uri? _predictionsUri;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new (JsonSerializerOptions.Default)
@@ -31,6 +33,9 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
 
         using var client = new HttpClient();
 
+        // TODO(AK): Tokenize and limit text to MaxTokenCount
+        // TODO(AK): Use OpenAI compatible embeddings API!
+        // var limitedText = text.Length > MaxTokenCount ? text[..512] : text;
         var json = JsonSerializer.Serialize(new Request(text), _jsonSerializerOptions);
         var jsonContent = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -39,8 +44,10 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
             throw StandardError.External("Failed to retrieve dense vectors");
 
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var result = JsonSerializer.Deserialize<double[][]>(responseBody, _jsonSerializerOptions);
-        return result![0];
+        var result = JsonSerializer.Deserialize<Response>(responseBody, _jsonSerializerOptions)?.Data;
+        return result![0].Embedding;
+        // var result = JsonSerializer.Deserialize<double[][]>(responseBody, _jsonSerializerOptions);
+        // return Normalize(result![0]);
     }
 
     public double CosineSimilarity(double[] vector1, double[] vector2)
@@ -57,5 +64,27 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
         return vector.Select(v => v / magnitude).ToArray();
     }
 
-    private record Request(string Input);
+    private record Request(string Input, string Model = "snowflake-arctic-embed-l-v2.0");
+
+    private record Response(
+        string Id,
+        string Object,
+        long Created,
+        string Model,
+        EmbeddingData[] Data,
+        Usage Usage
+    );
+
+    private record EmbeddingData(
+        int Index,
+        string Object,
+        double[] Embedding
+    );
+
+    private record Usage(
+        int PromptTokens,
+        int TotalTokens,
+        int CompletionTokens,
+        object? PromptTokensDetails
+    );
 }

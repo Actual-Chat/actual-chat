@@ -29,12 +29,15 @@ public enum EntryGroupLimit
     Large = 2000,
 }
 
-public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, int? groupWordCount = null) : IEntryGroupExtractor
+public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILogger<EntryGroupExtractor> log, int? groupWordCount = null) : IEntryGroupExtractor
 {
     private const int ChunkWordCount = 100;
     private const int MaxPauseBetweenEntries = 60 * 60 * 12; // 12 hours
+    private const int MinPauseBetweenSpeechEntries = 30; // 30 seconds
+    private const int MinPauseBetweenTextEntries = 5 * 60; // 5 minutes
 
-    public IEmbeddingsCalculator EmbeddingsCalculator { get; } = embeddingsCalculator;
+    private IEmbeddingsCalculator EmbeddingsCalculator { get; } = embeddingsCalculator;
+    private ILogger Log { get; } = log;
 
     public async Task<ExtractResult> ExtractGroups(
         ExtractorState? state,
@@ -84,7 +87,8 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, int
             if (chunkBuilder.Entries.Count > 1) {
                 // Complete the group if the pause between entries is too long
                 var currentPause = chunkBuilder.GetPauseBetween(entry);
-                if (currentPause > chunkBuilder.AveragePauseBetweenEntries * 10 || currentPause > MaxPauseBetweenEntries) {
+                var minPause = entry.IsTranscript ? MinPauseBetweenSpeechEntries : MinPauseBetweenTextEntries;
+                if ((currentPause > minPause && currentPause > chunkBuilder.AveragePauseBetweenEntries * 10) || currentPause > MaxPauseBetweenEntries) {
                     groupBuilder.AddRange(chunkBuilder.Entries);
                     groups.Add(groupBuilder.Build());
                     chunkBuilder = new EntryGroupBuilder();
@@ -132,7 +136,13 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, int
             return []; // Skip calculating embeddings for small chunks
 
         var text = groupBuilder.Text;
-        return await EmbeddingsCalculator.CalculateVector(text, cancellationToken).ConfigureAwait(false);
+        try {
+            return await EmbeddingsCalculator.CalculateVector(text, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ExternalError e) {
+            Log.LogWarning(e, "Failed to calculate embeddings for text: {Text}", text[..Math.Min(20, text.Length)]);
+            return [];
+        }
     }
 
     private bool ShouldMerge(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)

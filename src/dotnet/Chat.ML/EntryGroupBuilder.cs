@@ -41,8 +41,10 @@ public partial class EntryGroupBuilder
             if (_stringBuilder.Length != 0)
                 return _text = _stringBuilder.ToString();
 
-            foreach (var entry in _entries)
+            foreach (var entry in _entries) {
                 _stringBuilder.Append(entry.Content);
+                _stringBuilder.Append('\n');
+            }
             return _text = _stringBuilder.ToString();
         }
     }
@@ -78,15 +80,13 @@ public partial class EntryGroupBuilder
 
     public EntryGroupBuilder Add(TextEntry entry)
     {
+        var currentPause = GetPauseBetween(entry);
         _entries.Add(entry);
         _wordCount += CountWords(entry.Content);
         Embeddings = [];
         _text = null;
-        if (_entries.Count > 1) {
-            var lastEntry = _entries[^2];
-            var currentPause = Math.Max(0, (entry.BeginsAt - (lastEntry.EndsAt ?? lastEntry.BeginsAt)).TotalSeconds);
-            _averagePauseBetweenEntries = ((_averagePauseBetweenEntries * (_entries.Count - 2)) + (int)currentPause) / (_entries.Count - 1);
-        }
+        if (_entries.Count > 1)
+            _averagePauseBetweenEntries = ((_averagePauseBetweenEntries * (_entries.Count - 2)) + currentPause) / (_entries.Count - 1);
         if (entry.LocalId < _minLid)
             _minLid = entry.LocalId;
         if (entry.LocalId > _maxLid)
@@ -128,8 +128,8 @@ public partial class EntryGroupBuilder
         if (_entries.Count == 0)
             return 0;
 
-        var lastEntry = _entries[^1];
-        return (int)Math.Max(0, (entry.BeginsAt - (lastEntry.EndsAt ?? lastEntry.BeginsAt)).TotalSeconds);
+        var lastEntryTime = _entries.Max(e => e.EndsAt ?? e.BeginsAt);
+        return (int)Math.Max(0, (entry.BeginsAt - lastEntryTime).TotalSeconds);
     }
 
     public EntryGroup Build(bool isCompleted = true)

@@ -102,7 +102,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 		
         // Keyed registration for ConversationSplitFlow
         services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
-            (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>()));
+            (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
 
