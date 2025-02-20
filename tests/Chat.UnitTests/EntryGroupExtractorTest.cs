@@ -1,14 +1,16 @@
+using System.IO.Compression;
 using ActualChat.Chat.ML;
+using Newtonsoft.Json;
 
 namespace ActualChat.Chat.UnitTests;
 
-public class EntryGroupExtractorTest
+public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupExtractor> log) : TestBase(@out, log)
 {
     [Fact]
     public async Task ExtractGroups_EmptyEntries_ReturnsEmpty()
     {
         // Arrange
-        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
         var initialState = new ExtractorState(null, null);
 
         // Act
@@ -23,7 +25,7 @@ public class EntryGroupExtractorTest
     public async Task ExtractGroups_SystemEntry_IsIgnored()
     {
         // Arrange
-        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
         var initialState = new ExtractorState(null, null);
         var entries = new List<TextEntry>
         {
@@ -49,7 +51,7 @@ public class EntryGroupExtractorTest
             new (0, "Entry 3", default, baseTime.AddHours(13 + 1), null, false, null), // 13 hours after entry2
         };
 
-        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
         var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
@@ -83,7 +85,7 @@ public class EntryGroupExtractorTest
                 null))
             .ToList();
 
-        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), groupWordCount);
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log, groupWordCount);
 
         // Act
         var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
@@ -104,7 +106,7 @@ public class EntryGroupExtractorTest
 
         // Use a custom embeddings calculator with low similarity
         var lowSimilarityCalculator = new LowSimilarityEmbeddingsCalculator();
-        var extractor = new EntryGroupExtractor(lowSimilarityCalculator, groupWordCount);
+        var extractor = new EntryGroupExtractor(lowSimilarityCalculator, log, groupWordCount);
 
         // Act
         var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
@@ -125,7 +127,7 @@ public class EntryGroupExtractorTest
             new(3, "Entry 2", default, DateTime.Now.AddMinutes(1), null, false, null)
         };
 
-        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
         var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
@@ -154,7 +156,7 @@ public class EntryGroupExtractorTest
             new(6, "Another comment 2", default, DateTime.Now.AddSeconds(30), null, false, null),
         };
 
-        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
         var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
@@ -176,7 +178,7 @@ public class EntryGroupExtractorTest
             new(4, "Late Reply", default, DateTime.Now.AddMinutes(1), null, false, null),
         };
 
-        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator());
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
         var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
@@ -185,6 +187,64 @@ public class EntryGroupExtractorTest
         result.ReplySequences.Should().ContainSingle();
         var replySequence = result.ReplySequences[0];
         replySequence.Entries.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ExtractGroups_ExtractGroupsFromRealData_ShouldProvideConversations()
+    {
+        // Arrange
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
+        var initialState = new ExtractorState(null, null);
+        var entries = await ReadTestEntries("./data/chat_entries.zip");
+
+        // Act
+        var result = await extractor.ExtractGroups(initialState, entries, CancellationToken.None);
+
+        // Assert
+        result.Groups.Should().NotBeEmpty();
+        result.Groups.Count.Should().BeLessThan(50);
+        result.Groups.Should().AllSatisfy(group => group.Entries.Should().NotBeEmpty());
+    }
+
+    [Fact(Skip = "For exploratory purposes only")]
+    public async Task ExtractGroups_ExtractGroupsFromRealDataWithEmbeddings_ShouldProvideConversations()
+    {
+        // Arrange
+        var settings = new EmbeddingSettings {
+            // PredictionsUri = "http://localhost:28080/predictions/Alibaba-NLP_gte-multilingual-base",
+            PredictionsUri = "http://localhost:8000/v1/embeddings", // Experimenting with another (much faster!) model served with vllm
+        };
+        var extractor = new EntryGroupExtractor(new EmbeddingsCalculator(settings), log);
+        var initialState = new ExtractorState(null, null);
+        var entries = await ReadTestEntries("./data/chat_entries.zip");
+
+        // Act
+        var result = await extractor.ExtractGroups(initialState, entries, CancellationToken.None);
+
+        // Assert
+        result.Groups.Should().NotBeEmpty();
+        result.Groups.Count.Should().BeLessThan(50);
+        result.Groups.Should().AllSatisfy(group => group.Entries.Should().NotBeEmpty());
+    }
+
+
+    private async Task<IReadOnlyCollection<TextEntry>> ReadTestEntries(string path)
+    {
+        using var archive = ZipFile.OpenRead(path);
+        var entry = archive.Entries.First();
+        await using var stream = entry.Open();
+        using var reader = new StreamReader(stream);
+        var json = await reader.ReadToEndAsync();
+        return JsonConvert.DeserializeObject<List<JsonTextEntry>>(json)!
+            .Select(jsonEntry => new TextEntry(
+                jsonEntry.LocalId,
+                jsonEntry.Content,
+                new AuthorId(jsonEntry.AuthorId),
+                new Moment(jsonEntry.BeginsAt),
+                jsonEntry.EndsAt != null ? new Moment(jsonEntry.EndsAt.Value) : null,
+                jsonEntry.AudioEntryId != null,
+                jsonEntry.RepliedChatEntryId))
+            .ToList();
     }
 
     private class HighSimilarityEmbeddingsCalculator : IEmbeddingsCalculator
@@ -210,4 +270,16 @@ public class EntryGroupExtractorTest
         public double[] Normalize(double[] vector)
             => vector;
     }
+
+    public record JsonTextEntry(
+        [property: JsonProperty("local_id")] long LocalId,
+        [property: JsonProperty("author_id")] string AuthorId,
+        [property: JsonProperty("begins_at")] DateTime BeginsAt,
+        [property: JsonProperty("ends_at")] DateTime? EndsAt,
+        [property: JsonProperty("duration")] double Duration,
+        [property: JsonProperty("content")] string Content,
+        [property: JsonProperty("audio_entry_id")] long? AudioEntryId,
+        [property: JsonProperty("replied_chat_entry_id")] long? RepliedChatEntryId,
+        [property: JsonProperty("is_system_entry")] bool IsSystemEntry
+    );
 }
