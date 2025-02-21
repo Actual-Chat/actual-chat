@@ -18,6 +18,9 @@ public partial class EntryGroupBuilder
     public IReadOnlyList<TextEntry> Entries => _entries;
 
     [IgnoreDataMember, MemoryPackIgnore]
+    public IDictionary<AuthorId, int> AuthorActivity { get; } = new Dictionary<AuthorId, int>();
+
+    [IgnoreDataMember, MemoryPackIgnore]
     public int WordCount => _wordCount;
 
     [DataMember(Order = 1), MemoryPackOrder(1)]
@@ -55,7 +58,6 @@ public partial class EntryGroupBuilder
     public EntryGroupBuilder(EntryGroup? entryGroup)
     {
         _entries = entryGroup != null ? [..entryGroup.Entries] : [];
-        _wordCount = entryGroup?.WordCount ?? 0;
         Initialize();
     }
 
@@ -63,7 +65,6 @@ public partial class EntryGroupBuilder
     public EntryGroupBuilder(IReadOnlyCollection<TextEntry> entries)
     {
         _entries = [.. entries];
-        _wordCount = entries.Sum(entry => CountWords(entry.Content));
         Initialize();
     }
 
@@ -75,6 +76,11 @@ public partial class EntryGroupBuilder
                 _minLid = entry.LocalId;
             if (entry.LocalId > _maxLid)
                 _maxLid = entry.LocalId;
+            var entryWordCount = CountWords(entry.Content);
+            AuthorActivity[entry.AuthorId] = AuthorActivity.TryGetValue(entry.AuthorId, out var count)
+                ? count + entryWordCount
+                : entryWordCount;
+            _wordCount += entryWordCount;
         }
     }
 
@@ -82,8 +88,11 @@ public partial class EntryGroupBuilder
     {
         var currentPause = GetPauseBetween(entry);
         _entries.Add(entry);
-        _wordCount += CountWords(entry.Content);
-        Embeddings = [];
+        var entryWordCount = CountWords(entry.Content);
+        _wordCount += entryWordCount;
+        AuthorActivity[entry.AuthorId] = AuthorActivity.TryGetValue(entry.AuthorId, out var count)
+            ? count + entryWordCount
+            : entryWordCount;
         _text = null;
         if (_entries.Count > 1)
             _averagePauseBetweenEntries = ((_averagePauseBetweenEntries * (_entries.Count - 2)) + currentPause) / (_entries.Count - 1);
@@ -92,6 +101,7 @@ public partial class EntryGroupBuilder
         if (entry.LocalId > _maxLid)
             _maxLid = entry.LocalId;
 
+        Embeddings = [];
         if (_stringBuilder.Length == 0)
             return this;
 
@@ -110,6 +120,11 @@ public partial class EntryGroupBuilder
             if (_stringBuilder.Length != 0)
                 _stringBuilder.Clear();
             foreach (var entry in entryList) {
+                var entryWordCount = CountWords(entry.Content);
+                _wordCount += entryWordCount;
+                AuthorActivity[entry.AuthorId] = AuthorActivity.TryGetValue(entry.AuthorId, out var count)
+                    ? count + entryWordCount
+                    : entryWordCount;
                 if (entry.LocalId < _minLid)
                     _minLid = entry.LocalId;
                 if (entry.LocalId > _maxLid)

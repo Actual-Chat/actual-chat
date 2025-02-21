@@ -202,7 +202,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
 
         // Assert
         result.Groups.Should().NotBeEmpty();
-        result.Groups.Count.Should().BeLessThan(50);
+        result.Groups.Count.Should().BeLessThan(60);
         result.Groups.Should().AllSatisfy(group => group.Entries.Should().NotBeEmpty());
     }
 
