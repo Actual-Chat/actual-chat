@@ -42,10 +42,13 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
     {
         if (NeedsReindex()) {
             IsReindexing = true;
-            Cursor = default;
+            ResetState();
         }
         return ActualLab.Async.TaskExt.TrueTask;
     }
+
+    protected virtual void ResetState()
+        => Cursor = default;
 
     protected abstract Task<BatchIndexingResult<TCursor>> Process(TCursor? cursor, CancellationToken cancellationToken);
 

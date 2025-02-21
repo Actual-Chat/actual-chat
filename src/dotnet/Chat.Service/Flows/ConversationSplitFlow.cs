@@ -28,6 +28,12 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public ExtractorState? ExtractorState { get; protected set; }
 
+    protected override void ResetState()
+    {
+        base.ResetState();
+        ExtractorState = null;
+    }
+
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
@@ -84,6 +90,11 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
             return;
 
         foreach (var group in groups) {
+            if (group.WordCount < Settings.MinConversationWords)
+                continue;
+            if (group.Entries.Count < Settings.MinConversationEntries)
+                continue;
+
             var summarize = new ConversationBackend_Summarize(chatId, [..group.Entries]) {
                 DelayUntil = Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay,
             };
