@@ -73,15 +73,29 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbConversation = chatId.IsNone ? null :
+        var dbConversation = conversationId.IsNone ? null :
             await dbContext.Conversations.ForUpdate()
-                // ReSharper disable once AccessToModifiedClosure
                 .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
                 .ConfigureAwait(false);
         var oldConversation = dbConversation?.ToModel();
         Conversation conversation;
         if (change.IsCreate(out var update)) {
             oldConversation.RequireNull();
+
+            // Get existing conversations that overlap with the new one
+            var startEntryLid = conversationId.StartEntryLid;
+            var endEntryLid = change.Create.Value.EndEntryLid;
+            var sConversationIds = await dbContext.Conversations
+                .Where(c => c.ChatId == chatId && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Select(c => c.Id)
+                .OrderBy(c => c)
+                .ToHashSetAsync(cancellationToken)
+                .ConfigureAwait(false);
+            // Remove other overlapping conversations
+            await dbContext.Conversations
+                .Where(c => sConversationIds.Contains(c.Id))
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             conversation = new Conversation(conversationId);
             conversation = ApplyDiff(conversation, update);
@@ -93,10 +107,35 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
             // if (expectedVersion != 0)
             //     dbConversation.RequireVersion(expectedVersion);
             // else
-            dbConversation.Require();
 
-            conversation = ApplyDiff(dbConversation.ToModel(), update);
-            dbConversation.UpdateFrom(conversation);
+            // Get existing conversations that overlap with the new one
+            var startEntryLid = conversationId.StartEntryLid;
+            var endEntryLid = change.Update.Value.EndEntryLid;
+            var sConversationIds = await dbContext.Conversations
+                .Where(c => c.ChatId == chatId && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Select(c => c.Id)
+                .OrderBy(c => c)
+                .ToHashSetAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (sConversationIds.Remove(conversationId)) {
+                // Update existing conversation
+                dbConversation.Require();
+
+                conversation = ApplyDiff(dbConversation.ToModel(), update);
+                dbConversation.UpdateFrom(conversation);
+            }
+            else {
+                // Create new conversation regardless of the change kind
+                conversation = new Conversation(conversationId);
+                conversation = ApplyDiff(conversation, update);
+                dbConversation = new DbConversation(conversation);
+                dbContext.Add(dbConversation);
+            }
+            // Remove other overlapping conversations
+            await dbContext.Conversations
+                .Where(c => sConversationIds.Contains(c.Id))
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
         }
         else if (change.IsRemove()) {
             dbConversation.Require();
