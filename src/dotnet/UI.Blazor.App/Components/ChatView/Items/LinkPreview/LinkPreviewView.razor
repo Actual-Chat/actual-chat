@@ -139,12 +139,10 @@
         if (uri == null)
             return Model.None;
 
-        var localUrlOpt = LocalUrl.FromAbsolute(linkPreview.Url, UrlMapper);
-        if (localUrlOpt == null)
-            return new Model { ChatEntry = chatEntry, Uri = uri };
-
-        var localLinkModel = await ComputeLocalLinkModel(localUrlOpt.Value, cancellationToken);
-        return new Model { ChatEntry = chatEntry, Uri = uri, LocalLink = localLinkModel };
+        var model = new Model { ChatEntry = chatEntry, Preview = linkPreview, Uri = uri };
+        return LocalUrl.FromAbsolute(linkPreview.Url, UrlMapper) is { } localUrlOpt
+            ? model with { LocalLink = await ComputeLocalLinkModel(localUrlOpt.Value, cancellationToken).ConfigureAwait(false) }
+            : model;
     }
 
     private async Task<LocalLinkPreview.Model> ComputeLocalLinkModel(LocalUrl localUrl, CancellationToken cancellationToken)
@@ -181,7 +179,7 @@
         public static readonly Model None = new();
 
         public ChatEntry ChatEntry { get; init; } = null!;
-        public LinkPreview Preview => ChatEntry.LinkPreviews[0];
+        public LinkPreview Preview { get; init; } = null!;
         public Uri Uri { get; init; } = null!;
         public LocalLinkPreview.Model? LocalLink { get; init; }
     }
