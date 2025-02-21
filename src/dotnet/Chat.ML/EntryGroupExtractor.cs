@@ -99,8 +99,9 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
             chunkBuilder.Add(entry);
             if (chunkBuilder.WordCount >= ChunkWordCount) {
                 // Calculate embeddings for the chunk and group
-                chunkBuilder.Embeddings = await CalculateEmbeddings(chunkBuilder, cancellationToken).ConfigureAwait(false);
-                groupBuilder.Embeddings = await CalculateEmbeddings(groupBuilder, cancellationToken).ConfigureAwait(false);
+                // NOTE(AK): Skip embedding calculation for now
+                // chunkBuilder.Embeddings = await CalculateEmbeddings(chunkBuilder, cancellationToken).ConfigureAwait(false);
+                // groupBuilder.Embeddings = await CalculateEmbeddings(groupBuilder, cancellationToken).ConfigureAwait(false);
                 if (ShouldMerge(groupBuilder, chunkBuilder)) {
                     groupBuilder.AddRange(chunkBuilder.Entries);
                     chunkBuilder = new EntryGroupBuilder();
@@ -147,12 +148,40 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
 
     private bool ShouldMerge(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
     {
+        if (chunkBuilder.WordCount == 0)
+            return false;
+
+        var pauseBetweenGroups = groupBuilder.GetPauseBetween(chunkBuilder.Entries[0]);
+        var isChunkCloseToGroup = pauseBetweenGroups <= groupBuilder.AveragePauseBetweenEntries * 3;
+        var authorActivityIntersection = GetAuthorActivityIntersection(groupBuilder, chunkBuilder);
         var shouldMerge = groupBuilder.WordCount < ChunkWordCount
-            || IsSimilar(groupBuilder.Embeddings, chunkBuilder.Embeddings);
+            || isChunkCloseToGroup
+            || authorActivityIntersection > 0.3d;
+            // Do not use embeddings for now
+            // TODO(AK): Use lazy embeddings calculation for similarity check
+            // || AreSimilar(groupBuilder.Embeddings, chunkBuilder.Embeddings);
         return shouldMerge;
     }
 
-    private bool IsSimilar(double[] a, double[] b)
+    private double GetAuthorActivityIntersection(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
+    {
+        var groupActivity = groupBuilder.AuthorActivity;
+        var chunkActivity = chunkBuilder.AuthorActivity;
+
+        if (groupActivity.Count == 0 || chunkActivity.Count == 0)
+            return 0.0;
+
+        var intersectionWeight = 0.0;
+        var totalWeight = groupActivity.Values.Sum() + chunkActivity.Values.Sum();
+
+        foreach (var author in groupActivity.Keys)
+            if (chunkActivity.TryGetValue(author, out var chunkWeight))
+                intersectionWeight += Math.Min(groupActivity[author], chunkWeight);
+
+        return intersectionWeight * 2 / totalWeight;
+    }
+
+    private bool AreSimilar(double[] a, double[] b)
     {
         if (a.Length == 0 || b.Length == 0)
             return true;
