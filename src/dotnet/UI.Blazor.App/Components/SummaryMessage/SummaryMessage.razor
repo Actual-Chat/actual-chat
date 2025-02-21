@@ -1,0 +1,50 @@
+@{
+    var cls = _isOpen ? "open-details" : "closed-details";
+    var detailsCls = _isOpen ? "show" : "";
+}
+
+@if (!_showMessages) {
+    <div class="summary-message @cls">
+        <TestSummaryMessageContent
+            Class="@detailsCls"
+            Title="@SummaryData.Title"
+            MessageCount="@SummaryData.Messages.Length"
+            ShowDetails="@OnClick"
+            ShowMessages="@ShowMessages"/>
+
+        <SummaryMessageFooter SummaryData="@SummaryData"/>
+    </div>
+} else {
+    <SummaryMessageHeader
+        Class="sticky-summary-header"
+        Title="@SummaryData.Title"
+        ShowMessages="@ShowMessages"
+        MessageCount="@SummaryData.Messages.Length"/>
+    <div class="summary-message-full flex-y gap-y-2 px-4">
+        @foreach (var message in SummaryData.Messages) {
+            <div id="@message.Id" class="c-message message-wrapper">
+                <span class="chat-message-markup">@message.Entry</span>
+            </div>
+        }
+    </div>
+    <SummaryMessageFooter
+        Class="sticky-summary-footer"
+        SummaryData="@SummaryData"/>
+}
+
+@code {
+    private bool _isOpen;
+    private bool _showMessages;
+
+    [Parameter] public SummaryTestPageContent.SummaryInfo SummaryData { get; set; } = null!;
+
+    private void OnClick() {
+        _isOpen = !_isOpen;
+        StateHasChanged();
+    }
+
+    private void ShowMessages() {
+        _showMessages = !_showMessages;
+        StateHasChanged();
+    }
+}

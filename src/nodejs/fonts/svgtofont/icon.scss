@@ -1,10 +1,10 @@
 @font-face {font-family: "icon";
-  src: url('icon.eot?t=1738819406180'); /* IE9*/
-  src: url('icon.eot?t=1738819406180#iefix') format('embedded-opentype'), /* IE6-IE8 */
-  url("icon.woff2?t=1738819406180") format("woff2"),
-  url("icon.woff?t=1738819406180") format("woff"),
-  url('icon.ttf?t=1738819406180') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
-  url('icon.svg?t=1738819406180#icon') format('svg'); /* iOS 4.1- */
+  src: url('icon.eot?t=1740143836301'); /* IE9*/
+  src: url('icon.eot?t=1740143836301#iefix') format('embedded-opentype'), /* IE6-IE8 */
+  url("icon.woff2?t=1740143836301") format("woff2"),
+  url("icon.woff?t=1740143836301") format("woff"),
+  url('icon.ttf?t=1740143836301') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+  url('icon.svg?t=1740143836301#icon') format('svg'); /* iOS 4.1- */
 }
 
 [class^="icon-"], [class*=" icon-"] {
@@ -106,91 +106,93 @@
 .icon-message-ellipse:before { content: "\ea59"; }
 .icon-message-square-fill:before { content: "\ea5a"; }
 .icon-message-square:before { content: "\ea5b"; }
-.icon-mic-2:before { content: "\ea5c"; }
-.icon-mic-bubble:before { content: "\ea5d"; }
-.icon-mic-fill:before { content: "\ea5e"; }
-.icon-mic-off-fill:before { content: "\ea5f"; }
-.icon-mic-off:before { content: "\ea60"; }
-.icon-mic:before { content: "\ea61"; }
-.icon-minus-circle:before { content: "\ea62"; }
-.icon-monitor:before { content: "\ea63"; }
-.icon-moon-fill:before { content: "\ea64"; }
-.icon-more-vertical-2:before { content: "\ea65"; }
-.icon-more-vertical:before { content: "\ea66"; }
-.icon-night-mode-1:before { content: "\ea67"; }
-.icon-night-mode:before { content: "\ea68"; }
-.icon-not-listen:before { content: "\ea69"; }
-.icon-notify-phone:before { content: "\ea6a"; }
-.icon-options-2:before { content: "\ea6b"; }
-.icon-paper-plane:before { content: "\ea6c"; }
-.icon-pause-circle-fill:before { content: "\ea6d"; }
-.icon-pause-fill:before { content: "\ea6e"; }
-.icon-people-2:before { content: "\ea6f"; }
-.icon-people-fill:before { content: "\ea70"; }
-.icon-people:before { content: "\ea71"; }
-.icon-person-add-2:before { content: "\ea72"; }
-.icon-person-add-fill:before { content: "\ea73"; }
-.icon-person-add:before { content: "\ea74"; }
-.icon-person:before { content: "\ea75"; }
-.icon-phone-call:before { content: "\ea76"; }
-.icon-phone-fill:before { content: "\ea77"; }
-.icon-phone-missed:before { content: "\ea78"; }
-.icon-phone-off:before { content: "\ea79"; }
-.icon-phone:before { content: "\ea7a"; }
-.icon-pin-to-navbar:before { content: "\ea7b"; }
-.icon-pin:before { content: "\ea7c"; }
-.icon-place-small:before { content: "\ea7d"; }
-.icon-place:before { content: "\ea7e"; }
-.icon-play-circle-fill:before { content: "\ea7f"; }
-.icon-play-fill:before { content: "\ea80"; }
-.icon-plus:before { content: "\ea81"; }
-.icon-QR:before { content: "\ea82"; }
-.icon-question-mark-bubble:before { content: "\ea83"; }
-.icon-question-mark-circle:before { content: "\ea84"; }
-.icon-radio-button-on-fill:before { content: "\ea85"; }
-.icon-realtime-translation:before { content: "\ea86"; }
-.icon-recorder-left-half:before { content: "\ea87"; }
-.icon-recorder-right-half:before { content: "\ea88"; }
-.icon-refresh:before { content: "\ea89"; }
-.icon-reply:before { content: "\ea8a"; }
-.icon-rewind-left-fill:before { content: "\ea8b"; }
-.icon-rewind-right-fill:before { content: "\ea8c"; }
-.icon-search:before { content: "\ea8d"; }
-.icon-select:before { content: "\ea8e"; }
-.icon-settings-2-fill:before { content: "\ea8f"; }
-.icon-settings:before { content: "\ea90"; }
-.icon-share-fill:before { content: "\ea91"; }
-.icon-share-more:before { content: "\ea92"; }
-.icon-share:before { content: "\ea93"; }
-.icon-silence:before { content: "\ea94"; }
-.icon-skip-back-fill:before { content: "\ea95"; }
-.icon-skip-forward-fill:before { content: "\ea96"; }
-.icon-sort-by-alphabet:before { content: "\ea97"; }
-.icon-sort-by-me:before { content: "\ea98"; }
-.icon-sort-by-message:before { content: "\ea99"; }
-.icon-sort-by-recent:before { content: "\ea9a"; }
-.icon-star:before { content: "\ea9b"; }
-.icon-status:before { content: "\ea9c"; }
-.icon-stop-fill:before { content: "\ea9d"; }
-.icon-sync:before { content: "\ea9e"; }
-.icon-talking:before { content: "\ea9f"; }
-.icon-text:before { content: "\eaa0"; }
-.icon-transcription:before { content: "\eaa1"; }
-.icon-trash-fill:before { content: "\eaa2"; }
-.icon-trash02:before { content: "\eaa3"; }
-.icon-trash03:before { content: "\eaa4"; }
-.icon-unpin-from-navbar:before { content: "\eaa5"; }
-.icon-unpin:before { content: "\eaa6"; }
-.icon-unread:before { content: "\eaa7"; }
-.icon-vector-left:before { content: "\eaa8"; }
-.icon-vector-right:before { content: "\eaa9"; }
-.icon-video:before { content: "\eaaa"; }
-.icon-voice-01:before { content: "\eaab"; }
-.icon-volume-off-fill:before { content: "\eaac"; }
-.icon-volume-off:before { content: "\eaad"; }
-.icon-volume-settings:before { content: "\eaae"; }
-.icon-volume-up-fill:before { content: "\eaaf"; }
-.icon-volume-up:before { content: "\eab0"; }
+.icon-message-stars:before { content: "\ea5c"; }
+.icon-mic-2:before { content: "\ea5d"; }
+.icon-mic-bubble:before { content: "\ea5e"; }
+.icon-mic-fill:before { content: "\ea5f"; }
+.icon-mic-off-fill:before { content: "\ea60"; }
+.icon-mic-off:before { content: "\ea61"; }
+.icon-mic:before { content: "\ea62"; }
+.icon-minus-circle:before { content: "\ea63"; }
+.icon-monitor:before { content: "\ea64"; }
+.icon-moon-fill:before { content: "\ea65"; }
+.icon-more-vertical-2:before { content: "\ea66"; }
+.icon-more-vertical:before { content: "\ea67"; }
+.icon-night-mode-1:before { content: "\ea68"; }
+.icon-night-mode:before { content: "\ea69"; }
+.icon-not-listen:before { content: "\ea6a"; }
+.icon-notify-phone:before { content: "\ea6b"; }
+.icon-options-2:before { content: "\ea6c"; }
+.icon-paper-plane:before { content: "\ea6d"; }
+.icon-pause-circle-fill:before { content: "\ea6e"; }
+.icon-pause-fill:before { content: "\ea6f"; }
+.icon-people-2:before { content: "\ea70"; }
+.icon-people-fill:before { content: "\ea71"; }
+.icon-people:before { content: "\ea72"; }
+.icon-person-add-2:before { content: "\ea73"; }
+.icon-person-add-fill:before { content: "\ea74"; }
+.icon-person-add:before { content: "\ea75"; }
+.icon-person:before { content: "\ea76"; }
+.icon-phone-call:before { content: "\ea77"; }
+.icon-phone-fill:before { content: "\ea78"; }
+.icon-phone-missed:before { content: "\ea79"; }
+.icon-phone-off:before { content: "\ea7a"; }
+.icon-phone:before { content: "\ea7b"; }
+.icon-pin-to-navbar:before { content: "\ea7c"; }
+.icon-pin:before { content: "\ea7d"; }
+.icon-place-small:before { content: "\ea7e"; }
+.icon-place:before { content: "\ea7f"; }
+.icon-play-circle-fill:before { content: "\ea80"; }
+.icon-play-fill:before { content: "\ea81"; }
+.icon-plus-circle:before { content: "\ea82"; }
+.icon-plus:before { content: "\ea83"; }
+.icon-QR:before { content: "\ea84"; }
+.icon-question-mark-bubble:before { content: "\ea85"; }
+.icon-question-mark-circle:before { content: "\ea86"; }
+.icon-radio-button-on-fill:before { content: "\ea87"; }
+.icon-realtime-translation:before { content: "\ea88"; }
+.icon-recorder-left-half:before { content: "\ea89"; }
+.icon-recorder-right-half:before { content: "\ea8a"; }
+.icon-refresh:before { content: "\ea8b"; }
+.icon-reply:before { content: "\ea8c"; }
+.icon-rewind-left-fill:before { content: "\ea8d"; }
+.icon-rewind-right-fill:before { content: "\ea8e"; }
+.icon-search:before { content: "\ea8f"; }
+.icon-select:before { content: "\ea90"; }
+.icon-settings-2-fill:before { content: "\ea91"; }
+.icon-settings:before { content: "\ea92"; }
+.icon-share-fill:before { content: "\ea93"; }
+.icon-share-more:before { content: "\ea94"; }
+.icon-share:before { content: "\ea95"; }
+.icon-silence:before { content: "\ea96"; }
+.icon-skip-back-fill:before { content: "\ea97"; }
+.icon-skip-forward-fill:before { content: "\ea98"; }
+.icon-sort-by-alphabet:before { content: "\ea99"; }
+.icon-sort-by-me:before { content: "\ea9a"; }
+.icon-sort-by-message:before { content: "\ea9b"; }
+.icon-sort-by-recent:before { content: "\ea9c"; }
+.icon-star:before { content: "\ea9d"; }
+.icon-status:before { content: "\ea9e"; }
+.icon-stop-fill:before { content: "\ea9f"; }
+.icon-sync:before { content: "\eaa0"; }
+.icon-talking:before { content: "\eaa1"; }
+.icon-text:before { content: "\eaa2"; }
+.icon-transcription:before { content: "\eaa3"; }
+.icon-trash-fill:before { content: "\eaa4"; }
+.icon-trash02:before { content: "\eaa5"; }
+.icon-trash03:before { content: "\eaa6"; }
+.icon-unpin-from-navbar:before { content: "\eaa7"; }
+.icon-unpin:before { content: "\eaa8"; }
+.icon-unread:before { content: "\eaa9"; }
+.icon-vector-left:before { content: "\eaaa"; }
+.icon-vector-right:before { content: "\eaab"; }
+.icon-video:before { content: "\eaac"; }
+.icon-voice-01:before { content: "\eaad"; }
+.icon-volume-off-fill:before { content: "\eaae"; }
+.icon-volume-off:before { content: "\eaaf"; }
+.icon-volume-settings:before { content: "\eab0"; }
+.icon-volume-up-fill:before { content: "\eab1"; }
+.icon-volume-up:before { content: "\eab2"; }
 
 $icon-activity: "\ea01";
 $icon-add-reaction: "\ea02";
@@ -283,89 +285,91 @@ $icon-message-add: "\ea58";
 $icon-message-ellipse: "\ea59";
 $icon-message-square-fill: "\ea5a";
 $icon-message-square: "\ea5b";
-$icon-mic-2: "\ea5c";
-$icon-mic-bubble: "\ea5d";
-$icon-mic-fill: "\ea5e";
-$icon-mic-off-fill: "\ea5f";
-$icon-mic-off: "\ea60";
-$icon-mic: "\ea61";
-$icon-minus-circle: "\ea62";
-$icon-monitor: "\ea63";
-$icon-moon-fill: "\ea64";
-$icon-more-vertical-2: "\ea65";
-$icon-more-vertical: "\ea66";
-$icon-night-mode-1: "\ea67";
-$icon-night-mode: "\ea68";
-$icon-not-listen: "\ea69";
-$icon-notify-phone: "\ea6a";
-$icon-options-2: "\ea6b";
-$icon-paper-plane: "\ea6c";
-$icon-pause-circle-fill: "\ea6d";
-$icon-pause-fill: "\ea6e";
-$icon-people-2: "\ea6f";
-$icon-people-fill: "\ea70";
-$icon-people: "\ea71";
-$icon-person-add-2: "\ea72";
-$icon-person-add-fill: "\ea73";
-$icon-person-add: "\ea74";
-$icon-person: "\ea75";
-$icon-phone-call: "\ea76";
-$icon-phone-fill: "\ea77";
-$icon-phone-missed: "\ea78";
-$icon-phone-off: "\ea79";
-$icon-phone: "\ea7a";
-$icon-pin-to-navbar: "\ea7b";
-$icon-pin: "\ea7c";
-$icon-place-small: "\ea7d";
-$icon-place: "\ea7e";
-$icon-play-circle-fill: "\ea7f";
-$icon-play-fill: "\ea80";
-$icon-plus: "\ea81";
-$icon-QR: "\ea82";
-$icon-question-mark-bubble: "\ea83";
-$icon-question-mark-circle: "\ea84";
-$icon-radio-button-on-fill: "\ea85";
-$icon-realtime-translation: "\ea86";
-$icon-recorder-left-half: "\ea87";
-$icon-recorder-right-half: "\ea88";
-$icon-refresh: "\ea89";
-$icon-reply: "\ea8a";
-$icon-rewind-left-fill: "\ea8b";
-$icon-rewind-right-fill: "\ea8c";
-$icon-search: "\ea8d";
-$icon-select: "\ea8e";
-$icon-settings-2-fill: "\ea8f";
-$icon-settings: "\ea90";
-$icon-share-fill: "\ea91";
-$icon-share-more: "\ea92";
-$icon-share: "\ea93";
-$icon-silence: "\ea94";
-$icon-skip-back-fill: "\ea95";
-$icon-skip-forward-fill: "\ea96";
-$icon-sort-by-alphabet: "\ea97";
-$icon-sort-by-me: "\ea98";
-$icon-sort-by-message: "\ea99";
-$icon-sort-by-recent: "\ea9a";
-$icon-star: "\ea9b";
-$icon-status: "\ea9c";
-$icon-stop-fill: "\ea9d";
-$icon-sync: "\ea9e";
-$icon-talking: "\ea9f";
-$icon-text: "\eaa0";
-$icon-transcription: "\eaa1";
-$icon-trash-fill: "\eaa2";
-$icon-trash02: "\eaa3";
-$icon-trash03: "\eaa4";
-$icon-unpin-from-navbar: "\eaa5";
-$icon-unpin: "\eaa6";
-$icon-unread: "\eaa7";
-$icon-vector-left: "\eaa8";
-$icon-vector-right: "\eaa9";
-$icon-video: "\eaaa";
-$icon-voice-01: "\eaab";
-$icon-volume-off-fill: "\eaac";
-$icon-volume-off: "\eaad";
-$icon-volume-settings: "\eaae";
-$icon-volume-up-fill: "\eaaf";
-$icon-volume-up: "\eab0";
+$icon-message-stars: "\ea5c";
+$icon-mic-2: "\ea5d";
+$icon-mic-bubble: "\ea5e";
+$icon-mic-fill: "\ea5f";
+$icon-mic-off-fill: "\ea60";
+$icon-mic-off: "\ea61";
+$icon-mic: "\ea62";
+$icon-minus-circle: "\ea63";
+$icon-monitor: "\ea64";
+$icon-moon-fill: "\ea65";
+$icon-more-vertical-2: "\ea66";
+$icon-more-vertical: "\ea67";
+$icon-night-mode-1: "\ea68";
+$icon-night-mode: "\ea69";
+$icon-not-listen: "\ea6a";
+$icon-notify-phone: "\ea6b";
+$icon-options-2: "\ea6c";
+$icon-paper-plane: "\ea6d";
+$icon-pause-circle-fill: "\ea6e";
+$icon-pause-fill: "\ea6f";
+$icon-people-2: "\ea70";
+$icon-people-fill: "\ea71";
+$icon-people: "\ea72";
+$icon-person-add-2: "\ea73";
+$icon-person-add-fill: "\ea74";
+$icon-person-add: "\ea75";
+$icon-person: "\ea76";
+$icon-phone-call: "\ea77";
+$icon-phone-fill: "\ea78";
+$icon-phone-missed: "\ea79";
+$icon-phone-off: "\ea7a";
+$icon-phone: "\ea7b";
+$icon-pin-to-navbar: "\ea7c";
+$icon-pin: "\ea7d";
+$icon-place-small: "\ea7e";
+$icon-place: "\ea7f";
+$icon-play-circle-fill: "\ea80";
+$icon-play-fill: "\ea81";
+$icon-plus-circle: "\ea82";
+$icon-plus: "\ea83";
+$icon-QR: "\ea84";
+$icon-question-mark-bubble: "\ea85";
+$icon-question-mark-circle: "\ea86";
+$icon-radio-button-on-fill: "\ea87";
+$icon-realtime-translation: "\ea88";
+$icon-recorder-left-half: "\ea89";
+$icon-recorder-right-half: "\ea8a";
+$icon-refresh: "\ea8b";
+$icon-reply: "\ea8c";
+$icon-rewind-left-fill: "\ea8d";
+$icon-rewind-right-fill: "\ea8e";
+$icon-search: "\ea8f";
+$icon-select: "\ea90";
+$icon-settings-2-fill: "\ea91";
+$icon-settings: "\ea92";
+$icon-share-fill: "\ea93";
+$icon-share-more: "\ea94";
+$icon-share: "\ea95";
+$icon-silence: "\ea96";
+$icon-skip-back-fill: "\ea97";
+$icon-skip-forward-fill: "\ea98";
+$icon-sort-by-alphabet: "\ea99";
+$icon-sort-by-me: "\ea9a";
+$icon-sort-by-message: "\ea9b";
+$icon-sort-by-recent: "\ea9c";
+$icon-star: "\ea9d";
+$icon-status: "\ea9e";
+$icon-stop-fill: "\ea9f";
+$icon-sync: "\eaa0";
+$icon-talking: "\eaa1";
+$icon-text: "\eaa2";
+$icon-transcription: "\eaa3";
+$icon-trash-fill: "\eaa4";
+$icon-trash02: "\eaa5";
+$icon-trash03: "\eaa6";
+$icon-unpin-from-navbar: "\eaa7";
+$icon-unpin: "\eaa8";
+$icon-unread: "\eaa9";
+$icon-vector-left: "\eaaa";
+$icon-vector-right: "\eaab";
+$icon-video: "\eaac";
+$icon-voice-01: "\eaad";
+$icon-volume-off-fill: "\eaae";
+$icon-volume-off: "\eaaf";
+$icon-volume-settings: "\eab0";
+$icon-volume-up-fill: "\eab1";
+$icon-volume-up: "\eab2";
 
