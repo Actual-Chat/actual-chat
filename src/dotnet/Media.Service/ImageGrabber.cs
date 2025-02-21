@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Text;
 using ActualChat.Flows;
 using ActualChat.Hashing;
@@ -90,7 +91,7 @@ public class ImageGrabber(IServiceProvider services)
         }
 
         // TODO: image size limit
-        var processedFile = await DownloadImageToFile(imageUrl, cancellationToken).ConfigureAwait(false);
+        var processedFile = await DownloadImageToFile(new Uri(imageUrl), cancellationToken).ConfigureAwait(false);
         return await SaveFileToMedia(imageUrl, processedFile, cancellationToken).ConfigureAwait(false);
     }
 
@@ -108,7 +109,7 @@ public class ImageGrabber(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task<ProcessedFile?> DownloadImageToFile(string imageUrl, CancellationToken cancellationToken)
+    private async Task<ProcessedFile?> DownloadImageToFile(Uri uri, CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
         cts.CancelAfter(Settings.ImageDownloadTimeout);
@@ -118,12 +119,15 @@ public class ImageGrabber(IServiceProvider services)
         {
             HttpResponseMessage response;
             try {
-                response = await HttpClient.GetAsync(imageUrl, cancellationToken1).ConfigureAwait(false);
+                var request = new HttpRequestMessage(HttpMethod.Get, uri);
+                if (OrdinalIgnoreCaseEquals(uri.DnsSafeHost, "opengraph.githubassets.com") && !Settings.GithubApiKey.IsNullOrEmpty())
+                    request.Headers.Authorization = AuthenticationHeaderValue.Parse($"Bearer {Settings.GithubApiKey}");
+                response = await HttpClient.SendAsync(request, cancellationToken1).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                     return null;
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Failed to get an image with url='{ImageUrl}'", imageUrl);
+                Log.LogWarning(e, "Failed to get an image with url='{ImageUrl}'", uri);
                 return null;
             }
 
