@@ -59,7 +59,7 @@ public static class PhoneNumberExt
             return true;
         }
         catch (Exception e) {
-            StaticLog.For<PhoneNumberUtil>().LogWarning(e, "!!! {Phone}", source);
+            StaticLog.For<PhoneNumberUtil>().LogWarning(e, "TryParse failed for phone number '{Phone}'", source);
             phoneNumber = null;
             return false;
         }
