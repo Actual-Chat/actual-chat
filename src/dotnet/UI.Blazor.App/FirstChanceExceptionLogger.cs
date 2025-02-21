@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.ExceptionServices;
 
@@ -15,7 +16,7 @@ public static class FirstChanceExceptionLogger
     private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
     {
         var error = e.Exception;
-        if (error is OperationCanceledException or WebSocketException)
+        if (error is OperationCanceledException or WebSocketException or HttpRequestException or SocketException)
             return; // This one has to be skipped
 
         foreach (var func in ShouldSkip.GetInvocationList().OfType<Func<Exception, bool>>()) {
