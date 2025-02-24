@@ -52,7 +52,7 @@ public sealed partial record ConversationDiff() : RecordDiff
         Title = conversation.Title;
         Description = conversation.Description;
         Summary = conversation.Summary;
-        EndEntryLid = conversation.EntryRange.End;
+        EndEntryLid = conversation.EndEntryLid;
         StartsAt = conversation.StartsAt;
         EndsAt = conversation.EndsAt;
         MessageCount = conversation.MessageCount;

@@ -61,8 +61,8 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
         Title = model.Title;
         Description = model.Description;
         Summary = model.Summary;
-        StartEntryLid = model.EntryRange.Start;
-        EndEntryLid = model.EntryRange.End;
+        StartEntryLid = model.Id.StartEntryLid;
+        EndEntryLid = model.EndEntryLid;
         StartsAt = model.StartsAt.ToDateTime();
         EndsAt = model.EndsAt.ToDateTime();
         MessageCount = model.MessageCount;

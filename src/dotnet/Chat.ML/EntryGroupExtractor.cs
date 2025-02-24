@@ -151,19 +151,20 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
         if (chunkBuilder.WordCount == 0)
             return false;
 
+        const int longPause = 60 * 60; // 1 hour
         var pauseBetweenGroups = groupBuilder.GetPauseBetween(chunkBuilder.Entries[0]);
-        var isChunkCloseToGroup = pauseBetweenGroups <= groupBuilder.AveragePauseBetweenEntries * 3;
-        var authorActivityIntersection = GetAuthorActivityIntersection(groupBuilder, chunkBuilder);
+        var isChunkCloseToGroup = pauseBetweenGroups <= groupBuilder.AveragePauseBetweenEntries * 4;
+        var authorActivityIntersection = GetAuthorIntersection(groupBuilder, chunkBuilder);
         var shouldMerge = groupBuilder.WordCount < ChunkWordCount
             || isChunkCloseToGroup
-            || authorActivityIntersection > 0.3d;
+            || (authorActivityIntersection > 0.5d && pauseBetweenGroups < longPause);
             // Do not use embeddings for now
             // TODO(AK): Use lazy embeddings calculation for similarity check
             // || AreSimilar(groupBuilder.Embeddings, chunkBuilder.Embeddings);
         return shouldMerge;
     }
 
-    private double GetAuthorActivityIntersection(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
+    private double GetAuthorIntersection(EntryGroupBuilder groupBuilder, EntryGroupBuilder chunkBuilder)
     {
         var groupActivity = groupBuilder.AuthorActivity;
         var chunkActivity = chunkBuilder.AuthorActivity;
@@ -172,13 +173,13 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
             return 0.0;
 
         var intersectionWeight = 0.0;
-        var totalWeight = groupActivity.Values.Sum() + chunkActivity.Values.Sum();
+        var total = groupActivity.Count + chunkActivity.Count;
 
         foreach (var author in groupActivity.Keys)
-            if (chunkActivity.TryGetValue(author, out var chunkWeight))
-                intersectionWeight += Math.Min(groupActivity[author], chunkWeight);
+            if (chunkActivity.TryGetValue(author, out _))
+                intersectionWeight++;
 
-        return intersectionWeight * 2 / totalWeight;
+        return intersectionWeight * 2 / total;
     }
 
     private bool AreSimilar(double[] a, double[] b)

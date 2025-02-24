@@ -72,15 +72,15 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
             if (firstEntry.RepliedEntryLid is not {} entryLid)
                 continue; // First entry in the sequence is not a reply!
 
-            var tileRange = IdTileStack.FirstLayer.GetTile(entryLid).Range;
-            var existingConversations = await ConversationsBackend.List(chatId, tileRange, cancellationToken).ConfigureAwait(false);
+            var idTileRange = IdTileStack.FirstLayer.GetTile(entryLid).Range;
+            var existingConversations = await ConversationsBackend.List(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
             var appendReply = new ConversationBackend_AppendReply(
-                existingConversations.Count == 0 ? ConversationId.None : existingConversations[0],
+                chatId,
                 entryLid,
                 [..replySequence.Entries]
             ) {
                 DelayUntil = existingConversations.Count == 0
-                    ? Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay
+                    ? Host.Clocks.CoarseSystemClock.Now + (2 * Settings.ChatEntrySummarizationDelay)
                     : null,
             };
             await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
