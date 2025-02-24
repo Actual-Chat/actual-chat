@@ -21,7 +21,7 @@ public interface IConversationsBackend : IComputeService, IBackendService
     Task<Conversation> OnSummarize(ConversationBackend_Summarize command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Conversation> OnAppendReply(ConversationBackend_AppendReply command, CancellationToken cancellationToken);
+    Task<Conversation?> OnAppendReply(ConversationBackend_AppendReply command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -53,13 +53,13 @@ public sealed partial record ConversationBackend_Summarize(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_AppendReply(
-    [property: DataMember, MemoryPackOrder(0)] ConversationId ConversationId,
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] long EntryLid,
     [property: DataMember, MemoryPackOrder(2)] ApiArray<TextEntry> ReplySequence
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => ConversationId.ChatId;
+    public ChatId ShardKey => ChatId;
 
     [DataMember, MemoryPackOrder(3)]
     public Moment? DelayUntil { get; init; }

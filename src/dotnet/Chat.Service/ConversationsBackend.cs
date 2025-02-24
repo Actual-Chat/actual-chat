@@ -73,14 +73,16 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbConversation = conversationId.IsNone ? null :
-            await dbContext.Conversations.ForUpdate()
-                .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
-                .ConfigureAwait(false);
+        await dbContext.Conversations.Lock(conversationId, cancellationToken);
+
+        var dbConversation = await dbContext.Conversations
+            .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
+            .ConfigureAwait(false);
         var oldConversation = dbConversation?.ToModel();
         Conversation conversation;
         if (change.IsCreate(out var update)) {
-            oldConversation.RequireNull();
+            if (oldConversation != null)
+                return oldConversation;
 
             // Get existing conversations that overlap with the new one
             var startEntryLid = conversationId.StartEntryLid;
@@ -107,8 +109,14 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
             // if (expectedVersion != 0)
             //     dbConversation.RequireVersion(expectedVersion);
             // else
+            dbConversation.Require();
+
+            // Update existing conversation
+            conversation = ApplyDiff(dbConversation.ToModel(), update);
+            dbConversation.UpdateFrom(conversation);
 
             // Get existing conversations that overlap with the new one
+            // and remove other overlapping conversations
             var startEntryLid = conversationId.StartEntryLid;
             var endEntryLid = change.Update.Value.EndEntryLid;
             var sConversationIds = await dbContext.Conversations
@@ -117,21 +125,7 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
                 .OrderBy(c => c)
                 .ToHashSetAsync(cancellationToken)
                 .ConfigureAwait(false);
-            if (sConversationIds.Remove(conversationId)) {
-                // Update existing conversation
-                dbConversation.Require();
-
-                conversation = ApplyDiff(dbConversation.ToModel(), update);
-                dbConversation.UpdateFrom(conversation);
-            }
-            else {
-                // Create new conversation regardless of the change kind
-                conversation = new Conversation(conversationId);
-                conversation = ApplyDiff(conversation, update);
-                dbConversation = new DbConversation(conversation);
-                dbContext.Add(dbConversation);
-            }
-            // Remove other overlapping conversations
+            sConversationIds.Remove(conversationId);
             await dbContext.Conversations
                 .Where(c => sConversationIds.Contains(c.Id))
                 .ExecuteDeleteAsync(cancellationToken)
@@ -187,22 +181,9 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         var lastEntry = entries[^1];
         var startEntryLid = firstEntry.LocalId;
         var endEntryLid = lastEntry.LocalId;
-        var range = new Range<long>(startEntryLid, endEntryLid + 1);
-        var coveringTiles = IdTileStack.FirstLayer.GetCoveringTiles(range);
-        // Take tile not on the edge, otherwise it can find more than one conversation
-        var someTile = coveringTiles.Length > 1 ? coveringTiles[1] : coveringTiles[0];
-        var existingConversations = await List(chatId, someTile.Range, cancellationToken)
-            .ConfigureAwait(false);
-        var hasConversation = existingConversations.Count > 0;
-        var conversationId = hasConversation
-            ? existingConversations[0]
-            : new ConversationId(chatId, firstEntry.LocalId, AssumeValid.Option);
-        var expectedVersion = (long?)null;
-        if (hasConversation) {
-            var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
-            existingConversation.Require();
-            expectedVersion = existingConversation.Version;
-        }
+        var conversationId = new ConversationId(chatId, startEntryLid, AssumeValid.Option);
+        var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
+        var expectedVersion = existingConversation?.Version;
 
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
         var conversation = new Conversation(conversationId) {
@@ -219,37 +200,35 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
                 .Select(g => g.Key)
                 .ToApiArray()
         };
-        var diff = new ConversationDiff(conversation);
-        var change = hasConversation
-            ? Change.Update(diff)
-            : Change.Create(diff);
+        var change = existingConversation != null
+            ? Change.Update(DiffEngine.Diff<Conversation,ConversationDiff>(existingConversation, conversation))
+            : Change.Create(new ConversationDiff(conversation));
         var changeCommand = new ConversationBackend_Change(conversationId, expectedVersion, change);
         return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task<Conversation> OnAppendReply(
+    public virtual async Task<Conversation?> OnAppendReply(
         ConversationBackend_AppendReply command,
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return null!; // No invalidation there as we call other commands
 
-        var (conversationId, entryLid, replySequence) = command;
-        var chatId = conversationId.ChatId;
-
+        var (chatId, entryLid, replySequence) = command;
         var delay = command.DelayUntil - Clocks.SystemClock.Now;
         if (delay > TimeSpan.Zero)
             throw StandardError.Postpone(delay.Value);
 
-        if (conversationId.IsNone) {
-            var existingConversations = await List(chatId, IdTileStack.FirstLayer.GetTile(entryLid).Range, cancellationToken)
-                .ConfigureAwait(false);
-            if (existingConversations.Count == 0)
-                throw StandardError.Internal("Conversation not found.");
-
-            conversationId = existingConversations[0];
+        var existingConversations = await List(chatId, IdTileStack.FirstLayer.GetTile(entryLid).Range, cancellationToken)
+            .ConfigureAwait(false);
+        if (existingConversations.Count == 0) {
+            // Skip the reply as the conversation is not found - entry group was too small for summarization
+            Log.LogInformation("Skipping reply as the conversation for {ChatId} and {EntryLid} is not found", chatId, entryLid);
+            return null;
         }
+
+        var conversationId = existingConversations[0];
         var conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         conversation.Require();
 
