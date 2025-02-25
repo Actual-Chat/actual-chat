@@ -83,6 +83,29 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply outline outline-1 outline-primary outline-offset-0;
     @apply bg-round-focus;
 }
+.playback-wrapper.listen-off-to-on {
+    animation: off-to-on-outline 1000ms ease-in-out forwards;
+}
+@keyframes off-to-on-outline {
+    0%, 100% {
+        outline-width: 1px;
+    }
+    50% {
+        outline-width: 2px;
+    }
+}
+.playback-wrapper.listen-off-to-on .btn {
+    animation: playback-btn-on 1000ms ease-in-out forwards;
+}
+@keyframes playback-btn-on {
+    0%, 100% {
+        box-shadow: 0 0 0 0 var(--transparent);
+    }
+    50% {
+        box-shadow: 0 0 0.5rem 0 var(--primary);
+    }
+}
+
 .chat-audio-panel .recorder-wrapper.record-off,
 .chat-audio-panel .recorder-wrapper.record-on-to-off {
     @apply relative;
@@ -104,14 +127,28 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
         0 -1px 0 0 var(--recorder-on-top),
         1px 0 0 0 var(--recorder-on-middle),
         0 1px 0 0 var(--recorder-on-bottom);
+    animation: off-to-on-shadow 1000ms ease-in-out forwards;
+}
+@keyframes off-to-on-shadow {
+    0%, 100% {
+        box-shadow:
+            -1px 0 0 0 var(--recorder-on-middle),
+            0 -1px 0 0 var(--recorder-on-top),
+            1px 0 0 0 var(--recorder-on-middle),
+            0 1px 0 0 var(--recorder-on-bottom);
+    }
+    50% {
+        box-shadow:
+            -2px 0 0 0 var(--recorder-on-middle),
+            0 -2px 0 0 var(--recorder-on-top),
+            2px 0 0 0 var(--recorder-on-middle),
+            0 2px 0 0 var(--recorder-on-bottom);
+    }
 }
 .chat-audio-panel .recorder-wrapper .btn {
     @apply absolute z-button;
     @apply self-center;
     @apply m-0.5;
-}
-.chat-audio-panel .recorder-wrapper {
-    @apply border-none;
 }
 
 /* Buttons, Mobile View */
@@ -292,6 +329,18 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 }
 .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn {
     @apply opacity-100;
+    animation: record-btn-on 1000ms ease-in-out forwards;
+}
+@keyframes record-btn-on {
+    0%, 100% {
+        box-shadow: 0 0 0 0 var(--transparent);
+    }
+    50% {
+        box-shadow: 0 0 1rem 0 var(--magenta-60);
+    }
+}
+.chat-audio-panel .recorder-wrapper {
+    @apply border-none;
 }
 .chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn {
     filter: brightness(0.8) blur(2px);

@@ -44,6 +44,8 @@
     --ash-99-05: #F5F5FC0D;
     --ash-99-08: #F5F5FC14;
     --ash-99-10: #F5F5FC1A;
+    --ash-95-50: #DFDFF280;
+    --ash-40-50: #57576680;
 
     --blue-99: #E5F2FF;
     --blue-95: #C9E3FF;
@@ -401,6 +403,8 @@
     --place-header-text: var(--white);
     --tile: var(--white);
     --highlighted: var(--blue-50-30);
+    --summary-gradient-01: var(--ash-95-50);
+    --summary-gradient-02: var(--white);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);
@@ -690,6 +694,8 @@
     --place-header-search: var(--ash-99-10);
     --place-header-text: var(--ash-99);
     --tile: var(--ash-30);
+    --summary-gradient-01: var(--ash-40-50);
+    --summary-gradient-02: var(--transparent);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--ash-26);
@@ -978,6 +984,8 @@
     --place-header-search: var(--white-30);
     --place-header-text: var(--white);
     --tile: var(--white);
+    --summary-gradient-01: var(--ash-95-50);
+    --summary-gradient-02: var(--white);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);
