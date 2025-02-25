@@ -44,11 +44,14 @@
             </Right>
         </FormSection>
         <div class="c-incut">
+            <Button
+                Class="btn-outline verify-btn"
+                IsDisabled="@(_validationState is ValidationState.Invalid)"
+                Click="@OnVerifyClick">
+                @VerifyButtonText
+            </Button>
             <div class="c-info">
-                <i class="icon-alert-triangle text-lg text-warning"></i>
-                <span>
-                    You can <span class="font-medium">skip</span> this step. The phone number can be filled in later.
-                </span>
+                You can skip this step. The phone number can be filled in later.
             </div>
         </div>
 
@@ -82,13 +85,14 @@
     private ModalUI ModalUI => Hub.ModalUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
+    [Parameter] public EventCallback OnVerifyClick { get; set; }
 
-    public override bool CanSkip => _isVerified is null or false;
-
-    public override string NextTitle
+    private string VerifyButtonText
         => _validationState == ValidationState.Invalid
             ? "Unavailable"
             : "Verify";
+
+    public override bool CanSkip => false;
 
     public override bool IsCompleted {
         get {

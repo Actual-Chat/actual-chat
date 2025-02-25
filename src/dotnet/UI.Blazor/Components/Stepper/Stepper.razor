@@ -8,7 +8,11 @@
             </div>
         }
         <div class="stepper-body">
-            <div class="stepper-filler"></div>
+            @if (Filler is null) {
+                <div class="stepper-filler"></div>
+            } else {
+                @Filler.Invoke(this)
+            }
             @if (Steps != null) {
                 <div class="stepper-content">
                     @Steps.Invoke(this)
@@ -31,6 +35,7 @@
     [Parameter] public RenderFragment<Stepper>? Header { get; set; }
     [Parameter] public RenderFragment<Stepper>? Footer { get; set; }
     [Parameter] public RenderFragment<Stepper>? Steps { get; set; }
+    [Parameter] public RenderFragment<Stepper>? Filler { get; set; }
     [Parameter] public EventCallback<bool> CurrentStepChanged { get; set; }
 
     public int StepCount => _steps.Count;
