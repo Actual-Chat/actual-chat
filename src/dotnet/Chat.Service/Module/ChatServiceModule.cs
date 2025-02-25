@@ -63,7 +63,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<ITranslationsBackend, TranslationsBackend>();
 
         // Conversations
-        // rpcHost.AddApi<IConversations, Conversations>();
+        rpcHost.AddApiOrLocal<IConversations, Conversations>();
         rpcHost.AddBackend<IConversationsBackend, ConversationsBackend>();
 
         // IBackendChatMarkupHub
