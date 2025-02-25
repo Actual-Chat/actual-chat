@@ -17,16 +17,19 @@
 }
 
 .phone-verifier .c-incut {
-    @apply px-4 py-2;
+    @apply flex-x gap-x-4 items-center;
+    @apply py-2;
     @apply rounded-lg;
     @apply overflow-hidden;
-    @apply bg-[var(--sienna-50-20)];
-    @apply text-03;
+    @apply text-01;
+}
+.phone-verifier .c-incut .verify-btn {
+    @apply flex-none;
+    @apply px-8;
 }
 .phone-verifier .c-incut .c-info {
-    @apply flex-x gap-2;
-    @apply text-caption-8;
+    @apply text-caption-4;
 }
 .phone-verifier .verification-status i {
-    @apply !text-warning;
+    @apply !text-[var(--orange-60)];
 }

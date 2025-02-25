@@ -16,42 +16,59 @@
     Class="onboarding-modal"
     HasHeader="false">
     <Body>
-        <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged">
-            <Steps>
-                <PhoneStep Account="m.AccountFull"/>
-                <EmailStep Account="m.AccountFull"/>
-                <TimeZoneStep Account="m.AccountFull"/>
-                <AvatarStep/>
-                <PermissionsStep NextButtonRef="@_nextButtonRef"/>
-                <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
-                <CreateChatsStep/>
-                @if (m.EnableChatRouletteUI) {
-                    <ChatRouletteStep/>
+    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged">
+        <Filler>
+            @if (stepper.CurrentStep is PhoneStep) {
+                <div class="stepper-image-filler">
+                    <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="">
+                </div>
+            } else {
+                <div class="stepper-filler"></div>
+            }
+        </Filler>
+        <Steps>
+            <PhoneStep Account="m.AccountFull" OnVerifyClick="@(() => OnNext(stepper))"/>
+            <EmailStep Account="m.AccountFull"/>
+            <TimeZoneStep Account="m.AccountFull"/>
+            <AvatarStep/>
+            <PermissionsStep NextButtonRef="@_nextButtonRef"/>
+            <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
+            <CreateChatsStep/>
+            @if (m.EnableChatRouletteUI) {
+                <ChatRouletteStep/>
+            }
+        </Steps>
+        <Header>
+            @if (stepper.CanMoveBack) {
+                <HeaderButton Click="@(_ => stepper.MoveBack())">
+                    <i class="icon-arrow-left text-2xl"></i>
+                </HeaderButton>
+                <div class="text-headline-7 text-02">Back</div>
+            }
+            <div class="grow"></div>
+            @if (ModalModel.CanBeClosed) {
+                <HeaderButton Click="() => Modal.Close()">
+                    <i class="icon-close"></i>
+                </HeaderButton>
+            }
+        </Header>
+        <Footer>
+            <div class="btn-group">
+                @if (stepper.CanSkip) {
+                    <Button
+                        Class="btn-cancel"
+                        Click="@(() => OnSkip(stepper))">
+                        @stepper.SkipTitle
+                    </Button>
                 }
-            </Steps>
-            <Header>
-                @if (stepper.CanMoveBack) {
-                    <HeaderButton Click="@(_ => stepper.MoveBack())">
-                        <i class="icon-arrow-left text-2xl"></i>
-                    </HeaderButton>
-                    <div class="text-headline-7 text-02">Back</div>
-                }
-                <div class="grow"></div>
-                @if (ModalModel.CanBeClosed) {
-                    <HeaderButton Click="() => Modal.Close()">
-                        <i class="icon-close"></i>
-                    </HeaderButton>
-                }
-            </Header>
-            <Footer>
-                <div class="btn-group">
-                    @if (stepper.CanSkip) {
-                        <Button
-                            Class="btn-cancel"
-                            Click="@(() => OnSkip(stepper))">
-                            @stepper.SkipTitle
-                        </Button>
-                    }
+                @if (stepper.CurrentStep is PhoneStep) {
+                    <Button
+                        Class="btn-primary"
+                        ButtonRef="@_nextButtonRef"
+                        Click="@(() => OnSkip(stepper))">
+                        <span>@stepper.NextTitle</span>
+                    </Button>
+                } else {
                     <Button
                         Class="btn-primary"
                         ButtonRef="@_nextButtonRef"
@@ -67,16 +84,17 @@
                             Modal.Close(true);
                         }
                     </Button>
-                </div>
-                <div class="flex w-full justify-center mt-6">
-                    <LineProgress
-                        StepCount="stepper.StepCount"
-                        CurrentStepIndex="stepper.CurrentStepIndex"
-                        Decoration="LineProgress.LineProgressDecoration.Blue">
-                    </LineProgress>
-                </div>
-            </Footer>
-        </Stepper>
+                }
+            </div>
+            <div class="flex w-full justify-center mt-6">
+                <LineProgress
+                    StepCount="stepper.StepCount"
+                    CurrentStepIndex="stepper.CurrentStepIndex"
+                    Decoration="LineProgress.LineProgressDecoration.Blue">
+                </LineProgress>
+            </div>
+        </Footer>
+    </Stepper>
     </Body>
 </DialogFrame>
 
