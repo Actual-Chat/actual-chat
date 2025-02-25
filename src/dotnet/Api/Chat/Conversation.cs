@@ -1,3 +1,4 @@
+using ActualChat.Comparison;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 using MemoryPack;
@@ -11,6 +12,7 @@ public sealed partial record Conversation(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
 ) : IHasId<ConversationId>, IHasVersion<long>, IRequirementTarget
 {
+    public static readonly VersionEqualityComparer<Conversation, ConversationId> VersionEqualityComparer = new();
     public static readonly Requirement<Conversation> MustExist = Requirement.New(
         (Conversation? c) => c is { Id.IsNone: false },
         new(() => StandardError.NotFound<Conversation>()));
@@ -30,8 +32,11 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(9)] public ApiArray<AuthorId> AuthorIds { get; init; } = [];
 
 
+
+    // This record relies on referential equality
     public bool Equals(Conversation? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    public bool VersionEquals(Conversation? other) => VersionEqualityComparer.Equals(this, other);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

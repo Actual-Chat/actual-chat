@@ -6,7 +6,7 @@
 }
 
 @code {
-    private ChatMessage? _message;
+    private ChatEntryMessage? _message;
     private bool _isSystem;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -21,7 +21,7 @@
         var entryId = new TextEntryId(sEntryId);
         var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
         _message = entry != null
-            ? new ChatMessage(entry)
+            ? new ChatEntryMessage(entry)
             : null;
     }
 }

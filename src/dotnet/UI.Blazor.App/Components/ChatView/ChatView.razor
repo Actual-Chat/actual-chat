@@ -19,7 +19,14 @@
     RequestDataOnParameterSet="true"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
-        <ChatMessageView ChatContext="@_chatContext" Message="@context" />
+        @if(context is ChatEntryMessage message)
+        {
+            <ChatEntryMessageView ChatContext="@_chatContext" Message="@message"/>
+        }
+        else if(context is ConversationMessage conversationMessage)
+        {
+            <ConversationMessageView ChatContext="@_chatContext" Message="@conversationMessage" />
+        }
     </Item>
     <SkeletonBatch>
         <chat-view-skeleton count="@context" />

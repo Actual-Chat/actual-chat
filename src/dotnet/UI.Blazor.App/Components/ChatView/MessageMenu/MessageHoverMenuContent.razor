@@ -37,7 +37,7 @@
     private UICommander UICommander => Hub.UICommander();
     private UIEventHub UIEventHub => Hub.UIEventHub();
 
-    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
