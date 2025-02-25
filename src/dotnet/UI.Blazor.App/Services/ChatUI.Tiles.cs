@@ -98,8 +98,8 @@ public partial class ChatUI
         var isPrevAudio = false;
         var hasVeryFirstItem = false;
         var hasVeryFirstSearchItem = false;
-        if (prevMessage != null) {
-            prevEntry = prevMessage.Entry;
+        if (prevMessage is ChatEntryMessage prevEntryMessage) {
+            prevEntry = prevEntryMessage.Entry;
             prevDate = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(prevEntry.BeginsAt));
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
             isPrevAudio = prevEntry.HasAudioEntry || prevEntry.IsStreaming;
@@ -138,7 +138,7 @@ public partial class ChatUI
             if (shouldAddToResult) {
                 if (!isWelcomeBlockAdded) {
                     if (hasVeryFirstItem) {
-                        var welcomeMessage = new ChatMessage(entry) {
+                        var welcomeMessage = new ChatEntryMessage(entry) {
                             ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
                             PreviousMessage = prevMessage,
                         };
@@ -146,7 +146,7 @@ public partial class ChatUI
                         prevMessage = welcomeMessage;
                     }
                     if (hasVeryFirstSearchItem) {
-                        var welcomeMessage = new ChatMessage(entry) {
+                        var welcomeMessage = new ChatEntryMessage(entry) {
                             ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock,
                             PreviousMessage = prevMessage,
                         };
@@ -157,7 +157,7 @@ public partial class ChatUI
                 }
 
                 if (isEntryUnread && !isPrevUnread) {
-                    var newLineMessage = new ChatMessage(entry) {
+                    var newLineMessage = new ChatEntryMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
                         PreviousMessage = prevMessage,
                     };
@@ -165,7 +165,7 @@ public partial class ChatUI
                     prevMessage = newLineMessage;
                 }
                 if (date != prevDate) {
-                    var dateLineMessage = new ChatMessage(entry) {
+                    var dateLineMessage = new ChatEntryMessage(entry) {
                         ReplacementKind = ChatMessageReplacementKind.DateLine,
                         Date = date,
                         PreviousMessage = prevMessage,
@@ -173,7 +173,7 @@ public partial class ChatUI
                     messages.Add(dateLineMessage);
                     prevMessage = dateLineMessage;
                 }
-                var message = new ChatMessage(entry) {
+                var message = new ChatEntryMessage(entry) {
                     Date = date,
                     Flags = flags,
                     PreviousMessage = prevMessage,

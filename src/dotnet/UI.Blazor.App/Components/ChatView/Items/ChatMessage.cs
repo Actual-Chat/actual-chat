@@ -1,15 +1,14 @@
-using ActualChat.Media;
-
 namespace ActualChat.UI.Blazor.App.Components;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<ChatMessage>
+public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMessage>
 {
     private Symbol? _key;
 
     public string Key => _key ??= GetKey();
 
-    public ChatEntry Entry { get; } = entry;
+    public long Id { get; } = id;
+
     public ChatMessageReplacementKind ReplacementKind { get; init; }
     public DateOnly Date { get; init; }
     public ChatMessageFlags Flags { get; init; }
@@ -20,44 +19,21 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
 
     public bool IsReplacement
         => ReplacementKind != ChatMessageReplacementKind.None;
-    public bool ShowLinkPreview
-        => Entry.LinkPreviews.FirstOrDefault() is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.None;
 
     public override string ToString()
-        => $"(#{Key} -> {Entry})";
+        => $"(#{Key})";
 
     private Symbol GetKey()
-        => Entry.LocalId.Format() + ReplacementKind.GetKeySuffix();
+        => Id.Format() + ReplacementKind.GetKeySuffix();
 
     // Equality
 
     public override bool Equals(object? obj)
         => ReferenceEquals(this, obj) || (obj is ChatMessage other && Equals(other));
 
-    public bool Equals(ChatMessage? other)
-    {
-        if (ReferenceEquals(null, other))
-            return false;
-        if (ReferenceEquals(this, other))
-            return true;
+    public abstract bool Equals(ChatMessage? other);
 
-        return Entry.VersionEquals(other.Entry)
-            && ReplacementKind == other.ReplacementKind
-            && Date == other.Date
-            && Flags == other.Flags
-            && Entry.Attachments.SequenceEqual(other.Entry.Attachments)
-            && Entry.LinkPreviews.SequenceEqual(other.Entry.LinkPreviews);
-    }
-
-    public override int GetHashCode()
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        => Entry != null
-            ? HashCode.Combine(Entry,
-                ReplacementKind,
-                Date,
-                Flags,
-                Entry.Attachments.Count)
-            : 0;
+    public abstract override int GetHashCode();
 
     public static bool operator ==(ChatMessage? left, ChatMessage? right) => Equals(left, right);
     public static bool operator !=(ChatMessage? left, ChatMessage? right) => !Equals(left, right);
@@ -69,7 +45,7 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0L, AssumeValid.Option);
         var chatEntry = new ChatEntry(chatEntryId);
         return isBot
-            ? new ChatMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock }
-            : new ChatMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
+            ? new ChatEntryMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock }
+            : new ChatEntryMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
     }
 }

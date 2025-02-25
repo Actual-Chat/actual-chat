@@ -377,22 +377,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // Locating navigation entry
-        ChatEntry? navEntry = null;
+        long? navEntryId = null;
         if (nav != null) {
-            navEntry = tiles
-                .SkipWhile(t => t.Items[^1].Entry.LocalId < nav.EntryLid)
+            navEntryId = tiles
+                .SkipWhile(t => t.Items[^1].Id < nav.EntryLid)
                 .SelectMany(t => t.Items)
-                .FirstOrDefault(x => x.Entry.LocalId == nav.EntryLid && !x.IsReplacement)?.Entry;
-            if (navEntry == null)
+                .FirstOrDefault(x => x.Id == nav.EntryLid && !x.IsReplacement)?.Id;
+            if (navEntryId == null)
                 Log.LogWarning("GetData: entry not found in the loaded set: #{EntryLid}", nav.EntryLid);
             else if (nav.MustHighlight)
-                ChatUI.HighlightEntry(navEntry.Id, navigate: false);
+                ChatUI.HighlightEntry(new ChatEntryId(chatId, ChatEntryKind.Text, navEntryId.Value, AssumeValid.Option), navigate: false);
         }
         var result = new VirtualListData<ChatMessage>(tiles) {
             Index = renderedData.Index + 1,
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
-            ScrollToKey = navEntry != null && mustScrollToEntry ? navEntry.LocalId.Format() : null,
+            ScrollToKey = navEntryId != null && mustScrollToEntry ? navEntryId.Value.Format() : null,
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = ItemVisibility.Value,
         };
@@ -431,7 +431,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     .ExpandToTiles(firstLayer),
 
             // No query, but there is old data -> retaining it
-            (false, true) => new Range<long>(firstItem!.Entry.LocalId, lastItem!.Entry.LocalId),
+            (false, true) => new Range<long>(firstItem!.Id, lastItem!.Id),
 
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToLongRange(true).Move(query.MoveRange),
@@ -488,7 +488,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var shownReadEntryLid = _shownReadEntryLid.Value;
         var newMessagesLine = tiles
-            .SkipWhile(t => t.Items[^1].Entry.LocalId < shownReadEntryLid)
+            .SkipWhile(t => t.Items[^1].Id < shownReadEntryLid)
             .SelectMany(t => t.Items)
             .FirstOrDefault(i => i.ReplacementKind == ChatMessageReplacementKind.NewMessagesLine);
         var hasNewMessagesLine = newMessagesLine != null;
@@ -498,7 +498,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // We see end anchor, when the new message appears so we can update shownReadEntryLid
-        var lastEntryLid = tiles[^1].Items[^1].Entry.LocalId;
+        var lastEntryLid = tiles[^1].Items[^1].Id;
         var maxVisibleEntryLid = itemVisibility.MaxEntryLid;
         var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
         if (newShownReadEntryLid == shownReadEntryLid) {

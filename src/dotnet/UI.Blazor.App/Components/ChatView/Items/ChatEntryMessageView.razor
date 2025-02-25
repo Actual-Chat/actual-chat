@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatMessageView.Model>
+@inherits ComputedStateComponent<ChatEntryMessageView.Model>
 @{
     var m = _rendered = State.Value;
     var chat = m.Chat;
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
     var entry = message.Entry;
-    // Console.Out.WriteLine("ChatMessageView.Render() = " + entry.LocalId + " : " + message.ReplacementKind);
+    // Console.Out.WriteLine("ChatEntryMessageView.Render() = " + entry.LocalId + " : " + message.ReplacementKind);
 
     // Flags
     var isSystem = entry.IsSystemEntry;
@@ -227,11 +227,11 @@
 
 @code {
     private Model? _rendered;
-    private ChatMessage? _renderedMessage;
+    private ChatEntryMessage? _renderedMessage;
     private Markup? _renderedMarkup;
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
-    private ChatMessage? _lastMessage;
+    private ChatEntryMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
     private bool _hasBeenRead;
 
@@ -255,7 +255,7 @@
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
 
     protected override void OnInitialized()
         => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
@@ -297,7 +297,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
-        var prevEntry = Message.PreviousMessage?.Entry;
+        var prevEntry = (Message.PreviousMessage as ChatEntryMessage)?.Entry;
         var chatId = ChatId;
         var chatMessage = Message;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false) ?? SpecialChat.Unavailable;
