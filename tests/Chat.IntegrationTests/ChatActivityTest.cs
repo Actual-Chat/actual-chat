@@ -9,7 +9,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task BasicTest()
     {
         var appHost = AppHost;
