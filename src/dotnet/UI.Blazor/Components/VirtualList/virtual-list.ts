@@ -64,6 +64,7 @@ export class VirtualList {
     private stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
     private whenRequestDataCompleted: PromiseSource<void> | null = null;
     private pivots: Pivot[] = [];
+    private currentPivots: Pivot[] = [];
     private top: number;
     private windowScrollTop: number = 0;
 
@@ -208,10 +209,9 @@ export class VirtualList {
         this.renderIndexRef.setAttribute = (qualifiedName: string, value: string) => {
             // update pivots just before the render
             // we can do this because Blazor updates attributes before changing nodes
-            // it's OK to trigger style recalc there - there are no changes made yet
             // we SHOULD NOT fail there - otherwise Blazor will fail
             try {
-                this.updateCurrentPivots();
+                this.pivots = this.currentPivots;
                 const time = Date.now();
                 debugLog?.log(`renderStartedAt: `, time, value);
                 this.renderStartedAt = time;
@@ -240,6 +240,7 @@ export class VirtualList {
         this.visibilityObserver.disconnect();
         this.sizeObserver.disconnect();
         this.whenRequestDataCompleted?.resolve(undefined);
+        this.whenRequestDataCompleted = null;
         clearInterval(this.safetyTimerHandle);
         this.ref.removeEventListener('scroll', this.onScroll);
     }
@@ -608,12 +609,14 @@ export class VirtualList {
     private async endRender(): Promise<void> {
         if (!this.isRendering) {
             this.whenRequestDataCompleted?.resolve(undefined);
+            this.whenRequestDataCompleted = null;
             return;
         }
         const rs = this.parseRenderState();
         if (rs === null) {
             this.renderStartedAt = null;
             this.whenRequestDataCompleted?.resolve(undefined);
+            this.whenRequestDataCompleted = null;
             return;
         }
 
@@ -732,6 +735,7 @@ export class VirtualList {
 
             this.renderStartedAt = null;
             this.whenRequestDataCompleted?.resolve(undefined);
+            this.whenRequestDataCompleted = null;
 
             this.lastViewport = this.viewport;
             this.pivots = [];
@@ -871,7 +875,17 @@ export class VirtualList {
         this.updateViewportThrottled();
     };
 
+    private scheduleUpdateCurrentPivots(): void {
+        if (this.isDisposed)
+            return;
+
+        fastRaf(() => this.updateCurrentPivots());
+    }
+
     private updateCurrentPivots(): void {
+        if (this.isRendering)
+            return;
+
         const time = Date.now();
         const pivots = new Array<Pivot>();
         const pivotRefs = new Array<HTMLElement>();
@@ -912,7 +926,12 @@ export class VirtualList {
             pivots.push(pivot);
         }
         if (pivots.length)
-            this.pivots = pivots;
+            this.currentPivots = pivots;
+
+        const whenRequestDataCompleted = this.whenRequestDataCompleted;
+        if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted() && !this.isRendering) {
+            this.scheduleUpdateCurrentPivots();
+        }
     }
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
@@ -1327,6 +1346,7 @@ export class VirtualList {
         // debug helper
         // await delayAsync(150);
         await this.blazorRef.invokeMethodAsync('RequestData', this.query);
+        this.scheduleUpdateCurrentPivots();
         this.lastQuery = this.query;
     }
 
