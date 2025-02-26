@@ -1,15 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@{
-#pragma warning disable IL2091
-
-    var modeKey = RenderModeHelper.CurrentMode?.Key ?? "a";
-    var isServer = OrdinalEquals(modeKey, "s");
-    var isWasm = OrdinalEquals(modeKey, "w");
-    var isAuto = !(isServer || isWasm); // Technically it's "a" or anything else
-    var serverClass = isServer ? "selected transparent" : "transparent";
-    var wasmClass = isWasm ? "selected transparent" : "transparent";
-    var autoClass = isAuto ? "selected transparent" : "transparent";
-}
 
 <TileTopic Topic="Rendering Mode"/>
 <Tile Class="render-mode-tile">
@@ -22,9 +11,11 @@
                 DisplayName="Rendering Mode"
                 @bind-Value="_formModel.ModeKey">
 
-                <TileItem Class="@autoClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("a"))">
+                <TileItem
+                    Class="@GetTileItemClass(RenderModeKey.Auto)"
+                    Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Auto))">
                     <Icon>
-                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@("a")"/>
+                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Auto"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.ServerModeFormId" Text="Auto"></Label>
@@ -35,9 +26,11 @@
                     </Content>
                 </TileItem>
 
-                <TileItem Class="@serverClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("s"))">
+                <TileItem
+                    Class="@GetTileItemClass(RenderModeKey.Server)"
+                    Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Server))">
                     <Icon>
-                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@("s")"/>
+                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Server"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.ServerModeFormId" Text="Server-Side Rendering"></Label>
@@ -47,9 +40,11 @@
                     </Content>
                 </TileItem>
 
-                <TileItem Class="@wasmClass" Click="@NoStateHasChanged.EventCallback(() => ChangeMode("w"))">
+                <TileItem
+                    Class="@GetTileItemClass(RenderModeKey.Wasm)"
+                    Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Wasm))">
                     <Icon>
-                        <FormRadio Id="@_formModel.WasmModeFormId" Value="@("w")"/>
+                        <FormRadio Id="@_formModel.WasmModeFormId" Value="@RenderModeKey.Wasm"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.WasmModeFormId" Text="WebAssembly Client"></Label>
@@ -66,27 +61,49 @@
 </Tile>
 
 @code {
+    private RenderModeKey _modeKey;
     private FormModel _formModel = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     private RenderModeHelper RenderModeHelper => Hub.GetRequiredService<RenderModeHelper>();
 
+
     protected override void OnInitialized() {
-        _formModel = new(ComponentIdGenerator) {
-            ModeKey = RenderModeHelper.CurrentMode?.Key ?? "a",
+        _modeKey = (RenderModeHelper.CurrentMode?.Key[0] ?? 'a') switch {
+            's' => RenderModeKey.Server,
+            'w' => RenderModeKey.Wasm,
+            _ => RenderModeKey.Auto,
         };
-        _formModel.ModeChanged += OnModeChanged;
+        _formModel = new(ComponentIdGenerator) {
+            ModeKey = _modeKey,
+        };
+        _formModel.ModeChanged += ChangeMode;
     }
 
-    private void OnModeChanged(string modeKey)
-        => RenderModeHelper.ChangeMode(RenderModeDef.GetOrDefault(modeKey));
-
-    private void ChangeMode(string modeKey) {
-        if (OrdinalEquals(RenderModeHelper.CurrentMode?.Key, modeKey))
+    private void ChangeMode(RenderModeKey modeKey) {
+        if (_modeKey == modeKey)
             return;
 
-        OnModeChanged(modeKey);
+        var sModeKey = modeKey switch {
+            RenderModeKey.Auto => "a",
+            RenderModeKey.Server => "s",
+            RenderModeKey.Wasm => "w",
+            _ => throw new ArgumentOutOfRangeException(nameof(modeKey), modeKey, null),
+        };
+        var renderMode = RenderModeDef.GetOrDefault(sModeKey);
+        RenderModeHelper.ChangeMode(renderMode);
+    }
+
+    private string GetTileItemClass(RenderModeKey expectedModeKey)
+        => _modeKey == expectedModeKey ? "selected transparent" : "transparent";
+
+    // Nested types
+
+    public enum RenderModeKey {
+        Auto = 0,
+        Server,
+        Wasm,
     }
 
     public sealed class FormModel {
@@ -95,19 +112,15 @@
         public string ServerModeFormId { get; }
         public string WasmModeFormId { get; }
 
-        [field: AllowNull, MaybeNull]
-        public string ModeKey {
+        public RenderModeKey ModeKey {
             get;
             set {
-                if (field == value)
-                    return;
-
                 field = value;
                 ModeChanged?.Invoke(value);
             }
         }
 
-        public event Action<string>? ModeChanged;
+        public event Action<RenderModeKey>? ModeChanged;
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("render-mode-form");
