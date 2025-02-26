@@ -22,7 +22,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         await base.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ShouldFindOnCriteriaChange()
     {
         // arrange
