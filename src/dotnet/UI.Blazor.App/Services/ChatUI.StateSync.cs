@@ -226,7 +226,7 @@ public partial class ChatUI
                                 secondLayer.GetTile(prefetchNearTo + HalfLoadLimit).End).IntersectWith(new Range<long>(0, long.MaxValue));
 
                             await PrefetchTiles(chatId, idRange, cancellationToken).ConfigureAwait(false);
-                            _ = GetTiles(chatId, idRange, lastReadEntryLid, cancellationToken);
+                            _ = GetTiles(chatId, idRange, ApiArray<ConversationId>.Empty, lastReadEntryLid, cancellationToken);
                         }
                     },
                     changeToken);
