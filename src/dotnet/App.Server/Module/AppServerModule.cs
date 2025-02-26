@@ -105,11 +105,12 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Endpoint mapping
         app.UseStaticDistCacheHeaders(); // Customized cache headers for Static files from dist and _content folders
         if (!HostInfo.IsTested) {
-            app.UseStaticFiles(new StaticFileOptions {
-                RequestPath = "/dist/config", // For firebase.config.js
-                FileProvider = new PhysicalFileProvider(
-                    Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/dist/config")),
-            });
+            var configPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/dist/config");
+            if (Directory.Exists(configPath))
+                app.UseStaticFiles(new StaticFileOptions {
+                    RequestPath = "/dist/config", // For firebase.config.js
+                    FileProvider = new PhysicalFileProvider(configPath),
+                });
             app.MapStaticAssets();
             app.MapRazorComponents<RootServerPage>()
                 .AddInteractiveServerRenderMode()
