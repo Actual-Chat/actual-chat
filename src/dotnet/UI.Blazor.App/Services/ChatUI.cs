@@ -34,6 +34,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private AccountUI AccountUI => Hub.AccountUI;
     private IContacts Contacts => Hub.Contacts;
     private IChats Chats => Hub.Chats;
+    private IConversations Conversations => Hub.Conversations;
     private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
     private IMentions Mentions => Hub.Mentions;

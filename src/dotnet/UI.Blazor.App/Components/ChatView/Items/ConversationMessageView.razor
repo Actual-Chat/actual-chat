@@ -4,4 +4,7 @@
 
 @code {
 
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
+
 }
