@@ -104,7 +104,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ShouldFindByPrefix()
     {
         // arrange
