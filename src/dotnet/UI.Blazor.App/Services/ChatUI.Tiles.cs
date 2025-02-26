@@ -16,6 +16,7 @@ public partial class ChatUI
     public async Task<List<VirtualListTile<ChatMessage>>> GetTiles(
         ChatId chatId,
         Range<long> idRange,
+        ApiArray<ConversationId> expandedConversations,
         long shownReadyEntryLid,
         CancellationToken cancellationToken)
     {
@@ -40,6 +41,7 @@ public partial class ChatUI
                 chatId,
                 chat.Rules.Author?.Id ?? AuthorId.None,
                 idTile.Range,
+                expandedConversations,
                 prevMessage,
                 lastReadEntryLid,
                 cancellationToken).ConfigureAwait(false);
@@ -65,6 +67,7 @@ public partial class ChatUI
         ChatId chatId,
         AuthorId currentAuthorId,
         Range<long> idRange,
+        ApiArray<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
         long lastReadEntryId,
         CancellationToken cancellationToken = default)

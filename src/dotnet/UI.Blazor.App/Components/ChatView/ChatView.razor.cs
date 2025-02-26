@@ -345,7 +345,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chat == null)
             return VirtualListData<ChatMessage>.None;
 
-        var tiles = await ChatUI.GetTiles(chatId, idRangeToLoad, readEntryLid, cancellationToken).ConfigureAwait(false);
+        var tiles = await ChatUI.GetTiles(chatId, idRangeToLoad, ApiArray<ConversationId>.Empty, readEntryLid, cancellationToken).ConfigureAwait(false);
         if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
