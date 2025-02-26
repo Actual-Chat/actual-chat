@@ -925,8 +925,7 @@ export class VirtualList {
             };
             pivots.push(pivot);
         }
-        if (pivots.length)
-            this.currentPivots = pivots;
+        this.currentPivots = pivots;
 
         const whenRequestDataCompleted = this.whenRequestDataCompleted;
         if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted() && !this.isRendering) {
@@ -1345,8 +1344,8 @@ export class VirtualList {
         this.lastQueryTime = Date.now();
         // debug helper
         // await delayAsync(150);
-        await this.blazorRef.invokeMethodAsync('RequestData', this.query);
         this.scheduleUpdateCurrentPivots();
+        await this.blazorRef.invokeMethodAsync('RequestData', this.query);
         this.lastQuery = this.query;
     }
 
