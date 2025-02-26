@@ -60,6 +60,50 @@ public static class EnumerableExt
         return (matched?.ToArray() ?? [], notMatched?.ToArray() ?? []);
     }
 
+    public static IEnumerable<(TLeft? Left, TRight? Right)> Merge<TLeft, TRight>(
+        this IEnumerable<TLeft> left,
+        IEnumerable<TRight> right,
+        Func<TLeft, TRight, int> comparer)
+    {
+        using var leftEnumerator = left.GetEnumerator();
+        using var rightEnumerator = right.GetEnumerator();
+
+        var leftHasNext = leftEnumerator.MoveNext();
+        var rightHasNext = rightEnumerator.MoveNext();
+
+        while (leftHasNext && rightHasNext) {
+            var comparison = comparer(leftEnumerator.Current, rightEnumerator.Current);
+            if (comparison < 0) {
+                yield return (leftEnumerator.Current, default);
+
+                leftHasNext = leftEnumerator.MoveNext();
+            }
+            else if (comparison > 0) {
+                yield return (default, rightEnumerator.Current);
+
+                rightHasNext = rightEnumerator.MoveNext();
+            }
+            else {
+                yield return (leftEnumerator.Current, rightEnumerator.Current);
+
+                leftHasNext = leftEnumerator.MoveNext();
+                rightHasNext = rightEnumerator.MoveNext();
+            }
+        }
+
+        while (leftHasNext) {
+            yield return (leftEnumerator.Current, default);
+
+            leftHasNext = leftEnumerator.MoveNext();
+        }
+
+        while (rightHasNext) {
+            yield return (default, rightEnumerator.Current);
+
+            rightHasNext = rightEnumerator.MoveNext();
+        }
+    }
+
     public static bool StartsWith<T>(this IEnumerable<T> left, IReadOnlyCollection<T> right)
         => left.Take(right.Count).SequenceEqual(right);
 

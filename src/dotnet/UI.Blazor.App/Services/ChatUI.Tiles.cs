@@ -79,12 +79,29 @@ public partial class ChatUI
         var requestedIdRange = prevMessage == null
             ? idRange.MoveStart(-1) // to request previous item of requested range to properly render block star - we will drop it off
             : idRange;
-        var tiles = await IdTileStack.FirstLayer
-            .GetCoveringTiles(requestedIdRange)
+        var idTiles = IdTileStack.FirstLayer
+            .GetCoveringTiles(requestedIdRange);
+        var conversationTiles = await idTiles
+            .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        var conversations = conversationTiles.SelectMany(t => t.Items).ToList();
+        var idRangesToSkip = conversations
+            .Where(c => !expandedConversations.Contains(c.Id))
+            .Select(c => c.EntryRange)
+            .ToList();
+        var entryIdTiles = idTiles
+            .Where(t => !idRangesToSkip.Any(range => range.Contains(t.Range)))
+            .ToList();
+        var tiles = await entryIdTiles
             .Select(t => Chats.GetTile(Session, chatId, ChatEntryKind.Text, t.Range, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
-        var entries = tiles.SelectMany(t => t.Entries).ToList();
+        var entries = tiles
+            .OrderBy(t => t.IdTileRange.Start)
+            .SelectMany(t => t.Entries)
+            .Where(e => !idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
+            .ToList();
         if (entries.Count == 0)
             return new VirtualListTile<ChatMessage>(idRange);
 
@@ -111,85 +128,103 @@ public partial class ChatUI
         }
 
         var messages = new List<ChatMessage>(entries.Count);
+        var items = entries.Merge(conversations,
+            (entry, conversation) => (int)(entry.Id.LocalId - conversation.Id.StartEntryLid));
         var isWelcomeBlockAdded = false;
-        foreach (var entry in entries) {
-            var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry.BeginsAt));
-            var isBlockStart = IsBlockStart(prevEntry, entry);
-            var isForward = !entry.ForwardedAuthorId.IsNone;
-            var isPrevForward = prevEntry is { ForwardedAuthorId.IsNone: false };
-            var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId.ChatId != entry.ForwardedAuthorId.ChatId;
-            var isForwardFromOtherAuthor = prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId;
-            var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
-            var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
-            var isEntryUnread = entry.LocalId > lastReadEntryId;
-            var isAudio = entry.HasAudioEntry;
-            var shouldAddToResult = idRange.Contains(entry.LocalId);
-            var flags = default(ChatMessageFlags);
-            var indexDocId = showIndexDocId ? indexDocIds.GetValueOrDefault(entry.Id, "") : "";
-            if (isBlockStart)
-                flags |= ChatMessageFlags.BlockStart;
-            if ((isBlockStart && isAudio) || isPrevAudio ^ isAudio)
-                flags |= ChatMessageFlags.HasEntryKindSign;
-            if (isForwardBlockStart)
-                flags |= ChatMessageFlags.ForwardStart;
-            if (isForwardAuthorBlockStart)
-                flags |= ChatMessageFlags.ForwardAuthorStart;
-            if (isEntryUnread)
-                flags |= ChatMessageFlags.Unread;
-            if (entry.AuthorId == currentAuthorId)
-                flags |= ChatMessageFlags.IsOwnMessage;
-            if (shouldAddToResult) {
-                if (!isWelcomeBlockAdded) {
-                    if (hasVeryFirstItem) {
-                        var welcomeMessage = new ChatEntryMessage(entry) {
-                            ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-                            PreviousMessage = prevMessage,
-                        };
-                        messages.Add(welcomeMessage);
-                        prevMessage = welcomeMessage;
+        foreach (var (entry, conversation) in items) {
+            var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
+            if (entry != null) {
+                var isBlockStart = IsBlockStart(prevEntry, entry);
+                var isForward = !entry.ForwardedAuthorId.IsNone;
+                var isPrevForward = prevEntry is { ForwardedAuthorId.IsNone: false };
+                var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId.ChatId != entry.ForwardedAuthorId.ChatId;
+                var isForwardFromOtherAuthor = prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId;
+                var isForwardBlockStart = (isBlockStart && isForward)
+                    || (isForward && (!isPrevForward || isForwardFromOtherChat));
+                var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
+                var isEntryUnread = entry.LocalId > lastReadEntryId;
+                var isAudio = entry.HasAudioEntry;
+                var shouldAddToResult = idRange.Contains(entry.LocalId);
+                var flags = default(ChatMessageFlags);
+                var indexDocId = showIndexDocId ? indexDocIds.GetValueOrDefault(entry.Id, "") : "";
+                if (isBlockStart)
+                    flags |= ChatMessageFlags.BlockStart;
+                if ((isBlockStart && isAudio) || isPrevAudio ^ isAudio)
+                    flags |= ChatMessageFlags.HasEntryKindSign;
+                if (isForwardBlockStart)
+                    flags |= ChatMessageFlags.ForwardStart;
+                if (isForwardAuthorBlockStart)
+                    flags |= ChatMessageFlags.ForwardAuthorStart;
+                if (isEntryUnread)
+                    flags |= ChatMessageFlags.Unread;
+                if (entry.AuthorId == currentAuthorId)
+                    flags |= ChatMessageFlags.IsOwnMessage;
+                if (shouldAddToResult) {
+                    if (!isWelcomeBlockAdded) {
+                        if (hasVeryFirstItem) {
+                            var welcomeMessage = new ChatEntryMessage(entry) {
+                                ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+                                PreviousMessage = prevMessage,
+                            };
+                            messages.Add(welcomeMessage);
+                            prevMessage = welcomeMessage;
+                        }
+                        if (hasVeryFirstSearchItem) {
+                            var welcomeMessage = new ChatEntryMessage(entry) {
+                                ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock,
+                                PreviousMessage = prevMessage,
+                            };
+                            messages.Add(welcomeMessage);
+                            prevMessage = welcomeMessage;
+                        }
+                        isWelcomeBlockAdded = true;
                     }
-                    if (hasVeryFirstSearchItem) {
-                        var welcomeMessage = new ChatEntryMessage(entry) {
-                            ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock,
-                            PreviousMessage = prevMessage,
-                        };
-                        messages.Add(welcomeMessage);
-                        prevMessage = welcomeMessage;
-                    }
-                    isWelcomeBlockAdded = true;
-                }
 
-                if (isEntryUnread && !isPrevUnread) {
-                    var newLineMessage = new ChatEntryMessage(entry) {
-                        ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
-                        PreviousMessage = prevMessage,
-                    };
-                    messages.Add(newLineMessage);
-                    prevMessage = newLineMessage;
-                }
-                if (date != prevDate) {
-                    var dateLineMessage = new ChatEntryMessage(entry) {
-                        ReplacementKind = ChatMessageReplacementKind.DateLine,
+                    if (isEntryUnread && !isPrevUnread) {
+                        var newLineMessage = new ChatEntryMessage(entry) {
+                            ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
+                            PreviousMessage = prevMessage,
+                        };
+                        messages.Add(newLineMessage);
+                        prevMessage = newLineMessage;
+                    }
+                    if (date != prevDate) {
+                        var dateLineMessage = new ChatEntryMessage(entry) {
+                            ReplacementKind = ChatMessageReplacementKind.DateLine,
+                            Date = date,
+                            PreviousMessage = prevMessage,
+                        };
+                        messages.Add(dateLineMessage);
+                        prevMessage = dateLineMessage;
+                    }
+                    var message = new ChatEntryMessage(entry) {
                         Date = date,
+                        Flags = flags,
                         PreviousMessage = prevMessage,
+                        ShowIndexDocId = showIndexDocId,
+                        IndexDocId = indexDocId
                     };
-                    messages.Add(dateLineMessage);
-                    prevMessage = dateLineMessage;
+                    messages.Add(message);
+                    prevMessage = message;
                 }
-                var message = new ChatEntryMessage(entry) {
-                    Date = date,
-                    Flags = flags,
-                    PreviousMessage = prevMessage,
-                    ShowIndexDocId = showIndexDocId,
-                    IndexDocId = indexDocId
-                };
-                messages.Add(message);
-                prevMessage = message;
+                prevEntry = entry;
+                isPrevUnread = isEntryUnread;
+                isPrevAudio = isAudio;
             }
-            prevEntry = entry;
+            else {
+                var message = new ConversationMessage(conversation!) {
+                    Date = date,
+                    CountAs = conversation!.MessageCount,
+                    PreviousMessage = prevMessage,
+                };
+                if (prevMessage?.Id != message.Id) {
+                    // Skip adding conversation message if it's the same as previous message
+                    // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
+                    messages.Add(message);
+                    prevMessage = message;
+                }
+            }
             prevDate = date;
-            isPrevUnread = isEntryUnread;
-            isPrevAudio = isAudio;
         }
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
