@@ -27,6 +27,7 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Fusion.Server;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.FileProviders;
 
 namespace ActualChat.App.Server.Module;
 
@@ -104,6 +105,11 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Endpoint mapping
         app.UseStaticDistCacheHeaders(); // Customized cache headers for Static files from dist and _content folders
         if (!HostInfo.IsTested) {
+            app.UseStaticFiles(new StaticFileOptions {
+                RequestPath = "/dist/config", // For firebase.config.js
+                FileProvider = new PhysicalFileProvider(
+                    Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/dist/config")),
+            });
             app.MapStaticAssets();
             app.MapRazorComponents<RootServerPage>()
                 .AddInteractiveServerRenderMode()
