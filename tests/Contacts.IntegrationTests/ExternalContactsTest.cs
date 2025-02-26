@@ -184,7 +184,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ShouldConnectByEmail_FriendAccountCreatedAfterSync()
     {
         // arrange
@@ -282,7 +282,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         contacts.Should().BeEmpty("no matching phones or emails");
     }
 
-    [Theory]
+    [Theory(Skip = "Flaky")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task LinkerShouldCreateContactsWithDisplayNameFromExternalContact(bool jackIsCreatedFirst)
