@@ -721,6 +721,15 @@ export class VirtualList {
             // ensure scroll position and size are recalculated
             await fastWriteRaf();
         } finally {
+            this.renderStartedAt = null;
+            this.whenRequestDataCompleted?.resolve(undefined);
+            this.whenRequestDataCompleted = null;
+
+            this.lastViewport = this.viewport;
+            this.pivots = [];
+            this.itemRange = null;
+            this.viewport = null;
+
             let anchorRefs: HTMLLIElement[] = [];
             fastRaf({
                 read: () => {
@@ -730,17 +739,11 @@ export class VirtualList {
                         // remove native anchor after restoring position
                         anchorRef.classList.remove('anchor');
                     }
+
+                    // Schedule update of the current pivots after the render
+                    this.scheduleUpdateCurrentPivots();
                 },
             });
-
-            this.renderStartedAt = null;
-            this.whenRequestDataCompleted?.resolve(undefined);
-            this.whenRequestDataCompleted = null;
-
-            this.lastViewport = this.viewport;
-            this.pivots = [];
-            this.itemRange = null;
-            this.viewport = null;
         }
     }
 
@@ -873,6 +876,7 @@ export class VirtualList {
             return;
 
         this.updateViewportThrottled();
+        this.scheduleUpdateCurrentPivots();
     };
 
     private scheduleUpdateCurrentPivots(): void {
