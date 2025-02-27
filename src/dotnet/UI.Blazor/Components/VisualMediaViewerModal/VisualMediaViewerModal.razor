@@ -11,6 +11,7 @@
         : ModalModel.Url;
     var linkPreview = ModalModel.ChatEntry?.LinkPreviews.FirstOrDefault();
     var isYouTubeVideo = linkPreview?.IsYouTubeVideo ?? false;
+    var onlyOneAttachmentCls = _attachments.Count == 1 ? "one-attachment" : "";
 }
 
 <ModalFrame Class="image-viewer-modal">
@@ -49,7 +50,7 @@
             } else if (attachment.IsSupportedVideo()) {
                 <swiper-slide>
                     <div class="swiper-zoom-container">
-                        <div class="video-wrapper">
+                        <div class="video-wrapper @onlyOneAttachmentCls">
                             <video
                                 class="swiper-active-video"
                                 playsinline
