@@ -23,9 +23,8 @@
 @code {
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    protected override void OnInitialized() {
-        Context.Title = "Translation settings";
-    }
+    protected override void OnInitialized()
+        => Context.Title = "Translation settings";
 
     private void OnClick()
         => Context.StepIn(DiveInDialogPage.New<TranslationSettingsLanguageModalPage>());
