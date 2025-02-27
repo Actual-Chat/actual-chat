@@ -30,13 +30,12 @@ export class VirtualListStatistics {
         return clamp(num, MinResponseFulfillmentRatio, MaxResponseFulfillmentRatio);
     }
 
-    public addItem(size: number, countAs: number): void {
-        if (!(size > 0 && countAs > 0))
+    public addItem(size: number): void {
+        if (!(size > 0))
             return;
 
-        size /= countAs;
         this._itemSizeSum += size;
-        this._itemCount += countAs;
+        this._itemCount++;
         if (this._itemCount < ItemCountResetThreshold)
             return;
 

@@ -13,7 +13,7 @@ public class EntryGroupBuilderTest
 
         builder.Add(entry);
 
-        Assert.Equal(2, builder.WordCount);
+        builder.WordCount.Should().Be(2);
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class EntryGroupBuilderTest
         builder.Add(entry1);
         builder.Add(entry2);
 
-        Assert.Equal(10, builder.AveragePauseBetweenEntries);
+        builder.AveragePauseBetweenEntries.Should().Be(10);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class EntryGroupBuilderTest
 
         builder.AddRange(entries);
 
-        Assert.Equal(2, builder.Entries.Count);
+        builder.Entries.Count.Should().Be(2);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class EntryGroupBuilderTest
         builder.Add(entry1);
         builder.Add(entry2);
 
-        Assert.Equal("Helloworld", builder.Text);
+        builder.Text.Should().Be("Hello\nworld\n");
     }
 
     [Fact]
@@ -65,8 +65,8 @@ public class EntryGroupBuilderTest
         builder.Add(entry);
         var entryGroup = builder.Build();
 
-        Assert.Equal(1, entryGroup.Entries.Count);
-        Assert.Equal(2, entryGroup.WordCount);
+        entryGroup.Entries.Count.Should().Be(1);
+        entryGroup.WordCount.Should().Be(2);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class EntryGroupBuilderTest
 
         var pause = builder.GetPauseBetween(entry);
 
-        Assert.Equal(0, pause);
+        pause.Should().Be(0);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class EntryGroupBuilderTest
         var textBefore = builder.Text;
         builder.Add(entry2);
 
-        Assert.NotEqual(textBefore, builder.Text);
+        builder.Text.Should().NotBe(textBefore);
     }
 
     [Fact]

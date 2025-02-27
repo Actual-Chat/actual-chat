@@ -12,7 +12,6 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public ChatMessageReplacementKind ReplacementKind { get; init; }
     public DateOnly Date { get; init; }
     public ChatMessageFlags Flags { get; init; }
-    public int CountAs { get; init; } = 1;
     public ChatMessage? PreviousMessage { get; init; }
     public bool ShowIndexDocId { get; init; }
     public string IndexDocId { get; init; } = "";

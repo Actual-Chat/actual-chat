@@ -10,20 +10,12 @@
     var itemCls = IsLastTileVisible && ReferenceEquals(item, Tile.Items[^1])
         ? "item anchor"
         : "item";
-    @if (item.CountAs != 1) {
-        <li @key="@item.RenderKey"
-            class="@itemCls"
-            data-key="@item.Key"
-            data-count-as="@item.CountAs.Format()">
-            @Item(item)
-        </li>
-    } else {
+
         <li @key="@item.RenderKey"
             class="@itemCls"
             data-key="@item.Key">
-            @Item(item)
-        </li>
-    }
+        @Item(item)
+    </li>
 }
 
 @code {

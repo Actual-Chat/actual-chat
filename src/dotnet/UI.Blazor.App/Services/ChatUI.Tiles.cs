@@ -15,20 +15,20 @@ public partial class ChatUI
 
     public async Task<List<VirtualListTile<ChatMessage>>> GetTiles(
         ChatId chatId,
-        Range<long> idRange,
+        ChatDataQuery dataQuery,
         ApiArray<ConversationId> expandedConversations,
         long shownReadyEntryLid,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, idRange, shownReadyEntryLid);
+        DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return [];
 
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
-        var idTiles = GetIdTilesToLoad(idRange, chatIdRange);
+        var idTiles = GetIdTilesToLoad(new Range<long>(dataQuery.Start, dataQuery.End), chatIdRange);
         var isBot = chat.IsAiSearchChat();
-        var hasVeryFirstItem = idRange.Start <= chatIdRange.Start;
+        var hasVeryFirstItem = dataQuery.HasVeryLastItem;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
         var tiles = new List<VirtualListTile<ChatMessage>>();
         foreach (var idTile in idTiles) {
@@ -214,7 +214,6 @@ public partial class ChatUI
             else {
                 var message = new ConversationMessage(conversation!) {
                     Date = date,
-                    CountAs = conversation!.MessageCount,
                     PreviousMessage = prevMessage,
                 };
                 if (prevMessage?.Id != message.Id) {
