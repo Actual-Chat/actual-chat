@@ -6,8 +6,8 @@ namespace ActualChat.App.Maui;
 
 public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTokenRetriever
 {
-    private ILogger? _log;
-    private ILogger Log => _log ??= services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
 
     public async Task<string?> GetDeviceToken(CancellationToken cancellationToken)
     {
@@ -17,7 +17,7 @@ public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTok
             Log.LogDebug("FCM token is \'{Token}\'", token);
             return token;
         }
-        catch(Exception e) {
+        catch (Exception e) {
             Log.LogWarning(e, "Failed to get FCM token");
             return null;
         }

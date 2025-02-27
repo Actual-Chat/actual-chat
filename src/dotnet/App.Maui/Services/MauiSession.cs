@@ -16,11 +16,11 @@ public sealed class MauiSession(IServiceProvider services)
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiSession>();
 
     private static volatile Task<Session?> _readSessionTask = null!;
-    private IMobileSessions? _mobileSessions;
 
     private IServiceProvider Services { get; } = services;
     private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
-    private IMobileSessions MobileSessions => _mobileSessions ??= Services.GetRequiredService<IMobileSessions>();
+    [field: AllowNull, MaybeNull]
+    private IMobileSessions MobileSessions => field ??= Services.GetRequiredService<IMobileSessions>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiSession))]
     public static Task Start()

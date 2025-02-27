@@ -1,11 +1,8 @@
 using Android.Webkit;
-using AndroidX.Activity;
 using Microsoft.AspNetCore.Components.WebView;
-using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Maui.Platform;
 using Color = Android.Graphics.Color;
 using WebView = Android.Webkit.WebView;
-using MixedContentHandling = Android.Webkit.MixedContentHandling;
 
 namespace ActualChat.App.Maui;
 
