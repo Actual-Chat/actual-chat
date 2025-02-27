@@ -548,3 +548,11 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
         filter: opacity(0.75);
     }
 }
+
+.translation-btn-wrapper {
+    @apply relative z-10;
+}
+.translation-btn-wrapper .translation-btn {
+    @apply absolute bottom-4 left-2.5;
+    @apply text-primary;
+}

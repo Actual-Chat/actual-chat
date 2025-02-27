@@ -1,0 +1,30 @@
+.translation-sub-header {
+    @apply p-2;
+    @apply bg-01;
+}
+.translation-sub-header .c-content {
+    @apply flex-x items-center gap-x-2;
+    @apply min-h-10;
+    @apply px-2;
+    @apply rounded-lg;
+    @apply bg-03;
+}
+.translation-sub-header .c-left {
+    @apply flex-none;
+    @apply text-03;
+}
+.translation-sub-header .c-center {
+    @apply flex-1 flex-x items-center justify-between;
+    @apply text-headline-1 text-01;
+}
+.translation-sub-header .c-right {
+    @apply flex-none;
+}
+
+.translation-settings-modal .c-language .tile-item-right {
+    @apply text-primary;
+}
+.translation-settings-modal .c-languages .c-selected .tile-item-right,
+.translation-settings-modal .c-languages .c-selected .tile-item-body-content {
+    @apply text-primary;
+}

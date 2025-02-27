@@ -1,0 +1,32 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<FormBlock Class="first last">
+    <TileItem Class="c-language" Click="@OnClick">
+        <Icon><i class="icon-language text-2xl"></i></Icon>
+        <Content>Translation language</Content>
+        <Right>
+            Russian
+        </Right>
+    </TileItem>
+
+    <TileItem>
+        <Icon><i class="icon-diagonal-arrow-left-down text-2xl"></i></Icon>
+        <Content>Fold</Content>
+    </TileItem>
+
+    <TileItem>
+        <Icon><i class="icon-alert-triangle text-2xl"></i></Icon>
+        <Content>Don't translate and close</Content>
+    </TileItem>
+</FormBlock>
+
+@code {
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        Context.Title = "Translation settings";
+    }
+
+    private void OnClick()
+        => Context.StepIn(DiveInDialogPage.New<TranslationSettingsLanguageModalPage>());
+}

@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@if (_enableIncompleteUI) {
+    <div class="translation-btn-wrapper">
+        <ButtonRound Class="translation-btn btn-sm">
+            <i class="icon-language text-2xl"></i>
+        </ButtonRound>
+    </div>
+}
+
+@code {
+    private bool _enableIncompleteUI;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Features Features => Hub.Features();
+
+    protected override async Task OnInitializedAsync() =>
+        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
+}

@@ -1,0 +1,47 @@
+@using ActualLab.Rpc
+@namespace ActualChat.UI.Blazor.App.Components
+
+@if (_enableIncompleteUI) {
+    <div class="translation-sub-header">
+        <div class="c-content">
+            <div class="c-left">
+                <i class="icon-language text-xl"></i>
+            </div>
+
+            <div class="c-center">
+                <div class="c-text">
+                    Translate to
+                    <span class="c-language">Russian</span>
+                </div>
+                <div class="c-toggle" @onclick="@OnToggleClick">
+                    <Toggle IsChecked="@_isChecked"/>
+                </div>
+            </div>
+
+            <div class="c-right">
+                <HeaderButton Click="@OnClick">
+                    <i class="icon-more-vertical"></i>
+                </HeaderButton>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isChecked;
+    private bool _enableIncompleteUI;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Features Features => Hub.Features();
+    private ModalUI ModalUI => Hub.ModalUI;
+
+
+    protected override async Task OnInitializedAsync() =>
+        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
+
+    private void OnToggleClick()
+        => _isChecked = !_isChecked;
+
+    private void OnClick()
+        => ModalUI.Show(new TranslationSettingsModal.Model());
+}
