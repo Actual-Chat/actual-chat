@@ -26,11 +26,10 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static ILogger? _log;
-
     private static HostInfo HostInfo => Constants.HostInfo;
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
-    private static ILogger Log => _log ??= StaticLog.For(typeof(MauiProgram));
+    [field: AllowNull, MaybeNull]
+    private static ILogger Log => field ??= StaticLog.For(typeof(MauiProgram));
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiProgram))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
@@ -61,14 +60,8 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
-#if Release
-        // Enable FCE in Release to add breadcrumbs to crashlytics. It's also enabled for Debug build from ClientStartup.Initialize.
-        FirstChanceExceptionLogger.Use();
-#endif
-        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-#if ANDROID
+        MauiExceptionHandlers.Use();
         ActivateDataCollectionIfEnabled(Android.App.Application.Context);
-#endif
 
         using(Tracer.Region(nameof(ClientStartup)+"." + nameof(ClientStartup.Initialize)))
             ClientStartup.Initialize();
@@ -321,9 +314,4 @@ public static partial class MauiProgram
 
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services);
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events);
-
-    private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
-        => Log.LogInformation("Unhandled exception, isTerminating={IsTerminating}.\n{Exception}",
-            e.IsTerminating,
-            e.ExceptionObject);
 }
