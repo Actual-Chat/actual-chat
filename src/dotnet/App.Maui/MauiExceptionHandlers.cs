@@ -1,6 +1,3 @@
-using ActualChat.UI.Blazor.App;
-using Android.Runtime;
-
 namespace ActualChat.App.Maui;
 
 public static class MauiExceptionHandlers
@@ -32,7 +29,7 @@ public static class MauiExceptionHandlers
         };
 
 #if ANDROID
-        AndroidEnvironment.UnhandledExceptionRaiser += (sender, args) => {
+        Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (sender, args) => {
             // There is a number of bugs in MAUI causing it to use Java object proxies after they were disconnected,
             // see e.g. https://github.com/dotnet/maui/issues/28051
             // And typically it's fully safe to simply suppress such exceptions.
