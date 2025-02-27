@@ -16,7 +16,7 @@
         ? "hide"
         : "";
 
-    var count = data.Tiles.Sum(t => t.Items.Sum(i => i.CountAs));
+    var count = data.Tiles.Sum(t => t.Items.Count);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,

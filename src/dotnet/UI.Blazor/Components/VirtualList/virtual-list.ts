@@ -402,7 +402,7 @@ export class VirtualList {
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                     item.size = size;
-                    this.statistics.addItem(item.size, item.countAs);
+                    this.statistics.addItem(item.size);
                 }
             } else {
                 const hasRemoved = this.unmeasuredItems.delete(key);
@@ -418,7 +418,7 @@ export class VirtualList {
                     if (item && item.size < 0) {
                         const itemRect = itemRef.getBoundingClientRect();
                         item.size = itemRect.height;
-                        this.statistics.addItem(item.size, item.countAs);
+                        this.statistics.addItem(item.size);
                     }
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
@@ -797,8 +797,7 @@ export class VirtualList {
     }
 
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
-        const countAs = getItemCountAs(itemRef);
-        const newItem = new VirtualListItem(itemKey, countAs ?? 1);
+        const newItem = new VirtualListItem(itemKey);
         this.unmeasuredItems.add(itemKey);
         this.sizeObserver.observe(itemRef, { box: 'border-box' });
         this.visibilityObserver.observe(itemRef);
@@ -1511,14 +1510,6 @@ export class VirtualList {
 // Helper functions
 function getItemKey(itemRef?: HTMLElement): string | null {
     return itemRef?.dataset?.key ?? null;
-}
-
-function getItemCountAs(itemRef?: HTMLElement): number {
-    if (itemRef == null)
-        return null;
-
-    const sCountAs = itemRef.dataset?.countAs ?? null;
-    return sCountAs == null ? 1 : parseInt(sCountAs);
 }
 
 /**

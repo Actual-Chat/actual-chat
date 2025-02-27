@@ -4,5 +4,4 @@ public interface IVirtualListItem
 {
     string Key { get; }
     string RenderKey => Key;
-    int CountAs { get; }
 }

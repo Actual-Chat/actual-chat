@@ -1,7 +1,7 @@
 import { NumberRange } from './range';
 
 export class VirtualListItem {
-    constructor(public key: string, public countAs: number)
+    constructor(public key: string)
     {
         this.range = null;
         this.size = -1;
