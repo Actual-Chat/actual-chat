@@ -13,7 +13,7 @@ public static class MauiExceptionHandlers
         // Useful: list of all MAUI exception handling endpoints:
         // - https://gist.github.com/mattjohnsonpint/7b385b7a2da7059c4a16562bc5ddb3b7
 
-#if true
+#if false
         // Enable FCE in Release to add breadcrumbs to crashlytics. It's also enabled for Debug build from ClientStartup.Initialize.
         FirstChanceExceptionLogger.Use();
 #endif
