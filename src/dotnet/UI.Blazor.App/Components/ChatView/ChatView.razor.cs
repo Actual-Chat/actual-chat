@@ -461,7 +461,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasVeryFirstItem = range.Start <= chatIdRange.Start;
         var hasVeryLastItem = range.End >= chatIdRange.End;
         return (query.IsNone
-            ? new ChatDataQuery(range, 0, 0)
+            ? new ChatDataQuery(range)
             : FromKeyRange()) with {
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
@@ -471,7 +471,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         {
             var intersected = range.IntersectWith(keyRange);
             if (intersected.IsEmpty)
-                return new ChatDataQuery(range, 0, 0);
+                return new ChatDataQuery(range);
 
             var loadBefore = (int)(intersected.Start - range.Start).Clamp(0, int.MaxValue);
             var loadAfter = (int)(range.End - intersected.End).Clamp(0, int.MaxValue);

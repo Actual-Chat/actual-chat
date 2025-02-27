@@ -25,8 +25,7 @@ public partial class ChatUI
         if (chat == null)
             return [];
 
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
-        var idTiles = GetIdTilesToLoad(new Range<long>(dataQuery.Start, dataQuery.End), chatIdRange);
+        var idTiles = GetIdTilesToLoad(dataQuery);
         var isBot = chat.IsAiSearchChat();
         var hasVeryFirstItem = dataQuery.HasVeryLastItem;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
@@ -282,16 +281,18 @@ public partial class ChatUI
 
     // Private methods
 
-    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
+    private Tile<long>[] GetIdTilesToLoad(ChatDataQuery dataQuery)
     {
-        DebugLog?.LogDebug("GetIdTilesToLoad: {IdRangeToLoad} {ChatIdRange}", idRangeToLoad, chatIdRange);
-        idRangeToLoad = new Range<long>(Math.Max(chatIdRange.Start, idRangeToLoad.Start), idRangeToLoad.End);
+        DebugLog?.LogDebug("GetIdTilesToLoad: {ChatDataQuery}", dataQuery);
+        var idRangeToLoad = new Range<long>(dataQuery.Start, dataQuery.End);
         var firstLayer = IdTileStack.FirstLayer;
         var secondLayer = IdTileStack.Layers[1];
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
             // hot range assumes high probability of changes - so close to the end of the chat messages
-            var hotRangeTiles = firstLayer.GetCoveringTiles(new Range<long>(chatIdRange.End - secondLayer.TileSize, chatIdRange.End + firstLayer.TileSize));
+            var hotRangeTiles = dataQuery.HasVeryLastItem
+                ? firstLayer.GetCoveringTiles(new Range<long>(idRangeToLoad.End - secondLayer.TileSize, idRangeToLoad.End + firstLayer.TileSize))
+                : [];
             var hotRange = new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End);
             if (!idRangeToLoad.Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
                 hotRange = default;
