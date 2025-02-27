@@ -169,6 +169,7 @@ public class AndroidWebChromeClient : WebChromeClient
         => _client.OnJsPrompt(view, url, message, defaultValue, result);
     public override void OnPermissionRequestCanceled(PermissionRequest? request)
         => _client.OnPermissionRequestCanceled(request);
+
     public override void OnProgressChanged(WebView? view, int newProgress)
     {
         if (IsDisconnected)
