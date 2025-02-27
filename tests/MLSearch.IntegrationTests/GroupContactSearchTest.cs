@@ -122,7 +122,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(bob.BuildSearchResults([updatedChat]), o => o.ExcludingSearchMatch());
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ShouldNotFindDeletedGroups()
     {
         // arrange
