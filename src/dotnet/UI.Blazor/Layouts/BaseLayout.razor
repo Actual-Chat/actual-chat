@@ -4,7 +4,7 @@
 <div class="base-layout">
     <div class="base-layout-body">
         <div class="c-layout-content">
-            @if (!Hub.IsInteractive) {
+            @if (Hub.IsInteractive) {
                 <ToastHost @key="@ToastHostKey"/>
             }
             <NoComponent @key="@BodyKey">
