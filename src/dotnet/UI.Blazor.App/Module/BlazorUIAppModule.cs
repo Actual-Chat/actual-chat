@@ -113,6 +113,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<ChatRouletteProfileModal.Model, ChatRouletteProfileModal>()
             .Add<ChatRouletteProfileEditorModal.Model, ChatRouletteProfileEditorModal>()
             .Add<LanguagesSelectorPopup.Model, LanguagesSelectorPopup>()
+            .Add<TranslationSettingsModal.Model, TranslationSettingsModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

@@ -1,0 +1,16 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<TranslationSettingsModal.Model>
+
+<DiveInDialogFrame
+    HasCloseButton="true"
+    Class="translation-settings-modal modal-sm"
+    Position="DialogFramePosition.Bottom"
+    StartPage="@(DiveInDialogPage.New<TranslationSettingsStartModalPage>(ModalModel))" />
+
+@code {
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    // Nested types
+
+    public sealed record Model;
+}

@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<FormBlock Class="first last c-languages">
+    <TileItem>
+        <Content>English</Content>
+    </TileItem>
+    <TileItem>
+        <Content>French</Content>
+    </TileItem>
+    <TileItem Class="c-selected">
+        <Content>Russian</Content>
+        <Right>
+            <i class="icon-checkmark-simple text-2xl"></i>
+        </Right>
+    </TileItem>
+    <TileItem>
+        <Content>German</Content>
+    </TileItem>
+    <TileItem>
+        <Content>Spanish</Content>
+    </TileItem>
+    <TileItem>
+        <Content>Ukrainian</Content>
+    </TileItem>
+</FormBlock>
+
+@code {
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        Context.Title = "Select language";
+    }
+}
