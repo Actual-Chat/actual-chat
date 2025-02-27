@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.UI.Blazor.Components;
+﻿using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.App.Maui.Services;
 

@@ -56,6 +56,7 @@ public class AndroidWebChromeClient : WebChromeClient
     private ILogger Log { get; }
     private bool IsDisconnected { get; set; }
 
+    // ReSharper disable once ConvertToPrimaryConstructor
     public AndroidWebChromeClient(
         WebChromeClient client,
         MainActivity activity,
