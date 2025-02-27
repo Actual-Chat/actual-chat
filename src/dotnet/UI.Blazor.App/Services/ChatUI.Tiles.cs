@@ -8,6 +8,7 @@ public partial class ChatUI
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
+    public static readonly TileStack<long> ConversationTileStack = Constants.Chat.ConversationTileStack;
     public static readonly long SecondTileSize = IdTileStack.Layers[1].TileSize; // 20
 
     public long HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
@@ -27,7 +28,7 @@ public partial class ChatUI
 
         var idTiles = GetIdTilesToLoad(dataQuery);
         var isBot = chat.IsAiSearchChat();
-        var hasVeryFirstItem = dataQuery.HasVeryLastItem;
+        var hasVeryFirstItem = dataQuery.HasVeryFirstItem;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
         var tiles = new List<VirtualListTile<ChatMessage>>();
         foreach (var idTile in idTiles) {
@@ -78,18 +79,17 @@ public partial class ChatUI
         var requestedIdRange = prevMessage == null
             ? idRange.MoveStart(-1) // to request previous item of requested range to properly render block star - we will drop it off
             : idRange;
-        var idTiles = IdTileStack.FirstLayer
-            .GetCoveringTiles(requestedIdRange);
-        var conversationTiles = await idTiles
-            .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
-            .Collect(ApiConstants.Concurrency.High, cancellationToken)
-            .ConfigureAwait(false);
-        var conversations = conversationTiles.SelectMany(t => t.Items).ToList();
+        var conversationIdTile = ConversationTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
+        var conversationTile = await Conversations.GetTile(Session, chatId, conversationIdTile.Range, cancellationToken).ConfigureAwait(false);
+        var conversations = conversationTile.Items
+            .Where(c => !c.EntryRange.IntersectWith(idRange).IsEmpty)
+            .ToList();
         var idRangesToSkip = conversations
             .Where(c => !expandedConversations.Contains(c.Id))
             .Select(c => c.EntryRange)
             .ToList();
-        var entryIdTiles = idTiles
+        var entryIdTiles = IdTileStack.FirstLayer
+            .GetCoveringTiles(requestedIdRange)
             .Where(t => !idRangesToSkip.Any(range => range.Contains(t.Range)))
             .ToList();
         var tiles = await entryIdTiles
@@ -112,14 +112,13 @@ public partial class ChatUI
             indexDocIds = ImmutableDictionary<ChatEntryId, string>.Empty;
 
         var prevEntry = (ChatEntry?)null;
-        var prevDate = DateOnly.MinValue;
+        var prevDate = prevMessage?.Date ?? DateOnly.MinValue;
         var isPrevUnread = false;
         var isPrevAudio = false;
         var hasVeryFirstItem = false;
         var hasVeryFirstSearchItem = false;
         if (prevMessage is ChatEntryMessage prevEntryMessage) {
             prevEntry = prevEntryMessage.Entry;
-            prevDate = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(prevEntry.BeginsAt));
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
             isPrevAudio = prevEntry.HasAudioEntry || prevEntry.IsStreaming;
             hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
@@ -182,6 +181,7 @@ public partial class ChatUI
                     if (isEntryUnread && !isPrevUnread) {
                         var newLineMessage = new ChatEntryMessage(entry) {
                             ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
+                            Date = date,
                             PreviousMessage = prevMessage,
                         };
                         messages.Add(newLineMessage);
@@ -293,7 +293,7 @@ public partial class ChatUI
             var hotRangeTiles = dataQuery.HasVeryLastItem
                 ? firstLayer.GetCoveringTiles(new Range<long>(idRangeToLoad.End - secondLayer.TileSize, idRangeToLoad.End + firstLayer.TileSize))
                 : [];
-            var hotRange = new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End);
+            var hotRange = hotRangeTiles.Length > 0 ? new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End) : default;
             if (!idRangeToLoad.Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
                 hotRange = default;
 

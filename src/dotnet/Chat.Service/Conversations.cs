@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public class Conversations(IServiceProvider services) : IConversations
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private static readonly TileStack<long> ConversationTileStack = Constants.Chat.ConversationTileStack;
 
     private IConversationsBackend Backend { get; } = services.GetRequiredService<IConversationsBackend>();
 
@@ -25,7 +25,7 @@ public class Conversations(IServiceProvider services) : IConversations
     public virtual async Task<ApiArray<Conversation>> GetTile(Session session, ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
     {
         await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-        var idTiles = IdTileStack.FirstLayer.GetCoveringTiles(idTileRange);
+        var idTiles = ConversationTileStack.GetOptimalCoveringTiles(idTileRange);
         var conversationIds = await idTiles
             .Select(idTile => Backend.List(chatId, idTile.Range, cancellationToken))
             .Collect(cancellationToken)
