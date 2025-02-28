@@ -17,9 +17,6 @@ public class NavbarUI(IServiceProvider services)
 
     public void SelectGroup(string id, bool isUserAction)
     {
-        if (OrdinalEquals(id, SelectedGroupId))
-            return;
-
         var group = _groups.FirstOrDefault(c => OrdinalEquals(c.Id, id));
         Log.LogDebug("Group changed (Id='{Id}', Title='{Title}')", id, group?.Title ?? "(unknown)");
         SelectedGroupId = id;
