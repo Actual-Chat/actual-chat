@@ -45,10 +45,17 @@ export class VisualMediaViewer {
                 this.hideHeaderAndFooter();
             }
 
-            fromEvent(this.overlay, 'mousemove')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe((event: MouseEvent) => this.onMouseMove(event));
+            const youTubeVideo = this.overlay.querySelector('.youtube-wrapper');
+            if (youTubeVideo) {
+                fromEvent(this.overlay, 'mousemove')
+                    .pipe(takeUntil(this.disposed$))
+                    .subscribe((event: MouseEvent) => this.onMouseMove(event));
+            }
         }, 3000);
+
+        setTimeout(() => {
+            this.fixVideoPosition();
+        }, 500);
 
         this.updateVideoPlayback();
     }
@@ -59,6 +66,36 @@ export class VisualMediaViewer {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private fixVideoPosition() {
+        const isHeaderVisible = this.isHeaderAndFooterVisible;
+        const videoWrapper = this.imageViewer.querySelector('.single-attachment') as HTMLElement;
+        if (!videoWrapper)
+            return;
+
+        if (!isHeaderVisible) {
+            videoWrapper.style.transform = "translateY(0)";
+            return;
+        }
+
+        const videoRect = videoWrapper.getBoundingClientRect();
+        const headerRect = this.header.getBoundingClientRect();
+        const videoHeight = videoRect.height;
+        const headerHeight = headerRect.height;
+        const containerHeight = document.documentElement.getBoundingClientRect().height - headerHeight;
+        if (videoHeight > containerHeight) {
+            videoWrapper.style.transform = `translateY(${headerHeight / 2}px)`;
+            return;
+        }
+
+        const videoRectTop = videoRect.top;
+        const minTop = headerRect.height;
+        if (videoRectTop >= minTop)
+            return;
+
+        let heightDelta = (minTop - videoRectTop);
+        videoWrapper.style.transform = `translateY(${heightDelta}px)`;
     }
 
     private showHeaderAndFooter() {
@@ -72,6 +109,7 @@ export class VisualMediaViewer {
         this.footer?.classList.add('hide-to-show');
         this.imageViewer.classList.remove('navigation-hidden');
         this.imageViewer.classList.add('navigation-visible');
+        this.fixVideoPosition();
     }
 
     private hideHeaderAndFooter() {
@@ -85,6 +123,7 @@ export class VisualMediaViewer {
         this.footer?.classList.add('show-to-hide');
         this.imageViewer.classList.remove('navigation-visible');
         this.imageViewer.classList.add('navigation-hidden');
+        this.fixVideoPosition();
     }
 
     private toggleHeaderAndFooterVisibility() {

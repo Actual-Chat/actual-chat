@@ -102,21 +102,34 @@ swiper-slide img {
     max-height: calc(100dvh - 7rem);
     transition: max-width 300ms ease-in-out, max-height 300ms ease-in-out, transform 300ms ease-in-out;
 }
-.media-swiper .video-wrapper.one-attachment {
+.media-swiper .video-wrapper.single-attachment {
     max-height: calc(100vh - 3.5rem);
     max-height: calc(100dvh - 3.5rem);
-    transform: translateY(1.75rem);
 }
-.image-viewer-modal:has(.show-to-hide) .media-swiper .video-wrapper {
+.image-viewer-modal:has(.show-to-hide) .media-swiper .video-wrapper:not(.youtube-wrapper) {
     @apply max-h-full;
 }
-.image-viewer-modal:has(.show-to-hide) .media-swiper .video-wrapper.one-attachment {
+.image-viewer-modal:has(.show-to-hide) .media-swiper .video-wrapper.single-attachment {
     transform: translateY(0);
 }
 .video-wrapper {
     @apply relative;
     @apply flex;
 }
+.media-swiper .video-wrapper.youtube-wrapper {
+    @apply w-full h-full;
+    max-height: calc(100vh - 3.5rem);
+    max-height: calc(100dvh - 3.5rem);
+    transform: translateY(1.75rem);
+}
+.image-viewer-modal:has(.show-to-hide) .media-swiper .video-wrapper.youtube-wrapper {
+    max-height: 100%;
+    transform: translateY(0);
+}
+.video-wrapper .youtube-player {
+    @apply h-full;
+}
+
 .media-swiper .video-wrapper video {
     @apply relative;
     @apply max-h-full;
