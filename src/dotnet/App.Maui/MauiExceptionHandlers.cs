@@ -15,31 +15,30 @@ public static class MauiExceptionHandlers
         FirstChanceExceptionLogger.Use();
 #endif
 
-        AppDomain.CurrentDomain.UnhandledException += (sender, args) => {
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => {
             var logLevel = args.IsTerminating ? LogLevel.Critical : LogLevel.Error;
             if (args.ExceptionObject is Exception e)
-                Log.Log(logLevel, e, "OnUnhandledException: {Title}, IsTerminating: {IsTerminating}",
+                Log.Log(logLevel, e, "CurrentDomain.UnhandledException: {Title}, IsTerminating: {IsTerminating}",
                     e.GetType().GetName(),
                     args.IsTerminating);
             else
-                Log.Log(logLevel, "OnUnhandledException: {Title}, IsTerminating: {IsTerminating}\n{Exception}",
+                Log.Log(logLevel, "CurrentDomain.UnhandledException: {Title}, IsTerminating: {IsTerminating}\n{Exception}",
                     args.ExceptionObject.GetType().GetName(),
                     args.IsTerminating,
                     args.ExceptionObject);
         };
 
 #if ANDROID
-        Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (sender, args) => {
+        Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (_, args) => {
             // There is a number of bugs in MAUI causing it to use Java object proxies after they were disconnected,
             // see e.g. https://github.com/dotnet/maui/issues/28051
             // And typically it's fully safe to simply suppress such exceptions.
             // Or at least, it's definitely better than seeing an app crash.
             var e = args.Exception;
-            if (e is ObjectDisposedException) {
-                var stackTrace = e.StackTrace ?? "";
-                if (stackTrace.Contains("Java.Interop.JniPeerMembers.AssertSelf"))
-                    args.Handled = true;
-            }
+            var stackTrace = e.StackTrace ?? "";
+            if (stackTrace.Contains("Java.Interop.JniPeerMembers.AssertSelf"))
+                args.Handled = true;
+
             var logLevel = args.Handled ? LogLevel.Error : LogLevel.Critical;
             Log.Log(logLevel, e,
                 "AndroidEnvironment.UnhandledExceptionRaiser: {Title}, Handled: {Handled}",
