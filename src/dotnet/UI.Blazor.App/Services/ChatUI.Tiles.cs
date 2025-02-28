@@ -26,30 +26,33 @@ public partial class ChatUI
         if (chat == null)
             return [];
 
-        var idTiles = GetIdTilesToLoad(dataQuery);
+        var originalLoadBefore = dataQuery.LoadBefore;
+        var originalLoadAfter = dataQuery.LoadAfter;
         var isBot = chat.IsAiSearchChat();
-        var hasVeryFirstItem = dataQuery.HasVeryFirstItem;
-        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        foreach (var idTile in idTiles) {
-            var lastReadEntryLid = shownReadyEntryLid;
-            if (lastReadEntryLid < idTile.Range.Start)
-                lastReadEntryLid = 0;
-            else if (shownReadyEntryLid >= idTile.Range.End - 1)
-                lastReadEntryLid = long.MaxValue;
-            var tile = await GetTile(
-                chatId,
-                chat.Rules.Author?.Id ?? AuthorId.None,
-                idTile.Range,
-                expandedConversations,
-                prevMessage,
-                lastReadEntryLid,
-                cancellationToken).ConfigureAwait(false);
-            if (tile.Items.Count == 0)
-                continue;
+        while (true) {
+            var idTiles = GetIdTilesToLoad(dataQuery);
+            var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
+            foreach (var idTile in idTiles) {
+                var lastReadEntryLid = shownReadyEntryLid;
+                if (lastReadEntryLid < idTile.Range.Start)
+                    lastReadEntryLid = 0;
+                else if (shownReadyEntryLid >= idTile.Range.End - 1)
+                    lastReadEntryLid = long.MaxValue;
+                var tile = await GetTile(
+                        chatId,
+                        chat.Rules.Author?.Id ?? AuthorId.None,
+                        idTile.Range,
+                        expandedConversations,
+                        prevMessage,
+                        lastReadEntryLid,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (tile.Items.Count == 0)
+                    continue;
 
-            tiles.Add(tile);
-            prevMessage = tile.Items[^1];
+                tiles.Add(tile);
+                prevMessage = tile.Items[^1];
 #if false
         // Uncomment for debugging:
         DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
@@ -57,13 +60,56 @@ public partial class ChatUI
         foreach (var item in tile.Items)
             DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
 #endif
+            }
+            var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts();
+            if (beforeCount >= originalLoadBefore / 2 || afterCount >= originalLoadAfter / 2)
+                break;
+
+            var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+            var hasVeryFirstItem = chatIdRange.Start >= dataQuery.Start;
+            var hasVeryLastItem = chatIdRange.End <= dataQuery.End;
+            var expandedLoadBefore = dataQuery.LoadBefore * 4;
+            var expandedLoadAfter = dataQuery.LoadAfter * 4;
+            dataQuery = new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
+                HasVeryFirstItem = hasVeryFirstItem,
+                HasVeryLastItem = hasVeryLastItem,
+            };
+            tiles.Clear();
         }
         return tiles;
+
+        (int, int) GetLoadedBeforeAndAfterCounts()
+        {
+            var before = 0;
+            var after = 0;
+            foreach (var tile in tiles) {
+                if (tile.Items.Count == 0)
+                    continue;
+
+                var startId = tile.Items[0].Id;
+                var endId = tile.Items[^1].Id;
+                var tileRange = new Range<long>(startId, endId);
+                if (dataQuery.IdRange.Contains(tileRange))
+                    continue;
+
+                if (startId < dataQuery.IdRange.Start)
+                    before += tile.Items.Count(item => item.Id < dataQuery.IdRange.Start);
+                if (endId > dataQuery.IdRange.End)
+                    after += tile.Items.Count(item => item.Id > dataQuery.IdRange.End);
+            }
+            return (before, after);
+        }
     }
+
+    [ComputeMethod]
+    public virtual ValueTask<ChatEntry?> GetEntry(
+        ChatEntryId id,
+        CancellationToken cancellationToken = default)
+        => Chats.GetEntry(Session, id, cancellationToken);
 
     // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
-    public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
+    protected virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
         AuthorId currentAuthorId,
         Range<long> idRange,
@@ -227,13 +273,7 @@ public partial class ChatUI
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
 
-    [ComputeMethod]
-    public virtual ValueTask<ChatEntry?> GetEntry(
-        ChatEntryId id,
-        CancellationToken cancellationToken = default)
-        => Chats.GetEntry(Session, id, cancellationToken);
-
-    public Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
+    private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
     {
         if (idRange.IsEmptyOrNegative)
             return Task.CompletedTask;

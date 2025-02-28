@@ -388,6 +388,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 ChatUI.HighlightEntry(new ChatEntryId(chatId, ChatEntryKind.Text, navEntryId.Value, AssumeValid.Option), navigate: false);
         }
+        hasVeryFirstItem = chatIdRange.Start >= tiles[0].Items[0].Id;
+        hasVeryLastItem = chatIdRange.End <= tiles[^1].Items[^1].Id;
         var result = new VirtualListData<ChatMessage>(tiles) {
             Index = renderedData.Index + 1,
             HasVeryFirstItem = hasVeryFirstItem,
