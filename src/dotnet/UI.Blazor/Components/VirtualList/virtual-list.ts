@@ -275,6 +275,13 @@ export class VirtualList {
         return !!this.renderStartedAt;
     }
 
+    private get isInitialRender(): boolean {
+        const now = Date.now();
+        // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
+         // first 2.5 seconds after creating the virtual list
+        return now - this.createdAt < 2500;
+    }
+
     private get hasUnmeasuredItems(): boolean {
         return this.unmeasuredItems.size > 0 || !this.orderedItems;
     }
@@ -1033,15 +1040,16 @@ export class VirtualList {
     }
 
     private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll: boolean = false, reason: ScrollToEdgeReason = "unknown"): void {
-        const now = Date.now();
+
         // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
-        const isInitialRender = now - this.createdAt < 1500; // first 1.5 seconds after creating the virtual list
+
+        const isInitialRender = this.isInitialRender;
         if (isInitialRender && (reason === 'non-item-resize' || reason === 'item-resize'))
             return; // do not scroll to the end on initial render on spacer resize
 
-        if (this.renderState.renderIndex <= 1 || isInitialRender)
+        if (this.renderState.renderIndex <= 2 || isInitialRender)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
-        this.scrollTime = now;
+        this.scrollTime = Date.now();
         let scrollHeight = 0;
         fastRaf({
             read: () => {
@@ -1107,11 +1115,6 @@ export class VirtualList {
             .find(t => t.pivotRef);
         if (!tuple) {
             warnLog?.log(`restoreScrollPosition: there are no pivot refs found!`);
-            return false;
-        }
-
-        if (renderTime - this.createdAt < 1500) {
-            // Do not restore scroll position during initial render`
             return false;
         }
 
@@ -1381,20 +1384,20 @@ export class VirtualList {
         if (commonRange.isEmpty)
             return true;
 
-        const isLoadingStart = Math.abs(commonRange.start - queryRange.start) > viewportSize / 2;  // we are loading more than half of viewport at the start edge
-        const isLoadingEnd = Math.abs(queryRange.end - commonRange.end) > viewportSize / 2; // we are loading more than half of viewport at the end edge
+        const isLoadingStart = commonRange.start - queryRange.start > viewportSize / 2;  // we are loading more than half of viewport at the start edge
+        const isLoadingEnd = queryRange.end - commonRange.end > viewportSize / 2; // we are loading more than half of viewport at the end edge
         const isViewportCloseToStart = !rs.hasVeryFirstItem && Math.abs(viewport.start - itemRange.start) < viewportSize; // viewport is close to the start edge and there are items above
         const isViewportCloseToEnd = !rs.hasVeryLastItem && Math.abs(itemRange.end - viewport.end) < viewportSize; // viewport is close to the end edge and there are items bellow
         const isEdgeItemInViewport = viewport.contains(itemRange.start) || viewport.contains(itemRange.end);
         const isNotEnoughItemsToFulfillViewport = viewport.intersectWith(itemRange).size < viewportSize * 0.9;
+        const isInitialRender = this.isInitialRender;
 
         const mustExpand =
-            isLoadingStart && isViewportCloseToStart
-            || isLoadingEnd && isViewportCloseToEnd
+            !isInitialRender && (isLoadingStart && isViewportCloseToStart || isLoadingEnd && isViewportCloseToEnd)
             || isEdgeItemInViewport
             || isNotEnoughItemsToFulfillViewport;
         // NOTE(AY): The condition below checks just one side
-        const mustContract = Math.abs(itemRange.end - commonRange.end) > viewportSize;
+        const mustContract = !isInitialRender && Math.abs(itemRange.end - commonRange.end) > viewportSize;
         return mustExpand || mustContract;
     }
 
