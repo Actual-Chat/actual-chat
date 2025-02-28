@@ -10,6 +10,7 @@ public partial class CustomBlazorWebViewHandler
 {
     private AndroidWebViewClient? _androidWebViewClient;
     private AndroidWebChromeClient? _androidWebChromeClient;
+
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= StaticLog.For<CustomBlazorWebViewHandler>();
 
@@ -36,8 +37,7 @@ public partial class CustomBlazorWebViewHandler
 #pragma warning restore CS0618
 
         // AndroidJSInterface methods will be available for invocation in js via 'window.Android' object.
-        var jsInterface = new AndroidJSInterface(webView);
-        webView.AddJavascriptInterface(jsInterface, "Android");
+        webView.AddJavascriptInterface(new AndroidJSInterface(webView), "Android");
 
         var services = MauiContext!.Services;
         _androidWebViewClient = new AndroidWebViewClient(
