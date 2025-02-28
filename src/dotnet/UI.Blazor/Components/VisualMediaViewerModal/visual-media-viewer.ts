@@ -1,5 +1,5 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
-import { setTimeout } from 'timerQueue';
+import { clearTimeout, setTimeout } from 'timerQueue';
 import { Swiper } from 'swiper';
 
 export class VisualMediaViewer {
@@ -10,6 +10,7 @@ export class VisualMediaViewer {
     private isHeaderAndFooterVisible: boolean = true;
     private isHeaderAndFooterVisibilityForced: boolean = false;
     private readonly jumpTime: number = 5;
+    private timerId: number;
     private videos: HTMLCollectionOf<HTMLVideoElement>;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
@@ -43,13 +44,6 @@ export class VisualMediaViewer {
         setTimeout(() => {
             if (!this.isHeaderAndFooterVisibilityForced) {
                 this.hideHeaderAndFooter();
-            }
-
-            const youTubeVideo = this.overlay.querySelector('.youtube-wrapper');
-            if (youTubeVideo) {
-                fromEvent(this.overlay, 'mousemove')
-                    .pipe(takeUntil(this.disposed$))
-                    .subscribe((event: MouseEvent) => this.onMouseMove(event));
             }
         }, 3000);
 
@@ -98,10 +92,18 @@ export class VisualMediaViewer {
         videoWrapper.style.transform = `translateY(${heightDelta}px)`;
     }
 
+    private setShowHeaderTimout() {
+        this.timerId = setTimeout(() => {
+            this.hideHeaderAndFooter();
+            clearTimeout(this.timerId);
+        }, 3000);
+    }
+
     private showHeaderAndFooter() {
         if (this.isHeaderAndFooterVisible)
             return;
 
+        this.setShowHeaderTimout();
         this.isHeaderAndFooterVisible = true;
         this.header.classList.remove('show-to-hide');
         this.header.classList.add('hide-to-show');
@@ -116,6 +118,7 @@ export class VisualMediaViewer {
         if (!this.isHeaderAndFooterVisible)
             return;
 
+        clearTimeout(this.timerId);
         this.isHeaderAndFooterVisible = false;
         this.header.classList.remove('hide-to-show');
         this.header.classList.add('show-to-hide');
@@ -136,23 +139,6 @@ export class VisualMediaViewer {
     }
 
     // Event handlers
-
-    private onMouseMove(event: MouseEvent) {
-         if (this.isHeaderAndFooterVisibilityForced)
-             return;
-        const { pageY, pageX } = event;
-        const cursorInPrevButtonArea = pageX <= 40;
-        const cursorInNextButtonArea = this.overlay.offsetWidth - pageX <= 40;
-         const cursorInHeaderArea = pageY <= this.header.offsetHeight;
-         const cursorInFooterArea = this.footer
-             ? this.overlay.offsetHeight - pageY <= this.footer.offsetHeight
-             : false;
-         if (cursorInHeaderArea || cursorInFooterArea || cursorInPrevButtonArea || cursorInNextButtonArea) {
-             this.showHeaderAndFooter();
-         } else {
-             this.hideHeaderAndFooter();
-         }
-    }
 
     private onClick(event: PointerEvent | MouseEvent) {
         const { pageY } = event;
