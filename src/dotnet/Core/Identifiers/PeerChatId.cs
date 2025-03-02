@@ -52,6 +52,12 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
             return;
         if (userId1 == userId2)
             return;
+        // NOTE(DF): Dash is used as user ids separator.
+        // If one of given user ids contains 'dash' character as well,
+        // it won't be possible to parse such a peer chat id later.
+        if (userId1.Value.OrdinalContains('-') ||
+            userId2.Value.OrdinalContains('-'))
+            return;
 
         (UserId1, UserId2) = (userId1, userId2).Sort(UserIdComparer);
         Id = Format(UserId1, UserId2);
