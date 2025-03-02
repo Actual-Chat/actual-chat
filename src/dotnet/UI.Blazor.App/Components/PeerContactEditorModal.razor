@@ -11,11 +11,22 @@
         ButtonsClass="full-width">
         <Body>
         <FormBlock>
-            <FormSection For="() => _form.UserName" InputId="@_form.UserNameFieldId" Label="User name" IsLabelInsideInput="true">
-                <TextBox ValueExpression="() => _form.UserName" Value="@_peerOwnName" Id="@_form.UserNameFieldId" readonly />
-            </FormSection>
+            @if (_peerAvatar is not null) {
+                <div class="avatar-badge">
+                    <AvatarCircle
+                        Avatar="@_peerAvatar"
+                        Size="@SquareSize.Size9"
+                        IsBlurred="@false"/>
+                    <div class="c-name">
+                        <div class="c-title">@(_form.DisplayName.NullIfEmpty() ?? _peerOwnName)</div>
+                        @if (!_form.DisplayName.IsNullOrEmpty()) {
+                            <div class="c-peer-own-name">@_peerOwnName</div>
+                        }
+                    </div>
+                </div>
+            }
             <FormSection For="() => _form.DisplayName" InputId="@_form.DisplayNameFieldId" Label="Display Name" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.DisplayName" Id="@_form.DisplayNameFieldId" Placeholder="@_peerExtContactDisplayName" />
+                <TextBox @bind-Value="@_form.DisplayName" Id="@_form.DisplayNameFieldId" Placeholder="@_peerExtContactDisplayName"/>
             </FormSection>
         </FormBlock>
         </Body>
@@ -35,6 +46,7 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private Contact? _contact;
+    private Avatar? _peerAvatar;
     private string? _peerOwnName;
     private string? _peerExtContactDisplayName;
 
@@ -59,8 +71,8 @@
         if (_contact is null)
             return;
 
-        var peerAvatar = _contact.Account?.Avatar;
-        _peerOwnName = peerAvatar?.Name ?? "";
+        _peerAvatar = _contact.Account?.Avatar;
+        _peerOwnName = _peerAvatar?.Name ?? "";
         if (peerContactName.IsNullOrEmpty()) {
             var chat = await Chats.Get(Session, peerContactId.ChatId, cancellationToken).ConfigureAwait(false);
             if (chat != null && !OrdinalEquals(chat.Title, _peerOwnName))

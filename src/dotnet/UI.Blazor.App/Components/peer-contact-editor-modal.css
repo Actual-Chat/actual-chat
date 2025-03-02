@@ -1,0 +1,11 @@
+.peer-contact-editor-modal .avatar-badge {
+    @apply gap-x-4;
+    @apply mb-2;
+}
+
+.peer-contact-editor-modal .c-name .c-title {
+    @apply text-02 text-headline-7 truncate;
+}
+.peer-contact-editor-modal .c-name .c-peer-own-name {
+    @apply text-03 text-caption-6 truncate;
+}
