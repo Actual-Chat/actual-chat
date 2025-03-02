@@ -48,24 +48,28 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         var author = authorFull.ToAuthor();
         var peerUserId = authorFull.UserId;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account.Id != peerUserId) {
-            var peerChatId = new PeerChatId(account.Id, peerUserId);
-            var contactId = new ContactId(account.Id, peerChatId);
-            string? peerRename = null;
-            var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(contact.PeerContactName))
-                peerRename = contact.PeerContactName;
-            if (peerRename.IsNullOrEmpty()) {
-                var extContactDisplayName = await ExternalContactsBackend
-                    .GetDisplayNameFor(account.Id, peerUserId, cancellationToken)
-                    .ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(extContactDisplayName))
-                    peerRename = extContactDisplayName;
-            }
-            if (!peerRename.IsNullOrEmpty() && !OrdinalEquals(peerRename, author.Avatar.Name)) {
-                var avatar = author.Avatar with { Name = peerRename };
-                author = author with { Avatar = avatar };
-            }
+        if (account.Id == peerUserId)
+            return author;
+
+        var peerChatId = new PeerChatId(account.Id, peerUserId, ParseOrNone.Option);
+        if (peerChatId.IsNone)
+            return author;
+
+        var contactId = new ContactId(account.Id, peerChatId);
+        string? peerRename = null;
+        var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(contact.PeerContactName))
+            peerRename = contact.PeerContactName;
+        if (peerRename.IsNullOrEmpty()) {
+            var extContactDisplayName = await ExternalContactsBackend
+                .GetDisplayNameFor(account.Id, peerUserId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(extContactDisplayName))
+                peerRename = extContactDisplayName;
+        }
+        if (!peerRename.IsNullOrEmpty() && !OrdinalEquals(peerRename, author.Avatar.Name)) {
+            var avatar = author.Avatar with { Name = peerRename };
+            author = author with { Avatar = avatar };
         }
         return author;
     }
