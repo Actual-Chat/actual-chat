@@ -67,6 +67,7 @@
 @import './Components/NoResults/no-results.css';
 
 @import './Components/own-avatar.css';
+@import './Components/peer-contact-editor-modal.css';
 @import './Components/delete-account.css';
 
 @import './Pages/user-page.css';
