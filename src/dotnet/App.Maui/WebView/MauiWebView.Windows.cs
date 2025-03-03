@@ -30,9 +30,9 @@ public partial class MauiWebView
     public partial void HardNavigateTo(string url)
         => WindowsWebView.CoreWebView2.Navigate(url);
 
-    public partial Task EvaluateJavaScript(string javaScript)
+    private partial Task EvaluateJSInternal(string code)
     {
-        var request = new EvaluateJavaScriptAsyncRequest(javaScript);
+        var request = new EvaluateJavaScriptAsyncRequest(code);
         WindowsWebView.EvaluateJavaScript(request);
         return request.Task;
     }

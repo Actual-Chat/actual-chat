@@ -37,8 +37,8 @@ public partial class MauiWebView
 #pragma warning restore CA2000
     }
 
-    public partial Task EvaluateJavaScript(string javaScript)
-        => WKWebView.EvaluateJavaScriptAsync(javaScript);
+    private partial Task EvaluateJSInternal(string code)
+        => WKWebView.EvaluateJavaScriptAsync(code);
 
     // Private methods
 
