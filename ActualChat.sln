@@ -53,6 +53,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		add-hosts.cmd = add-hosts.cmd
 		clean.cmd = clean.cmd
@@ -68,10 +69,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		git-prevent-tracking.cmd = git-prevent-tracking.cmd
 		global.json = global.json
 		icons-to-font.cmd = icons-to-font.cmd
+		nats.Dockerfile = nats.Dockerfile
 		npm-build.cmd = npm-build.cmd
 		npm-install.cmd = npm-install.cmd
 		npm-watch.cmd = npm-watch.cmd
 		nuget.config = nuget.config
+		opensearch-recreate.cmd = opensearch-recreate.cmd
 		prepare-sounds.cmd = prepare-sounds.cmd
 		README.md = README.md
 		rider-with-tiered-pgo.cmd = rider-with-tiered-pgo.cmd
@@ -79,9 +82,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run-watch.cmd = run-watch.cmd
 		run.cmd = run.cmd
 		version.json = version.json
-		nats.Dockerfile = nats.Dockerfile
-		.gitattributes = .gitattributes
-		opensearch-recreate.cmd = opensearch-recreate.cmd
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -140,9 +140,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E726-4D5A-90A1-BDD668CFD906}"
 	ProjectSection(SolutionItems) = preProject
 		src\nodejs\src\async-processor.ts = src\nodejs\src\async-processor.ts
+		src\nodejs\src\connectivity.ts = src\nodejs\src\connectivity.ts
 		src\nodejs\src\device-info.ts = src\nodejs\src\device-info.ts
 		src\nodejs\src\disposable.ts = src\nodejs\src\disposable.ts
 		src\nodejs\src\dom-helpers.ts = src\nodejs\src\dom-helpers.ts
+		src\nodejs\src\dotnet.d.ts = src\nodejs\src\dotnet.d.ts
 		src\nodejs\src\event-handling.ts = src\nodejs\src\event-handling.ts
 		src\nodejs\src\fast-raf.ts = src\nodejs\src\fast-raf.ts
 		src\nodejs\src\font-sizes.ts = src\nodejs\src\font-sizes.ts
@@ -157,19 +159,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\object-pool.ts = src\nodejs\src\object-pool.ts
 		src\nodejs\src\on-device-awake-worker.ts = src\nodejs\src\on-device-awake-worker.ts
 		src\nodejs\src\on-device-awake.ts = src\nodejs\src\on-device-awake.ts
+		src\nodejs\src\permissions.ts = src\nodejs\src\permissions.ts
 		src\nodejs\src\promises.ts = src\nodejs\src\promises.ts
 		src\nodejs\src\resettable.ts = src\nodejs\src\resettable.ts
+		src\nodejs\src\resources.ts = src\nodejs\src\resources.ts
 		src\nodejs\src\rpc.ts = src\nodejs\src\rpc.ts
 		src\nodejs\src\service-worker.ts = src\nodejs\src\service-worker.ts
 		src\nodejs\src\theme.ts = src\nodejs\src\theme.ts
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
 		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
-		src\nodejs\src\connectivity.ts = src\nodejs\src\connectivity.ts
 		src\nodejs\src\_constants.ts = src\nodejs\src\_constants.ts
-		src\nodejs\src\permissions.ts = src\nodejs\src\permissions.ts
-		src\nodejs\src\resources.ts = src\nodejs\src\resources.ts
-		src\nodejs\src\dotnet.d.ts = src\nodejs\src\dotnet.d.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
@@ -212,10 +212,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.Service.Migration"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-92B2-4BC2-9970-8AFF829A1987}"
 	ProjectSection(SolutionItems) = preProject
+		docs\BigTasks.md = docs\BigTasks.md
 		docs\Places.md = docs\Places.md
 		docs\Search.md = docs\Search.md
 		docs\SmallTasks.md = docs\SmallTasks.md
-		docs\BigTasks.md = docs\BigTasks.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
@@ -338,9 +338,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "opensearch", "opensearch", 
 	ProjectSection(SolutionItems) = preProject
 		services\opensearch\docker-compose.yaml = services\opensearch\docker-compose.yaml
 		services\opensearch\Dockerfile = services\opensearch\Dockerfile
-		services\opensearch\opensearch_dashboards.no-security.yaml = services\opensearch\opensearch_dashboards.no-security.yaml
 		services\opensearch\opensearch-dashboard-no-security.dockerfile = services\opensearch\opensearch-dashboard-no-security.dockerfile
 		services\opensearch\opensearch-setup.py = services\opensearch\opensearch-setup.py
+		services\opensearch\opensearch_dashboards.no-security.yaml = services\opensearch\opensearch_dashboards.no-security.yaml
 	EndProjectSection
 EndProject
 Global
@@ -486,8 +486,9 @@ Global
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.Build.0 = Debug|Any CPU
@@ -723,6 +724,7 @@ Global
 		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{589F71C6-2FBA-4993-BD35-317322D53F65} = {9EF8D096-E543-418C-A491-331E60F146FA}
+		{FF505BC1-4931-4F97-A09C-7DCDCAF4BBA8} = {03A5EF2E-8985-4971-884D-E5D646BDA567}
 		{0708832C-D62E-4E56-BA7E-33C6886EFF61} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{240640BA-BAD7-4138-990A-641F169425A9} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{14B6189E-7906-4820-86C8-F605F7F9F26E} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
@@ -755,7 +757,6 @@ Global
 		{E223F274-024F-47E1-B0DA-865EFD68E2DC} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{254E8D42-5883-4A20-88E0-29A80CDE5FD6} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{5CAD507F-E83E-4F0E-88C0-AF0FAA18D6A8} = {254E8D42-5883-4A20-88E0-29A80CDE5FD6}
-		{FF505BC1-4931-4F97-A09C-7DCDCAF4BBA8} = {03A5EF2E-8985-4971-884D-E5D646BDA567}
 		{4DB9DFCF-85E8-4DA5-B8F0-DDB19ACEA121} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
 		{E013D1EE-9214-45CA-B0B4-3EF9AE8EA6F9} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
 		{6E169A14-A516-4FFC-9999-0A699ECC2B69} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
