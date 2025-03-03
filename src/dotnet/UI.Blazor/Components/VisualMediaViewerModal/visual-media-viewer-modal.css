@@ -148,9 +148,45 @@ swiper-slide img {
 }
 .video-wrapper .video-control {
     filter: opacity(1);
+    animation: show-control 300ms linear forwards;
 }
 .image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control {
     filter: opacity(0);
+    animation: hide-control 300ms linear forwards;
+}
+@keyframes hide-control {
+    0% {
+        filter: opacity(1);
+        transform: translateY(0);
+        z-index: 10;
+    }
+    90% {
+        filter: opacity(0.1);
+        transform: translateY(90%);
+        z-index: 10;
+    }
+    100% {
+        filter: opacity(0);
+        transform: translateY(100%);
+        z-index: -1;
+    }
+}
+@keyframes show-control {
+    0% {
+        filter: opacity(0);
+        transform: translateY(100%);
+        z-index: -1;
+    }
+    10% {
+        filter: opacity(0.1);
+        transform: translateY(90%);
+        z-index: 10;
+    }
+    100% {
+        filter: opacity(1);
+        transform: translateY(0);
+        z-index: 10;
+    }
 }
 .video-wrapper .video-control * {
     @apply always-white;
@@ -234,4 +270,14 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 .media-preview-swiper .swiper-slide-visible {
     max-width: 10%;
     cursor: pointer;
+}
+
+.video-wrapper .spinner-icon-wrapper {
+    @apply absolute top-1/2 left-1/2;
+    @apply flex-none;
+    @apply w-12 h-12;
+    @apply text-white;
+    animation: none;
+    transform: translate(-50%, -50%);
+    transition: transform 0ms;
 }

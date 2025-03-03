@@ -47,10 +47,6 @@ export class VisualMediaViewer {
             }
         }, 3000);
 
-        setTimeout(() => {
-            this.fixVideoPosition();
-        }, 500);
-
         this.updateVideoPlayback();
     }
 
@@ -189,15 +185,31 @@ export class VisualMediaViewer {
             const activeSlides = this.imageViewer.getElementsByClassName('swiper-slide-active');
             [...activeSlides].forEach((element: HTMLElement) => {
                 const videos = element.getElementsByTagName('video');
-                [...videos].forEach((video: HTMLMediaElement) => video.play()
+                [...videos].forEach((video: HTMLMediaElement) => {
+                    video.play()
                     .then(_ => {
+                        this.hideSpinner(video);
+                        this.fixVideoPosition();
                         let control = video.parentElement.querySelector('.video-control');
                         if (control && control.classList.contains('hide-control')) {
                             control.classList.remove('hide-control');
                         }
-                    }));
+                    });
+                });
             });
         }, 0);
+    }
+
+    private hideSpinner(video: HTMLMediaElement) {
+        const wrapper = video.closest('.video-wrapper');
+        if (!wrapper)
+            return;
+
+        const spinner = wrapper.querySelector('.spinner-icon-wrapper');
+        if (!spinner)
+            return;
+
+        spinner.remove();
     }
 
     private addVideoListeners(video: HTMLMediaElement) {
