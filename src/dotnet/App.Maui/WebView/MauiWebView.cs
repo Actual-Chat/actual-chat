@@ -123,7 +123,11 @@ public sealed partial class MauiWebView
     }
 
     public partial void HardNavigateTo(string url);
-    public partial Task EvaluateJavaScript(string javaScript);
+
+    public Task EvaluateJS(string code)
+        => MainThread.InvokeOnMainThreadAsync(() => EvaluateJSInternal(code));
+
+    private partial Task EvaluateJSInternal(string code);
 
     public void Disconnect()
     {

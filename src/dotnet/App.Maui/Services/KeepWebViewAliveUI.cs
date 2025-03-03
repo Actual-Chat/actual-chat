@@ -23,6 +23,6 @@ public class KeepWebViewAliveUI(UIHub hub) : WorkerBase
     {
         await IsEnabled.When(x => x, cancellationToken).ConfigureAwait(false);
         if (MauiWebView.Current is { } view)
-            await view.EvaluateJavaScript("1 + 1").ConfigureAwait(false);
+            await view.EvaluateJS("1 + 1").ConfigureAwait(false);
     }
 }
