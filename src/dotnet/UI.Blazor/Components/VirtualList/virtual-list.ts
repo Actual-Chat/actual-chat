@@ -12,6 +12,7 @@ import { Pivot } from './ts/pivot';
 import { Log } from 'logging';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
+import { clamp } from 'math';
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
@@ -907,10 +908,10 @@ export class VirtualList {
         if (this.visibleItems.size) {
             const visibleItems = [...this.visibleItems.values()];
             medianVisibleKey = visibleItems[Math.floor(visibleItems.length / 2)];
-            const medianRef = this.getItemRef(medianVisibleKey);
-            if (medianRef)
-                if (!medianRef.classList.contains('anchor'))
-                    medianRef.classList.add('anchor');
+        //     const medianRef = this.getItemRef(medianVisibleKey);
+        //     if (medianRef)
+        //         if (!medianRef.classList.contains('anchor'))
+        //             medianRef.classList.add('anchor');
         }
 
         const itemKeys = [medianVisibleKey, this.getLastItemKey(), this.query.keyRange?.end, secondItemKey, this.query.keyRange?.start];
@@ -1499,14 +1500,15 @@ export class VirtualList {
             } else if (startIndex >= 0)
                 break;
         }
-
+        const keyItemDistance = endIndex - startIndex;
         const firstItem = items[startIndex]
-        ?? items[0].range.start > loadZone.end
-            ? items[0]
-            : items[items.length - 1];
+            ?? items[0].range.start > loadZone.end
+                ? items[0]
+                : items[items.length - 1];
         const lastItem = items[endIndex] ?? firstItem;
-        const moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio);
-        const moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize / responseFulfillmentRatio);
+        // Calculate move range and keep it within at least one boundary of the key items
+        const moveRangeStart = clamp(Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio), -Infinity, keyItemDistance);
+        const moveRangeEnd = clamp(Math.ceil((loadZone.end - lastItem.range.end) / itemSize / responseFulfillmentRatio), -keyItemDistance, Infinity);
         const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);
