@@ -13,6 +13,7 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(Kind), nameof(BeginsAt), nameof(EndsAt))]
 [Index(nameof(ChatId), nameof(Kind), nameof(EndsAt), nameof(BeginsAt))]
 [Index(nameof(ChatId), nameof(Kind), nameof(Version))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<SystemEntry> SystemEntrySerializer { get; } =

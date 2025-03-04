@@ -7,6 +7,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("ReactionSummaries")]
 [Index(nameof(EntryId))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<ImmutableList<AuthorId>> AuthorIdsSerializer { get; } =

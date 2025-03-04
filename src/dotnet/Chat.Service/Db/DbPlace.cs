@@ -8,6 +8,7 @@ namespace ActualChat.Chat.Db;
 [Table("Places")]
 [Index(nameof(CreatedAt))]
 [Index(nameof(Version), nameof(Id))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

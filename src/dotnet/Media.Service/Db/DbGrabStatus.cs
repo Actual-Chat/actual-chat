@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ActualChat.Media.Db;
 
 [Table("GrabStatuses")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbGrabStatus : IHasId<string>, IRequirementTarget
 {
     public DbGrabStatus() { }

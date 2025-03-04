@@ -8,6 +8,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.Db;
 
 [Table("Avatars")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);

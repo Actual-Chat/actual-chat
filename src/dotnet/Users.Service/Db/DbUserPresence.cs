@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ActualChat.Users.Db;
 
 [Table("Presences")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbUserPresence : IRequirementTarget
 {
     private DateTime _onlineCheckInAt;

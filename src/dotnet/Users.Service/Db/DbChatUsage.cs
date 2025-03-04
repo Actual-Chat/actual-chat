@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ActualChat.Users.Db;
 
 [Table("ChatUsages")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatUsage
 {
     private DateTime _accessedAt;

@@ -8,6 +8,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.Db;
 
 [Table("RouletteCompletions")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbRouletteCompletion : IHasId<string>, IHasVersion<long>
 {
     private DateTime _completedAt;

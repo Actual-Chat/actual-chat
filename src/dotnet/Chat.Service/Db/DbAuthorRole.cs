@@ -6,6 +6,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("AuthorRoles")]
 [Index(nameof(DbRoleId), nameof(DbAuthorId), IsUnique = true)]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAuthorRole: IRequirementTarget
 {
     [Column("AuthorId")]

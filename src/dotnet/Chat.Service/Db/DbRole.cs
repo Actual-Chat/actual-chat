@@ -9,6 +9,7 @@ namespace ActualChat.Chat.Db;
 [Table("Roles")]
 [Index(nameof(ChatId), nameof(LocalId), IsUnique = true)]
 [Index(nameof(ChatId), nameof(Name))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

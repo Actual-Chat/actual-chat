@@ -12,6 +12,7 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(UserId), IsUnique = true)]
 [Index(nameof(UserId), nameof(AvatarId))]
 [Index(nameof(Version), nameof(IsPlaceAuthor))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

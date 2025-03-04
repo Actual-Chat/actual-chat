@@ -11,6 +11,7 @@ namespace ActualChat.Notification.Db;
 [Index(nameof(UserId), nameof(Version))]
 [Index(nameof(UserId), nameof(Id))]
 [Index(nameof(UserId), nameof(Kind), nameof(SimilarityKey))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime? _handledAt;

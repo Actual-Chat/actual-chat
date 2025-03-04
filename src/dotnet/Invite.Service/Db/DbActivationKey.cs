@@ -5,6 +5,7 @@ using ActualLab.Generators;
 namespace ActualChat.Invite.Db;
 
 [Table("InviteActivationKeys")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbActivationKey : IHasId<string>, IRequirementTarget
 {
     private static RandomStringGenerator SuffixGenerator { get; } = new(10, Alphabet.AlphaNumeric);

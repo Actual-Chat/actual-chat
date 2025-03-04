@@ -5,6 +5,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("Reactions")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _modifiedAt;
