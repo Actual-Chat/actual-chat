@@ -55,8 +55,7 @@ public partial class StreamingBackend
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
 
-        var language = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
-        var languages = ApiArray.New(language);
+        var languages = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
 
         var author = await Authors
             .EnsureJoined(record.Session, record.ChatId, cancellationToken)
@@ -139,12 +138,19 @@ public partial class StreamingBackend
         await transcribeTask.ConfigureAwait(false);
     }
 
-    private async Task<Language> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
+    private async Task<ApiArray<Language>> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
         var kvas = ServerKvas.GetClient(record.Session);
         var settings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);
+        var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken);
         var language = await settings.LanguageOrPrimary(kvas, cancellationToken).ConfigureAwait(false);
-        return language;
+        Language?[] languages = [language, languageSettings.Primary, languageSettings.Secondary, languageSettings.Tertiary];
+
+        return languages
+            .Where(l => l != null)
+            .Select(l => l!.Value)
+            .Distinct()
+            .ToApiArray();
     }
 
     private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
