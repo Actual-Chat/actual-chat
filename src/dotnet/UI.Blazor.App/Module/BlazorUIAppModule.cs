@@ -123,7 +123,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.ConfigureUIEvents(
             eventHub => eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
                 var modalUI = eventHub.Services.GetRequiredService<ModalUI>();
-                _ = modalUI.Show(SettingsModal.Model.Instance, ModalOptions.FullScreen, ct);
+                _ = modalUI.Show(new SettingsModal.Model(@event.TabId), ModalOptions.FullScreen, ct);
                 return Task.CompletedTask;
             }));
 

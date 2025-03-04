@@ -12,7 +12,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
     [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string Content { get; set; } = "";
-    public string SourceContentHash { get; set; }
+    public string SourceContentHash { get; set; } = "";
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);

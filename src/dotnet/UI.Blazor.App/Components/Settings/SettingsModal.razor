@@ -20,21 +20,21 @@
             <i class="icon-close text-xl"></i>
         </ButtonRound>
     }
-    <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
+    <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId">
         @if (showMyAccount) {
-            <SettingsTab @key="1" TabIndex="1" Title="Your Account" Id="account" IconClass="icon-person">
+            <SettingsTab @key="1" TabIndex="1" Title="Your Account" Id="@SettingsTabId.Account" IconClass="icon-person">
                 <YourAccount/>
             </SettingsTab>
         }
 
         @if (showNotifications) {
-            <SettingsTab @key="3" TabIndex="3" Title="Notifications" Id="notifications" IconClass="icon-bell">
+            <SettingsTab @key="3" TabIndex="3" Title="Notifications" Id="@SettingsTabId.Notifications" IconClass="icon-bell">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
         }
 
-        <SettingsTab @key="4" TabIndex="4" Title="Transcription" Id="transcription" IconClass="icon-transcription">
+        <SettingsTab @key="4" TabIndex="4" Title="Transcription" Id="@SettingsTabId.Transcription" IconClass="icon-transcription">
             <TitleContent>
                 <LanguageShortcut/>
             </TitleContent>
@@ -43,40 +43,40 @@
             </ChildContent>
         </SettingsTab>
 
-        <SettingsTab @key="5" TabIndex="5" Title="User Interface" Id="userInterface" IconClass="icon-sort-by-alphabet">
+        <SettingsTab @key="5" TabIndex="5" Title="User Interface" Id="@SettingsTabId.UserInterface" IconClass="icon-sort-by-alphabet">
             <UserInterface/>
         </SettingsTab>
 
-        <SettingsTab @key="6" TabIndex="6" Title="Application" Id="app" IconClass="icon-settings">
+        <SettingsTab @key="6" TabIndex="6" Title="Application" Id="@SettingsTabId.App" IconClass="icon-settings">
             <AppSettings/>
         </SettingsTab>
 
-        <SettingsTab @key="7" TabIndex="7" Title="Emails" Id="emails" IconClass="icon-email">
+        <SettingsTab @key="7" TabIndex="7" Title="Emails" Id="@SettingsTabId.Emails" IconClass="icon-email">
             <EmailSettings/>
         </SettingsTab>
 
         @if (m.EnableChatRouletteUI) {
-            <SettingsTab @key="8" TabIndex="8" Title="Chat Roulette" Id="chatRoulette" IconClass="icon-hand">
+            <SettingsTab @key="8" TabIndex="8" Title="Chat Roulette" Id="@SettingsTabId.ChatRoulette" IconClass="icon-hand">
                 <ChatRouletteSettings/>
             </SettingsTab>
         }
 
-        <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="documents" Class="docs-tab" IconClass="icon-file-text">
+        <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text">
             <DocumentsPage/>
         </SettingsTab>
 
         @if (m.ShowDeveloperTools) {
-            <SettingsTab @key="99" TabIndex="99" Title="Developer tools" Id="dev-tools" IconClass="icon-eye" HasSeparatorBefore="true">
+            <SettingsTab @key="99" TabIndex="99" Title="Developer tools" Id="@SettingsTabId.DevTools" IconClass="icon-eye" HasSeparatorBefore="true">
                 <DeveloperTools/>
             </SettingsTab>
         }
 
         @if (showLogout) {
-            <SettingsTab @key="100" TabIndex="100" Title="Log out" Id="signOut" IconClass="icon-log-out" HasSeparatorBefore="true">
+            <SettingsTab @key="100" TabIndex="100" Title="Log out" Id="@SettingsTabId.SignOut" IconClass="icon-log-out" HasSeparatorBefore="true">
             </SettingsTab>
         }
         @if (showQuit) {
-            <SettingsTab @key="101" TabIndex="101" Title="Quit Actual Chat" Id="quit" IconClass="icon-close">
+            <SettingsTab @key="101" TabIndex="101" Title="Quit Actual Chat" Id="@SettingsTabId.Quit" IconClass="icon-close">
             </SettingsTab>
         }
 
@@ -110,10 +110,12 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var showDeveloperTools = _developerTools?.IsEnabled(account) ?? false;
+        var tabId = ModalModel.TabId;
         var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
         return new ComputedModel(account) {
             ShowDeveloperTools = showDeveloperTools,
             EnableChatRouletteUI = enableChatRouletteUI,
+            TabId = tabId,
         };
     }
 
@@ -125,9 +127,10 @@
     public sealed record ComputedModel(AccountFull AccountFull) {
         public bool ShowDeveloperTools { get; init; }
         public bool EnableChatRouletteUI { get; init; }
+        public string? TabId { get; init; }
     }
 
-    public sealed record Model {
+    public sealed record Model(string? TabId = null) {
         public static readonly Model Instance = new();
     }
 }
