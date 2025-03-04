@@ -1,5 +1,3 @@
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @{
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
@@ -97,7 +95,8 @@
 @code {
     private bool _isRightSideVisible;
     private readonly List<SettingsTab> _tabs = new();
-    private SettingsTab? _activeTab;
+
+    public IReadOnlyList<SettingsTab> Tabs => _tabs;
 
     [Inject] private UIHub Hub { get; init; } = null!;
 
@@ -109,35 +108,21 @@
     [Parameter] public EventCallback<SettingsTab?> ActiveTabChanged { get; set; }
     [Parameter] public EventCallback CloseModalClick { get; set; }
 
-#pragma warning disable BL0007
-    [Parameter] public SettingsTab? ActiveTab {
-        get => _activeTab;
+    [Parameter]
+    public SettingsTab? ActiveTab {
+        get;
         set {
-            if (_activeTab == value)
+            if (field == value)
                 return;
             if (value != null && !_tabs.Contains(value))
                 throw StandardError.Constraint("This tab does not belong to the panel.");
 
-            _activeTab = value;
+            field = value;
             ActiveTabChanged.InvokeAsync(value);
         }
     }
 
-    [Parameter] public string? DefaultTabId {
-        get => _activeTab?.Id;
-        set {
-            if (_activeTab?.Id == value)
-                return;
-            var tab = _tabs.FirstOrDefault(t => t.Id == value);
-            if (tab != null && !_tabs.Contains(tab))
-                throw StandardError.Constraint("This tab does not belong to the panel.");
-            _activeTab = tab;
-            ActiveTabChanged.InvokeAsync(tab);
-        }
-    }
-#pragma warning restore BL0007
-
-    public IReadOnlyList<SettingsTab> Tabs => _tabs;
+    [Parameter] public string? DefaultTabId { get; set; }
 
     internal void RegisterTab(SettingsTab tab) {
         var indexToInsert = -1;
@@ -154,7 +139,9 @@
             _tabs.Insert(indexToInsert, tab);
         else
             _tabs.Add(tab);
-        ActiveTab ??= tab;
+        if (DefaultTabId.IsNullOrEmpty() || OrdinalEquals(tab.Id, DefaultTabId))
+            ActiveTab ??= tab;
+
         StateHasChanged();
     }
 

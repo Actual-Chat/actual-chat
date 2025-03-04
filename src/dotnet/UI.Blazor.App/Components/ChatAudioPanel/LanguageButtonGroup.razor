@@ -67,5 +67,5 @@
     }
 
     private void OnConfigureSecondLanguage()
-        => _ = UIEventHub.Publish(new ShowSettingsEvent());
+        => _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));
 }
