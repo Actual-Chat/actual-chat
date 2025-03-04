@@ -11,13 +11,11 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
         public FilePath BaseDirectory { get; init; } = ".";
     }
 
-    private IContentTypeProvider? _contentTypeProvider;
-    private FilePath BaseDirectory { get; } = options.BaseDirectory.FullPath.DirectoryPath;
+    private FilePath BaseDirectory { get; } = options.BaseDirectory.FullPath;
     private IServiceProvider Services { get; } = services;
     private ILogger Log { get; } = services.LogFor<LocalFolderBlobStorage>();
-
-    private IContentTypeProvider ContentTypeProvider
-        => _contentTypeProvider ??= Services.GetRequiredService<IContentTypeProvider>();
+    [field: AllowNull, MaybeNull]
+    private IContentTypeProvider ContentTypeProvider => field ??= Services.GetRequiredService<IContentTypeProvider>();
 
     public ValueTask DisposeAsync()
         => default;
