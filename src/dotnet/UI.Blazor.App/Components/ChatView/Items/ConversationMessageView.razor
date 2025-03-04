@@ -1,11 +1,32 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var messageId = Message.Conversation.Id;
+    var conversation = Message.Conversation;
+    var title = conversation.Title;
+    var messageCount = conversation.MessageCount;
+    var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
+    var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
+    var cls = "summary-message message-wrapper";
 }
-
-<h3>ConversationMessageView: @messageId</h3>
+<div class="@cls">
+    <div class="c-details">
+        <div class="c-summary">
+            <ConversationMessageHeader Title="@title" MessageCount="@messageCount"/>
+            <div class="c-short">
+                @conversation.Description
+            </div>
+        </div>
+        <div class="c-long">
+            <div class="c-long-content">
+                @conversation.Summary
+            </div>
+        </div>
+    </div>
+    <ConversationMessageFooter Authors="@conversation.AuthorIds" StartsAt="@startsAt" EndsAt="@endsAt"/>
+</div>
 
 @code {
+    private ChatUIHub Hub => ChatContext.Hub;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;

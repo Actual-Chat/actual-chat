@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="summary-header">
+    <div class="bg-wrapper">
+        <div class="c-title">
+            @Title
+        </div>
+        <div class="c-ending" @onclick="ShowMessages">
+            <i class="icon-message-stars"></i>
+            <span class="c-message-count">@MessageCount</span>
+            <i class="icon-chevron-compact-down rotate-icon"></i>
+        </div>
+    </div>
+</div>
+
+@code{
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public int MessageCount { get; set; }
+    [Parameter] public EventCallback ShowMessages { get; set; }
+}

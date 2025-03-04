@@ -1,0 +1,37 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var firstAuthors = Authors.Take(3).ToList();
+    var extraAuthorCount = Math.Clamp(Authors.Count - 3, 0, 99);
+    var timeRangeString = GetTimeRangeString();
+}
+
+<div class="summary-footer">
+    <div class="bg-wrapper">
+        <div class="c-content">
+            <div class="c-author-list">
+                @foreach (var authorId in firstAuthors) {
+                    <ChatMessageAuthorCircle AuthorSid="@authorId.Value" />
+                }
+                @if (extraAuthorCount > 0) {
+                    <div class="author-incut ai-extra">+@extraAuthorCount</div>
+                }
+            </div>
+            <div class="c-time">
+                @timeRangeString
+            </div>
+        </div>
+        <HeaderButton>
+            <i class="icon-copy"></i>
+        </HeaderButton>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<AuthorId> Authors { get; set; } = null!;
+    [Parameter] public DateTime StartsAt { get; set; }
+    [Parameter] public DateTime EndsAt { get; set; }
+
+    private string GetTimeRangeString() {
+        return $"{StartsAt:MM/dd/yyyy HH:mm} - {EndsAt:HH:mm}";
+    }
+}
