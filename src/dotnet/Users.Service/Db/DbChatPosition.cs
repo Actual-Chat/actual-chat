@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace ActualChat.Users.Db;
 
 [Table("ChatPositions")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatPosition : IHasId<string>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

@@ -9,6 +9,7 @@ using OpenTelemetry.Context.Propagation;
 
 namespace ActualChat.Db;
 
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbEventForwarder<TDbContext>(IServiceProvider services)
     : DbEventProcessor<TDbContext>(services)
     where TDbContext : DbContext

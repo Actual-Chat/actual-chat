@@ -5,6 +5,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("TextEntryAttachments")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private const char IdSeparator = ':';

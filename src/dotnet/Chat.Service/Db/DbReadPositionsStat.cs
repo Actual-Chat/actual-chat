@@ -5,6 +5,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("DbReadPositionsStat")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbReadPositionsStat : IHasId<string>, IHasVersion<long>
 {
     public DbReadPositionsStat() { }

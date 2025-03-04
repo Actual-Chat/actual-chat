@@ -5,6 +5,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Media.Db;
 
 [Table("LinkPreviews")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = "";

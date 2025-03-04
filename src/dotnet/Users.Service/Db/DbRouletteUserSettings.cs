@@ -8,6 +8,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.Db;
 
 [Table("RouletteUserSettings")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbRouletteUserSettings : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!; // The same as user account id.

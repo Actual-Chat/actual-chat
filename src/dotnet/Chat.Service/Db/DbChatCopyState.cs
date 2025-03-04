@@ -7,6 +7,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("ChatCopyStates")]
 [Index(nameof(SourceChatId))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatCopyState : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

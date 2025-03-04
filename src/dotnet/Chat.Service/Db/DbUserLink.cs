@@ -5,6 +5,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("UserLinks")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbUserLink : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

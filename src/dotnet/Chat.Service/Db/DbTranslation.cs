@@ -6,6 +6,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("Translations")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = "";

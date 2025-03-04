@@ -9,6 +9,7 @@ namespace ActualChat.Notification.Db;
 [Index(nameof(UserId), nameof(Version))]
 [Index(nameof(UserId), nameof(Id))]
 [Index(nameof(UserId), nameof(Kind), nameof(SimilarityKey))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbExplicitNotification : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

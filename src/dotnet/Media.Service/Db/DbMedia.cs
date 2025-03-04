@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace ActualChat.Media.Db;
 
 [Table("Media")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbMedia : IHasId<string>, IRequirementTarget
 {
     public DbMedia() { }

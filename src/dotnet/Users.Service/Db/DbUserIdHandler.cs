@@ -3,6 +3,7 @@ using ActualLab.Fusion.Authentication.Services;
 
 namespace ActualChat.Users.Db;
 
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbUserIdHandler : DbUserIdHandler<string>
 {
     public DbUserIdHandler(IConverterProvider converters)

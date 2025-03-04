@@ -5,6 +5,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users.Db;
 
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbKvasEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     string IHasId<string>.Id => Key;

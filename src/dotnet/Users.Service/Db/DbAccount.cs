@@ -8,6 +8,7 @@ namespace ActualChat.Users.Db;
 
 [Index(nameof(IsGreetingCompleted))]
 [Index(nameof(Version), nameof(Id))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

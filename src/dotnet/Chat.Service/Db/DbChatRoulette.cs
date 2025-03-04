@@ -10,6 +10,7 @@ namespace ActualChat.Chat.Db;
 [Table("ChatRoulettes")]
 [Index(nameof(ProfileId1), nameof(ProfileId2), IsUnique = true)]
 [Index(nameof(ChatId), IsUnique = true)]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _completedAt;

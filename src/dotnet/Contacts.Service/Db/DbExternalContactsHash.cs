@@ -6,6 +6,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Contacts.Db;
 
 [Table("ExternalContactsHashes")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbExternalContactsHash : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

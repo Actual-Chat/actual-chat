@@ -7,6 +7,7 @@ namespace ActualChat.Notification.Db;
 
 [Table("Devices")]
 [Index(nameof(UserId))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

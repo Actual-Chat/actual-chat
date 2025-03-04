@@ -8,6 +8,7 @@ namespace ActualChat.Invite.Db;
 
 [Table("Invites")]
 [Index(nameof(SearchKey), nameof(Remaining))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);

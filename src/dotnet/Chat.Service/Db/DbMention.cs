@@ -7,6 +7,7 @@ namespace ActualChat.Chat.Db;
 [Table("Mentions")]
 [Index(nameof(ChatId), nameof(EntryId), nameof(MentionId))]
 [Index(nameof(ChatId), nameof(MentionId), nameof(EntryId))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbMention : IHasId<string>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

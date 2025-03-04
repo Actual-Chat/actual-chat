@@ -8,6 +8,7 @@ namespace ActualChat.Contacts.Db;
 
 [Table("Contacts")]
 [Index(nameof(OwnerId))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

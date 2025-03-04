@@ -9,6 +9,7 @@ namespace ActualChat.Contacts.Db;
 [Table("PlaceContacts")]
 [Index(nameof(OwnerId))]
 [Index(nameof(Version), nameof(Id))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbPlaceContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private const char IdDelimiter = ' ';

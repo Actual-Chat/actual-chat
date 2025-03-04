@@ -7,6 +7,7 @@ namespace ActualChat.Contacts.Db;
 [PrimaryKey(nameof(DbExternalContactId), nameof(Value))]
 [Index(nameof(Value))]
 [Index(nameof(IsChecked))]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbExternalContactLink
 {
     private const string PhonePrefix = "tel:";
