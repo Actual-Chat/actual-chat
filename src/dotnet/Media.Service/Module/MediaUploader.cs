@@ -61,26 +61,10 @@ public sealed class MediaUploader(Type ownerType)
                 // ReSharper disable once AccessToDisposedClosure
                 dbContext.Media.Add(new DbMedia(media));
 
-            // Tests may race to create default media, so the logic below retries that
-            var tryCount = hostInfo.IsTested ? 3 : 1;
-            var randomDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
-            for (var tryIndex = 0; tryIndex < tryCount; tryIndex++) {
-                try {
-                    var mediaExists = await blobStorage.Exists(media.ContentId, default).ConfigureAwait(false);
-                    if (mediaExists)
-                        await blobStorage.Delete(media.ContentId, default).ConfigureAwait(false);
-                    await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, default).ConfigureAwait(false);
-                }
-                catch (Exception e) {
-                    if (e is not (InvalidOperationException or UnauthorizedAccessException))
-                        throw;
-                    if (tryIndex == tryCount - 1)
-                        throw;
-
-                    // Continue after delay
-                    await Task.Delay(randomDelay.Next(), CancellationToken.None).ConfigureAwait(false);
-                }
-            }
+            var mediaExists = await blobStorage.Exists(media.ContentId, default).ConfigureAwait(false);
+            if (mediaExists)
+                await blobStorage.Delete(media.ContentId, default).ConfigureAwait(false);
+            await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, default).ConfigureAwait(false);
         }
     }
 
