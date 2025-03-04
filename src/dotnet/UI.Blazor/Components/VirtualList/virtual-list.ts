@@ -1495,16 +1495,19 @@ export class VirtualList {
 
             if (item.isMeasured && item.range.intersectWith(loadZone).size > 0) {
                 endIndex = i;
-                if (startIndex < 0)
+                if (startIndex < 0) {
                     startIndex = i;
+                    if (startIndex < 0)
+                        startIndex--; // include previous item
+                }
             } else if (startIndex >= 0)
                 break;
         }
         const keyItemDistance = endIndex - startIndex;
         const firstItem = items[startIndex]
-            ?? items[0].range.start > loadZone.end
+            ?? (items[0].range.start > loadZone.end
                 ? items[0]
-                : items[items.length - 1];
+                : items[items.length - 1]);
         const lastItem = items[endIndex] ?? firstItem;
         // Calculate move range and keep it within at least one boundary of the key items
         const moveRangeStart = clamp(Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio), -Infinity, keyItemDistance);
