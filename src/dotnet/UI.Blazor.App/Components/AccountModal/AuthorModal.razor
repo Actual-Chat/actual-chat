@@ -190,7 +190,7 @@
         Contact? peerChatContact = null;
         if (!peerChatId.IsNone)
             peerChatContact = await Contacts.GetForChat(session, peerChatId.ToChatId(), cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
         var onlyAnonymousChatAllowed = chat is { Kind: ChatKind.Peer };
 

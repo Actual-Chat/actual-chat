@@ -60,7 +60,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     [field: AllowNull, MaybeNull]
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     [field: AllowNull, MaybeNull]
-    private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
+    private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
+    [field: AllowNull, MaybeNull]
+    private Translator Translator => field ??= Services.GetRequiredService<Translator>();
+    [field: AllowNull, MaybeNull]
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -992,7 +996,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chatId.IsPeerChat(out var peerChatId))
                 _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
-            var chatMarkupHub = ChatMarkupHubFactory[chatId];
             if (change.IsCreate(out var update)) {
                 var localId = await DbNextLocalId(dbContext, chatId, entryKind, cancellationToken)
                     .ConfigureAwait(false);
@@ -1002,11 +1005,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     BeginsAt = Clocks.SystemClock.Now,
                 };
                 entry = ApplyDiff(entry, update, false);
-                entry = entry with {
-                    LinkPreviewIds = ExtractLinkPreviewIds(entry),
-                };
-                // Inject mention names into the markup
-                entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
+                entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
                 dbEntry = new DbChatEntry(entry) {
                     HasAttachments = entry.Attachments.Count > 0,
                 };
@@ -1020,9 +1019,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 entry = ApplyDiff(dbEntry.ToModel(), update, true) with {
                     Version = VersionGenerator.NextVersion(dbEntry.Version),
                 };
-                // Inject mention names into the markup
-                entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
-                entry = entry with { LinkPreviewIds = ExtractLinkPreviewIds(entry) };
+                entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
                 var hasAttachments = update.Attachments is { Count: > 0 } || dbEntry.HasAttachments;
                 dbEntry.UpdateFrom(entry);
                 dbEntry.HasAttachments = hasAttachments;
@@ -1043,6 +1040,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             context.Operation.Items.Set(entry);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            entry = dbEntry.ToModel().WithPopulatedValues(entry);
         }
 
         if (entryKind != ChatEntryKind.Text)
@@ -1151,11 +1149,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         }
     }
-
-    private ApiArray<Symbol> ExtractLinkPreviewIds(ChatEntry entry)
-        => MarkupParser.ExtractLinks(entry.Content, Constants.Media.LinkPreviewsPerMessageLimit)
-            .Select(LinkPreview.ComposeId)
-            .ToApiArray();
 
     // [CommandHandler]
     public virtual async Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(
@@ -1874,6 +1867,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Private / internal methods
+
+    private async Task<ChatEntry> PrepareTextEntryForSave(ChatEntry entry, ChatEntry? existing, CancellationToken cancellationToken)
+    {
+        if (entry.IsSystemEntry || entry.IsStreaming || entry.Kind is not ChatEntryKind.Text)
+            return entry;
+
+        var wasContentChanged = !OrdinalEquals(entry.Content, existing?.Content ?? "");
+        if (!wasContentChanged)
+            return entry with {
+                LinkPreviewIds = existing?.LinkPreviewIds ?? [],
+                Languages = existing?.Languages ?? [],
+                Content = existing?.Content ?? "",
+            };
+
+        // Inject mention names into the markup
+        var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
+        var contentTask = chatMarkupHub.PrepareForSave(entry, cancellationToken).AsTask();
+        // TODO: detect in flow or somewhere else in background
+        var languagesTask = Translator.TryDetectLanguages(entry, Settings.EntryLanguageDetectionTimeout,  cancellationToken);
+        await Task.WhenAll(contentTask, languagesTask).ConfigureAwait(false);
+        return entry with {
+            Content = await contentTask.ConfigureAwait(false),
+            Languages = await languagesTask.ConfigureAwait(false),
+            LinkPreviewIds = MarkupParser.ExtractLinkPreviewIds(entry),
+        };
+    }
 
     private async Task JoinAnnouncementsChat(UserId userId, CancellationToken cancellationToken)
     {

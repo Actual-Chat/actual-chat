@@ -48,6 +48,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IMentions>();
         fusion.AddClient<IReactions>();
         fusion.AddClient<IPlaces>();
+        fusion.AddClient<ITranslations>();
 
         // Search
         fusion.AddClient<ISearch>();

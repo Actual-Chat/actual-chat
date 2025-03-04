@@ -41,6 +41,7 @@ node_modules/
 # Log files & folders
 *.log
 *.binlog
+log.txt
 
 # Visual Studio Profiler & Trace files
 *.psess

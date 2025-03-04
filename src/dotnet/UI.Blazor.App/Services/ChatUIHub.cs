@@ -5,6 +5,7 @@ using ActualChat.MediaPlayback;
 using ActualChat.MLSearch;
 using ActualChat.Notification;
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -91,6 +92,8 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     [field: AllowNull, MaybeNull]
     public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
+    [field: AllowNull, MaybeNull]
+    public ITranslations Translations => field ??= services.GetRequiredService<ITranslations>();
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

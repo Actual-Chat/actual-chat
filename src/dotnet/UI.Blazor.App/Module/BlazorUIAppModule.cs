@@ -61,7 +61,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Settings
         services.AddSingleton(new AudioSettings());
-        services.AddScoped(c => new LanguageUI(c.ChatUIHub()));
+        fusion.AddService<LanguageUI>(ServiceLifetime.Scoped);
 
         // OnboardingUI
         services.AddScoped(c => new OnboardingUI(c.ChatUIHub()));

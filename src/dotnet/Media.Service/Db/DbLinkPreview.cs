@@ -7,9 +7,6 @@ namespace ActualChat.Media.Db;
 [Table("LinkPreviews")]
 public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-    private DateTime _modifiedAt;
-
     [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string Url { get; set; } = "";
@@ -19,13 +16,13 @@ public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public string MetadataJson { get; set; } = "";
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime ModifiedAt {
-        get => _modifiedAt.DefaultKind(DateTimeKind.Utc);
-        set => _modifiedAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DbLinkPreview() { }

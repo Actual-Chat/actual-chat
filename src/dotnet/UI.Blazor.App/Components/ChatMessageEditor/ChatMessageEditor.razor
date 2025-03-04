@@ -135,7 +135,7 @@
     }
 
     protected override async Task OnInitializedAsync() =>
-        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
+        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
 
     protected override async Task OnParametersSetAsync() {
         var chatId = Chat.Id;

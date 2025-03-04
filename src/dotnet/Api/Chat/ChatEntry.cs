@@ -1,4 +1,5 @@
 ﻿using ActualChat.Comparison;
+using ActualChat.Hashing;
 using ActualChat.Media;
 using MemoryPack;
 using ActualLab.Fusion.Blazor;
@@ -79,6 +80,7 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 14), MemoryPackIgnore] public Moment? EndsAt { get; init; }
     [DataMember(Order = 15), MemoryPackIgnore] public Moment? ContentEndsAt { get; init; }
     [DataMember(Order = 16), MemoryPackOrder(16)] public string Content { get; init; } = "";
+    [DataMember(Order = 32), MemoryPackOrder(32)] public HashString ContentHash { get; init; }
     [DataMember(Order = 17), MemoryPackOrder(17)] public SystemEntry? SystemEntry { get; init; }
     [DataMember(Order = 18), MemoryPackOrder(18)] public bool HasReactions { get; init; }
     [DataMember(Order = 19), MemoryPackOrder(19)] public Symbol StreamId { get; init; } = "";
@@ -95,6 +97,9 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 29), MemoryPackOrder(29)] public Symbol LinkPreviewId { get; init; } = "";
     [DataMember(Order = 31), MemoryPackOrder(31)] public ApiArray<Symbol> LinkPreviewIds { get; init; }
     [DataMember(Order = 30), MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
+    [DataMember(Order = 53), MemoryPackOrder(53)] public ApiArray<Language> Languages { get; init; }
+
+    // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }
     [Obsolete("2024.11 Replaced with LinkPreviews")]
     [DataMember(Order = 51), MemoryPackOrder(51)] public LinkPreview? LinkPreview { get; init; }

@@ -164,7 +164,7 @@
         var lastChatId = lasChat?.Id ?? ChatId.None;
 
         var canSendJoinPlaceRequest = false;
-        var enableIncompleteUITask = Features.EnableIncompleteUI(cancellationToken);
+        var enableIncompleteUITask = Features.IsIncompleteUIEnabled(cancellationToken);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         if (_isVeryFirstLoad) {

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Hashing;
 using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -61,6 +62,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public ChatEntryKind Kind { get; set; }
     public string Content { get; set; } = "";
+    public string ContentHash { get; set; } = "";
+    public string? Languages { get; set; }
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
     public string? LinkPreviewIds { get; set; }
@@ -88,6 +91,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             EndsAt = EndsAt.ToMoment(),
             ContentEndsAt = ContentEndsAt.ToMoment(),
             Content = !IsSystemEntry ? Content : "",
+            ContentHash = new (ContentHash),
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
             HasReactions = HasReactions,
             StreamId = StreamId ?? "",
@@ -109,6 +113,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             LinkPreview = linkPreviews.FirstOrDefault(),
  #pragma warning restore CS0618 // Type or member is obsolete
             LinkPreviews = linkPreviews,
+            Languages = !Languages.IsNullOrEmpty() ? JsonSerializer.Deserialize<ApiArray<Language>>(Languages) : [],
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null
                     ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
@@ -150,9 +155,10 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ForwardedChatEntryId = model.ForwardedChatEntryId;
         ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
+        ContentHash = model.SystemEntry != null ? HashString.None : model.Content.Hash().Blake3().ToBlake3Base64HashString();
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewIds = !model.LinkPreviewIds.IsEmpty ? JsonSerializer.Serialize(model.LinkPreviewIds) : null;
-        LinkPreviewMode = model.LinkPreviewMode;
+        Languages = !model.Languages.IsEmpty ? JsonSerializer.Serialize(model.Languages) : null;
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)
             : null;

@@ -165,7 +165,7 @@
                             <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
                         }
                         <CascadingValue Value="@entry" IsFixed="true">
-                            <MarkupView Markup="@_markup"/>
+                            <TranslatedMessage Markup="@_markup" ChatContext="ChatContext" />
                         </CascadingValue>
                         @if (m.IsUnreadByOthers && entry.Attachments.Count == 0) {
                             <ChatMessageSendingStatus
@@ -233,7 +233,6 @@
     private Markup _markup = Markup.Empty;
     private ChatMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
-    private ILogger? _log;
     private bool _hasBeenRead;
 
     // Shortcuts
@@ -252,7 +251,8 @@
     private ModalUI ModalUI => Hub.ModalUI;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;

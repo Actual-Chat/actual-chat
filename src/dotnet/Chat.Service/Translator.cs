@@ -1,0 +1,77 @@
+using ActualChat.Chat.Module;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+
+namespace ActualChat.Chat;
+
+public class Translator(IServiceProvider services)
+{
+    public const string ServiceKey = nameof(Translator);
+
+    [field: AllowNull, MaybeNull]
+    private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
+    [field: AllowNull, MaybeNull]
+    private IChatCompletionService ChatCompletionService => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
+    [field: AllowNull, MaybeNull]
+    private ChatSettings Settings => field ??= services.GetRequiredService<ChatSettings>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
+
+    public async Task<ApiArray<Language>> DetectLanguages(string text, CancellationToken cancellationToken)
+    {
+        if (!Settings.IsTranslationEnabled)
+            return [];
+
+        var languages = await DetectAllLanguages().ConfigureAwait(false);
+        if (languages.IsEmpty)
+            languages = await DetectSingleLanguage().ConfigureAwait(false);
+        return languages;
+
+        async Task<ApiArray<Language>> DetectAllLanguages()
+        {
+            try {
+                var content = await Ask(Settings.DetectAllLanguagesPrompt, text, cancellationToken).ConfigureAwait(false);
+                content = content?.OrdinalIgnoreCaseReplace("```json", "").OrdinalReplace("```", "") ?? "[]";
+                return JsonSerializer.Deserialize<ApiArray<Language>>(content);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Could not detect languages");
+                return [];
+            }
+        }
+
+        async Task<ApiArray<Language>> DetectSingleLanguage()
+        {
+            var content = await Ask(Settings.DetectSingleLanguagePrompt, text, cancellationToken)
+                .Catch("", Log, LogLevel.Warning, "Could not detect even a single language")
+                .ConfigureAwait(false);
+            return Language.TryParse(content?.Trim(), out var language) && !language.IsNone ? [language] : [];
+        }
+    }
+
+    private Task<string?> Ask(string instruction, string text, CancellationToken cancellationToken)
+    {
+        instruction = instruction.Trim().EnsureSuffix(":");
+        return Ask($"{instruction}: \n\n{text}", cancellationToken);
+    }
+
+    private async Task<string?> Ask(string prompt, CancellationToken cancellationToken)
+    {
+        var response = await ChatCompletionService
+            .GetChatMessageContentAsync(prompt, null, Kernel, cancellationToken)
+            .ConfigureAwait(false);
+        var content = response.Content;
+        return content;
+    }
+
+    public async Task<string> Translate(string text, Language targetLanguage, CancellationToken cancellationToken)
+    {
+        if (!Settings.IsTranslationEnabled)
+            return text;
+
+        // TODO: use ChatHistory
+        var prompt = string.Format(Settings.TranslatePromptFormat, targetLanguage, text) + ":\n" + text;
+        var response = await ChatCompletionService.GetChatMessageContentAsync(prompt, null, Kernel, cancellationToken).ConfigureAwait(false);
+        return response.Content ?? "";
+    }
+}

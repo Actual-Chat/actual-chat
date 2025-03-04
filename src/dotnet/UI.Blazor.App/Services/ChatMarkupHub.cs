@@ -5,32 +5,32 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMarkupHub
 {
-    private IMarkupParser? _parser;
     private static IMarkupTrimmer? _trimmer;
-    private IChatMentionResolver? _mentionResolver;
-    private ISearchProvider<MentionSearchResult>? _mentionSearchProvider;
-    private IMentionNamer? _mentionNamer;
     private static IMarkupFormatter? _editorHtmlConverter;
 
     public IServiceProvider Services { get; } = services;
     public ChatId ChatId { get; } = chatId;
 
+    [field: AllowNull, MaybeNull]
     public IMarkupParser Parser
-        => _parser ??= Services.GetRequiredService<IMarkupParser>();
+        => field ??= Services.GetRequiredService<IMarkupParser>();
 
 #pragma warning disable CA1822 // Can be static
     public IMarkupTrimmer Trimmer
         => _trimmer ??= new MarkupTrimmer();
 #pragma warning restore CA1822
 
+    [field: AllowNull, MaybeNull]
     public IMentionNamer MentionNamer
-        => _mentionNamer ??= new MentionNamer(MentionResolver);
+        => field ??= new MentionNamer(MentionResolver);
 
+    [field: AllowNull, MaybeNull]
     public IChatMentionResolver MentionResolver
-        => _mentionResolver ??= new ChatMentionResolver(Services, ChatId);
+        => field ??= new ChatMentionResolver(Services, ChatId);
 
+    [field: AllowNull, MaybeNull]
     public ISearchProvider<MentionSearchResult> MentionSearchProvider
-        => _mentionSearchProvider ??= new ChatMentionSearchProvider(Services, ChatId);
+        => field ??= new ChatMentionSearchProvider(Services, ChatId);
 
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= new MarkupEditorHtmlConverter();

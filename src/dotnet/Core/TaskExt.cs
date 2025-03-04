@@ -79,9 +79,22 @@ public static class TaskExt
         ILogger errorLog,
         string message,
         params object[] args)
-        => task.Catch(() => defaultValue,
+        => task.Catch(defaultValue,
             errorLog,
             LogLevel.Error,
+            message,
+            args);
+
+    public static Task<T> Catch<T>(
+        this Task<T> task,
+        T defaultValue,
+        ILogger errorLog,
+        LogLevel level,
+        string message,
+        params object[] args)
+        => task.Catch(() => defaultValue,
+            errorLog,
+            level,
             message,
             args);
 

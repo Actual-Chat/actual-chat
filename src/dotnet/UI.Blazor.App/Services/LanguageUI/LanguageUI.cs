@@ -5,7 +5,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class LanguageUI : ScopedServiceBase<ChatUIHub>, IDisposable
+public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
     private readonly ISyncedState<UserLanguageSettings> _settings;
@@ -23,6 +23,13 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IDisposable
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
+
+    [ComputeMethod]
+    public virtual async Task<IReadOnlySet<Language>> ListSpoken(CancellationToken cancellationToken)
+    {
+        var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
+        return settings.ToList().ToHashSet();
+    }
 
     public void Dispose()
         => _settings.Dispose();

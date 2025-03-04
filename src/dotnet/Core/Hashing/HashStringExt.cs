@@ -2,9 +2,16 @@ namespace ActualChat.Hashing;
 
 public static class HashStringExt
 {
+    public static HashString ToBlake3Base64HashString<THash>(this THash output)
+        where THash : struct, IHashOutput
+        => output.ToHashString(HashAlgorithm.Blake3, HashEncoding.Base64);
+
     public static HashString ToBase64HashString<THash>(this THash output, HashAlgorithm algorithm)
         where THash : struct, IHashOutput
-        => new (algorithm, HashEncoding.Base64, output.Base64());
+        => ToHashString(output, algorithm, HashEncoding.Base64);
+
+    public static HashString ToHashString<THash>(this THash output, HashAlgorithm algorithm, HashEncoding encoding) where THash : struct, IHashOutput
+        => new (algorithm, encoding, output.Base64());
 
     public static IHashOutput ToHashOutput(this HashString hashString)
     {

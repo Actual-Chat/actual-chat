@@ -51,25 +51,24 @@ public static class ChatMarkupHubExt
         return markup;
     }
 
-    public static async ValueTask<ChatEntry> PrepareForSave(
+    public static async ValueTask<string> PrepareForSave(
         this IChatMarkupHub markupHub,
         ChatEntry entry,
         CancellationToken cancellationToken)
     {
         if (entry.IsSystemEntry || entry.HasMediaEntry)
-            return entry;
+            return entry.Content;
 
         var content = entry.Content;
         if (content.IsNullOrEmpty())
-            return entry;
+            return entry.Content;
 
         var markup = markupHub.Parser.Parse(content);
         var newMarkup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
         if (ReferenceEquals(newMarkup, markup))
-            return entry;
+            return entry.Content;
 
-        var newContent = MarkupFormatter.Default.Format(newMarkup);
-        return entry with { Content = newContent };
+        return MarkupFormatter.Default.Format(newMarkup);
     }
 
     public static async ValueTask<Markup> Parse(
