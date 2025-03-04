@@ -5,18 +5,20 @@
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
-    var cls = "summary-message message-wrapper";
+    var openClass = _isOpen ? "open-details" : "closed-details";
+    var detailsCls = _isOpen ? "show" : "";
+    var cls = $"summary-message message-wrapper {openClass}";
 }
 <div class="@cls">
     <div class="c-details">
-        <div class="c-summary">
+        <div class="c-summary" @onclick="ShowDetails">
             <ConversationMessageHeader Title="@title" MessageCount="@messageCount"/>
             <div class="c-short">
                 @conversation.Description
             </div>
         </div>
         <div class="c-long">
-            <div class="c-long-content">
+            <div class="c-long-content @detailsCls">
                 @conversation.Summary
             </div>
         </div>
@@ -25,10 +27,16 @@
 </div>
 
 @code {
+    private bool _isOpen;
     private ChatUIHub Hub => ChatContext.Hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
 
+    private Task ShowDetails() {
+        _isOpen = !_isOpen;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 }
