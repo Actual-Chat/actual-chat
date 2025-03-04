@@ -70,7 +70,8 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
-            var language = GetSupportedLanguage(options);
+            var language = GetSupportedLanguage(options.Language);
+            var model = language == "en" ? "nova-3" : "nova-2";
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,
@@ -80,7 +81,7 @@ public partial class DeepgramTranscriber : ITranscriber
                 EndPointing = "100",
                 SmartFormat = true,
                 InterimResults = true,
-                Model = "nova-2",
+                Model = model,
             };
             var isConnected = await deepgramClient.Connect(liveSchema, cancelToken: tokenSource)
                 .ConfigureAwait(false);
@@ -109,12 +110,12 @@ public partial class DeepgramTranscriber : ITranscriber
         }
         return;
 
-        string GetSupportedLanguage(TranscriptionOptions options1)
+        string GetSupportedLanguage(Language language)
         {
-            return options1.Language.Id.Value switch {
-                "en-US" => "en-US",
-                "en-GB" => "en-GB",
-                "en-IN" => "en-IN",
+            return language.Id.Value switch {
+                "en-US" => "en",
+                "en-GB" => "en",
+                "en-IN" => "en",
                 "fr-FR" => "fr",
                 "fr-CA" => "fr-CA",
                 "de-DE" => "de",
@@ -140,7 +141,7 @@ public partial class DeepgramTranscriber : ITranscriber
                 "da-DK" => "da",
                 "fi-FI" => "fi",
                 "th-TH" => "th",
-                _ => throw StandardError.NotSupported(typeof(DeepgramTranscriber), $"Language '{options1.Language.Id}' is not supported"),
+                _ => throw StandardError.NotSupported(typeof(DeepgramTranscriber), $"Language '{language.Id}' is not supported"),
             };
         }
 
