@@ -51,6 +51,9 @@ public partial class ChatUI
                 if (tile.Items.Count == 0)
                     continue;
 
+                if (tile.Items[0].Equals(prevMessage))
+                    continue; // Skip tile if it's the same as previous tile - e.g. large conversation that spans across multiple tiles
+
                 tiles.Add(tile);
                 prevMessage = tile.Items[^1];
 #if false
@@ -62,14 +65,25 @@ public partial class ChatUI
 #endif
             }
             var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts();
-            if (beforeCount >= originalLoadBefore / 2 || afterCount >= originalLoadAfter / 2)
+            var beforeFulfilled = beforeCount >= originalLoadBefore / 2;
+            var afterFulfilled = afterCount >= originalLoadAfter / 2;
+            if (beforeFulfilled && afterFulfilled)
                 break;
 
             var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
             var hasVeryFirstItem = chatIdRange.Start >= dataQuery.Start;
             var hasVeryLastItem = chatIdRange.End <= dataQuery.End;
-            var expandedLoadBefore = dataQuery.LoadBefore * 4;
-            var expandedLoadAfter = dataQuery.LoadAfter * 4;
+            if (hasVeryFirstItem && hasVeryLastItem)
+                break;
+
+            if (!beforeFulfilled && hasVeryFirstItem)
+                break;
+
+            if (!afterFulfilled && hasVeryLastItem)
+                break;
+
+            var expandedLoadBefore = hasVeryFirstItem ? dataQuery.LoadBefore : dataQuery.LoadBefore * 4;
+            var expandedLoadAfter = hasVeryLastItem ? dataQuery.LoadAfter : dataQuery.LoadAfter * 4;
             dataQuery = new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
                 HasVeryFirstItem = hasVeryFirstItem,
                 HasVeryLastItem = hasVeryLastItem,
