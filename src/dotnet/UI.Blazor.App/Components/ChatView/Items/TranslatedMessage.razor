@@ -1,0 +1,48 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<TranslatedMessage.Model>
+@{
+    var m = State.Value;
+}
+
+<MarkupView Markup="@m.Markup"/>
+
+@code {
+    private ChatUIHub Hub => ChatContext.Hub;
+    private ITranslations Translations => Hub.Translations;
+    private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
+    private Features Features => Hub.Features();
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private Session Session => Hub.Session();
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [CascadingParameter] public ChatEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByRefParameterComparer))]
+    public Markup Markup { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options {
+                InitialValue = new Model(Markup), // show original text immediately
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var session = Session;
+        var entry = Entry;
+        var markup = Markup;
+        if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+            return new(markup);
+
+        var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
+        if (spokenLanguages.Count == 0 || entry.Languages.All(spokenLanguages.Contains))
+            return new(markup);
+
+        // as for now we do not consider all spoken languages for translation
+        // NOTE: we translate to current selected chat language, not the primary one
+        var targetLanguage = await LanguageUI.GetChatLanguage(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var translation = await Translations.Get(session, new TranslationId(entry.Id, targetLanguage, AssumeValid.Option), cancellationToken).ConfigureAwait(false);
+        return translation == null ? new Model(markup) : new Model(MarkupParser.Parse(translation.Content));
+    }
+
+    public sealed record Model(Markup Markup);
+}

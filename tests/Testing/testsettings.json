@@ -25,7 +25,9 @@
   },
   "ChatSettings": {
     "Db": "",
-    "Redis": ""
+    "Redis": "",
+    "OpenAIChatModel": "gpt-4o-mini",
+    "OpenAIApiKey": "not-an-api-key"
   },
   "MLSearchSettings": {
     "OpenSearch": {

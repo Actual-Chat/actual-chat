@@ -99,7 +99,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features().EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features().IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new(languages, enableIncompleteUI);
     }
 

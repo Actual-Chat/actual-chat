@@ -4,7 +4,6 @@ namespace ActualChat.Chat;
 
 public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IBackendChatMarkupHub
 {
-    private IMarkupParser? _parser;
     private static MarkupTrimmer? _trimmer;
     private BackendChatMentionResolver? _mentionResolver;
     private MentionNamer? _mentionNamer;
@@ -12,9 +11,9 @@ public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IB
 
     public IServiceProvider Services { get; } = services;
     public ChatId ChatId { get; } = chatId;
-
+    [field: AllowNull, MaybeNull]
     public IMarkupParser Parser
-        => _parser ??= Services.GetRequiredService<IMarkupParser>();
+        => field ??= Services.GetRequiredService<IMarkupParser>();
 
 #pragma warning disable CA1822
     public IMarkupTrimmer Trimmer

@@ -210,7 +210,7 @@
         var isPublic = chat.IsPublic;
         _placeId = chat.Id.PlaceChatId.PlaceId;
         var isPlace = !_placeId.IsNone;
-        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken);
         return new() {
             Chat = chat,
             IsOwner = chat.Rules.IsOwner(),

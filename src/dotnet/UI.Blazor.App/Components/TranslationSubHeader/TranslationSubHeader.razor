@@ -37,7 +37,7 @@
 
 
     protected override async Task OnInitializedAsync() =>
-        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
+        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
 
     private void OnToggleClick()
         => _isChecked = !_isChecked;

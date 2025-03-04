@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
 using ActualLab.IO;
 using ActualLab.Testing.Output;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Testing.Host;
@@ -48,6 +49,7 @@ public static class TestAppHostFactory
                         ReloadDelay = 100,
                         ReloadOnChange = false,
                     });
+                cfg.AddEnvironmentVariables();
 
                 // Adding must-have overrides for tests
                 var useNatsQueues = options.UseNatsQueues ?? true; // Random.Shared.NextDouble() < 0.33;

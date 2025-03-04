@@ -45,6 +45,6 @@
     [CascadingParameter] public DocsPage ActivePage { get; set; }
 
     protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
+        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
     }
 }

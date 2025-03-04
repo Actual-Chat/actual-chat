@@ -98,7 +98,7 @@
 
     protected override async Task OnInitializedAsync() {
         _developerTools = Hub.GetService<IDeveloperTools>();
-        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
+        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

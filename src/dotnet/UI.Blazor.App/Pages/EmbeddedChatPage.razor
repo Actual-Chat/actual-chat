@@ -75,7 +75,7 @@
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.EnableIncompleteUI(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         try {
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {

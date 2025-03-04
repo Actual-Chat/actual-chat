@@ -15,5 +15,5 @@
     private Features Features => Hub.Features();
 
     protected override async Task OnInitializedAsync() =>
-        _enableIncompleteUI = await Features.EnableIncompleteUI(CancellationToken.None);
+        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
 }

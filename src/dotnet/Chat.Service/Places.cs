@@ -4,17 +4,20 @@ namespace ActualChat.Chat;
 
 public class Places(IServiceProvider services) : IPlaces
 {
-    private IChats? _chats;
-    private IChatsBackend? _chatsBackend;
-
-    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
-    private IRoles Roles { get; } = services.GetRequiredService<IRoles>();
-    private ICommander Commander { get; } = services.Commander();
-
-    private IPlacesBackend PlacesBackend { get; } = services.GetRequiredService<IPlacesBackend>();
-    private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
-    private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>(); // Lazy resolving to prevent cyclic dependency
+    [field: AllowNull, MaybeNull]
+    private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    private IAuthors Authors => field ??= services.GetRequiredService<IAuthors>();
+    [field: AllowNull, MaybeNull]
+    private IRoles Roles => field ??= services.GetRequiredService<IRoles>();
+    [field: AllowNull, MaybeNull]
+    private ICommander Commander => field ??= services.Commander();
+    [field: AllowNull, MaybeNull]
+    private IPlacesBackend PlacesBackend => field ??= services.GetRequiredService<IPlacesBackend>();
+    [field: AllowNull, MaybeNull]
+    private IChats Chats => field ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
+    [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= services.GetRequiredService<IChatsBackend>(); // Lazy resolving to prevent cyclic dependency
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {

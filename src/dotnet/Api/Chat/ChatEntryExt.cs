@@ -6,4 +6,13 @@ public static class ChatEntryExt
         => entry.RepliedEntryLid is { } repliedEntryLid
             ? new ChatEntryId(entry.Id.ChatId, entry.Id.Kind, repliedEntryLid, AssumeValid.Option)
             : null;
+
+    public static ChatEntry WithPopulatedValues(this ChatEntry entry, ChatEntry src)
+        => entry with {
+            Attachments = src.Attachments,
+ #pragma warning disable CS0618 // Type or member is obsolete
+            LinkPreview = src.LinkPreview,
+ #pragma warning restore CS0618 // Type or member is obsolete
+            LinkPreviews = src.LinkPreviews,
+        };
 }
