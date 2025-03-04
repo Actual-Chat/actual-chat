@@ -1,6 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@{
+    var messageId = Message.Conversation.Id;
+}
 
-<h3>ConversationMessageView</h3>
+<h3>ConversationMessageView: @messageId</h3>
 
 @code {
 
