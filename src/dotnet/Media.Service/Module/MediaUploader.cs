@@ -10,12 +10,11 @@ namespace ActualChat.Media.Module;
 
 public sealed class MediaUploader(Type ownerType)
 {
-    public async Task Upload(Func<UploadBuilderContext, Task> uploadBuilder)
+    public async Task Upload(Func<UploadBuilderContext, Task> uploadBuilder, CancellationToken cancellationToken)
     {
         var contentTypeProvider = new FileExtensionContentTypeProvider();
         var dbInitializer = DbInitializer.GetCurrent<MediaDbInitializer>();
         var services = dbInitializer.Services;
-        var hostInfo = services.HostInfo();
         var log = services.LogFor(ownerType);
 
         var blobStorageProvider = services.GetRequiredService<IBlobStorages>();
@@ -27,7 +26,7 @@ public sealed class MediaUploader(Type ownerType)
         log.LogInformation("Uploading chat pictures");
         var uploadBuilderContext = new UploadBuilderContext(AddMedia);
         await uploadBuilder.Invoke(uploadBuilderContext).ConfigureAwait(false);
-        await dbContext.SaveChangesAsync().ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         log.LogInformation("Uploading chat pictures: done");
         return;
@@ -53,7 +52,7 @@ public sealed class MediaUploader(Type ownerType)
 
             // ReSharper disable once AccessToDisposedClosure
             var existingMedia = await dbContext.Media
-                .FindAsync(DbKey.Compose(mediaId.Value))
+                .FindAsync(DbKey.Compose(mediaId.Value), cancellationToken)
                 .ConfigureAwait(false);
             if (existingMedia != null)
                 existingMedia.UpdateFrom(media);
@@ -61,10 +60,10 @@ public sealed class MediaUploader(Type ownerType)
                 // ReSharper disable once AccessToDisposedClosure
                 dbContext.Media.Add(new DbMedia(media));
 
-            var mediaExists = await blobStorage.Exists(media.ContentId, default).ConfigureAwait(false);
+            var mediaExists = await blobStorage.Exists(media.ContentId, cancellationToken).ConfigureAwait(false);
             if (mediaExists)
-                await blobStorage.Delete(media.ContentId, default).ConfigureAwait(false);
-            await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, default).ConfigureAwait(false);
+                await blobStorage.Delete(media.ContentId, cancellationToken).ConfigureAwait(false);
+            await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, cancellationToken).ConfigureAwait(false);
         }
     }
 
