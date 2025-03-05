@@ -12,7 +12,7 @@
 <div class="@cls">
     <div class="c-details">
         <div class="c-summary" @onclick="ShowDetails">
-            <ConversationMessageHeader Title="@title" MessageCount="@messageCount"/>
+            <ConversationMessageHeader Title="@title" MessageCount="@messageCount" ShowMessages="@ToggleShowMessage"/>
             <div class="c-short">
                 @conversation.Description
             </div>
@@ -30,6 +30,7 @@
     private bool _isOpen;
     private ChatUIHub Hub => ChatContext.Hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
@@ -39,4 +40,7 @@
         StateHasChanged();
         return Task.CompletedTask;
     }
+
+    private void ToggleShowMessage()
+        => ChatUI.ToggleExpandConversation(Message.Conversation.Id);
 }

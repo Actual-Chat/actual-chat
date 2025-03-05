@@ -19,6 +19,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly MutableState<PlaceId> _selectedPlaceId;
     private readonly IStoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
     private readonly MutableState<ChatEntryId> _highlightedEntryId;
+    private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
     private readonly ISyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId _searchEnabledChatId;
     private readonly Lock _lock = new();
@@ -58,6 +59,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public IState<PlaceId> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<PlaceId, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
+    public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenLoaded => _selectedChatId.WhenRead;
     public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
@@ -82,6 +84,9 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
+        _expandedConversations = StateFactory.NewMutable(
+            (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
+            StateCategories.Get(type, nameof(ExpandedConversations)));
         _navbarSettings = StateFactory.NewKvasSynced<UserNavbarSettings>(
             new (AccountSettings, UserNavbarSettings.KvasKey) {
                 InitialValue = new UserNavbarSettings(),
@@ -332,6 +337,15 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             var command = new Places_Join(Session, placeId, avatar.Id);
             await UICommander.Run(command).ConfigureAwait(false);
         }
+    }
+
+    public void ToggleExpandConversation(ConversationId conversationId)
+    {
+        var expandedConversations = _expandedConversations.Value;
+        expandedConversations = expandedConversations.Contains(conversationId)
+            ? expandedConversations.Remove(conversationId)
+            : expandedConversations.Add(conversationId);
+        _expandedConversations.Value = expandedConversations;
     }
 
     // Helpers
