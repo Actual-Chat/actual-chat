@@ -3,14 +3,11 @@
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    /* TODO: remove if everything is OK */
-    /*animation-name: scroller-overflow-hack;*/
-    animation-fill-mode: forwards;
-    animation-duration: 1ms;
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     overflow-anchor: none;
     will-change: transform;
-    transform: translateZ(0); /* Force hardware acceleration */
+    transform: translate3d(0,0,0); /* Force hardware acceleration */
+    backface-visibility: hidden;
     contain: strict;
 }
 
