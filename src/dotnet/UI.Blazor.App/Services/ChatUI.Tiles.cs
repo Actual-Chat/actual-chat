@@ -17,7 +17,6 @@ public partial class ChatUI
     public async Task<List<VirtualListTile<ChatMessage>>> GetTiles(
         ChatId chatId,
         ChatDataQuery dataQuery,
-        ApiArray<ConversationId> expandedConversations,
         long shownReadyEntryLid,
         CancellationToken cancellationToken)
     {
@@ -26,6 +25,7 @@ public partial class ChatUI
         if (chat == null)
             return [];
 
+        var expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
         var originalLoadBefore = dataQuery.LoadBefore;
         var originalLoadAfter = dataQuery.LoadAfter;
         var isBot = chat.IsAiSearchChat();
@@ -127,7 +127,7 @@ public partial class ChatUI
         ChatId chatId,
         AuthorId currentAuthorId,
         Range<long> idRange,
-        ApiArray<ConversationId> expandedConversations,
+        IImmutableSet<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
@@ -137,12 +137,12 @@ public partial class ChatUI
             throw new ArgumentOutOfRangeException(nameof(idRange));
 
         var requestedIdRange = prevMessage == null
-            ? idRange.MoveStart(-1) // to request previous item of requested range to properly render block star - we will drop it off
+            ? idRange.MoveStart(-IdTileStack.FirstLayer.TileSize) // to request previous item of requested range to properly render block star - we will drop it off
             : idRange;
         var conversationIdTile = ConversationTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
         var conversationTile = await Conversations.GetTile(Session, chatId, conversationIdTile.Range, cancellationToken).ConfigureAwait(false);
         var conversations = conversationTile.Items
-            .Where(c => !c.EntryRange.IntersectWith(idRange).IsEmpty)
+            .Where(c => !c.EntryRange.IntersectWith(requestedIdRange).IsEmpty)
             .ToList();
         var idRangesToSkip = conversations
             .Where(c => !expandedConversations.Contains(c.Id))
@@ -191,7 +191,8 @@ public partial class ChatUI
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
-            if (entry != null) {
+            if (entry != null && conversation == null) {
+                var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
                 var isForward = !entry.ForwardedAuthorId.IsNone;
                 var isPrevForward = prevEntry is { ForwardedAuthorId.IsNone: false };
@@ -217,6 +218,12 @@ public partial class ChatUI
                     flags |= ChatMessageFlags.Unread;
                 if (entry.AuthorId == currentAuthorId)
                     flags |= ChatMessageFlags.IsOwnMessage;
+                if (expandedConversation != null) {
+                    if (entry.Id.LocalId == expandedConversation.Id.StartEntryLid)
+                        flags |= ChatMessageFlags.ConversationStart;
+                    if (entry.Id.LocalId == expandedConversation.EndEntryLid)
+                        flags |= ChatMessageFlags.ConversationEnd;
+                }
                 if (shouldAddToResult) {
                     if (!isWelcomeBlockAdded) {
                         if (hasVeryFirstItem) {
@@ -261,7 +268,8 @@ public partial class ChatUI
                         Flags = flags,
                         PreviousMessage = prevMessage,
                         ShowIndexDocId = showIndexDocId,
-                        IndexDocId = indexDocId
+                        IndexDocId = indexDocId,
+                        Conversation = expandedConversation,
                     };
                     messages.Add(message);
                     prevMessage = message;
@@ -270,8 +278,8 @@ public partial class ChatUI
                 isPrevUnread = isEntryUnread;
                 isPrevAudio = isAudio;
             }
-            else {
-                var message = new ConversationMessage(conversation!) {
+            else if (entry == null && conversation != null && !expandedConversations.Contains(conversation.Id)) {
+                var message = new ConversationMessage(conversation) {
                     Date = date,
                     PreviousMessage = prevMessage,
                 };
@@ -284,6 +292,11 @@ public partial class ChatUI
             }
             prevDate = date;
         }
+        if (messages.Count > 0 && !idRange.Contains(messages[0].Id))
+            // Remove messages that are outside requested range
+            messages.RemoveAll(m =>
+                (m is ChatEntryMessage && !idRange.Contains(m.Id))
+                || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation.EntryRange).IsEmpty));
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
 
