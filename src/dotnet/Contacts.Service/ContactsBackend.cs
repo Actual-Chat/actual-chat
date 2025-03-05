@@ -488,16 +488,16 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         return;
 
         async Task<Contact?> CreateContact(UserId ownerId, IEnumerable<ExternalContactId> extContactIds) {
-            string peerContactName = "";
+            string externalContactName = "";
             foreach (var externalContactId in extContactIds) {
                 var externalContact = await ExternalContactsBackend.Get(externalContactId, cancellationToken).ConfigureAwait(false);
                 if (externalContact is not null && !externalContact.DisplayName.IsNullOrEmpty()) {
-                    peerContactName = externalContact.DisplayName;
+                    externalContactName = externalContact.DisplayName;
                     break;
                 }
             }
             var contact = new Contact(ContactId.Peer(ownerId, account.Id)) {
-                PeerContactName = peerContactName,
+                ExternalContactName = externalContactName,
             };
             var cmd = new ContactsBackend_Change(contact.Id, null, Change.Create(contact));
             return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
@@ -593,6 +593,35 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         Log.LogInformation("<- OnPublishCopiedChat: created contacts for chat '{ChatId}'", newChatId);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnReviewExternalContactName(
+        ContactsBackend_ReviewExternalContactName command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var contactId = command.Id;
+        var ownerUserId = contactId.OwnerId;
+        var contact = await Get(ownerUserId, contactId, cancellationToken).ConfigureAwait(false);
+        if (!contact.IsStored())
+            return;
+
+        var peerUserId = contact.Account?.Id ?? UserId.None;
+        if (peerUserId.IsNone)
+            return;
+
+        var externalContactName = await ExternalContactsBackend
+            .GetDisplayNameFor(ownerUserId, peerUserId, cancellationToken)
+            .ConfigureAwait(false);
+        if (OrdinalEquals(contact.ExternalContactName, externalContactName))
+            return;
+
+        var change = Change.Upsert(contact with { ExternalContactName = externalContactName });
+        var cmd = new ContactsBackend_Change(contactId, contact.Version, change);
+        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Events
@@ -701,6 +730,32 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var command = new ContactsBackend_Touch(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [EventHandler]
+    public virtual async Task OnExternalContactNameMayHaveChangedEvent(
+        ExternalContactNameMayHaveChangedEvent eventCommand,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (ownerUserId, hashLink) = eventCommand;
+        var peerUserId = UserId.None;
+        if (DbExternalContactLink.IsPhoneLink(hashLink, out var phoneHash))
+            peerUserId = await AccountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken).ConfigureAwait(false);
+        else if (DbExternalContactLink.IsEmailLink(hashLink, out var emailHash))
+            peerUserId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken).ConfigureAwait(false);
+        if (peerUserId.IsNone)
+            return;
+
+        var peerChatId = new PeerChatId(ownerUserId, peerUserId, ParseOrNone.Option);
+        if (peerChatId.IsNone)
+            return;
+
+        var contactId = new ContactId(ownerUserId, peerChatId);
+        var cmd = new ContactsBackend_ReviewExternalContactName(contactId);
+        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods

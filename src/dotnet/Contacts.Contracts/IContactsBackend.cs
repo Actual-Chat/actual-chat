@@ -41,6 +41,8 @@ public interface IContactsBackend : IComputeService, IBackendService
     Task OnChangePlaceMembership(ContactsBackend_ChangePlaceMembership command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnPublishCopiedChat(ContactsBackend_PublishCopiedChat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnReviewExternalContactName(ContactsBackend_ReviewExternalContactName command, CancellationToken cancellationToken);
 
     // Events
 
@@ -50,6 +52,10 @@ public interface IContactsBackend : IComputeService, IBackendService
     Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnExternalContactNameMayHaveChangedEvent(
+        ExternalContactNameMayHaveChangedEvent eventCommand,
+        CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -124,4 +130,14 @@ public sealed partial record ContactsBackend_PublishCopiedChat(
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => NewChatId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_ReviewExternalContactName(
+    [property: DataMember, MemoryPackOrder(0)] ContactId Id
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ContactId ShardKey => Id;
 }

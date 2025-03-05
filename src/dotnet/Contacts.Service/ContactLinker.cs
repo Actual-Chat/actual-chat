@@ -86,20 +86,14 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         var contactId = new ContactId(ownerId, peerChatId);
         // check existing contact since command always performs db request
         var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact.IsStored() && !contact.PeerContactName.IsNullOrEmpty())
-            return;
-
-        var externalContact = await ExternalContactsBackend.Get(externalContactId, cancellationToken).ConfigureAwait(false); // Should exist.
-        if (externalContact == null)
-            Log.LogWarning("ExternalContact is not found by id");
-
-        var peerContactName = externalContact?.DisplayName.NullIfWhiteSpace()
-            ?? $"{externalContact?.NamePrefix} {externalContact?.FamilyName}".Trim().NullIfEmpty() ?? "";
-        if (!contact.IsStored() || !peerContactName.IsNullOrEmpty()) {
-            var change = Change.Upsert(contact with { PeerContactName = peerContactName });
+        if (!contact.IsStored()) {
+            contact = new Contact(contactId);
             // This command doesn't throw an exception in case contact already exists
-            var cmd = new ContactsBackend_Change(contactId, null, change);
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            var createCmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
+            await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
         }
+
+        var reviewCommand = new ContactsBackend_ReviewExternalContactName(contactId);
+        _ = Commander.Call(reviewCommand, true, CancellationToken.None).SuppressExceptions();
     }
 }

@@ -19,6 +19,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? ChatId { get; set; }
     public string? PlaceId { get; set; }
     public string PeerContactName { get; set; } = "";
+    public string ExternalContactName { get; set; } = "";
     public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
@@ -35,6 +36,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             TouchedAt = TouchedAt.ToMoment(),
             IsPinned = IsPinned,
             PeerContactName = PeerContactName,
+            ExternalContactName = ExternalContactName,
             SystemTag = Constants.Place.ChatRouletteId.Value.Equals(PlaceId) ? Constants.Contact.SystemTags.ChatRoulette : Symbol.Empty,
         };
 
@@ -48,6 +50,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         TouchedAt = model.TouchedAt.ToDateTimeClamped();
         IsPinned = model.IsPinned;
         PeerContactName = model.PeerContactName;
+        ExternalContactName = model.ExternalContactName;
         if (!Id.IsNullOrEmpty())
             return; // Only the above properties can be changed for already existing contacts
 

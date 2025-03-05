@@ -191,7 +191,8 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             return default!;
         }
 
-        var modifiedItemHashes = new HashSet<string>();
+        var overallAffectedHashes = new HashSet<string>();
+        var updatedItemHashes = new HashSet<string>();
         var result = new List<Result<ExternalContactFull?>>(command.Changes.Count);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -201,8 +202,11 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         foreach (var itemChange in command.Changes)
             try {
-                var externalContact = await ChangeItem(dbContext, itemChange, modifiedItemHashes, cancellationToken).ConfigureAwait(false);
-                result.Add(new Result<ExternalContactFull?>(externalContact, null));
+                var changeResult = await ChangeItem(dbContext, itemChange, cancellationToken).ConfigureAwait(false);
+                overallAffectedHashes.AddRange(changeResult.AffectedHashes);
+                result.Add(new Result<ExternalContactFull?>(changeResult.ExternalContactFull, null));
+                if (itemChange.Change.Kind is ChangeKind.Remove or ChangeKind.Update)
+                    updatedItemHashes.AddRange(changeResult.AffectedHashes);
             }
             catch (Exception e) {
                 Log.LogError(e,
@@ -212,15 +216,19 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 result.Add(new Result<ExternalContactFull?>(null, e));
             }
 
-        context.Operation.Items.Set(hashesItemKey, modifiedItemHashes.ToList());
+        context.Operation.Items.Set(hashesItemKey, overallAffectedHashes.ToList());
+        if (updatedItemHashes.Count > 0) {
+            var ownerId = command.Changes[0].Id.UserDeviceId.OwnerId;
+            foreach (var hashedUserLink in updatedItemHashes)
+                context.Operation.AddEvent(new ExternalContactNameMayHaveChangedEvent(ownerId, hashedUserLink));
+        }
 
         return result.ToApiArray();
     }
 
-    private async Task<ExternalContactFull?> ChangeItem(
+    private async Task<ChangeItemResult> ChangeItem(
         ContactsDbContext dbContext,
         ExternalContactChange itemChange,
-        ICollection<string> modifiedItemHashes,
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = itemChange;
@@ -235,10 +243,12 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var existing = dbExternalContact?.ToModel();
         var now = Clocks.SystemClock.Now;
 
+        var modifiedItemHashes = new HashSet<string>();
+
         if (change.IsCreate(out var externalContact)) {
             if (existing != null)
-                return existing; // Already exists, so we don't recreate one
-
+                // Already exists, so we don't recreate one
+                return new ChangeItemResult(existing, ImmutableArray<string>.Empty);
             externalContact = externalContact.WithHash(Hasher, false) with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
@@ -260,7 +270,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         else {
             // Remove
             if (dbExternalContact == null)
-                return null;
+                return new ChangeItemResult(null, ImmutableArray<string>.Empty);
             dbExternalContact.RequireVersion(expectedVersion);
             dbContext.Remove(dbExternalContact);
         }
@@ -270,10 +280,9 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         if (change.IsUpdate(out _))
             AddHashes(existing!);
         AddHashes(externalContactFull);
-        return externalContactFull;
+        return new ChangeItemResult(externalContactFull, modifiedItemHashes);
 
-        void AddHashes(ExternalContactFull externalContact1)
-        {
+        void AddHashes(ExternalContactFull externalContact1) {
             modifiedItemHashes.AddRange(externalContact1.PhoneHashes.Select(DbExternalContactLink.GetPhoneLink));
             modifiedItemHashes.AddRange(externalContact1.EmailHashes.Select(DbExternalContactLink.GetEmailLink));
         }
@@ -298,4 +307,9 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    // Nested types
+    private record ChangeItemResult(
+        ExternalContactFull? ExternalContactFull,
+        IReadOnlyCollection<string> AffectedHashes);
 }

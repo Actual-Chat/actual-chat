@@ -18,15 +18,15 @@
                         Size="@SquareSize.Size9"
                         IsBlurred="@false"/>
                     <div class="c-name">
-                        <div class="c-title">@(_form.DisplayName.NullIfEmpty() ?? _peerOwnName)</div>
-                        @if (!_form.DisplayName.IsNullOrEmpty()) {
+                        <div class="c-title">@(_form.PeerContactName.NullIfEmpty() ?? _peerOwnName)</div>
+                        @if (!_form.PeerContactName.IsNullOrEmpty()) {
                             <div class="c-peer-own-name">@_peerOwnName</div>
                         }
                     </div>
                 </div>
             }
-            <FormSection For="() => _form.DisplayName" InputId="@_form.DisplayNameFieldId" Label="Display Name" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.DisplayName" Id="@_form.DisplayNameFieldId" Placeholder="@_peerExtContactDisplayName"/>
+            <FormSection For="() => _form.PeerContactName" InputId="@_form.PeerContactNameFieldId" Label="Display Name" IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.PeerContactName" Id="@_form.PeerContactNameFieldId" />
             </FormSection>
         </FormBlock>
         </Body>
@@ -48,12 +48,11 @@
     private Contact? _contact;
     private Avatar? _peerAvatar;
     private string? _peerOwnName;
-    private string? _peerExtContactDisplayName;
+    private string? _peerExternalContactName;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
-    private IChats Chats => Hub.Chats;
     private UICommander UICommander => Hub.UICommander();
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
@@ -66,23 +65,19 @@
         var peerContactId = ModalModel.PeerContactId;
         _contact = await Contacts.Get(Session, peerContactId, cancellationToken).ConfigureAwait(false);
         var peerContactName = _contact?.PeerContactName ?? "";
-        _form.DisplayName = peerContactName;
+        _form.PeerContactName = peerContactName;
         _form.CopyToBase();
         if (_contact is null)
             return;
 
+        _peerExternalContactName = _contact.ExternalContactName;
         _peerAvatar = _contact.Account?.Avatar;
-        _peerOwnName = _peerAvatar?.Name ?? "";
-        if (peerContactName.IsNullOrEmpty()) {
-            var chat = await Chats.Get(Session, peerContactId.ChatId, cancellationToken).ConfigureAwait(false);
-            if (chat != null && !OrdinalEquals(chat.Title, _peerOwnName))
-                _peerExtContactDisplayName = chat.Title;
-        }
+        _peerOwnName = _peerExternalContactName.NullIfWhiteSpace() ?? _peerAvatar?.Name ?? "";
     }
 
     private async Task OnSave() {
         var contact = _contact! with {
-            PeerContactName = _form.DisplayName
+            PeerContactName = _form.PeerContactName
         };
         var command = new Contacts_Change(Session, contact.Id, contact.Version, Change.Update(contact));
         var (_, error) = await UICommander.Run(command);
@@ -101,10 +96,8 @@
     // Nested types
 
     public sealed class FormModel : FormModel<FormModel> {
-        public string DisplayName { get; set; } = "";
-        public string UserName { get; set; } = "";
-        public string DisplayNameFieldId { get; set; } = "";
-        public string UserNameFieldId { get; set; } = "";
+        public string PeerContactName { get; set; } = "";
+        public string PeerContactNameFieldId { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("peer-contact-editor", componentIdGenerator) {
