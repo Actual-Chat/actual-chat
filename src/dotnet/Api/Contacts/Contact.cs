@@ -21,6 +21,7 @@ public sealed partial record Contact(
     [DataMember, MemoryPackOrder(4)] public bool IsPinned { get; init; }
     [DataMember, MemoryPackOrder(7)] public string PeerContactName { get; init; } = "";
     [DataMember, MemoryPackOrder(8)] public Symbol SystemTag { get; init; }
+    [DataMember, MemoryPackOrder(9)] public string ExternalContactName { get; init; } = "";
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -31,6 +32,8 @@ public sealed partial record Contact(
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceId PlaceId => Id.ChatId.PlaceId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public string? PeerRename => PeerContactName.NullIfWhiteSpace() ?? ExternalContactName.NullIfWhiteSpace();
 
     // Populated on backend on reads
     [DataMember, MemoryPackOrder(5)] public Account? Account { get; init; }

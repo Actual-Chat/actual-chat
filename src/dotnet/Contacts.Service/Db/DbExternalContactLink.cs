@@ -19,14 +19,34 @@ public class DbExternalContactLink
     public bool IsChecked { get; set; }
 
     public string? ToPhoneHash()
-        => Value.OrdinalStartsWith(PhonePrefix) ? Value[PhonePrefix.Length..] : null;
+        => IsPhoneLink(Value, out var hash) ? hash : null;
 
     public string? ToEmailHash()
-        => Value.OrdinalStartsWith(EmailPrefix) ? Value[EmailPrefix.Length..] : null;
+        => IsEmailLink(Value, out var hash) ? hash : null;
 
     public static string GetPhoneLink(string phoneHash)
         => $"{PhonePrefix}{phoneHash}";
 
     public static string GetEmailLink(string emailHash)
         => $"{EmailPrefix}{emailHash}";
+
+    public static bool IsPhoneLink(string link, out string hash)
+    {
+        hash = string.Empty;
+        if (!link.OrdinalStartsWith(PhonePrefix))
+            return false;
+
+        hash = link[PhonePrefix.Length..];
+        return true;
+    }
+
+    public static bool IsEmailLink(string link, out string hash)
+    {
+        hash = string.Empty;
+        if (!link.OrdinalStartsWith(EmailPrefix))
+            return false;
+
+        hash = link[EmailPrefix.Length..];
+        return true;
+    }
 }

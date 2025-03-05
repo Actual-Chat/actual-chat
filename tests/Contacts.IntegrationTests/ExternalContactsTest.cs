@@ -318,7 +318,68 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.PeerContactName.Should().Be(contactDisplayName);
+            contact1!.ExternalContactName.Should().Be(contactDisplayName);
+            return contact1;
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task UpdateExternalContactNameTest()
+    {
+        // arrange
+        var jackIdentities = NewJackIdentities();
+        var tester2 = AppHost.NewWebClientTester(Out);
+        var jack = await SignInAsUniqueJack(tester2, jackIdentities);
+
+        var bobDeviceId = NewDeviceId();
+        var bob = await _tester.SignInAsUniqueBob();
+        var sessionBob = _tester.Session;
+        const string contactDisplayName = "Jack Awesome";
+        var externalContact = NewExternalContact(bob, bobDeviceId)
+            .WithPhone(jackIdentities.Phone)
+            .WithEmail(jackIdentities.Email)
+            .WithDisplayName(contactDisplayName)
+            .WithHash(_hasher);
+
+        // act
+        var result = await _tester.SaveExternalContacts(externalContact);
+        var bobContacts = await ListContactIds(sessionBob, 1);
+
+        // assert
+        var contactId = BuildContactId(bob, jack);
+        bobContacts.Should().BeEquivalentTo(new[] { contactId });
+
+        await ComputedTest.When(async ct => {
+            var contact1 = await _contacts.Get(sessionBob, contactId, ct);
+            contact1.Should().NotBeNull();
+            contact1!.ExternalContactName.Should().Be(contactDisplayName);
+            return contact1;
+        }, TimeSpan.FromSeconds(10));
+
+        const string contactDisplayName2 = "Jack Awesome Super";
+        externalContact = result[0]
+            .WithDisplayName(contactDisplayName2)
+            .WithHash(_hasher);
+
+        // act
+        await _tester.SaveExternalContacts(externalContact);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var contact1 = await _contacts.Get(sessionBob, contactId, ct);
+            contact1.Should().NotBeNull();
+            contact1!.ExternalContactName.Should().Be(contactDisplayName2);
+            return contact1;
+        }, TimeSpan.FromSeconds(10));
+
+        // act
+        await _tester.DeleteExternalContacts(externalContact.Id);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var contact1 = await _contacts.Get(sessionBob, contactId, ct);
+            contact1.Should().NotBeNull();
+            contact1!.ExternalContactName.Should().BeEmpty();
             return contact1;
         }, TimeSpan.FromSeconds(10));
     }

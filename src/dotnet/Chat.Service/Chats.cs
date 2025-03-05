@@ -42,14 +42,7 @@ public class Chats(IServiceProvider services) : IChats
 
             chat ??= new Chat(chatId);
             var avatar = peerAccount.Avatar;
-            var peerName = avatar.Name;
-            if (!string.IsNullOrWhiteSpace(contact.PeerContactName))
-                peerName = contact.PeerContactName;
-            else {
-                var extContactDisplayName = await ExternalContactsBackend.GetDisplayNameFor(account.Id, peerAccount.Id, cancellationToken).ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(extContactDisplayName))
-                    peerName = extContactDisplayName;
-            }
+            var peerName = contact.PeerRename ?? avatar.Name;
             chat = chat with {
                 Title = peerName,
                 Picture = avatar.Media,
