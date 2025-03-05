@@ -89,6 +89,7 @@ export class VirtualList {
     private endSpacerSize: number | null = null;
     private shouldRecalculateItemRange: boolean = true;
     private shouldUpdateOrderedItems: boolean = true;
+    private isUpdatingPivots: boolean = false;
 
     public static create(
         ref: HTMLElement,
@@ -721,9 +722,6 @@ export class VirtualList {
                 if (rs.renderIndex <= 2)
                     this.scrollToEdge(this.defaultEdge, false, 'no-pivot');
             }
-
-            // ensure scroll position and size are recalculated
-            await fastWriteRaf();
         } finally {
             this.renderStartedAt = null;
             this.whenRequestDataCompleted?.resolve(undefined);
@@ -733,21 +731,8 @@ export class VirtualList {
             this.pivots = [];
             this.itemRange = null;
             this.viewport = null;
-
-            let anchorRefs: HTMLLIElement[] = [];
-            fastRaf({
-                read: () => {
-                    anchorRefs = [...this.containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item.anchor')];
-                }, write: () => {
-                    for (const anchorRef of anchorRefs) {
-                        // remove native anchor after restoring position
-                        anchorRef.classList.remove('anchor');
-                    }
-
-                    // Schedule update of the current pivots after the render
-                    this.scheduleUpdateCurrentPivots();
-                },
-            });
+            // Schedule update of the current pivots after the render
+            this.scheduleUpdateCurrentPivots();
         }
     }
 
@@ -893,51 +878,60 @@ export class VirtualList {
     private updateCurrentPivots(): void {
         if (this.isRendering)
             return;
+        if (this.isUpdatingPivots)
+            return;
 
-        const time = Date.now();
-        const pivots = new Array<Pivot>();
-        const pivotRefs = new Array<HTMLElement>();
-        // add query edges and second\last items as pivots
+        try {
+            this.isUpdatingPivots = true;
 
-        // do not use first item as pivot - it might be changed during rendering of items above - e.g. author circle might disappear
-        const firstItemRef = this.getFirstItemRef();
-        const firstItemKey = getItemKey(firstItemRef);
-        const secondItemRef = firstItemRef?.nextElementSibling as HTMLElement;
-        const secondItemKey = getItemKey(secondItemRef);
-        let medianVisibleKey = null;
-        if (this.visibleItems.size) {
-            const visibleItems = [...this.visibleItems.values()];
-            medianVisibleKey = visibleItems[Math.floor(visibleItems.length / 2)];
-        //     const medianRef = this.getItemRef(medianVisibleKey);
-        //     if (medianRef)
-        //         if (!medianRef.classList.contains('anchor'))
-        //             medianRef.classList.add('anchor');
+            const time = Date.now();
+            const pivots = new Array<Pivot>();
+            const pivotRefs = new Array<HTMLElement>();
+            // add query edges and second\last items as pivots
+
+            // do not use first item as pivot - it might be changed during rendering of items above - e.g. author circle might disappear
+            const firstItemRef = this.getFirstItemRef();
+            const firstItemKey = getItemKey(firstItemRef);
+            const secondItemRef = firstItemRef?.nextElementSibling as HTMLElement;
+            const secondItemKey = getItemKey(secondItemRef);
+            let medianVisibleKey = null;
+            if (this.visibleItems.size) {
+                const visibleItems = [...this.visibleItems.values()];
+                medianVisibleKey = visibleItems[Math.floor(visibleItems.length / 2)];
+            //     const medianRef = this.getItemRef(medianVisibleKey);
+            //     if (medianRef)
+            //         if (!medianRef.classList.contains('anchor'))
+            //             medianRef.classList.add('anchor');
+            }
+
+            const itemKeys = [medianVisibleKey, this.getLastItemKey(), this.query.keyRange?.end, secondItemKey, this.query.keyRange?.start];
+            for (let itemKey of itemKeys) {
+                if (itemKey === firstItemKey)
+                    continue;
+
+                const pivotRef = this.getItemRef(itemKey);
+                if (!pivotRef)
+                    continue;
+
+                pivotRefs.push(pivotRef);
+                // measure scroll position
+                const itemRect = pivotRef.getBoundingClientRect();
+                const pivot: Pivot = {
+                    itemKey,
+                    offset: Math.round(itemRect.top),
+                    time,
+                };
+                pivots.push(pivot);
+            }
+            this.currentPivots = pivots;
         }
+        finally {
+            this.isUpdatingPivots = false;
 
-        const itemKeys = [medianVisibleKey, this.getLastItemKey(), this.query.keyRange?.end, secondItemKey, this.query.keyRange?.start];
-        for (let itemKey of itemKeys) {
-            if (itemKey === firstItemKey)
-                continue;
-
-            const pivotRef = this.getItemRef(itemKey);
-            if (!pivotRef)
-                continue;
-
-            pivotRefs.push(pivotRef);
-            // measure scroll position
-            const itemRect = pivotRef.getBoundingClientRect();
-            const pivot: Pivot = {
-                itemKey,
-                offset: Math.round(itemRect.top),
-                time,
-            };
-            pivots.push(pivot);
-        }
-        this.currentPivots = pivots;
-
-        const whenRequestDataCompleted = this.whenRequestDataCompleted;
-        if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted() && !this.isRendering) {
-            this.scheduleUpdateCurrentPivots();
+            const whenRequestDataCompleted = this.whenRequestDataCompleted;
+            if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted() && !this.isRendering) {
+                this.scheduleUpdateCurrentPivots();
+            }
         }
     }
 
@@ -1144,13 +1138,21 @@ export class VirtualList {
                     // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
 
                     // set scroll styles to improve UX on iOS before setting scrollTop
-                    this.inertialScroll.freeze();
-                    this.ref.scrollTop = scrollTop;
-                    fastRaf({
-                        write: () => {
-                            this.inertialScroll.unfreeze();
-                        },
-                    });
+                    if (DeviceInfo.isIos) {
+                        this.ref.style.overflowY = 'hidden';
+                        setTimeout(() => {
+                            this.ref.style.overflowY = 'scroll';
+                            this.ref.scrollTop = scrollTop;
+
+                            // Hack for iOS to prevent blank screen on scroll
+                            window.scrollTo(0, 1);
+                            window.scrollTo(0, 0);
+                        }, 0);
+                    }
+                    else {
+                        this.ref.scrollTop = scrollTop;
+                    }
+
                     debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
                 } else if (this.isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
                     debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this.isRendering);
@@ -1510,8 +1512,20 @@ export class VirtualList {
                 : items[items.length - 1]);
         const lastItem = items[endIndex] ?? firstItem;
         // Calculate move range and keep it within at least one boundary of the key items
-        const moveRangeStart = clamp(Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio), -Infinity, keyItemDistance);
-        const moveRangeEnd = clamp(Math.ceil((loadZone.end - lastItem.range.end) / itemSize / responseFulfillmentRatio), -keyItemDistance, Infinity);
+        let moveRangeStart = clamp(Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio), -Infinity, keyItemDistance);
+        let moveRangeEnd = clamp(Math.ceil((loadZone.end - lastItem.range.end) / itemSize / responseFulfillmentRatio), -keyItemDistance, Infinity);
+
+        // Adjust moveRange based on default edge and viewport proximity
+        if (this.defaultEdge === VirtualListEdge.End) {
+            const isNearEnd = viewport.end >= this.itemRange.end - viewportSize * 0.1;
+            if (isNearEnd)
+                moveRangeStart = Math.max(moveRangeStart, 0); // Prevent loading items before
+        } else if (this.defaultEdge === VirtualListEdge.Start) {
+            const isNearStart = viewport.start <= this.itemRange.start + viewportSize * 0.1;
+            if (isNearStart)
+                moveRangeEnd = Math.min(moveRangeEnd, 0); // Prevent loading items after
+        }
+
         const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);
