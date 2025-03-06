@@ -20,7 +20,7 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
     [field: AllowNull, MaybeNull]
     private Translator Translator => field ??= Tester.AppServices.GetRequiredService<Translator>();
 
-    [Theory]
+    [Theory(Skip = "Skip until usage minimized")] // TODO(FC): Decrease usage
     [InlineData("ru",
         ComplexText,
         """
@@ -53,6 +53,7 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
     public async Task ShouldTranslate(Language destLanguage, string text, string expected)
     {
         // arrange
+        var minSimilarity = 0.7;
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
         var cancellationToken = cts.Token;
 
@@ -61,10 +62,10 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
         Out.WriteLine($"Translated text:\n {translated}");
 
         // assert
-        ShouldBeSimilar(translated, expected);
+        ShouldBeSimilar(translated, expected, minSimilarity);
     }
 
-    [Theory(Skip = "flaky")] // TODO(FC): stabilize it
+    [Theory(Skip = "Skip until usage minimized")] // TODO(FC): Decrease usage
     [InlineData(ComplexText, "en")]
     [InlineData("Hello! Привет! Bonjour!", "en", "ru", "fr")]
     [InlineData("```")]
@@ -74,26 +75,31 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
     public async Task ShouldDetectLanguages(string text, params string[] expected)
     {
         // arrange
+        const int runCount = 3;
+        const int minSuccessCount = 3;
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10).Debuggable());
         var cancellationToken = cts.Token;
 
         // act
-        var runCount = 10;
-        var results = await Enumerable.Range(1, 10).Select(_ => Translator.DetectLanguages(text, cancellationToken)).Collect(cancellationToken);
-        var stats = results.SelectMany(x => x).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
+        var results = await Enumerable.Range(1, runCount).Select(_ => Translator.DetectLanguages(text, cancellationToken)).Collect(cancellationToken);
 
         // assert
-        foreach (var language in expected)
-            stats.GetValueOrDefault(language).Should().BeGreaterThanOrEqualTo((int)Math.Floor(0.7 * runCount));
+        if (expected.Length > 0) {
+            var stats = results.SelectMany(x => x).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
+            foreach (var language in expected)
+                stats.GetValueOrDefault(language).Should().BeGreaterThanOrEqualTo(minSuccessCount, $"{language}");
+        }
+        else
+            results.Where(x => x.IsEmpty).Should().HaveCountGreaterThanOrEqualTo(minSuccessCount);
     }
 
-    private void ShouldBeSimilar(string translatedText, string expectedText)
+    private void ShouldBeSimilar(string translatedText, string expectedText, double minSimilarity)
     {
         var translatedWords = SplitIntoWords(translatedText);
         var expectedWords = SplitIntoWords(expectedText);
         var intersectingWords = expectedWords.Intersect(expectedWords, StringComparer.OrdinalIgnoreCase).ToHashSet();
-        var similarity = (decimal)intersectingWords.Count / Math.Max(translatedWords.Count, expectedWords.Count);
-        similarity.Should().BeGreaterThanOrEqualTo(0.7m);
+        var similarity = (double)intersectingWords.Count / Math.Max(translatedWords.Count, expectedWords.Count);
+        similarity.Should().BeGreaterThanOrEqualTo(minSimilarity);
 
         HashSet<string> SplitIntoWords(string text)
             => text.Split([' ', ',', '!', '.', ':', '-'],
