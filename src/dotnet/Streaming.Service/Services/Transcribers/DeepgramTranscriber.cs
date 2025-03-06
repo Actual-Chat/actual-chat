@@ -111,7 +111,7 @@ public partial class DeepgramTranscriber : ITranscriber
         return;
 
         void HandleTranscriptReceived(object? sender, ResultResponse e)
-            => ProcessResponse(transcriptState, whenCompletedSource, e);
+            => ProcessResponse(transcriptState, whenCompletedSource, e, options);
 
         void HandleConnectionClosed(object? sender, CloseResponse e)
             => whenCompletedSource.TrySetResult();
@@ -161,15 +161,18 @@ public partial class DeepgramTranscriber : ITranscriber
     private void ProcessResponse(
         DeepgramTranscribeState state,
         TaskCompletionSource whenCompletedSource,
-        ResultResponse result)
+        ResultResponse result,
+        TranscriptionOptions options)
     {
         DebugLog?.LogDebug("Transcript received: {Result}", result);
         var isFinal = result.IsFinal ?? false;
         var isStreamFinalized = result.FromFinalize ?? false;
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();
         var suffix = alternative?.Transcript ?? "";
-        // NOTE: as for now deepgram does not support language detection in streaming mode
+        // NOTE: as for now deepgram does not support language detection in streaming mode so we use language from options
         var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToApiArray() ?? [];
+        if (languages.IsEmpty)
+            languages = [options.Language];
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))

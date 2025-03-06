@@ -400,8 +400,8 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private Task<List<ContactId>> ListContactIds(int expectedCount)
         => ListContactIds(_tester.Session, expectedCount);
 
-    private async Task<List<ContactId>> ListContactIds(Session session,int expectedCount)
-        => await ComputedTest.When(async ct => {
+    private Task<List<ContactId>> ListContactIds(Session session,int expectedCount)
+        => ComputedTest.When(async ct => {
             var contactIds = await ListContactIds(session, ct);
             contactIds.Should().HaveCountGreaterThanOrEqualTo(expectedCount);
             return contactIds;
