@@ -25,7 +25,7 @@ public class GoogleTranscriberTest : TestBase
         await transcriber.WhenInitialized;
         var responses = GenerateResponses();
         var state = new GoogleTranscribeState(null!, null!, null!, null!);
-        var transcripts = await transcriber.ProcessResponses(state, responses).ToListAsync();
+        var transcripts = await transcriber.ProcessResponses(state, new (), responses).ToListAsync();
 
         var transcript = transcripts.Last();
         transcript.Text.Should().Be("Проверка связи проверка связи");
@@ -188,7 +188,7 @@ public class GoogleTranscriberTest : TestBase
         await transcriber.WhenInitialized;
         var state = new GoogleTranscribeState(null!, null!, null!, null!);
         var responses = GoogleTranscriptReader.ReadFromFile("data/transcript.json");
-        var transcripts = await transcriber.ProcessResponses(state, responses).ToListAsync();
+        var transcripts = await transcriber.ProcessResponses(state, new (), responses).ToListAsync();
 
         var transcript = transcripts.Last();
         Out.WriteLine(transcript.ToString());
@@ -202,7 +202,7 @@ public class GoogleTranscriberTest : TestBase
         await transcriber.WhenInitialized;
         var state = new GoogleTranscribeState(null!, null!, null!, null!);
         var responses = GoogleTranscriptReader.ReadFromFile("data/long-transcript.json");
-        var transcripts = transcriber.ProcessResponses(state, responses);
+        var transcripts = transcriber.ProcessResponses(state, new (), responses);
 
         var memoizedTranscripts = transcripts.Memoize();
         var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs();

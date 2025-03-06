@@ -47,13 +47,8 @@ public class DeepgramTranscribeState(
 
     public DeepgramTranscribeState Append(
         string suffix,
-        LinearMap suffixTextToTimeMap)
-        => Append(suffix, suffixTextToTimeMap, Stable.Languages);
-
-    public DeepgramTranscribeState Append(
-        string suffix,
         LinearMap suffixTextToTimeMap,
-        ApiArray<Language> languages)
+        ApiArray<Language>? languages = null)
     {
         if (string.IsNullOrWhiteSpace(suffix))
             return this;
@@ -62,7 +57,7 @@ public class DeepgramTranscribeState(
         var prependedSuffix = stableText.IsNullOrEmpty() || stableText.EndsWith(' ')
             ? suffix.Trim()
             : $" {suffix.Trim()}";
-        Unstable = Stable.WithSuffix(prependedSuffix, suffixTextToTimeMap, languages);
+        Unstable = Stable.WithSuffix(prependedSuffix, suffixTextToTimeMap, languages ?? Stable.Languages);
         return this;
     }
 

@@ -278,6 +278,7 @@ public partial class StreamingBackend
                         AudioEntryLid = audioEntry?.LocalId,
                         BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                         RepliedEntryLid = repliedEntryLid,
+                        Languages = transcript.Languages,
                     }));
                 textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
                 DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
@@ -303,6 +304,7 @@ public partial class StreamingBackend
                         TimeMap = audioEntry != null
                             ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
                             : default,
+                        Languages = lastTranscript.Languages,
                     });
 
                 var command = new ChatsBackend_ChangeEntry(

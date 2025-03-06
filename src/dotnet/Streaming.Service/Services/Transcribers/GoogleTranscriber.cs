@@ -160,7 +160,7 @@ public partial class GoogleTranscriber : ITranscriber
 #pragma warning restore CA2000
         try {
             var pushAudioTask = PushAudio(state, cts.Token);
-            var pullResponsesTask = PullResponses(state, cts.Token);
+            var pullResponsesTask = PullResponses(state, options, cts.Token);
             await pushAudioTask.ConfigureAwait(false);
             await pullResponsesTask.ConfigureAwait(false);
         }
@@ -217,6 +217,7 @@ public partial class GoogleTranscriber : ITranscriber
 
     private async Task PullResponses(
         GoogleTranscribeState state,
+        TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
         // NOTE(AY): This method isn't supposed to complete the output: this part is done in Transcribe
@@ -225,7 +226,7 @@ public partial class GoogleTranscriber : ITranscriber
             var responses = (IAsyncEnumerable<StreamingRecognizeResponse>)state.RecognizeStream.GetResponseStream();
             await output.WriteAsync(state.Unstable, cancellationToken).ConfigureAwait(false);
             // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-            await foreach (var transcript in ProcessResponses(state, responses).ConfigureAwait(false))
+            await foreach (var transcript in ProcessResponses(state, options, responses).ConfigureAwait(false))
                 await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
@@ -237,10 +238,11 @@ public partial class GoogleTranscriber : ITranscriber
     // It's internal to be accessible from tests
     internal async IAsyncEnumerable<Transcript> ProcessResponses(
         GoogleTranscribeState state,
+        TranscriptionOptions options,
         IAsyncEnumerable<StreamingRecognizeResponse> responses)
     {
         await foreach (var response in responses.ConfigureAwait(false)) {
-            var transcript = ProcessResponse(state, response);
+            var transcript = ProcessResponse(state, options, response);
             if (transcript != null)
                 yield return transcript;
         }
@@ -252,6 +254,7 @@ public partial class GoogleTranscriber : ITranscriber
 
     private Transcript? ProcessResponse(
         GoogleTranscribeState state,
+        TranscriptionOptions options,
         StreamingRecognizeResponse response)
     {
         var results = response.Results;
@@ -277,7 +280,7 @@ public partial class GoogleTranscriber : ITranscriber
         for (var i = 0; i < results.Count; i++) {
             var result = results[i];
             DebugLog?.LogDebug("Result {Index}: {Result}", i, result);
-            ProcessResult(state, result, mustAppendToUnstable);
+            ProcessResult(state, result, options, mustAppendToUnstable);
             mustAppendToUnstable |= !result.IsFinal;
             DebugLog?.LogDebug("Transcript {Index}: {Transcript}", i, state.Unstable);
         }
@@ -286,7 +289,11 @@ public partial class GoogleTranscriber : ITranscriber
         return state.Unstable;
     }
 
-    private static void ProcessResult(GoogleTranscribeState state, StreamingRecognitionResult result, bool appendToUnstable)
+    private static void ProcessResult(
+        GoogleTranscribeState state,
+        StreamingRecognitionResult result,
+        TranscriptionOptions options,
+        bool appendToUnstable)
     {
         var isFinal = result.IsFinal;
         var suffix = result.Alternatives.FirstOrDefault()?.Transcript ?? "";
@@ -327,6 +334,8 @@ public partial class GoogleTranscriber : ITranscriber
             }
 
         ApiArray<Language> languages = Language.TryParse(result.LanguageCode, out var language) ? [language] : [];
+        if (languages.IsEmpty)
+            languages = [options.Language];
         state.Append(suffix, endTime, languages, appendToUnstable).MakeStable(isFinal);
     }
 
