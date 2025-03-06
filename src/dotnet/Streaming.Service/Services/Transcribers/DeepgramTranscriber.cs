@@ -70,8 +70,8 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
-            var language = GetSupportedLanguage(options.Language);
-            var model = language == "en" ? "nova-3" : "nova-2";
+            var language = options.Language.ToDeepgram();
+            var model = options.Language.IsEnglish() ? "nova-3" : "nova-2";
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,
@@ -109,41 +109,6 @@ public partial class DeepgramTranscriber : ITranscriber
             output.TryComplete(error);
         }
         return;
-
-        string GetSupportedLanguage(Language language)
-        {
-            return language.Id.Value switch {
-                "en-US" => "en",
-                "en-GB" => "en",
-                "en-IN" => "en",
-                "fr-FR" => "fr",
-                "fr-CA" => "fr-CA",
-                "de-DE" => "de",
-                "hi-IN" => "hi",
-                "pt-BR" => "pt-BR",
-                "pt-PT" => "pt",
-                "es-ES" => "es",
-                "es-MX" => "es-419",
-                "es-US" => "es-419",
-                "ru-RU" => "ru",
-                "zh-CN" => "zh-CN",
-                "zh-TW" => "zh-TW",
-                "ja-JP" => "ja",
-                "ko-KR" => "ko",
-                "it-IT" => "it",
-                "nl-NL" => "nl",
-                "pl-PL" => "pl",
-                "tr-TR" => "tr",
-                "vi-VN" => "vi",
-                "uk-UA" => "uk",
-                "cs-CZ" => "cs",
-                "sv-SE" => "sv",
-                "da-DK" => "da",
-                "fi-FI" => "fi",
-                "th-TH" => "th",
-                _ => throw StandardError.NotSupported(typeof(DeepgramTranscriber), $"Language '{language.Id}' is not supported"),
-            };
-        }
 
         void HandleTranscriptReceived(object? sender, ResultResponse e)
             => ProcessResponse(transcriptState, whenCompletedSource, e);
@@ -201,11 +166,14 @@ public partial class DeepgramTranscriber : ITranscriber
         DebugLog?.LogDebug("Transcript received: {Result}", result);
         var isFinal = result.IsFinal ?? false;
         var isStreamFinalized = result.FromFinalize ?? false;
-        var suffix = result.Channel?.Alternatives?.FirstOrDefault()?.Transcript ?? "";
+        var alternative = result.Channel?.Alternatives?.FirstOrDefault();
+        var suffix = alternative?.Transcript ?? "";
+        // NOTE: as for now deepgram does not support language detection in streaming mode
+        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToApiArray() ?? [];
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))
-                state.Append(suffix, map).MakeStable();
+                state.Append(suffix, map, languages).MakeStable();
             else
                 state.MakeStable();
         }

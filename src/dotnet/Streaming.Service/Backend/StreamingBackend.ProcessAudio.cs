@@ -142,7 +142,7 @@ public partial class StreamingBackend
     {
         var kvas = ServerKvas.GetClient(record.Session);
         var settings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);
-        var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken);
+        var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);
         var language = await settings.LanguageOrPrimary(kvas, cancellationToken).ConfigureAwait(false);
         Language?[] languages = [language, languageSettings.Primary, languageSettings.Secondary, languageSettings.Tertiary];
 
@@ -245,7 +245,7 @@ public partial class StreamingBackend
         AuthorId authorId,
         Moment beginsAt,
         Task<ChatEntry>? audioEntryTask,
-        string transcriptStreamId,
+        StreamId transcriptStreamId,
         ChatEntryId repliedChatEntryId,
         IAsyncEnumerable<Transcript> transcripts)
     {

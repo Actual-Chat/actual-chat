@@ -10,7 +10,7 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
         var transcripts = new[] {
             Transcript.Ellipsis,
             Transcript.Empty,
-            new Transcript("Hey!", LinearMap.Zero),
+            new Transcript("Hey!", LinearMap.Zero, []),
         };
         await CheckDiff("Negative diff:", transcripts);
     }
@@ -47,7 +47,7 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
         {
             var newText = t.Text + GetRandomChar();
             var newLength = newText.Length;
-            return new Transcript(newText, t.TimeMap.Append(new Vector2(newLength, newLength)));
+            return new Transcript(newText, t.TimeMap.Append(new Vector2(newLength, newLength)), t.Languages);
         }
 
         Transcript Shrink1(Transcript t)
@@ -58,7 +58,7 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
             var newText = t.Text[..^1];
             var newMap = t.TimeMap.GetPrefix(newText.Length, Transcript.TimeMapEpsilon.X);
             newMap.Length.Should().Be(newText.Length + 1);
-            return new Transcript(newText, newMap);
+            return new Transcript(newText, newMap, t.Languages);
         }
 
         char GetRandomChar() => (char)('0' + rnd.Next(10));
@@ -77,7 +77,7 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
             var r = restored.GetValueOrDefault(i);
             r.Should().NotBeNull();
             Out.WriteLine($"- {t} -> {r}");
-            r!.IsIdenticalTo(t).Should().BeTrue();
+            r.IsIdenticalTo(t).Should().BeTrue();
         }
         restored.Count.Should().Be(transcripts.Count);
 

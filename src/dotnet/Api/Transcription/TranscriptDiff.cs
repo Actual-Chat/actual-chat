@@ -29,7 +29,7 @@ public sealed partial record TranscriptDiff(
 
         var text = baseTranscript.Text + TextDiff;
         var timeMap = TimeMapDiff.ApplyTo(baseTranscript.TimeMap, Transcript.TimeMapEpsilon.X);
-        return new Transcript(text, timeMap);
+        return new Transcript(text, timeMap, baseTranscript.Languages);
     }
 
     // Operators

@@ -88,7 +88,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
         var symbol = (Symbol)"Test";
         symbol.AssertPassesThroughAllSerializers();
 
-        var o = new Transcript(" поешь", new LinearMap(15, 0, 21, 1));
+        var o = new Transcript(" поешь", new LinearMap(15, 0, 21, 1), [Languages.Russian]);
         var s = o.PassThroughAllSerializers(Out);
         s.Text.Should().Be(o.Text);
         s.TimeMap.Length.Should().Be(o.TimeMap.Length);
