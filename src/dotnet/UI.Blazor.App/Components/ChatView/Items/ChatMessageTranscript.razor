@@ -35,12 +35,11 @@
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
 
-    private ILogger? _log;
-
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private IStreamClient StreamClient => Hub.StreamClient;
     private Dispatcher Dispatcher => Hub.Dispatcher;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

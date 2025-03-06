@@ -52,7 +52,7 @@
         AddPossibleLanguage(possibleLanguages, languages.Primary);
         AddPossibleLanguage(possibleLanguages, languages.Secondary);
         AddPossibleLanguage(possibleLanguages, languages.Tertiary);
-        return new Model { AvailableLanguages = possibleLanguages.ToImmutableArray()};
+        return new Model { AvailableLanguages = [..possibleLanguages]};
     }
 
     protected override void OnAfterRender(bool firstRender) {
@@ -67,7 +67,7 @@
             return;
 
         var language = languageOpt.Value;
-        if (language.ShortTitle.Value.Length > 2 && ActualChat.Languages.IdToLanguage.TryGetValue(language.ShortTitle.Value.Substring(0, 2), out var alternative) && alternative != language)
+        if (language.ShortTitle.Value.Length > 2 && ActualChat.Languages.SupportedMap.TryGetValue(language.ShortTitle.Value[..2], out var alternative) && alternative != language)
             language = alternative;
 
         if (!list.Contains(language))

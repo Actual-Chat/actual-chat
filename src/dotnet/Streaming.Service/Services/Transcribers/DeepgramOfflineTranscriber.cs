@@ -101,6 +101,7 @@ public class DeepgramOfflineTranscriber  : ITranscriber
 
         var alternative = result.Channels[0].Alternatives?.FirstOrDefault();
         var text = alternative?.Transcript ?? "";
+        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToApiArray() ?? [];
         Log.LogDebug("Transcript: {Transcript}", text);
 
         var mapPoints = new List<Vector2>();
@@ -124,7 +125,7 @@ public class DeepgramOfflineTranscriber  : ITranscriber
         }
 
         var timeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
-        state.Append(text, timeMap);
+        state.Append(text, timeMap, languages);
         state.MakeStable();
         await state.Output.WriteAsync(state.Unstable).ConfigureAwait(false);
     }

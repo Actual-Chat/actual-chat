@@ -61,7 +61,7 @@ public class GoogleTranscriberTest(
 
         var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();
         foreach (var t in transcripts)
-            Out.WriteLine(t.ToString());
+            Out.WriteLine("{0}: {1}", string.Join(", ", t.Languages), t);
     }
 
     [Fact(Skip = "Depends on Google API")]

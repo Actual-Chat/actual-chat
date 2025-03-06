@@ -24,6 +24,9 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
 
+    public void Dispose()
+        => _settings.Dispose();
+
     [ComputeMethod]
     public virtual async Task<IReadOnlySet<Language>> ListSpoken(CancellationToken cancellationToken)
     {
@@ -31,20 +34,18 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
         return settings.ToList().ToHashSet();
     }
 
-    public void Dispose()
-        => _settings.Dispose();
-
-    public async ValueTask<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
+    [ComputeMethod]
+    public virtual async ValueTask<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language = default)
+    public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language, CancellationToken cancellationToken = default)
     {
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         var settings = Settings.Value;
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default).ConfigureAwait(false);
+        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         var oldLanguage = userChatSettings.Language.Or(settings.Primary);
         language = language.Or(oldLanguage);
         if (language == userChatSettings.Language)
@@ -52,7 +53,7 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
 
         _ = TuneUI.Play(Tune.ChangeLanguage);
         userChatSettings = userChatSettings with { Language = language };
-        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
+        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, cancellationToken).ConfigureAwait(false);
         return language;
     }
 

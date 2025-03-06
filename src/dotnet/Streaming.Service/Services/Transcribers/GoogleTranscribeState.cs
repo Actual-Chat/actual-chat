@@ -40,9 +40,19 @@ public class GoogleTranscribeState(
         return this;
     }
 
-    public GoogleTranscribeState Append(string suffix, float? suffixEndTime, bool appendToUnstable = false)
+    public GoogleTranscribeState Append(
+        string suffix,
+        float? suffixEndTime,
+        bool appendToUnstable = false)
+    => Append(suffix, suffixEndTime, Unstable.Languages, appendToUnstable);
+
+    public GoogleTranscribeState Append(
+        string suffix,
+        float? suffixEndTime,
+        ApiArray<Language> languages,
+        bool appendToUnstable = false)
     {
-        Unstable = this[appendToUnstable].WithSuffix(suffix, Unstable.TimeMap, suffixEndTime);
+        Unstable = this[appendToUnstable].WithSuffix(suffix, Unstable.TimeMap, suffixEndTime, languages);
         return this;
     }
 

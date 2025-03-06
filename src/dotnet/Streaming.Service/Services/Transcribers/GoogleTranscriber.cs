@@ -326,7 +326,8 @@ public partial class GoogleTranscriber : ITranscriber
                 return;
             }
 
-        state.Append(suffix, endTime, appendToUnstable).MakeStable(isFinal);
+        ApiArray<Language> languages = Language.TryParse(result.LanguageCode, out var language) ? [language] : [];
+        state.Append(suffix, endTime, languages, appendToUnstable).MakeStable(isFinal);
     }
 
     // This method is unused for now, since we rely on our own time offset computation logic
