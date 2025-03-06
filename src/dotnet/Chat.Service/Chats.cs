@@ -5,19 +5,17 @@ namespace ActualChat.Chat;
 
 public class Chats(IServiceProvider services) : IChats
 {
-    private IPlaces? _places;
-
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
-    private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
+    [field: AllowNull, MaybeNull]
+    private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
-    private IExternalContactsBackend ExternalContactsBackend { get; } = services.GetRequiredService<IExternalContactsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
@@ -34,7 +32,10 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.Kind == ChatKind.Peer) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            var contactId = new ContactId(account.Id, chatId);
+            var contactId = new ContactId(account.Id, chatId, ParseOrNone.Option);
+            if (contactId.IsNone)
+                return null;
+
             var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
             var peerAccount = contact.Account;
             if (peerAccount == null)
