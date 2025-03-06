@@ -388,8 +388,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 ChatUI.HighlightEntry(new ChatEntryId(chatId, ChatEntryKind.Text, navEntryId.Value, AssumeValid.Option), navigate: false);
         }
-        hasVeryFirstItem = chatIdRange.Start >= tiles[0].Items[0].Id;
-        hasVeryLastItem = chatIdRange.End - 1 <= tiles[^1].Items[^1].Id;
+        if (tiles.Count != 0) {
+            if (tiles[0].Items.Count != 0)
+                hasVeryFirstItem = chatIdRange.Start >= tiles[0].Items[0].Id;
+            if (tiles[^1].Items.Count != 0)
+                hasVeryLastItem = chatIdRange.End - 1 <= tiles[^1].Items[^1].Id;
+        }
         var result = new VirtualListData<ChatMessage>(tiles) {
             Index = renderedData.Index + 1,
             HasVeryFirstItem = hasVeryFirstItem,
@@ -440,8 +444,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => keyRange.Move(query.MoveRange),
         };
 
-        // If we are scrolling somewhere, let's extend the range to scrollAnchor & nearby entries.
-        if (scrollAnchor is { } vScrollAnchor) {
+        // If we are scrolling somewhere within idRange, let's extend the range to scrollAnchor & nearby entries.
+        if (scrollAnchor is { } vScrollAnchor && chatIdRange.Contains(vScrollAnchor.EntryLid)) {
             var scrollAnchorRange = new Range<long>(
                 vScrollAnchor.EntryLid - ChatUI.LoadLimit,
                 vScrollAnchor.EntryLid + ChatUI.HalfLoadLimit);

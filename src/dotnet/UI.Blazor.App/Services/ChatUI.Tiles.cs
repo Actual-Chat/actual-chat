@@ -64,10 +64,20 @@ public partial class ChatUI
             DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
 #endif
             }
+            if (originalLoadBefore == 0 && originalLoadAfter == 0)
+                break;
+
             var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts();
+            var isLoadingBefore = originalLoadBefore > originalLoadAfter;
             var beforeFulfilled = beforeCount >= originalLoadBefore / 2;
             var afterFulfilled = afterCount >= originalLoadAfter / 2;
             if (beforeFulfilled && afterFulfilled)
+                break;
+
+            if (isLoadingBefore && beforeFulfilled)
+                break;
+
+            if (!isLoadingBefore && afterFulfilled)
                 break;
 
             var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
@@ -82,8 +92,13 @@ public partial class ChatUI
             if (!afterFulfilled && hasVeryLastItem)
                 break;
 
-            var expandedLoadBefore = hasVeryFirstItem ? dataQuery.LoadBefore : dataQuery.LoadBefore * 4;
-            var expandedLoadAfter = hasVeryLastItem ? dataQuery.LoadAfter : dataQuery.LoadAfter * 4;
+            // Expand load limits and reset tiles if we need to load more just to fulfill one side
+            var expandedLoadBefore = hasVeryFirstItem || dataQuery.LoadBefore < dataQuery.LoadAfter
+                ? dataQuery.LoadBefore
+                : dataQuery.LoadBefore * 4;
+            var expandedLoadAfter = hasVeryLastItem || dataQuery.LoadAfter < dataQuery.LoadBefore
+                ? dataQuery.LoadAfter
+                : dataQuery.LoadAfter * 4;
             dataQuery = new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
                 HasVeryFirstItem = hasVeryFirstItem,
                 HasVeryLastItem = hasVeryLastItem,
@@ -161,7 +176,7 @@ public partial class ChatUI
             .SelectMany(t => t.Entries)
             .Where(e => !idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
             .ToList();
-        if (entries.Count == 0)
+        if (entries.Count == 0 && conversations.Count == 0)
             return new VirtualListTile<ChatMessage>(idRange);
 
         var showIndexDocId = await GetShowIndexDocId(chatId, cancellationToken).ConfigureAwait(false);
@@ -283,12 +298,10 @@ public partial class ChatUI
                     Date = date,
                     PreviousMessage = prevMessage,
                 };
-                if (prevMessage?.Id != message.Id) {
-                    // Skip adding conversation message if it's the same as previous message
-                    // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
-                    messages.Add(message);
-                    prevMessage = message;
-                }
+                // Can't skip adding conversation message even if it's the same as previous message
+                // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
+                messages.Add(message);
+                prevMessage = message;
             }
             prevDate = date;
         }
