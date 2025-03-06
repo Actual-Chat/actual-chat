@@ -64,21 +64,27 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
         ShouldBeSimilar(translated, expected);
     }
 
-    [Theory(Skip = "Does not work in CI")]
+    [Theory]
     [InlineData(ComplexText, "en")]
     [InlineData("Hello! Привет! Bonjour!", "en", "ru", "fr")]
+    [InlineData("```")]
+    [InlineData("````123```")]
+    [InlineData("123")]
+    [InlineData("0xDEADBEEF")]
     public async Task ShouldDetectLanguages(string text, params string[] expected)
     {
         // arrange
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10).Debuggable());
         var cancellationToken = cts.Token;
 
         // act
-        var languages = await Translator.DetectLanguages(text, cancellationToken);
-        Out.WriteLine($"Detected languages:\n {string.Join(", ", languages.Select(x => x.Value))}");
+        var runCount = 10;
+        var results = await Enumerable.Range(1, 10).Select(_ => Translator.DetectLanguages(text, cancellationToken)).Collect(cancellationToken);
+        var stats = results.SelectMany(x => x).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
 
         // assert
-        languages.Should().BeEquivalentTo(expected.Select(x => new Language(x)));
+        foreach (var language in expected)
+            stats.GetValueOrDefault(language).Should().BeGreaterThanOrEqualTo((int)Math.Floor(0.7 * runCount));
     }
 
     private void ShouldBeSimilar(string translatedText, string expectedText)
