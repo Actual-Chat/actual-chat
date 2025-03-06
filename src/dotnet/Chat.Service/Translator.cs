@@ -1,6 +1,7 @@
 using ActualChat.Chat.Module;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace ActualChat.Chat;
 
@@ -31,7 +32,7 @@ public class Translator(IServiceProvider services)
         {
             try {
                 var content = await Ask(Settings.DetectAllLanguagesPrompt, text, cancellationToken).ConfigureAwait(false);
-                content = content?.OrdinalIgnoreCaseReplace("```json", "").OrdinalReplace("```", "") ?? "[]";
+                content = content.OrdinalIgnoreCaseReplace("```json", "").OrdinalReplace("```", "");
                 return JsonSerializer.Deserialize<ApiArray<Language>>(content);
             }
             catch (Exception e) {
@@ -45,33 +46,31 @@ public class Translator(IServiceProvider services)
             var content = await Ask(Settings.DetectSingleLanguagePrompt, text, cancellationToken)
                 .Catch("", Log, LogLevel.Warning, "Could not detect even a single language")
                 .ConfigureAwait(false);
-            return Language.TryParse(content?.Trim(), out var language) && !language.IsNone ? [language] : [];
+            return Language.TryParse(content.Trim(), out var language) && !language.IsNone ? [language] : [];
         }
     }
 
-    private Task<string?> Ask(string instruction, string text, CancellationToken cancellationToken)
-    {
-        instruction = instruction.Trim().EnsureSuffix(":");
-        return Ask($"{instruction}: \n\n{text}", cancellationToken);
-    }
-
-    private async Task<string?> Ask(string prompt, CancellationToken cancellationToken)
-    {
-        var response = await ChatCompletionService
-            .GetChatMessageContentAsync(prompt, null, Kernel, cancellationToken)
-            .ConfigureAwait(false);
-        var content = response.Content;
-        return content;
-    }
-
-    public async Task<string> Translate(string text, Language targetLanguage, CancellationToken cancellationToken)
+    public Task<string> Translate(string text, Language targetLanguage, CancellationToken cancellationToken)
     {
         if (!Settings.IsTranslationEnabled)
-            return text;
+            return Task.FromResult(text);
 
-        // TODO: use ChatHistory
-        var prompt = string.Format(Settings.TranslatePromptFormat, targetLanguage, text) + ":\n" + text;
-        var response = await ChatCompletionService.GetChatMessageContentAsync(prompt, null, Kernel, cancellationToken).ConfigureAwait(false);
+        return Ask(string.Format(Settings.TranslatePromptFormat, targetLanguage), text, cancellationToken);
+    }
+
+    private async Task<string> Ask(string instruction, string text, CancellationToken cancellationToken)
+    {
+        instruction = instruction.Trim().EnsureSuffix(":");
+        var history = new ChatHistory([
+            // new(AuthorRole.System, instruction),
+            new (AuthorRole.User, text),
+        ]);
+        var response = await ChatCompletionService
+            .GetChatMessageContentAsync(history, new OpenAIPromptExecutionSettings {
+                Temperature = 0,
+                ChatSystemPrompt = instruction,
+            }, Kernel, cancellationToken)
+            .ConfigureAwait(false);
         return response.Content ?? "";
     }
 }
