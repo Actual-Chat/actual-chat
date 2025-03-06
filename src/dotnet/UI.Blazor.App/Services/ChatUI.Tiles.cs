@@ -51,8 +51,12 @@ public partial class ChatUI
                 if (tile.Items.Count == 0)
                     continue;
 
-                if (tile.Items[0].Equals(prevMessage))
-                    continue; // Skip tile if it's the same as previous tile - e.g. large conversation that spans across multiple tiles
+                if (tile.Items[0].Equals(prevMessage)) {
+                    // Skip first item if it's the same as previous tile - e.g. large conversation that spans across multiple tiles
+                    tile = tile with { Items = tile.Items.Skip(1).ToList() };
+                    if (tile.Items.Count == 0)
+                        continue;
+                }
 
                 tiles.Add(tile);
                 prevMessage = tile.Items[^1];
@@ -201,12 +205,13 @@ public partial class ChatUI
         }
 
         var messages = new List<ChatMessage>(entries.Count);
-        var items = entries.Merge(conversations,
+        var items = entries.Merge(conversations.Where(c => !expandedConversations.Contains(c.Id)),
             (entry, conversation) => (int)(entry.Id.LocalId - conversation.Id.StartEntryLid));
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
-            if (entry != null && conversation == null) {
+            if (entry != null) {
+                // Ignore matched conversation
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
                 var isForward = !entry.ForwardedAuthorId.IsNone;
@@ -293,7 +298,7 @@ public partial class ChatUI
                 isPrevUnread = isEntryUnread;
                 isPrevAudio = isAudio;
             }
-            else if (entry == null && conversation != null && !expandedConversations.Contains(conversation.Id)) {
+            else if (conversation != null && !expandedConversations.Contains(conversation.Id)) {
                 var message = new ConversationMessage(conversation) {
                     Date = date,
                     PreviousMessage = prevMessage,
