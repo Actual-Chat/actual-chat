@@ -9,7 +9,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public static readonly int ActiveItemCountWhenLoading = 0;
     public static readonly int AllItemCountWhenLoading = 14;
     public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;
-    public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize; // 20
+    public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize * 2; // 40
     public static readonly int HalfLoadLimit = LoadLimit / 2;
     public static readonly int TileSize = ChatTileStack.FirstLayer.TileSize;
     private static readonly TimeSpan MinNotificationInterval = TimeSpan.FromSeconds(5);
