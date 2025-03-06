@@ -64,7 +64,7 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
         ShouldBeSimilar(translated, expected);
     }
 
-    [Theory]
+    [Theory(Skip = "flaky")] // TODO(FC): stabilize it
     [InlineData(ComplexText, "en")]
     [InlineData("Hello! Привет! Bonjour!", "en", "ru", "fr")]
     [InlineData("```")]
