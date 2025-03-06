@@ -84,9 +84,9 @@ public readonly partial struct Language : ISymbolIdentifier<Language>
             return true; // None
         }
 
-        if (Languages.IdToLanguage.TryGetValue(id, out result))
+        if (Languages.Map.TryGetValue(id, out result))
             return true;
-        if (Languages.IdToLanguage.TryGetValue(id.Value.ToLowerInvariant(), out result))
+        if (Languages.Map.TryGetValue(id.Value.ToLowerInvariant(), out result))
             return true;
 
         return false;

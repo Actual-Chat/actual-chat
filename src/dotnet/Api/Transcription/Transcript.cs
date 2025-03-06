@@ -5,9 +5,11 @@ using MemoryPack;
 namespace ActualChat.Transcription;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[method: MemoryPackConstructor]
 public sealed partial record Transcript(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap)
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap,
+    [property: DataMember(Order = 2), MemoryPackOrder(2)] ApiArray<Language> Languages)
 {
     [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex ContentStartRegexFactory();
@@ -20,8 +22,8 @@ public sealed partial record Transcript(
 
     public static readonly Vector2 TimeMapEpsilon = new(0.1f, 0.1f);
     public static readonly Transcript Empty = New();
-    public static readonly Transcript Ellipsis = new("\u2026", new LinearMap(Vector2.Zero, new Vector2(1, 0)));
-    public static readonly Transcript Unrecognized = new("\u2026\u200B\u2026", new LinearMap(Vector2.Zero, new Vector2(3, 0)));
+    public static readonly Transcript Ellipsis = new("\u2026", new LinearMap(Vector2.Zero, new Vector2(1, 0)), []);
+    public static readonly Transcript Unrecognized = new("\u2026\u200B\u2026", new LinearMap(Vector2.Zero, new Vector2(3, 0)), []);
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Length => Text.Length;
@@ -30,8 +32,10 @@ public sealed partial record Transcript(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Range<float> TimeRange => TimeMap.YRange;
 
+    // public Transcript(string text, LinearMap timeMap) : this(text, timeMap, []) { }
+
     public static Transcript New()
-        => new ("", LinearMap.Zero);
+        => new ("", LinearMap.Zero, []);
 
     public override string ToString()
         => $"`{Text}` + {TimeMap}";
@@ -61,27 +65,31 @@ public sealed partial record Transcript(
     public Transcript GetPrefix(int length, float? duration = null)
     {
         var vDuration = duration ?? TimeMap.Map(length);
-        return new (Text[..length], TimeMap.GetPrefix(vDuration, TimeMapEpsilon.X));
+        return new (Text[..length], TimeMap.GetPrefix(vDuration, TimeMapEpsilon.X), Languages);
     }
 
     public Transcript GetSuffix(int start, float? startDuration = null)
     {
         var vStartDuration = startDuration ?? TimeMap.Map(start);
-        return new (Text[start..], TimeMap.GetSuffix(vStartDuration, TimeMapEpsilon.X));
+        return new (Text[start..], TimeMap.GetSuffix(vStartDuration, TimeMapEpsilon.X), Languages);
     }
 
     public (Transcript Prefix, Transcript Suffix) Split(int length, float? duration = null)
     {
         var vDuration = duration ?? TimeMap.Map(length);
         var maps = TimeMap.Split(vDuration);
-        var prefix = new Transcript(Text[..length], maps.Prefix);
-        var suffix = new Transcript(Text[length..], maps.Suffix);
+        var prefix = new Transcript(Text[..length], maps.Prefix, Languages);
+        var suffix = new Transcript(Text[length..], maps.Suffix, Languages);
         return (prefix, suffix);
     }
 
     public Transcript WithSuffix(string suffix, float? suffixEndTime = null)
         => WithSuffix(suffix, TimeMap, suffixEndTime);
+
     public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime)
+        => WithSuffix(suffix, timeMap, suffixEndTime, Languages);
+
+    public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime, ApiArray<Language> languages)
     {
         if (suffix.IsNullOrEmpty())
             return this;
@@ -89,14 +97,20 @@ public sealed partial record Transcript(
         var text = Text + suffix;
         if (suffixEndTime is { } vSuffixEndTime)
             timeMap = timeMap.AppendOrUpdateSuffix(new Vector2(text.Length, vSuffixEndTime), TimeMapEpsilon.X);
-        return new Transcript(text, timeMap);
+        return new Transcript(text, timeMap, languages);
     }
 
     public Transcript WithSuffix(string suffix, LinearMap suffixTextToTimeMap)
+        => WithSuffix(suffix, suffixTextToTimeMap, Languages);
+
+    public Transcript WithSuffix(
+        string suffix,
+        LinearMap suffixTextToTimeMap,
+        ApiArray<Language> languages)
     {
         var text = Text + suffix;
         var timeMap = TimeMap.AppendOrUpdateSuffix(suffixTextToTimeMap, TimeMapEpsilon.X);
-        return new Transcript(text, timeMap);
+        return new Transcript(text, timeMap, languages);
     }
 
     // Operators
