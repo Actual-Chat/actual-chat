@@ -32,9 +32,13 @@
     public UIEventHub UIEventHub => Hub.UIEventHub();
     public HostInfo HostInfo => Hub.HostInfo();
 
-    private void OnAttachClick(string acceptTypes = "")
-        => UIEventHub.Publish(new AttachButtonClickEvent(acceptTypes));
+    private async Task OnAttachClick(string acceptTypes = "") {
+        await WhenClosed;
+        _ = UIEventHub.Publish(new AttachButtonClickEvent(acceptTypes));
+    }
 
-    private void OnMentionClick()
-        => UIEventHub.Publish(new MentionButtonClickEvent());
+    private async Task OnMentionClick() {
+        await WhenClosed;
+        _ = UIEventHub.Publish(new MentionButtonClickEvent());
+    }
 }
