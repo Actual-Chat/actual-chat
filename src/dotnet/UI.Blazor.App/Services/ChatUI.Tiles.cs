@@ -9,10 +9,11 @@ public partial class ChatUI
 
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
     public static readonly TileStack<long> ConversationTileStack = Constants.Chat.ConversationTileStack;
-    public static readonly long SecondTileSize = IdTileStack.Layers[1].TileSize; // 20
+    public static readonly int SecondTileSize = (int)IdTileStack.Layers[1].TileSize; // 20
+    private IImmutableSet<ConversationId> LastExpandedConversations { get; set; } = ImmutableHashSet<ConversationId>.Empty;
 
-    public long HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
-    public long LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
+    public int HalfLoadLimit => (int)(BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2); // 20 for mobile
+    public int LoadLimit => (int)(BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4); // 40 for mobile
 
     public async Task<List<VirtualListTile<ChatMessage>>> GetTiles(
         ChatId chatId,
@@ -26,6 +27,24 @@ public partial class ChatUI
             return [];
 
         var expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
+        var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
+            .Where(cid => dataQuery.IdRange.Contains(cid.StartEntryLid)) // Only consider conversations that are in the current data query range
+            .ToList();
+        LastExpandedConversations = expandedConversations;
+        if (changedExpand.Count > 0) {
+            // Adjust data query to load tiles around expanded conversation entries
+            var minConversationId = changedExpand.OrderBy(cid => cid.StartEntryLid).FirstOrDefault();
+            var isExpanded = expandedConversations.Contains(minConversationId);
+            var minEntryLid = changedExpand.Select(cid => cid.StartEntryLid).Min();
+            var minEntryRange = IdTileStack.Layers[1].GetTile(minEntryLid).Range;
+            var loadBefore = isExpanded ? 0 : HalfLoadLimit + SecondTileSize;
+            var loadAfter = isExpanded ? HalfLoadLimit : HalfLoadLimit + SecondTileSize;
+            var keyRange = isExpanded
+                ? new Range<long>(dataQuery.IdRange.Start, minEntryRange.End)
+                : new  Range<long>(minEntryRange.Start, dataQuery.IdRange.End);
+            dataQuery = new ChatDataQuery(keyRange, loadBefore, loadAfter);
+        }
+
         var originalLoadBefore = dataQuery.LoadBefore;
         var originalLoadAfter = dataQuery.LoadAfter;
         var isBot = chat.IsAiSearchChat();

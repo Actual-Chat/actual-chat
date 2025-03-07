@@ -70,6 +70,7 @@ export class VirtualList {
     private windowScrollTop: number = 0;
 
     private renderStartedAt: number | null = null;
+    private renderCompletedAt: number = 0;
     private isNearSkeleton: boolean = false;
     private isEndAnchorVisible: boolean = false;
     private isScrolling: boolean = false;
@@ -360,6 +361,8 @@ export class VirtualList {
                 this.visibleItems.delete(key);
                 this.sizeObserver.unobserve(itemRef);
                 this.visibilityObserver.unobserve(itemRef);
+                itemRef.removeEventListener('touchend', this.onInteractiveEvent);
+                itemRef.removeEventListener('click', this.onInteractiveEvent);
             }
             for (const node of mutation.addedNodes) {
                 const itemRef = node as HTMLElement;
@@ -369,6 +372,8 @@ export class VirtualList {
 
                 const newItem = this.createListItem(key, itemRef);
                 const oldItem = oldItems.get(key);
+                itemRef.addEventListener('touchend', this.onInteractiveEvent);
+                itemRef.addEventListener('click', this.onInteractiveEvent);
                 if (oldItem) {
                     this.items.set(key, oldItem);
                     if (oldItem.size > 0)
@@ -519,6 +524,16 @@ export class VirtualList {
         }
     };
 
+    private onInteractiveEvent = (event: TouchEvent): void => {
+        // Your touchend event handling logic here
+        const itemRef = event.currentTarget;
+        const key = getItemKey(itemRef as HTMLElement);
+        if (!key)
+            return;
+
+        this.scheduleUpdateCurrentPivots(key);
+    };
+
     private onSkeletonVisibilityChange = (
         entries: IntersectionObserverEntry[],
         _observer: IntersectionObserver): void => {
@@ -635,7 +650,7 @@ export class VirtualList {
         let positionSet = false;
         if (this.pivots.length && rs.scrollToKey == null) {
             // Restore scroll position first, and then use smooth scroll to go to the scroll target
-            positionSet = this.restoreScrollPosition(startedAt, !rs.query.isNone);
+            positionSet = this.restoreScrollPosition(startedAt);
         }
 
         try {
@@ -693,6 +708,7 @@ export class VirtualList {
             }
         } finally {
             this.renderStartedAt = null;
+            this.renderCompletedAt = Date.now();
             this.whenRequestDataCompleted?.resolve(undefined);
             this.whenRequestDataCompleted = null;
 
@@ -834,14 +850,14 @@ export class VirtualList {
         this.scheduleUpdateCurrentPivots();
     };
 
-    private scheduleUpdateCurrentPivots(): void {
+    private scheduleUpdateCurrentPivots(interactiveKey?: string): void {
         if (this.isDisposed)
             return;
 
-        fastRaf(() => this.updateCurrentPivots());
+        fastRaf(() => this.updateCurrentPivots(interactiveKey));
     }
 
-    private updateCurrentPivots(): void {
+    private updateCurrentPivots(interactiveKey?: string): void {
         if (this.isRendering)
             return;
         if (this.isUpdatingPivots)
@@ -870,8 +886,12 @@ export class VirtualList {
             //             medianRef.classList.add('anchor');
             }
 
-            const itemKeys = [medianVisibleKey, this.getLastItemKey(), this.query.keyRange?.end, secondItemKey, this.query.keyRange?.start];
+            const viewRect = this.ref.getBoundingClientRect();
+            const itemKeys: string[] = [interactiveKey, medianVisibleKey, this.getLastItemKey(), this.query.keyRange?.end, secondItemKey, this.query.keyRange?.start];
             for (let itemKey of itemKeys) {
+                if (!itemKey)
+                    continue;
+
                 if (itemKey === firstItemKey)
                     continue;
 
@@ -882,10 +902,14 @@ export class VirtualList {
                 pivotRefs.push(pivotRef);
                 // measure scroll position
                 const itemRect = pivotRef.getBoundingClientRect();
+                const isVisible = this.isRectIntersects(itemRect, viewRect);
+                const isInteractive = itemKey === interactiveKey;
                 const pivot: Pivot = {
                     itemKey,
                     offset: Math.round(itemRect.top),
                     time,
+                    isVisible,
+                    isInteractive
                 };
                 pivots.push(pivot);
             }
@@ -970,6 +994,10 @@ export class VirtualList {
         const itemRect = itemRef.getBoundingClientRect();
         const viewRect = this.ref.getBoundingClientRect();
         return itemRect.bottom > viewRect.top && itemRect.top < viewRect.bottom;
+    }
+
+    private isRectIntersects(rect1: DOMRect, rect2: DOMRect): boolean {
+        return rect1.top < rect2.bottom && rect1.bottom > rect2.top;
     }
 
     private forceReflow(): void {
@@ -1064,10 +1092,19 @@ export class VirtualList {
         return false;
     }
 
-    private restoreScrollPosition(renderTime: number, useRaf: boolean = true): boolean {
+    private restoreScrollPosition(renderTime: number): boolean {
         const pivots = [...this.pivots];
         const tuple = pivots
             .map(pivot => ({ pivotRef: this.getItemRef(pivot.itemKey), pivot }))
+            .sort((a, b) => {
+                if (a.pivot.isInteractive !== b.pivot.isInteractive) {
+                    return a.pivot.isInteractive ? -1 : 1;
+                }
+                if (a.pivot.isVisible !== b.pivot.isVisible) {
+                    return a.pivot.isVisible ? -1 : 1;
+                }
+                return a.pivot.offset - b.pivot.offset;
+            })
             .find(t => t.pivotRef);
         if (!tuple) {
             warnLog?.log(`restoreScrollPosition: there are no pivot refs found!`);
@@ -1079,7 +1116,7 @@ export class VirtualList {
         let scrollTop: number | null = null;
         let shouldResync = false;
 
-        const options = {
+        fastRaf({
             read: () => {
                 const pivotEpsilon = PivotSyncEpsilon;
                 // code below triggers forced reflow - but it's OK  - reflow will be triggered after adding new elements anyway
@@ -1090,7 +1127,7 @@ export class VirtualList {
                 scrollTop = this.ref.scrollTop;
                 if (Math.abs(dPivotOffset) > pivotEpsilon) {
                     debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${Math.round(
-                        itemRect.top)} + ${dPivotOffset}`, pivot, useRaf);
+                        itemRect.top)} + ${dPivotOffset}`, pivot);
                     scrollTop -= dPivotOffset;
                     shouldResync = true;
                 }
@@ -1126,13 +1163,7 @@ export class VirtualList {
                 } else
                     debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
             },
-        };
-        if (useRaf)
-            fastRaf(options);
-        else {
-            options.read();
-            options.write();
-        }
+        });
         return true;
     }
 
@@ -1384,6 +1415,10 @@ export class VirtualList {
 
         if (this.isRendering)
             return this.lastQuery; // Do not request data during rendering as it might be inconsistent
+
+        const now = Date.now();
+        if (now - this.renderCompletedAt < 500 && this.lastQuery.isNone)
+            return this.lastQuery; // Do not request data during the first second after render caused by updated data (not scroll)
 
         const viewportSize = viewport.size;
         const lastQuerySide = this.lastQuery.moveRange.size === 0
