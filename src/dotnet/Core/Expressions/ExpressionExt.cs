@@ -4,6 +4,23 @@ namespace ActualChat.Expressions;
 
 public static class ExpressionExt
 {
+    public static string GetPropertyName<T>(this Expression<Func<T, object>> propertyGetter)
+    {
+        if (propertyGetter == null)
+            throw new ArgumentNullException(nameof(propertyGetter));
+
+        var expression = propertyGetter.Body;
+        // Handle the case where the expression is a UnaryExpression (e.g., for value types being boxed to object)
+        if (expression is UnaryExpression unaryExpression)
+            expression = unaryExpression.Operand;
+
+        // Handle the MemberExpression to get the property name
+        if (expression is MemberExpression memberExpression)
+            return memberExpression.Member.Name;
+
+        throw new ArgumentException("Invalid expression format. Must be a property access expression.", nameof(propertyGetter));
+    }
+
     public static Expression<TOutput> InlineParameter<TInput, TOutput>(
         this Expression<TInput> expression,
         ParameterExpression source,

@@ -15,11 +15,10 @@ public class MLSearchCollection : ICollectionFixture<AppHostFixture>;
 public class AppHostFixture(IMessageSink messageSink)
     : Testing.Host.AppHostFixture("ml_search", messageSink, TestAppHostOptions.Default with {
         ConfigureHost = (__, cfg) => {
-            _ = cfg
-                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsEnabled)}", "true"))
-                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IsInitialIndexingDisabled)}", "true"))
-                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.ChangedEntityIndexingDelay)}",  "00:00:03"))
-                .AddInMemoryCollection(($"{nameof(MLSearchSettings)}:{nameof(MLSearchSettings.IndexingFlowResumeDelay)}", "00:00:01"));
+            _ = cfg.AddInMemory<MLSearchSettings>((x => x.IsEnabled, "true"),
+                (x => x.IsInitialIndexingDisabled, "true"),
+                (x => x.ChangedEntityIndexingDelay, "00:00:03"),
+                (x => x.IndexingFlowResumeDelay, "00:00:01"));
         },
         ConfigureServices = (__, services) => {
             _ = services.AddSingleton<OpenSearchInit>()
