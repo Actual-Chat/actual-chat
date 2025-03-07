@@ -1885,7 +1885,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
         var contentTask = chatMarkupHub.PrepareForSave(entry, cancellationToken).AsTask();
         // TODO: detect in flow or somewhere else in background
-        var languagesTask = Translator.TryDetectLanguages(entry, Settings.EntryLanguageDetectionTimeout,  cancellationToken);
+        var languagesTask = Settings.IsTranslationEnabled
+            ? Translator.TryDetectLanguages(entry, Settings.EntryLanguageDetectionTimeout, cancellationToken)
+            : Task.FromResult(entry.Languages);
         await Task.WhenAll(contentTask, languagesTask).ConfigureAwait(false);
         return entry with {
             Content = await contentTask.ConfigureAwait(false),

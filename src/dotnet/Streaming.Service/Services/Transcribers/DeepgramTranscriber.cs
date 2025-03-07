@@ -181,7 +181,7 @@ public partial class DeepgramTranscriber : ITranscriber
                 state.MakeStable();
         }
         else
-            state.Append(FixSuffix(state.Stable.Text, suffix), endTime);
+            state.Append(FixSuffix(state.Stable.Text, suffix), endTime, languages);
 
         if (state.Unstable.Length != 0)
             _ = state.Output.WriteAsync(state.Unstable);
