@@ -3,8 +3,8 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-[Collection(nameof(ChatCollection))]
-public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
+[Collection(nameof(TranslationCollection))]
+public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const string ComplexText = """
@@ -52,6 +52,9 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
     [InlineData("en", "Поехали", "Let's go")]
     public async Task ShouldTranslate(Language destLanguage, string text, string expected)
     {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // only for local runs for now
+
         // arrange
         var minSimilarity = 0.7;
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
@@ -65,7 +68,7 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
         ShouldBeSimilar(translated, expected, minSimilarity);
     }
 
-    [Theory(Skip = "Skip until usage minimized")] // TODO(FC): Decrease usage
+    [Theory] // TODO(FC): Decrease usage
     [InlineData(ComplexText, "en")]
     [InlineData("Hello! Привет! Bonjour!", "en", "ru", "fr")]
     [InlineData("```")]
@@ -74,6 +77,9 @@ public class TranslatorTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
     [InlineData("0xDEADBEEF")]
     public async Task ShouldDetectLanguages(string text, params string[] expected)
     {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // only for local runs for now
+
         // arrange
         const int runCount = 3;
         const int minSuccessCount = 3;

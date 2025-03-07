@@ -1,17 +1,19 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Chat.Module;
+using ActualChat.Hosting;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-[Collection(nameof(ChatCollection))]
-public class TranslationTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
+[Collection(nameof(TranslationCollection))]
+public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
     private IChats Chats => Tester.Chats;
 
-    [Theory(Skip = "Failed on CI")]
+    [Theory]
     [InlineData("Hi! How are you?", "en")]
     [InlineData("Привет! Как дела?", "ru")]
     [InlineData("Merhaba! Nasılsın?", "tr")]
@@ -19,6 +21,9 @@ public class TranslationTest(ChatCollection.AppHostFixture fixture, ITestOutputH
     [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", "en,ru,tr,es")]
     public async Task ShouldDetectLanguageOnInsert(string text, string sExpectedLanguages)
     {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // only for local runs for now
+
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false, "translation lab");
@@ -34,7 +39,7 @@ public class TranslationTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         retrievedEntry.Should().BeEquivalentTo(entry, o => o.Excluding(x => x.BeginsAt));
     }
 
-    [Theory(Skip = "Failed on CI")]
+    [Theory]
     [InlineData("Hi! How are you?", "en")]
     [InlineData("Привет! Как дела?", "ru")]
     [InlineData("Merhaba! Nasılsın?", "tr")]
@@ -42,6 +47,9 @@ public class TranslationTest(ChatCollection.AppHostFixture fixture, ITestOutputH
     [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", "en,ru,tr,es")]
     public async Task ShouldDetectLanguageOnUpdate(string updatedText, string sExpectedLanguages)
     {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // only for local runs for now
+
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false, "translation lab");

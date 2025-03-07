@@ -9,5 +9,5 @@ public sealed class ChatSettings
     public string DetectAllLanguagesPrompt { get; set; } = "";
     public string DetectSingleLanguagePrompt { get; set; } = "";
     public string TranslatePromptFormat { get; set; } = "";
-    public bool IsTranslationEnabled => !OpenAIApiKey.IsNullOrEmpty() && !OpenAIChatModel.IsNullOrEmpty();
+    public bool IsTranslationEnabled { get; set; }
 }

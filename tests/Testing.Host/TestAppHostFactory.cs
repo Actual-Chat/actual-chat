@@ -2,15 +2,14 @@ using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
 using ActualChat.MLSearch.Engine;
 using ActualChat.Module;
-using ActualChat.Redis;
 using ActualChat.Redis.Module;
+using ActualLab.IO;
+using ActualLab.Testing.Output;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
-using ActualLab.IO;
-using ActualLab.Testing.Output;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Testing.Host;
@@ -54,12 +53,12 @@ public static class TestAppHostFactory
                 // Adding must-have overrides for tests
                 var useNatsQueues = options.UseNatsQueues ?? true; // Random.Shared.NextDouble() < 0.33;
                 cfg.AddInMemoryCollection(
-                    (WebHostDefaults.StaticWebAssetsKey, manifestPath),
-                    ($"{nameof(CoreSettings)}:{nameof(CoreSettings.Instance)}", instanceName),
-                    ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", useNatsQueues.ToString()),
-                    ($"{nameof(RedisSettings)}:{nameof(RedisSettings.MeshLockSubspace)}", options.MeshLockSubspace),
-                    ($"{nameof(RedisSettings)}:{nameof(RedisSettings.MeshLockOptionsPreset)}", options.MeshLockOptionsPreset)
-                );
+                        (WebHostDefaults.StaticWebAssetsKey, manifestPath),
+                        ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", $"{useNatsQueues}"))
+                    .AddInMemory<CoreSettings>((x => x.Instance, instanceName))
+                    .AddInMemory<RedisSettings>(
+                        (x => x.MeshLockSubspace, options.MeshLockSubspace),
+                        (x => x.MeshLockOptionsPreset, options.MeshLockOptionsPreset));
 
                 // Overrides from options
                 options.ConfigureHost?.Invoke(ctx, cfg);
