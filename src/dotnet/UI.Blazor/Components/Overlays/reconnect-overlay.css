@@ -12,43 +12,42 @@
 /* Reconnect overlay */
 
 :root {
-    --reconnect-overlay-circle-size: 16rem;
-    --reconnect-overlay-blur-size: 20rem;
-}
-@media (min-width: 1024px) {
-    :root {
+    @media (max-width: 819px) {
+        --reconnect-overlay-circle-size: 16rem;
+        --reconnect-overlay-blur-size: 22rem;
+    }
+    @media (min-width: 820px) {
         --reconnect-overlay-circle-size: 18rem;
         --reconnect-overlay-blur-size: 24rem;
     }
 }
-
 .reconnect-overlay {
     @apply absolute inset-0 z-[1900];
     @apply flex items-center justify-center overflow-hidden;
     @apply backdrop-blur;
 }
 .reconnect-overlay > .c-bg {
-    @apply absolute inset-0;
-    @apply bg-02;
-    @apply opacity-[33.3%];
+    @apply absolute inset-0 z-minus;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(2px) opacity(.8) brightness(.8);
 }
 .reconnect-overlay > .c-circle-blur {
-    @apply absolute z-minus;
-    @apply blur-xl;
+    @apply absolute z-0;
+    @apply rounded-full;
+    filter: blur(16px);
     top: calc(50vh - var(--reconnect-overlay-blur-size)/2);
     left: calc(50vw - var(--reconnect-overlay-blur-size)/2);
     width: var(--reconnect-overlay-blur-size);
     height: var(--reconnect-overlay-blur-size);
     background: var(--background-01);
-    @apply rounded-full;
 }
 .reconnect-overlay > .c-circle {
     @apply flex-y items-center justify-center gap-y-2;
-    width: var(--reconnect-overlay-circle-size);
-    height: var(--reconnect-overlay-circle-size);
     @apply bg-transparent;
     @apply text-xl md:text-2xl font-semibold text-03;
     @apply animate-pulse-70;
+    width: var(--reconnect-overlay-circle-size);
+    height: var(--reconnect-overlay-circle-size);
 }
 .reconnect-overlay > .c-circle > img {
     @apply w-[55%];
