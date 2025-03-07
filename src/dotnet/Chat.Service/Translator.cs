@@ -5,18 +5,19 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace ActualChat.Chat;
 
-public class Translator(IServiceProvider services)
+public class Translator(IServiceProvider services) : IHasServices
 {
     public const string ServiceKey = nameof(Translator);
 
+    public IServiceProvider Services => services;
     [field: AllowNull, MaybeNull]
-    private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
+    private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
     [field: AllowNull, MaybeNull]
     private IChatCompletionService ChatCompletionService => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
     [field: AllowNull, MaybeNull]
-    private ChatSettings Settings => field ??= services.GetRequiredService<ChatSettings>();
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= services.LogFor(GetType());
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<ApiArray<Language>> DetectLanguages(string text, CancellationToken cancellationToken)
     {

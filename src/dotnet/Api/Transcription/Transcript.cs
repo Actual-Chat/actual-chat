@@ -86,10 +86,7 @@ public sealed partial record Transcript(
     public Transcript WithSuffix(string suffix, float? suffixEndTime = null)
         => WithSuffix(suffix, TimeMap, suffixEndTime);
 
-    public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime)
-        => WithSuffix(suffix, timeMap, suffixEndTime, Languages);
-
-    public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime, ApiArray<Language> languages)
+    public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime, ApiArray<Language>? languages = null)
     {
         if (suffix.IsNullOrEmpty())
             return this;
@@ -97,20 +94,17 @@ public sealed partial record Transcript(
         var text = Text + suffix;
         if (suffixEndTime is { } vSuffixEndTime)
             timeMap = timeMap.AppendOrUpdateSuffix(new Vector2(text.Length, vSuffixEndTime), TimeMapEpsilon.X);
-        return new Transcript(text, timeMap, languages);
+        return new Transcript(text, timeMap, languages ?? Languages);
     }
-
-    public Transcript WithSuffix(string suffix, LinearMap suffixTextToTimeMap)
-        => WithSuffix(suffix, suffixTextToTimeMap, Languages);
 
     public Transcript WithSuffix(
         string suffix,
         LinearMap suffixTextToTimeMap,
-        ApiArray<Language> languages)
+        ApiArray<Language>? languages = null)
     {
         var text = Text + suffix;
         var timeMap = TimeMap.AppendOrUpdateSuffix(suffixTextToTimeMap, TimeMapEpsilon.X);
-        return new Transcript(text, timeMap, languages);
+        return new Transcript(text, timeMap, languages ?? Languages);
     }
 
     // Operators
