@@ -674,6 +674,10 @@ export class VirtualList {
         }
 
         try {
+            // fix iOS MAUI scroll issue after first renders
+            if (rs.renderIndex === 0 && DeviceInfo.isIos)
+                fastRaf({ write: () => this.forceReflow() });
+
             // Update statistics
             if (!rs.query.isNone && rs.query.expectedCount)
                 this.statistics.addResponse(rs.count, rs.query.expectedCount);
@@ -1140,12 +1144,11 @@ export class VirtualList {
                     // set scroll styles to improve UX on iOS before setting scrollTop
                     if (DeviceInfo.isIos) {
                         this.ref.style.overflowY = 'hidden';
+                        // Hack for iOS to prevent blank screen on scroll
+                        window.scrollTo(0, 1);
                         setTimeout(() => {
                             this.ref.style.overflowY = 'scroll';
                             this.ref.scrollTop = scrollTop;
-
-                            // Hack for iOS to prevent blank screen on scroll
-                            window.scrollTo(0, 1);
                             window.scrollTo(0, 0);
                         }, 0);
                     }
