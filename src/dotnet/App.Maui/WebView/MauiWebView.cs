@@ -90,7 +90,7 @@ public sealed partial class MauiWebView
             isSessionChanged = Session != session;
             ScopedServices = scopedServices;
             Session = session;
-            AppServicesAccessor.BlazorAppServices = scopedServices;
+            BlazorAppServices = scopedServices;
         }
         if (isSessionChanged)
             SetupSessionCookie(session);
