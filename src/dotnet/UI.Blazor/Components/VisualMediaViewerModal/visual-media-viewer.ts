@@ -12,6 +12,7 @@ export class VisualMediaViewer {
     private readonly jumpTime: number = 5;
     private timerId: number;
     private videos: HTMLCollectionOf<HTMLVideoElement>;
+    private imageContainers: NodeListOf<HTMLElement>;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -27,6 +28,12 @@ export class VisualMediaViewer {
         this.videos = this.imageViewer.getElementsByTagName('video');
         [...this.videos].forEach((video: HTMLMediaElement) => {
             this.addVideoListeners(video);
+            this.videoPlugHandler(video);
+        });
+
+        this.imageContainers = this.imageViewer.querySelectorAll('.image-container');
+        [...this.imageContainers].forEach((container: HTMLElement) => {
+            this.addImageListeners(container);
         });
 
          fromEvent(this.overlay, 'click')
@@ -212,6 +219,50 @@ export class VisualMediaViewer {
         spinner.remove();
     }
 
+    private videoPlugHandler(video: HTMLMediaElement) {
+        const wrapper = video.closest('.video-wrapper') as HTMLElement;
+        if (!wrapper)
+            return;
+
+        const thumbnailWrapper = wrapper.querySelector('.video-thumbnail-wrapper') as HTMLElement;
+        if (!thumbnailWrapper)
+            return;
+
+        const thumbnail = wrapper.querySelector('.video-thumbnail') as HTMLElement;
+        if (!thumbnail)
+            return;
+
+        const spinner = wrapper.querySelector('.spinner-icon-wrapper') as HTMLElement;
+
+        if (video.readyState == 4) {
+            thumbnailWrapper.remove();
+            if (spinner)
+                spinner.remove();
+            return;
+        }
+
+        const imagePlug = thumbnail.querySelector('image-skeleton') as HTMLImageElement;
+        if (imagePlug) {
+            let plugWidth = 0;
+            let plugHeight = 0;
+            const originalWidth = thumbnail.getAttribute('data-width') as Number;
+            const originalHeight = thumbnail.getAttribute('data-height') as Number;
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const originalRatio = originalWidth / originalHeight;
+
+            plugWidth = screenWidth < originalWidth ? screenWidth : originalWidth;
+            plugHeight = plugWidth / originalRatio;
+            if (screenHeight < plugHeight) {
+                plugHeight = screenHeight;
+                plugWidth = plugHeight * originalRatio;
+            }
+
+            thumbnail.style.width = plugWidth + 'px';
+            thumbnail.style.height = plugWidth / originalRatio + 'px';
+        }
+    }
+
     private addVideoListeners(video: HTMLMediaElement) {
         const control = video.parentElement.querySelector('.video-control') as HTMLElement;
         const playBtn = control.querySelector('.play-btn') as HTMLElement;
@@ -223,6 +274,10 @@ export class VisualMediaViewer {
 
         video.removeAttribute('controls');
         control.classList.remove('invisible');
+
+        fromEvent(video, 'loadeddata')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: Event) => this.onVideoLoaded(event, video));
 
         fromEvent(video, 'play')
             .pipe(takeUntil(this.disposed$))
@@ -251,6 +306,59 @@ export class VisualMediaViewer {
         fromEvent(progressBar, 'click')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent | MouseEvent) => this.seekVideoPoint(event, video, progressBar));
+    }
+
+    private addImageListeners(container: HTMLElement) {
+        const original = container.querySelector('.image-original') as HTMLImageElement;
+        const plug = container.querySelector('.image-plug') as HTMLImageElement;
+        const spinner = container.querySelector('.spinner-icon-wrapper');
+        if (!original)
+            return;
+
+        if (!plug)
+            return;
+
+        if (original.complete) {
+            plug.remove();
+            if (spinner)
+                spinner.remove();
+            return;
+        }
+
+        let plugWidth = 0;
+        const originalWidth = plug.getAttribute('data-width') as Number;
+        const originalHeight = plug.getAttribute('data-height') as Number;
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const originalRatio = originalWidth / originalHeight;
+        const screenRatio = screenWidth / screenHeight;
+        if (screenRatio > originalRatio && originalHeight > screenHeight) {
+            plugWidth = screenHeight * originalRatio;
+        } else {
+            plugWidth = originalWidth;
+        }
+        plug.width = plugWidth;
+
+        fromEvent(original, 'load')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: Event) => this.onImageLoaded(event, container));
+    }
+
+    private onImageLoaded(event: Event, container: HTMLElement) {
+        const plug = container.querySelector('.image-plug') as HTMLImageElement;
+        const spinner = container.querySelector('.spinner-icon-wrapper');
+        plug.remove();
+        spinner.remove();
+    }
+
+    private onVideoLoaded(event: Event, video: HTMLMediaElement) {
+        const wrapper = video.closest('.video-wrapper');
+        const thumbnailWrapper = wrapper.querySelector('.video-thumbnail-wrapper');
+        const spinner = wrapper.querySelector('.spinner-icon-wrapper');
+        if (thumbnailWrapper)
+            thumbnailWrapper.remove();
+        if (spinner)
+            spinner.remove();
     }
 
     private updateTimeline(video: HTMLMediaElement, control: HTMLElement, progressBar: HTMLProgressElement) {

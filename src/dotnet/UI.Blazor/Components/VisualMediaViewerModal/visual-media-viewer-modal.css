@@ -272,12 +272,44 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
     cursor: pointer;
 }
 
-.video-wrapper .spinner-icon-wrapper {
-    @apply absolute top-1/2 left-1/2;
+.spinner-icon-wrapper {
+    @apply absolute top-1/2 left-1/2 z-20;
     @apply flex-none;
     @apply w-12 h-12;
     @apply text-white;
     animation: none;
     transform: translate(-50%, -50%);
     transition: transform 0ms;
+}
+.video-wrapper .video-thumbnail-wrapper {
+    @apply absolute z-10 inset-0;
+    @apply flex items-center justify-center;
+}
+.video-wrapper .video-plug {
+    @apply absolute z-10;
+    @apply h-auto;
+    filter: blur(4px) drop-shadow(0px 0px 4px var(--background-01));
+}
+.video-wrapper .video-plug img {
+    @apply object-contain;
+}
+.image-container {
+    @apply relative;
+}
+.image-container .image-plug {
+    @apply absolute z-10;
+    @apply h-auto;
+    @apply object-contain;
+    filter: blur(4px) drop-shadow(0px 0px 4px var(--background-01));
+    background-image:
+        linear-gradient(45deg,
+        var(--white-60) 25%, var(--white-30) 25%,
+        var(--white-30) 75%, var(--white-60) 75%,
+        var(--white-60)),
+        linear-gradient( 45deg,
+        var(--white-60) 25%, var(--white-30) 25%,
+        var(--white-30) 75%, var(--white-60) 75%,
+        var(--white-60));
+    background-size: 32px 32px;
+    background-position: 0 0, 16px 16px;
 }

@@ -3,7 +3,7 @@
 @{
     var url = GetUrl();
 }
-<div class="video-thumbnail">
+<div class="video-thumbnail @Class" data-width="@Attachment.Media.Width" data-height="@Attachment.Media.Height">
     @if (Attachment.ThumbnailMedia is null) {
         // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
         <video preload="metadata">
@@ -20,6 +20,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter] public TextEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
 
     private string GetUrl()
     {
@@ -28,6 +29,6 @@
             return UrlMapper.ContentUrl(Attachment.Media.ContentId);
 
         var contentUrl = UrlMapper.ContentUrl(thumbnail.ContentId);
-        return UrlMapper.ImagePreviewUrl(contentUrl, Constants.Attachments.MaxActualResolution);
+        return UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualResolution.Y);
     }
 }
