@@ -3,35 +3,34 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat.ML;
 
-public interface IChatDialogFormatter
-{
-    Task<string> EntriesToText(IEnumerable<ChatEntry> chatEntries, bool displayTimestamp = false);
-    Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry, bool displayTimestamp = false);
-}
-
 internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriever) : IChatDialogFormatter
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
-    public async Task<string> EntriesToText(IEnumerable<ChatEntry> chatEntries, bool displayTimestamp = false)
+    public async Task<string> EntriesToText(IEnumerable<TextEntry> chatEntries, ChatDialogFormatterOptions? options = null)
     {
+        options ??= ChatDialogFormatterOptions.Default;
         using var sb = ZString.CreateStringBuilder();
-        ChatEntry? prevChatEntry = null;
+        TextEntry? prevChatEntry = null;
         foreach (var chatEntry in chatEntries) {
             if (sb.Length > 0)
                 sb.AppendLine();
-            var entryText = await EntryToText(chatEntry, prevChatEntry, displayTimestamp).ConfigureAwait(false);
+            var entryText = await EntryToText(chatEntry, prevChatEntry, options).ConfigureAwait(false);
             sb.Append(entryText);
         }
         return sb.ToString();
     }
 
-    public async Task<string> EntryToText(ChatEntry entry, ChatEntry? prevChatEntry, bool displayTimestamp = false)
+    public async Task<string> EntryToText(TextEntry entry, TextEntry? prevChatEntry, ChatDialogFormatterOptions? options = null)
     {
-        var isBlockStart = IsBlockStart(prevChatEntry, entry);
-        var isReply = entry.RepliedEntryLid is not null;
+        options ??= ChatDialogFormatterOptions.Default;
+        var showAuthor = options.DisplayAuthorPerEntry;
+        if (!showAuthor) {
+            var isBlockStart = IsBlockStart(prevChatEntry, entry);
+            var isReply = entry.RepliedEntryLid is not null;
+            showAuthor = isBlockStart || isReply;
+        }
         var text = await ContentToText(entry.Content).ConfigureAwait(false);
-        var showAuthor = isBlockStart || isReply;
         if (!showAuthor)
             return text;
 
@@ -40,13 +39,24 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
         var sTimestamp = $"{timestamp.ToShortDateString()} at {timestamp.ToShortTimeString()}";
 
         var sb = new StringBuilder();
-        sb.Append(authorName);
-        if (displayTimestamp) {
-            sb.AppendLine();
-            sb.AppendLine(sTimestamp);
+        if (options.UseSquareBracketsFormat) {
+            sb.Append("[");
+            sb.Append(authorName);
+            sb.Append("] ");
+            if (options.DisplayTimestamp) {
+                sb.Append("[");
+                sb.Append(sTimestamp);
+                sb.Append("] ");
+            }
         }
         else {
-            sb.Append(": ");
+            sb.Append(authorName);
+            if (options.DisplayTimestamp) {
+                sb.AppendLine();
+                sb.AppendLine(sTimestamp);
+            }
+            else
+                sb.Append(": ");
         }
         sb.Append(text);
         return sb.ToString();
@@ -58,7 +68,7 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
     private static Task<string> ContentToText(string markup)
         => Task.FromResult(markup); // TODO: add markup parsing
 
-    private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)
+    private static bool IsBlockStart(TextEntry? prevEntry, TextEntry entry)
     {
         if (prevEntry == null)
             return true;

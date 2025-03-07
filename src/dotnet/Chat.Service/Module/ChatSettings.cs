@@ -13,6 +13,7 @@ public sealed class ChatSettings
     public FilePath TranslatePromptFile { get; set; } = "";
     public bool IsTranslationEnabled { get; set; }
 
+    public bool IsSummarizationEnabled => !OpenAIApiKey.IsNullOrEmpty() && !OpenAIChatModel.IsNullOrEmpty();
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
     public int MinConversationWords { get; set; } = 400;
     public int MinConversationEntries { get; set; } = 3;
