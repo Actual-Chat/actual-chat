@@ -88,11 +88,12 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         """
         Summarize following text discussion of several people ({{AUTHORS}}) in several sentences.
         Specify what topics have been discussed and key moments.
-        Who made commitments and what commitments are. Use text language for summarization.
+        Who made commitments and what commitments are.
         Additionally:
 
         Provide a title that reflects the essence of the discussion.
         Give a brief description of the discussion (1-2 sentences).
+        Provide all results in the language of the discussion.
         Present your final decision in the following xml format:
 
         <title>
