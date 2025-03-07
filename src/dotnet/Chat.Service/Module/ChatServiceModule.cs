@@ -99,12 +99,24 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddFlows()
             .Add<LanguageDetectionFlow>()
             .Add<LanguageDetectionMasterFlow>();
-		
+
         // Keyed registration for ConversationSplitFlow
         services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
-        services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
+        if (Settings.IsSummarizationEnabled) {
+            services.AddKernel()
+                .AddOpenAIChatCompletion(Settings.OpenAIChatModel,
+                    Settings.OpenAIApiKey,
+                    httpClient: new HttpClient(new HttpClientHandler {
+                        Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
+                        UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
+                    }),
+                    serviceId: ConversationSummarizer.ServiceKey);
+            services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
+        }
+        else
+            services.AddSingleton<IConversationSummarizer, ConversationSummarizerStub>();
 
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();

@@ -10,7 +10,7 @@ public interface IPromptUtils
 
 internal sealed class PromptUtils : IPromptUtils
 {
-    private readonly Dictionary<string, PromptTemplate> _promptTemplates = new (StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, PromptTemplate> _promptTemplates = new (StringComparer.Ordinal);
 
     public string BuildPrompt(string promptTemplate, IReadOnlyDictionary<string, string> variables)
     {
@@ -46,14 +46,13 @@ internal sealed class PromptUtils : IPromptUtils
         return content;
     }
 
-
     private PromptTemplate GetPromptTemplate(string template)
     {
         if (_promptTemplates.TryGetValue(template, out var promptTemplate))
             return promptTemplate;
 
         promptTemplate = BuildPromptTemplate(template);
-        _promptTemplates.Add(template, promptTemplate);
+        _promptTemplates.TryAdd(template, promptTemplate);
         return promptTemplate;
     }
 
