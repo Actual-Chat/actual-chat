@@ -1,12 +1,14 @@
+using System.Net;
 using ActualChat.Integrations.Anthropic;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using HttpOperationException = Microsoft.SemanticKernel.HttpOperationException;
 
 namespace ActualChat.Chat.ML;
 
 public interface IConversationSummarizer
 {
-    Task<(string Title, string Description, string Summary)> Summarize(
+    Task<ConversationSummarizerResult> Summarize(
         IReadOnlyCollection<TextEntry> chatEntries,
         CancellationToken cancellationToken);
 }
@@ -37,7 +39,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
-    public async Task<(string Title, string Description, string Summary)> Summarize(
+    public async Task<ConversationSummarizerResult> Summarize(
         IReadOnlyCollection<TextEntry> chatEntries,
         CancellationToken cancellationToken)
     {
@@ -59,12 +61,25 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
                 { "DISCUSSION", discussion.Substring(0, Math.Min(discussion.Length, 100_000)) },
             });
 
-        var reply = await Ask(prompt, cancellationToken).ConfigureAwait(false);
+        string? reply = "";
+        try {
+            reply = await Ask(prompt, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpOperationException e) when (e.StatusCode == HttpStatusCode.TooManyRequests)  {
+            Log.LogWarning(e, "Can't summarize. Rate limit exceeded");
+            if (!TryExtractTryAgainInDelay(e.Message, out var postpone))
+                postpone = TimeSpan.FromMinutes(5);
+            return new ConversationSummarizerResult(e, postpone);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Can't summarize. Unknown error");
+            return new ConversationSummarizerResult(e, null);
+        }
         var firstEntry = chatEntries.First();
         var lastEntry = chatEntries.Last();
         var count = chatEntries.Count;
         if (reply.IsNullOrEmpty())
-            return new ($"Summary of {count} entries with range: {firstEntry.LocalId} - {lastEntry.LocalId}",
+            return new ConversationSummary($"Summary of {count} entries with range: {firstEntry.LocalId} - {lastEntry.LocalId}",
                 "",
                 "Failed to retrieve summary");
 
@@ -73,7 +88,40 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         var description = PromptUtils.GetXmlTagValue(reply, "description").Trim().NullIfEmpty() ?? "";
         var summary = PromptUtils.GetXmlTagValue(reply, "summary").Trim().NullIfEmpty() ?? reply;
 
-        return (title, description, summary);
+        return new ConversationSummary(title, description, summary);
+    }
+
+    private static bool TryExtractTryAgainInDelay(string message, out TimeSpan tryAgainInDelay)
+    {
+        tryAgainInDelay = TimeSpan.Zero;
+        const string pleaseTryAgainIn = "Please try again in";
+        var index1 = message.IndexOf(pleaseTryAgainIn, StringComparison.Ordinal);
+        if (index1 < 0)
+            return false;
+
+        var index2 = message.IndexOf(". Visit", index1, StringComparison.Ordinal);
+        if (index2 < 0)
+            return false;
+
+        var startIndex = index1 + pleaseTryAgainIn.Length;
+        var sDelay = message.Substring(startIndex, index2 - startIndex).Trim();
+        var index3 = sDelay.FirstIndexOf(char.IsLetter);
+        if (index3 < 0)
+            return false;
+
+        var sValue = sDelay.Substring(0, index3);
+        var units = sDelay.Substring(index3);
+        if (!double.TryParse(sValue, CultureInfo.InvariantCulture, out var value))
+            return false;
+
+        if (OrdinalEquals(units, "ms"))
+            tryAgainInDelay = TimeSpan.FromMilliseconds(value);
+        else if (OrdinalEquals(units, "s"))
+            tryAgainInDelay = TimeSpan.FromSeconds(value);
+        else
+            tryAgainInDelay = TimeSpan.FromMinutes(10);
+
+        return true;
     }
 
     private async Task<string?> Ask(string prompt, CancellationToken cancellationToken)
@@ -110,18 +158,41 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         """;
 }
 
+public record ConversationSummary(string Title, string Description, string Summary);
+
+public record ConversationSummarizerResult
+{
+    public ConversationSummarizerResult(ConversationSummary summary)
+        => Summary = summary;
+
+    public ConversationSummarizerResult(Exception exception, TimeSpan? postpone)
+    {
+        Exception = Exception;
+        Postpone = postpone;
+    }
+
+    public ConversationSummary? Summary { get; init; }
+    public bool HasResult => Summary is not null;
+    public Exception? Exception { get; init; }
+    public TimeSpan? Postpone { get; init; }
+
+    public static implicit operator ConversationSummarizerResult(ConversationSummary summary) => new(summary);
+}
+
 public class ConversationSummarizerStub: IConversationSummarizer
 {
-    public Task<(string Title, string Description, string Summary)> Summarize(
+    public Task<ConversationSummarizerResult> Summarize(
         IReadOnlyCollection<TextEntry> chatEntries,
         CancellationToken cancellationToken)
     {
         var firstEntry = chatEntries.FirstOrDefault();
         var lastEntry = chatEntries.LastOrDefault();
         var count = chatEntries.Count;
-        // TODO(AK): Implement proper summarization with NLP ChatGPT 4o-mini
-        return Task.FromResult<(string Title, string Description, string Summary)>(new ($"Title {firstEntry!.LocalId} - {lastEntry!.LocalId}",
+        var summary = new ConversationSummary(
+            $"Title {firstEntry!.LocalId} - {lastEntry!.LocalId}",
             $"Description {firstEntry.LocalId} - {lastEntry.LocalId}",
-            $"Summary {count} entries"));
+            $"Summary {count} entries"
+        );
+        return Task.FromResult<ConversationSummarizerResult>(summary);
     }
 }

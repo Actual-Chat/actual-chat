@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
-public partial class ConversationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IConversationsBackend
+public class ConversationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IConversationsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
 
@@ -56,7 +56,7 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
     // [CommandHandler]
     public virtual async Task<Conversation> OnChange(ConversationBackend_Change command, CancellationToken cancellationToken)
     {
-        var (conversationId, expectedVersion, change) = command;
+        var (conversationId, _, change) = command;
         var chatId = conversationId.ChatId;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
@@ -73,7 +73,7 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        await dbContext.Conversations.Lock(conversationId, cancellationToken);
+        await dbContext.Conversations.Lock(conversationId, cancellationToken).ConfigureAwait(false);
 
         var dbConversation = await dbContext.Conversations
             .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
@@ -169,7 +169,7 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return default; // No invalidation there as we call other commands
+            return default!; // No invalidation there as we call other commands
 
         var (chatId, entries) = command;
         // No invalidation there as we call other commands
@@ -186,10 +186,14 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
         var expectedVersion = existingConversation?.Version;
 
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
+        if (!summaryResult.HasResult)
+            throw StandardError.Postpone(summaryResult.Postpone ?? TimeSpan.FromMinutes(10));
+
+        var summary = summaryResult.Summary!;
         var conversation = new Conversation(conversationId) {
-            Title = summaryResult.Title,
-            Description = summaryResult.Description,
-            Summary = summaryResult.Summary,
+            Title = summary.Title,
+            Description = summary.Description,
+            Summary = summary.Summary,
             MessageCount = entries.Count,
             EndEntryLid = endEntryLid,
             StartsAt = firstEntry.BeginsAt,
@@ -239,18 +243,23 @@ public partial class ConversationsBackend(IServiceProvider services) : DbService
                 idTile.Range,
                 false,
                 cancellationToken))
-            .Collect(cancellationToken);
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
         var entries = tiles
             .SelectMany(t => t.Entries)
             .Select(c => new TextEntry(c))
             .ToList();
         entries.AddRange(replySequence);
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
+        if (!summaryResult.HasResult)
+            throw StandardError.Postpone(summaryResult.Postpone ?? TimeSpan.FromMinutes(10));
+
+        var summary = summaryResult.Summary!;
         // Do not update EndEntryLid, StartsAt, EndsAt as the conversation is not continuous
         var diff = new ConversationDiff {
-            Title = summaryResult.Title,
-            Description = summaryResult.Description,
-            Summary = summaryResult.Summary,
+            Title = summary.Title,
+            Description = summary.Description,
+            Summary = summary.Summary,
             MessageCount = entries.Count,
             AuthorIds = entries
                 .GroupBy(a => a.AuthorId)
