@@ -185,9 +185,22 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         var expectedVersion = existingConversation?.Version;
 
-        var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
-        if (!summaryResult.HasResult)
-            throw StandardError.Postpone(summaryResult.Postpone ?? TimeSpan.FromMinutes(10));
+        var retryCount = 0;
+        var summaryResult = ConversationSummarizerResult.Empty;
+        while (!summaryResult.HasResult) {
+            summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
+            if (summaryResult.HasResult)
+                break;
+
+            if (retryCount++ > 3)
+                throw StandardError.Postpone(TimeSpan.FromMinutes(1));
+
+            var postpone = summaryResult.Postpone;
+            if (postpone != null)
+                await Clocks.SystemClock.Delay(postpone.Value, cancellationToken).ConfigureAwait(false);
+            else
+                throw StandardError.Postpone(TimeSpan.FromMinutes(1));
+        }
 
         var summary = summaryResult.Summary!;
         var conversation = new Conversation(conversationId) {

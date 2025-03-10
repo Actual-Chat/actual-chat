@@ -66,14 +66,10 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
             reply = await Ask(prompt, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpOperationException e) when (e.StatusCode == HttpStatusCode.TooManyRequests)  {
-            Log.LogWarning(e, "Can't summarize. Rate limit exceeded");
+            Log.LogDebug(e, "Can't summarize. Rate limit exceeded");
             if (!TryExtractTryAgainInDelay(e.Message, out var postpone))
-                postpone = TimeSpan.FromMinutes(5);
+                postpone = TimeSpan.FromSeconds(45);
             return new ConversationSummarizerResult(e, postpone);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Can't summarize. Unknown error");
-            return new ConversationSummarizerResult(e, null);
         }
         var firstEntry = chatEntries.First();
         var lastEntry = chatEntries.Last();
@@ -119,7 +115,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         else if (OrdinalEquals(units, "s"))
             tryAgainInDelay = TimeSpan.FromSeconds(value);
         else
-            tryAgainInDelay = TimeSpan.FromMinutes(10);
+            tryAgainInDelay = TimeSpan.FromSeconds(55);
 
         return true;
     }
@@ -162,6 +158,8 @@ public record ConversationSummary(string Title, string Description, string Summa
 
 public record ConversationSummarizerResult
 {
+    public static readonly ConversationSummarizerResult Empty = new (new InvalidOperationException(), null);
+
     public ConversationSummarizerResult(ConversationSummary summary)
         => Summary = summary;
 
