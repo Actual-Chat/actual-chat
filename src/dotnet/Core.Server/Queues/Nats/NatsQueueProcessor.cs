@@ -115,8 +115,9 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 cancellationToken: expiringPullToken);
 
             MarkStarted();
+            var degreeOfParallelism = ShardScheme.DegreeOfParallelism ?? Settings.ConcurrencyLevel;
             var parallelOptions = new ParallelOptions {
-                MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
+                MaxDegreeOfParallelism = degreeOfParallelism,
                 CancellationToken = cancellationToken,
             };
             await Parallel

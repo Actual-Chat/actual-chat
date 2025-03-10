@@ -1,3 +1,4 @@
+using ActualChat.Attributes;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -36,6 +37,7 @@ public sealed partial record ConversationBackend_Change(
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
+[Queue("SummarizeQueue")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
