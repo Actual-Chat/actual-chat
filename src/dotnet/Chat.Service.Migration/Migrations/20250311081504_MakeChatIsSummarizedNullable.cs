@@ -5,7 +5,7 @@
 namespace ActualChat.Chat.Migrations
 {
     /// <inheritdoc />
-    public partial class AddChatIsSummarized : Migration
+    public partial class MakeChatIsSummarizedNullable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -14,8 +14,8 @@ namespace ActualChat.Chat.Migrations
                 name: "is_summarized",
                 table: "chats",
                 type: "boolean",
-                nullable: false,
-                defaultValue: false);
+                nullable: true,
+                defaultValue: null);
         }
 
         /// <inheritdoc />
