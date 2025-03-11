@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20250311075449_AddChatIsSummarized")]
-    partial class AddChatIsSummarized
+    [Migration("20250311082132_MakeChatIsSummarizedNullable2")]
+    partial class MakeChatIsSummarizedNullable2
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -154,7 +154,7 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_public");
 
-                    b.Property<bool>("IsSummarized")
+                    b.Property<bool?>("IsSummarized")
                         .HasColumnType("boolean")
                         .HasColumnName("is_summarized");
 

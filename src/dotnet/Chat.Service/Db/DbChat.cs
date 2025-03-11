@@ -39,7 +39,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool AllowAnonymousAuthors { get; set; }
     public string? SystemTag { get; set; }
     public bool IsPlaceRootChat { get; set; }
-    public bool IsSummarized { get; set; }
+    public bool? IsSummarized { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
