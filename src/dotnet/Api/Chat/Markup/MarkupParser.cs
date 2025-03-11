@@ -225,6 +225,25 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> WhitespaceBlock =
         WhitespaceOrEndOfLineText.Debug("<Whitespace>");
 
+    // List
+    private static readonly Parser<char, Markup> UnorderedListItem =
+        from _ in OneOf(Char('-'), Char('*'), Char('+')).Before(WhitespaceChar)
+        from content in TextBlock
+        from _1 in EndOfLine.Optional()
+        select (Markup)new ListItemMarkup(content, Ordered: false);
+
+    private static readonly Parser<char, Markup> OrderedListItem =
+        from number in Digit.AtLeastOnceString().Before(Char('.')).Before(WhitespaceChar)
+        from content in TextBlock
+        from _ in EndOfLine.Optional()
+        select (Markup)new ListItemMarkup(content, Ordered: true, Order: int.Parse(number, CultureInfo.InvariantCulture));
+
+    private static readonly Parser<char, Markup> ListBlock =
+        SafeTryOneOf(UnorderedListItem, OrderedListItem)
+            .AtLeastOnce()
+            .Select(items => (Markup)new ListMarkup(items.Select(c => (ListItemMarkup)c).ToImmutableArray()))
+            .Debug("<List>");
+
     // Unparsed block
     private static readonly Parser<char, Markup> UnparsedTextBlock = (
         from whitespace in WhitespaceString
@@ -239,9 +258,9 @@ public partial class MarkupParser : IMarkupParser
 
     // Full markup
     private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
-        SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextBlock).ManyMarkup();
+        SafeTryOneOf(ListBlock, WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextBlock).ManyMarkup();
     private static readonly Parser<char, Markup> FullMarkup =
-        SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
+        SafeTryOneOf(ListBlock, WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
 
     // Type initializer
     static MarkupParser()

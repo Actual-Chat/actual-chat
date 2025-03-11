@@ -15,6 +15,31 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
         return isUnchanged ? markup : new MarkupSeq(newItems);
     }
 
+    protected override async ValueTask<Markup> VisitList(ListMarkup markup, CancellationToken cancellationToken)
+    {
+        var newItems = new List<Markup>();
+        var isUnchanged = false;
+        foreach (var item in markup.Items) {
+            var newItem = await Visit(item, cancellationToken).ConfigureAwait(false);
+            if (newItem != null!)
+                newItems.Add(newItem);
+            isUnchanged &= ReferenceEquals(newItem, item);
+        }
+        if (isUnchanged)
+            return markup;
+
+        if (newItems.All(c => c is ListItemMarkup))
+            return new ListMarkup(newItems.Cast<ListItemMarkup>());
+
+        return Markup.Empty;
+    }
+
+    protected override async ValueTask<Markup> VisitListItem(ListItemMarkup markup, CancellationToken cancellationToken)
+    {
+        var newMarkup = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
+        return ReferenceEquals(newMarkup, markup) ? markup : new ListItemMarkup(newMarkup, markup.Ordered, markup.Order);
+    }
+
     protected override async ValueTask<Markup> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)
     {
         var newMarkup = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);

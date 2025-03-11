@@ -18,6 +18,39 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
         return Visit(markup, ref state);
     }
 
+    protected override Markup VisitList(ListMarkup markup, ref State state)
+    {
+        var newItems = new List<ListItemMarkup>();
+        var isUnchanged = true;
+        foreach (var item in markup.Items) {
+            if (!state.CanAppend()) {
+                isUnchanged = false;
+                break;
+            }
+
+            var newItem = VisitListItem(item, ref state);
+            if (newItem is ListItemMarkup listItemMarkup)
+                newItems.Add(listItemMarkup);
+            isUnchanged &= ReferenceEquals(newItem, item);
+        }
+        if (isUnchanged)
+            return markup;
+
+        return newItems.Count > 0 ? new ListMarkup(newItems) : Markup.Empty;
+    }
+
+    protected override Markup VisitListItem(ListItemMarkup markup, ref State state)
+    {
+        if (!state.CanAppend())
+            return Markup.Empty;
+
+        var newContent = Visit(markup.Content, ref state);
+        if (ReferenceEquals(newContent, markup.Content))
+            return markup;
+
+        return markup with { Content = newContent };
+    }
+
     protected override Markup VisitSeq(MarkupSeq markup, ref State state)
     {
         var newItems = new List<Markup>();

@@ -21,6 +21,16 @@ public record MarkupValidator : MarkupVisitor<bool>
     public bool IsValid(Markup markup)
         => Visit(markup);
 
+    protected override bool VisitList(ListMarkup markup)
+        => _aggregationMode == AggregationMode.All
+            ? markup.Items.All(Visit) && _predicate(markup)
+            : markup.Items.Any(Visit) || _predicate(markup);
+
+    protected override bool VisitListItem(ListItemMarkup markup)
+        => _aggregationMode == AggregationMode.All
+            ? Visit(markup.Content) && _predicate(markup)
+            : Visit(markup.Content) || _predicate(markup);
+
     protected override bool VisitSeq(MarkupSeq markup)
         => _aggregationMode == AggregationMode.All
             ? markup.Items.All(Visit)

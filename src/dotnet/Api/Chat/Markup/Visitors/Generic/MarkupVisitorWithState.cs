@@ -10,6 +10,8 @@ public abstract record MarkupVisitorWithState<TState, TResult>
             UrlMarkup urlMarkup => VisitUrl(urlMarkup, ref state),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup, ref state),
             TextMarkup textMarkup => VisitText(textMarkup, ref state),
+            ListMarkup listMarkup => VisitList(listMarkup, ref state),
+            ListItemMarkup listItemMarkup => VisitListItem(listItemMarkup, ref state),
             _ => VisitUnknown(markup, ref state),
         };
 
@@ -22,6 +24,9 @@ public abstract record MarkupVisitorWithState<TState, TResult>
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup, ref state),
             _ => VisitUnknown(markup, ref state),
         };
+
+    protected abstract TResult VisitList(ListMarkup markup, ref TState state);
+    protected abstract TResult VisitListItem(ListItemMarkup markup, ref TState state);
 
     protected abstract TResult VisitSeq(MarkupSeq markup, ref TState state);
     protected abstract TResult VisitStylized(StylizedMarkup markup, ref TState state);
@@ -63,6 +68,12 @@ public abstract record MarkupVisitorWithState<TState>
         case TextMarkup textMarkup:
             VisitText(textMarkup, ref state);
             break;
+        case ListMarkup listMarkup:
+            VisitList(listMarkup, ref state);
+            break;
+        case ListItemMarkup listItemMarkup:
+            VisitListItem(listItemMarkup, ref state);
+            break;
         default:
             VisitUnknown(markup, ref state);
             break;
@@ -93,12 +104,19 @@ public abstract record MarkupVisitorWithState<TState>
         }
     }
 
+    protected virtual void VisitList(ListMarkup markup, ref TState state)
+    {
+        foreach (var item in markup.Items)
+            VisitListItem(item, ref state);
+    }
+
     protected virtual void VisitSeq(MarkupSeq markup, ref TState state)
     {
         foreach (var item in markup.Items)
             Visit(item, ref state);
     }
 
+    protected abstract void VisitListItem(ListItemMarkup markup, ref TState state);
     protected abstract void VisitStylized(StylizedMarkup markup, ref TState state);
 
     protected abstract void VisitUrl(UrlMarkup markup, ref TState state);
