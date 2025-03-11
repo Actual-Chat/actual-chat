@@ -1,7 +1,9 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Flows;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
+using ActualChat.Flows;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
@@ -61,6 +63,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
+    [field: AllowNull, MaybeNull]
+    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
+
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -1678,6 +1683,22 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var deleteChatCommand = new ChatsBackend_Change(chatId, null, new Change<ChatDiff> { Remove = true });
             await Commander.Call(deleteChatCommand, false, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // [EventHandler]
+    public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (chat, oldChat, kind) = eventCommand;
+        if (kind == ChangeKind.Remove || chat.IsSummarized == false)
+            // TODO(AK): Check if we need any events to stop flow
+            return;
+
+        if ((chat.IsSummarized ?? false) && oldChat?.IsSummarized == false)
+            await Flows.StartOrReset<ConversationSplitFlow>(chat.Id, null, "OnChatChangedEvent", cancellationToken).ConfigureAwait(false);
+
     }
 
     // Protected methods
