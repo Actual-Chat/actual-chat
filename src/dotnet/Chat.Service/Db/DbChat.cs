@@ -39,6 +39,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool AllowAnonymousAuthors { get; set; }
     public string? SystemTag { get; set; }
     public bool IsPlaceRootChat { get; set; }
+    public bool IsSummarized { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
@@ -66,6 +67,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 : new Symbol(SystemTag),
             MediaId = new MediaId(MediaId),
             UserLinkId = new UserLinkId(UserLinkId),
+            IsSummarized = IsSummarized,
         };
 
     public void UpdateFrom(Chat model)
@@ -93,5 +95,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         MediaId = model.MediaId;
         IsPlaceRootChat = model.Id.IsPlaceRootChat;
         UserLinkId = model.UserLinkId.Value;
+        IsSummarized = model.IsSummarized;
     }
 }
