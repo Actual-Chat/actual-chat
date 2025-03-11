@@ -245,8 +245,8 @@ export class VisualMediaViewer {
         if (imagePlug) {
             let plugWidth = 0;
             let plugHeight = 0;
-            const originalWidth = thumbnail.dataset.width as Number;
-            const originalHeight = thumbnail.dataset.height as Number;
+            const originalWidth = Number(thumbnail.dataset.width);
+            const originalHeight = Number(thumbnail.dataset.height);
             const screenWidth = window.innerWidth;
             const screenHeight = window.innerHeight;
             const originalRatio = originalWidth / originalHeight;
@@ -326,8 +326,8 @@ export class VisualMediaViewer {
         }
 
         let plugWidth = 0;
-        const originalWidth = plug.dataset.width as Number;
-        const originalHeight = plug.dataset.heigth as Number;
+        const originalWidth = Number(plug.dataset.width);
+        const originalHeight = Number(plug.dataset.heigth);
         const screenWidth = window.innerWidth;
         const screenHeight = window.innerHeight;
         const originalRatio = originalWidth / originalHeight;
