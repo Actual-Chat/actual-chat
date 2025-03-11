@@ -25,24 +25,13 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
             // Note: intentionally set negative number
             MaxVersion = Clocks.GetMaxVersion(TimeSpan.FromSeconds(-10));
 
-        if (HostInfo.BaseUrlKind != BaseUrlKind.Local)
-            return mustContinue;
-
-        // TODO(AK): Start child flow for development purposes - SHOULD BE FIXED FOR GENERAL USE OF FLOWS!!!!!
-        var chat = await ChatsBackend.Get(new ChatId("052w3sgrad", ParseOrNone.Option), cancellationToken)
-            .ConfigureAwait(false);
-        if (chat != null)
-            await Host.Flows
-                .StartOrReset<ConversationSplitFlow>(chat.Id, null, "ChatMasterFlow", cancellationToken)
-                .ConfigureAwait(false);
-
         return mustContinue;
     }
 
     protected override async Task<IReadOnlyList<Chat>> GetBatch(IndexingFlowCursor<ChatId>? cursor, CancellationToken cancellationToken)
     {
         cursor ??= new (ChatId.None, 0);
-        return await ChatsBackend.ListChanged(new ChangedChatsQuery {
+        var chats = await ChatsBackend.ListChanged(new ChangedChatsQuery {
                     MinVersion = cursor.LastUpdatedVersion,
                     MaxVersion = MaxVersion,
                     LastId = cursor.LastUpdatedId,
@@ -50,6 +39,7 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
                 },
                 cancellationToken)
             .ConfigureAwait(false);
+        return chats.Where(c => c.IsSummarized ?? false).ToList();
     }
 
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)

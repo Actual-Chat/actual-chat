@@ -130,6 +130,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

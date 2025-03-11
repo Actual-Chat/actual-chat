@@ -10,7 +10,7 @@
 <div class="c-chat-info">
     @if (!m.HideNotificationsToggle) {
         <RightPanelChatInfoItem
-            Click="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
+            Click="@(_ => OnNotificationToggleChanged(m.NotificationMode != ChatNotificationMode.Muted))"
             Content="Notifications"
             Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
             <Icon>
@@ -21,6 +21,19 @@
             </Right>
         </RightPanelChatInfoItem>
     }
+    @if (m.ShowSummarizationToggle) {
+        <RightPanelChatInfoItem
+            Click="@(_ => OnSummarizeToggleChanged(!m.IsSummarized))"
+            Content="Summarize"
+            Hint="@(m.IsSummarized ? "On" : "Off")">
+            <Icon>
+                <i class="text-2xl text-03 icon-ai"></i>
+            </Icon>
+            <Right>
+                <Toggle Class="mr-2" IsChecked="@m.IsSummarized"/>
+            </Right>
+        </RightPanelChatInfoItem>
+    }
 </div>
 
 @code {
@@ -28,6 +41,7 @@
     private Session Session => Hub.Session();
     private AccountSettings AccountSettings => Hub.AccountSettings();
     private UICommander UICommander => Hub.UICommander();
+    private Features Features => Hub.Features();
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -46,13 +60,17 @@
         if (chat.HasSingleAuthor || !chat.IsMember())
             return new() { HideNotificationsToggle = true };
 
+        var enableSummarizationFeature = await Features.Get<Features_EnableChatSummarization>(cancellationToken).ConfigureAwait(false);
+        var isOwner = chat.Rules.IsOwner();
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,
+            ShowSummarizationToggle = enableSummarizationFeature && isOwner,
+            IsSummarized = Chat.IsSummarized ?? false,
         };
     }
 
-    private Task OnValueChanged(bool isMuted)
+    private Task OnNotificationToggleChanged(bool isMuted)
         => UICommander.RunLocal(async cancellationToken => {
             var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken).ConfigureAwait(false);
             userChatSettings = userChatSettings with {
@@ -61,12 +79,24 @@
             await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
         });
 
+    private Task OnSummarizeToggleChanged(bool isSummarized) {
+        if (Chat.IsSummarized == isSummarized)
+            return Task.CompletedTask;
+
+        var chatId = Chat.Id;
+        var expectedVersion = Chat.Version;
+        var update = Change.Update<ChatDiff>(new() { IsSummarized = isSummarized });
+        return UICommander.Call(new Chats_Change(Session, chatId, expectedVersion, update));
+    }
+
     // Nested types
 
     public sealed record Model {
         public static readonly Model Loading = new();
 
         public ChatNotificationMode NotificationMode { get; init; }
+        public bool IsSummarized { get; init; }
         public bool HideNotificationsToggle { get; init; }
+        public bool ShowSummarizationToggle { get; init; }
     }
 }
