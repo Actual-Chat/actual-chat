@@ -194,14 +194,14 @@ export class VisualMediaViewer {
                 const videos = element.getElementsByTagName('video');
                 [...videos].forEach((video: HTMLMediaElement) => {
                     video.play()
-                    .then(_ => {
-                        this.hideSpinner(video);
-                        this.fixVideoPosition();
-                        let control = video.parentElement.querySelector('.video-control');
-                        if (control && control.classList.contains('hide-control')) {
-                            control.classList.remove('hide-control');
-                        }
-                    });
+                        .then(_ => {
+                            this.hideSpinner(video);
+                            this.fixVideoPosition();
+                            let control = video.parentElement.querySelector('.video-control');
+                            if (control && control.classList.contains('hide-control')) {
+                                control.classList.remove('hide-control');
+                            }
+                        });
                 });
             });
         }, 0);
@@ -359,6 +359,35 @@ export class VisualMediaViewer {
             thumbnailWrapper.remove();
         if (spinner)
             spinner.remove();
+        this.updateLoading(video);
+    }
+
+    private updateLoading(video: HTMLMediaElement) {
+        const wrapper = video.closest('.video-wrapper');
+        if (!wrapper)
+            return;
+
+        const control = wrapper.querySelector('.video-control') as HTMLElement;
+        if (!control)
+            return;
+
+        const progressBar = control.querySelector('.c-progress-bar') as HTMLElement;
+        const loadedBar = window.getComputedStyle(progressBar, ':before');
+        if (!loadedBar)
+            return;
+
+        const duration = video.duration;
+        let bufferId = setInterval(() => {
+            let buffered = video.buffered.end(0);
+            let maxWidth = progressBar.getBoundingClientRect().width;
+            if (buffered == duration) {
+                clearInterval(bufferId);
+                progressBar.style.setProperty('--data-media-loaded', `${maxWidth}px`);
+                return;
+            }
+            let loadedValue = buffered / duration;
+            progressBar.style.setProperty('--data-media-loaded', `${loadedValue * maxWidth}px`);
+        }, 200);
     }
 
     private updateTimeline(video: HTMLMediaElement, control: HTMLElement, progressBar: HTMLProgressElement) {
