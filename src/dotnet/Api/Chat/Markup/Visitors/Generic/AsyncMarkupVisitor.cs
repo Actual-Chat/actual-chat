@@ -10,6 +10,8 @@ public abstract record AsyncMarkupVisitor<TResult>
             UrlMarkup urlMarkup => VisitUrl(urlMarkup, cancellationToken),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup, cancellationToken),
             TextMarkup textMarkup => VisitText(textMarkup, cancellationToken),
+            ListMarkup listMarkup => VisitList(listMarkup, cancellationToken),
+            ListItemMarkup listItemMarkup => VisitListItem(listItemMarkup, cancellationToken),
             _ => VisitUnknown(markup, cancellationToken),
         };
 
@@ -22,6 +24,9 @@ public abstract record AsyncMarkupVisitor<TResult>
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup, cancellationToken),
             _ => VisitUnknown(markup, cancellationToken),
         };
+
+    protected abstract ValueTask<TResult> VisitList(ListMarkup markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitListItem(ListItemMarkup markup, CancellationToken cancellationToken);
 
     protected abstract ValueTask<TResult> VisitSeq(MarkupSeq markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken);

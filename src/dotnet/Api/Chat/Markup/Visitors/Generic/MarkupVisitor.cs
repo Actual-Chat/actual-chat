@@ -10,6 +10,8 @@ public abstract record MarkupVisitor<TResult>
             UrlMarkup urlMarkup => VisitUrl(urlMarkup),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup),
             TextMarkup textMarkup => VisitText(textMarkup),
+            ListMarkup listMarkup => VisitList(listMarkup),
+            ListItemMarkup listItemMarkup => VisitListItem(listItemMarkup),
             _ => VisitUnknown(markup),
         };
 
@@ -22,6 +24,9 @@ public abstract record MarkupVisitor<TResult>
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup),
             _ => VisitUnknown(markup),
         };
+
+    protected abstract TResult VisitList(ListMarkup markup);
+    protected abstract TResult VisitListItem(ListItemMarkup markup);
 
     protected abstract TResult VisitSeq(MarkupSeq markup);
     protected abstract TResult VisitStylized(StylizedMarkup markup);

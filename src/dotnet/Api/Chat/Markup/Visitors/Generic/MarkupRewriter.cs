@@ -2,6 +2,19 @@ namespace ActualChat.Chat;
 
 public abstract record MarkupRewriter<TState> : MarkupVisitorWithState<TState, Markup>
 {
+    protected override Markup VisitList(ListMarkup markup, ref TState state)
+    {
+        var newItems = new List<ListItemMarkup>();
+        var isUnchanged = true;
+        foreach (var item in markup.Items) {
+            var newItem = (ListItemMarkup)VisitListItem(item, ref state);
+            if (newItem != null!)
+                newItems.Add(newItem);
+            isUnchanged &= ReferenceEquals(newItem, item);
+        }
+        return isUnchanged ? markup : new ListMarkup(newItems);
+    }
+
     protected override Markup VisitSeq(MarkupSeq markup, ref TState state)
     {
         var newItems = new List<Markup>();

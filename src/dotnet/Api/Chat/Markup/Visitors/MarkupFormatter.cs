@@ -22,6 +22,9 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<Utf16ValueSt
 
     // Protected methods
 
+    protected override void VisitListItem(ListItemMarkup markup, ref Utf16ValueStringBuilder state)
+        => state.AppendLine(markup.Format());
+
     protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)
     {
         state.Append(markup.StyleToken);

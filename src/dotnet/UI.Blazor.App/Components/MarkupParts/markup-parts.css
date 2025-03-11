@@ -129,6 +129,15 @@ body.hoverable .playable-text-markup > span:hover {
     /*@apply whitespace-pre-wrap;*/
 }
 
+ol.list-markup {
+    /*@apply flex-y;*/
+    @apply list-decimal list-inside;
+}
+ul.list-markup {
+    /*@apply flex-y;*/
+    @apply list-disc list-inside;
+}
+
 .unknown-markup {
     @apply text-red-500;
 }
