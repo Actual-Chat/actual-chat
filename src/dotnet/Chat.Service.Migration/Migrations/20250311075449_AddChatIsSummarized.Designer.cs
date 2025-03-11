@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250311075449_AddChatIsSummarized")]
+    partial class AddChatIsSummarized
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -408,10 +411,6 @@ namespace ActualChat.Chat.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_chat_entries");
-
-                    b.HasIndex("ChatId")
-                        .HasDatabaseName("ix_chat_entries_chat_id")
-                        .HasFilter("kind = 0 and not is_system_entry and not is_removed and languages is not null and languages != '' and  content != ''");
 
                     b.HasIndex("ChatId", "Kind", "LocalId")
                         .IsUnique()
