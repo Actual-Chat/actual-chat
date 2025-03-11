@@ -42,7 +42,7 @@ public sealed partial record ConversationBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<TextEntry> Entries
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<Range<long>> EntryIdRanges
     ): ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
 {
     [IgnoreDataMember, MemoryPackIgnore]
@@ -52,12 +52,13 @@ public sealed partial record ConversationBackend_Summarize(
     public Moment? DelayUntil { get; init; }
 }
 
+[Queue("SummarizeQueue")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] long EntryLid,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<TextEntry> ReplySequence
+    [property: DataMember, MemoryPackOrder(2)] Range<long> ReplySequence
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
 {
     [IgnoreDataMember, MemoryPackIgnore]

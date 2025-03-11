@@ -72,12 +72,14 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
             if (firstEntry.RepliedEntryLid is not {} entryLid)
                 continue; // First entry in the sequence is not a reply!
 
+            var lastEntry = replySequence.Entries[^1];
             var idTileRange = IdTileStack.FirstLayer.GetTile(entryLid).Range;
             var existingConversations = await ConversationsBackend.List(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+
             var appendReply = new ConversationBackend_AppendReply(
                 chatId,
                 entryLid,
-                [..replySequence.Entries]
+                new Range<long>(firstEntry.LocalId, lastEntry.LocalId + 1)
             ) {
                 DelayUntil = existingConversations.Count == 0
                     ? Host.Clocks.CoarseSystemClock.Now + (2 * Settings.ChatEntrySummarizationDelay)
@@ -95,7 +97,27 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
             if (group.Entries.Count < Settings.MinConversationEntries)
                 continue;
 
-            var summarize = new ConversationBackend_Summarize(chatId, [..group.Entries]) {
+            var idRanges = new List<Range<long>>();
+            long? startId = null, endId = null;
+
+            foreach (var entry in group.Entries)
+                if (startId == null) {
+                    startId = entry.LocalId;
+                    endId = entry.LocalId;
+                } else if (entry.LocalId == endId + 1)
+                    endId = entry.LocalId;
+                else {
+                    idRanges.Add(new Range<long>(startId.Value, endId!.Value + 1));
+                    startId = entry.LocalId;
+                    endId = entry.LocalId;
+                }
+
+            if (startId != null && endId != null)
+                idRanges.Add(new Range<long>(startId.Value, endId.Value + 1));
+            if (idRanges.Count == 0)
+                continue; // No valid ranges - we should not get there
+
+            var summarize = new ConversationBackend_Summarize(chatId, [..idRanges]) {
                 DelayUntil = Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay,
             };
             await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);

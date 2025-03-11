@@ -171,20 +171,26 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (Invalidation.IsActive)
             return default!; // No invalidation there as we call other commands
 
-        var (chatId, entries) = command;
+        var (chatId, entryIdRanges) = command;
         // No invalidation there as we call other commands
         var delay = command.DelayUntil - Clocks.SystemClock.Now;
         if (delay > TimeSpan.Zero)
             throw StandardError.Postpone(delay.Value);
 
-        var firstEntry = entries[0];
-        var lastEntry = entries[^1];
-        var startEntryLid = firstEntry.LocalId;
-        var endEntryLid = lastEntry.LocalId;
+        if (entryIdRanges.Count == 0)
+            throw StandardError.Constraint("ConversationBackend_Summarize.EntryIdRanges should not be empty.");
+
+        var startEntryLid = entryIdRanges[0].Start;
+        var endEntryLid = entryIdRanges[^1].End - 1;
         var conversationId = new ConversationId(chatId, startEntryLid, AssumeValid.Option);
         var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         var expectedVersion = existingConversation?.Version;
+        var entries = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
+        if (entries.Count == 0)
+            return default!;
 
+        var firstEntry = entries.First();
+        var lastEntry = entries.Last();
         var retryCount = 0;
         var summaryResult = ConversationSummarizerResult.Empty;
         while (!summaryResult.HasResult) {
@@ -232,7 +238,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (Invalidation.IsActive)
             return null!; // No invalidation there as we call other commands
 
-        var (chatId, entryLid, replySequence) = command;
+        var (chatId, entryLid, replyIdRange) = command;
         var delay = command.DelayUntil - Clocks.SystemClock.Now;
         if (delay > TimeSpan.Zero)
             throw StandardError.Postpone(delay.Value);
@@ -249,20 +255,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         conversation.Require();
 
-        var idTiles = IdTileStack.FirstLayer.GetCoveringTiles(conversation.EntryRange);
-        var tiles = await idTiles
-            .Select(idTile => ChatsBackend.GetTile(chatId,
-                ChatEntryKind.Text,
-                idTile.Range,
-                false,
-                cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-        var entries = tiles
-            .SelectMany(t => t.Entries)
-            .Select(c => new TextEntry(c))
-            .ToList();
-        entries.AddRange(replySequence);
+        var entries = await GetTextEntries(chatId, [conversation.EntryRange, replyIdRange], cancellationToken).ConfigureAwait(false);
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
         if (!summaryResult.HasResult)
             throw StandardError.Postpone(summaryResult.Postpone ?? TimeSpan.FromMinutes(10));
@@ -283,5 +276,26 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var change = Change.Update(diff);
         var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
         return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+
+    private async Task<IReadOnlyCollection<TextEntry>> GetTextEntries(ChatId chatId, ApiArray<Range<long>> entryIdRanges, CancellationToken cancellationToken)
+    {
+        var idTiles = entryIdRanges
+            .SelectMany(idRange => IdTileStack.GetOptimalCoveringTiles(idRange))
+            .ToList();
+
+        var tiles = await idTiles
+            .Select(idTile => ChatsBackend.GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+
+        return tiles
+            .SelectMany(tile => tile.Entries)
+            .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)))
+            .Select(entry => new TextEntry(entry))
+            .ToList();
     }
 }
