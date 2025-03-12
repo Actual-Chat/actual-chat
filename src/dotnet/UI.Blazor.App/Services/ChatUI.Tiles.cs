@@ -90,67 +90,20 @@ public partial class ChatUI
             if (originalLoadBefore == 0 && originalLoadAfter == 0)
                 break;
 
-            var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts();
-            var isLoadingBefore = originalLoadBefore > originalLoadAfter;
-            var beforeFulfilled = beforeCount >= originalLoadBefore / 2;
-            var afterFulfilled = afterCount >= originalLoadAfter / 2;
-            if (beforeFulfilled && afterFulfilled)
+            var expandedDataQuery = await ExpandDataQuery(chatId,
+                    dataQuery,
+                    originalLoadBefore,
+                    originalLoadAfter,
+                    tiles,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (expandedDataQuery == null)
                 break;
 
-            if (isLoadingBefore && beforeFulfilled)
-                break;
-
-            if (!isLoadingBefore && afterFulfilled)
-                break;
-
-            var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
-            var hasVeryFirstItem = chatIdRange.Start >= dataQuery.Start;
-            var hasVeryLastItem = chatIdRange.End <= dataQuery.End;
-            if (hasVeryFirstItem && hasVeryLastItem)
-                break;
-
-            if (!beforeFulfilled && hasVeryFirstItem)
-                break;
-
-            if (!afterFulfilled && hasVeryLastItem)
-                break;
-
-            // Expand load limits and reset tiles if we need to load more just to fulfill one side
-            var expandedLoadBefore = hasVeryFirstItem || dataQuery.LoadBefore < dataQuery.LoadAfter
-                ? dataQuery.LoadBefore
-                : dataQuery.LoadBefore * 4;
-            var expandedLoadAfter = hasVeryLastItem || dataQuery.LoadAfter < dataQuery.LoadBefore
-                ? dataQuery.LoadAfter
-                : dataQuery.LoadAfter * 4;
-            dataQuery = new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
-                HasVeryFirstItem = hasVeryFirstItem,
-                HasVeryLastItem = hasVeryLastItem,
-            };
+            dataQuery = expandedDataQuery;
             tiles.Clear();
         }
         return tiles;
-
-        (int, int) GetLoadedBeforeAndAfterCounts()
-        {
-            var before = 0;
-            var after = 0;
-            foreach (var tile in tiles) {
-                if (tile.Items.Count == 0)
-                    continue;
-
-                var startId = tile.Items[0].Id;
-                var endId = tile.Items[^1].Id;
-                var tileRange = new Range<long>(startId, endId);
-                if (dataQuery.IdRange.Contains(tileRange))
-                    continue;
-
-                if (startId < dataQuery.IdRange.Start)
-                    before += tile.Items.Count(item => item.Id < dataQuery.IdRange.Start);
-                if (endId > dataQuery.IdRange.End)
-                    after += tile.Items.Count(item => item.Id > dataQuery.IdRange.End);
-            }
-            return (before, after);
-        }
     }
 
     [ComputeMethod]
@@ -158,6 +111,57 @@ public partial class ChatUI
         ChatEntryId id,
         CancellationToken cancellationToken = default)
         => Chats.GetEntry(Session, id, cancellationToken);
+
+    public async Task<ChatDataQuery?> ExpandDataQuery(
+        ChatId chatId,
+        ChatDataQuery dataQuery,
+        int originalLoadBefore,
+        int originalLoadAfter,
+        List<VirtualListTile<ChatMessage>> tiles,
+        CancellationToken cancellationToken)
+    {
+        var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts(dataQuery, tiles);
+        var isLoadingBefore = originalLoadBefore > originalLoadAfter;
+        var hasBeforeOrAfter = originalLoadBefore > 0 || originalLoadAfter > 0;
+        var beforeFulfilled = hasBeforeOrAfter && beforeCount >= originalLoadBefore / 2;
+        var afterFulfilled = hasBeforeOrAfter && afterCount >= originalLoadAfter / 2;
+        if (beforeFulfilled && afterFulfilled)
+            return null;
+
+        if (isLoadingBefore && beforeFulfilled)
+            return null;
+
+        if (!isLoadingBefore && afterFulfilled)
+            return null;
+
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var hasVeryFirstItem = chatIdRange.Start >= dataQuery.Start;
+        var hasVeryLastItem = chatIdRange.End <= dataQuery.End;
+        if (hasVeryFirstItem && hasVeryLastItem)
+            return null;
+
+        if (hasBeforeOrAfter && isLoadingBefore && hasVeryFirstItem)
+            return null;
+
+        if (hasBeforeOrAfter && !isLoadingBefore && hasVeryLastItem)
+            return null;
+
+        var totalItemCount = tiles.Sum(tile => tile.Items.Count);
+        if (totalItemCount > LoadLimit / 2)
+            return null; // Stop loading if we have enough items
+
+        // Expand load limits and reset tiles if we need to load more just to fulfill one side
+        var expandedLoadBefore = hasVeryFirstItem || dataQuery.LoadBefore < dataQuery.LoadAfter
+            ? dataQuery.LoadBefore
+            : Math.Max(dataQuery.LoadBefore * 4, LoadLimit) + 1; // Load before should be greater than load after if both are zero
+        var expandedLoadAfter = hasVeryLastItem || dataQuery.LoadAfter < dataQuery.LoadBefore
+            ? dataQuery.LoadAfter
+            : Math.Max(dataQuery.LoadAfter * 4, LoadLimit);
+        return new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
+            HasVeryFirstItem = hasVeryFirstItem,
+            HasVeryLastItem = hasVeryLastItem,
+        };
+    }
 
     // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
@@ -335,6 +339,28 @@ public partial class ChatUI
                 (m is ChatEntryMessage && !idRange.Contains(m.Id))
                 || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation.EntryRange).IsEmpty));
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
+    }
+
+    private (int, int) GetLoadedBeforeAndAfterCounts(ChatDataQuery dataQuery, List<VirtualListTile<ChatMessage>> tiles)
+    {
+        var before = 0;
+        var after = 0;
+        foreach (var tile in tiles) {
+            if (tile.Items.Count == 0)
+                continue;
+
+            var startId = tile.Items[0].Id;
+            var endId = tile.Items[^1].Id;
+            var tileRange = new Range<long>(startId, endId);
+            if (dataQuery.IdRange.Contains(tileRange))
+                continue;
+
+            if (startId < dataQuery.IdRange.Start)
+                before += tile.Items.Count(item => item.Id < dataQuery.IdRange.Start);
+            if (endId > dataQuery.IdRange.End)
+                after += tile.Items.Count(item => item.Id > dataQuery.IdRange.End);
+        }
+        return (before, after);
     }
 
     private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)

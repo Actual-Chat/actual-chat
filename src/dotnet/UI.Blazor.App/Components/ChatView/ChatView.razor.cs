@@ -38,8 +38,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private Dispatcher Dispatcher => Hub.Dispatcher;
     private CancellationToken DisposeToken { get; }
 
-    [field: AllowNull, MaybeNull]
+    [field: AllowNull] [field: MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
+
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     public IState<ReadPosition> ReadPosition => _readPosition;
@@ -48,13 +49,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter] [EditorRequired]
+    public ChatId ChatId { get; set; } = ChatId.None;
+
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     public ChatView(ChatUIHub hub)
     {
         Hub = hub;
-        _disposeTokenSource = new ();
+        _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
     }
 
@@ -188,7 +191,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var lastItemVisibility = ItemVisibility.Value;
         var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
-        if (itemVisibility.IsIdenticalTo(lastItemVisibility) && !ReferenceEquals(lastItemVisibility, ChatViewItemVisibility.Empty))
+        if (itemVisibility.IsIdenticalTo(lastItemVisibility)
+            && !ReferenceEquals(lastItemVisibility, ChatViewItemVisibility.Empty))
             return;
 
         _itemVisibility.Value = itemVisibility;
@@ -319,13 +323,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var mustScrollToEntry = nav != null && !ItemVisibility.Value.IsFullyVisible(nav.EntryLid);
         Computed<Range<long>> cChatIdRange;
-        using (Computed.BeginIsolation()) {
+        using (Computed.BeginIsolation())
             cChatIdRange = await Computed.Capture(
                 () => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken),
                 cancellationToken);
-        }
         var chatIdRange = cChatIdRange.Value;
-        var dataQuery = GetChatDataQuery(query, renderedData, nav, chatIdRange, _itemVisibility.Value);
+        var dataQuery = GetChatDataQuery(query,
+            renderedData,
+            nav,
+            chatIdRange,
+            _itemVisibility.Value);
+        var originalLoadBefore = dataQuery.LoadBefore;
+        var originalLoadAfter = dataQuery.LoadAfter;
         var hasVeryFirstItem = dataQuery.HasVeryFirstItem;
         var hasVeryLastItem = dataQuery.HasVeryLastItem;
         var hasAllItems = hasVeryFirstItem && hasVeryLastItem;
@@ -346,6 +355,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return VirtualListData<ChatMessage>.None;
 
         var tiles = await ChatUI.GetTiles(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
+        var itemCount = tiles.Sum(t => t.Items.Count);
+        var isQueryFulfilled = query.ExpectedCount > itemCount / 2;
+        var isLoadLimitReached = itemCount / 2 >= ChatUI.LoadLimit;
         if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -360,15 +372,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     ItemVisibilityState = ItemVisibility.Value,
                 };
         }
-        else if (query.ExpectedCount > tiles.Sum(t => t.Items.Count) / 2 && !hasAllItems) {
-            var startOffset = (int)(query.MoveRange.Start - ChatUI.SecondTileSize);
-            var endOffset = (int)(query.MoveRange.End + ChatUI.SecondTileSize);
-            var extendedQuery = new VirtualListDataQuery(query.KeyRange, query.VirtualRange, new Range<int>(startOffset, endOffset)) {
-                ExpectedCount = query.ExpectedCount,
-            };
-            return await ((IVirtualListDataSource<ChatMessage>)this)
-                .GetData(extendedQuery, renderedData, cancellationToken)
+        else if (((query.IsNone && !isLoadLimitReached) || (!query.IsNone && !isQueryFulfilled)) && !hasAllItems) {
+            // We need to load more data to fulfill the query
+            var expandedDataQuery = await ChatUI
+                .ExpandDataQuery(chatId,
+                    dataQuery,
+                    originalLoadBefore,
+                    originalLoadAfter,
+                    tiles,
+                    cancellationToken)
                 .ConfigureAwait(false);
+            if (expandedDataQuery != null) {
+                dataQuery = expandedDataQuery;
+                goto rebuildTiles;
+            }
         }
 
         if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(tiles, ref readEntryLid)) {
@@ -382,11 +399,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             navEntryId = tiles
                 .SkipWhile(t => t.Items[^1].Id < nav.EntryLid)
                 .SelectMany(t => t.Items)
-                .FirstOrDefault(x => x.Id == nav.EntryLid && !x.IsReplacement)?.Id;
+                .FirstOrDefault(x => x.Id == nav.EntryLid && !x.IsReplacement)
+                ?.Id;
             if (navEntryId == null)
                 Log.LogWarning("GetData: entry not found in the loaded set: #{EntryLid}", nav.EntryLid);
             else if (nav.MustHighlight)
-                ChatUI.HighlightEntry(new ChatEntryId(chatId, ChatEntryKind.Text, navEntryId.Value, AssumeValid.Option), navigate: false);
+                ChatUI.HighlightEntry(new ChatEntryId(chatId, ChatEntryKind.Text, navEntryId.Value, AssumeValid.Option),
+                    false);
         }
         if (tiles.Count != 0) {
             if (tiles[0].Items.Count != 0)
@@ -428,7 +447,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // No query, no data -> initial load
             (false, false) => new Range<long>(
                 secondLayer.GetTile(chatIdRange.End - ChatUI.LoadLimit).Start,
-                secondLayer.GetTile(chatIdRangeEndPlus).End).IntersectWith(new Range<long>(chatIdRange.Start, long.MaxValue)),
+                secondLayer.GetTile(chatIdRangeEndPlus).End).IntersectWith(new Range<long>(chatIdRange.Start,
+                long.MaxValue)),
 
             // No query, but there is old data + we know visible items
             // KEEP THIS case, otherwise virtual list will grow indefinitely!
