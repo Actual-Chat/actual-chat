@@ -14,6 +14,12 @@ public interface ITranslationsBackend : IComputeService, IBackendService
 
     [CommandHandler]
     Task<Translation?> OnTranslate(TranslationsBackend_Translate command, CancellationToken cancellationToken);
+
+    [EventHandler]
+    Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
+
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

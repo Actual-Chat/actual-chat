@@ -14,4 +14,11 @@ public static class FilePathExt
             && !pathValue.OrdinalStartsWith(@"..\")
             && !relativePath.IsRooted;
     }
+
+    public static FilePath RequireFileExists(this FilePath path, [CallerArgumentExpression(nameof(path))] string name = "")
+    {
+        if (!File.Exists(path))
+            throw StandardError.NotFound<FilePath>($"{name} '{path}' does not exist.");
+        return path;
+    }
 }

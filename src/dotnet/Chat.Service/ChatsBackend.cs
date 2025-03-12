@@ -61,10 +61,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
-    [field: AllowNull, MaybeNull]
-    private Translator Translator => field ??= Services.GetRequiredService<Translator>();
-    [field: AllowNull, MaybeNull]
-    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -596,6 +592,29 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return dbEntries
             .Select(x => x.ToModel())
             .ToApiArray();
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<ApiArray<ChatEntry>> ListEntriesForLanguageDetection(
+        ChatId chatId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbEntries = await dbContext.ChatEntries
+            .Where(x => x.ChatId == chatId.Value
+                && x.Kind == ChatEntryKind.Text
+                && !x.IsSystemEntry
+                && !x.IsRemoved
+                && string.IsNullOrEmpty(x.Languages)
+                && !string.IsNullOrEmpty(x.Content))
+            .OrderBy(x => x.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbEntries.Select(x => x.ToModel()).ToApiArray();
     }
 
     // [CommandHandler]
@@ -1877,21 +1896,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (!wasContentChanged)
             return entry with {
                 LinkPreviewIds = existing?.LinkPreviewIds ?? [],
-                Languages = existing?.Languages ?? [],
                 Content = existing?.Content ?? "",
             };
 
         // Inject mention names into the markup
         var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
-        var contentTask = chatMarkupHub.PrepareForSave(entry, cancellationToken).AsTask();
-        // TODO: detect in flow or somewhere else in background
-        var languagesTask = Settings.IsTranslationEnabled
-            ? Translator.TryDetectLanguages(entry, Settings.EntryLanguageDetectionTimeout, cancellationToken)
-            : Task.FromResult(entry.Languages);
-        await Task.WhenAll(contentTask, languagesTask).ConfigureAwait(false);
         return entry with {
-            Content = await contentTask.ConfigureAwait(false),
-            Languages = await languagesTask.ConfigureAwait(false),
+            Content = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false),
             LinkPreviewIds = MarkupParser.ExtractLinkPreviewIds(entry),
         };
     }

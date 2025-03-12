@@ -97,7 +97,7 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 29), MemoryPackOrder(29)] public Symbol LinkPreviewId { get; init; } = "";
     [DataMember(Order = 31), MemoryPackOrder(31)] public ApiArray<Symbol> LinkPreviewIds { get; init; }
     [DataMember(Order = 30), MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
-    [DataMember(Order = 53), MemoryPackOrder(53)] public ApiArray<Language> Languages { get; init; }
+    [DataMember(Order = 33), MemoryPackOrder(33)] public ApiArray<Language> Languages { get; init; }
 
     // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }

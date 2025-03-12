@@ -371,6 +371,8 @@ MA0004.report = Always        # Always report missing ConfigureAwait whatever th
 
 dotnet_code_quality_unused_parameters = non_public # IDE0060: Remove unused parameter
 dotnet_diagnostic.ide0032.severity = silent # Use auto properties
+dotnet_diagnostic.ide0058.severity = silent # IDE0058: Expression value is never used
+
 dotnet_diagnostic.vsthrd200.severity = silent # VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type. (misses with DisposeAsyncCore)
 dotnet_diagnostic.ide1006.severity = none
 dotnet_diagnostic.rcs1001.severity = none # RCS1001: Add braces (when expression spans over multiple lines)

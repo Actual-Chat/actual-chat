@@ -1,4 +1,5 @@
 using ActualChat.Chat.Module;
+using ActualChat.Integrations.Anthropic;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -17,37 +18,31 @@ public class Translator(IServiceProvider services) : IHasServices
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     [field: AllowNull, MaybeNull]
+    private LanguageDetectionSerializer Serializer => field ??= Services.GetRequiredService<LanguageDetectionSerializer>();
+    [field: AllowNull, MaybeNull]
+    private IPromptUtils PromptUtils => field ??= Services.GetRequiredService<IPromptUtils>();
+    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private string DetectLanguagesPrompt => field ??= File.ReadAllText(Settings.DetectLanguagesPromptFile);
+    [field: AllowNull, MaybeNull]
+    private string TranslatePromptTemplate => field ??= File.ReadAllText(Settings.TranslatePromptFile);
 
-    public async Task<ApiArray<Language>> DetectLanguages(string text, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ApiArray<Language>>> DetectLanguages(IReadOnlyList<string> texts, CancellationToken cancellationToken)
     {
         if (!Settings.IsTranslationEnabled)
             return [];
 
-        var languages = await DetectAllLanguages().ConfigureAwait(false);
-        if (languages.IsEmpty)
-            languages = await DetectSingleLanguage().ConfigureAwait(false);
-        return languages;
-
-        async Task<ApiArray<Language>> DetectAllLanguages()
-        {
-            try {
-                var content = await Ask(Settings.DetectAllLanguagesPrompt, text, cancellationToken).ConfigureAwait(false);
-                content = content.OrdinalIgnoreCaseReplace("```json", "").OrdinalReplace("```", "");
-                return JsonSerializer.Deserialize<ApiArray<Language>>(content);
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Could not detect languages");
-                return [];
-            }
+        try {
+            var requestXml = Serializer.SerializeRequest(texts);
+            var content = await Ask(DetectLanguagesPrompt, requestXml, cancellationToken).ConfigureAwait(false);
+            content = content.OrdinalIgnoreCaseReplace("```xml", "").OrdinalReplace("```", "");
+            return Serializer.DeserializeResponse(content, texts.Count);
         }
-
-        async Task<ApiArray<Language>> DetectSingleLanguage()
+        catch (Exception e)
         {
-            var content = await Ask(Settings.DetectSingleLanguagePrompt, text, cancellationToken)
-                .Catch("", Log, LogLevel.Warning, "Could not detect even a single language")
-                .ConfigureAwait(false);
-            return Language.TryParse(content.Trim(), out var language) && !language.IsNone ? [language] : [];
+            Log.LogWarning(e, "Could not detect languages in bulk");
+            return [.. Enumerable.Repeat(ApiArray.Empty<Language>(), texts.Count)];
         }
     }
 
@@ -56,12 +51,12 @@ public class Translator(IServiceProvider services) : IHasServices
         if (!Settings.IsTranslationEnabled)
             return Task.FromResult(text);
 
-        return Ask(string.Format(Settings.TranslatePromptFormat, targetLanguage), text, cancellationToken);
+        var prompt = PromptUtils.BuildPrompt(TranslatePromptTemplate, ("TargetLanguage", targetLanguage));
+        return Ask(prompt, text, cancellationToken);
     }
 
     private async Task<string> Ask(string instruction, string text, CancellationToken cancellationToken)
     {
-        instruction = instruction.Trim().EnsureSuffix(":");
         var history = new ChatHistory([
             // new(AuthorRole.System, instruction),
             new (AuthorRole.User, text),
@@ -69,7 +64,7 @@ public class Translator(IServiceProvider services) : IHasServices
         var response = await ChatCompletionService
             .GetChatMessageContentAsync(history, new OpenAIPromptExecutionSettings {
                 Temperature = 0,
-                ChatSystemPrompt = instruction,
+                ChatSystemPrompt = instruction.Trim().EnsureSuffix(":"),
             }, Kernel, cancellationToken)
             .ConfigureAwait(false);
         return response.Content ?? "";

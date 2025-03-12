@@ -14,7 +14,6 @@ internal class MasterFlowStarter(IServiceProvider services)
     [field: AllowNull, MaybeNull]
     private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
 
-
     protected override Task OnStart(CancellationToken cancellationToken)
     {
         var shardKeyResolver = ShardKeyResolvers.Get<FlowId>(typeof(MasterFlowStarter));

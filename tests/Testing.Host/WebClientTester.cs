@@ -23,6 +23,7 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     IAuthorsBackend AuthorsBackend { get; }
     IAccountsBackend AccountsBackend { get; }
     IChats Chats { get; }
+    ITranslations Translations { get; }
     IPlaces Places { get; }
     ISearch Search { get; }
     IAuthBackend AuthBackend { get; }
@@ -59,6 +60,8 @@ public class WebClientTester : IWebClientTester
     public IAccountsBackend AccountsBackend => field ??= AppServices.GetRequiredService<IAccountsBackend>();
     [field: AllowNull, MaybeNull]
     public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
+    [field: AllowNull, MaybeNull]
+    public ITranslations Translations => field ??= AppServices.GetRequiredService<ITranslations>();
     [field: AllowNull, MaybeNull]
     public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
     [field: AllowNull, MaybeNull]

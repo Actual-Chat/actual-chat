@@ -63,6 +63,7 @@ public static class ShardKeyResolvers
         Register<ContactId>(static x => ForString(x.OwnerId.Value));
         Register<NotificationId>(static x => ForString(x.UserId.Value));
         Register<MediaId>(static x => ForString(x.Value));
+        Register<TranslationId>(static x => ForString(x.ChatEntryId.ChatId.Value));
 
         // Classes
         Register<string>(ForString); // Todo: likely, we should get rid of this kind of shard key

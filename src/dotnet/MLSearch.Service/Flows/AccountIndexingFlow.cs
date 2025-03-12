@@ -13,7 +13,7 @@ namespace ActualChat.MLSearch.Flows;
 public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, UserId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 2;
-    protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
+    protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
     [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
     [field: AllowNull, MaybeNull]

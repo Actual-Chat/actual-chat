@@ -1,8 +1,10 @@
 using System.Net;
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Flows;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.Integrations.Anthropic;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore;
@@ -67,16 +69,30 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // The services below are used only when this module operates in non-client mode
 
-        if (Settings.IsTranslationEnabled)
+        if (Settings.IsTranslationEnabled) {
+            Settings.DetectLanguagesPromptFile.RequireFileExists();
+            Settings.TranslatePromptFile.RequireFileExists();
+
+            var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler {
+                InnerHandler = new HttpClientHandler {
+                    Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
+                    UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
+                },
+            });
             services.AddKernel()
                 .AddOpenAIChatCompletion(Settings.OpenAIChatModel,
                     Settings.OpenAIApiKey,
-                    httpClient: new HttpClient(new HttpClientHandler {
-                        Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
-                        UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
-                    }),
+                    httpClient: httpClient,
                     serviceId: Translator.ServiceKey);
+        }
         services.AddSingleton<Translator>();
+        services.AddSingleton<LanguageDetectionSerializer>();
+        services.AddAnthropicServices();
+
+        // Flows
+        services.AddFlows()
+            .Add<LanguageDetectionFlow>()
+            .Add<LanguageDetectionMasterFlow>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

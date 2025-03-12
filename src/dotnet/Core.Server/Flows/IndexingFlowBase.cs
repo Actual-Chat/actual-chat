@@ -55,7 +55,6 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
             Event.MarkHandled();
             return default;
         }
-            // return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt, "Waiting for reindex");
 
         LastRunAt = Clocks.SystemClock.Now;
         var (mustEnd, isTailReached, updatedCursor, processedCount) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
