@@ -34,6 +34,15 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
         ExtractorState = null;
     }
 
+    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+    {
+        var chat = await ChatsBackend.Get(ChatId,  cancellationToken).ConfigureAwait(false);
+        if (chat!.IsSummarized ?? false) // Only process summarized chats
+            return await base.OnBeforeFirstIndexAfterReset(cancellationToken);
+
+        return false;
+    }
+
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)

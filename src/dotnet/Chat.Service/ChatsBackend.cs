@@ -1697,8 +1697,24 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         if ((chat.IsSummarized ?? false) && oldChat?.IsSummarized == false)
-            await Flows.StartOrReset<ConversationSplitFlow>(chat.Id, null, "OnChatChangedEvent", cancellationToken).ConfigureAwait(false);
+            await Flows.StartOrReset<ConversationSplitFlow>(chat.Id, null, nameof(OnChatChangedEvent), cancellationToken).ConfigureAwait(false);
+    }
 
+    // [EventHandler]
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (entry, _, kind, _) = eventCommand;
+        var chat = await Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return;
+
+        if (chat.IsSummarized == false || kind == ChangeKind.Remove)
+            return;
+
+        await Flows.StartOrReset<ConversationSplitFlow>(chat.Id, null, nameof(OnTextEntryChangedEvent), cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods
