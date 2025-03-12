@@ -32,6 +32,8 @@ public class BlazorTester : TestContext, IWebTester
     [field: AllowNull, MaybeNull]
     public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
+    public ITranslations Translations => field ??= AppServices.GetRequiredService<ITranslations>();
+    [field: AllowNull, MaybeNull]
     public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
     [field: AllowNull, MaybeNull]
     public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();

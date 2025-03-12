@@ -82,6 +82,11 @@ public interface IChatsBackend : IComputeService, IBackendService
         Moment from,
         CancellationToken cancellationToken);
 
+    Task<ApiArray<ChatEntry>> ListEntriesForLanguageDetection(
+        ChatId chatId,
+        int limit,
+        CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken);
 

@@ -12,7 +12,7 @@ namespace ActualChat.MLSearch.Flows;
 public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, ChatId>, IMasterFlow
 {
     protected override int CurrentFlowSetVersion => 1;
-    protected override TimeSpan RecheckInterval => Host.Services.GetRequiredService<MLSearchSettings>().IndexingTailRecheckInterval;
+    protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
     [field: AllowNull, MaybeNull]
     private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
     [field: AllowNull, MaybeNull]

@@ -20,7 +20,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     [field: AllowNull, MaybeNull]
     private Translator Translator => field ??= Tester.AppServices.GetRequiredService<Translator>();
 
-    [Theory(Skip = "Skip until usage minimized")] // TODO(FC): Decrease usage
+    [Theory]
     [InlineData("ru",
         ComplexText,
         """
@@ -65,51 +65,112 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         Out.WriteLine($"Translated text:\n {translated}");
 
         // assert
-        ShouldBeSimilar(translated, expected, minSimilarity);
+        TextAssert.ShouldBeSimilar(translated, expected, minSimilarity);
     }
 
-    [Theory] // TODO(FC): Decrease usage
-    [InlineData(ComplexText, "en")]
-    [InlineData("Hello! Привет! Bonjour!", "en", "ru", "fr")]
-    [InlineData("```")]
-    [InlineData("````123```")]
-    [InlineData("123")]
-    [InlineData("0xDEADBEEF")]
-    public async Task ShouldDetectLanguages(string text, params string[] expected)
+    [Fact]
+    public async Task ShouldDetectLanguages()
     {
         if (TestRunnerInfo.IsBuildAgent())
             return; // only for local runs for now
 
         // arrange
-        const int runCount = 3;
-        const int minSuccessCount = 3;
+        (string Text, Language[] ExpectedLanguages)[] texts = [
+            (ComplexText, [Languages.English]),
+            ("Hello! Привет! Bonjour!", [Languages.English, Languages.Russian, Languages.French]),
+            ("hello", [Languages.English]),
+            ("привет", [Languages.Russian]),
+            ("```", [Language.None]),
+            ("````123```", [Language.None]),
+            ("123", [Language.None]),
+            ("0xDEADBEEF", [Language.None]),
+            ("Hello! @#$%^&*()_+", [Languages.English]),
+        ];
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10).Debuggable());
         var cancellationToken = cts.Token;
 
         // act
-        var results = await Enumerable.Range(1, runCount).Select(_ => Translator.DetectLanguages(text, cancellationToken)).Collect(cancellationToken);
+        var languages = await Translator.DetectLanguages([..texts.Select(x => x.Text)], cancellationToken);
 
         // assert
-        if (expected.Length > 0) {
-            var stats = results.SelectMany(x => x).GroupBy(x => x).ToDictionary(x => x.Key, x => x.Count());
-            foreach (var language in expected)
-                stats.GetValueOrDefault(language).Should().BeGreaterThanOrEqualTo(minSuccessCount, $"{language}");
+        for (var i = 0; i < texts.Length; i++) {
+            var expectedLanguages = texts[i].ExpectedLanguages;
+            languages[i].Should().BeEquivalentTo(expectedLanguages, "for text: <<<{0}>>>", texts[i].Text);
         }
-        else
-            results.Where(x => x.IsEmpty).Should().HaveCountGreaterThanOrEqualTo(minSuccessCount);
     }
 
-    private void ShouldBeSimilar(string translatedText, string expectedText, double minSimilarity)
+    [Fact]
+    public async Task ShouldDetectLanguagesForManyEntries()
     {
-        var translatedWords = SplitIntoWords(translatedText);
-        var expectedWords = SplitIntoWords(expectedText);
-        var intersectingWords = expectedWords.Intersect(expectedWords, StringComparer.OrdinalIgnoreCase).ToHashSet();
-        var similarity = (double)intersectingWords.Count / Math.Max(translatedWords.Count, expectedWords.Count);
-        similarity.Should().BeGreaterThanOrEqualTo(minSimilarity);
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // only for local runs for now
 
-        HashSet<string> SplitIntoWords(string text)
-            => text.Split([' ', ',', '!', '.', ':', '-'],
-                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .ToHashSet();
+        // arrange
+        (string Text, Language[] ExpectedLanguages)[] texts = [
+            ("hello", [Languages.English]),
+            ("До скорых.", [Languages.Russian]),
+            ("Попытка", [Languages.Russian]),
+            ("hello", [Languages.English]),
+            ("привет", [Languages.Russian]),
+            ("hello", [Languages.English]),
+            ("hello", [Languages.English]),
+            ("привет", [Languages.Russian]),
+            ("What do you think about this unsat language?", [Languages.English]),
+            ("Развод.", [Languages.Russian]),
+            ("Probably that from there. Probably.", [Languages.English]),
+            ("hello", [Languages.English]),
+            ("I don't mind.", [Languages.English]),
+            ("I'm a Google guy right now.", [Languages.English]),
+            ("Нет, мы не били.", [Languages.Russian]),
+            ("bonjour", [Languages.French]),
+            ("или не надо", [Languages.Russian]),
+            ("Давай попробуем", [Languages.Russian]),
+            ("Раз два три, 4 раз два, три, 4, 5", [Languages.Russian]),
+            ("Развод Мы тестируем где мы тестируем.", [Languages.Russian]),
+            ("Joseph.", [Languages.English]),
+            ("Merhaba", [Languages.Turkish]),
+            ("Если что-нибудь попробую.", [Languages.Russian]),
+            ("Я хочу что-нибудь попробовать катать.", [Languages.Russian]),
+            ("Вязи хочу наговорить большой текст, чтобы у нас было понятно, какой текст транскрипируется, и Какой Что хранит VLOST Transcript?", [Languages.Russian]),
+            ("Guten Tag.", [Languages.German]),
+            ("Разворачиваем.", [Languages.Russian]),
+            ("Давай.", [Languages.Russian]),
+            ("Нет не серьёзно.", [Languages.Russian]),
+            ("А так попробуй распо. Распознать", [Languages.Russian]),
+            ("Попробуем", [Languages.Russian]),
+            ("Я помнишь, как саголикон и ты тоже их майко.", [Languages.Russian]),
+            ("parle français.", [Languages.French]),
+            ("Hi.", [Languages.English]),
+            ("The meta balance Good.", [Languages.English]),
+            ("Но я моё!", [Languages.Russian]),
+            ("Серьезно?", [Languages.Russian]),
+            ("давай переводи", [Languages.Russian]),
+            ("Что за хренотал?", [Languages.Russian]),
+            ("Привет. Я должен осознать язык, точнее взять из конструкции то есть.", [Languages.Russian]),
+            ("Я говорю", [Languages.Russian]),
+            ("1 I don't mind this.", [Languages.English]),
+            ("Я снова попробую наговорить текст. Я сейчас буду наговаривать текст.", [Languages.Russian]),
+            ("Давай.", [Languages.Russian]),
+            ("Одного.", [Languages.Russian]),
+            ("Good and tag. Our feeder is in.", [Languages.English]),
+            ("Мы тестируем дипграмму.", [Languages.Russian]),
+            ("Пробуем записывать.", [Languages.Russian]),
+            ("Аминь, айпидок! А.", [Languages.Russian]),
+            ("Раз, два, три.", [Languages.Russian]),
+            ("Так, ну как это давай попробуем. Потерять язык, который мы получили с транскрипцией. И сохранение Отключенный транскриптил.", [Languages.Russian]),
+            ("Еще что-нибудь попробую специально.", [Languages.Russian])
+        ];
+
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30).Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var languages = await Translator.DetectLanguages([..texts.Select(x => x.Text)], cancellationToken);
+
+        // assert
+        for (var i = 0; i < texts.Length; i++) {
+            var expectedLanguages = texts[i].ExpectedLanguages;
+            languages[i].Should().BeEquivalentTo(expectedLanguages, "for text: <<<{0}>>>", texts[i].Text);
+        }
     }
 }

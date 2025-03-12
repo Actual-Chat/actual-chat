@@ -1,6 +1,8 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Flows;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
+using ActualChat.Flows;
 using ActualChat.Mesh;
 using ActualChat.Queues;
 using ActualLab.Fusion.EntityFramework;
@@ -19,6 +21,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IMeshLocks TranslationLocks => field ??= Services.MeshLocks<ChatDbContext>().WithKeyPrefix(nameof(TranslationLocks));
     [field: AllowNull, MaybeNull]
     private IQueues Queues => field ??= Services.Queues();
+    [field: AllowNull, MaybeNull]
+    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
@@ -116,6 +120,56 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             translation = translation with { Content = translatedText, SourceContentHash = entry.ContentHash };
             var cmd = new TranslationsBackend_Change(id, translation.Version, Change.Upsert(translation));
             return await Commander.Call(cmd, cancellationToken1).ConfigureAwait(false);
+        }
+    }
+
+    // Event handlers
+
+    // [EventHandler]
+    public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        if (!Settings.IsTranslationEnabled)
+            return;
+
+        var (chat, _, changeKind) = eventCommand;
+        await StartLanguageDetection().ConfigureAwait(false);
+        return;
+
+        Task StartLanguageDetection()
+        {
+            if (!Settings.IsTranslationEnabled)
+                return Task.CompletedTask;
+
+            return chat.Id.IsPlaceRootChat || changeKind != ChangeKind.Create
+                ? Task.CompletedTask
+                : Flows.GetOrStart<LanguageDetectionFlow>(chat.Id, cancellationToken);
+        }
+    }
+
+    // [EventHandler]
+    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
+
+        var entry = eventCommand.Entry;
+        return UpdateIndexedEntries();
+
+        Task UpdateIndexedEntries()
+        {
+            if (!Settings.IsTranslationEnabled)
+                return Task.CompletedTask;
+
+            return entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text
+                ? Task.CompletedTask
+                : Flows.GetAndResume<LanguageDetectionFlow>(entry.ChatId,
+                    Settings.LanguageDetectionDelay /* skip if any run since now */,
+                    "TextEntryChanged",
+                    Settings.LanguageDetectionDelay,
+                    cancellationToken);
         }
     }
 

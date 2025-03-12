@@ -173,6 +173,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
             builder.HasIndex(nameof(ChatId), nameof(Version), nameof(LocalId))
                 .HasFilter($"kind = {(byte)ChatEntryKind.Text}");
+            builder.HasIndex(nameof(ChatId))
+                .HasFilter($"kind = {(byte)ChatEntryKind.Text} and not is_system_entry and not is_removed and languages is not null and languages != '' and  content != ''");
         }
     }
 }

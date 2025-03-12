@@ -4,7 +4,7 @@ public record PromptTemplate(string Template, string FormatString, string[] Vari
 
 public interface IPromptUtils
 {
-    string BuildPrompt(string promptTemplate, IDictionary<string, string> variables);
+    string BuildPrompt(string promptTemplate, IReadOnlyDictionary<string, string> variables);
     string GetXmlTagValue(string text, string tagName);
 }
 
@@ -12,7 +12,7 @@ internal sealed class PromptUtils : IPromptUtils
 {
     private readonly Dictionary<string, PromptTemplate> _promptTemplates = new (StringComparer.Ordinal);
 
-    public string BuildPrompt(string promptTemplate, IDictionary<string, string> variables)
+    public string BuildPrompt(string promptTemplate, IReadOnlyDictionary<string, string> variables)
     {
         var template = GetPromptTemplate(promptTemplate);
         var variableValues = new object[template.Variables.Length];
