@@ -30,12 +30,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
     [field: AllowNull, MaybeNull]
     private IPromptUtils PromptUtils => field ??= services.GetRequiredService<IPromptUtils>();
     [field: AllowNull, MaybeNull]
-    private IAuthorNameRetriever AuthorNameRetriever => field ??= services.GetRequiredService<IAuthorNameRetriever>();
-    [field: AllowNull, MaybeNull]
     private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
-
-    // [field: AllowNull, MaybeNull]
-    // private ChatSettings Settings => field ??= services.GetRequiredService<ChatSettings>();
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
@@ -43,25 +38,13 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         IReadOnlyCollection<TextEntry> chatEntries,
         CancellationToken cancellationToken)
     {
-        var authorIds = chatEntries.Select(c => c.AuthorId)
-            .Distinct()
-            .ToArray();
-        var authors = await authorIds
-            .Select(c => AuthorNameRetriever.GetAuthorName(c))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-
-         var authorList = authors.SkipNullItems().Select(c => c).Order(StringComparer.Ordinal).ToCommaPhrase();
          var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
-
          var prompt = PromptUtils.BuildPrompt(
             PromptTemplate,
             new Dictionary<string, string>(StringComparer.Ordinal) {
-                { "AUTHORS", authorList.Substring(0, Math.Min(authorList.Length, 1_000)) },
                 { "DISCUSSION", discussion.Substring(0, Math.Min(discussion.Length, 100_000)) },
             });
-
-        string? reply = "";
+        string? reply;
         try {
             reply = await Ask(prompt, cancellationToken).ConfigureAwait(false);
         }
@@ -130,13 +113,14 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
 
     private const string PromptTemplate =
         """
-        Summarize following text discussion of several people ({{AUTHORS}}) in several sentences.
+        Summarize following text discussion of several people in several sentences.
         Specify what topics have been discussed and key moments.
         Who made commitments and what commitments are.
         Additionally:
 
         Provide a title that reflects the essence of the discussion.
-        Give a brief description of the discussion (1-2 sentences).
+        Give a brief description of the discussion (3-4 sentences).
+        Provide a summary as list of points with using markdown.
         Provide all results in the language of the discussion.
         Present your final decision in the following xml format:
 
@@ -165,7 +149,7 @@ public record ConversationSummarizerResult
 
     public ConversationSummarizerResult(Exception exception, TimeSpan? postpone)
     {
-        Exception = Exception;
+        Exception = exception;
         Postpone = postpone;
     }
 
