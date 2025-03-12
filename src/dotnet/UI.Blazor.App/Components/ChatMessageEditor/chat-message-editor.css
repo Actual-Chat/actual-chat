@@ -391,6 +391,13 @@ body.narrow .attachment-item > .c-file .c-extension {
     @apply hidden;
 }
 
+.attachment-item .blurred-plug {
+    filter: blur(2px);
+}
+.narrow-panel .attachment-item .spinner-icon-wrapper {
+    @apply w-8 h-8;
+}
+
 .remove-attachment-btn.btn .btn-content {
     @apply justify-center;
 }
@@ -412,7 +419,8 @@ body.narrow .narrow-panel .attachment-filename {
 .attachment-upload-progress {
     @apply h-[5px];
     @apply bg-05;
-    @apply rounded-md;
+    @apply rounded-full;
+    @apply overflow-hidden;
     transition: all 150ms ease-in-out;
 }
 .narrow-panel .attachment-upload-progress {

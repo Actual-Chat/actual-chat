@@ -144,7 +144,8 @@ swiper-slide img {
     transition: filter 300ms ease-in-out, -webkit-filter 300ms ease-in-out;
 }
 .video-wrapper .video-control.hide-control {
-    @apply hidden;
+    @apply z-minus;
+    filter: opacity(0);
 }
 .video-wrapper .video-control {
     filter: opacity(1);
@@ -213,13 +214,15 @@ swiper-slide img {
     @apply w-full h-5;
 }
 .video-wrapper .video-control progress {
+    @apply relative;
     @apply flex-1;
     @apply w-full h-1;
     @apply rounded-full;
     @apply cursor-pointer;
+    --data-media-loaded: 0px;
 }
 .video-wrapper .video-control progress[value]::-webkit-progress-bar {
-    @apply bg-[var(--gray-50)];
+    @apply bg-[var(--gray-30)];
     @apply rounded-full;
 }
 .video-wrapper .video-control progress[value]::-webkit-progress-value {
@@ -230,6 +233,15 @@ swiper-slide img {
     @apply flex-none flex-x items-center justify-end gap-x-1;
     @apply w-32;
     @apply text-caption-1;
+}
+
+.video-wrapper .video-control progress:before {
+    @apply content-empty;
+    @apply absolute z-10 left-0;
+    @apply h-full;
+    @apply rounded-full;
+    @apply bg-[var(--white-50)];
+    width: var(--data-media-loaded);
 }
 
 .media-preview-swiper {

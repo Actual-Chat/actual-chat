@@ -43,7 +43,7 @@
             var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
             var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualResolution.Y);
             @if (attachment.IsSupportedImage()) {
-                <swiper-slide lazy="true">
+                <swiper-slide lazy="true" lazyPreloaderClass="hidden">
                     <div class="swiper-zoom-container image-container">
                         <img src="@url"
                              alt=""
