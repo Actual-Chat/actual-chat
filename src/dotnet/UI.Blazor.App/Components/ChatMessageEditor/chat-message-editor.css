@@ -313,6 +313,12 @@ body.narrow .attachment-wrapper {
     @apply p-0;
     @apply bg-post-panel;
 }
+body.narrow .chat-message-editor:not(.narrow-panel) .attachment-wrapper:has(.c-file) {
+    @apply -mt-px;
+    border-left: 1px solid var(--background-01);
+    border-right: 1px solid var(--background-01);
+    border-top: 1px solid var(--background-01);
+}
 .attachment-wrapper.last-element {
     @apply flex items-center justify-center;
     @apply min-w-34;
