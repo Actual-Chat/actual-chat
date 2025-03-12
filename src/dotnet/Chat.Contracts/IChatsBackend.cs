@@ -132,6 +132,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
