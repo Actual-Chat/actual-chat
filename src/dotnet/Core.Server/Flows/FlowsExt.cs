@@ -50,6 +50,22 @@ public static class FlowsExt
                 cancellationToken)
             .ConfigureAwait(false);
 
+    public static async Task<TFlow?> GetAndResume<TFlow>(
+        this IFlows flows,
+        string arguments,
+        string? tag = null,
+        Moment? delayUntil = null,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => (TFlow?) await flows.GetAndSendEvent(typeof(TFlow),
+            arguments,
+            (id, now) => new FlowResumeEvent(id,
+                false,
+                tag,
+                null,
+                delayUntil),
+            cancellationToken);
+
     public static Task<Flow?> GetAndResume(
         this IFlows flows,
         Type flowType,
