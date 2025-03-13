@@ -9,16 +9,17 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 {
     [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
-    private IChats Chats => Tester.Chats;
     private ITranslations Translations => Tester.Translations;
 
     [Theory]
-    [InlineData("Hi! How are you?", "en")]
-    [InlineData("Привет! Как дела?", "ru")]
-    [InlineData("Merhaba! Nasılsın?", "tr")]
-    [InlineData("Hola, cómo estás?", "es")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", "en,ru,tr,es")]
-    public async Task ShouldDetectLanguageOnInsert(string text, string sExpectedLanguages)
+    [InlineData("Hi! How are you?", 1, "en")]
+    [InlineData("Hi! How are you?", 50, "en")]
+    [InlineData("Привет! Как дела?", 1, "ru")]
+    [InlineData("Привет! Как дела?", 50, "ru")]
+    [InlineData("Merhaba! Nasılsın?", 1, "tr")]
+    [InlineData("Hola, cómo estás?", 50, "es")]
+    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 1, "en,ru,tr,es")]
+    public async Task ShouldDetectLanguageOnInsert(string text, int entryCount, string sExpectedLanguages)
     {
         if (TestRunnerInfo.IsBuildAgent())
             return; // only for local runs for now
@@ -28,20 +29,25 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         var (chatId, _) = await Tester.CreateChat(false, "translation lab");
 
         // act
-        var entry = await Tester.CreateTextEntry(chatId, text);
-        entry.Content.Should().Be(text);
+        var entries = await CreateEntries(chatId, text, entryCount);
 
         // assert
-        await WhenDetected(entry.Id, sExpectedLanguages);
+        await entries.Select(x => WhenDetected(x.Id, sExpectedLanguages)).Collect();
     }
 
     [Theory]
-    [InlineData("Hi! How are you?", "en")]
-    [InlineData("Привет! Как дела?", "ru")]
-    [InlineData("Merhaba! Nasılsın?", "tr")]
-    [InlineData("Hola, cómo estás?", "es")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", "en,ru,tr,es")]
-    public async Task ShouldDetectLanguageOnUpdate(string updatedText, string sExpectedLanguages)
+    [InlineData("Hi! How are you?", 1, "en")]
+    [InlineData("Hi! How are you?", 50, "en")]
+    [InlineData("Привет! Как дела?", 1, "ru")]
+    [InlineData("Привет! Как дела?", 50, "ru")]
+    [InlineData("Merhaba! Nasılsın?", 1, "tr")]
+    [InlineData("Merhaba! Nasılsın?", 50, "tr")]
+    [InlineData("Hola, cómo estás?", 1, "es")]
+    [InlineData("Hola, cómo estás?", 50, "es")]
+    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 1, "en,ru,tr,es")]
+    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 10, "en,ru,tr,es")]
+    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
+    public async Task ShouldDetectLanguageOnUpdate(string updatedText, int entryCount, string sExpectedLanguages)
     {
         if (TestRunnerInfo.IsBuildAgent())
             return; // only for local runs for now
@@ -51,11 +57,11 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         var (chatId, _) = await Tester.CreateChat(false, "translation lab");
 
         // act
-        var entry = await Tester.CreateTextEntry(chatId, "Some text");
-        await Tester.UpdateTextEntry(entry.Id, updatedText);
+        var entries = await CreateEntries(chatId, "some text", entryCount);
+        var updatedEntries = await UpdateEntries(updatedText, entries);
 
         // assert
-        await WhenDetected(entry.Id, sExpectedLanguages);
+        await updatedEntries.Select(x => WhenDetected(x.Id, sExpectedLanguages)).Collect();
     }
 
     [Theory]
@@ -85,14 +91,25 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             TimeSpan.FromSeconds(10));
     }
 
-    private Task<ApiArray<Language>> WhenDetected(ChatEntryId entryId, string sExpectedLanguages)
+    private async Task<ChatEntry[]> CreateEntries(ChatId chatId, string text, int entryCount)
+    {
+        var entries = await Enumerable.Repeat(0, entryCount)
+            .Select(async _ => await Tester.CreateTextEntry(chatId, text).ConfigureAwait(false))
+            .Collect(2);
+        return entries;
+    }
+
+    private Task<ChatEntry[]> UpdateEntries(string updatedText, ChatEntry[] entries)
+        => entries.Select(x => Tester.UpdateTextEntry(x.Id, updatedText)).Collect(2);
+
+    private Task<ApiArray<Language>> WhenDetected(ChatEntryId id, string sExpectedLanguages, TimeSpan? timeout = null)
     {
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
         return ComputedTest.When(async ct => {
-                var retrievedEntry = await Chats.GetEntry(Tester.Session, entryId, ct).Require();
-                retrievedEntry.Languages.Should().BeEquivalentTo(expectedLanguages);
-                return retrievedEntry.Languages;
+                var language = await Translations.GetLanguage(Tester.Session, id, ct).Require();
+                language.Languages.Should().BeEquivalentTo(expectedLanguages, "for #{0}", id);
+                return language.Languages;
             },
-            TimeSpan.FromSeconds(10));
+            timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(30)));
     }
 }

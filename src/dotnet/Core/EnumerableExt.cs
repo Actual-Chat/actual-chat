@@ -161,6 +161,12 @@ public static class EnumerableExt
         return arrays.SelectMany(x => x).ToList();
     }
 
+    public static async Task<List<T>> Flatten<T>(this Task<IReadOnlyList<T>[]> task)
+    {
+        var arrays = await task.ConfigureAwait(false);
+        return arrays.SelectMany(x => x).ToList();
+    }
+
     private static IEnumerable<T> ShuffleIterator<T>(this IEnumerable<T> source, Random random)
     {
         var buffer = source.ToList();

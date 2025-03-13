@@ -18,31 +18,35 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
         IndexingFlowCursor<TId>? cursor,
         CancellationToken cancellationToken)
     {
+        var sw = Stopwatch.StartNew();
         var batches = ListBatches(cursor, cancellationToken).ConfigureAwait(false);
         var batchCount = 0;
         var totalCount = 0;
         await foreach (var (batch, newCursor) in batches) {
+            var batchSw = Stopwatch.StartNew();
             await ProcessBatch(batch, cancellationToken).ConfigureAwait(false);
             var first = batch[0];
             var last = batch[^1];
             DebugLog?.LogDebug(
-                "`{Id}`.Process: processed batch: {Count} items, first=(#{FirstId},v{FirstIdVersion}), last=(#{LastId},v{LastIdVersion})",
+                "`{Id}`.Process: processed batch: {Count} items, first=(#{FirstId},v{FirstIdVersion}), last=(#{LastId},v{LastIdVersion})). {Elapsed}",
                 Id,
                 batch.Count,
                 first.Id,
                 first.Version,
                 last.Id,
-                last.Version);
+                last.Version,
+                batchSw.Elapsed);
             cursor = newCursor;
             batchCount++;
             totalCount += batch.Count;
         }
 
-        Log.LogInformation("`{Id}`.Process: Completed {TotalCount} items in {BatchCount} batches. New cursor: {Cursor}",
+        Log.LogInformation("`{Id}`.Process: Completed {TotalCount} items in {BatchCount} batches. {Elapsed}. New cursor: {Cursor}",
             Id,
             totalCount,
             batchCount,
-            cursor);
+            cursor,
+            sw.Elapsed);
         return new (false, totalCount < Quota, cursor, totalCount);
     }
 

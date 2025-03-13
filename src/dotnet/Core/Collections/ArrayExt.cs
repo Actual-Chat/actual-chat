@@ -51,8 +51,5 @@ public static class ArrayExt
         => (first, second, third, fourth, (fifth, rest)) = array;
 
     public static async Task<ApiArray<T>> ToApiArray<T>(this Task<T[]> arrayTask)
-    {
-        var array = await arrayTask.ConfigureAwait(false);
-        return new ApiArray<T>(array);
-    }
+        => new (await arrayTask.ConfigureAwait(false));
 }

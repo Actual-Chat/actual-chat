@@ -97,7 +97,6 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 29), MemoryPackOrder(29)] public Symbol LinkPreviewId { get; init; } = "";
     [DataMember(Order = 31), MemoryPackOrder(31)] public ApiArray<Symbol> LinkPreviewIds { get; init; }
     [DataMember(Order = 30), MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
-    [DataMember(Order = 33), MemoryPackOrder(33)] public ApiArray<Language> Languages { get; init; }
 
     // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }
@@ -163,7 +162,6 @@ public sealed partial record ChatEntryDiff() : RecordDiff
     [Obsolete("2024.11 Replaced with LinkPreviewIds")]
     [DataMember, MemoryPackOrder(29)] public Symbol? LinkPreviewId { get; init; }
     [DataMember, MemoryPackOrder(30)] public LinkPreviewMode? LinkPreviewMode { get; init; }
-    [DataMember, MemoryPackOrder(31)] public ApiArray<Language>? Languages { get; init; }
     [DataMember, MemoryPackOrder(50)] public ApiArray<TextEntryAttachment>? Attachments { get; init; }
 
     public ChatEntryDiff(ChatEntry entry) : this()

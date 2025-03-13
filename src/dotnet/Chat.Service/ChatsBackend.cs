@@ -599,29 +599,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToApiArray();
     }
 
-    // Not a [ComputeMethod]!
-    public async Task<ApiArray<ChatEntry>> ListEntriesForLanguageDetection(
-        ChatId chatId,
-        int limit,
-        CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbEntries = await dbContext.ChatEntries
-            .Where(x => x.ChatId == chatId.Value
-                && x.Kind == ChatEntryKind.Text
-                && !x.IsSystemEntry
-                && !x.IsRemoved
-                && string.IsNullOrEmpty(x.Languages)
-                && !string.IsNullOrEmpty(x.Content))
-            .OrderBy(x => x.Id)
-            .Take(limit)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbEntries.Select(x => x.ToModel()).ToApiArray();
-    }
-
     // [CommandHandler]
     public virtual async Task<Chat> OnChange(
         ChatsBackend_Change command,

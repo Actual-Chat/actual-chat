@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250313171935_ExtractChatEntryLanguage")]
+    partial class ExtractChatEntryLanguage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -150,10 +153,6 @@ namespace ActualChat.Chat.Migrations
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
                         .HasColumnName("is_public");
-
-                    b.Property<bool?>("IsSummarized")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_summarized");
 
                     b.Property<bool>("IsTemplate")
                         .HasColumnType("boolean")
@@ -535,76 +534,6 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_chat_roulettes_profile_id1_profile_id2");
 
                     b.ToTable("chat_roulettes");
-                });
-
-            modelBuilder.Entity("ActualChat.Chat.Db.DbConversation", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<string>("AuthorIds")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("author_ids")
-                        .UseCollation("C");
-
-                    b.Property<string>("ChatId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("chat_id");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("description")
-                        .UseCollation("C");
-
-                    b.Property<long>("EndEntryLid")
-                        .HasColumnType("bigint")
-                        .HasColumnName("end_entry_lid");
-
-                    b.Property<DateTime>("EndsAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("ends_at");
-
-                    b.Property<int>("MessageCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("message_count");
-
-                    b.Property<long>("StartEntryLid")
-                        .HasColumnType("bigint")
-                        .HasColumnName("start_entry_lid");
-
-                    b.Property<DateTime>("StartsAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("starts_at");
-
-                    b.Property<string>("Summary")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("summary")
-                        .UseCollation("C");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("title")
-                        .UseCollation("C");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_conversations");
-
-                    b.HasIndex("Version")
-                        .HasDatabaseName("ix_conversations_version");
-
-                    b.ToTable("conversations");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbMention", b =>

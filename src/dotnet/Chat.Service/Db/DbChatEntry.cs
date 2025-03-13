@@ -64,7 +64,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public ChatEntryKind Kind { get; set; }
     public string Content { get; set; } = "";
     public string ContentHash { get; set; } = "";
-    public string? Languages { get; set; }
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
     public string? LinkPreviewIds { get; set; }
@@ -114,7 +113,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             LinkPreview = linkPreviews.FirstOrDefault(),
  #pragma warning restore CS0618 // Type or member is obsolete
             LinkPreviews = linkPreviews,
-            Languages = !Languages.IsNullOrEmpty() ? JsonSerializer.Deserialize<ApiArray<Language>>(Languages) : [],
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null
                     ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
@@ -159,7 +157,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ContentHash = model.SystemEntry != null ? HashString.None : model.Content.Hash().Blake3().ToBlake3Base64HashString();
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewIds = !model.LinkPreviewIds.IsEmpty ? JsonSerializer.Serialize(model.LinkPreviewIds) : null;
-        Languages = !model.Languages.IsEmpty ? JsonSerializer.Serialize(model.Languages) : null;
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)
             : null;
@@ -173,8 +170,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
             builder.HasIndex(nameof(ChatId), nameof(Version), nameof(LocalId))
                 .HasFilter($"kind = {(byte)ChatEntryKind.Text}");
-            builder.HasIndex(nameof(ChatId))
-                .HasFilter($"kind = {(byte)ChatEntryKind.Text} and not is_system_entry and not is_removed and languages is not null and languages != '' and  content != ''");
         }
     }
 }

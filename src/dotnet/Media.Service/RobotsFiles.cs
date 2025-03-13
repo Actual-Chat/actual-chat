@@ -32,7 +32,7 @@ public class RobotsFiles(
         var baseUri = uri.ToBase();
         robotsFile = await RobotsParser
             .FromUriAsync(new (baseUri, "/robots.txt"), RobotsFileAccessRules.LikeGoogle, cancellationToken)
-            .Catch(() => RobotsFile.AllowAllRobots(baseUri), log, LogLevel.Warning, "Failed to fetch robots for {BaseUri}", baseUri)
+            .Catch(_ => RobotsFile.AllowAllRobots(baseUri), log, LogLevel.Warning, "Failed to fetch robots for {BaseUri}", baseUri)
             .ConfigureAwait(false);
         _robotsByDomain.TryAdd(host, robotsFile);
         DebugLog?.LogInformation("Retrieved RobotsFile for '{Host}'", baseUri);

@@ -278,7 +278,6 @@ public partial class StreamingBackend
                         AudioEntryLid = audioEntry?.LocalId,
                         BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                         RepliedEntryLid = repliedEntryLid,
-                        Languages = transcript.Languages,
                     }));
                 textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
                 DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
@@ -303,16 +302,27 @@ public partial class StreamingBackend
                         EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
                         TimeMap = audioEntry != null
                             ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
-                            : default,
-                        Languages = lastTranscript.Languages,
+                            : default
                     });
 
                 var command = new ChatsBackend_ChangeEntry(
                     textEntry.Id,
                     null, // do not perform version check there - it might have already been changed and it's OK
                     change);
-                await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+                var saveEntryTask = Commander.Call(command, true, CancellationToken.None);
+                var saveLanguagesTask = change.Kind is ChangeKind.Remove
+                    ? Task.CompletedTask
+                    : SaveLanguages(lastTranscript.Languages);
+                await Task.WhenAll(saveEntryTask, saveLanguagesTask).ConfigureAwait(false);
             }
+        }
+        return;
+
+        Task SaveLanguages(ApiArray<Language> languages)
+        {
+            var entryLanguage = new ChatEntryLanguage(textEntry.Id) { Languages = languages, };
+            var cmd = ChatEntryLanguagesBackend_BulkChange.Upserts(entryLanguage);
+            return Commander.Call(cmd, true, CancellationToken.None);
         }
     }
 }
