@@ -59,8 +59,14 @@ public partial class ConversationSplitFlow: BatchedIndexingFlowBase<ChatEntry, C
         var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
         var last = batch[^1];
         var entryBeginsAt = last.BeginsAt;
-        if (entryBeginsAt > immatureMoment)
+        if (entryBeginsAt > immatureMoment) {
             batch = batch.TakeWhile(e => e.BeginsAt <= immatureMoment).ToList();
+            await Host.Flows.GetAndResume<ConversationSplitFlow>(ChatId,
+                    "ScheduleSummarize",
+                    entryBeginsAt + Settings.ChatEntrySummarizationDelay,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         Log.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with cursor={Cursor}", Id, batch.Count,cursor);
         return batch;
