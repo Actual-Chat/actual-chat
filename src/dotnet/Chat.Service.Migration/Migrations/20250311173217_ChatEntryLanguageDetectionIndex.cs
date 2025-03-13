@@ -10,10 +10,6 @@ namespace ActualChat.Chat.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "ix_chat_entries_chat_id",
-                table: "chat_entries");
-
             migrationBuilder.CreateIndex(
                 name: "ix_chat_entries_chat_id",
                 table: "chat_entries",
@@ -27,12 +23,6 @@ namespace ActualChat.Chat.Migrations
             migrationBuilder.DropIndex(
                 name: "ix_chat_entries_chat_id",
                 table: "chat_entries");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_chat_entries_chat_id",
-                table: "chat_entries",
-                column: "chat_id",
-                filter: "kind = 0 and not is_system_entry and languages is not null and languages != '' and  content != ''");
         }
     }
 }
