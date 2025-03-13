@@ -12,8 +12,8 @@ public partial class ChatUI
     public static readonly int SecondTileSize = (int)IdTileStack.Layers[1].TileSize; // 20
     private IImmutableSet<ConversationId> LastExpandedConversations { get; set; } = ImmutableHashSet<ConversationId>.Empty;
 
-    public int HalfLoadLimit => (int)(BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2); // 20 for mobile
-    public int LoadLimit => (int)(BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4); // 40 for mobile
+    public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
+    public int LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
 
     public async Task<List<VirtualListTile<ChatMessage>>> GetTiles(
         ChatId chatId,
@@ -26,23 +26,28 @@ public partial class ChatUI
         if (chat == null)
             return [];
 
-        var expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
-        var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
-            .Where(cid => dataQuery.IdRange.Contains(cid.StartEntryLid)) // Only consider conversations that are in the current data query range
-            .ToList();
-        LastExpandedConversations = expandedConversations;
-        if (changedExpand.Count > 0) {
-            // Adjust data query to load tiles around expanded conversation entries
-            var minConversationId = changedExpand.OrderBy(cid => cid.StartEntryLid).FirstOrDefault();
-            var isExpanded = expandedConversations.Contains(minConversationId);
-            var minEntryLid = changedExpand.Select(cid => cid.StartEntryLid).Min();
-            var minEntryRange = IdTileStack.Layers[1].GetTile(minEntryLid).Range;
-            var loadBefore = isExpanded ? 0 : HalfLoadLimit + SecondTileSize;
-            var loadAfter = isExpanded ? HalfLoadLimit : HalfLoadLimit + SecondTileSize;
-            var keyRange = isExpanded
-                ? new Range<long>(dataQuery.IdRange.Start, minEntryRange.End)
-                : new  Range<long>(minEntryRange.Start, dataQuery.IdRange.End);
-            dataQuery = new ChatDataQuery(keyRange, loadBefore, loadAfter);
+        var showConversations = chat.IsSummarized ?? false;
+        IImmutableSet<ConversationId> expandedConversations = ImmutableHashSet<ConversationId>.Empty;
+        if (showConversations) {
+            expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
+            var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
+                .Where(cid => dataQuery.IdRange.Contains(cid
+                    .StartEntryLid)) // Only consider conversations that are in the current data query range
+                .ToList();
+            LastExpandedConversations = expandedConversations;
+            if (changedExpand.Count > 0) {
+                // Adjust data query to load tiles around expanded conversation entries
+                var minConversationId = changedExpand.OrderBy(cid => cid.StartEntryLid).FirstOrDefault();
+                var isExpanded = expandedConversations.Contains(minConversationId);
+                var minEntryLid = changedExpand.Select(cid => cid.StartEntryLid).Min();
+                var minEntryRange = IdTileStack.Layers[1].GetTile(minEntryLid).Range;
+                var loadBefore = isExpanded ? 0 : HalfLoadLimit + SecondTileSize;
+                var loadAfter = isExpanded ? HalfLoadLimit : HalfLoadLimit + SecondTileSize;
+                var keyRange = isExpanded
+                    ? new Range<long>(dataQuery.IdRange.Start, minEntryRange.End)
+                    : new Range<long>(minEntryRange.Start, dataQuery.IdRange.End);
+                dataQuery = new ChatDataQuery(keyRange, loadBefore, loadAfter);
+            }
         }
 
         var originalLoadBefore = dataQuery.LoadBefore;
@@ -62,6 +67,7 @@ public partial class ChatUI
                         chatId,
                         chat.Rules.Author?.Id ?? AuthorId.None,
                         idTile.Range,
+                        showConversations,
                         expandedConversations,
                         prevMessage,
                         lastReadEntryLid,
@@ -169,6 +175,7 @@ public partial class ChatUI
         ChatId chatId,
         AuthorId currentAuthorId,
         Range<long> idRange,
+        bool showConversations,
         IImmutableSet<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
         long lastReadEntryId,
@@ -181,15 +188,21 @@ public partial class ChatUI
         var requestedIdRange = prevMessage == null
             ? idRange.MoveStart(-IdTileStack.FirstLayer.TileSize) // to request previous item of requested range to properly render block star - we will drop it off
             : idRange;
-        var conversationIdTile = ConversationTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
-        var conversationTile = await Conversations.GetTile(Session, chatId, conversationIdTile.Range, cancellationToken).ConfigureAwait(false);
-        var conversations = conversationTile.Items
-            .Where(c => !c.EntryRange.IntersectWith(requestedIdRange).IsEmpty)
-            .ToList();
-        var idRangesToSkip = conversations
-            .Where(c => !expandedConversations.Contains(c.Id))
-            .Select(c => c.EntryRange)
-            .ToList();
+        var idRangesToSkip = Array.Empty<Range<long>>();
+        var conversations = Array.Empty<Conversation>();
+        if (showConversations) {
+            var conversationIdTile = ConversationTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
+            var conversationTile = await Conversations
+                .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
+                .ConfigureAwait(false);
+            conversations = conversationTile.Items
+                .Where(c => !c.EntryRange.IntersectWith(requestedIdRange).IsEmpty)
+                .ToArray();
+            idRangesToSkip = conversations
+                .Where(c => !expandedConversations.Contains(c.Id))
+                .Select(c => c.EntryRange)
+                .ToArray();
+        }
         var entryIdTiles = IdTileStack.FirstLayer
             .GetCoveringTiles(requestedIdRange)
             .Where(t => !idRangesToSkip.Any(range => range.Contains(t.Range)))
@@ -203,7 +216,7 @@ public partial class ChatUI
             .SelectMany(t => t.Entries)
             .Where(e => !idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
             .ToList();
-        if (entries.Count == 0 && conversations.Count == 0)
+        if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(idRange);
 
         var showIndexDocId = await GetShowIndexDocId(chatId, cancellationToken).ConfigureAwait(false);
