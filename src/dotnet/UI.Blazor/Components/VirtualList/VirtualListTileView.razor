@@ -11,16 +11,16 @@
         ? "item anchor"
         : "item";
     @if (item.CountAs != 1) {
-        <li id="@item.Key"
-            @key="@item.RenderKey"
+        <li @key="@item.RenderKey"
             class="@itemCls"
+            data-key="@item.Key"
             data-count-as="@item.CountAs.Format()">
             @Item(item)
         </li>
     } else {
-        <li id="@item.Key"
-            @key="@item.RenderKey"
-            class="@itemCls">
+        <li @key="@item.RenderKey"
+            class="@itemCls"
+            data-key="@item.Key">
             @Item(item)
         </li>
     }

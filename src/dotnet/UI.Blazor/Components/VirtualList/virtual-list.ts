@@ -519,41 +519,6 @@ export class VirtualList {
         }
     };
 
-    private updateVisibleItems(): void {
-        const visibleItems = [...this.visibleItems];
-        for (const itemKey of visibleItems) {
-            const itemRef = this.getItemRef(itemKey);
-            if (!itemRef) {
-                this.visibleItems.delete(itemKey);
-                continue;
-            }
-
-            const isItemVisible = this.isItemPartiallyVisible(itemRef);
-            if (!isItemVisible)
-                this.visibleItems.delete(itemKey);
-        }
-        if (this.visibleItems.size == 0) {
-            const itemRefs = this.getAllItemRefs();
-            // find visible items
-            const visibilityStartIndex = binarySearch(itemRefs, itemRef => {
-                const itemRect = itemRef.getBoundingClientRect();
-                const viewRect = this.ref.getBoundingClientRect();
-                return itemRect.bottom >= viewRect.top;
-            });
-            const visibilityEndIndex = binarySearch(itemRefs, itemRef => {
-                const itemRect = itemRef.getBoundingClientRect();
-                const viewRect = this.ref.getBoundingClientRect();
-                return itemRect.top >= viewRect.bottom;
-            });
-            for (let i = visibilityStartIndex; i < visibilityEndIndex; i++) {
-                const itemRef = itemRefs[i];
-                const itemKey = getItemKey(itemRef);
-                if (itemKey)
-                    this.visibleItems.add(itemKey);
-            }
-        }
-    }
-
     private onSkeletonVisibilityChange = (
         entries: IntersectionObserverEntry[],
         _observer: IntersectionObserver): void => {
@@ -800,8 +765,6 @@ export class VirtualList {
         if (this.isDisposed || !this.renderState.keyRange.start)
             return;
 
-        await fastReadRaf();
-        this.updateVisibleItems();
         const visibleItems = [...this.visibleItems].sort(this.keySortCollator.compare);
         const isEndAnchorVisible = this.stickyEdge?.edge === VirtualListEdge.End;
         debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, isEndAnchorVisible);
@@ -967,8 +930,7 @@ export class VirtualList {
         if (key == null)
             return null;
 
-        // return this._containerRef.querySelector(`:scope > .item[data-key="${key}"]`);
-        return document.getElementById(key);
+        return this.containerRef.querySelector(`:scope > li.item[data-key="${key}"]`);
     }
 
     private getFirstItemRef(): HTMLElement | null {
@@ -1145,11 +1107,11 @@ export class VirtualList {
                     if (DeviceInfo.isIos) {
                         this.ref.style.overflowY = 'hidden';
                         // Hack for iOS to prevent blank screen on scroll
-                        window.scrollTo(0, 1);
+                        // window.scrollTo(0, 1);
                         setTimeout(() => {
                             this.ref.style.overflowY = 'scroll';
                             this.ref.scrollTop = scrollTop;
-                            window.scrollTo(0, 0);
+                            // window.scrollTo(0, 0);
                         }, 0);
                     }
                     else {
@@ -1548,15 +1510,14 @@ export class VirtualList {
 
 // Helper functions
 function getItemKey(itemRef?: HTMLElement): string | null {
-    // return itemRef?.dataset['key'];
-    return itemRef?.id;
+    return itemRef?.dataset?.key ?? null;
 }
 
 function getItemCountAs(itemRef?: HTMLElement): number {
     if (itemRef == null)
         return null;
 
-    const sCountAs = itemRef.dataset['countAs'];
+    const sCountAs = itemRef.dataset?.countAs ?? null;
     return sCountAs == null ? 1 : parseInt(sCountAs);
 }
 
