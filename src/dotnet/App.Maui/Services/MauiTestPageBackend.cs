@@ -9,4 +9,11 @@ public class MauiTestPageBackend : MauiTestPage.IMauiTestPageBackend
             MainThread.BeginInvokeOnMainThread(
                 () => throw StandardError.Internal("Simulated application crash!"));
         });
+
+    public void SimulateActivityDestroy()
+    {
+        #if ANDROID
+        MainActivity.Current.Finish();
+        #endif
+    }
 }
