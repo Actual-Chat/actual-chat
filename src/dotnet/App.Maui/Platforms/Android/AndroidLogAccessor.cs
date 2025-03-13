@@ -5,6 +5,7 @@ namespace ActualChat.App.Maui;
 
 public class AndroidLogAccessor : IMauiLogAccessor
 {
+    private const string LogcatCmd = "logcat";
     private readonly ILogger _log;
     private readonly string _downloadFolder = "";
 
@@ -39,30 +40,110 @@ public class AndroidLogAccessor : IMauiLogAccessor
         var filePath = Path.Combine(_downloadFolder, fileName);
         var age = TimeSpan.FromMinutes(30); // Get log for the last 30 minutes.
         var logStartThreshold = now.Add(age.Negate());
-        var dumped = await DumpLogToFile(filePath, logStartThreshold).ConfigureAwait(false);
-        // TODO(DF): add notification which opens log file
+        var pids = await ExtractPIDs(logStartThreshold).ConfigureAwait(false);
+        if (pids.Count == 0)
+            _log.LogWarning("No PIDs found in the log");
+        var pid = System.Environment.ProcessId;
+        if (!pids.Contains(pid))
+            pids.Add(pid);
+        var dumped = await DumpLogToFile(filePath, pids, logStartThreshold).ConfigureAwait(false);
         return dumped;
     }
 
-    private async Task<bool> DumpLogToFile(string filePath, DateTime logStartThreshold)
+    private async Task<ICollection<int>> ExtractPIDs(DateTime logStartThreshold)
     {
-        const string logcatCmd = "logcat";
-        Process? process = null;
-        string cmdArgs = "";
         var cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = cancellationTokenSource.Token;
         cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+        var tagFilter = MauiDiagnostics.LogTag;
+        var cmdArgs = "-v process -d"
+            + $" -T \"{logStartThreshold:MM-dd HH:mm:ss}.0\""
+            + $" {tagFilter}:I *:S";
+
+        var result = new HashSet<int>();
         try {
-            var pid = System.Environment.ProcessId;
-            var pidFilter = pid.ToString(CultureInfo.InvariantCulture);
-            var tagFilter = MauiDiagnostics.LogTag;
-            var bufferFilter = "--------- beginning of";
+            await ExecuteLogcat(
+                    cmdArgs,
+                    line => {
+                        // Log message format example:
+                        // I(17896) (0001-17896) [@trace] MauiApp.MauiProgram
+                        var index = line.IndexOf(')');
+                        if (index >= 0) {
+                            const int sPidStartIndex = 2;
+                            var sPid = line.Substring(sPidStartIndex, index - sPidStartIndex);
+                            if (int.TryParse(sPid, CultureInfo.InvariantCulture, out var pid))
+                                result.Add(pid);
+                        }
+                        return Task.CompletedTask;
+                    },
+                    _ => false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            _log.LogWarning(e,
+                "Failed to get process ids'. Executing command: '{Command} {Arguments}'",
+                LogcatCmd,
+                cmdArgs);
+        }
+        return result;
+    }
 
-            cmdArgs = "-v threadtime -d"
-                + $" -T \"{logStartThreshold:MM-dd HH:mm:ss}.0\"";
+    private async Task<bool> DumpLogToFile(string filePath, ICollection<int> pids, DateTime logStartThreshold)
+    {
+        var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
+        cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+        var pidFilters = pids.Select(c => c.ToString(CultureInfo.InvariantCulture));
+        var tagFilter = MauiDiagnostics.LogTag;
+        var bufferFilter = "--------- beginning of";
 
+        var cmdArgs = "-v threadtime -d"
+            + $" -T \"{logStartThreshold:MM-dd HH:mm:ss}.0\"";
+
+        try {
+            var outputFile = new StreamWriter(filePath);
+            await using var _ = outputFile.ConfigureAwait(false);
+            return await ExecuteLogcat(
+                    cmdArgs,
+                    async line => {
+                        var match = line.Contains(tagFilter)
+                            || line.StartsWith(bufferFilter, StringComparison.Ordinal);
+                        if (!match) {
+                            foreach (var pidFilter in pidFilters) {
+                                if (line.Contains(pidFilter)) {
+                                    match = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (match)
+                            await outputFile.WriteLineAsync(line).ConfigureAwait(false);
+                    },
+                    _ => false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            _log.LogWarning(e,
+                "Failed to dump logs to file '{FilePath}'. Executing command: '{Command} {Arguments}'",
+                Path.GetFileName(filePath),
+                LogcatCmd,
+                cmdArgs);
+            return false;
+        }
+    }
+
+    private async Task<bool> ExecuteLogcat(
+        string cmdArgs,
+        Func<string, Task> lineHandler,
+        Func<Exception, bool> exceptionHandler,
+        CancellationToken cancellationToken)
+    {
+        Process? process = null;
+        try {
             process = new Process {
-                StartInfo = new ProcessStartInfo(logcatCmd) {
+                StartInfo = new ProcessStartInfo(LogcatCmd) {
                     Arguments = cmdArgs,
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
@@ -70,22 +151,18 @@ public class AndroidLogAccessor : IMauiLogAccessor
             };
             process.Start();
             using var processOutput = process.StandardOutput;
-            var outputFile = new StreamWriter(filePath);
-            await using (outputFile.ConfigureAwait(false)) {
-                while (!processOutput.EndOfStream) {
-                    string? line = await processOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-                    if (line.IsNullOrEmpty())
-                        continue;
+            while (!processOutput.EndOfStream) {
+                string? line = await processOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                if (line.IsNullOrEmpty())
+                    continue;
 
-                    if (line.Contains(tagFilter) || line.Contains(pidFilter) || line.StartsWith(bufferFilter, StringComparison.Ordinal))
-                        await outputFile.WriteLineAsync(line).ConfigureAwait(false);
-                }
-                return true;
+                await lineHandler(line).ConfigureAwait(false);
             }
+            return true;
         }
         catch (Exception e) {
-            _log.LogWarning(e, "Failed to dump logs to file '{FilePath}'. Executing command: '{Command} {Arguments}'",
-                Path.GetFileName(filePath), logcatCmd, cmdArgs);
+            if (!exceptionHandler(e))
+                throw;
         }
         finally {
             if (process is { HasExited: false })
@@ -94,7 +171,7 @@ public class AndroidLogAccessor : IMauiLogAccessor
                 }
                 catch (Exception e2) {
                     _log.LogWarning(e2, "Failed to kill process. Executing command: '{Command} {Arguments}'",
-                        logcatCmd, cmdArgs);
+                        LogcatCmd, cmdArgs);
                 }
             process?.Close();
         }
