@@ -53,7 +53,7 @@ public static class FlowsExt
     public static async Task<TFlow?> GetAndResume<TFlow>(
         this IFlows flows,
         string arguments,
-        string? tag = null,
+        string tag,
         Moment? delayUntil = null,
         CancellationToken cancellationToken = default)
         where TFlow : Flow
