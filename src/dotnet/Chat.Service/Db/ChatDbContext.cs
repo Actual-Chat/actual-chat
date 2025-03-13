@@ -9,6 +9,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
 {
     public DbSet<DbChat> Chats { get; protected set; } = null!;
     public DbSet<DbChatEntry> ChatEntries { get; protected set; } = null!;
+    public DbSet<DbChatEntryLanguage> ChatEntryLanguages { get; protected set; } = null!;
     public DbSet<DbTranslation> Translations { get; protected set; } = null!;
     public DbSet<DbMention> Mentions { get; protected set; } = null!;
     public DbSet<DbReaction> Reactions { get; protected set; } = null!;
@@ -46,6 +47,12 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatEntry.Property(e => e.StreamId).UseCollation("C");
         chatEntry.Property(e => e.ForwardedAuthorId).UseCollation("C");
         chatEntry.Property(e => e.LinkPreviewIds).UseCollation("C");
+
+        var chatEntryLanguage = model.Entity<DbChatEntryLanguage>();
+        chatEntryLanguage.Property(e => e.Id).UseCollation("C");
+
+        var translation = model.Entity<DbTranslation>();
+        translation.Property(e => e.Id).UseCollation("C");
 
         var mention = model.Entity<DbMention>();
         mention.Property(e => e.Id).UseCollation("C");

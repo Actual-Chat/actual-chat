@@ -1,4 +1,3 @@
-using ActualChat.Hashing;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -9,17 +8,13 @@ public interface ITranslationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken);
 
+    // Command handlers
+
     [CommandHandler]
     Task<Translation?> OnChange(TranslationsBackend_Change command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Translation?> OnTranslate(TranslationsBackend_Translate command, CancellationToken cancellationToken);
-
-    [EventHandler]
-    Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
-
-    [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

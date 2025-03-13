@@ -92,7 +92,7 @@ public static class TaskExt
         LogLevel level,
         string message,
         params object[] args)
-        => task.Catch(() => defaultValue,
+        => task.Catch(_ => defaultValue,
             errorLog,
             level,
             message,
@@ -100,7 +100,7 @@ public static class TaskExt
 
     public static async Task<T> Catch<T>(
         this Task<T> task,
-        Func<T> defaultValueFactory,
+        Func<Exception, T> defaultValueFactory,
         ILogger errorLog,
         LogLevel level,
         string message,
@@ -111,7 +111,7 @@ public static class TaskExt
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             errorLog.Log(level, e, message, args);
-            return defaultValueFactory();
+            return defaultValueFactory(e);
         }
     }
 
@@ -134,7 +134,7 @@ public static class TaskExt
         ILogger errorLog,
         string message,
         params object[] args)
-        => task.Catch(() => defaultValue,
+        => task.Catch(_ => defaultValue,
             errorLog,
             LogLevel.Error,
             message,
@@ -142,7 +142,7 @@ public static class TaskExt
 
     public static async ValueTask<T> Catch<T>(
         this ValueTask<T> task,
-        Func<T> defaultValueFactory,
+        Func<Exception, T> defaultValueFactory,
         ILogger errorLog,
         LogLevel level,
         string message,
@@ -153,7 +153,7 @@ public static class TaskExt
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             errorLog.Log(level, e, message, args);
-            return defaultValueFactory();
+            return defaultValueFactory(e);
         }
     }
 

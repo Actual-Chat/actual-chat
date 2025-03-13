@@ -61,6 +61,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // Chat Roulette
         rpcHost.AddApiOrLocal<ITranslations, Translations>();
         rpcHost.AddBackend<ITranslationsBackend, TranslationsBackend>();
+        rpcHost.AddBackend<IChatEntryLanguagesBackend, ChatEntryLanguagesBackend>();
 
         // Conversations
         rpcHost.AddApiOrLocal<IConversations, Conversations>();
@@ -97,8 +98,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Flows
         services.AddFlows()
-            .Add<LanguageDetectionFlow>()
-            .Add<LanguageDetectionMasterFlow>();
+            .Add<LanguageDetectionFlow>();
 
         // Keyed registration for ConversationSplitFlow
         services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
@@ -139,9 +139,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             // DbChat
             db.AddEntityResolver<string, DbChat>();
 
-            // Translation
-            db.AddEntityResolver<string, DbTranslation>();
-
             // DbChatEntry
             db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
                 dbContext => dbContext.ChatEntries,
@@ -156,6 +153,12 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                     .Include(a => a.Roles)
                     .AsSplitQuery(),
             });
+
+            // Translation
+            db.AddEntityResolver<string, DbTranslation>();
+
+            // DbChatEntryLanguage
+            db.AddEntityResolver<string, DbChatEntryLanguage>();
 
             // DbRole
             db.AddShardLocalIdGenerator(dbContext => dbContext.Roles,
