@@ -46,6 +46,7 @@ namespace ActualChat.App.Maui;
 public partial class MainActivity : MauiAppCompatActivity
 {
     private static volatile MainActivity? _current;
+    private static volatile bool _isFirstTime = true;
 
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
@@ -65,29 +66,24 @@ public partial class MainActivity : MauiAppCompatActivity
 
         BlazorWebViewApp.EnsureStarted();
 
-        var isLoaded = false;
         Interlocked.Exchange(ref _current, this);
-        if (TryGetScopedServices(out var scopedServices)) {
-            var loadingUI = scopedServices.GetRequiredService<LoadingUI>();
-            isLoaded = loadingUI.WhenLoaded.IsCompleted;
-            // If app is sent to background with back button
-            // and user brings it back to foreground by launching app icon or picking app from recents,
-            // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
-            // MainActivity is created again, BlazorWebView and MauiBlazorApp also created also,
-            // But the new instance of MauiBlazorApp uses same service provider and some services
-            // are initialized again.
-            // As a result, splash screen is getting hidden early and user sees index.html w/o any content yet.
-            // TODO: to think how we can gracefully handle this partial recreation.
-        }
-
-        Log.LogInformation("OnCreate. IsLoaded={IsLoaded}", isLoaded);
+        // If app is sent to background with back button
+        // and user brings it back to foreground by launching app icon or picking app from recents,
+        // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
+        // MainActivity is created again, BlazorWebView and MauiBlazorApp also created also,
+        // But the new instance of MauiBlazorApp uses same service provider and some services
+        // are initialized again.
+        // As a result, splash screen is getting hidden early and user sees index.html w/o any content yet.
+        // TODO: to think how we can gracefully handle this partial recreation.
+        Log.LogInformation("OnCreate: isFirstTime={IsFirstTime}", _isFirstTime);
+        _isFirstTime = false;
 
         // ReSharper disable once ExplicitCallerInfoArgument
         using(Tracer.Region("Calling base.OnCreate"))
             base.OnCreate(Bundle.Empty);
 
         // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
-        // background color to make it looks like web splash screen covers entire screen.
+        // background color to make it look like web splash screen covers the entire screen.
         AndroidThemeHandler.SetNavigationBarColor(MauiSettings.SplashBackgroundColor);
 
         // Attempt to have notification reception even after app is swiped out.

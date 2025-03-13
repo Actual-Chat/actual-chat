@@ -1,4 +1,5 @@
 @page "/test/maui"
+@using ActualChat.Hosting
 
 <RequireAccount MustBeAdmin="true"/>
 <h2>MAUI Test Page</h2>
@@ -8,15 +9,22 @@
 
 <div>
     <Button Click="OnSimulateAppCrashClicked">Simulate App crash</Button>
+    @if (Hub.HostInfo().AppKind == AppKind.Android) {
+        <Button Click="OnSimulateActivityDestroyClicked">Simulate Activity Destroy</Button>
+    }
 </div>
 
 @code {
-    [Inject] private IServiceProvider Services { get; set; } = null!;
+    [Inject] private UIHub Hub { get; set; } = null!;
 
     private void OnSimulateAppCrashClicked()
-        => Services.GetService<IMauiTestPageBackend>()?.SimulateAppCrash();
+        => Hub.GetService<IMauiTestPageBackend>()?.SimulateAppCrash();
+
+    private void OnSimulateActivityDestroyClicked()
+        => Hub.GetService<IMauiTestPageBackend>()?.SimulateActivityDestroy();
 
     public interface IMauiTestPageBackend {
         void SimulateAppCrash();
+        void SimulateActivityDestroy();
     }
 }

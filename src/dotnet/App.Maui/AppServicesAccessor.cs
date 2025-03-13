@@ -27,7 +27,6 @@ public class AppServicesAccessor
         => _log ??= StaticLog.Factory.CreateLogger<AppServicesAccessor>();
 
     public static IServiceProvider BlazorAppServices {
-        get => _scopedServicesInfo?.Services ?? throw Errors.NotInitialized(nameof(BlazorAppServices));
         set {
             lock (AppServicesLock) {
                 if (value == null)
@@ -35,14 +34,8 @@ public class AppServicesAccessor
                 if (ReferenceEquals(_scopedServicesInfo?.Services, value))
                     return;
 
-                if (_scopedServicesInfo != null) {
-                    var contextTracker = _scopedServicesInfo.ContextTracker;
-                    _blazorAppServicesSource.TrySetCanceled();
-                    _blazorAppServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
-                    _scopedServicesInfo = null;
-                    Log.LogInformation("Active BlazorAppServices are discarded ({Reason})", "BlazorAppServices.set");
-                    contextTracker.OnDiscardingActiveBlazorAppServices();
-                }
+                if (_scopedServicesInfo is not null)
+                    DiscardBlazorAppServices(_scopedServicesInfo.Services, "BlazorAppServices.set");
 
                 var tracker = value.GetRequiredService<MauiWebViewPageContextTracker>();
                 _scopedServicesInfo = new ScopeServicesInfo(value, tracker);
@@ -52,6 +45,25 @@ public class AppServicesAccessor
                 Log.LogDebug("BlazorAppServices ready");
             }
         }
+    }
+
+    public static void DiscardBlazorAppServices(IServiceProvider serviceProvider, string reason)
+    {
+        Log.LogDebug("-> DiscardBlazorAppServices");
+        lock (AppServicesLock) {
+            if (_scopedServicesInfo == null)
+                return;
+
+            if (!ReferenceEquals(_scopedServicesInfo.Services, serviceProvider))
+                return;
+
+            var contextTracker = _scopedServicesInfo.ContextTracker;
+            _blazorAppServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
+            _scopedServicesInfo = null;
+            Log.LogInformation("Active BlazorAppServices are discarded ({Reason})", reason);
+            contextTracker.OnDiscardingActiveBlazorAppServices();
+        }
+        Log.LogDebug("-> DiscardBlazorAppServices");
     }
 
     public static bool TryGetScopedServices([NotNullWhen(true)] out IServiceProvider? scopedServices)

@@ -107,6 +107,7 @@ public sealed partial class MauiWebView
             }
 
             ScopedServices = null;
+            AppServicesAccessor.DiscardBlazorAppServices(scopedServices, "MauiWebView.ResetScopedServices");
         }
     }
 
