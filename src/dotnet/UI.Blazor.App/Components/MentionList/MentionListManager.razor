@@ -2,17 +2,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <CascadingValue TValue="MentionListManager" Value="@this" IsFixed="true">
-    <div class="mention-list-manager">
+    <div class="mention-list-manager @_cls">
         <MentionList @ref="ListRef"/>
-    </div>
-    <div class="editor-separator">
-        <div class="c-separator"></div>
     </div>
     @ChildContent
 </CascadingValue>
 
 
 @code {
+    private string _cls = "";
     [Inject] protected StateFactory StateFactory { get; init; } = null!;
 
     [Parameter, EditorRequired] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = null!;
@@ -27,12 +25,18 @@
 
     public void Show(string filter)
     {
-        if (ListRef != null)
+        if (ListRef != null) {
             ListRef.Filter.Value = filter;
+            _cls = "show-mention-list";
+            StateHasChanged();
+        }
     }
 
     public void Hide() {
-        if (ListRef != null)
+        if (ListRef != null) {
             ListRef.Filter.Value = null;
+            _cls = "";
+            StateHasChanged();
+        }
     }
 }

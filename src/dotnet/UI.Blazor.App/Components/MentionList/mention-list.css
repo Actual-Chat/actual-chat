@@ -1,47 +1,22 @@
 .mention-list-manager {
-    @apply absolute inset-x-0 top-0 z-10;
-    animation: show-manager 200ms linear forwards;
+    @apply absolute inset-x-0 top-0 z-0;
 }
-.mention-list-manager:has(.non-visible) {
-    @apply z-minus;
-    animation: hide-manager 200ms linear forwards;
+.mention-list-manager.show-mention-list {
+    @apply z-0 md:z-minus;
 }
 .mention-list-manager > div {
     @apply absolute inset-x-0 bottom-0;
-}
-@keyframes show-manager {
-    0%, 99% {
-        z-index: -1;
-    }
-    100% {
-        z-index: 10;
-    }
-}
-@keyframes hide-manager {
-    0%, 1% {
-        z-index: 10;
-    }
-    100% {
-        z-index: -1;
-    }
 }
 
 .mention-list {
     @apply flex-y;
     @apply max-h-40 md:max-h-64;
     @apply overflow-x-hidden overflow-y-auto;
-    @apply border-t-2 border-separator;
     @apply bg-01 text-03;
+    box-shadow: 0 -1px 0 1px var(--separator);
     filter: opacity(1);
     transform: translateY(0);
-    transition-duration: 200ms;
-    transition-property: filter, -webkit-filter, transform, display;
-    transition-timing-function: ease-in;
-    transition-behavior: allow-discrete;
-    @starting-style {
-        filter: opacity(0);
-        transform: translateY(100%);
-    }
+    animation: show-mention-list 400ms ease-in-out forwards;
 }
 body.narrow .mention-list {
     @apply border-post-panel;
@@ -55,6 +30,25 @@ body.narrow .narrow-panel .mention-list {
     filter: opacity(0);
     transform: translateY(100%);
 }
+@keyframes show-mention-list {
+    0% {
+        filter: opacity(0);
+        transform: translateY(100%);
+    }
+    70% {
+        filter: opacity(1);
+        transform: translateY(-1rem);
+    }
+    99% {
+        filter: opacity(1);
+        transform: translateY(0);
+    }
+    100% {
+        filter: opacity(1);
+        transform: translateY(0);
+    }
+}
+
 /* Firefox workaround: it somehow displays the border otherwise */
 .mention-list.non-visible {
     @apply border-y-0;
@@ -76,7 +70,4 @@ body.narrow .narrow-panel .mention-list {
     @apply flex-auto;
     @apply truncate;
     @apply text-headline-1;
-}
-.mention-list-manager:has(.mention-list.non-visible) + .editor-separator {
-    @apply hidden;
 }

@@ -256,6 +256,25 @@ body.wide .attachment-mode .post-panel-btn.post-message {
     @apply px-2;
     @apply bg-01;
     @apply border-y border-bg-02;
+    animation: show-attachment-list 400ms ease-in-out forwards;
+}
+@keyframes show-attachment-list {
+    0% {
+        filter: opacity(0);
+        height: auto;
+        transform: translateY(100%);
+    }
+    70% {
+        filter: opacity(0.5);
+        height: auto;
+        transform: translateY(-1rem);
+    }
+    100% {
+        filter: opacity(1);
+        height: auto;
+        transform: translateY(0);
+    }
+
 }
 body.narrow .attachment-list-wrapper {
     @apply border-none;
@@ -457,7 +476,7 @@ body.narrow .related-chat-entry-panel {
 .related-chat-entry-panel .related-chat-entry > .c-content {
     @apply flex-1 flex-x items-center gap-x-2;
     @apply max-w-full max-h-10 md:max-h-8;
-    @apply md:pr-4;
+    @apply md:pr-1;
 }
 .related-chat-entry-panel .related-chat-entry > .c-content > .c-icon {
     @apply flex justify-center;
@@ -471,6 +490,7 @@ body.narrow .related-chat-entry-panel {
     @apply flex-x;
 }
 .related-chat-entry-panel .related-chat-entry {
+    @apply p-2;
     @apply bg-related-chat-entry;
 }
 
@@ -485,6 +505,9 @@ body.wide .related-chat-entry-panel {
 }
 body.wide .related-chat-entry-panel:has(.related-chat-entry) {
     @apply flex;
+    @apply mx-3;
+    @apply rounded-lg;
+    @apply overflow-hidden;
     @apply opacity-100;
     @apply translate-y-0;
     @apply scale-100;
@@ -496,7 +519,7 @@ body.wide .related-chat-entry-panel:has(.related-chat-entry) {
 
 body.narrow .related-chat-entry-panel .related-chat-entry {
     @apply min-h-10;
-    @apply pl-1 pr-2;
+    @apply p-1;
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply bg-mobile-related-chat-entry;
@@ -553,11 +576,11 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply flex-1;
     @apply truncate;
     @apply text-sm md:text-base;
-    @apply text-02;
+    @apply text-03;
 }
 
 .rounded-sub-footer {
-    @apply absolute;
+    @apply absolute z-minus;
     @apply -top-8;
     @apply flex;
     @apply h-8 inset-x-0;

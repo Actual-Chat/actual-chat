@@ -12,10 +12,10 @@
 <input @ref="FilePickerRef" type="file" hidden multiple/>
 
 @if (_attachments.Count > 0) {
-    <div class="editor-separator">
-        <div class="c-separator"></div>
-    </div>
     <div class="attachment-list-wrapper">
+        <div class="editor-separator">
+            <div class="c-separator"></div>
+        </div>
         <div class="c-btn-group">
             <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
                 Remove all
