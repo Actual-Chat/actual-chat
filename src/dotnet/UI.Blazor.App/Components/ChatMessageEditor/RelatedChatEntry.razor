@@ -12,7 +12,7 @@
     @if (Kind == RelatedEntryKind.Reply) {
         <div class="c-content">
             <div class="c-icon">
-                <i class="icon-reply text-xl @colorCls"></i>
+                <i class="icon-reply text-2xl @colorCls"></i>
             </div>
             <div class="c-center">
                 <div class="c-author">
@@ -26,10 +26,10 @@
     } else {
         <div class="c-content">
             <div class="c-icon">
-                <i class="icon-edit text-2xl text-03"></i>
+                <i class="icon-edit text-2xl @colorCls"></i>
             </div>
             <div class="c-center">
-                <div class="quote-text font-medium">@_text</div>
+                <div class="quote-text">@_text</div>
             </div>
             <RenderSlot Name="QuoteCloseButton"/>
         </div>
