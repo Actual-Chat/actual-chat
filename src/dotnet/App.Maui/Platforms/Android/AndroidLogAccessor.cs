@@ -76,7 +76,6 @@ public class AndroidLogAccessor : IMauiLogAccessor
                         }
                         return Task.CompletedTask;
                     },
-                    _ => false,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -91,53 +90,74 @@ public class AndroidLogAccessor : IMauiLogAccessor
 
     private async Task<bool> DumpLogToFile(string filePath, ICollection<int> pids, DateTime logStartThreshold)
     {
-        var cancellationTokenSource = new CancellationTokenSource();
-        var cancellationToken = cancellationTokenSource.Token;
-        cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
-        var pidFilters = pids.Select(c => c.ToString(CultureInfo.InvariantCulture));
-        var tagFilter = MauiDiagnostics.LogTag;
-        var bufferFilter = "--------- beginning of";
-
-        var cmdArgs = "-v threadtime -d"
-            + $" -T \"{logStartThreshold:MM-dd HH:mm:ss}.0\"";
-
         try {
             var outputFile = new StreamWriter(filePath);
             await using var _ = outputFile.ConfigureAwait(false);
-            return await ExecuteLogcat(
-                    cmdArgs,
-                    async line => {
-                        var match = line.Contains(tagFilter)
-                            || line.StartsWith(bufferFilter, StringComparison.Ordinal);
-                        if (!match) {
-                            foreach (var pidFilter in pidFilters) {
-                                if (line.Contains(pidFilter)) {
-                                    match = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (match)
-                            await outputFile.WriteLineAsync(line).ConfigureAwait(false);
-                    },
-                    _ => false,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            await DumpCrashBufferLogToFile(outputFile).ConfigureAwait(false);
+            await DumpMainBufferLogToFile(outputFile, pids, logStartThreshold).ConfigureAwait(false);
+            return true;
         }
         catch (Exception e) {
-            _log.LogWarning(e,
-                "Failed to dump logs to file '{FilePath}'. Executing command: '{Command} {Arguments}'",
-                Path.GetFileName(filePath),
-                LogcatCmd,
-                cmdArgs);
+            _log.LogWarning(e, "Failed to dump logs to file '{FilePath}'", Path.GetFileName(filePath));
             return false;
         }
     }
 
+    private Task<bool> DumpCrashBufferLogToFile(StreamWriter outputFile)
+    {
+        var cmdArgs = "-v threadtime -d -b crash";
+
+        var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
+        cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+
+        return DumpLogToFile(outputFile, cmdArgs, null, cancellationToken);
+    }
+
+    private Task<bool> DumpMainBufferLogToFile(StreamWriter outputFile, ICollection<int> pids, DateTime logStartThreshold)
+    {
+        var pidFilters = pids.Select(c => c.ToString(CultureInfo.InvariantCulture)).ToArray();
+        var tagFilter = MauiDiagnostics.LogTag;
+        const string bufferFilter = "--------- beginning of";
+
+        var cmdArgs = "-v threadtime -d"
+            + $" -T \"{logStartThreshold:MM-dd HH:mm:ss}.0\" -b main";
+
+        var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
+        cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+
+        return DumpLogToFile(outputFile, cmdArgs, LineFilter, cancellationToken);
+
+        bool LineFilter(string line)
+        {
+            var match = line.Contains(tagFilter)
+                || line.StartsWith(bufferFilter, StringComparison.Ordinal);
+            if (!match) {
+                foreach (var pidFilter in pidFilters) {
+                    if (line.Contains(pidFilter, StringComparison.Ordinal)) {
+                        match = true;
+                        break;
+                    }
+                }
+            }
+            return match;
+        }
+    }
+
+    private async Task<bool> DumpLogToFile(StreamWriter outputFile, string cmdArgs, Func<string, bool>? lineFilter, CancellationToken cancellationToken)
+        => await ExecuteLogcat(
+                cmdArgs,
+                async line => {
+                    if (lineFilter?.Invoke(line) ?? true)
+                        await outputFile.WriteLineAsync(line).ConfigureAwait(false);
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+
     private async Task<bool> ExecuteLogcat(
         string cmdArgs,
         Func<string, Task> lineHandler,
-        Func<Exception, bool> exceptionHandler,
         CancellationToken cancellationToken)
     {
         Process? process = null;
@@ -161,8 +181,11 @@ public class AndroidLogAccessor : IMauiLogAccessor
             return true;
         }
         catch (Exception e) {
-            if (!exceptionHandler(e))
-                throw;
+            _log.LogWarning(e,
+                "Failed to dump logs to file. Executing command: '{Command} {Arguments}'",
+                LogcatCmd,
+                cmdArgs);
+            throw;
         }
         finally {
             if (process is { HasExited: false })
@@ -175,6 +198,5 @@ public class AndroidLogAccessor : IMauiLogAccessor
                 }
             process?.Close();
         }
-        return false;
     }
 }
