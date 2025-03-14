@@ -1,4 +1,6 @@
-﻿using ActualChat.App.Maui.Services;
+#if false
+// NOTE(DF): MauiLivenessProbe is switched off for now.
+using ActualChat.App.Maui.Services;
 using Microsoft.Win32;
 
 namespace ActualChat.App.Maui;
@@ -36,3 +38,4 @@ public class WindowsLivenessProbe : MauiLivenessProbe
 
     protected WindowsLivenessProbe(bool mustStart = true) : base(mustStart) { }
 }
+#endif

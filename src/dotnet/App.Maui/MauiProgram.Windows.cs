@@ -26,6 +26,9 @@ public static partial class MauiProgram
                     MauiBackgroundStateTracker.SetBackgroundState(!args.Visible);
                 });
         });
+        #if false
+        // NOTE(DF): MauiLivenessProbe is switched off for now.
         WindowsLivenessProbe.Activate();
+        #endif
     }
 }
