@@ -63,7 +63,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public ChatEntryKind Kind { get; set; }
     public string Content { get; set; } = "";
-    public string ContentHash { get; set; } = "";
+    public string? ContentHash { get; set; } = "";
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
     public string? LinkPreviewIds { get; set; }
