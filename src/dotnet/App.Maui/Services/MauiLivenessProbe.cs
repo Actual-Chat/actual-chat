@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿#if false
+// NOTE(DF): MauiLivenessProbe is switched off for now.
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
 using ActualLab.Diagnostics;
@@ -171,3 +172,4 @@ public class MauiLivenessProbe : WorkerBase
         }
     }
 }
+#endif

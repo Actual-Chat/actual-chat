@@ -46,8 +46,11 @@ public partial class MauiWebView
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
             return;
         }
+        #if false
+        // NOTE(DF): MauiLivenessProbe is switched off for now.
         if (LastResumeAt.Elapsed < TimeSpan.FromSeconds(0.5))
             MauiLivenessProbe.Check();
+        #endif
 
         var uri = eventArgs.Url;
         var isLocalUri = HandleLoading(uri, eventArgs);

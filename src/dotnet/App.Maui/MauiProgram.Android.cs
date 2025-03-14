@@ -50,7 +50,10 @@ public static partial class MauiProgram
             android.OnCreate(OnCreate);
             android.OnPostCreate(OnPostCreate);
             android.OnResume(_ => MauiWebView.LogResume());
+            #if false
+            // NOTE(DF): MauiLivenessProbe is switched off for now.
             android.OnPause(_ => MauiLivenessProbe.CancelCheck());
+            #endif
             android.OnActivityResult(AndroidActivityResultHandlers.Invoke);
             android.OnBackPressed(activity => {
                 _ = OnBackPressed(activity);
