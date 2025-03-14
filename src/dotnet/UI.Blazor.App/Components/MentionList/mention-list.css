@@ -1,4 +1,13 @@
 .mention-list-manager {
+    --mention-shadow: var(--post-panel);
+}
+@media screen and (min-width: 820px) {
+    .mention-list-manager {
+        --mention-shadow: var(--background-01);
+    }
+}
+
+.mention-list-manager {
     @apply absolute inset-x-0 top-0 z-0;
 }
 .mention-list-manager.show-mention-list {
@@ -23,7 +32,7 @@ body.narrow .mention-list {
     @apply bg-post-panel text-post-panel-text;
 }
 body.narrow .narrow-panel .mention-list {
-    @apply h-32;
+    @apply max-h-32;
 }
 .mention-list.non-visible {
     @apply hidden;
@@ -34,18 +43,22 @@ body.narrow .narrow-panel .mention-list {
     0% {
         filter: opacity(0);
         transform: translateY(100%);
+        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
     }
-    70% {
+    80% {
         filter: opacity(1);
         transform: translateY(-1rem);
+        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
     }
     99% {
         filter: opacity(1);
         transform: translateY(0);
+        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
     }
     100% {
         filter: opacity(1);
         transform: translateY(0);
+        box-shadow: 0 -1px 0 1px var(--separator);
     }
 }
 
