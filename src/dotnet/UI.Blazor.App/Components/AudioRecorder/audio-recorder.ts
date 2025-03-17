@@ -99,9 +99,6 @@ export class AudioRecorder {
                 let stream: MediaStream = null;
                 try {
                     debugLog?.log(`requestPermission: detecting active tracks to stop`);
-                    if ('audioSession' in navigator) {
-                        navigator.audioSession['type'] = 'play-and-record'; // 'playback'
-                    }
                     if (BrowserInfo.hostKind === 'MauiApp' && DeviceInfo.isIos ) {
                         // iOS MAUI keeps microphone acquired, so let's return true there to avoid user complains
                         return true;

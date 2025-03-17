@@ -176,11 +176,6 @@ abstract class AudioContextSourceBase implements AudioContextSource {
                 ? AP.SAMPLE_RATE
                 : DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate for microphone stream, we will use default
         });
-        if (AudioContextDestinationFallback.isRequired) {
-            const destinationFallback = new AudioContextDestinationFallback(context);
-            context.destination_ = destinationFallback.destination;
-            context.destinationFallback = destinationFallback;
-        }
 
         if (shouldResume)
             await this.resume(context, true);
@@ -192,10 +187,11 @@ abstract class AudioContextSourceBase implements AudioContextSource {
                 void this.interactiveResume(context);
 
             await whenWorkletsLoaded;
-            // if (this.fallbackDestination) {
-            //     context.destinationOverride = this.fallbackDestination.destination;
-            //     await this.fallbackDestination.attach(context);
-            // }
+            if (this.purpose === 'playback' && AudioContextDestinationFallback.isRequired) {
+                const destinationFallback = new AudioContextDestinationFallback(context);
+                context.destination_ = destinationFallback.destination;
+                context.destinationFallback = destinationFallback;
+            }
             this._contextCreated$.next(context);
 
             return context;
@@ -212,7 +208,6 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         if (context && this.isRunning(context)) {
             debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
             Interactive.isInteractive = true;
-            await context.destinationFallback?.play();
             return;
         }
 
@@ -282,7 +277,6 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         if (isInteractive)
             this.interactiveResumeCount++;
 
-        void context.destinationFallback?.play();
         if (this.isRunning(context)) {
             debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
             Interactive.isInteractive = true;
@@ -586,8 +580,17 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         if (context && context.state !== 'running') {
             warnLog?.log('useRef: context is not running', context.state);
         }
+        void context?.destinationFallback?.play();
 
-        return Disposables.empty();
+        return Disposables.fromAction(() => {
+            const hasRefsInUse = this.hasRefsInUse;
+            const backgroundState = AudioInitializer.backgroundState;
+            infoLog?.log('pauseRef:', hasRefsInUse, backgroundState);
+            if (hasRefsInUse)
+                return;
+
+            void context?.destinationFallback?.pause();
+        });
     }
 
     // Must be private, but good to keep it near markNotReady
@@ -765,7 +768,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     private async trySuspend(context: OverridenAudioContext): Promise<boolean> {
-        context.destinationFallback?.pause();
         if (context.state === 'suspended') {
             debugLog?.log(`trySuspend: already suspended, AudioContext:`, Log.ref(context));
             return true;
@@ -855,6 +857,8 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                     void context.destinationFallback?.play();
                 });
         }
+        else
+            void context.destinationFallback?.play();
 
         return Disposables.fromAction(() => {
             const hasRefsInUse = this.hasRefsInUse;

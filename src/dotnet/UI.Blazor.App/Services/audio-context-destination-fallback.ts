@@ -9,7 +9,7 @@ const { debugLog, errorLog } = Log.get('FallbackPlayback');
 export class AudioContextDestinationFallback implements Disposable {
     private readonly audio: HTMLAudioElement;
     private destinationNode: MediaStreamAudioDestinationNode;
-    private aecStream: MediaStream & Disposable = null;
+    private aecStream: MediaStream & Disposable | null = null;
 
     // Allows to expose mediaSession metadata at the lock screen
     public static get isRequired() { return DeviceInfo.isIos; }
@@ -30,17 +30,17 @@ export class AudioContextDestinationFallback implements Disposable {
 
         this.destinationNode = context.createMediaStreamDestination();
         this.destinationNode.channelInterpretation = 'speakers';
-        this.audio.srcObject = this.audioStream;
+
         resetMediaSessionMetadata();
         if (isWebRtcAecRequired)
             void createWebRtcAecStream(this.destinationNode.stream)
-                .then(x => this.aecStream = x)
-                .then(_ => this.audio.srcObject = this.audioStream);
+                .then(x => this.aecStream = x);
     }
 
     public async play(): Promise<void> {
         debugLog?.log('-> play()', this.audio?.paused);
         try {
+            this.audio.srcObject = this.audioStream;
             this.audio.muted = false;
             if (this.audio.paused)
                 await this.audio.play();
