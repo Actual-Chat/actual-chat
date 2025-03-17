@@ -102,6 +102,12 @@ export class OpusMediaRecorder implements RecorderStateServer {
             }
         });
 
+        // Better integration with native mobile audio pipeline
+        if ('audioSession' in navigator) {
+            navigator.audioSession['type'] = 'playback';
+            navigator.audioSession['type'] = 'auto'; // Hack for iOS Safari
+        }
+
         infoLog?.log('<- stopStreamTracks()');
     }
 
@@ -129,11 +135,12 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 };
             }
 
-            // better integration with native mobile audio pipeline
-            // if ('audioSession' in navigator) {
-            //     navigator.audioSession['type'] = 'play-and-record'; // 'playback'
-            // }
+
             stream = await navigator.mediaDevices.getUserMedia(getConstraints());
+            // Better integration with native mobile audio pipeline - SHOULD BE AFTER ACQUIRING THE STREAM!
+            if ('audioSession' in navigator) {
+                navigator.audioSession['type'] = 'play-and-record';
+            }
             const tracks = stream.getAudioTracks();
             const audioTrack = tracks[0];
             if (!audioTrack) {
