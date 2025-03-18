@@ -136,10 +136,14 @@ public static partial class Constants
         public const int FileSizeLimit = 500 * 1024 * 1024;
         public const int AvatarPictureFileSizeLimit = 50 * 1024 * 1024;
         public const int FileCountLimit = 10;
-        public const int MaxImageWidth = 48; // In pixels
-        public const int MaxImageHeight = 36; // In pixels
+        public const int MaxImageWidth = 480; // In pixels
+        public const int MaxImageHeight = 360; // In pixels
+        public const int MaxThumbnailWidth = 48; // In pixels
+        public const int MaxThumbnailHeight = 36; // In pixels
         public static readonly Vector2 MaxResolution = new(MaxImageWidth, MaxImageHeight);
         public static readonly Vector2 MaxActualResolution = MaxResolution * 2;
+        public static readonly Vector2 MaxThumbnailResolution = new(MaxThumbnailWidth, MaxThumbnailHeight);
+        public static readonly Vector2 MaxActualThumbnailResolution = MaxThumbnailResolution * 2;
     }
 
     public static class Contacts
