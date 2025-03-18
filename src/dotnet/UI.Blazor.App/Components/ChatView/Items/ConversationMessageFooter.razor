@@ -5,7 +5,7 @@
     var timeRangeString = GetTimeRangeString();
 }
 
-<div class="summary-footer">
+<div class="summary-footer" @onclick="ShowMessages">
     <div class="bg-wrapper">
         <div class="c-content">
             <div class="c-author-list">
@@ -30,6 +30,7 @@
     [Parameter] public IReadOnlyList<AuthorId> Authors { get; set; } = null!;
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public DateTime EndsAt { get; set; }
+    [Parameter] public EventCallback ShowMessages { get; set; }
 
     private string GetTimeRangeString() {
         return $"{StartsAt:MM/dd/yyyy HH:mm} - {EndsAt:HH:mm}";
