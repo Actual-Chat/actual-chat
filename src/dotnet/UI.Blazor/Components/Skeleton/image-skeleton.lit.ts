@@ -65,8 +65,7 @@ class ImageSkeleton extends LitElement {
     @property() thumbnailSrc: string;
     @property() title: string = "";
 
-    private _imageRef: Ref<HTMLImageElement> = createRef(this.src);
-    private _thumbnailRef: Ref<HTMLImageElement> = createRef(this.thumbnailSrc)
+    private _imageRef: Ref<HTMLImageElement> = createRef();
 
     // for tests
     // willUpdate(changedProperties: any) {
@@ -99,7 +98,6 @@ class ImageSkeleton extends LitElement {
                 />
                 <img
                     part='image-thumbnail'
-                    ${ref(this._thumbnailRef)}
                     class='image-thumbnail'
                     crossorigin='${isSubDomain ? nothing : 'anonymous'}'
                     draggable='false'
