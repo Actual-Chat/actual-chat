@@ -88,7 +88,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             .ConfigureAwait(false);
         var dbFlowExists = dbFlow != null;
         var flowExists = flow.Step != FlowSteps.Removed;
-        if (dbFlowExists || flowExists)
+        if (dbFlowExists)
             VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);
 
         long version = 0;
