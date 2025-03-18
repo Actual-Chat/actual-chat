@@ -10,13 +10,23 @@ class ImageSkeleton extends LitElement {
         display: block;
       }
 
-      :host(.loading) {
+      :host(.show-image-skeleton) {
         animation: pulse 2s infinite;
         background-color: var(--background-05);
       }
 
-      :host(.loading) .image {
+      :host(.show-image-skeleton) .image,
+      :host(.show-image-thumbnail) .image,
+      :host(.show-image-skeleton) .image-thumbnail,
+      :host(.show-image-original) .image-thumbnail {
         visibility: hidden;
+      }
+
+      :host(.show-image-original) .image {
+          display: block;
+      }
+      :host(.show-image-thumbnail) .image-thumbnail {
+          display: block;
       }
 
       :host(.image-cover) {
@@ -28,10 +38,16 @@ class ImageSkeleton extends LitElement {
           object-fit: cover;
       }
 
-      .image {
+      .image,
+      .image-thumbnail {
+        display: none;
         width: 100%;
         height: 100%;
         border-radius: inherit;
+      }
+
+      .image-thumbnail {
+          object-fit: cover;
       }
 
       @keyframes pulse {
@@ -46,9 +62,11 @@ class ImageSkeleton extends LitElement {
 
     @property({ reflect: true }) class: string;
     @property() src: string;
+    @property() thumbnailSrc: string;
     @property() title: string = "";
 
-    private _imageRef: Ref<HTMLImageElement> = createRef();
+    private _imageRef: Ref<HTMLImageElement> = createRef(this.src);
+    private _thumbnailRef: Ref<HTMLImageElement> = createRef(this.thumbnailSrc)
 
     // for tests
     // willUpdate(changedProperties: any) {
@@ -65,24 +83,54 @@ class ImageSkeleton extends LitElement {
 
     render() {
         const isSubDomain = this.isSubDomain(this.src);
-        return html`
-            <img
-                part="image"
-                ${ref(this._imageRef)}
-                class="image"
-                crossorigin='${ isSubDomain ? nothing : 'anonymous' }'
-                draggable="false"
-                alt=""
-                .src="${this.src}"
-                .title="${this.title}"
-                @load="${this.imageLoaded}"
-                @error="${this.reloadImage}"
-            />
-        `;
+        if (this.thumbnailSrc && this.thumbnailSrc != "") {
+            return html`
+                <img
+                    part='image'
+                    ${ref(this._imageRef)}
+                    class='image'
+                    crossorigin='${isSubDomain ? nothing : 'anonymous'}'
+                    draggable='false'
+                    alt=''
+                    .src='${this.src}'
+                    .title='${this.title}'
+                    @load='${this.imageLoaded}'
+                    @error='${this.reloadImage}'
+                />
+                <img
+                    part='image-thumbnail'
+                    ${ref(this._thumbnailRef)}
+                    class='image-thumbnail'
+                    crossorigin='${isSubDomain ? nothing : 'anonymous'}'
+                    draggable='false'
+                    alt=''
+                    .src='${this.thumbnailSrc}'
+                    .title='${this.title}'
+                    @load='${this.thumbnailLoaded}'
+                />
+            `;
+        } else {
+            return html`
+                <img
+                    part='image'
+                    ${ref(this._imageRef)}
+                    class='image'
+                    crossorigin='${isSubDomain ? nothing : 'anonymous'}'
+                    draggable='false'
+                    alt=''
+                    .src='${this.src}'
+                    .title='${this.title}'
+                    @load='${this.imageLoaded}'
+                    @error='${this.reloadImage}'
+                />
+            `;
+        }
     }
 
     async reloadImage(): Promise<void> {
-        this.classList.add('loading');
+        this.classList.remove('show-image-original');
+        this.classList.remove('show-image-thumbnail');
+        this.classList.add('show-image-skeleton');
 
         const isSubDomain = this.isSubDomain(this.src);
         for (let attempt = 0; attempt < 10; attempt++) {
@@ -101,7 +149,16 @@ class ImageSkeleton extends LitElement {
     }
 
     async imageLoaded(): Promise<void> {
-        this.classList.remove('loading');
+        this.classList.remove('show-image-skeleton');
+        this.classList.remove('show-image-thumbnail');
+        if (!this.classList.contains('show-image-original'))
+            this.classList.add('show-image-original');
+    }
+
+    async thumbnailLoaded(): Promise<void> {
+        this.classList.remove('show-image-skeleton');
+        if (!this.classList.contains('show-image-thumbnail') && (!this.classList.contains('show-image-original')))
+            this.classList.add('show-image-thumbnail');
     }
 
     isSubDomain(url: string): boolean {

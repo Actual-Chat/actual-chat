@@ -286,11 +286,6 @@ body.hoverable .chat-header-title:hover {
     @apply rounded-xl;
     @apply overflow-hidden;
 }
-.message-image-attachments:before {
-    @apply content-empty;
-    @apply absolute inset-0 z-minus;
-    @apply bg-03;
-}
 .message-file-attachments {
     @apply flex-y gap-y-1;
 }

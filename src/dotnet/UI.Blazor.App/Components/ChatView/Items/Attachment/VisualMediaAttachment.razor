@@ -6,7 +6,7 @@
     if (attachment.IsGif() || attachment.IsSvg()) {
         previewUrl = url; // currently image proxy fails on large gifs
     } else if (attachment.IsSupportedImage()) {
-        previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualResolution.Y);
+        previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
     }
 }
 
@@ -20,8 +20,9 @@
             <VideoAttachmentThumbnail Attachment="attachment"/>
         } else {
             <image-skeleton
-                class="loading"
-                src="@previewUrl"
+                class="show-image-skeleton"
+                src="@url"
+                thumbnailSrc="@previewUrl"
             />
         }
     </a>

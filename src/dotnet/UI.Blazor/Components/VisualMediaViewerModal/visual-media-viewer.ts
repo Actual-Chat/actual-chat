@@ -327,7 +327,7 @@ export class VisualMediaViewer {
 
         let plugWidth = 0;
         const originalWidth = Number(plug.dataset.width);
-        const originalHeight = Number(plug.dataset.heigth);
+        const originalHeight = Number(plug.dataset.height);
         const screenWidth = window.innerWidth;
         const screenHeight = window.innerHeight;
         const originalRatio = originalWidth / originalHeight;

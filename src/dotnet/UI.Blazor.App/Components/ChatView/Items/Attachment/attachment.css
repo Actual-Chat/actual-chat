@@ -1,7 +1,14 @@
 /* image line */
+.message-attachments .message-image-attachments {
+    @apply w-full;
+}
 .image-line {
     @apply flex-x gap-x-px;
+    @apply max-w-96;
     @apply overflow-hidden;
+}
+.message-image-attachments.one-row .image-line {
+    @apply w-fit;
 }
 .message-image-attachments .image-line:first-child {
     @apply rounded-t-xl;
@@ -76,20 +83,23 @@ body.hoverable .image-line .image-item:hover {
     @apply overflow-hidden;
 }
 .image-attachment {
+    @apply relative;
     @apply w-full;
 }
 .image-attachment > .c-content {
     @apply flex;
     @apply cursor-pointer;
 }
-.image-attachment image-skeleton.loading {
+.image-attachment image-skeleton.show-image-skeleton {
     @apply bg-skeleton rounded-md animate-pulse;
     @apply w-full;
 }
-.image-attachment image-skeleton {
-    @apply w-full;
+.image-attachment image-skeleton.show-image-original:before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply bg-03;
 }
-.message-image-attachments:has(image-skeleton.loading) {
+.image-attachment image-skeleton {
     @apply w-full;
 }
 .image-attachment image-skeleton::part(image) {
