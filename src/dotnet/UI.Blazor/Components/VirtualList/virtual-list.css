@@ -1,12 +1,12 @@
 ﻿.virtual-list {
+    @apply flex;
     height: 100%;
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     overflow-anchor: none;
     will-change: transform;
-    transform: translateZ(0); /* Force hardware acceleration - transalate3d leads to glitches*/
+    transform: translate3d(0,0,0); /* Force hardware acceleration */
     backface-visibility: hidden;
     contain: strict;
 }
@@ -21,23 +21,31 @@
     overflow-anchor: none;
 }
 
-.virtual-list > .c-end-anchor {
+.virtual-list > .c-wrapper {
+    @apply relative w-full;
+    overflow-anchor: none;
+}
+
+.virtual-list > .c-wrapper > .c-end-anchor {
+    @apply absolute w-full bottom-0;
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     @apply min-h-1;
     line-height: 0.25rem;
     overflow-anchor: none;
 }
-body.narrow .virtual-list > .c-end-anchor {
-    @apply min-h-12;
+body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
+    @apply  min-h-12;
 }
 
-.virtual-list > .c-spacer-end {
+.virtual-list > .c-wrapper > .c-spacer-end {
+    @apply absolute w-full;
     @apply flex flex-nowrap flex-col flex-none items-stretch content-start justify-start;
     @apply overflow-y-hidden;
     overflow-anchor: none;
 }
 
-.virtual-list > .c-spacer-start {
+.virtual-list > .c-wrapper > .c-spacer-start {
+    @apply absolute w-full;
     @apply flex flex-nowrap flex-col-reverse flex-none items-stretch content-start justify-start;
     @apply overflow-y-hidden;
     overflow-anchor: none;
@@ -47,23 +55,25 @@ body.narrow .virtual-list > .c-end-anchor {
     display: none;
 }
 
-.virtual-list > ul.c-virtual-container {
+.virtual-list > .c-wrapper > ul.c-virtual-container {
+    @apply absolute w-full;
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     list-style-type: none;
     overflow-anchor: none;
+    will-change: transform;
 }
-.chat-list.virtual-list > ul.c-virtual-container {
+.chat-list.virtual-list > .c-wrapper > ul.c-virtual-container {
     @apply gap-y-0.5;
 }
-.chat-list.virtual-list > .c-end-anchor {
+.chat-list.virtual-list > .c-wrapper > .c-end-anchor {
     @apply hidden;
 }
 
-.virtual-list > ul.c-virtual-container.hide {
+.virtual-list > .c-wrapper > ul.c-virtual-container.hide {
     display: none;
 }
 
-.virtual-list > ul.c-virtual-container > li.item {
+.virtual-list > .c-wrapper > ul.c-virtual-container > li.item {
     @apply flex flex-y;
     overflow-anchor: none;
     min-height: 1.5rem;
@@ -72,8 +82,8 @@ body.narrow .virtual-list > .c-end-anchor {
     @apply sticky top-0 z-10;
 }
 
-.virtual-list > ul.c-virtual-container > li.item.anchor {
-    overflow-anchor: auto;
+.virtual-list > .c-wrapper > ul.c-virtual-container > li.item.anchor {
+    overflow-anchor: none;
 }
 
 .virtual-list .skeleton-container {
