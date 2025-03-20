@@ -56,28 +56,31 @@
         </RenderAtDepth>
     </div>
 
-    <div @key="@VirtualListSpecialKeys.Spacer"
-         class="c-spacer-start">
-        <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
-    </div>
+    <div @key="@VirtualListSpecialKeys.Wrapper"
+         class="c-wrapper">
+        <div @key="@VirtualListSpecialKeys.Spacer"
+             class="c-spacer-start">
+            <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+        </div>
 
-    <ul @key="@VirtualListSpecialKeys.Container"
-        class="c-virtual-container @containerClass">
-        @foreach (var tile in tiles) {
-            var isLastTile = data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
-            var isLastTileVisible = isLastTile && LastReportedItemVisibility.IsEndAnchorVisible;
-            <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" IsLastTileVisible="@isLastTileVisible"/>
-        }
-    </ul>
+        <ul @key="@VirtualListSpecialKeys.Container"
+            class="c-virtual-container @containerClass">
+            @foreach (var tile in tiles) {
+                var isLastTile = data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
+                var isLastTileVisible = isLastTile && LastReportedItemVisibility.IsEndAnchorVisible;
+                <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" IsLastTileVisible="@isLastTileVisible"/>
+            }
+        </ul>
 
-    <div @key="@VirtualListSpecialKeys.EndSpacer"
-         class="c-spacer-end">
-        <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
-    </div>
+        <div @key="@VirtualListSpecialKeys.EndSpacer"
+             class="c-spacer-end">
+            <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+        </div>
 
-    <div @key="@VirtualListSpecialKeys.EndAnchor"
-         class="c-end-anchor">
-        &nbsp;
+        <div @key="@VirtualListSpecialKeys.EndAnchor"
+             class="c-end-anchor">
+            &nbsp;
+        </div>
     </div>
 
 </div>
