@@ -269,11 +269,11 @@ export class VisualMediaViewer {
         const rewindBtn = control.querySelector('.rewind-btn') as HTMLElement;
         const forwardBtn = control.querySelector('.forward-btn') as HTMLElement;
         const progressBar = control.querySelector('progress') as HTMLProgressElement;
-        if (!control || !playBtn || !rewindBtn || !forwardBtn || !progressBar)
-            return;
-
-        video.removeAttribute('controls');
-        control.classList.remove('invisible');
+        if (!control || !playBtn || !rewindBtn || !forwardBtn || !progressBar) {
+            if (control)
+                control.remove();
+            video.controls = true;
+        }
 
         fromEvent(video, 'loadeddata')
             .pipe(takeUntil(this.disposed$))
@@ -355,10 +355,13 @@ export class VisualMediaViewer {
         const wrapper = video.closest('.video-wrapper');
         const thumbnailWrapper = wrapper.querySelector('.video-thumbnail-wrapper');
         const spinner = wrapper.querySelector('.spinner-icon-wrapper');
+        const control = wrapper.querySelector('.video-control') as HTMLElement;
         if (thumbnailWrapper)
             thumbnailWrapper.remove();
         if (spinner)
             spinner.remove();
+        if (control)
+            control.classList.remove('invisible');
         this.updateLoading(video);
     }
 

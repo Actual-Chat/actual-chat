@@ -1,16 +1,18 @@
 @using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
 @{
-    var url = GetUrl();
+    var urls = GetUrls();
+    var originalUrl = urls.Item1;
+    var thumbnailUrl = urls.Item1;
 }
 <div class="video-thumbnail @Class" data-width="@Attachment.Media.Width" data-height="@Attachment.Media.Height">
     @if (Attachment.ThumbnailMedia is null) {
         // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
         <video preload="metadata">
-            <source src="@url#t=0.5" />
+            <source src="@originalUrl#t=0.5" />
         </video>
     } else {
-        <image-skeleton src="@url" />
+        <image-skeleton src="@thumbnailUrl" isVideo="true" class="show-image-skeleton" />
     }
     <div class="c-overlay">
         <i class="c-play icon-play-fill"></i>
@@ -22,13 +24,15 @@
     [Parameter] public TextEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
 
-    private string GetUrl()
+    private (string, string) GetUrls()
     {
         if (Attachment.ThumbnailMedia is not {} thumbnail)
             // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
-            return UrlMapper.ContentUrl(Attachment.Media.ContentId);
+            return (UrlMapper.ContentUrl(Attachment.Media.ContentId), UrlMapper.ContentUrl(Attachment.Media.ContentId));
 
         var contentUrl = UrlMapper.ContentUrl(thumbnail.ContentId);
-        return UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualResolution.Y);
+        var originalUrl = UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualResolution.Y);
+        var thumbnailUrl = UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
+        return (originalUrl, thumbnailUrl);
     }
 }
