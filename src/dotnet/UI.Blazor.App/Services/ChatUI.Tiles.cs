@@ -352,13 +352,6 @@ public partial class ChatUI
                 isPrevAudio = isAudio;
             }
             else if (conversation != null && !expandedConversations.Contains(conversation.Id)) {
-                // var conversationHeaderMessage = new ConversationHeader(conversation) {
-                //     Date = date,
-                //     PreviousMessage = prevMessage,
-                // };
-                // messages.Add(conversationHeaderMessage);
-                // prevMessage = conversationHeaderMessage;
-
                 var message = new ConversationMessage(conversation) {
                     Date = date,
                     PreviousMessage = prevMessage,
@@ -367,13 +360,6 @@ public partial class ChatUI
                 // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
                 messages.Add(message);
                 prevMessage = message;
-
-                // var conversationFooterMessage = new ConversationFooter(conversation) {
-                //     Date = date,
-                //     PreviousMessage = prevMessage,
-                // };
-                // messages.Add(conversationFooterMessage);
-                // prevMessage = conversationFooterMessage;
             }
             prevDate = date;
         }
