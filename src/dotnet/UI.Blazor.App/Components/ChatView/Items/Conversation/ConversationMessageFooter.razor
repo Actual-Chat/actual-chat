@@ -3,14 +3,15 @@
     var firstAuthors = Authors.Take(3).ToList();
     var extraAuthorCount = Math.Clamp(Authors.Count - 3, 0, 99);
     var timeRangeString = GetTimeRangeString();
+    var cls = IsSeparated ? "conversation-footer" : "conversation-footer-short";
 }
 
-<div class="summary-footer" @onclick="ShowMessages">
+<div class="@cls">
     <div class="bg-wrapper">
         <div class="c-content">
             <div class="c-author-list">
                 @foreach (var authorId in firstAuthors) {
-                    <ChatMessageAuthorCircle AuthorSid="@authorId.Value" />
+                    <AuthorCircle AuthorSid="@authorId.Value" Size="@SquareSize.Size6"/>
                 }
                 @if (extraAuthorCount > 0) {
                     <div class="author-incut ai-extra">+@extraAuthorCount</div>
@@ -30,7 +31,7 @@
     [Parameter] public IReadOnlyList<AuthorId> Authors { get; set; } = null!;
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public DateTime EndsAt { get; set; }
-    [Parameter] public EventCallback ShowMessages { get; set; }
+    [Parameter] public bool IsSeparated { get; set; }
 
     private string GetTimeRangeString() {
         return $"{StartsAt:MM/dd/yyyy HH:mm} - {EndsAt:HH:mm}";

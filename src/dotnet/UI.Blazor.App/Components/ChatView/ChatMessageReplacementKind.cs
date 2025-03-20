@@ -7,6 +7,8 @@ public enum ChatMessageReplacementKind
     NewMessagesLine,
     WelcomeBlock,
     SearchWelcomeBlock,
+    ConversationStart,
+    ConversationEnd,
 }
 
 public static class ChatMessageReplacementKindExt
@@ -18,6 +20,8 @@ public static class ChatMessageReplacementKindExt
             ChatMessageReplacementKind.NewMessagesLine => "-new-messages",
             ChatMessageReplacementKind.WelcomeBlock => "-welcome-block",
             ChatMessageReplacementKind.SearchWelcomeBlock => "-search-welcome-block",
+            ChatMessageReplacementKind.ConversationStart => "-conversation-start",
+            ChatMessageReplacementKind.ConversationEnd => "-conversation-end",
             _ => throw new ArgumentOutOfRangeException(nameof(replacementKind), replacementKind, null),
         };
 }

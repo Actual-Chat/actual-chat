@@ -14,4 +14,13 @@
     <Using Include="ActualChat.UI.Blazor.App.Components" />
   </ItemGroup>
 
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Components\SummaryMessage\SummaryMessage.razor" />
+    <UpToDateCheckInput Remove="Components\SummaryMessage\SummaryMessageFooter.razor" />
+    <UpToDateCheckInput Remove="Components\SummaryMessage\SummaryMessageHeader.razor" />
+    <UpToDateCheckInput Remove="Components\SummaryMessage\SummaryTestPage.razor" />
+    <UpToDateCheckInput Remove="Components\SummaryMessage\SummaryTestPageContent.razor" />
+    <UpToDateCheckInput Remove="Components\SummaryMessage\TestSummaryMessageContent.razor" />
+  </ItemGroup>
+
 </Project>

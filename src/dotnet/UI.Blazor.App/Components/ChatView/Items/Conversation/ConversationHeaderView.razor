@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var conversation = Header.Conversation;
+    var title = conversation.Title;
+    var messageCount = conversation.MessageCount;
+}
+
+<ConversationMessageHeader
+    Title="@title"
+    MessageCount="@messageCount"
+    ShowMessages="@ToggleShowMessage"
+    IsSeparated="true"/>
+
+@code {
+    private ChatUIHub Hub => ChatContext.Hub;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ConversationHeader Header { get; set; } = null!;
+
+    private void ToggleShowMessage()
+        => ChatUI.ToggleExpandConversation(Header.Conversation.Id);
+}

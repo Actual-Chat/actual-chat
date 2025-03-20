@@ -274,12 +274,6 @@ public partial class ChatUI
                     flags |= ChatMessageFlags.Unread;
                 if (entry.AuthorId == currentAuthorId)
                     flags |= ChatMessageFlags.IsOwnMessage;
-                if (expandedConversation != null) {
-                    if (entry.Id.LocalId == expandedConversation.Id.StartEntryLid)
-                        flags |= ChatMessageFlags.ConversationStart;
-                    if (entry.Id.LocalId == expandedConversation.EndEntryLid)
-                        flags |= ChatMessageFlags.ConversationEnd;
-                }
                 if (shouldAddToResult) {
                     if (!isWelcomeBlockAdded) {
                         if (hasVeryFirstItem) {
@@ -319,6 +313,17 @@ public partial class ChatUI
                         messages.Add(dateLineMessage);
                         prevMessage = dateLineMessage;
                     }
+                    if (expandedConversation != null) {
+                        if (entry.Id.LocalId == expandedConversation.Id.StartEntryLid) {
+                            var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
+                                ReplacementKind = ChatMessageReplacementKind.ConversationStart,
+                                Date = date,
+                                PreviousMessage = prevMessage,
+                            };
+                            messages.Add(conversationHeaderMessage);
+                            prevMessage = conversationHeaderMessage;
+                        }
+                    }
                     var message = new ChatEntryMessage(entry) {
                         Date = date,
                         Flags = flags,
@@ -329,12 +334,31 @@ public partial class ChatUI
                     };
                     messages.Add(message);
                     prevMessage = message;
+
+                    if (expandedConversation != null) {
+                        if (entry.Id.LocalId == expandedConversation.EndEntryLid) {
+                            var conversationFooterMessage = new ConversationFooter(expandedConversation) {
+                                ReplacementKind = ChatMessageReplacementKind.ConversationEnd,
+                                Date = date,
+                                PreviousMessage = prevMessage,
+                            };
+                            messages.Add(conversationFooterMessage);
+                            prevMessage = conversationFooterMessage;
+                        }
+                    }
                 }
                 prevEntry = entry;
                 isPrevUnread = isEntryUnread;
                 isPrevAudio = isAudio;
             }
             else if (conversation != null && !expandedConversations.Contains(conversation.Id)) {
+                // var conversationHeaderMessage = new ConversationHeader(conversation) {
+                //     Date = date,
+                //     PreviousMessage = prevMessage,
+                // };
+                // messages.Add(conversationHeaderMessage);
+                // prevMessage = conversationHeaderMessage;
+
                 var message = new ConversationMessage(conversation) {
                     Date = date,
                     PreviousMessage = prevMessage,
@@ -343,6 +367,13 @@ public partial class ChatUI
                 // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
                 messages.Add(message);
                 prevMessage = message;
+
+                // var conversationFooterMessage = new ConversationFooter(conversation) {
+                //     Date = date,
+                //     PreviousMessage = prevMessage,
+                // };
+                // messages.Add(conversationFooterMessage);
+                // prevMessage = conversationFooterMessage;
             }
             prevDate = date;
         }

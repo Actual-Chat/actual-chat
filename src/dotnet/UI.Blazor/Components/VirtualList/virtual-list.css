@@ -68,6 +68,9 @@ body.narrow .virtual-list > .c-end-anchor {
     overflow-anchor: none;
     min-height: 1.5rem;
 }
+.virtual-list > ul.c-virtual-container > li.item:has(.conversation-header) {
+    @apply sticky top-0 z-10;
+}
 
 .virtual-list > ul.c-virtual-container > li.item.anchor {
     overflow-anchor: auto;

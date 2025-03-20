@@ -18,6 +18,7 @@
 @import './Components/ChatView/EmptyChatContent/empty-chat-content.css';
 @import './Components/ChatView/Items/Attachment/attachment.css';
 @import './Components/ChatView/Items/ChatMessageSendingStatus/chat-message-sending-status.css';
+@import './Components/ChatView/Items/Conversation/conversation.css';
 @import './Components/ChatView/Items/LinkPreview/link-preview.css';
 @import './Components/ChatView/Items/Reactions/reaction-badge.css';
 @import './Components/ChatView/Items/Reactions/message-reactions.css';
@@ -60,7 +61,6 @@
 @import './Components/Selection/selection-header.css';
 @import './Components/Share/share-modal.css';
 @import './Components/StatusBadge/status-badge.css';
-@import './Components/SummaryMessage/summary-message.css';
 @import './Components/TranslationSubHeader/translation-sub-header.css';
 @import './Components/ChatActivityPanel/chat-activity-panel.css';
 @import './Components/IncomingShare/incoming-share-modal.css';

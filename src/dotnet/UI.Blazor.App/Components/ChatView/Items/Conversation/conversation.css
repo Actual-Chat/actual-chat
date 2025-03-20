@@ -1,0 +1,159 @@
+.conversation-message {
+    @apply flex-y items-start;
+    @apply m-4;
+    @apply rounded-lg;
+    @apply border-none;
+    background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
+}
+.conversation-message .c-details {
+    @apply w-full;
+}
+.conversation-message .c-summary {
+    @apply flex-y;
+    @apply cursor-pointer;
+}
+.conversation-header {
+    @apply px-4;
+    @apply rounded-t-lg;
+    @apply bg-01;
+}
+
+.conversation-header-short .bg-wrapper,
+.conversation-header .bg-wrapper {
+    @apply flex-1 flex-x items-center justify-between;
+    @apply min-h-14;
+    @apply px-4 py-3;
+    @apply rounded-t-lg;
+}
+.conversation-header .bg-wrapper {
+    background: linear-gradient(179deg, var(--conversation-gradient-01) -129.46%, var(--conversation-gradient-02) 79.26%);
+}
+.conversation-header-short .c-title,
+.conversation-header .c-title {
+    @apply max-w-3/4;
+    @apply text-text-1 text-02;
+}
+.conversation-header-short .c-ending,
+.conversation-header .c-ending {
+    @apply flex-none flex-x gap-x-0.5;
+    @apply text-cr-item-badge-selected-text text-caption-1;
+    @apply cursor-pointer;
+}
+.conversation-header .rotate-icon {
+    @apply rotate-180;
+    transition: transform 250ms ease-in-out;
+}
+.conversation-message .c-summary .c-short {
+    @apply block;
+    @apply min-h-6;
+    @apply px-4;
+    @apply text-caption-8 text-02;
+    filter: opacity(1);
+    transition-behavior: allow-discrete;
+    transition-property: display, filter, -webkit-filter;
+    transition-timing-function: linear;
+    transition-duration: 500ms;
+    @starting-style {
+        filter: opacity(0);
+    }
+}
+
+.conversation-footer-short,
+.conversation-footer {
+    @apply w-full;
+}
+.conversation-footer {
+    @apply px-4;
+    @apply rounded-b-lg;
+    @apply bg-01;
+}
+.conversation-footer-short .bg-wrapper,
+.conversation-footer .bg-wrapper {
+    @apply flex-1 flex-x items-center justify-between;
+    @apply min-h-14;
+    @apply px-4 py-3;
+    @apply rounded-b-lg;
+}
+.conversation-footer .bg-wrapper {
+    background: linear-gradient(180deg, var(--conversation-gradient-02) 13.46%, var(--conversation-gradient-01) 175%);
+}
+.conversation-footer-short .c-content,
+.conversation-footer .c-content {
+    @apply flex-x items-center gap-x-4;
+}
+.conversation-footer-short .c-author-list,
+.conversation-footer .c-author-list {
+    @apply flex-x items-center gap-1 md:gap-2;
+}
+.conversation-footer-short .c-time,
+.conversation-footer .c-time {
+    @apply flex items-center;
+    @apply h-6;
+    @apply text-caption-8 text-04;
+}
+
+.conversation-message .c-long {
+    @apply flex-y gap-2;
+    @apply min-h-6;
+    @apply px-4;
+    @apply text-caption-4 text-02;
+}
+.conversation-message .c-long .c-long-content {
+    @apply flex-y;
+    filter: opacity(0);
+    transition-behavior: allow-discrete;
+    transition-property: display, filter, -webkit-filter;
+    transition-timing-function: ease-in-out;
+    transition-duration: 500ms;
+}
+.conversation-message.open-details .c-long .c-long-content {
+    filter: opacity(1);
+    @starting-style {
+        filter: opacity(0);
+    }
+}
+
+.conversation-message ol {
+    @apply ml-4;
+}
+.conversation-message ul {
+    @apply ml-6;
+}
+.conversation-message ol {
+    list-style-type: decimal;
+}
+.conversation-message ul li {
+    list-style: disc outside;
+}
+.conversation-message ul li::marker {
+    font-size: 0.75rem;
+}
+.conversation-header-short .btn-h i,
+.conversation-footer-short .btn-h i {
+    @apply text-xl;
+}
+
+/* Test styles */
+.author-incut {
+    @apply flex-none;
+    @apply w-5 h-5;
+    @apply rounded-full;
+    @apply overflow-hidden;
+}
+.author-incut.ai-01 {
+    @apply bg-success;
+}
+.author-incut.ai-02 {
+    @apply bg-danger;
+}
+.author-incut.ai-03 {
+    @apply bg-primary;
+}
+.author-incut.ai-extra {
+    @apply flex-x items-center justify-center;
+    @apply bg-01;
+    @apply text-cr-item-badge-selected-text text-caption-6;
+}
+.default-layout .layout-body:has(.conversation-message) {
+    scrollbar-width: none;
+}

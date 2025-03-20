@@ -7,23 +7,30 @@
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
-    var cls = $"summary-message message-wrapper {openClass}";
+    var cls = $"conversation-message message-wrapper {openClass}";
 }
 <div class="@cls">
     <div class="c-details">
         <div class="c-summary" @onclick="ShowDetails">
             <ConversationMessageHeader Title="@title" MessageCount="@messageCount" ShowMessages="@ToggleShowMessage"/>
-            <div class="c-short">
-                @conversation.Description
-            </div>
+            @if (!_isOpen) {
+                <div class="c-short">
+                    @conversation.Description
+                </div>
+            }
         </div>
-        <div class="c-long">
-            <div class="c-long-content @detailsCls">
-                @conversation.Summary
+        @if (_isOpen) {
+            <div class="c-long">
+                <div class="c-long-content @detailsCls">
+                    @conversation.Summary
+                </div>
             </div>
-        </div>
+        }
     </div>
-    <ConversationMessageFooter Authors="@conversation.AuthorIds" StartsAt="@startsAt" EndsAt="@endsAt" ShowMessages="@ToggleShowMessage"/>
+    <ConversationMessageFooter
+        Authors="@conversation.AuthorIds"
+        StartsAt="@startsAt"
+        EndsAt="@endsAt"/>
 </div>
 
 @code {
