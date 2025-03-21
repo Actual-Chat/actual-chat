@@ -57,14 +57,15 @@ public static class FlowsExt
         Moment? delayUntil = null,
         CancellationToken cancellationToken = default)
         where TFlow : Flow
-        => (TFlow?) await flows.GetAndSendEvent(typeof(TFlow),
-            arguments,
-            (id, now) => new FlowResumeEvent(id,
-                false,
-                tag,
-                null,
-                delayUntil),
-            cancellationToken);
+        => (TFlow?)await flows.GetAndSendEvent(typeof(TFlow),
+                arguments,
+                (id, now) => new FlowResumeEvent(id,
+                    false,
+                    tag,
+                    null,
+                    delayUntil),
+                cancellationToken)
+            .ConfigureAwait(false);
 
     public static Task<Flow?> GetAndResume(
         this IFlows flows,

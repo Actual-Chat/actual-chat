@@ -34,13 +34,16 @@ public class Translator(IServiceProvider services) : IHasServices
             return [];
 
         try {
-            var requestXml = Serializer.SerializeRequest(texts);
-            var content = await Ask(DetectLanguagesPrompt, requestXml, cancellationToken).ConfigureAwait(false);
+            var request = $"""
+                              ```xml
+                              {Serializer.SerializeRequest(texts)}
+                              ```
+                              """;
+            var content = await Ask(DetectLanguagesPrompt, request, cancellationToken).ConfigureAwait(false);
             content = content.OrdinalIgnoreCaseReplace("```xml", "").OrdinalReplace("```", "");
             return Serializer.DeserializeResponse(content, texts.Count);
         }
-        catch (Exception e)
-        {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Could not detect languages in bulk");
             return [.. Enumerable.Repeat(ApiArray.Empty<Language>(), texts.Count)];
         }
