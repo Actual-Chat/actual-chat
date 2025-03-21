@@ -145,6 +145,9 @@
     --indigo-20: #160070;
     --indigo-10: #0C003D;
 
+    --indigo-40-10: #2800C81A;
+    --indigo-40-02: #2800C805;
+
     --purple-99: #FDEFFF;
     --purple-95: #FBE2FF;
     --purple-90: #F6BFFF;
@@ -227,6 +230,7 @@
     --white-10: #FFFFFF1A;
     --white-05: #FFFFFF0D;
     --white-04: #FFFFFF0A;
+    --white-02: #FFFFFF05;
 }
 
 :root, .theme-light {
@@ -404,8 +408,8 @@
     --place-header-text: var(--white);
     --tile: var(--white);
     --highlighted: var(--blue-50-30);
-    --summary-gradient-01: var(--ash-95-50);
-    --summary-gradient-02: var(--white);
+    --conversation-gradient-01: var(--indigo-40-10);
+    --conversation-gradient-02: var(--indigo-40-02);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);
@@ -696,8 +700,8 @@
     --place-header-search: var(--ash-99-10);
     --place-header-text: var(--ash-99);
     --tile: var(--ash-30);
-    --summary-gradient-01: var(--ash-40-50);
-    --summary-gradient-02: var(--transparent);
+    --conversation-gradient-01: var(--white-10);
+    --conversation-gradient-02: var(--transparent);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--ash-26);
@@ -987,8 +991,8 @@
     --place-header-search: var(--white-30);
     --place-header-text: var(--white);
     --tile: var(--white);
-    --summary-gradient-01: var(--ash-95-50);
-    --summary-gradient-02: var(--white);
+    --conversation-gradient-01: var(--indigo-40-10);
+    --conversation-gradient-02: var(--indigo-40-02);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);

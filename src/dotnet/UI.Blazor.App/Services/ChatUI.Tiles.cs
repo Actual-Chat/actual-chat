@@ -274,12 +274,6 @@ public partial class ChatUI
                     flags |= ChatMessageFlags.Unread;
                 if (entry.AuthorId == currentAuthorId)
                     flags |= ChatMessageFlags.IsOwnMessage;
-                if (expandedConversation != null) {
-                    if (entry.Id.LocalId == expandedConversation.Id.StartEntryLid)
-                        flags |= ChatMessageFlags.ConversationStart;
-                    if (entry.Id.LocalId == expandedConversation.EndEntryLid)
-                        flags |= ChatMessageFlags.ConversationEnd;
-                }
                 if (shouldAddToResult) {
                     if (!isWelcomeBlockAdded) {
                         if (hasVeryFirstItem) {
@@ -319,6 +313,17 @@ public partial class ChatUI
                         messages.Add(dateLineMessage);
                         prevMessage = dateLineMessage;
                     }
+                    if (expandedConversation != null) {
+                        if (entry.Id.LocalId == expandedConversation.Id.StartEntryLid) {
+                            var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
+                                ReplacementKind = ChatMessageReplacementKind.ConversationStart,
+                                Date = date,
+                                PreviousMessage = prevMessage,
+                            };
+                            messages.Add(conversationHeaderMessage);
+                            prevMessage = conversationHeaderMessage;
+                        }
+                    }
                     var message = new ChatEntryMessage(entry) {
                         Date = date,
                         Flags = flags,
@@ -329,6 +334,18 @@ public partial class ChatUI
                     };
                     messages.Add(message);
                     prevMessage = message;
+
+                    if (expandedConversation != null) {
+                        if (entry.Id.LocalId == expandedConversation.EndEntryLid) {
+                            var conversationFooterMessage = new ConversationFooter(expandedConversation) {
+                                ReplacementKind = ChatMessageReplacementKind.ConversationEnd,
+                                Date = date,
+                                PreviousMessage = prevMessage,
+                            };
+                            messages.Add(conversationFooterMessage);
+                            prevMessage = conversationFooterMessage;
+                        }
+                    }
                 }
                 prevEntry = entry;
                 isPrevUnread = isEntryUnread;

@@ -20,8 +20,6 @@
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
     var conversation = message.Conversation;
-    var showConversationHeader = conversation != null && message.Flags.HasFlag(ChatMessageFlags.ConversationStart);
-    var showConversationFooter = conversation != null && message.Flags.HasFlag(ChatMessageFlags.ConversationEnd);
     var isAiSearchChat = chat.IsAiSearchChat();
 
     // Classes
@@ -82,10 +80,6 @@
         </div>
     }
     return;
-}
-
-@if (showConversationHeader) {
-    <ConversationMessageHeader Title="@conversation!.Title" MessageCount="@conversation!.MessageCount" ShowMessages="@ToggleShowMessage" />
 }
 
 <div class="@cls"
@@ -227,10 +221,6 @@
         </div>
     </div>
 </div>
-
-@if (showConversationFooter) {
-    <ConversationMessageFooter Authors="@conversation!.AuthorIds" StartsAt="@conversation!.StartsAt" EndsAt="@conversation!.EndsAt"/>
-}
 
 @if (isAiSearchChat && m.IsOwnMessage) {
     <ChatBotWaitingMessage ChatContext="@ChatContext" Message="@Message"/>

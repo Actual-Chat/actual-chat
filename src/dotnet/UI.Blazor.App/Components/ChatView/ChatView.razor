@@ -28,6 +28,14 @@
         {
             <ConversationMessageView ChatContext="@_chatContext" Message="@conversationMessage" />
         }
+        else if (context is ConversationHeader conversationHeader)
+        {
+            <ConversationHeaderView ChatContext="@_chatContext" Header="@conversationHeader" />
+        }
+        else if (context is ConversationFooter conversationFooter)
+        {
+            <ConversationFooterView ChatContext="@_chatContext" Footer="@conversationFooter" />
+        }
     </Item>
     <SkeletonBatch>
         <chat-view-skeleton count="@context" />

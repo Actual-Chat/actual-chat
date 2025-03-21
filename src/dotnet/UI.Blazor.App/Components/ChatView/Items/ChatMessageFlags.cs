@@ -9,6 +9,4 @@ public enum ChatMessageFlags
     HasEntryKindSign = 1 << 3,
     ForwardAuthorStart = 1 << 4,
     IsOwnMessage = 1 << 5,
-    ConversationStart = 1 << 6,
-    ConversationEnd = 1 << 7,
 }

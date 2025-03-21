@@ -1,0 +1,21 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var conversation = Footer.Conversation;
+    var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
+    var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
+}
+
+<ConversationMessageFooter
+    Authors="@conversation.AuthorIds"
+    StartsAt="@startsAt"
+    EndsAt="@endsAt"
+    IsSeparated="true"/>
+
+@code {
+    private ChatUIHub Hub => ChatContext.Hub;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ConversationFooter Footer { get; set; } = null!;
+}
