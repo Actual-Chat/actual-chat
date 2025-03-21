@@ -58,7 +58,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApiOrLocal<IRoulette, Roulette>();
         rpcHost.AddBackend<IRouletteBackend, RouletteBackend>();
 
-        // Chat Roulette
+        // Translation
         rpcHost.AddApiOrLocal<ITranslations, Translations>();
         rpcHost.AddBackend<ITranslationsBackend, TranslationsBackend>();
         rpcHost.AddBackend<IChatEntryLanguagesBackend, ChatEntryLanguagesBackend>();
@@ -85,12 +85,15 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                     Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
                     UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
                 },
-            });
+            }) {
+                Timeout = Settings.TranslatorHttpClientTimeout,
+            };
             services.AddKernel()
                 .AddOpenAIChatCompletion(Settings.OpenAIChatModel,
                     Settings.OpenAIApiKey,
                     httpClient: httpClient,
                     serviceId: Translator.ServiceKey);
+            services.AddKeyedSingleton(Translator.ServiceKey, httpClient); // for disposal
         }
         services.AddSingleton<Translator>();
         services.AddSingleton<LanguageDetectionSerializer>();

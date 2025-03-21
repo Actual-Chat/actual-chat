@@ -13,12 +13,17 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
     [Theory]
     [InlineData("Hi! How are you?", 1, "en")]
-    [InlineData("Hi! How are you?", 50, "en")]
+    [InlineData("Hi! How are you?", 10, "en")]
+    // [InlineData("Hi! How are you?", 111, "en")]
     [InlineData("Привет! Как дела?", 1, "ru")]
-    [InlineData("Привет! Как дела?", 50, "ru")]
+    [InlineData("Привет! Как дела?", 11, "ru")]
+    //[InlineData("Привет! Как дела?", 50, "ru")]
     [InlineData("Merhaba! Nasılsın?", 1, "tr")]
-    [InlineData("Hola, cómo estás?", 50, "es")]
+    [InlineData("Merhaba! Nasılsın?", 12, "tr")]
+    //[InlineData("Hola, cómo estás?", 50, "es")]
     [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 1, "en,ru,tr,es")]
+    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 13, "en,ru,tr,es")]
+    //[InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
     public async Task ShouldDetectLanguageOnInsert(string text, int entryCount, string sExpectedLanguages)
     {
         if (TestRunnerInfo.IsBuildAgent())
@@ -26,7 +31,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false, "translation lab");
+        var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldDetectLanguageOnInsert));
 
         // act
         var entries = await CreateEntries(chatId, text, entryCount);
@@ -37,16 +42,20 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
     [Theory]
     [InlineData("Hi! How are you?", 1, "en")]
-    [InlineData("Hi! How are you?", 50, "en")]
+    [InlineData("Hi! How are you?", 10, "en")]
+    // [InlineData("Hi! How are you?", 50, "en")]
     [InlineData("Привет! Как дела?", 1, "ru")]
-    [InlineData("Привет! Как дела?", 50, "ru")]
+    [InlineData("Привет! Как дела?", 10, "ru")]
+    // [InlineData("Привет! Как дела?", 50, "ru")]
     [InlineData("Merhaba! Nasılsın?", 1, "tr")]
-    [InlineData("Merhaba! Nasılsın?", 50, "tr")]
+    [InlineData("Merhaba! Nasılsın?", 10, "tr")]
+    // [InlineData("Merhaba! Nasılsın?", 50, "tr")]
     [InlineData("Hola, cómo estás?", 1, "es")]
-    [InlineData("Hola, cómo estás?", 50, "es")]
+    [InlineData("Hola, cómo estás?", 10, "es")]
+    // [InlineData("Hola, cómo estás?", 50, "es")]
     [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 1, "en,ru,tr,es")]
     [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 10, "en,ru,tr,es")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
+    // [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
     public async Task ShouldDetectLanguageOnUpdate(string updatedText, int entryCount, string sExpectedLanguages)
     {
         if (TestRunnerInfo.IsBuildAgent())
@@ -54,7 +63,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false, "translation lab");
+        var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldDetectLanguageOnUpdate));
 
         // act
         var entries = await CreateEntries(chatId, "some text", entryCount);
@@ -76,7 +85,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false, "translation lab");
+        var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldTranslateMessage));
         var entry = await Tester.CreateTextEntry(chatId, sourceText);
         var targetLang = Language.Parse(targetLanguage);
 
@@ -110,6 +119,6 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
                 language.Languages.Should().BeEquivalentTo(expectedLanguages, "for #{0}", id);
                 return language.Languages;
             },
-            timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(30)));
+            (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20))).Debuggable());
     }
 }

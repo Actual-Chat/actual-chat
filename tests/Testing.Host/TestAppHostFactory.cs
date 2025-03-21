@@ -85,6 +85,7 @@ public static class TestAppHostFactory
                     UniquePart = UniqueNames.Prefix(),
                     Env = OpenSearchNames.TestPrefix,
                 });
+                services.AddTestLogging(outputAccessor);
             },
             ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),
         };

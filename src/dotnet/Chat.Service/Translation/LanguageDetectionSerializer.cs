@@ -1,3 +1,5 @@
+using System.Text;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace ActualChat.Chat;
@@ -9,16 +11,20 @@ public class LanguageDetectionSerializer(IServiceProvider services)
 
     public string SerializeRequest(IReadOnlyList<string> texts)
     {
-        var writer = new StringWriter();
+        var sb = new StringBuilder();
+        using var writer = XmlWriter.Create(sb, new () { Indent = true, IndentChars = " ", OmitXmlDeclaration = true});
         Request.Serializer.Serialize(writer, Request.From(texts));
-        return writer.ToString();
+        return sb.ToString();
     }
 
     public IReadOnlyList<ApiArray<Language>> DeserializeResponse(string content, int expectedCount)
     {
         try {
-            using var reader = new StringReader(content);
-            var response = (Response?)Response.Serializer.Deserialize(reader);
+            using var stringReader = new StringReader(content);
+            using var xmlReader = new XmlTextReader(stringReader);
+            xmlReader.Namespaces = false;
+            xmlReader.DtdProcessing = DtdProcessing.Ignore;
+            var response = (Response?)Response.Serializer.Deserialize(xmlReader);
             if (response is null || response.Languages.Count == 0)
                 return Empty(expectedCount);
 
@@ -27,7 +33,7 @@ public class LanguageDetectionSerializer(IServiceProvider services)
             return [..Enumerable.Range(1, expectedCount).Select(i => resultMap.GetValueOrDefault(i))];
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Could not deserialize language detection response. \n [[\n{Response}\n]]", content);
+            Log.LogWarning(e, "Could not deserialize language detection response. \n [[{Response}]]", content);
             return Empty(expectedCount);
         }
     }
@@ -37,7 +43,7 @@ public class LanguageDetectionSerializer(IServiceProvider services)
 
     // Nested types
 
-    [XmlRoot("request")]
+    [XmlRoot("request", Namespace = "")]
     public sealed class Request
     {
         public static readonly XmlSerializer Serializer = new(typeof(Request));
@@ -58,7 +64,7 @@ public class LanguageDetectionSerializer(IServiceProvider services)
         public string Content { get; set; } = "";
     }
 
-    [XmlRoot("response")]
+    [XmlRoot("response", Namespace = "")]
     public sealed class Response
     {
         public static readonly XmlSerializer Serializer = new(typeof(Response));
