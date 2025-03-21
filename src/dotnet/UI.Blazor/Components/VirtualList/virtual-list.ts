@@ -320,7 +320,8 @@ export class VirtualList {
         if (fullRange == null)
             return null;
 
-        return fullRange.size //* 2
+        // TODO(AK): LAST CHANGE!!!! +  10000
+        return fullRange.size //+  10000 //* 2
             + (this.defaultEdge === VirtualListEdge.End ? this.spacerSize : this.endSpacerSize) + 4; // 4px for the end anchor
     }
 
@@ -455,9 +456,9 @@ export class VirtualList {
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                 }
-
-                if (this.unmeasuredItems.size == 0)
-                    this.updateViewportThrottled();
+                //
+                // if (this.unmeasuredItems.size == 0)
+                //     this.updateViewportThrottled();
 
                 // recalculate item range as some elements were updated
                 this.shouldRecalculateItemRange = itemsWereMeasured;
@@ -489,9 +490,9 @@ export class VirtualList {
         } /*else if (!itemsWereMeasured && this.stickyEdge?.edge === this.defaultEdge)
             this.scrollToEdge(this.defaultEdge, true, 'item-resize');*/
 
-        const lastItemWasMeasured = itemsWereMeasured && this.unmeasuredItems.size == 0;
-        if (lastItemWasMeasured)
-            this.updateViewportThrottled();
+        // const lastItemWasMeasured = itemsWereMeasured && this.unmeasuredItems.size == 0;
+        // if (lastItemWasMeasured)
+        //     this.updateViewportThrottled();
 
         // recalculate item range as some elements were updated
         this.shouldRecalculateItemRange = itemsWereMeasured;
@@ -573,7 +574,7 @@ export class VirtualList {
             this.isNearSkeleton = isNearSkeleton;
             // reset turn off attempt
             this.turnOffIsNearSkeletonDebounced.reset();
-            this.updateViewportThrottled();
+            // this.updateViewportThrottled();
         } else
             this.turnOffIsNearSkeletonDebounced();
         // debug helper
@@ -767,15 +768,24 @@ export class VirtualList {
         await fastReadRaf();
 
         let viewport: NumberRange | null = null;
+        const fullRange = this.fullRange;
         if (this.fullRange) {
             // const anchorHeight = this.endAnchorRef.getBoundingClientRect().height;
-            const viewportHeight = this.ref.clientHeight - 4; // 4px end anchor height
+            const viewportHeight = this.ref.clientHeight;
             const scrollTop = this.ref.scrollTop;
-            const clientViewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
-            const fullRange = this.fullRange;
-            if (fullRange != null) {
-                viewport = clientViewport.fitInto(fullRange);
-            }
+            const clientViewport = this.defaultEdge === VirtualListEdge.End
+                ? new NumberRange(scrollTop - viewportHeight, scrollTop)
+                : new NumberRange(scrollTop, scrollTop + viewportHeight);
+
+            viewport = clientViewport.map(fullRange);
+
+            // Find the first and last visible items using binary search from the ordered items
+            // const firstVisibleIndex = binarySearch(this.orderedItems, item => item.range.end > viewport.start);
+            // const lastVisibleIndex = binarySearch(this.orderedItems, item => item.range.start >= viewport.end) - 1;
+            //
+            // const firstVisibleItem = firstVisibleIndex >= 0 ? this.orderedItems[firstVisibleIndex] : null;
+            // const lastVisibleItem = lastVisibleIndex >= 0 ? this.orderedItems[lastVisibleIndex] : null;
+            // console.warn('Viewport: ', viewport, firstVisibleItem, lastVisibleItem);
         }
         // set min viewport size if smaller
         if (viewport && viewport.size < MinViewPortSize)
@@ -875,7 +885,7 @@ export class VirtualList {
         if (this.isRendering)
             return;
 
-        this.updateViewportThrottled();
+        // this.updateViewportThrottled();
         this.scheduleUpdateCurrentPivots();
     };
 
@@ -1137,6 +1147,7 @@ export class VirtualList {
         let endSpacerOffset = 0;
 
         fastRaf({
+            key: 'restoreScrollPosition',
             read: () => {
                 if (hasUnmeasuredItems)
                     this.measureItems();
@@ -1224,9 +1235,13 @@ export class VirtualList {
                 this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
                 this.spacerRef.style.transform = `translate3d(0, ${spacerOffset}px, 0)`;
                 this.endSpacerRef.style.transform = `translate3d(0, ${endSpacerOffset}px, 0)`;
-                if (scrollTopOffset)
-                    this.ref.scrollTop = scrollTop + scrollTopOffset;
-                debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize);
+                // if (scrollTopOffset)
+                //     this.ref.scrollTop = scrollTop + scrollTopOffset;
+                debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop);
+
+                // Cancel any pending viewport calculations
+                this.updateViewportThrottled.reset();
+                void this.updateViewport();
             }
         });
 
@@ -1446,7 +1461,7 @@ export class VirtualList {
         debugLog?.log(`requestData: query:`, this.query, this.viewport, this.viewport?.size);
         this.lastQueryTime = Date.now();
         // debug helper
-        await delayAsync(1500);
+        // await delayAsync(1500);
         this.scheduleUpdateCurrentPivots();
         await this.blazorRef.invokeMethodAsync('RequestData', this.query);
         this.lastQuery = this.query;
@@ -1524,8 +1539,8 @@ export class VirtualList {
         //
         // if (now - this.renderCompletedAt < 5000 && !this.lastQuery.isNone)
         //     return this.lastQuery; // Do not request data during scroll too often for debug purposes
-        if (rs.renderIndex > 0)
-            return this.lastQuery; // Debug helper
+        // if (rs.renderIndex > 1)
+        //     return this.lastQuery; // Debug helper
 
         const viewportSize = viewport.size;
         const lastQuerySide = this.lastQuery.moveRange.size === 0

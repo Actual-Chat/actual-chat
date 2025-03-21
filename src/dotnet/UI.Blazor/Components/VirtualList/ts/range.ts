@@ -44,11 +44,17 @@ export class NumberRange extends Range<number> {
         return result;
     }
 
-    public fitInto(fitRange: NumberRange): NumberRange | null {
+    public map(fitRange: NumberRange): NumberRange | null {
         const epsilon = 20;
         const fitSize = fitRange.size;
         if (this.size > fitSize + epsilon)
             return fitRange;
+
+        if (this.start < 0 || this.end < 0) {
+            return new NumberRange(
+                fitRange.end + this.start,
+                fitRange.end + this.end);
+        }
 
         const endOffset = clamp(fitSize - this.end, 0, fitSize);
         const startOffset = clamp(fitSize - this.start, 0, fitSize);
