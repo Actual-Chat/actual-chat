@@ -3,9 +3,16 @@
 }
 .video-thumbnail .c-overlay {
     @apply absolute top-1/2 left-1/2;
-    @apply flex flex-x h-12 w-12 -mt-6 -ml-6 rounded-full items-center justify-center;
+    @apply flex-x items-center justify-center;
+    @apply h-10 w-10;
+    @apply -mt-5 -ml-5;
+    @apply rounded-full;
     @apply backdrop-brightness-50;
 }
+body.narrow .video-thumbnail .c-overlay {
+    @apply h-8 w-8;
+    @apply -mt-4 -ml-4;
+}
 .video-thumbnail .c-play {
-    @apply text-white text-xl;
+    @apply text-white text-text-1 md:text-xl;
 }
