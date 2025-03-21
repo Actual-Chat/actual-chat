@@ -3,7 +3,7 @@ using System.Text;
 
 namespace ActualChat.Chat;
 
-public class OpenAIRateLimitsLoggingHandler(IServiceProvider? services = null) : DelegatingHandler
+public class OpenAIRateLimitsLoggingHandler(OpenAIRateLimitsLoggingHandler.Options options, IServiceProvider? services = null) : DelegatingHandler
 {
     private const string Prefix = "x-ratelimit-";
 
@@ -15,13 +15,16 @@ public class OpenAIRateLimitsLoggingHandler(IServiceProvider? services = null) :
         CancellationToken cancellationToken)
     {
         var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode != HttpStatusCode.TooManyRequests)
-            return response;
-
-        var sb = new StringBuilder();
-        foreach (var header in response.Headers.Where(x => x.Key.OrdinalIgnoreCaseStartsWith(Prefix)))
-            sb.AppendLine().Append(header.Key[Prefix.Length..]).Append('=').AppendJoin(',', header.Value);
-        Log.LogWarning("OpenAI rate limits: {Headers}", sb);
+        var isTooManyRequests = response.StatusCode == HttpStatusCode.TooManyRequests;
+        if (isTooManyRequests || options.LogLimits) {
+            var sb = new StringBuilder();
+            foreach (var header in response.Headers.Where(x => x.Key.OrdinalIgnoreCaseStartsWith(Prefix)))
+                sb.AppendLine().Append(header.Key[Prefix.Length..]).Append('=').AppendJoin(',', header.Value);
+            Log.LogWarning("OpenAI rate limits: {Headers}", sb);
+        }
         return response;
     }
+
+    // Nested types
+    public record Options(bool LogLimits);
 }

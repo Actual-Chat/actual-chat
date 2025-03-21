@@ -6,11 +6,13 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Integrations.Anthropic;
+using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace ActualChat.Chat.Module;
 
@@ -76,11 +78,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // The services below are used only when this module operates in non-client mode
 
-        if (Settings.IsTranslationEnabled) {
-            Settings.DetectLanguagesPromptFile.RequireFileExists();
-            Settings.TranslatePromptFile.RequireFileExists();
+        const string openAiChatCompletionServiceKey = "open_ai:chat_completion";
+        var rateLimitedChatCompletionServiceKey = RateLimitedServiceKey.GetFor(openAiChatCompletionServiceKey);
 
-            var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler {
+        if (Settings.IsTranslationEnabled || Settings.IsSummarizationEnabled) {
+            var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler(new OpenAIRateLimitsLoggingHandler.Options(false)) {
                 InnerHandler = new HttpClientHandler {
                     Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
                     UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
@@ -92,8 +94,29 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 .AddOpenAIChatCompletion(Settings.OpenAIChatModel,
                     Settings.OpenAIApiKey,
                     httpClient: httpClient,
-                    serviceId: Translator.ServiceKey);
-            services.AddKeyedSingleton(Translator.ServiceKey, httpClient); // for disposal
+                    serviceId: openAiChatCompletionServiceKey);
+            services.AddKeyedSingleton(openAiChatCompletionServiceKey, httpClient); // for disposal
+
+            services.AddKeyedSingleton<IChatCompletionService>(rateLimitedChatCompletionServiceKey,
+                (svp, _) => {
+                    var chatCompletion = svp.GetRequiredKeyedService<IChatCompletionService>(openAiChatCompletionServiceKey);
+                    var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
+                        new RedisTokenBucketRateLimiter.Options(
+                            "rate_limit:openai_chat_completion",
+                            200_000,
+                            TimeSpan.FromSeconds(60)
+                        ),
+                        svp);
+                    return chatCompletion.WrapWithRateLimiter(rateLimiter);
+                });
+        }
+
+        if (Settings.IsTranslationEnabled) {
+            Settings.DetectLanguagesPromptFile.RequireFileExists();
+            Settings.TranslatePromptFile.RequireFileExists();
+            services.AddKeyedTransient<IChatCompletionService>(
+                Translator.ServiceKey,
+                (svp, _) => svp.GetRequiredKeyedService<IChatCompletionService>(rateLimitedChatCompletionServiceKey));
         }
         services.AddSingleton<Translator>();
         services.AddSingleton<LanguageDetectionSerializer>();
@@ -108,14 +131,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            services.AddKernel()
-                .AddOpenAIChatCompletion(Settings.OpenAIChatModel,
-                    Settings.OpenAIApiKey,
-                    httpClient: new HttpClient(new HttpClientHandler {
-                        Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
-                        UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
-                    }),
-                    serviceId: ConversationSummarizer.ServiceKey);
+            services.AddKeyedTransient<IChatCompletionService>(
+                ConversationSummarizer.ServiceKey,
+                (svp, _) => svp.GetRequiredKeyedService<IChatCompletionService>(rateLimitedChatCompletionServiceKey));
             services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
         }
         else
