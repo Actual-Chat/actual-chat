@@ -22,7 +22,7 @@
 }
 
 .virtual-list > .c-wrapper {
-    @apply relative w-full;
+    @apply relative w-full shrink-0;
     overflow-anchor: none;
 }
 
