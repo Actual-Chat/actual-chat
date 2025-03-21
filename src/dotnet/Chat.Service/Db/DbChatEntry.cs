@@ -74,12 +74,12 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long? VideoEntryId { get; set; }
     public string? TimeMap { get; set; }
 
-    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, ApiArray<Media.LinkPreview> linkPreviews = default)
+    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, ApiArray<LinkPreview> linkPreviews = default)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
         var attachmentsArray = attachments == null
             ? new ApiArray<TextEntryAttachment>([])
-            : new ApiArray<TextEntryAttachment>(attachments!.OrderBy(x => x.Index).ToArray());
+            : new ApiArray<TextEntryAttachment>(attachments.OrderBy(x => x.Index).ToArray());
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
         var linkPreviewIds = GetLinkPreviewIds();
@@ -91,7 +91,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             EndsAt = EndsAt.ToMoment(),
             ContentEndsAt = ContentEndsAt.ToMoment(),
             Content = !IsSystemEntry ? Content : "",
-            ContentHash = new (ContentHash),
+            ContentHash = new (ContentHash ?? ""),
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
             HasReactions = HasReactions,
             StreamId = StreamId ?? "",
