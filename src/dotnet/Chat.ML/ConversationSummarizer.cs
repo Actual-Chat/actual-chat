@@ -1,5 +1,6 @@
 using System.Net;
 using ActualChat.Integrations.Anthropic;
+using Cysharp.Text;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using HttpOperationException = Microsoft.SemanticKernel.HttpOperationException;
@@ -32,17 +33,22 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
     [field: AllowNull, MaybeNull]
     private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
     [field: AllowNull, MaybeNull]
+    private IAuthorNameRetriever AuthorNameRetriever => field ??= services.GetRequiredService<IAuthorNameRetriever>();
+    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public async Task<ConversationSummarizerResult> Summarize(
         IReadOnlyCollection<TextEntry> chatEntries,
         CancellationToken cancellationToken)
     {
-         var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
+        var authorIds = chatEntries.Select(c => c.AuthorId).Distinct().ToArray();
+        var mentionsMap = await BuildMentionsMap(authorIds).ConfigureAwait(false);
+        var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
          var prompt = PromptUtils.BuildPrompt(
             PromptTemplate,
             new Dictionary<string, string>(StringComparer.Ordinal) {
-                { "DISCUSSION", discussion.Substring(0, Math.Min(discussion.Length, 100_000)) },
+                { "DISCUSSION", discussion.Truncate(100_000) },
+                { "MENTIONS_MAP", mentionsMap },
             });
         string? reply;
         try {
@@ -68,6 +74,22 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         var summary = PromptUtils.GetXmlTagValue(reply, "summary").Trim().NullIfEmpty() ?? reply;
 
         return new ConversationSummary(title, description, summary);
+    }
+
+    private async Task<string> BuildMentionsMap(AuthorId[] authorIds)
+    {
+        using var sb = ZString.CreateStringBuilder();
+        foreach (var authorId in authorIds) {
+            if (sb.Length > 0)
+                sb.AppendLine();
+            var authorName = await AuthorNameRetriever.GetAuthorName(authorId).ConfigureAwait(false);
+            sb.Append('[');
+            sb.Append(authorName);
+            sb.Append("] @");
+            var mentionId = new MentionId(authorId, AssumeValid.Option);
+            sb.Append(mentionId.Value);
+        }
+        return sb.ToString();
     }
 
     private static bool TryExtractTryAgainInDelay(string message, out TimeSpan tryAgainInDelay)
@@ -113,7 +135,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
 
     private const string PromptTemplate =
         """
-        Summarize following text discussion of several people in several sentences.
+        Summarize the following text discussion of several people in several sentences.
         Specify what topics have been discussed and key moments.
         Who made commitments and what commitments are.
         Additionally:
@@ -121,6 +143,10 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         Provide a title that reflects the essence of the discussion.
         Give a brief description of the discussion (3-4 sentences).
         Provide a summary as list of points with using markdown.
+        Summary length should be at least 10% from original discussion.
+        To refer to discussion participants in summary and description use special mention format (sequence started with @) instead of name:
+        {{MENTIONS_MAP}}
+
         Provide all results in the language of the discussion.
         Present your final decision in the following xml format:
 
