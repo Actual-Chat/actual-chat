@@ -649,7 +649,7 @@ jobs:
         with:
           base64: ${{ secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
 
-      - name: Install the Apple certificate and provisioning profile
+      - name: Install the Apple distribution certificate
         env:
           BUILD_CERTIFICATE_BASE64: ${{secrets.APPLE_DISTRIBUTION_CERT_BASE64}}
           P12_PASSWORD: ${{secrets.APPLE_DISTRIBUTION_CERT_PASSWORD}}
@@ -658,7 +658,7 @@ jobs:
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-          echo ::Importing certificate and provisioning profile from secrets
+          echo ::Importing certificate from secrets
           echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
 
           echo ::Creating temporary key chain
