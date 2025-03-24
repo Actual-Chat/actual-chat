@@ -92,6 +92,7 @@ export class VirtualList {
     private endSpacerSize: number | null = null;
     private shouldRecalculateItemRange: boolean = true;
     private shouldUpdateOrderedItems: boolean = true;
+    private shouldUpdateCornerstoneItem: boolean = true;
     private isUpdatingPivots: boolean = false;
 
     public static create(
@@ -1245,8 +1246,8 @@ export class VirtualList {
                 debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop);
 
                 // Cancel any pending viewport calculations
-                // this.updateViewportThrottled.reset();
-                // this.updateViewportThrottled();
+                this.updateViewportThrottled.reset();
+                this.updateViewportThrottled();
                 // void this.updateViewport();
             }
         });
@@ -1368,11 +1369,22 @@ export class VirtualList {
         if (!this.shouldRecalculateItemRange && this.itemRange)
             return false;
 
+        const { renderState: rs, orderedItems } = this;
+
         // nothing to do when there are no items rendered
-        if (this.orderedItems.length == 0)
+        if (orderedItems.length == 0)
             return false;
 
-        const orderedItems = this.orderedItems;
+        let cornerstoneItemHasBeenUpdated = false;
+        if (this.shouldUpdateCornerstoneItem && (rs.hasVeryLastItem || rs.hasVeryLastItem)) {
+            // We have to recalculate cornerstone item
+            this.shouldUpdateCornerstoneItem = false;
+            for (const item of orderedItems)
+                item.range = null;
+            console.warn(
+                'ensureItemRangeCalculated: resetting cornerstone item');
+        }
+
         // Take first or last item as cornerstone item
         let cornerStoneItemIndex = 0;
         let cornerStoneItem = orderedItems[0];
@@ -1381,35 +1393,64 @@ export class VirtualList {
             cornerStoneItem = orderedItems[cornerStoneItemIndex];
         }
 
+        // Find cornerstone item with binary search
         if (!cornerStoneItem.range) {
-            // Take first measured item as cornerstone item starting the middle
-            cornerStoneItemIndex = Math.max(Math.floor(orderedItems.length / 2) - 1, 0);
-            cornerStoneItem = orderedItems[cornerStoneItemIndex];
+            const foundIndex = binarySearch(orderedItems, item => !!item.range);
+            if (foundIndex >= 0) {
+                cornerStoneItemIndex = foundIndex;
+                cornerStoneItem = orderedItems[cornerStoneItemIndex];
+            }
         }
 
-        while (cornerStoneItemIndex < orderedItems.length - 1 && !cornerStoneItem.range)
-            cornerStoneItem = orderedItems[++cornerStoneItemIndex];
-
-        if (!cornerStoneItem.range) {
-            // Take first measured item as cornerstone item starting the middle
-            cornerStoneItemIndex = Math.max(Math.floor(orderedItems.length / 2) - 1, 0);
-            cornerStoneItem = orderedItems[cornerStoneItemIndex];
-        }
-
-        while (cornerStoneItemIndex > 0 && !cornerStoneItem.range)
-            cornerStoneItem = orderedItems[--cornerStoneItemIndex];
-
-        if (!cornerStoneItem.range) {
+        if (!cornerStoneItem?.range) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
             if (this.defaultEdge === VirtualListEdge.End) {
                 cornerStoneItemIndex = orderedItems.length - 1;
                 cornerStoneItem = orderedItems[cornerStoneItemIndex];
-                cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
+
+                // try to reuse coords of previously rendered items
+                if (!rs.query.isNone && !rs.hasVeryLastItem) {
+                    const { virtualRange } = this.lastQuery;
+                    cornerStoneItem.range = new NumberRange(
+                        virtualRange.end - cornerStoneItem.size,
+                        virtualRange.end);
+                } else
+                    cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
+                if (!rs.hasVeryLastItem) {
+                    this.shouldUpdateCornerstoneItem = true;
+                    console.warn(
+                        'ensureItemRangeCalculated: no cornerstone item found, recalculating all ranges!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                }
+                else {
+                    this.shouldUpdateCornerstoneItem = false;
+                    cornerstoneItemHasBeenUpdated = true;
+                    console.warn(
+                        'ensureItemRangeCalculated: cornerstone item has been updated');
+                }
             }
             else {
                 cornerStoneItemIndex = 0;
                 cornerStoneItem = orderedItems[cornerStoneItemIndex];
-                cornerStoneItem.range = new NumberRange(0, cornerStoneItem.size);
+
+                // try to reuse coords of previously rendered items
+                if (!rs.query.isNone && !rs.hasVeryFirstItem) {
+                    const { virtualRange } = this.lastQuery;
+                    cornerStoneItem.range = new NumberRange(
+                        virtualRange.start,
+                        virtualRange.start + cornerStoneItem.size);
+                } else
+                    cornerStoneItem.range = new NumberRange(0, cornerStoneItem.size);
+                if (!rs.hasVeryFirstItem) {
+                    this.shouldUpdateCornerstoneItem = true;
+                    console.warn(
+                        'ensureItemRangeCalculated: no cornerstone item found, recalculating all ranges!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                }
+                else {
+                    this.shouldUpdateCornerstoneItem = false;
+                    cornerstoneItemHasBeenUpdated = true;
+                    console.warn(
+                        'ensureItemRangeCalculated: cornerstone item has been updated');
+                }
             }
         }
 
@@ -1435,6 +1476,10 @@ export class VirtualList {
         this.maxEnd = Math.max(this.maxEnd ?? Number.MIN_SAFE_INTEGER, this.itemRange.end);
 
         this.shouldRecalculateItemRange = false;
+        if (cornerstoneItemHasBeenUpdated) {
+            this.viewport = null;
+            this.restoreScrollPosition(); // restore scroll position after updated cornerstone item
+        }
         return true;
     }
 
