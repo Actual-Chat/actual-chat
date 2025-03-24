@@ -23,27 +23,27 @@ public class RedisTokenBucketRateLimiter(RedisDb redisDb, RedisTokenBucketRateLi
         local limit = tonumber(ARGV[2])
         local permitCount = tonumber(ARGV[3])
 
-        -- Получаем текущее время из Redis
+        -- Get current time in seconds from Redis
         local now = tonumber(redis.call('TIME')[1])
 
-        -- Получаем текущее количество токенов
+        -- Gets current token number
         local last_refill = tonumber(redis.call('HGET', key, 'last_refill')) or now
         local tokens = tonumber(redis.call('HGET', key, 'tokens')) or limit
 
-        -- Определяем, сколько токенов можно добавить за прошедшее время
+        -- Gets how many tokens have to be refilled for elapsed time
         local elapsed_time = now - last_refill
         local refill_rate = limit / window
         local new_tokens = math.min(limit, tokens + elapsed_time * refill_rate)
 
-        -- Проверяем, хватает ли токенов для запроса
+        -- Checks if there are enough tokens to approve the request
         if new_tokens >= permitCount then
             new_tokens = new_tokens - permitCount
             redis.call('HSET', key, 'tokens', new_tokens)
             redis.call('HSET', key, 'last_refill', now)
             redis.call('EXPIRE', key, window)
-            return { 1, 0 } -- Разрешаем запрос
+            return { 1, 0 } -- Allowed
         else
-            return { 0, new_tokens } -- Ограничиваем запрос
+            return { 0, new_tokens } -- Denied
         end
         """;
 
