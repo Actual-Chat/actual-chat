@@ -465,6 +465,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => keyRange.Move(query.MoveRange),
         };
 
+        // Check whether the range is out of the chatIdRange
+        if (chatIdRange.IntersectWith(range).IsEmpty) {
+            if (range.Start > chatIdRange.End)
+                range = new Range<long>(chatIdRange.End - ChatUI.LoadLimit, chatIdRangeEndPlus);
+            else if (range.End < chatIdRange.Start)
+                range = new Range<long>(chatIdRange.Start, chatIdRange.Start + ChatUI.LoadLimit);
+        }
+
         // If we are scrolling somewhere within idRange, let's extend the range to scrollAnchor & nearby entries.
         if (scrollAnchor is { } vScrollAnchor && chatIdRange.Contains(vScrollAnchor.EntryLid)) {
             var scrollAnchorRange = new Range<long>(
