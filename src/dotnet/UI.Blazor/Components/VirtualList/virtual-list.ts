@@ -627,6 +627,8 @@ export class VirtualList {
     }
 
     private async endRender(): Promise<void> {
+        this.restoreScrollPosition();
+
         if (!this.isRendering) {
             this.whenRequestDataCompleted?.resolve(undefined);
             this.whenRequestDataCompleted = null;
@@ -647,29 +649,27 @@ export class VirtualList {
         }
 
         this.renderState = rs;
-        const spacerSize = 0;
-        const endSpacerSize = 0;
-        // let spacerSize = this.defaultSpacerSize;
-        // let endSpacerSize = this.defaultSpacerSize;
-        // if (rs.beforeCount !== null && rs.afterCount !== null) {
-        //     spacerSize = rs.beforeCount * Math.floor(this.statistics.itemSize);
-        //     endSpacerSize = rs.afterCount * Math.floor(this.statistics.itemSize);
-        // } else if (!rs.keyRange?.start) {
-        //     if (rs.renderIndex <= 2) {
-        //         // no data loaded yet
-        //         spacerSize = 1000;
-        //         endSpacerSize = 0;
-        //     } else {
-        //         // empty result list
-        //         spacerSize = 0;
-        //         endSpacerSize = 0;
-        //     }
-        // } else {
-        //     if (rs.hasVeryFirstItem)
-        //         spacerSize = 0;
-        //     if (rs.hasVeryLastItem)
-        //         endSpacerSize = 0;
-        // }
+        let spacerSize = this.defaultSpacerSize;
+        let endSpacerSize = this.defaultSpacerSize;
+        if (rs.beforeCount !== null && rs.afterCount !== null) {
+            spacerSize = rs.beforeCount * Math.floor(this.statistics.itemSize);
+            endSpacerSize = rs.afterCount * Math.floor(this.statistics.itemSize);
+        } else if (!rs.keyRange?.start) {
+            if (rs.renderIndex <= 2) {
+                // no data loaded yet
+                spacerSize = 1000;
+                endSpacerSize = 0;
+            } else {
+                // empty result list
+                spacerSize = 0;
+                endSpacerSize = 0;
+            }
+        } else {
+            if (rs.hasVeryFirstItem)
+                spacerSize = 0;
+            if (rs.hasVeryLastItem)
+                endSpacerSize = 0;
+        }
 
         // Unable to delay until the next frame - will lead to scroll jumps
         this.spacerRef.style.height = `${spacerSize}px`;
@@ -680,7 +680,6 @@ export class VirtualList {
         const startedAt = this.renderStartedAt;
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
-        this.restoreScrollPosition();
         // const positionSet = this.restoreScrollPosition();
         // if (this.pivots.length && rs.scrollToKey == null) {
         //     // Restore scroll position first, and then use smooth scroll to go to the scroll target
@@ -1165,75 +1164,17 @@ export class VirtualList {
                 if (this.defaultEdge === VirtualListEdge.End) {
                     const { end, size: containerSize } = this.itemRange ?? { start: 0, end: 0, size: 0 };
 
-                    offset = end;// - this.endSpacerSize;
-                    spacerOffset = offset - containerSize/* - this.endSpacerSize*/;
-                    endSpacerOffset = offset + this.endSpacerSize;
-
-                    // Adjust totalSize if spacerRef exceeds the wrapperRef bounds
-                    // const spacerOverflow = clamp(totalSize + (spacerOffset - this.spacerSize), Number.MIN_SAFE_INTEGER, 0);
-                    // if (spacerOverflow < 0) {
-                    //     this.minStart -= Math.abs(spacerOverflow); // TODO(AK): check if it's correct - suspicious
-                    //     totalSize = this.totalSize;
-                    // }
-                    // // Adjust totalSize if endSpacerRef exceeds the wrapperRef bounds
-                    // const endSpacerOverflow = clamp(endSpacerOffset, 0, Number.MAX_SAFE_INTEGER);
-                    // if (endSpacerOverflow > 0) {
-                    //     this.maxEnd += endSpacerOverflow; // TODO(AK): check if it's correct - suspicious
-                    //     totalSize = this.totalSize;
-                    // }
-
-
-
-
-                    // Adjust totalSize if spacerRef exceeds the wrapperRef bounds
-                    // const spacerOverflow = clamp(totalSize + spacerOffset, Number.MIN_SAFE_INTEGER, 0);
-                    // if (spacerOverflow < 0) {
-                    //     // this.minStart -= Math.abs(spacerOverflow); // TODO(AK): check if it's correct - suspicious
-                    //     const spacerOverflowAbs = Math.abs(spacerOverflow);
-                    //     totalSize += spacerOverflowAbs;
-                    //     scrollTop += spacerOverflowAbs;
-                    // }
-                    // // Adjust totalSize if endSpacerRef exceeds the wrapperRef bounds
-                    // const endSpacerOverflow = clamp(endSpacerOffset, 0, Number.MAX_SAFE_INTEGER);
-                    // if (endSpacerOverflow > 0) {
-                    //     // this.maxEnd += endSpacerOverflow; // TODO(AK): check if it's correct - suspicious
-                    //     const endSpacerOverflowAbs = Math.abs(endSpacerOverflow);
-                    //     totalSize += endSpacerOverflowAbs;
-                    //     scrollTop -= endSpacerOverflowAbs;
-                    // }
+                    offset = end;
+                    spacerOffset = offset - containerSize;
+                    endSpacerOffset = end + this.endSpacerSize;
 
                 }
                 else {
                     const { start, size: containerSize } = this.itemRange ?? { start: 0, end: 0, size: 0 };
 
-                    offset = start + this.spacerSize;
+                    offset = start;
                     spacerOffset = offset - this.spacerSize;
                     endSpacerOffset = offset + containerSize;
-
-                    // // Adjust totalSize if spacerRef exceeds the wrapperRef bounds
-                    // const spacerOverflow = clamp(spacerOffset, Number.MIN_SAFE_INTEGER, 0);
-                    // if (spacerOverflow < 0) {
-                    //     this.minStart -= Math.abs(spacerOverflow); // TODO(AK): check if it's correct - suspicious
-                    //     totalSize = this.totalSize;
-                    // }
-                    // // Adjust totalSize if endSpacerRef exceeds the wrapperRef bounds
-                    // const endSpacerOverflow = clamp(endSpacerOffset + this.endSpacerSize - totalSize, 0, Number.MAX_SAFE_INTEGER);
-                    // if (endSpacerOverflow > 0) {
-                    //     this.maxEnd += endSpacerOverflow; // TODO(AK): check if it's correct - suspicious
-                    //     totalSize = this.totalSize;
-                    // }
-                    // Adjust totalSize if spacerRef exceeds the wrapperRef bounds
-                    // const spacerOverflow = clamp(spacerOffset, Number.MIN_SAFE_INTEGER, 0);
-                    // if (spacerOverflow < 0) {
-                    //     // this.minStart -= Math.abs(spacerOverflow); // TODO(AK): check if it's correct - suspicious
-                    //     totalSize += Math.abs(spacerOverflow);
-                    // }
-                    // // Adjust totalSize if endSpacerRef exceeds the wrapperRef bounds
-                    // const endSpacerOverflow = clamp(endSpacerOffset - totalSize, 0, Number.MAX_SAFE_INTEGER);
-                    // if (endSpacerOverflow > 0) {
-                    //     // this.maxEnd += endSpacerOverflow; // TODO(AK): check if it's correct - suspicious
-                    //     totalSize += Math.abs(endSpacerOverflow);
-                    // }
                 }
             },
             write: () => {
@@ -1248,7 +1189,6 @@ export class VirtualList {
                 // Cancel any pending viewport calculations
                 this.updateViewportThrottled.reset();
                 this.updateViewportThrottled();
-                // void this.updateViewport();
             }
         });
 

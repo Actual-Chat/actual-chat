@@ -1,13 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Events
 
-@{
-    // Render more skeletons when there are no entries rendered yet
-    var skeletonCount = ItemVisibility.Value.VisibleEntryLids.Count > 0
-        ? 2
-        : 10;
-}
-
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     @key="@ChatId.Value"
@@ -15,8 +8,8 @@
     DataSource="@this"
     Identity="@ChatId"
     DefaultEdge="@VirtualListEdge.End"
-    SkeletonCount="@skeletonCount"
-    SpacerSize="800"
+    SkeletonCount="15"
+    SpacerSize="1500"
     RequestDataOnParameterSet="true"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
