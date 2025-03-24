@@ -1612,13 +1612,26 @@ export class VirtualList {
             return this.lastQuery;
         }
 
-        const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start);
+        const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start) - 1;
         const lastItemIndex = binarySearch(orderedItems, item => item.range.start > loadZone.end);
-        const firstItem = orderedItems[firstItemIndex]
-            ?? (orderedItems[0].range.start > loadZone.end
-                ? orderedItems[0]
-                : orderedItems[orderedItems.length - 1]);
-        const lastItem = orderedItems[lastItemIndex] ?? firstItem;
+        let firstItem = orderedItems[firstItemIndex];
+        let lastItem = orderedItems[lastItemIndex];
+        if (!firstItem) {
+            if (orderedItems[0].range.start >= loadZone.end)
+                firstItem = orderedItems[0];
+            else if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
+                firstItem = orderedItems[orderedItems.length - 1];
+            else
+                firstItem = orderedItems[0];
+        }
+        if (!lastItem) {
+            if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
+                lastItem = orderedItems[orderedItems.length - 1];
+            else if (orderedItems[0].range.start >= loadZone.end)
+                lastItem = orderedItems[0];
+            else
+                lastItem = orderedItems[orderedItems.length - 1];
+        }
         const keyRange = new Range(firstItem.key, lastItem.key);
 
         let moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio);
