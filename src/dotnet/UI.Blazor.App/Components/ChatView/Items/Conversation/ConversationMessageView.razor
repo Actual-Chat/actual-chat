@@ -10,23 +10,25 @@
     var cls = $"conversation-message message-wrapper {openClass}";
 }
 <div class="@cls">
+    <CascadingValue Value="@_fakeEntry" IsFixed="true">
     <div class="c-details">
         <div class="c-summary" @onclick="ShowDetails">
             <ConversationMessageHeader Title="@title" MessageCount="@messageCount" ShowMessages="@ToggleShowMessage"/>
             @if (!_isOpen) {
                 <div class="c-short">
-                    @conversation.Description
+                    <MarkupView Markup="@_descriptionMarkup"/>
                 </div>
             }
         </div>
         @if (_isOpen) {
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
-                    @conversation.Summary
+                    <MarkupView Markup="@_summaryMarkup"/>
                 </div>
             </div>
         }
     </div>
+    </CascadingValue>
     <ConversationMessageFooter
         Authors="@conversation.AuthorIds"
         StartsAt="@startsAt"
@@ -35,12 +37,30 @@
 
 @code {
     private bool _isOpen;
+    private Markup _summaryMarkup = Markup.Empty;
+    private Markup _descriptionMarkup = Markup.Empty;
+    private ConversationMessage? _lastMessage;
+    private ChatEntry _fakeEntry = null!;
+
     private ChatUIHub Hub => ChatContext.Hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ChatUI ChatUI => Hub.ChatUI;
+    private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        if (ReferenceEquals(_lastMessage, Message))
+            return;
+
+        var conversation = Message.Conversation;
+        var chatEntryId = new ChatEntryId(conversation.Id.ChatId, ChatEntryKind.Text, conversation.Id.StartEntryLid, AssumeValid.Option);
+        _fakeEntry = new ChatEntry(chatEntryId);
+        _lastMessage = Message;
+        _descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
+        _summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
+    }
 
     private Task ShowDetails() {
         _isOpen = !_isOpen;
