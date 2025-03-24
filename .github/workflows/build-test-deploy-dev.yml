@@ -672,8 +672,9 @@ jobs:
           security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           echo :: set-key-partition-list
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          echo :: list-keychain
-          security list-keychain -d user -s $KEYCHAIN_PATH
+          echo :: list-keychains
+          security list-keychains -d user -s $KEYCHAIN_PATH
+          security find-identity -p codesigning -v
 
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
