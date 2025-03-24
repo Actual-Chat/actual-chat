@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
       - name: Set up Docker Buildx
         id: buildx
@@ -46,7 +46,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image 'nats-jetstream:${{ env.IMAGE_TAG }}'
+      - name: Build image 'nats-jet:${{ env.IMAGE_TAG }}'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -56,5 +56,3 @@ jobs:
           push: ${{ inputs.deployToDev }}
           build-args: |
             IMAGE_TAG=${{ env.IMAGE_TAG }}
-
-
