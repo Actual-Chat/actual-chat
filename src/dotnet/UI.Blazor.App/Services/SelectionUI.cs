@@ -55,6 +55,13 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
         if (selection.Count == 0)
             return;
 
+        var textToCopy = await GetTextToCopy(selection).ConfigureAwait(true); // Get back to the Blazor Dispatcher
+        await ClipboardUI.WriteText(textToCopy).ConfigureAwait(true);
+        Clear();
+    }
+
+    private async Task<string> GetTextToCopy(IReadOnlySet<ChatEntryId> selection)
+    {
         var showAuthor = selection.Count > 1;
         var chatId = selection.First().ChatId;
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
@@ -85,9 +92,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
             sb.AppendLine(text);
         }
 
-        await Task.CompletedTask.ConfigureAwait(true); // Get back to the Blazor Dispatcher
-        await ClipboardUI.WriteText(sb.ToString()).ConfigureAwait(true);
-        Clear();
+        return sb.ToString();
     }
 
     public Task Delete(ChatEntryId chatEntryId)
