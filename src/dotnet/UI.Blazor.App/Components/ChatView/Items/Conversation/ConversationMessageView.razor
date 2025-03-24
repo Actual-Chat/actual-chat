@@ -1,3 +1,4 @@
+@using Cysharp.Text
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var conversation = Message.Conversation;
@@ -30,6 +31,7 @@
     </div>
     </CascadingValue>
     <ConversationMessageFooter
+        CopyToClipboardRequested="@OnCopyToClipboardRequested"
         Authors="@conversation.AuthorIds"
         StartsAt="@startsAt"
         EndsAt="@endsAt"/>
@@ -46,6 +48,7 @@
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
+    private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
@@ -70,4 +73,20 @@
 
     private void ToggleShowMessage()
         => ChatUI.ToggleExpandConversation(Message.Conversation.Id);
+
+    private async Task OnCopyToClipboardRequested() {
+        var text = GetText();
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+    }
+
+    private string GetText() {
+        var conversation = Message.Conversation;
+        using var sb = ZString.CreateStringBuilder();
+        sb.AppendLine(conversation.Title);
+        sb.AppendLine();
+        sb.AppendLine(conversation.Description);
+        sb.AppendLine();
+        sb.AppendLine(conversation.Summary);
+        return sb.ToString();
+    }
 }

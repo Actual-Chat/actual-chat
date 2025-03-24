@@ -21,7 +21,7 @@
                 @timeRangeString
             </div>
         </div>
-        <HeaderButton>
+        <HeaderButton Click="CopyToClipboardRequested">
             <i class="icon-copy"></i>
         </HeaderButton>
     </div>
@@ -32,6 +32,7 @@
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public DateTime EndsAt { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
+    [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
 
     private string GetTimeRangeString() {
         return $"{StartsAt:MM/dd/yyyy HH:mm} - {EndsAt:HH:mm}";
