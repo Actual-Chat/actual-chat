@@ -230,7 +230,7 @@
     private Model? _rendered;
     private ChatEntryMessage? _renderedMessage;
     private Markup? _renderedMarkup;
-    private ValueTask<Markup> _markupTask;
+    private Task<Markup> _markupTask = Task.FromResult(Markup.Empty);
     private Markup _markup = Markup.Empty;
     private ChatEntryMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
@@ -270,7 +270,7 @@
             return;
 
         _lastMessage = Message;
-        _markupTask = ChatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default);
+        _markupTask = ChatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default).AsTask();
         _markup = await _markupTask;
         await base.OnParametersSetAsync(); // Triggers recompute
     }
