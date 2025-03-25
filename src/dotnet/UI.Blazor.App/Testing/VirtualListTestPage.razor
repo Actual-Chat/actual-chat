@@ -4,6 +4,11 @@
 @inject VirtualListTestService Service
 @inject ILogger<VirtualListTestPage> Log
 
+@{
+    var defaultEdge = (VirtualListEdge)(DefaultEdge ?? 0);
+}
+
+
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>VirtualList Test Page</MainHeader>
 
@@ -11,6 +16,7 @@
     Style="height: 600px;"
     SpacerSize="10_000"
     SkeletonCount="2"
+    DefaultEdge="@defaultEdge"
     DataSource="this">
     <Item>
         <TestListItemBadge ItemRef="@context" />
@@ -36,6 +42,8 @@
     public int? RangeSeed { get; set; } = null;
     [Parameter, SupplyParameterFromQuery]
     public int? ContentSeed { get; set; } = null;
+    [Parameter, SupplyParameterFromQuery]
+    public int? DefaultEdge { get; set; } = null;
 
     public Task<VirtualListData<TestListItemRef>> GetData(
         VirtualListDataQuery query,
