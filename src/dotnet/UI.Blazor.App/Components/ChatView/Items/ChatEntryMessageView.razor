@@ -58,6 +58,7 @@
     if (ReferenceEquals(entry, ChatEntry.Loading)) {
         <string-skeleton firstWidth="2" secondWidth="4" height="6" system="true"/>
     } else {
+        @* Two blocks are almost identical and one of them should be removed after it is tested and published *@
         @if (!m.EnableIncompleteUI) {
             <div class="@cls"
                  data-hover-menu="@(m.IsSelected ? null : MenuRef.New<MessageHoverMenu>(entry.Id, bool.TrueString))"
@@ -104,6 +105,7 @@
     return;
 }
 
+@* Two blocks are almost identical and one of them should be removed after it is tested and published *@
 @if (!m.EnableIncompleteUI) {
     <div class="@cls"
          data-chat-entry-id="@(entry.Id)"
