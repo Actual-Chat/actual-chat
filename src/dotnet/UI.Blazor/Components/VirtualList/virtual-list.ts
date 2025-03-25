@@ -153,14 +153,18 @@ export class VirtualList {
         if (this.defaultEdge === VirtualListEdge.Start) {
             this.containerRef.style.top = '0px';
             this.spacerRef.style.top = '0px';
-            this.endSpacerRef.style.top = '0px';
+            this.endSpacerRef.style.bottom = '0px';
             this.ref.style.flexDirection = 'column';
+            this.spacerRef.style.height = `${0}px`;
+            this.endSpacerRef.style.height = `${0}px`;
         }
         else {
             this.containerRef.style.bottom = '0px';
-            this.spacerRef.style.bottom = '0px';
+            this.spacerRef.style.top = '0px';
             this.endSpacerRef.style.bottom = '0px';
             this.ref.style.flexDirection = 'column-reverse';
+            this.spacerRef.style.height = `${0}px`;
+            this.endSpacerRef.style.height = `${0}px`;
         }
 
         // Events & observers
@@ -674,6 +678,8 @@ export class VirtualList {
         // Unable to delay until the next frame - will lead to scroll jumps
         this.spacerRef.style.height = `${spacerSize}px`;
         this.endSpacerRef.style.height = `${endSpacerSize}px`;
+        // this.spacerRef.style.transform = `translate3d(0, ${-endSpacerSize}px, 0)`;
+        // this.endSpacerRef.style.transform = `translate3d(0, ${endSpacerSize}px, 0)`;
         this.spacerSize = spacerSize;
         this.endSpacerSize = endSpacerSize;
 
@@ -769,47 +775,46 @@ export class VirtualList {
 
         await fastReadRaf();
 
-        let viewport: NumberRange | null = null;
-        const fullRange = this.fullRange;
-        if (this.fullRange) {
-            // const anchorHeight = this.endAnchorRef.getBoundingClientRect().height;
-            const viewportHeight = this.ref.clientHeight;
-            const scrollTop = this.ref.scrollTop;
-            const clientViewport = this.defaultEdge === VirtualListEdge.End
-                ? new NumberRange(scrollTop - viewportHeight, scrollTop)
-                : new NumberRange(scrollTop, scrollTop + viewportHeight);
+        // let viewport: NumberRange | null = null;
+        // const fullRange = this.fullRange;
+        // if (this.fullRange) {
+        // const anchorHeight = this.endAnchorRef.getBoundingClientRect().height;
+        const viewportHeight = this.ref.clientHeight;
+        const scrollTop = this.ref.scrollTop;
+        // viewport = clientViewport.map(fullRange);
+        const viewport = this.defaultEdge === VirtualListEdge.End
+            ? new NumberRange(scrollTop - viewportHeight, scrollTop)
+            : new NumberRange(scrollTop, scrollTop + viewportHeight);
 
-            viewport = clientViewport.map(fullRange);
-
-            // Find the first and last visible items using binary search from the ordered items
-            // const firstVisibleIndex = binarySearch(this.orderedItems, item => item.range.end > viewport.start);
-            // const lastVisibleIndex = binarySearch(this.orderedItems, item => item.range.start >= viewport.end) - 1;
-            //
-            // const firstVisibleItem = firstVisibleIndex >= 0 ? this.orderedItems[firstVisibleIndex] : null;
-            // const lastVisibleItem = lastVisibleIndex >= 0 ? this.orderedItems[lastVisibleIndex] : null;
-            // console.warn('Viewport: ', viewport, firstVisibleItem, lastVisibleItem);
-        }
+        // Find the first and last visible items using binary search from the ordered items
+        // const firstVisibleIndex = binarySearch(this.orderedItems, item => item.range.end > viewport.start);
+        // const lastVisibleIndex = binarySearch(this.orderedItems, item => item.range.start >= viewport.end) - 1;
+        //
+        // const firstVisibleItem = firstVisibleIndex >= 0 ? this.orderedItems[firstVisibleIndex] : null;
+        // const lastVisibleItem = lastVisibleIndex >= 0 ? this.orderedItems[lastVisibleIndex] : null;
+        // console.warn('Viewport: ', viewport, firstVisibleItem, lastVisibleItem);
+        // }
         // set min viewport size if smaller
-        if (viewport && viewport.size < MinViewPortSize)
-            viewport = new NumberRange(viewport.end - MinViewPortSize, viewport.end);
+        // if (viewport && viewport.size < MinViewPortSize)
+        //     viewport = new NumberRange(viewport.end - MinViewPortSize, viewport.end);
 
         // update item range
-        const isViewportUnknown = viewport == null;
-        if (!this.ensureItemRangeCalculated() && !this.itemRange) {
-            this.updateViewportThrottled();
-        } else if (isViewportUnknown)
-            return; // Will be called again
-        else {
-            if (this.viewport && viewport) {
-                if (viewport.start < this.viewport.start)
-                    this.scrollDirection = 'up';
-                else
-                    this.scrollDirection = 'down';
-            }
-
-            this.viewport = viewport;
-            await this.requestData();
+        // const isViewportUnknown = viewport == null;
+        // if (!this.ensureItemRangeCalculated() && !this.itemRange) {
+        //     this.updateViewportThrottled();
+        // } else if (isViewportUnknown)
+        //     return; // Will be called again
+        // else {
+        if (this.viewport && viewport) {
+            if (viewport.start < this.viewport.start)
+                this.scrollDirection = 'up';
+            else
+                this.scrollDirection = 'down';
         }
+
+        this.viewport = viewport;
+        await this.requestData();
+        // }
     }
 
     private readonly updateVisibleKeysThrottled = throttle(
@@ -983,6 +988,7 @@ export class VirtualList {
 
         this.updateViewportThrottled();
         this.updateVisibleKeysThrottled();
+        // this.restoreScrollPosition();
     }
 
     private getAllItemRefs(): HTMLLIElement[] {
@@ -1143,13 +1149,19 @@ export class VirtualList {
     }
 
     private restoreScrollPosition(): boolean {
-        const hasUnmeasuredItems = this.hasUnmeasuredItems;
+        const { hasUnmeasuredItems, spacerSize, endSpacerSize } = this;
+
         let scrollTop = 0;
         let scrollTopOffset = 0;
         let totalSize = 0;
         let offset = 0;
-        let spacerOffset = 0;
-        let endSpacerOffset = 0;
+        // let spacerOffset = 0;
+        // let endSpacerOffset = 0;
+        let restoredSpacerSize = spacerSize;
+        let restoredEndSpacerSize = endSpacerSize;
+
+        // Cancel any pending viewport calculations
+        this.updateViewportThrottled.reset();
 
         fastRaf({
             key: 'restoreScrollPosition',
@@ -1161,33 +1173,87 @@ export class VirtualList {
 
                 scrollTop = this.ref.scrollTop;
                 totalSize = this.totalSize;
+                const orderedItems = this.orderedItems;
                 if (this.defaultEdge === VirtualListEdge.End) {
                     const { end, size: containerSize } = this.itemRange ?? { start: 0, end: 0, size: 0 };
+                    const containerTransform = window.getComputedStyle(this.containerRef).transform;
+                    const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
+                    const containerTranslateYOffset = containerTransformMatrix.m42;
 
-                    offset = end;
-                    spacerOffset = offset - containerSize;
-                    endSpacerOffset = end + this.endSpacerSize;
+                    offset = end/* - endSpacerSize*/;
+                    restoredSpacerSize = clamp(totalSize + offset - containerSize, 0, totalSize);
+                    restoredEndSpacerSize = clamp(-end, 0, totalSize);
+
+                    // spacerOffset = offset - containerSize;
+                    // endSpacerOffset = offset + endSpacerSize;
+                    if (/*scrollTop === 0 && */offset > 0) {
+                        scrollTopOffset = -offset;
+                        offset = 0;
+                        // offset = -endSpacerSize;
+                        // spacerOffset = -containerSize - endSpacerSize;
+                        // endSpacerOffset = 0;
+                        // adjust item ranges
+                        this.itemRange = new NumberRange(-containerSize - endSpacerSize, -endSpacerSize);
+                        const fullRangeSize = this.fullRange?.size;
+                        if (fullRangeSize) {
+                            this.maxEnd = -endSpacerSize;
+                            this.minStart = -fullRangeSize - endSpacerSize;
+                        }
+                        const cornerstoneItemIndex = orderedItems.length - 1;
+                        const cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                        cornerstoneItem.range = new NumberRange(-cornerstoneItem.size, 0);
+                        let prevItem = cornerstoneItem;
+                        for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
+                            const item = orderedItems[i];
+                            item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+                            prevItem = item;
+                        }
+                    }
 
                 }
                 else {
                     const { start, size: containerSize } = this.itemRange ?? { start: 0, end: 0, size: 0 };
 
                     offset = start;
-                    spacerOffset = offset - this.spacerSize;
-                    endSpacerOffset = offset + containerSize;
+                    // spacerOffset = offset - spacerSize;
+                    // endSpacerOffset = offset + containerSize;
+                    if (offset < 0) {
+                        scrollTopOffset = offset + spacerSize;
+                        offset = spacerSize;
+                        // spacerOffset = 0;
+                        // endSpacerOffset = containerSize + spacerSize;
+                        // adjust item ranges
+                        // this.itemRange = new NumberRange(spacerOffset, containerSize + spacerSize);
+                        this.itemRange = new NumberRange(restoredSpacerSize, containerSize + restoredSpacerSize);
+                        const fullRangeSize = this.fullRange?.size;
+                        if (fullRangeSize) {
+                            this.maxEnd = spacerSize + fullRangeSize;
+                            this.minStart = spacerSize;
+                        }
+                        const cornerstoneItemIndex = 0;
+                        const cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                        cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
+                        let prevItem = cornerstoneItem;
+                        for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
+                            const item = orderedItems[i];
+                            item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+                            prevItem = item;
+                        }
+                    }
                 }
             },
             write: () => {
                 this.wrapperRef.style.height = totalSize + 'px';
                 this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
-                this.spacerRef.style.transform = `translate3d(0, ${spacerOffset}px, 0)`;
-                this.endSpacerRef.style.transform = `translate3d(0, ${endSpacerOffset}px, 0)`;
-                // if (scrollTopOffset)
-                //     this.ref.scrollTop = scrollTop + scrollTopOffset;
+                // this.spacerRef.style.transform = `translate3d(0, ${spacerOffset}px, 0)`;
+                // this.endSpacerRef.style.transform = `translate3d(0, ${endSpacerOffset}px, 0)`;
+                this.spacerRef.style.height = `${restoredSpacerSize}px`;
+                this.endSpacerRef.style.height = `${restoredEndSpacerSize}px`;
+                if (scrollTopOffset)
+                    this.ref.scrollTop = scrollTop + scrollTopOffset;
                 debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop);
 
-                // Cancel any pending viewport calculations
-                this.updateViewportThrottled.reset();
+
                 this.updateViewportThrottled();
             }
         });
@@ -1326,36 +1392,36 @@ export class VirtualList {
         }
 
         // Take first or last item as cornerstone item
-        let cornerStoneItemIndex = 0;
-        let cornerStoneItem = orderedItems[0];
-        if (!cornerStoneItem.range) {
-            cornerStoneItemIndex = orderedItems.length - 1;
-            cornerStoneItem = orderedItems[cornerStoneItemIndex];
+        let cornerstoneItemIndex = 0;
+        let cornerstoneItem = orderedItems[0];
+        if (!cornerstoneItem.range) {
+            cornerstoneItemIndex = orderedItems.length - 1;
+            cornerstoneItem = orderedItems[cornerstoneItemIndex];
         }
 
         // Find cornerstone item with binary search
-        if (!cornerStoneItem.range) {
+        if (!cornerstoneItem.range) {
             const foundIndex = binarySearch(orderedItems, item => !!item.range);
             if (foundIndex >= 0) {
-                cornerStoneItemIndex = foundIndex;
-                cornerStoneItem = orderedItems[cornerStoneItemIndex];
+                cornerstoneItemIndex = foundIndex;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
             }
         }
 
-        if (!cornerStoneItem?.range) {
+        if (!cornerstoneItem?.range) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
             if (this.defaultEdge === VirtualListEdge.End) {
-                cornerStoneItemIndex = orderedItems.length - 1;
-                cornerStoneItem = orderedItems[cornerStoneItemIndex];
+                cornerstoneItemIndex = orderedItems.length - 1;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
                 // try to reuse coords of previously rendered items
                 if (!rs.query.isNone && !rs.hasVeryLastItem) {
                     const { virtualRange } = this.lastQuery;
-                    cornerStoneItem.range = new NumberRange(
-                        virtualRange.end - cornerStoneItem.size,
+                    cornerstoneItem.range = new NumberRange(
+                        virtualRange.end - cornerstoneItem.size,
                         virtualRange.end);
                 } else
-                    cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
+                    cornerstoneItem.range = new NumberRange(-cornerstoneItem.size, 0);
                 if (!rs.hasVeryLastItem) {
                     this.shouldUpdateCornerstoneItem = true;
                     console.warn(
@@ -1363,23 +1429,32 @@ export class VirtualList {
                 }
                 else {
                     this.shouldUpdateCornerstoneItem = false;
+                    const fullRangeSize = this.fullRange?.size;
+                    if (fullRangeSize >= 0) {
+                        this.maxEnd = 0;
+                        this.minStart = -fullRangeSize;
+                    }
+                    else {
+                        this.minStart = null;
+                        this.maxEnd = null;
+                    }
                     cornerstoneItemHasBeenUpdated = true;
                     console.warn(
                         'ensureItemRangeCalculated: cornerstone item has been updated');
                 }
             }
             else {
-                cornerStoneItemIndex = 0;
-                cornerStoneItem = orderedItems[cornerStoneItemIndex];
+                cornerstoneItemIndex = 0;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
                 // try to reuse coords of previously rendered items
                 if (!rs.query.isNone && !rs.hasVeryFirstItem) {
                     const { virtualRange } = this.lastQuery;
-                    cornerStoneItem.range = new NumberRange(
+                    cornerstoneItem.range = new NumberRange(
                         virtualRange.start,
-                        virtualRange.start + cornerStoneItem.size);
+                        virtualRange.start + cornerstoneItem.size);
                 } else
-                    cornerStoneItem.range = new NumberRange(0, cornerStoneItem.size);
+                    cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
                 if (!rs.hasVeryFirstItem) {
                     this.shouldUpdateCornerstoneItem = true;
                     console.warn(
@@ -1387,6 +1462,15 @@ export class VirtualList {
                 }
                 else {
                     this.shouldUpdateCornerstoneItem = false;
+                    const fullRangeSize = this.fullRange?.size;
+                    if (fullRangeSize >= 0) {
+                        this.minStart = 0;
+                        this.maxEnd = fullRangeSize;
+                    }
+                    else {
+                        this.minStart = null;
+                        this.maxEnd = null;
+                    }
                     cornerstoneItemHasBeenUpdated = true;
                     console.warn(
                         'ensureItemRangeCalculated: cornerstone item has been updated');
@@ -1395,14 +1479,14 @@ export class VirtualList {
         }
 
         // calculate range of other items
-        let prevItem = cornerStoneItem;
-        for (let i = cornerStoneItemIndex + 1; i < orderedItems.length; i++) {
+        let prevItem = cornerstoneItem;
+        for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
             const item = orderedItems[i];
             item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
             prevItem = item;
         }
-        prevItem = cornerStoneItem;
-        for (let i = cornerStoneItemIndex - 1; i >= 0; i--) {
+        prevItem = cornerstoneItem;
+        for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
             const item = orderedItems[i];
             item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
             prevItem = item;
@@ -1411,6 +1495,31 @@ export class VirtualList {
         this.itemRange = new NumberRange(
             orderedItems[0].range.start,
             orderedItems[orderedItems.length - 1].range.end);
+
+        // if (this.defaultEdge === VirtualListEdge.End) {
+        //     if (this.itemRange.end > 0) {
+        //         this.shouldUpdateCornerstoneItem = true;
+        //         for (const item of orderedItems)
+        //             item.range = null;
+        //         console.warn(
+        //             'ensureItemRangeCalculated: resetting cornerstone item 1');
+        //         cornerStoneItem = orderedItems[orderedItems.length - 1];
+        //         cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
+        //         return this.ensureItemRangeCalculated();
+        //     }
+        // }
+        // else {
+        //     if (this.itemRange.start < 0) {
+        //         this.shouldUpdateCornerstoneItem = true;
+        //         for (const item of orderedItems)
+        //             item.range = null;
+        //         console.warn(
+        //             'ensureItemRangeCalculated: resetting cornerstone item 2');
+        //         cornerStoneItem = orderedItems[0];
+        //         cornerStoneItem.range = new NumberRange(0, cornerStoneItem.size,);
+        //         return this.ensureItemRangeCalculated();
+        //     }
+        // }
 
         this.minStart = Math.min(this.minStart ?? Number.MAX_SAFE_INTEGER, this.itemRange.start);
         this.maxEnd = Math.max(this.maxEnd ?? Number.MIN_SAFE_INTEGER, this.itemRange.end);
