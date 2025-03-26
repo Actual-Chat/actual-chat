@@ -140,6 +140,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         Who made commitments and what commitments are.
         Additionally:
 
+        Provide all results in the language of the discussion.
         Provide a title that reflects the essence of the discussion.
         Give a brief description of the discussion (3-4 sentences).
         Provide a summary as list of points with using markdown.
@@ -147,18 +148,21 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         To refer to discussion participants in summary and description use special mention format (sequence started with @) instead of name:
         {{MENTIONS_MAP}}
 
-        Provide all results in the language of the discussion.
-        Present your final decision in the following xml format:
-
+        ### Output Format
+        Return the final result **strictly** in the following XML format without any additional symbols such as triple backticks:
         <title>
-        [A title that reflects the essence of the discussion.]
+        [Title of the discussion]
         </title>
         <description>
-        [A brief description of the discussion (1-2 sentences).]
+        [Brief description of the discussion (3-4 sentences)]
         </description>
         <summary>
-        [A summary of the text discussion.]
+        [List of key points summarizing the discussion]
         </summary>
+
+        Do not add any extra formatting such as Markdown code blocks (```xml) at the beginning or end.
+        Ensure that the <summary> section is properly closed with </summary>.
+        The output must be valid XML. No extra characters, missing tags, or formatting issues.
 
         {{DISCUSSION}}
         """;
