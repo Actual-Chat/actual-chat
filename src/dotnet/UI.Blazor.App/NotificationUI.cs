@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Notification;
 using ActualChat.UI.Blazor.App.Module;
@@ -19,16 +18,17 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     private readonly MutableState<bool?> _permissionState;
     private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
     private volatile Task<string?>? _registerDeviceTask;
-    private IDeviceTokenRetriever? _deviceTokenRetriever;
-    private ILogger? _log;
 
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private UIHub Hub { get; }
     private HostInfo HostInfo => Hub.HostInfo();
     private Session Session => Hub.Session();
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
-    private IDeviceTokenRetriever DeviceTokenRetriever => _deviceTokenRetriever ??= Hub.GetRequiredService<IDeviceTokenRetriever>();
+
+    [field: AllowNull, MaybeNull]
+    private IDeviceTokenRetriever DeviceTokenRetriever => field ??= Hub.GetRequiredService<IDeviceTokenRetriever>();
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private IJSRuntime JS => Hub.JSRuntime();
 

@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public sealed class ModalUI(UIHub uiHub) : IHasServices, IHasAcceptor<ModalHost>

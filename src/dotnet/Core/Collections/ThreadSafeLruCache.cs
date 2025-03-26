@@ -1,15 +1,15 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.Collections;
 
-public class ThreadSafeLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue>
+public class ThreadSafeLruCache<TKey, TValue>(LruCache<TKey, TValue> cache)
+    : IThreadSafeLruCache<TKey, TValue>
     where TKey : notnull
 {
     public object Lock { get; } = new();
-    public LruCache<TKey, TValue> Cache { get; }
+    public LruCache<TKey, TValue> Cache { get; } = cache;
 
-    public ThreadSafeLruCache(int capacity) : this(new LruCache<TKey, TValue>(capacity)) { }
-    public ThreadSafeLruCache(LruCache<TKey, TValue> cache) => Cache = cache;
+    public ThreadSafeLruCache(int capacity)
+        : this(new LruCache<TKey, TValue>(capacity))
+    { }
 
     public int Capacity {
         get {

@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.Audio.WebM;
 
 public class EbmlElementDescriptor

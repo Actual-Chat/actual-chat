@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.UI.Blazor.App.Components;
+﻿using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
 using ActualChat.UI.Blazor;
@@ -10,9 +9,8 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
 {
-    private ModalUI? _modalUI;
-
-    protected ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
+    [field: AllowNull, MaybeNull]
+    protected ModalUI ModalUI => field ??= Services.GetRequiredService<ModalUI>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiMicrophonePermissionHandler))]
     public MauiMicrophonePermissionHandler(UIHub hub, bool mustStart = true)

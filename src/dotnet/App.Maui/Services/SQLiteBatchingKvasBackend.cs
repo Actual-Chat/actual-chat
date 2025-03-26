@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using ActualChat.Kvas;
 using SQLite;
@@ -19,10 +18,10 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         SQLiteOpenFlags.NoMutex;
 
     private readonly SimpleConcurrentPool<SQLiteConnection>? _connectionPool;
-    private ILogger? _log;
 
     private IServiceProvider Services { get; }
-    private ILogger? Log => _log ??= Services.LogFor(GetType());
+    [field: MaybeNull, AllowNull]
+    private ILogger? Log => field ??= Services.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteBatchingKvasBackend))]
     public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services)

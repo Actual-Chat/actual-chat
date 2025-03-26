@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
