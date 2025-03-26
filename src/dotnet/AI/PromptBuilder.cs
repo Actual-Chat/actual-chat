@@ -1,4 +1,4 @@
-namespace ActualChat.Integrations.Anthropic;
+namespace ActualChat.AI;
 
 public record PromptTemplate(string Template, string FormatString, string[] Variables);
 

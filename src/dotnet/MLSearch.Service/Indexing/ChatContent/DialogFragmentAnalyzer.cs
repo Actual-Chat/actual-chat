@@ -1,4 +1,4 @@
-using ActualChat.Integrations.Anthropic;
+using ActualChat.AI;
 using Cysharp.Text;
 
 namespace ActualChat.MLSearch.Indexing.ChatContent;

@@ -1,6 +1,6 @@
+using ActualChat.AI;
 using ActualChat.Chat;
 using ActualChat.Chat.ML;
-using ActualChat.Integrations.Anthropic;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.MLSearch.UnitTests.Indexing.ChatContent;
 
