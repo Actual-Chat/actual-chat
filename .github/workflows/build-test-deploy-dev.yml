@@ -307,6 +307,12 @@ jobs:
       - name: Show max connections
         run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
 
+      - name: Flush Redis data
+        run: |
+          docker exec ${{ job.services.redis.id }} redis-cli flushall
+          echo "Redis data has been cleared"
+          docker exec ${{ job.services.redis.id }} redis-cli keys "*" | head -n 10
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
