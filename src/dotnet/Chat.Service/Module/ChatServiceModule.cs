@@ -1,11 +1,11 @@
 using System.Net;
+using ActualChat.AI;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Integrations.Anthropic;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
@@ -120,7 +120,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         }
         services.AddSingleton<Translator>();
         services.AddSingleton<LanguageDetectionSerializer>();
-        services.AddAnthropicServices();
+        services.AddAIServices();
 
         // Flows
         services.AddFlows()

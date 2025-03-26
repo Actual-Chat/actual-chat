@@ -1,4 +1,4 @@
-using ActualChat.Integrations.Anthropic;
+using ActualChat.AI;
 
 namespace ActualChat.Chat.ML;
 

@@ -6,4 +6,8 @@
     <PackageReference Include="Anthropic.SDK" />
     <PackageReference Include="ZString" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ActualChat.MLSearch.IntegrationTests"/>
+    <InternalsVisibleTo Include="ActualChat.Chat.IntegrationTests"/>
+  </ItemGroup>
 </Project>

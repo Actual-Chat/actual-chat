@@ -1,7 +1,7 @@
+using ActualChat.AI;
 using ActualChat.Chat.ML;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Integrations.Anthropic;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Bot;
 using ActualChat.MLSearch.Db;
@@ -161,7 +161,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices)
 
         // Other
         services.AddChatMLServices();
-        services.AddAnthropicServices();
+        services.AddAIServices();
     }
 
     private void InjectBotServices(RpcHostBuilder rpcHost, bool isBackendClient)

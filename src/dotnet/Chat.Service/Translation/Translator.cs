@@ -1,5 +1,5 @@
+using ActualChat.AI;
 using ActualChat.Chat.Module;
-using ActualChat.Integrations.Anthropic;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;

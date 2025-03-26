@@ -1,5 +1,5 @@
 using System.Net;
-using ActualChat.Integrations.Anthropic;
+using ActualChat.AI;
 using Cysharp.Text;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;

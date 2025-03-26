@@ -328,7 +328,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.ConsoleClient", "src\do
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.AspireHost", "src\dotnet\App.AspireHost\App.AspireHost.csproj", "{E013D1EE-9214-45CA-B0B4-3EF9AE8EA6F9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Integrations.Anthropic", "src\dotnet\Integrations.Anthropic\Integrations.Anthropic.csproj", "{6E169A14-A516-4FFC-9999-0A699ECC2B69}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI", "src\dotnet\AI\AI.csproj", "{6E169A14-A516-4FFC-9999-0A699ECC2B69}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.ML", "src\dotnet\Chat.ML\Chat.ML.csproj", "{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}"
 EndProject
