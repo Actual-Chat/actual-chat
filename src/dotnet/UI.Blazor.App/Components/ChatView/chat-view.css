@@ -20,31 +20,31 @@ body.hoverable .system-entry.message-wrapper:hover {
 .chat-message {
     @apply relative;
     @apply flex-1 flex-x items-stretch gap-x-1;
+    @apply ml-2;
     @apply break-words;
     @apply text-current;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
 
 .chat-message > .c-author-badge {
-    @apply flex-none;
-    @apply h-fit;
-    @apply pl-2.5 pt-2.5 pb-2.5 pr-1.5;
-    @apply overflow-hidden;
+    @apply absolute inset-0 z-20 top-2;
+    @apply flex-none flex-y;
+    @apply w-fit;
     @apply select-none;
 }
-.chat-message > .c-author-badge:has(.c-empty) {
-    @apply flex items-center;
-    @apply h-6.5;
-    @apply pb-0 pt-1;
+.chat-message > .c-author-badge .avatar-badge {
+    @apply sticky z-10 bottom-1 top-2;
+    @apply h-fit w-fit;
 }
 .chat-message > .c-author-badge > .c-empty {
-    @apply flex-y items-center justify-center;
-    @apply w-9 h-2.5;
+    @apply sticky z-10 bottom-0 top-1;
+    @apply flex justify-center;
+    @apply w-9;
 }
 
 .chat-message > .c-content {
     @apply flex-1 flex-y;
-    @apply mr-4 md:mr-8;
+    @apply mr-4 md:mr-8 ml-12;
     @apply overflow-hidden;
 }
 
@@ -550,4 +550,24 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 .translation-btn-wrapper .translation-btn {
     @apply absolute bottom-4 left-2.5;
     @apply text-primary;
+}
+
+.hover-menu-wrapper {
+    @apply absolute right-0 z-10;
+    @apply -flex-x;
+    @apply h-full w-4;
+}
+.message-hover-menu-new {
+    @apply sticky z-10 top-2 bottom-0;
+    @apply flex-x items-center gap-1;
+    @apply w-fit h-fit;
+    @apply p-1 mr-2 -mt-4;
+    @apply rounded-full border border-modal;
+    @apply bg-01;
+    @apply shadow-modal-wide;
+}
+.message-hover-menu-new .hover-menu-item {
+    @apply flex-none flex-x items-center justify-center;
+    @apply w-8 h-8;
+    @apply rounded-full;
 }
