@@ -50,7 +50,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         """)]
     [InlineData("it", "Поехали", "Andiamo!")]
     [InlineData("en", "Поехали", "Let's go")]
-    public async Task ShouldTranslate(Language destLanguage, string text, string expected)
+    public async Task ShouldTranslateWithoutContext(Language destLanguage, string text, string expected)
     {
         if (TestRunnerInfo.IsBuildAgent())
             return; // only for local runs for now
@@ -61,8 +61,41 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, destLanguage, cancellationToken);
+        var translated = await Translator.Translate(text, destLanguage, "", cancellationToken);
         Out.WriteLine($"Translated text:\n {translated}");
+
+        // assert
+        TextAssert.ShouldBeSimilar(translated, expected, minSimilarity);
+    }
+
+    [Theory]
+    [InlineData("ru",
+        ComplexText,
+        "Hi Alice, can you send me some code?",
+        """
+        Привет, **Боб**! Это тестовое сообщение с блоком кода:
+        ```
+        var number = 5;
+        ```
+        В этом коде `number = 5`.
+        """)]
+    [InlineData("ru", "I saw a bank", "I was walking along the river bank", "Я увидел берег")]
+    [InlineData("ru", "I saw a bank", "I need to go to the bank to withdraw money", "Я увидел банк")]
+    [InlineData("fr", "I saw a bank", "I was walking along the river bank", "J'ai vu une rive")]
+    [InlineData("fr", "I saw a bank", "I need to go to the bank to withdraw money", "J'ai vu une banque")]
+    public async Task ShouldTranslateWithContext(Language destLanguage, string text, string context, string expected)
+    {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // only for local runs for now
+
+        // arrange
+        var minSimilarity = 0.7;
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var translated = await Translator.Translate(text, destLanguage, context, cancellationToken);
+        Out.WriteLine($"Translated text: \n{translated}");
 
         // assert
         TextAssert.ShouldBeSimilar(translated, expected, minSimilarity);

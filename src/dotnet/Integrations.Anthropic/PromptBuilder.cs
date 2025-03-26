@@ -58,7 +58,7 @@ internal sealed class PromptUtils : IPromptUtils
 
     private static PromptTemplate BuildPromptTemplate(string template)
     {
-        var variables = new List<(string, int)>();
+        var variables = new List<(string Name, int StartIndex)>();
         var index = 0;
         while (true) {
             var varStart = template.IndexOf("{{", index, StringComparison.Ordinal);
@@ -78,14 +78,14 @@ internal sealed class PromptUtils : IPromptUtils
         var formatString = template;
         for (int i = variables.Count - 1; i >= 0; i--) {
             var variable = variables[i];
-            var startIndex = variable.Item2;
+            var startIndex = variable.StartIndex;
             formatString = formatString
-                .Remove(startIndex, variable.Item1.Length)
-                .Insert(startIndex, "{" + i.ToString(CultureInfo.InvariantCulture) +"}");
+                .Remove(startIndex, variable.Name.Length)
+                .Insert(startIndex, "{" + i.ToInvariantString() + "}");
         }
         return new PromptTemplate(
             template,
             formatString,
-            variables.Select(v => v.Item1.Substring(2, v.Item1.Length - 4)).ToArray());
+            variables.Select(v => v.Name.Substring(2, v.Name.Length - 4)).ToArray());
     }
 }

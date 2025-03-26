@@ -39,7 +39,7 @@ public class Translator(IServiceProvider services) : IHasServices
                               {Serializer.SerializeRequest(texts)}
                               ```
                               """;
-            var content = await Ask(DetectLanguagesPrompt, request, cancellationToken).ConfigureAwait(false);
+            var content = await Ask(DetectLanguagesPrompt, request, "", cancellationToken).ConfigureAwait(false);
             content = content.OrdinalIgnoreCaseReplace("```xml", "").OrdinalReplace("```", "");
             return Serializer.DeserializeResponse(content, texts.Count);
         }
@@ -49,21 +49,22 @@ public class Translator(IServiceProvider services) : IHasServices
         }
     }
 
-    public Task<string> Translate(string text, Language targetLanguage, CancellationToken cancellationToken)
+    public Task<string> Translate(string text, Language targetLanguage, string context = "", CancellationToken cancellationToken = default)
     {
+        text.RequireNonEmpty();
         if (!Settings.IsTranslationEnabled)
             return Task.FromResult(text);
 
-        var prompt = PromptUtils.BuildPrompt(TranslatePromptTemplate, ("TargetLanguage", targetLanguage));
-        return Ask(prompt, text, cancellationToken);
+        var prompt = PromptUtils.BuildPrompt(TranslatePromptTemplate, ("TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})"));
+        return Ask(prompt, text, context, cancellationToken);
     }
 
-    private async Task<string> Ask(string instruction, string text, CancellationToken cancellationToken)
+    private async Task<string> Ask(string instruction, string text, string context, CancellationToken cancellationToken)
     {
-        var history = new ChatHistory([
-            // new(AuthorRole.System, instruction),
+        var history = new ChatHistory(new ChatMessageContent[] {
+            new (AuthorRole.User, context),
             new (AuthorRole.User, text),
-        ]);
+        }.Where(x => !x.Content.IsNullOrEmpty()));
         var response = await ChatCompletionService
             .GetChatMessageContentAsync(history, new OpenAIPromptExecutionSettings {
                 Temperature = 0,

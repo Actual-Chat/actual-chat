@@ -90,14 +90,64 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         var targetLang = Language.Parse(targetLanguage);
 
         await ComputedTest.When(async ct => {
-                // act
-                var translation = await Translations.Get(Tester.Session, new TranslationId(entry.Id, targetLang, AssumeValid.Option), ct);
+            // act
+            var translation = await Translations.Get(Tester.Session, new TranslationId(entry.Id, targetLang, AssumeValid.Option), ct);
 
-                // assert
-                translation.Should().NotBeNull();
-                TextAssert.ShouldBeSimilar(translation.Content, expectedTranslation, 0.7);
-            },
+            // assert
+            translation.Should().NotBeNull();
+            TextAssert.ShouldBeSimilar(translation.Content, expectedTranslation, 0.7);
+        },
             TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task ShouldTranslateWithContextFromPreviousMessages()
+    {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // only for local runs for now
+
+        // arrange
+        const double minSimilarity = 0.7;
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var messages = new (string Text, string ExpectedTranslation, string MainExpectedWord)[]
+        {
+            ("The bank is closed today", "Банк сегодня закрыт", "Банк"),
+            ("The bank has high walls", "У банка высокие стены", "Банк"),
+            ("The bank is near the river", "Банк находится рядом с рекой", "Банк"),
+            ("The river bank is steep", "Берег реки крутой", "Берег"),
+            ("The bank is covered with grass", "Берег покрыт травой", "Берег"),
+            ("The bank needs maintenance", "Банк нуждается в обслуживании", "Банк"),
+            ("The bank is eroding", "Берег размывается", "Берег"),
+            ("The bank is dangerous", "Берег опасен", "Берег"),
+            ("Hence the bank should be strengthened", "Берег должен быть укреплён", "Берег"),
+        };
+        var entries = await messages
+            .Select(x => Tester.CreateTextEntry(chatId, x.Text))
+            .Collect(1);
+
+        // act
+        var translations = await Enumerable.Range(0, messages.Length)
+            .Select(i => WhenTranslated(entries[i].Id, Languages.Russian))
+            .Collect();
+
+        // assert
+        for (var i = 0; i < messages.Length; i++) {
+            var (_, expectedTranslation, mainExpectedWord) = messages[i];
+            var translation = translations[i];
+            translation.Should().NotBeNull();
+            var translatedText = translation.Content.TrimNonWord();
+            translatedText.Should().NotBeNullOrEmpty();
+            Out.WriteLine("Translation: \r\n{0} \r\nExpected: \r\n{1}", translatedText, expectedTranslation);
+            TextAssert.ShouldBeSimilar(translatedText, expectedTranslation, minSimilarity);
+            translatedText.SplitIntoWords().Should().Contain(x => x.OrdinalIgnoreCaseContains(mainExpectedWord));
+        }
+        return;
+
+        Task<Translation> WhenTranslated(ChatEntryId id, Language language)
+            => ComputedTest.When(
+                ct => Translations.Get(Tester.Session, new(id, language, AssumeValid.Option), ct).Require(),
+                TimeSpan.FromSeconds(10));
     }
 
     private async Task<ChatEntry[]> CreateEntries(ChatId chatId, string text, int entryCount)
@@ -115,10 +165,10 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     {
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
         return ComputedTest.When(async ct => {
-                var language = await Translations.GetLanguage(Tester.Session, id, ct).Require();
-                language.Languages.Should().BeEquivalentTo(expectedLanguages, "for #{0}", id);
-                return language.Languages;
-            },
+            var language = await Translations.GetLanguage(Tester.Session, id, ct).Require();
+            language.Languages.Should().BeEquivalentTo(expectedLanguages, "for #{0}", id);
+            return language.Languages;
+        },
             (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20))).Debuggable());
     }
 }

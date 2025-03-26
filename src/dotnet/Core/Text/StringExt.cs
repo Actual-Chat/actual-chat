@@ -92,6 +92,9 @@ public static partial class StringExt
     public static string Truncate(this string source, int maxLength, string ellipsis)
         => source.Length <= maxLength ? source : source[..maxLength] + ellipsis;
 
+    public static string[] SplitIntoWords(this string text) =>
+        text.Split([' ', ',', '!', '.', ':', '-'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
     public static int GetIndentLength(this string source)
     {
         for (var i = 0; i < source.Length; i++)
