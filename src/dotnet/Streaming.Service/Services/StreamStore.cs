@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-namespace ActualChat.Streaming;
+namespace ActualChat.Streaming.Services;
 
 public class StreamStore<TItem> : ProcessorBase
 {
