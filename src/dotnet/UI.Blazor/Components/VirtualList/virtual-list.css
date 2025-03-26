@@ -38,14 +38,14 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
 }
 
 .virtual-list > .c-wrapper > .c-spacer-end {
-    @apply absolute w-full;
+    @apply absolute w-full bottom-0;
     @apply flex flex-nowrap flex-col flex-none items-stretch content-start justify-start;
     @apply overflow-y-hidden;
     overflow-anchor: none;
 }
 
 .virtual-list > .c-wrapper > .c-spacer-start {
-    @apply absolute w-full;
+    @apply absolute w-full top-0;
     @apply flex flex-nowrap flex-col-reverse flex-none items-stretch content-start justify-start;
     @apply overflow-y-hidden;
     overflow-anchor: none;
