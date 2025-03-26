@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using MemoryPack;
+﻿using MemoryPack;
 
 namespace ActualChat.Security;
 

@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.Hosting;
+﻿using ActualChat.Hosting;
 using ActualChat.Rpc;
 using ActualChat.Security;
 using ActualChat.UI;

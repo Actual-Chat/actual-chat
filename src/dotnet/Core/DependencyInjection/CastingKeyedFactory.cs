@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.DependencyInjection;
 
 public sealed class CastingKeyedFactory<
@@ -11,7 +9,7 @@ public sealed class CastingKeyedFactory<
     where TFromService : class
 {
     public CastingKeyedFactory(KeyedFactory<TFromService, TKey> fromFactory)
-        : base(fromFactory.Services, null)
+        : base(fromFactory.Services)
     {
         var fromFactoryFactory = fromFactory.Factory;
         Factory = (c, key) => fromFactoryFactory.Invoke(c, key) as TService ?? throw new InvalidCastException();

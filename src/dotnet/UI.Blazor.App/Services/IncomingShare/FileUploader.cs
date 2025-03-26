@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 
@@ -7,9 +6,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class FileUploader(Hub hub)
 {
-    private SessionTokens? _sessionTokens;
-
-    private SessionTokens SessionTokens => _sessionTokens ??= hub.GetRequiredService<SessionTokens>();
+    [field: AllowNull, MaybeNull]
+    private SessionTokens SessionTokens => field ??= hub.GetRequiredService<SessionTokens>();
     private HostInfo HostInfo => hub.HostInfo();
     private UrlMapper UrlMapper => hub.UrlMapper();
     private IHttpClientFactory HttpClientFactory => hub.HttpClientFactory();

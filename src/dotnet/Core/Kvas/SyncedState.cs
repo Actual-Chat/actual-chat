@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Pooling;
 
 namespace ActualChat.Kvas;

@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.App.Maui;
 using JObject = Java.Lang.Object;
 

@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat;
 
 public interface IFeatureDef
@@ -15,8 +13,8 @@ public interface IFeatureDef<
     Task<T> Compute(IServiceProvider services, CancellationToken cancellationToken);
 }
 
-public interface IClientFeatureDef : IFeatureDef { }
-public interface IServerFeatureDef : IFeatureDef { }
+public interface IClientFeatureDef : IFeatureDef;
+public interface IServerFeatureDef : IFeatureDef;
 
 public abstract class FeatureDef(Type resultType) : IFeatureDef
 {

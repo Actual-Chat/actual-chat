@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.Media;
 
 public static class MediaMimeTypes

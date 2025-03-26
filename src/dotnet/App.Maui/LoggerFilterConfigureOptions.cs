@@ -1,17 +1,13 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace ActualChat.App.Maui;
 
-internal sealed class LoggerFilterConfigureOptions : IConfigureOptions<LoggerFilterOptions>
+internal sealed class LoggerFilterConfigureOptions(IConfiguration configuration)
+    : IConfigureOptions<LoggerFilterOptions>
 {
     private const string LogLevelKey = "LogLevel";
     private const string DefaultCategory = "Default";
-    private readonly IConfiguration _configuration;
-
-    public LoggerFilterConfigureOptions(IConfiguration configuration)
-        => _configuration = configuration;
 
     public void Configure(LoggerFilterOptions options)
         => LoadDefaultConfigValues(options);
@@ -20,7 +16,7 @@ internal sealed class LoggerFilterConfigureOptions : IConfigureOptions<LoggerFil
     {
         options.CaptureScopes = GetCaptureScopesValue(options);
 
-        foreach (IConfigurationSection configurationSection in _configuration.GetChildren()) {
+        foreach (IConfigurationSection configurationSection in configuration.GetChildren()) {
             if (configurationSection.Key.Equals(LogLevelKey, StringComparison.OrdinalIgnoreCase)) {
                 // Load global category defaults
                 LoadRules(options, configurationSection, null);
@@ -37,7 +33,7 @@ internal sealed class LoggerFilterConfigureOptions : IConfigureOptions<LoggerFil
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
             Justification = "IConfiguration.GetValue is safe when T is a bool.")]
-        bool GetCaptureScopesValue(LoggerFilterOptions options) => _configuration.GetValue(nameof(options.CaptureScopes), options.CaptureScopes);
+        bool GetCaptureScopesValue(LoggerFilterOptions options) => configuration.GetValue(nameof(options.CaptureScopes), options.CaptureScopes);
     }
 
     private static void LoadRules(LoggerFilterOptions options, IConfigurationSection configurationSection, string? logger)

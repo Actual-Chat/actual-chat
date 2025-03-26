@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 

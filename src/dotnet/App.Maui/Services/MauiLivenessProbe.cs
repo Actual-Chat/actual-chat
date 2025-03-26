@@ -1,4 +1,4 @@
-﻿#if false
+#if false
 // NOTE(DF): MauiLivenessProbe is switched off for now.
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;

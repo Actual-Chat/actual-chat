@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Microsoft.JSInterop;
+﻿using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
 

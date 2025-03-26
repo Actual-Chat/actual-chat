@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using MemoryPack;
 
 namespace ActualChat.Search;
