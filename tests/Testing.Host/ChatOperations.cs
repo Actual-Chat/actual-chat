@@ -23,9 +23,9 @@ public static class ChatOperations
     public static Task<(ChatId, Symbol)> CreateChat(
         this IWebTester tester,
         bool isPublicChat,
-        string title = DefaultChatTitle,
+        [CallerMemberName] string title = "",
         PlaceId? placeId = null)
-        => CreateChat(tester, c => c with { IsPublic = isPublicChat, Title = title, PlaceId = placeId, Kind = null });
+        => CreateChat(tester, c => c with { IsPublic = isPublicChat, Title = title.NullIfEmpty() ?? DefaultChatTitle, PlaceId = placeId, Kind = null });
 
     public static async Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, Func<ChatDiff, ChatDiff> configure)
     {
