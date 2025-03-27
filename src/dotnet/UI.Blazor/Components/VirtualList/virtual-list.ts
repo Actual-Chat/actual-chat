@@ -681,7 +681,7 @@ export class VirtualList {
         const startedAt = this.renderStartedAt;
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
-        this.restoreScrollPosition();
+        await this.restoreScrollPosition();
 
         // const positionSet = this.restoreScrollPosition();
         // if (this.pivots.length && rs.scrollToKey == null) {
@@ -748,7 +748,7 @@ export class VirtualList {
 
             this.lastViewport = this.viewport;
             this.pivots = [];
-            this.itemRange = null;
+            // this.itemRange = null;
             this.viewport = null;
             // Schedule update of the current pivots after the render
             this.scheduleUpdateCurrentPivots();
@@ -1073,7 +1073,6 @@ export class VirtualList {
     private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll: boolean = false, reason: ScrollToEdgeReason = "unknown"): void {
 
         // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
-        const hasUnmeasuredItems = this.hasUnmeasuredItems;
         const isInitialRender = this.isInitialRender;
         if (isInitialRender && (reason === 'non-item-resize' || reason === 'item-resize'))
             return; // do not scroll to the end on initial render on spacer resize
@@ -1085,11 +1084,6 @@ export class VirtualList {
         let scrollHeight = 0;
         fastRaf({
             read: () => {
-                if (hasUnmeasuredItems)
-                    this.measureItems();
-                if (this.shouldRecalculateItemRange)
-                    this.ensureItemRangeCalculated();
-
                 scrollHeight = this.wrapperRef.scrollHeight;
                 const isFarFromEdge = edge == VirtualListEdge.End
                     ? (scrollHeight - this.ref.scrollTop) > 2 * this.ref.offsetHeight
@@ -1145,8 +1139,10 @@ export class VirtualList {
         return false;
     }
 
-    private restoreScrollPosition(): boolean {
+    private async restoreScrollPosition(): Promise<void> {
         const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize, renderState:rs } = this;
+        const result = new PromiseSource();
+        // debugLog?.log(`restoreScrollPosition: start`);
 
         let scrollTop = 0;
         let scrollTopOffset = 0;
@@ -1162,8 +1158,8 @@ export class VirtualList {
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
 
-        fastRaf({
-            key: 'restoreScrollPosition',
+        const rafResult  = fastRaf({
+            key: `restoreScrollPosition_${this.identity}`,
             read: () => {
                 if (hasUnmeasuredItems)
                     this.measureItems();
@@ -1206,13 +1202,12 @@ export class VirtualList {
                     if (/*scrollTop === 0 && */offset > 0) {
                         // scroll position does not allow to show the last item
                         scrollTopOffset = -offset;
-                        offset = 0;
                         // offset = -endSpacerSize;
                         // spacerOffset = -containerSize - endSpacerSize;
                         // endSpacerOffset = 0;
 
                         // adjust item ranges
-                        this.resetItemRange();
+                        offset = this.resetItemRange();
                     }
 
                 }
@@ -1223,7 +1218,6 @@ export class VirtualList {
                     if (offset < 0) {
                         // scroll position does not allow to show the first item
                         scrollTopOffset = offset;
-                        offset = 0;
 
                         // scrollTopOffset = offset + spacerSize;
                         // offset = spacerSize;
@@ -1231,7 +1225,7 @@ export class VirtualList {
                         // endSpacerOffset = containerSize + spacerSize;
 
                         // adjust item ranges
-                        this.resetItemRange();
+                        offset = this.resetItemRange();
                     }
                 }
             },
@@ -1255,14 +1249,16 @@ export class VirtualList {
                 this.endSpacerRef.style.height = `${endSpacerSize}px`;
                 if (scrollTopOffset)
                     this.ref.scrollTop = scrollTop + scrollTopOffset;
-                debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop);
+                debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
-
+                result.resolve(undefined);
                 this.updateViewportThrottled();
             }
         });
 
-        return true;
+        await result;
+
+        // debugLog?.log(`restoreScrollPosition: end`, rafResult);
     }
 
     // private restoreScrollPosition(renderTime: number): boolean {
@@ -1414,7 +1410,7 @@ export class VirtualList {
 
         if (!cornerstoneItem?.range) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
-            this.resetItemRange(true);
+            void this.resetItemRange(true);
             cornerstoneItemHasBeenUpdated = true;
         }
         else {
@@ -1447,9 +1443,14 @@ export class VirtualList {
         return true;
     }
 
-    private resetItemRange(canUseQueryRange: boolean = false): void {
+    private resetItemRange(canUseQueryRange: boolean = false): number | null {
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.fullRange?.size;
+
+        if (orderedItems.length === 0)
+            return null;
+
+
         // const showSpacer = !rs.hasVeryFirstItem;
         // const showEndSpacer = !rs.hasVeryLastItem;
 
@@ -1457,42 +1458,46 @@ export class VirtualList {
         // const endSpacerSize = this.showEndSpacer ? endAnchorSize : 0;
 
         if (this.defaultEdge === VirtualListEdge.End) {
-            if (orderedItems.length > 0) {
-                const cornerstoneItemIndex = orderedItems.length - 1;
-                const cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            const cornerstoneItemIndex = orderedItems.length - 1;
+            const cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
-                // try to reuse coords of previously rendered items
-                if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryLastItem) {
-                    const { virtualRange } = rs.query;
-                    cornerstoneItem.range = new NumberRange(
-                        virtualRange.end - cornerstoneItem.size,
-                        virtualRange.end);
-                }
-                else
-                    cornerstoneItem.range = new NumberRange(
-                        0 - endAnchorSize - cornerstoneItem.size,
-                        0 - endAnchorSize);
-
-                if (!rs.hasVeryLastItem) {
-                    this.shouldUpdateCornerstoneItem = true;
-                    console.warn(
-                        'ensureItemRangeCalculated: no cornerstone item found, recalculating all ranges!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-                }
-                else {
-                    this.shouldUpdateCornerstoneItem = false;
-                    console.warn(
-                        'ensureItemRangeCalculated: cornerstone item has been updated');
-                }
-                let prevItem = cornerstoneItem;
-                for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
-                    const item = orderedItems[i];
-                    item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
-                    prevItem = item;
-                }
-                this.itemRange = new NumberRange(
-                    orderedItems[0].range.start,
-                    orderedItems[orderedItems.length - 1].range.end);
+            // try to reuse coords of previously rendered items
+            if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryLastItem) {
+                const { virtualRange } = rs.query;
+                cornerstoneItem.range = new NumberRange(
+                    virtualRange.end - cornerstoneItem.size,
+                    virtualRange.end);
             }
+            else if (canUseQueryRange && rs.query.isNone && !rs.hasVeryLastItem) {
+                // There is no query range and no very last item, so we have to calculate range manually with end spacer
+                cornerstoneItem.range = new NumberRange(
+                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
+                    0 - defaultSpacerSize - endAnchorSize);
+            }
+            else
+                cornerstoneItem.range = new NumberRange(
+                    0 - endAnchorSize - cornerstoneItem.size,
+                    0 - endAnchorSize);
+
+            if (!rs.hasVeryLastItem) {
+                this.shouldUpdateCornerstoneItem = true;
+                console.warn(
+                    'ensureItemRangeCalculated: no cornerstone item found, recalculating all ranges!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+            }
+            else {
+                this.shouldUpdateCornerstoneItem = false;
+                console.warn(
+                    'ensureItemRangeCalculated: cornerstone item has been updated');
+            }
+            let prevItem = cornerstoneItem;
+            for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
+                const item = orderedItems[i];
+                item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+                prevItem = item;
+            }
+            this.itemRange = new NumberRange(
+                orderedItems[0].range.start,
+                orderedItems[orderedItems.length - 1].range.end);
             if (fullRangeSize) {
                 this.minStart = 0 - fullRangeSize - endAnchorSize;
                 this.maxEnd = 0  - endAnchorSize;
@@ -1501,45 +1506,50 @@ export class VirtualList {
                 this.minStart = orderedItems[0].range.start;
                 this.maxEnd = orderedItems[orderedItems.length - 1].range.end;
             }
+            return cornerstoneItem.range.end;
         }
         else {
-            if (orderedItems.length > 0) {
-                const cornerstoneItemIndex = 0;
-                const cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            const cornerstoneItemIndex = 0;
+            const cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
-                // try to reuse coords of previously rendered items
-                if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryLastItem) {
-                    const { virtualRange } = rs.query;
-                    cornerstoneItem.range = new NumberRange(
-                        virtualRange.start,
-                        virtualRange.start + cornerstoneItem.size);
-                }
-                else
-                    cornerstoneItem.range = new NumberRange(
-                        0,
-                        cornerstoneItem.size);
-
-                if (!rs.hasVeryFirstItem) {
-                    this.shouldUpdateCornerstoneItem = true;
-                    console.warn(
-                        'ensureItemRangeCalculated: no cornerstone item found, recalculating all ranges!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-                }
-                else {
-                    this.shouldUpdateCornerstoneItem = false;
-                    console.warn(
-                        'ensureItemRangeCalculated: cornerstone item has been updated');
-                }
-
-                let prevItem = cornerstoneItem;
-                for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
-                    const item = orderedItems[i];
-                    item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
-                    prevItem = item;
-                }
-                this.itemRange = new NumberRange(
-                    orderedItems[0].range.start,
-                    orderedItems[orderedItems.length - 1].range.end);
+            // try to reuse coords of previously rendered items
+            if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryFirstItem) {
+                const { virtualRange } = rs.query;
+                cornerstoneItem.range = new NumberRange(
+                    virtualRange.start,
+                    virtualRange.start + cornerstoneItem.size);
             }
+            else if (canUseQueryRange && rs.query.isNone && !rs.hasVeryFirstItem) {
+                // There is no query range and no very last item, so we have to calculate range manually with spacer
+                cornerstoneItem.range = new NumberRange(
+                    defaultSpacerSize,
+                    defaultSpacerSize + cornerstoneItem.size);
+            }
+            else
+                cornerstoneItem.range = new NumberRange(
+                    0,
+                    cornerstoneItem.size);
+
+            if (!rs.hasVeryFirstItem) {
+                this.shouldUpdateCornerstoneItem = true;
+                console.warn(
+                    'ensureItemRangeCalculated: no cornerstone item found, recalculating all ranges!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+            }
+            else {
+                this.shouldUpdateCornerstoneItem = false;
+                console.warn(
+                    'ensureItemRangeCalculated: cornerstone item has been updated');
+            }
+
+            let prevItem = cornerstoneItem;
+            for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
+                const item = orderedItems[i];
+                item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+                prevItem = item;
+            }
+            this.itemRange = new NumberRange(
+                orderedItems[0].range.start,
+                orderedItems[orderedItems.length - 1].range.end);
             if (fullRangeSize) {
                 this.minStart = 0;
                 this.maxEnd = fullRangeSize + endAnchorSize;
@@ -1548,6 +1558,7 @@ export class VirtualList {
                 this.minStart = orderedItems[0].range.start;
                 this.maxEnd = orderedItems[orderedItems.length - 1].range.end;
             }
+            return cornerstoneItem.range.start;
         }
     }
 
