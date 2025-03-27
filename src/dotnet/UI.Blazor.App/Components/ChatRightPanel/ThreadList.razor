@@ -1,0 +1,58 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ThreadList.Model>
+
+@{
+    var m = State.Value;
+}
+
+<div class="thread-list-tab">
+    <div class="c-content">
+        @foreach (var item in m.ThreadChats) {
+            <ThreadListItem Chat="@item" />
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
+
+    [Parameter] public ChatId ChatId { get; set; } = ChatId.None;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        if (chatId.IsNone || chatId.IsThread || chatId.Kind is not (ChatKind.Group or ChatKind.Place))
+            return Model.None;
+
+        var threadIds = await ChatThreads.ListIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var threadChats = await threadIds
+            .Select(c => Chats.Get(Session, c, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+
+        return new() {
+            ThreadChats = threadChats.SkipNullItems().ToImmutableArray(),
+        };
+    }
+
+    // Nested types
+
+    public sealed class Model {
+        public static readonly Model None = new();
+
+        public IReadOnlyList<Chat> ThreadChats { get; init; } = [];
+    }
+
+    public record struct AuthorInfo(AuthorId Id, string Name);
+}

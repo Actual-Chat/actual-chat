@@ -169,4 +169,24 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
             return sb.ToString();
         }
     }
+
+    public async Task StartThread(IReadOnlySet<ChatEntryId>? selection = null) {
+        selection ??= Selection.Value;
+        if (selection.Count == 0)
+            return;
+
+        var chatId = selection.First().ChatId;
+        var cmd = new ChatThreads_Start(
+            Session,
+            chatId,
+            "",
+            selection.Select(c => c.ToTextEntryId()).ToApiArray());
+        var chatThread = await UICommander.Call(cmd, CancellationToken.None).ConfigureAwait(true);
+        ToastUI.Show("Thread has been created.", NavigateAction, "Navigate", ToastDismissDelay.Long);
+        Clear();
+        return;
+
+        void NavigateAction()
+            => _ = History.NavigateTo(Links.Chat(chatThread.Id));
+    }
 }

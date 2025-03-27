@@ -111,8 +111,24 @@ public class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
+        var isThread = chatId.IsThread;
+        chatId = chatId.Parent;
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (isThread) {
+            var permissions = rules.Permissions
+                ^ (ChatPermissions.Invite
+                | ChatPermissions.Join
+                | ChatPermissions.Leave
+                | ChatPermissions.Owner
+                | ChatPermissions.EditMembers
+                | ChatPermissions.EditProperties
+                | ChatPermissions.EditRoles
+                | ChatPermissions.SeeMembers);
+            rules = rules with {
+                Permissions = permissions,
+            };
+        }
         return rules;
     }
 
@@ -758,12 +774,13 @@ public class Chats(IServiceProvider services) : IChats
             return new ReadPositionsStat(chatId, long.MaxValue, []);
 
         var positions = statBackend.TopReadPositions;
+        var parentChatId = chatId.Parent;
         var top2AuthorReadPositions = (await positions
                 .Select(async c => {
                     var authorId = AuthorId.None;
                     using (var _ = Computed.BeginIsolation()) {
                         // Do not capture dependency, we just need an author id
-                        var author = await AuthorsBackend.GetByUserId(chatId,
+                        var author = await AuthorsBackend.GetByUserId(parentChatId,
                                 c.UserId,
                                 AuthorsBackend_GetAuthorOption.Full,
                                 cancellationToken)

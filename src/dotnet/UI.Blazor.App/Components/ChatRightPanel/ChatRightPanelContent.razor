@@ -24,14 +24,19 @@
                                 <AuthorList ChatId="@Chat.Id"/>
                             </Tab>
                         }
+                        @if (m.ShowMembersTab) {
+                            <Tab @key="@("threads")" Id="threads" Title="Threads" Order="1">
+                                <ThreadList ChatId="@Chat.Id"/>
+                            </Tab>
+                        }
                         @if (m.EnableIncompleteUI) {
-                            <Tab @key="@("media")" Id="media" Title="Media" Order="1">
+                            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
                                 <ToBeDone/>
                             </Tab>
-                            <Tab @key="@("files")" Id="files" Title="Files" Order="2">
+                            <Tab @key="@("files")" Id="files" Title="Files" Order="6">
                                 <ToBeDone/>
                             </Tab>
-                            <Tab @key="@("links")" Id="links" Title="Links" Order="3">
+                            <Tab @key="@("links")" Id="links" Title="Links" Order="9">
                                 <ToBeDone/>
                             </Tab>
                         }
@@ -75,6 +80,7 @@
         return new () {
             EnableIncompleteUI = enableIncompleteUI,
             ShowMembersTab = showMemberTab,
+            ShowThreads = !chatId.IsThread && chatId.Kind is ChatKind.Group or ChatKind.Place,
             ShowSearchPanel = showSearchPanel && enableIncompleteUI,
         };
     }
@@ -85,8 +91,9 @@
         public static Model Loading = new();
 
         public bool EnableIncompleteUI { get; init; }
-        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI;
+        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
         public bool ShowMembersTab { get; init; }
+        public bool ShowThreads { get; init; }
         public bool ShowSearchPanel { get; init; }
     }
 }

@@ -43,6 +43,13 @@
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-share text-xl"></i>
             </ButtonRound>
+            <ButtonRound
+                Class="btn-xs btn-primary btn-transparent"
+                Click="@(() => SelectionUI.StartThread())"
+                Tooltip="Start Thread"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-conversation text-xl"></i>
+            </ButtonRound>
         </div>
     </div>
     return;
@@ -84,6 +91,13 @@
             Tooltip="Forward selected"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-share text-xl"></i>
+        </ButtonRound>
+        <ButtonRound
+            Class="btn-xs btn-primary btn-transparent"
+            Click="@(() => SelectionUI.StartThread())"
+            Tooltip="Start Thread"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-conversation text-xl"></i>
         </ButtonRound>
     </div>
 </div>

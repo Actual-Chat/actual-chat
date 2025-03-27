@@ -160,6 +160,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         PrincipalId principalId,
         CancellationToken cancellationToken)
     {
+        chatId.EnsureNonThread();
+
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
@@ -640,6 +642,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chatKind == ChatKind.Group) {
                 if (chatId.IsNone)
                     chatId = new ChatId(Generate.Option);
+                else if (chatId.IsThread) {
+                    // Accept provided chat id.
+                }
                 else if (!Constants.Chat.SystemChatIds.Contains(chatId))
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
             }
@@ -651,6 +656,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                         chatId = new PlaceChatId(PlaceChatId.Format(placeId, Constants.Chat.SystemTags.Welcome));
                     else
                         chatId = new PlaceChatId(placeId, Generate.Option);
+                }
+                else if (chatId.IsThread) {
+                    // Accept provided chat id.
                 }
                 else if (!chatId.IsPlaceRootChat)
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
@@ -699,64 +707,78 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     .ConfigureAwait(false);
             }
             else if (chatId.Kind == ChatKind.Group || chatId.Kind == ChatKind.Place) {
-                // Group chat
-                ownerId.Require("Command.OwnerId");
-                // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
-                // After that they can reveal themself if needed.
-                var upsertCommand = new AuthorsBackend_Upsert(
-                    chatId, default, ownerId, null,
-                    new AuthorDiff {
-                        IsAnonymous = chat.AllowAnonymousAuthors
-                    });
-                var author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
-
-                if (chat.HasSingleAuthor) {
-                    var createCustomRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
-                        Create = new RoleDiff {
-                            Name = "SingleAuthor",
-                            SystemRole = SystemRole.None,
-                            Permissions = ChatPermissions.Write,
-                            AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
-                                AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
-                            },
-                        },
-                    });
-                    await Commander.Call(createCustomRoleCmd, cancellationToken).ConfigureAwait(false);
-                }
-                else {
-                    var createOwnerRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
-                        Create = new RoleDiff {
-                            SystemRole = SystemRole.Owner,
-                            Permissions = ChatPermissions.Owner,
-                            AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
-                                AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
-                            },
-                        },
-                    });
-                    await Commander.Call(createOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
-
-                    var createAnyoneRoleCmd = new RolesBackend_Change(chatId,
+                if (!chatId.IsThread) {
+                    // Group chat
+                    ownerId.Require("Command.OwnerId");
+                    // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
+                    // After that they can reveal themself if needed.
+                    var upsertCommand = new AuthorsBackend_Upsert(
+                        chatId,
                         default,
+                        ownerId,
                         null,
-                        new () {
-                            Create = new RoleDiff() {
-                                SystemRole = SystemRole.Anyone,
-                                Permissions =
-                                    ChatPermissions.Write
-                                    | ChatPermissions.Invite
-                                    | ChatPermissions.SeeMembers
-                                    | ChatPermissions.Leave,
-                            },
+                        new AuthorDiff {
+                            IsAnonymous = chat.AllowAnonymousAuthors
                         });
-                    await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
-                }
+                    var author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
 
-                if (chat.IsAiSearchChat()) {
-                    var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
-                        chat.Id, default, Constants.User.Sherlock.UserId, null,
-                        new AuthorDiff()
-                    );
-                    _ = await Commander.Call(upsertMlBotAuthorCommand, cancellationToken).ConfigureAwait(false);
+                    if (chat.HasSingleAuthor) {
+                        var createCustomRoleCmd = new RolesBackend_Change(chatId,
+                            default,
+                            null,
+                            new () {
+                                Create = new RoleDiff {
+                                    Name = "SingleAuthor",
+                                    SystemRole = SystemRole.None,
+                                    Permissions = ChatPermissions.Write,
+                                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                                        AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                                    },
+                                },
+                            });
+                        await Commander.Call(createCustomRoleCmd, cancellationToken).ConfigureAwait(false);
+                    }
+                    else {
+                        var createOwnerRoleCmd = new RolesBackend_Change(chatId,
+                            default,
+                            null,
+                            new () {
+                                Create = new RoleDiff {
+                                    SystemRole = SystemRole.Owner,
+                                    Permissions = ChatPermissions.Owner,
+                                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                                        AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                                    },
+                                },
+                            });
+                        await Commander.Call(createOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
+
+                        var createAnyoneRoleCmd = new RolesBackend_Change(chatId,
+                            default,
+                            null,
+                            new () {
+                                Create = new RoleDiff() {
+                                    SystemRole = SystemRole.Anyone,
+                                    Permissions =
+                                        ChatPermissions.Write
+                                        | ChatPermissions.Invite
+                                        | ChatPermissions.SeeMembers
+                                        | ChatPermissions.Leave,
+                                },
+                            });
+                        await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    if (chat.IsAiSearchChat()) {
+                        var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
+                            chat.Id,
+                            default,
+                            Constants.User.Sherlock.UserId,
+                            null,
+                            new AuthorDiff()
+                        );
+                        _ = await Commander.Call(upsertMlBotAuthorCommand, cancellationToken).ConfigureAwait(false);
+                    }
                 }
             }
             else

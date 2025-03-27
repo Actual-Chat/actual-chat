@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="c-container flex-x items-center cursor-pointer gap-x-2" @onclick="OnItemClicked">
+    <ChatIcon Chat="@Chat" ShowPresence="@false"/>
+    <div class="c-description">
+        <span class="c-chat-title">
+            <span>@Chat.Title</span>
+            @* <span class="c-incut"></span> *@
+            @* @if (lastTextEntry != null && !showEnding) { *@
+            @*     <LastEntryTime LastEntry="@lastTextEntry"/> *@
+            @* } *@
+        </span>
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+
+    private Task OnItemClicked()
+        => Hub.History.NavigateTo(Links.Chat(Chat.Id));
+}

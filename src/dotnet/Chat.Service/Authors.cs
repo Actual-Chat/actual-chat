@@ -37,6 +37,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
+        (chatId, authorId) = Remap(chatId, authorId);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return null;
@@ -73,7 +74,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         // the ability to access the chat, otherwise we'll hit the recursion here.
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetByUserId(chatId.Parent, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -81,6 +82,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
+        (chatId, authorId) = Remap(chatId, authorId);
         var ownAuthor = await GetOwn(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         if (ownAuthor.Id == authorId)
             return ownAuthor;
@@ -98,6 +100,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
+        (chatId, authorId) = Remap(chatId, authorId);
         // In fact, de-anonymizes the author
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -122,6 +125,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [ComputeMethod]
     public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
+        chatId = chatId.Parent;
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
@@ -132,6 +136,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [ComputeMethod]
     public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
+        chatId = chatId.Parent;
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
@@ -146,6 +151,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
+        (chatId, authorId) = Remap(chatId, authorId);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return Presence.Unknown;
@@ -167,6 +173,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
+        (chatId, authorId) = Remap(chatId, authorId);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return null;
@@ -185,6 +192,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
         var (session, chatId, avatarId, joinAnonymously) = command;
+        chatId.EnsureNonThread();
+
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is { HasLeft: false })
             return author;
@@ -242,6 +251,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task OnLeave(Authors_Leave command, CancellationToken cancellationToken)
     {
         var (session, chatId) = command;
+        chatId.EnsureNonThread();
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
             return;
@@ -268,6 +278,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task OnInvite(Authors_Invite command, CancellationToken cancellationToken)
     {
         var (session, chatId, userIds, joinAnonymously) = command;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.CanInvite().RequireTrue("You can't invite members in this chat.");
         ValidatePlaceMembershipRules(chat);
@@ -298,6 +309,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.EditMembers);
         ValidatePlaceMembershipRules(chat);
@@ -328,6 +340,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.EditMembers);
 
@@ -342,6 +355,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
         var (session, chatId, avatarId) = command;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         if (chat.IsChatRoulette())
             throw StandardError.Constraint("You can't set avatar in chat roulette.");
@@ -373,6 +387,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.Owner);
         ValidatePlaceMembershipRules(chat);
@@ -419,5 +434,18 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         if (chat.Id.IsPlaceChat && !chat.Id.PlaceChatId.IsRoot && chat.IsPublic)
             throw StandardError.Constraint("You must manage place public chat membership via place settings.");
+    }
+
+    private (ChatId chatId, AuthorId authorId) Remap(ChatId chatId, AuthorId authorId)
+    {
+        if (!chatId.IsThread)
+            return (chatId, authorId);
+
+        if (authorId.ChatId != chatId)
+            throw StandardError.Constraint("Provided authorId should belong to given chatId.");
+
+        chatId = chatId.Parent;
+        authorId = new AuthorId(chatId.Parent, authorId.LocalId, AssumeValid.Option);
+        return (chatId, authorId);
     }
 }

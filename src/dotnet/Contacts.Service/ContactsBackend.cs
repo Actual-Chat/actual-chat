@@ -632,6 +632,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return; // It just spawns other commands, so nothing to do here
 
         var (chat, oldChat, changeKind) = eventCommand;
+        if (chat.Id.IsThread)
+            return; // Contacts are not managed for threads.
 
         if (changeKind == ChangeKind.Remove) {
             var command = new ContactsBackend_RemoveChatContacts(chat.Id);

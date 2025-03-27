@@ -28,6 +28,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (chatId.IsNone || authorId.IsNone || authorId.ChatId != chatId)
             return null;
 
+        chatId.EnsureNonThread();
+
         if (option.IsRaw() || !chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
             return await GetInternal(chatId, authorId, cancellationToken).ConfigureAwait(false);
 
@@ -57,6 +59,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     {
         if (chatId.IsNone || userId.IsNone)
             return null;
+
+        chatId.EnsureNonThread();
 
         if (option.IsRaw() || !chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
             return await GetByUserIdInternal(chatId, userId, cancellationToken).ConfigureAwait(false);
@@ -146,6 +150,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+        chatId.EnsureNonThread();
         if (!authorId.IsNone && authorId.ChatId != chatId)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid AuthorId.");
         if (userId.IsNone && authorId.IsNone)
@@ -343,6 +348,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId) = command;
+        chatId.EnsureNonThread();
         switch (authorId.IsNone, chatId.IsNone, userId.IsNone) {
             case (true, true, true):
                 throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId or ChatId must be provided.");
