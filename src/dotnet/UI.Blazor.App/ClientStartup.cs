@@ -110,6 +110,7 @@ public static class ClientStartup
         // AppContext feature switches
         // AppContext.SetSwitch("System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported", false);
         AppContext.SetSwitch("Switch.System.Reflection.ForceInterpretedInvoke", false);
+        // Slower runtime, but slightly faster startup (no IL generation):
         AppContext.SetSwitch("Microsoft.Extensions.DependencyInjection.DisableDynamicEngine", true);
 
         // CodeKeeper actions
@@ -147,9 +148,12 @@ public static class ClientStartup
             // TODO: Add support for parameter comparers
         });
         CodeKeeper.Set<ProxyCodeKeeper, FusionProxyCodeKeeper>();
-        if (OSInfo.IsWindows || OSInfo.IsWebAssembly) {
+        if (OSInfo.IsWindows) {
+            // NOTE(AY): This block actually does nothing, it's just to measure the time RunActions() takes (if called).
+            // Currently, any proxy uses .AddAction() to register its "actions", even though it's not needed -
+            // .AddFakeAction() is enough for AOT code generation & IL trimmers.
+            // So likely I'll remove .AddAction() and this block later.
             var now = CpuTimestamp.Now;
-            // Required to keep the code of the specified types
             CodeKeeper.RunActions();
             Tracer.Default[nameof(CodeKeeper)].Point($"RunActions took {now.Elapsed.ToShortString()}");
         }

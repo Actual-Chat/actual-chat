@@ -61,13 +61,12 @@ public static partial class MauiProgram
         using var _1 = Tracer.Region();
 
         MauiExceptionHandlers.Use();
+        MauiRuntimeSettings.Apply();
 #if ANDROID
         ActivateDataCollectionIfEnabled(Android.App.Application.Context);
 #endif
-        using(Tracer.Region(nameof(ClientStartup)+"." + nameof(ClientStartup.Initialize)))
-            ClientStartup.Initialize();
-        //MainThreadTracker.Activate();
-        MauiThreadPoolSettings.Apply();
+        ClientStartup.Initialize();
+        // MainThreadTracker.Activate();
 
 #if WINDOWS
         FixStaticContentProvider();
