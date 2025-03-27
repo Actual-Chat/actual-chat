@@ -7,6 +7,6 @@ public sealed class IndexingFlowTestContext(MomentClockSet clocks) : IndexingFlo
     public override BatchIndexingResult<long> Next(Symbol id)
         => Batches[id].Dequeue();
 
-    protected override int GetCount(BatchIndexingResult<long> batch)
-        => batch.ProcessedCount;
+    protected override bool HasProcessedAnyItems(BatchIndexingResult<long> batch)
+        => batch.HasProcessedAnyItems;
 }

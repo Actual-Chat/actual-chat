@@ -40,9 +40,11 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
         Context.OnProcessed(Id.Arguments, batch);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
+    protected override async Task<IndexingFlowTransitionKind> HandleTail(
+        bool hasProcessedAnyItems,
+        CancellationToken cancellationToken)
     {
-        var result = await base.HandleTail(processedCount, cancellationToken);
-        return await Context.HandleTail(Id.Arguments, processedCount) ?? result;
+        var result = await base.HandleTail(hasProcessedAnyItems, cancellationToken);
+        return await Context.HandleTail(Id.Arguments, hasProcessedAnyItems) ?? result;
     }
 }

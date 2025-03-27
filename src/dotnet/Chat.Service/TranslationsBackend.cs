@@ -38,7 +38,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return translation;
     }
 
-    [ComputeMethod(InvalidationDelay = 60 * 1000)]
+    [ComputeMethod(AutoInvalidationDelay = 60 * 1000)]
     protected virtual async Task<string> GetTranslationContext(ChatEntryId id, CancellationToken cancellationToken)
     {
         var entries = await ListEntries().Take(10).ToListAsync(cancellationToken).ConfigureAwait(false);

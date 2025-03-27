@@ -23,8 +23,8 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         var id = RandomSymbolGenerator.Default.Next();
         var batchSize = 10;
         var batches = Enumerable.Range(1, batchCount)
-            .Select(i => new BatchIndexingResult<long>(false, false, i * batchSize, batchSize))
-            .Append(new (false, true, (batchCount + 1) * batchSize, batchSize))
+            .Select(i => new BatchIndexingResult<long>(false, false, i * batchSize, true))
+            .Append(new (false, true, (batchCount + 1) * batchSize, true))
             .ToList();
         Context.Add(id, batches);
 
@@ -47,7 +47,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(10));
 
         // act
-        Context.Add(id, [new (false, true, (batchCount + 1) * batchSize, 0)]);
+        Context.Add(id, [new (false, true, (batchCount + 1) * batchSize, false)]);
 
         // assert
         await TestExt.When(async () => {
@@ -69,8 +69,8 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var id = RandomSymbolGenerator.Default.Next();
         BatchIndexingResult<long>[] batches = [
-            new (true, false, 20, 10),
-            new (false, false, 30, 10),
+            new (true, false, 20, true),
+            new (false, false, 30, true),
         ];
         Context.Add(id, batches);
 
@@ -90,10 +90,10 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var id = RandomSymbolGenerator.Default.Next();
         BatchIndexingResult<long>[] batches = [
-            new (false, true, 20, 10),
-            new (false, true, 30, 10),
-            new (false, true, 30, 10),
-            new (false, true, 30, 10),
+            new (false, true, 20, true),
+            new (false, true, 30, true),
+            new (false, true, 30, true),
+            new (false, true, 30, true),
         ];
         Context.Add(id, batches);
 

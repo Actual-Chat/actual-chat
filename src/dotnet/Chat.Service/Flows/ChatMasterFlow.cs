@@ -50,7 +50,9 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
                 .ConfigureAwait(false);
     }
 
-    protected override Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
+    protected override Task<IndexingFlowTransitionKind> HandleTail(
+        bool hasProcessedAnyItems,
+        CancellationToken cancellationToken)
     {
         // stop indexing until version is bumped
         FlowSetVersion = CurrentFlowSetVersion;

@@ -15,4 +15,7 @@ public static class ChatEntryExt
  #pragma warning restore CS0618 // Type or member is obsolete
             LinkPreviews = src.LinkPreviews,
         };
+
+    public static Moment GetEndsAt(this ChatEntry entry)
+        => entry.EndsAt ?? entry.BeginsAt;
 }

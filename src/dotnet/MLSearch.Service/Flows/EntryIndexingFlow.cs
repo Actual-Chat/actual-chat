@@ -54,10 +54,12 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         await IndexedDocuments.SaveEntries(updated, removed, cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
+    protected override async Task<IndexingFlowTransitionKind> HandleTail(
+        bool hasProcessedAnyItems,
+        CancellationToken cancellationToken)
     {
-        var transitionKind = await base.HandleTail(processedCount, cancellationToken).ConfigureAwait(false);
-        if (processedCount > 0) {
+        var transitionKind = await base.HandleTail(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
+        if (hasProcessedAnyItems) {
             Log.LogInformation("`{Id}`.OnTailReached: requesting entry index refresh", Id);
             await Host.Services.Queues()
                 .Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken)

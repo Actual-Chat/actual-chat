@@ -52,10 +52,12 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
             .ConfigureAwait(false);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
+    protected override async Task<IndexingFlowTransitionKind> HandleTail(
+        bool hasProcessedAnyItems,
+        CancellationToken cancellationToken)
     {
-        var transition = await base.HandleTail(processedCount, cancellationToken).ConfigureAwait(false);
-        if (processedCount > 0) {
+        var transition = await base.HandleTail(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
+        if (hasProcessedAnyItems) {
             Log.LogInformation("`{Id}`.OnTailReached: requesting user index refresh", Id);
             await Host.Services.Queues()
                 .Enqueue(new SearchBackend_Refresh(RefreshUsers: true), cancellationToken)
