@@ -1680,13 +1680,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             : Task.CompletedTask;
 
         bool NeedsSummarization()
-        {
-            if (kind is ChangeKind.Create)
-                return true;
-
-            // TODO (AK): Please review condition
-            return chat.IsSummarized == true && oldChat!.IsSummarized == false;
-        }
+            => chat.IsSummarized == true && oldChat?.IsSummarized != true;
     }
 
     // [EventHandler]
