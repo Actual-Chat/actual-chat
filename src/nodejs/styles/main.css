@@ -140,11 +140,11 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 body.narrow .layout-header > .c-content.selection-header {
     @apply pr-3;
 }
-.layout-header > .c-content .chat-header-back {
-    @apply md:hidden;
-}
 .layout-header:has(.selection-header) {
     @apply bg-gradient-to-r from-[var(--magenta-50-20)] to-[var(--blue-50-20)];
+}
+.layout-header > .c-content.c-selection {
+    @apply bg-gradient-to-r from-[var(--magenta-50-10)] to-[var(--blue-50-10)];
 }
 .layout-subheader {
     @apply sticky top-0 z-90;

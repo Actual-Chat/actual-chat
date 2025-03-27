@@ -47,14 +47,17 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public Chat ToModel()
-        => new(new ChatId(Id), Version) {
+    {
+        var chatId = new ChatId(Id);
+        ChatId? templateId = TemplateId.IsNullOrEmpty()
+            ? (ChatId?)null
+            : new ChatId(TemplateId);
+        return new (chatId, Version) {
             Title = Title,
             Description = Description,
             CreatedAt = CreatedAt,
             IsTemplate = IsTemplate,
-            TemplateId = TemplateId.IsNullOrEmpty()
-                ? null
-                :new ChatId(TemplateId),
+            TemplateId = templateId,
             TemplatedForUserId = TemplatedForUserId.IsNullOrEmpty()
                 ? null
                 : new UserId(TemplatedForUserId),
@@ -69,6 +72,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserLinkId = new UserLinkId(UserLinkId),
             IsSummarized = IsSummarized,
         };
+    }
 
     public void UpdateFrom(Chat model)
     {

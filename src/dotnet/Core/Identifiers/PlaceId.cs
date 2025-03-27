@@ -18,7 +18,7 @@ public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PlaceId>();
-    private static RandomStringGenerator IdGenerator => ChatId.IdGenerator;
+    private static RandomStringGenerator IdGenerator => GroupChatId.IdGenerator;
 
     public static PlaceId None => default;
 

@@ -362,6 +362,14 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_system_entry");
 
+                    b.Property<bool>("IsThreadEntry")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_thread_entry");
+
+                    b.Property<bool>("IsThreadStartEntry")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_thread_start_entry");
+
                     b.Property<int>("Kind")
                         .HasColumnType("integer")
                         .HasColumnName("kind");

@@ -15,7 +15,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
     private IContactsBackend? _contactsBackend;
-    private IExternalContactsBackend? _externalContactsBackend;
     private IRoles? _roles;
     private IRolesBackend? _rolesBackend;
 
@@ -28,7 +27,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
     private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
-    private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
     private IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();
     private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
 
@@ -185,6 +183,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
         var (session, chatId, avatarId, joinAnonymously) = command;
+        chatId.EnsureNonThread();
+
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is { HasLeft: false })
             return author;
@@ -242,6 +242,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task OnLeave(Authors_Leave command, CancellationToken cancellationToken)
     {
         var (session, chatId) = command;
+        chatId.EnsureNonThread();
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
             return;
@@ -268,6 +269,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task OnInvite(Authors_Invite command, CancellationToken cancellationToken)
     {
         var (session, chatId, userIds, joinAnonymously) = command;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.CanInvite().RequireTrue("You can't invite members in this chat.");
         ValidatePlaceMembershipRules(chat);
@@ -298,6 +300,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.EditMembers);
         ValidatePlaceMembershipRules(chat);
@@ -328,6 +331,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.EditMembers);
 
@@ -342,6 +346,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
         var (session, chatId, avatarId) = command;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         if (chat.IsChatRoulette())
             throw StandardError.Constraint("You can't set avatar in chat roulette.");
@@ -373,6 +378,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
+        chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.Owner);
         ValidatePlaceMembershipRules(chat);

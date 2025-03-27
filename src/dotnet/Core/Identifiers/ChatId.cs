@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using MemoryPack;
-using ActualLab.Generators;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Identifiers.Internal;
 
@@ -16,11 +15,12 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
 {
+    public const char ThreadIdSeparator = '-';
+
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatId>();
-    internal static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
-    public static ChatId None => default;
+    public static ChatId None { get; } = new ChatId(AssumeValid.Option);
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
@@ -30,6 +30,9 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public PeerChatId PeerChatId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceChatId PlaceChatId { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [field: AllowNull, MaybeNull]
+    public GroupChatId GroupChatId { get => field ?? GroupChatId.None; } = GroupChatId.None;
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -48,15 +51,45 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public bool IsPlaceRootChat => IsPlaceChat && PlaceChatId.IsRoot;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceId PlaceId => PlaceChatId.PlaceId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public long ThreadId => Kind switch {
+        ChatKind.Group => GroupChatId.ThreadId,
+        ChatKind.Place => PlaceChatId.ThreadId,
+        _ => 0,
+    };
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsThread => ThreadId > 0;
+    public ChatId GetThreadParentOrSelf() => Kind switch {
+            ChatKind.Group => GroupChatId.GetThreadParentOrSelf(),
+            ChatKind.Place => PlaceChatId.GetThreadParentOrSelf(),
+            _ => this,
+        };
+    public ChatId GetThreadParent()
+    {
+        if (!IsThread)
+            throw StandardError.NotSupported("This method is supported only for thread chat ids.");
+        return Kind switch {
+            ChatKind.Group => GroupChatId.GetThreadParentOrSelf(),
+            ChatKind.Place => PlaceChatId.GetThreadParentOrSelf(),
+            _ => this,
+        };
+    }
+
+    public ChatId GetOutermostThreadParentOrSelf() {
+        var result = this;
+        while (result.IsThread)
+            result = result.GetThreadParentOrSelf();
+        return result;
+    }
 
     // Factories
 
-    public static ChatId Group(Symbol chatId)
-        => new(chatId, default, default, AssumeValid.Option);
+    public static ChatId Group(GroupChatId groupChatId)
+        => new(groupChatId.Id, groupChatId, default, default, AssumeValid.Option);
     public static ChatId Peer(PeerChatId peerChatId)
-        => new(peerChatId.Id, peerChatId, default, AssumeValid.Option);
+        => new(peerChatId.Id, GroupChatId.None, peerChatId, default,  AssumeValid.Option);
     public static ChatId Place(PlaceChatId placeChatId)
-        => new(placeChatId.Id, default, placeChatId, AssumeValid.Option);
+        => new(placeChatId.Id, GroupChatId.None, default, placeChatId, AssumeValid.Option);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatId(Symbol id)
@@ -66,17 +99,27 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public ChatId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
     public ChatId(Generate _)
-        => this = new ChatId(IdGenerator.Next());
+        => this = new GroupChatId(Generate.Option);
 
-    private ChatId(Symbol id, PeerChatId peerChatId, PlaceChatId placeChatId, AssumeValid _)
+    private ChatId(Symbol id, GroupChatId groupChatId, PeerChatId peerChatId, PlaceChatId placeChatId, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
             return;
         }
         Id = id;
+        GroupChatId = groupChatId;
         PeerChatId = peerChatId;
         PlaceChatId = placeChatId;
+    }
+
+    private ChatId(AssumeValid _)
+    {
+        // NOTE(DF): This constructor should be used to create None instance only.
+        Id = "";
+        GroupChatId = GroupChatId.None;
+        PeerChatId = PeerChatId.None;
+        PlaceChatId = PlaceChatId.None;
     }
 
     // Helpers
@@ -92,8 +135,9 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public override string ToString() => Value;
     public static implicit operator Symbol(ChatId source) => source.Id;
     public static implicit operator string(ChatId source) => source.Id.Value;
-    public static implicit operator ChatId(PeerChatId source) => new(source.Id, source, PlaceChatId.None, AssumeValid.Option);
-    public static implicit operator ChatId(PlaceChatId source) => new(source.Id, PeerChatId.None, source, AssumeValid.Option);
+    public static implicit operator ChatId(PeerChatId source) => new(source.Id, GroupChatId.None, source, PlaceChatId.None, AssumeValid.Option);
+    public static implicit operator ChatId(PlaceChatId source) => new(source.Id, GroupChatId.None, PeerChatId.None, source, AssumeValid.Option);
+    public static implicit operator ChatId(GroupChatId source) => new(source.Id, source, PeerChatId.None, PlaceChatId.None, AssumeValid.Option);
     public static explicit operator ChatId(string source) => new(source);
 
     // Equality
@@ -125,22 +169,35 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
             if (!PeerChatId.TryParse(s, out var peerChatId))
                 return false;
 
-            result = new ChatId(peerChatId.Id, peerChatId, PlaceChatId.None, AssumeValid.Option);
+            result = peerChatId;
         }
         else if (s.OrdinalStartsWith(PlaceChatId.IdPrefix)) {
             // Place chat ID
             if (!PlaceChatId.TryParse(s, out var placeChatId))
                 return false;
 
-            result = new ChatId(placeChatId.Id, PeerChatId.None, placeChatId, AssumeValid.Option);
+            result = placeChatId;
         }
         else {
-            if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
+            // Group chat ID
+            if (!GroupChatId.TryParse(s, out var groupChatId))
                 return false;
 
-            // Group chat ID
-            result = new ChatId(s, PeerChatId.None, PlaceChatId.None, AssumeValid.Option);
+            result = groupChatId;
         }
         return true;
+    }
+
+    public ChatId CreateThreadId(long threadId)
+    {
+        if (Kind is not (ChatKind.Group or ChatKind.Place))
+            throw StandardError.NotSupported($"{Kind} chats do not support threads");
+        return Parse(Value + ThreadIdSeparator + threadId.ToInvariantString());
+    }
+
+    public void EnsureNonThread()
+    {
+        if (IsThread)
+            throw StandardError.Constraint("ChatId should not belong to Thread");
     }
 }

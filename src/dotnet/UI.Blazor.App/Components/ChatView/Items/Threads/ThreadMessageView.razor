@@ -1,0 +1,146 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using Cysharp.Text
+@inherits ComputedStateComponent<ThreadMessageView.Model?>
+@{
+    var chat = Message.Chat;
+    var m = State.Value;
+    if (m is null)
+        return; // Loading
+
+    const int displayAuthorsLimit = 3;
+    var topAuthorIds = m.TopAuthorIds.Take(displayAuthorsLimit).ToList();
+    var extraAuthorCount = Math.Clamp(m.AuthorCount - topAuthorIds.Count, 0, 99);
+    var createdAt = DateTimeConverter.ToLocalTime(chat.CreatedAt.ToDateTime());
+    var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now.ToDateTime());
+    var daysDelta = (now.Date - createdAt.Date).Days;
+    var creationDate = createdAt.Year != now.Year // prev year
+        ? DateTimeConverter.ToLocalTime(createdAt).ToString("MMM dd, yyyy")
+        : daysDelta == 0 // today
+            ? "Today"
+                : daysDelta == 1 // yesterday
+                ? "Yesterday"
+                    : daysDelta < 8 // this week
+                    ? DateTimeConverter.ToLocalTime(createdAt).ToString("dddd")
+                        : DateTimeConverter.ToLocalTime(createdAt).ToString("MMM dd"); // this year
+}
+
+<div class="thread-message">
+    <div class="c-title">
+        <div class="c-left">
+            <span class="c-text">
+                <span class="c-hash">#</span>
+                @chat.Title
+            </span>
+        </div>
+        <div class="c-right" @onclick="@OnGoToTheThread">
+            <i class="icon-message-stars"></i>
+            <span class="c-message-count">@m.MessageCount</span>
+            <i class="icon-chevron-right"></i>
+        </div>
+    </div>
+    <div class="c-short">@chat.Description</div>
+    <Divider/>
+    <div class="c-last-messages">
+        @foreach (var (chatEntry, markup) in m.Entries) {
+            <div class="c-message-wrapper">
+                <AuthorCircle
+                    AuthorSid="@chatEntry.AuthorId.Value"
+                    Size="SquareSize.Size8" />
+                <div class="c-content">
+                    <div class="c-info">
+                        <AuthorName AuthorSid="@chatEntry.AuthorId" Class="chat-message-author-name"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@chatEntry.BeginsAt"/>
+                    </div>
+                    <span class="c-message">
+                        <CascadingValue Value="@chatEntry" IsFixed="true">
+                            <MarkupView Markup="@markup"></MarkupView>
+                        </CascadingValue>
+                    </span>
+                </div>
+            </div>
+        }
+    </div>
+    <div class="c-footer">
+        <div class="c-author-list">
+            @foreach (var authorId in topAuthorIds) {
+                <AuthorCircle AuthorSid="@authorId.Value" Size="@SquareSize.Size6"/>
+            }
+            @if (extraAuthorCount > 0) {
+                <div class="author-incut ai-extra">+@extraAuthorCount</div>
+            }
+        </div>
+        <div class="c-info">
+            <span>@creationDate,</span><span> created by </span><span>@m.OwnerName</span>
+        </div>
+        <HeaderButton Click="OnCopyToClipboardRequested">
+            <i class="icon-copy"></i>
+        </HeaderButton>
+    </div>
+</div>
+
+
+@code {
+    private IChatMarkupHub _chatMarkupHub = null!;
+
+    private ChatUIHub Hub => ChatContext.Hub;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
+    private History History => Hub.History;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+
+    // ChatContext belongs to parent Chat, not to the thread chat.
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ThreadMessage Message { get; set; } = null!;
+
+    protected override void OnInitialized() =>
+        _chatMarkupHub = Hub.ChatMarkupHubFactory[Message.Chat.Id];
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Message.Chat.Id;
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return null;
+
+        var threadCreator = await ChatThreads.GetThreadCreator(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownerName = threadCreator?.Name ?? "Unknown";
+        var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
+        var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;
+        await foreach (var chatEntry in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
+            if (chatEntry.IsSystemEntry)
+                continue;
+
+            var markup = await _chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
+            chatEntries = chatEntries.Insert(0, (chatEntry, markup));
+            if (chatEntries.Count >= 2)
+                break;
+        }
+        var threadStat = await ChatThreads.GetThreadStat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(chatEntries, threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
+    }
+
+    private void OnGoToTheThread()
+        => _ = History.NavigateTo(Links.Chat(Message.Chat.Id));
+
+    private async Task OnCopyToClipboardRequested() {
+        var text = GetText();
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+    }
+
+    private string GetText() {
+        var threadTitle = Message.Chat.Title;
+        using var sb = ZString.CreateStringBuilder();
+        sb.Append("Thread \"");
+        sb.Append(threadTitle);
+        sb.Append("\" on Actual Chat: ");
+        sb.Append(UrlMapper.ToAbsolute(Links.Chat(Message.Chat.Id)));
+        return sb.ToString();
+    }
+
+    // Nested types
+    public record Model(IReadOnlyList<(ChatEntry, Markup)> Entries, AuthorId[] TopAuthorIds, int AuthorCount, long MessageCount, string OwnerName);
+}
