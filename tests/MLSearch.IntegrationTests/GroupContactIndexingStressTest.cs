@@ -63,7 +63,7 @@ public class GroupContactIndexingStressTest(AppHostFixture fixture, ITestOutputH
         ApiArray<ContactSearchResult> results = [];
         await TestExt.When(async () => {
                 results = await Tester.FindGroups($"{UniquePart} {criteria}", true, null, expected);
-                results.Should().HaveCount(expected);
+                results.Should().HaveCount(expected, "for criteria '{Criteria}'", criteria);
             },
             TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 60 : 20));
         return results;

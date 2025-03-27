@@ -72,7 +72,7 @@ public class EntryIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @
         int expected = 1)
         => TestsExt.When(async () => {
                 var results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
-                results.Should().HaveCount(expected);
+                results.Should().HaveCount(expected, "for chat #{ChatId} and criteria '{Criteria}'", chatId, criteria);
                 return results;
             },
             TimeSpan.FromSeconds(60));

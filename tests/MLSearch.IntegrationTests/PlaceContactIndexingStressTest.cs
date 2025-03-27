@@ -61,7 +61,7 @@ public class PlaceContactIndexingStressTest(AppHostFixture fixture, ITestOutputH
         ApiArray<ContactSearchResult> results = [];
         await TestExt.When(async () => {
                 results = await Tester.FindPlaces($"{UniquePart} {criteria}", true, expected);
-                results.Should().HaveCount(expected);
+                results.Should().HaveCount(expected, "for criteria '{Criteria}'", criteria);
             },
             TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 60 : 20));
         return results;

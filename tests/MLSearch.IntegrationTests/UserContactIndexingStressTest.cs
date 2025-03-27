@@ -33,7 +33,7 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
         await Tester.SignInAsUniqueBob();
         var portion1 = await CreateAccounts(portionSize, "The first portion:");
         var portion2 = await CreateAccounts(50, "The second portion:");
-        var places = await CreatePlaces(placeCount, portion1.Concat(portion2).ToList());
+        var places = await CreatePlaces(placeCount, [.. portion1, .. portion2]);
 
         // act
         var searchResults = await Find("second");
@@ -82,7 +82,7 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
     private async Task<Place[]> CreatePlaces(int count, params IReadOnlyCollection<AccountFull> usersToInvite)
     {
         var places = new Place[count];
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
             places[i] = await CreatePlace($"test place {i}", usersToInvite);
         return places;
     }
@@ -93,7 +93,7 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
     private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null, int expected = 50)
         => TestsExt.When(async () => {
                 var results = await Tester.FindPeople($"{UniquePart} {criteria}", false, placeId, expected);
-                results.Should().HaveCount(expected);
+                results.Should().HaveCount(expected, "for place #{PlaceId} and criteria '{Criteria}'", placeId, criteria);
                 return results;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
