@@ -23,7 +23,6 @@
 
     <!-- Other build properties -->
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
-    <InvariantGlobalization>true</InvariantGlobalization>
     <!--
     <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
     -->
@@ -51,6 +50,14 @@
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <!-- Trimming & feature switches -->
+  <PropertyGroup>
+    <!-- Reduces WASM size + we assume this mode is used on the client -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Required with PublishTrimmed=true in our case -->
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <!-- Profiling & tracing -->
@@ -197,6 +204,8 @@
     <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
     <EventSourceSupport>false</EventSourceSupport>
+    <!-- Slower runtime, but slightly faster startup -->
+    <DisableDependencyInjectionDynamicEngine>true</DisableDependencyInjectionDynamicEngine>
   </PropertyGroup>
 
   <!-- Android build properties -->
@@ -238,6 +247,7 @@
 
   <!-- Android: Release configuration -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
     <!-- Trimming & AOT -->
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
@@ -247,21 +257,23 @@
     <RunAOTCompilation>true</RunAOTCompilation>
     <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
-    <!-- Checking whether EnableLLVM=true is the source of random app crashes -->
+    <!-- Disabled for now - doesn't save much, but a potential source of issues -->
+    <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
+    <!-- Disabled for now - no meaningful changes to startup time -->
     <EnableLLVM>false</EnableLLVM>
 
     <!-- Runtime -->
-    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
-    <!-- Impacts only iOS: android-env.txt contains MONO_GC_PARAMS -->
+    <!-- android-env.txt contains MONO_GC_PARAMS, so this has no effect:
     <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
+    -->
+    <!-- When true, fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
+    -->
     <!-- Has no effect:
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
     -->
-    <!-- Fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
-    <AndroidEnableMarshalMethods>true</AndroidEnableMarshalMethods >
-    -->
-    <!-- On preloading:
+
+    <!-- Preloading:
     1. There are 250 assemblies (bundled), so preloading assemblies hurts the startup.
        The delay isn't shown in our internal stats, coz it happens before any code runs,
        but it's percievable - maybe 300ms or so. Thus preloading all assemblies isn't
@@ -274,17 +286,19 @@
        E.g. .mibc profiles are recorded with tracing, which definitely skips a
        decent part of calls. Funny enough, it's the same with .aprof profiles,
        which are supposed to be perfect.
-    4. Overall, the best settings are:
+    4. Overall, the "fastest" settings seem to be:
        - AndroidEnablePreloadAssemblies = False // don't preload MSIL code
        - AndroidAotEnableLazyLoad = False // preload AOT code, though True might make sense here w/ larger AOT
-       The default settings for release builds are also:
+       The default settings for release builds are:
        - AndroidEnablePreloadAssemblies = False
        - AndroidAotEnableLazyLoad = True
-    5. We stick to (True, False) for now to address possible ANR case casued by mono_loader_lock
-       - this adds maybe 100-150ms or so to startup time.
+    We tried:
+       - (True, False) - LEAST STABLE - adds maybe 100-150ms or so to startup time, more frequently fails with SIGSEGV on startup
+       - (False, True) - MOSTLY STABLE (default release settings) - seem to seldomly fail with SIGSEGV on startup
+       - (False, False) - MOSTLY STABLE - seem to seldomly fail with SIGSEGV on startup.
     -->
-    <AndroidEnablePreloadAssemblies>True</AndroidEnablePreloadAssemblies>
-    <AndroidAotEnableLazyLoad>False</AndroidAotEnableLazyLoad>
+    <AndroidEnablePreloadAssemblies>False</AndroidEnablePreloadAssemblies>
+    <AndroidAotEnableLazyLoad>True</AndroidAotEnableLazyLoad>
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->

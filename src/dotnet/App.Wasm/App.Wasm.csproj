@@ -9,8 +9,6 @@ Use:
   <PropertyGroup>
     <!-- Required for WASM+Server projects -->
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
-    <!-- Reduces WASM size + we assume this mode is used on the client -->
-    <InvariantGlobalization>true</InvariantGlobalization>
     <!-- These settings allows to build dotnet.js w/ symbols, but it takes like 1H or so -->
     <!--
     <RunAOTCompilation>true</RunAOTCompilation>
@@ -23,6 +21,16 @@ Use:
     <WasmEnableSIMD>true</WasmEnableSIMD>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+  </PropertyGroup>
+
+  <!-- Trimming & feature switches -->
+  <PropertyGroup>
+    <!-- Reduces WASM size + we assume this mode is used on the client -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Required with PublishTrimmed=true in our case -->
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <!-- Slower runtime, but slightly faster startup -->
+    <DisableDependencyInjectionDynamicEngine>true</DisableDependencyInjectionDynamicEngine>
   </PropertyGroup>
 
   <!-- WASM Profiling -->
