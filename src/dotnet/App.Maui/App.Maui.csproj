@@ -252,9 +252,8 @@
 
     <!-- Runtime -->
     <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
-    <!-- Has no effect, because android-env.txt contains MONO_GC_PARAMS
+    <!-- Impacts only iOS: android-env.txt contains MONO_GC_PARAMS -->
     <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
-    -->
     <!-- Has no effect:
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
     -->
