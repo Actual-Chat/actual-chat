@@ -1208,6 +1208,7 @@ export class VirtualList {
 
                         // adjust item ranges
                         offset = this.resetItemRange();
+                        scrollTopOffset += offset;
                     }
 
                 }
@@ -1226,6 +1227,7 @@ export class VirtualList {
 
                         // adjust item ranges
                         offset = this.resetItemRange();
+                        scrollTopOffset -= offset;
                     }
                 }
             },
@@ -1474,6 +1476,12 @@ export class VirtualList {
                     0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
                     0 - defaultSpacerSize - endAnchorSize);
             }
+            else if (!canUseQueryRange && !rs.hasVeryLastItem) {
+                // There is no very last item, so we have to calculate range manually with end spacer
+                cornerstoneItem.range = new NumberRange(
+                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
+                    0 - defaultSpacerSize - endAnchorSize);
+            }
             else
                 cornerstoneItem.range = new NumberRange(
                     0 - endAnchorSize - cornerstoneItem.size,
@@ -1520,7 +1528,13 @@ export class VirtualList {
                     virtualRange.start + cornerstoneItem.size);
             }
             else if (canUseQueryRange && rs.query.isNone && !rs.hasVeryFirstItem) {
-                // There is no query range and no very last item, so we have to calculate range manually with spacer
+                // There is no query range and no very first item, so we have to calculate range manually with spacer
+                cornerstoneItem.range = new NumberRange(
+                    defaultSpacerSize,
+                    defaultSpacerSize + cornerstoneItem.size);
+            }
+            else if (!canUseQueryRange && !rs.hasVeryFirstItem) {
+                // There is no query range and no very first item, so we have to calculate range manually with spacer
                 cornerstoneItem.range = new NumberRange(
                     defaultSpacerSize,
                     defaultSpacerSize + cornerstoneItem.size);
