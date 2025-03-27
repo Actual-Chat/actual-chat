@@ -6,21 +6,16 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppNonScopedServiceStarter
+public class AppNonScopedServiceStarter(IServiceProvider services)
 {
-    private IServiceProvider Services { get; }
-    private Tracer Tracer { get; }
+    private IServiceProvider Services { get; } = services;
 
     [field: AllowNull, MaybeNull]
     private HostInfo HostInfo => field ??= Services.HostInfo();
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
-
-    public AppNonScopedServiceStarter(IServiceProvider services)
-    {
-        Services = services;
-        Tracer = Services.Tracer(GetType());
-    }
+    [field: AllowNull, MaybeNull]
+    private Tracer Tracer => field ??= Services.Tracer(GetType());
 
     public static void WarmupStaticServices(HostInfo hostInfo)
     {

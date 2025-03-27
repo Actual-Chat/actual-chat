@@ -30,8 +30,8 @@ public static class MauiDiagnostics
 
     public static readonly string LogTag = MauiSettings.IsDevApp ? "dev.actual.chat" : "actual.chat";
     public static FilePath AppDataLogFilePath { get; private set; }
-    public static bool IsAnalyticsCollectionEnabled { get; private set; }
     public static TracerProvider? TracerProvider { get; private set; }
+    public static bool IsAnalyticsCollectionEnabled { get; private set; }
 
     public static void Initialize()
     {
@@ -72,9 +72,6 @@ public static class MauiDiagnostics
         logging = AddPlatformLoggerSinks(logging);
         if (Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp))
             logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
-#if ANDROID
-        logging = logging.WriteTo.Sink(new AndroidFirebaseCrashlyticsSink());
-#endif
         return logging.CreateLogger();
     }
 
@@ -82,14 +79,9 @@ public static class MauiDiagnostics
     {
         var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        return new Tracer("MauiApp", IsEnabled, TraceWriter);
-
-        static bool IsEnabled()
-            => Tracer.IsDefaultTracerEnabled || IsAnalyticsCollectionEnabled;
-
-        void TraceWriter(TracePoint tracePoint)
-            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-            => logger.Information(tracePoint.Format());
+        return new Tracer("MauiApp",
+            isEnabled: () => true,
+            writer: tracePoint => logger.Information(tracePoint.Format()));
     }
 
     private static LoggerConfiguration AddPlatformLoggerSinks(LoggerConfiguration logging)
@@ -106,7 +98,9 @@ public static class MauiDiagnostics
                 outputTemplate: LoggingExt.OutputTemplate,
                 fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit);
 #elif ANDROID
-        logging = logging.WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate);
+        logging = logging
+            .WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate)
+            .WriteTo.Sink(new AndroidFirebaseCrashlyticsSink());
 #elif IOS
         logging = logging.WriteTo.AppleLog();
 #endif
