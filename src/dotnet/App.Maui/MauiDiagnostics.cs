@@ -28,18 +28,16 @@ public static class MauiDiagnostics
 
     private static SentryOptions? _sentryOptions;
 
-    public static readonly string LogTag;
-    public static readonly Tracer Tracer;
-    public static TracerProvider? TracerProvider { get; private set; }
+    public static readonly string LogTag = MauiSettings.IsDevApp ? "dev.actual.chat" : "actual.chat";
     public static FilePath AppDataLogFilePath { get; private set; }
     public static bool IsAnalyticsCollectionEnabled { get; private set; }
+    public static TracerProvider? TracerProvider { get; private set; }
 
-    static MauiDiagnostics()
+    public static void Initialize()
     {
-        LogTag = MauiSettings.IsDevApp ?  "dev.actual.chat" : "actual.chat";
         Log.Logger = CreateAppLogger();
         StaticLog.Factory = new SerilogLoggerFactory(Log.Logger);
-        Tracer.Default = Tracer = CreateAppTracer();
+        Tracer.Default = CreateAppTracer();
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = StaticLog.Factory.CreateLogger(typeof(WebMReader));
@@ -49,7 +47,7 @@ public static class MauiDiagnostics
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
     {
-        services.AddTracers(Tracer, useScopedTracers: false);
+        services.AddTracers(Tracer.Default, useScopedTracers: false);
         services.AddSingleton<Disposer>();
         services.AddLogging(logging => {
             logging.ClearProviders();
@@ -87,15 +85,11 @@ public static class MauiDiagnostics
         return new Tracer("MauiApp", IsEnabled, TraceWriter);
 
         static bool IsEnabled()
-        {
-            return Tracer.IsDefaultTracerEnabled || IsAnalyticsCollectionEnabled;
-        }
+            => Tracer.IsDefaultTracerEnabled || IsAnalyticsCollectionEnabled;
 
-        void TraceWriter(ActualChat.Performance.TracePoint tracePoint)
-        {
+        void TraceWriter(TracePoint tracePoint)
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-            logger.Information(tracePoint.Format());
-        }
+            => logger.Information(tracePoint.Format());
     }
 
     private static LoggerConfiguration AddPlatformLoggerSinks(LoggerConfiguration logging)

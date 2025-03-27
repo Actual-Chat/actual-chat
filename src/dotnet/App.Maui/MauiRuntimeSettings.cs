@@ -2,7 +2,7 @@ namespace ActualChat.App.Maui;
 
 public static class MauiRuntimeSettings
 {
-    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiRuntimeSettings)];
+    private static readonly Tracer Tracer = Tracer.Default[nameof(MauiRuntimeSettings)];
 
     public static void Apply()
     {

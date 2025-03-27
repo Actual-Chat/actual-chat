@@ -8,25 +8,25 @@ public class BlazorWebViewApp
     private static readonly Lock Lock = new();
     private static Func<Task<BlazorWebViewApp>>? _initializeFactory;
     private static Task? _startupTask;
-    private static BlazorWebViewApp? _current;
     private static ILogger? _log; // Otherwise, Rider assumes we're referencing it from elsewhere
     // ReSharper disable once InconsistentNaming
     private static readonly TaskCompletionSource<BlazorWebViewApp> _currentSource =
         TaskCompletionSourceExt.New<BlazorWebViewApp>();
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<BlazorWebViewApp>();
 
+    [field: AllowNull, MaybeNull]
     public static BlazorWebViewApp Current {
-        get => _current ?? throw Errors.NotInitialized(nameof(Current));
+        get => field ?? throw Errors.NotInitialized(nameof(Current));
         private set {
             lock (Lock) {
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
-                if (ReferenceEquals(_current, value))
+                if (ReferenceEquals(field, value))
                     return;
-                if (_current != null)
+                if (field != null)
                     throw Errors.AlreadyInitialized(nameof(Current));
 
-                _current = value;
+                field = value;
                 _currentSource.TrySetResult(value);
                 Log.LogInformation("BlazorWebViewApp ready");
             }
@@ -50,7 +50,7 @@ public class BlazorWebViewApp
             if (_initializeFactory != null)
                 throw new InvalidOperationException("The BlazorWebViewApp has already been initialized.");
             _initializeFactory = initializeFactory;
-            Log.LogInformation("BlazorWebViewApp has initialized");
+            Log.LogInformation("BlazorWebViewApp is initialized");
         }
     }
 
