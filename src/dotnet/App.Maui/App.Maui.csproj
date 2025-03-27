@@ -248,7 +248,8 @@
     <!-- Disabled for now, see https://github.com/dotnet/runtime/issues/101135 -->
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
-    <EnableLLVM>true</EnableLLVM>
+    <!-- Checking whether EnableLLVM=true is the source of random app crashes -->
+    <EnableLLVM>false</EnableLLVM>
 
     <!-- Runtime -->
     <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
