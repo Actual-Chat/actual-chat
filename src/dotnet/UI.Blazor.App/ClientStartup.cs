@@ -153,8 +153,9 @@ public static class ClientStartup
             // Currently, any proxy uses .AddAction() to register its "actions", even though it's not needed -
             // .AddFakeAction() is enough for AOT code generation & IL trimmers.
             // So likely I'll remove .AddAction() and this block later.
+
             var now = CpuTimestamp.Now;
-            CodeKeeper.RunActions();
+            CodeKeeper.RunActions(); // ~ 60ms, all due to JIT?
             Tracer.Default[nameof(CodeKeeper)].Point($"RunActions took {now.Elapsed.ToShortString()}");
         }
 

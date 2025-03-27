@@ -10,7 +10,7 @@ public sealed class MauiSession(IServiceProvider services)
 {
     private const string SessionStorageKey = "Fusion.SessionId";
     private const string SessionCreatedAtStorageKey = "Fusion.SessionId.CreatedAt";
-    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSession)];
+    private static readonly Tracer Tracer = Tracer.Default[nameof(MauiSession)];
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiSession>();
 

@@ -7,10 +7,9 @@ public class App : Application
     public static new App Current => (App)Application.Current!;
     public static bool MustMinimizeOnQuit { get; private set; } = true;
 
-    private ILogger? _log;
-
     private IServiceProvider Services { get; }
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public App(IServiceProvider services)
     {
@@ -57,7 +56,8 @@ public class App : Application
 
     private static void FlushSentryData()
     {
-        using (MauiDiagnostics.Tracer.Region()) {
+        var tracer = Tracer.Default[nameof(App)];
+        using (tracer.Region()) {
             MauiDiagnostics.TracerProvider?.DisposeSilently();
             if (SentrySdk.IsEnabled)
                 SentrySdk.Flush();
