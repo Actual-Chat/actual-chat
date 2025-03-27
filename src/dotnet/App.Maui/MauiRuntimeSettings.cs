@@ -10,13 +10,13 @@ public static class MauiRuntimeSettings
         var gcParams = Environment.GetEnvironmentVariable("MONO_GC_PARAMS") ?? "";
         Tracer.Point($"CPU count: {cpuCount}, MONO_GC_PARAMS: {gcParams}");
 
-        ThreadPool.GetMinThreads(out var originalMinW, out var originalMinIO);
+        ThreadPool.GetMinThreads(out var oldMinW, out var oldMinIO);
         ThreadPool.GetMaxThreads(out var maxW, out var maxIO);
 
-        var minW = Math.Max(originalMinW, cpuCount + 4);
-        var minIO = Math.Max(originalMinIO, cpuCount);
+        var minW = Math.Max(oldMinW, cpuCount + 4);
+        var minIO = Math.Max(oldMinIO, cpuCount);
         ThreadPool.SetMinThreads(minW, minIO);
         ThreadPool.GetMinThreads(out minW, out minIO);
-        Tracer.Point($"ThreadPool settings: ({minW}, {minIO}) .. ({maxW}, {maxIO}), original: ({minW}, {minIO}) .. ({maxW}, {maxIO})");
+        Tracer.Point($"ThreadPool settings: ({minW}, {minIO}) .. ({maxW}, {maxIO}) - changed from ({oldMinW}, {oldMinIO}) .. ({maxW}, {maxIO})");
     }
 }
