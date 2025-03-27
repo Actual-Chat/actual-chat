@@ -92,10 +92,12 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
     private bool NeedsReindex()
         => FlowSetVersion < CurrentFlowSetVersion;
 
-    protected virtual Task<IndexingFlowTransitionKind> HandleTail(int processedCount, CancellationToken cancellationToken)
+    protected virtual Task<IndexingFlowTransitionKind> HandleTail(
+        bool hasProcessedAnyItems,
+        CancellationToken cancellationToken)
     {
         Log.LogInformation("`{Id}`.OnTailReached: {Cursor}", Id, Cursor);
-        var transitionKind = processedCount > 0
+        var transitionKind = hasProcessedAnyItems
             || NextRecheckAt is null
             || NextRecheckAt > Clocks.SystemClock.Now + TimerRescheduleThreshold
                 ? IndexingFlowTransitionKind.Recheck

@@ -39,18 +39,18 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
     public List<TBatch> ListProcessed(Symbol id, bool skipEmpty = true)
     {
         var list = _processedBatches.GetValueOrDefault(id, []);
-        return !skipEmpty ? list : list.Where(x => GetCount(x) > 0).ToList();
+        return !skipEmpty ? list : list.Where(HasProcessedAnyItems).ToList();
     }
 
     public void AddTailHandler(Symbol id, TailHandler handler)
         => _tailHandlers.GetOrAdd(id).Enqueue(handler);
 
-    public Task<IndexingFlowTransitionKind?> HandleTail(Symbol id, int processCount)
+    public Task<IndexingFlowTransitionKind?> HandleTail(Symbol id, bool hasProcessedAnyItems)
         => _tailHandlers.GetValueOrDefault(id)?.TryDequeue(out TailHandler? handler) == true
-            ? handler(processCount)
+            ? handler(hasProcessedAnyItems)
             : Task.FromResult<IndexingFlowTransitionKind?>(null);
 
-    protected abstract int GetCount(TBatch batch);
+    protected abstract bool HasProcessedAnyItems(TBatch batch);
 
     public int? GetCurrentFlowSetVersionOverride(Symbol id)
         => _currentFlowSetVersionOverrides.GetValueOrDefault(id);
@@ -58,5 +58,5 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
     public int? SetCurrentFlowSetVersionOverride(Symbol id, int? value)
         => _currentFlowSetVersionOverrides[id] = value;
 
-    public delegate Task<IndexingFlowTransitionKind?> TailHandler(int processedCount);
+    public delegate Task<IndexingFlowTransitionKind?> TailHandler(bool hasProcessedAnyItems);
 }

@@ -65,6 +65,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
     [field: AllowNull, MaybeNull]
     private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
+    [field: AllowNull, MaybeNull]
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
 
     // [ComputeMethod]
@@ -1663,18 +1665,28 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [EventHandler]
-    public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
         var (chat, oldChat, kind) = eventCommand;
         if (kind == ChangeKind.Remove || chat.IsSummarized == false)
             // TODO(AK): Check if we need any events to stop flow
-            return;
+            return Task.CompletedTask;
 
-        if ((chat.IsSummarized ?? false) && oldChat?.IsSummarized == false)
-            await Flows.StartOrReset<ConversationSplitFlow>(chat.Id, null, nameof(OnChatChangedEvent), cancellationToken).ConfigureAwait(false);
+        return NeedsSummarization()
+            ? Flows.GetOrStart<ConversationSplitFlow>(chat.Id, cancellationToken)
+            : Task.CompletedTask;
+
+        bool NeedsSummarization()
+        {
+            if (kind is ChangeKind.Create)
+                return true;
+
+            // TODO (AK): Please review condition
+            return chat.IsSummarized == true && oldChat!.IsSummarized == false;
+        }
     }
 
     // [EventHandler]
@@ -1688,10 +1700,23 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chat == null)
             return;
 
-        if (chat.IsSummarized == false || kind == ChangeKind.Remove)
-            return;
+        await Summarize().ConfigureAwait(false);
+        return;
 
-        await Flows.StartOrReset<ConversationSplitFlow>(chat.Id, null, nameof(OnTextEntryChangedEvent), cancellationToken).ConfigureAwait(false);
+        async Task Summarize()
+        {
+            if (chat.IsSummarized == false || kind == ChangeKind.Remove)
+                return;
+
+            var endsAt = entry.GetEndsAt();
+            var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
+            await Flows.GetAndResume<ConversationSplitFlow>(chat.Id,
+                    timeSinceEnded + Settings.ChatEntrySummarizationDelay,
+                    nameof(OnTextEntryChangedEvent),
+                    timeSinceEnded + Settings.ChatEntrySummarizationDelay,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     // Protected methods

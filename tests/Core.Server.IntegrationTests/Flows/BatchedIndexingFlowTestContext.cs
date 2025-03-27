@@ -33,6 +33,6 @@ public sealed class BatchedIndexingFlowTestContext<TItem, TId>(MomentClockSet cl
     public override IReadOnlyList<TItem> Next(Symbol id)
         => Batches[id].TryDequeue(out var batch) ? batch : [];
 
-    protected override int GetCount(IReadOnlyList<TItem> batch)
-        => batch.Count;
+    protected override bool HasProcessedAnyItems(IReadOnlyList<TItem> batch)
+        => batch.Count > 0;
 }
