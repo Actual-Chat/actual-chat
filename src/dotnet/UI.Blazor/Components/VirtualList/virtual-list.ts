@@ -654,10 +654,6 @@ export class VirtualList {
         }
 
         try {
-            // fix iOS MAUI scroll issue after first renders
-            if (rs.renderIndex === 0 && DeviceInfo.isIos)
-                fastRaf({ write: () => this.forceReflow() });
-
             // Update statistics
             if (!rs.query.isNone && rs.query.expectedCount)
                 this.statistics.addResponse(rs.count, rs.query.expectedCount);
