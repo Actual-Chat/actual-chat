@@ -17,7 +17,7 @@ namespace ActualChat.Contacts.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.4")
+                .HasAnnotation("ProductVersion", "9.0.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -239,6 +239,65 @@ namespace ActualChat.Contacts.Migrations
                         .HasDatabaseName("ix_place_contacts_version_id");
 
                     b.ToTable("place_contacts");
+                });
+
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbThreadContact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_pinned");
+
+                    b.Property<string>("OutermostParentChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("outermost_parent_chat_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("owner_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ParentChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("parent_chat_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("PlaceId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("place_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ThreadChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("thread_chat_id")
+                        .UseCollation("C");
+
+                    b.Property<DateTime>("TouchedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("touched_at");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_thread_contacts");
+
+                    b.HasIndex("OwnerId")
+                        .HasDatabaseName("ix_thread_contacts_owner_id");
+
+                    b.ToTable("thread_contacts");
                 });
 
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>

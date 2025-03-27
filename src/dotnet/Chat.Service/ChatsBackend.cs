@@ -166,6 +166,21 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
+        if (chatId.IsThread) {
+            var parentChatId = chatId.GetOutermostThreadParentOrSelf();
+            var parentChatPrincipal = ActualChat.Chat.AuthorsBackend.Remap(principalId, parentChatId);
+            var parentChatRules = await GetRules(parentChatId, parentChatPrincipal, cancellationToken).ConfigureAwait(false);
+            if (!parentChatRules.CanRead())
+                return AuthorRules.None(chatId);
+
+            var account = parentChatRules.Account;
+            var threadChatAuthor = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            var threadPermissions = ChatPermissions.Read;
+            if (parentChatRules.CanWrite() && threadChatAuthor is not null)
+                threadPermissions |= ChatPermissions.Write;
+            return new AuthorRules(chatId, threadChatAuthor, account, threadPermissions);
+        }
+
         AuthorRules chatRules;
         if (chatId is { IsPlaceChat: true, PlaceChatId.IsRoot: false })
             chatRules = await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
@@ -250,7 +265,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId && e.Kind == entryKind);
+            .Where(e => e.ChatId == chatId && e.Kind == entryKind)
+            .Where(e => !e.IsThreadEntry);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => e.IsRemoved == false);
         var maxId = await dbChatEntries
@@ -297,7 +313,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Where(e => e.ChatId == chatId
                 && e.Kind == entryKind
                 && e.LocalId >= idRange.Start
-                && e.LocalId < idRange.End)
+                && e.LocalId < idRange.End
+                && !e.IsThreadEntry)
             .OrderBy(e => e.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -643,6 +660,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chatKind == ChatKind.Group) {
                 if (chatId.IsNone)
                     chatId = new ChatId(Generate.Option);
+                else if (chatId.IsThread) {
+                    // Accept provided chat id.
+                }
                 else if (!Constants.Chat.SystemChatIds.Contains(chatId))
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
             }
@@ -654,6 +674,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                         chatId = new PlaceChatId(PlaceChatId.Format(placeId, Constants.Chat.SystemTags.Welcome));
                     else
                         chatId = new PlaceChatId(placeId, Generate.Option);
+                }
+                else if (chatId.IsThread) {
+                    // Accept provided chat id.
                 }
                 else if (!chatId.IsPlaceRootChat)
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
@@ -704,14 +727,23 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             else if (chatId.Kind == ChatKind.Group || chatId.Kind == ChatKind.Place) {
                 // Group chat
                 ownerId.Require("Command.OwnerId");
-                // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
-                // After that they can reveal themself if needed.
-                var upsertCommand = new AuthorsBackend_Upsert(
-                    chatId, default, ownerId, null,
-                    new AuthorDiff {
-                        IsAnonymous = chat.AllowAnonymousAuthors
-                    });
-                var author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+                AuthorFull author;
+                if (!chatId.IsThread) {
+                    // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
+                    // After that they can reveal themself if needed.
+                    var upsertCommand = new AuthorsBackend_Upsert(
+                        chatId, default, ownerId, null,
+                        new AuthorDiff {
+                            IsAnonymous = chat.AllowAnonymousAuthors
+                        });
+                    author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+                }
+                else {
+                    author = await AuthorsBackend
+                        .GetByUserId(chatId.GetOutermostThreadParentOrSelf(), ownerId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                        .Require()
+                        .ConfigureAwait(false);
+                }
 
                 if (chat.HasSingleAuthor) {
                     var createCustomRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
@@ -738,20 +770,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     });
                     await Commander.Call(createOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                    var createAnyoneRoleCmd = new RolesBackend_Change(chatId,
-                        default,
-                        null,
-                        new () {
-                            Create = new RoleDiff() {
-                                SystemRole = SystemRole.Anyone,
-                                Permissions =
-                                    ChatPermissions.Write
-                                    | ChatPermissions.Invite
-                                    | ChatPermissions.SeeMembers
-                                    | ChatPermissions.Leave,
-                            },
-                        });
-                    await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+                    if (!chatId.IsThread) {
+                        var createAnyoneRoleCmd = new RolesBackend_Change(chatId, default, null, new () {
+                                Create = new RoleDiff() {
+                                    SystemRole = SystemRole.Anyone,
+                                    Permissions =
+                                        ChatPermissions.Write
+                                        | ChatPermissions.Invite
+                                        | ChatPermissions.SeeMembers
+                                        | ChatPermissions.Leave,
+                                },
+                            });
+                        await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+                    }
                 }
 
                 if (chat.IsAiSearchChat()) {
@@ -844,9 +875,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Where(r => r.ChatId == chatId)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-            // Remove authors
-            var removeAuthorsCommand = new AuthorsBackend_Remove(chatId, AuthorId.None, UserId.None);
-            await Commander.Call(removeAuthorsCommand, false, cancellationToken).ConfigureAwait(false);
+            if (!chatId.IsThread) {
+                // Remove authors
+                var removeAuthorsCommand = new AuthorsBackend_Remove(chatId, AuthorId.None, UserId.None);
+                await Commander.Call(removeAuthorsCommand, false, cancellationToken).ConfigureAwait(false);
+            }
+            else {
+                // Thread chat does not own authors. It uses authors from the parent chat.
+            }
             dbContext.Remove(dbChat);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -1130,19 +1166,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task EnsurePlaceChatAuthorExists(AuthorId authorId1)
         {
             var author1 = await AuthorsBackend
-                .Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                .Get(authorId1.ChatId, authorId1, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
                 .ConfigureAwait(false);
             if (author1 is { HasLeft: false })
                 return;
 
             var author2 = await AuthorsBackend
-                .Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                .Get(authorId1.ChatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
             var accountId = author2.UserId.Require();
 
             var upsertCommand = new AuthorsBackend_Upsert(
-                chatId, authorId1, accountId, null,
+                authorId1.ChatId, authorId1, accountId, null,
                 new AuthorDiff() {
                     IsAnonymous = false,
                     HasLeft = false,
@@ -1153,7 +1189,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task EnqueueChangedEvent()
         {
             var authorId = entry.AuthorId;
-            var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         }
     }
@@ -1670,19 +1706,30 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [EventHandler]
-    public virtual Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
+            return; // It just spawns other commands, so nothing to do here
 
         var (chat, oldChat, kind) = eventCommand;
+        if (chat.Id.IsThread && kind == ChangeKind.Remove) {
+            var parentChatId = chat.Id.GetThreadParent();
+            var startThreadEntryId = new TextEntryId(parentChatId, chat.Id.ThreadId, AssumeValid.Option);
+            var chatEntry = await this.GetEntry(startThreadEntryId, cancellationToken).ConfigureAwait(false);
+            if (chatEntry is not null && chatEntry.IsThreadStartEntry) {
+                var markChatEntryAsRemoved = new ChatsBackend_ChangeEntry(startThreadEntryId,
+                    null,
+                    Change.Update(new ChatEntryDiff { IsRemoved = true }));
+                await Commander.Call(markChatEntryAsRemoved, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
         if (kind == ChangeKind.Remove || chat.IsSummarized == false)
             // TODO(AK): Check if we need any events to stop flow
-            return Task.CompletedTask;
+            return;
 
-        return NeedsSummarization()
-            ? Flows.GetOrStart<ConversationSplitFlow>(chat.Id, cancellationToken)
-            : Task.CompletedTask;
+        if (NeedsSummarization())
+            await Flows.GetOrStart<ConversationSplitFlow>(chat.Id, cancellationToken).ConfigureAwait(false);
+        return;
 
         bool NeedsSummarization()
             => chat.IsSummarized == true && oldChat?.IsSummarized != true;
@@ -1890,14 +1937,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return AuthorRules.None(chatId);
 
         var rootChatId = placeChatId.PlaceId.ToRootChatId();
-        PrincipalId rootChatPrincipalId;
-        if (principalId.IsUser(out _))
-            rootChatPrincipalId = principalId;
-        else if (principalId.IsAuthor(out var pAuthorId))
-            rootChatPrincipalId = new PrincipalId(new AuthorId(rootChatId, pAuthorId.LocalId, AssumeValid.Option), AssumeValid.Option);
-        else
-            throw StandardError.Internal("Can't remap principal id for root chat");
-
+        var rootChatPrincipalId = ActualChat.Chat.AuthorsBackend.Remap(principalId, rootChatId);
         var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (!rootChatRules.CanRead())
             return AuthorRules.None(chatId);

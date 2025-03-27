@@ -1,0 +1,144 @@
+@implements IModalView<NewThreadModal.Model>
+@using System.ComponentModel.DataAnnotations
+@inherits FusionComponentBase
+@namespace ActualChat.UI.Blazor.App.Components
+
+<Form @ref="_formRef" Model="@_form" Class="h-full" Id="@_form.FormId">
+<DialogFrame
+    Class="new-thread-modal modal-sm"
+    Title="New thread"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
+    <Body>
+
+    <FormBlock>
+        <DataAnnotationsValidator/>
+
+        <FormSection
+            For="() => _form.Title"
+            Label="Smart title"
+            InputId="@_form.TitleId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow"
+            IsRequired="true">
+            <TextBox
+                @bind-Value="@_form.Title"
+                Id="@_form.TitleId"
+                Autofocus="false"
+                Autocomplete="false"/>
+        </FormSection>
+        <FormSection
+            For="() => _form.Description"
+            Label="Smart description"
+            InputId="@_form.DescriptionId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow">
+            <InputTextArea
+                @bind-Value="@_form.Description"
+                id="@_form.DescriptionId"
+                rows="6" />
+        </FormSection>
+        @if (_generatingSmartTitle) {
+            <div>
+                <span>Busy generating smart title and description based on source messages...</span>
+                <spam>Keep fields empty to get them filled in automatically.</spam>
+            </div>
+        }
+    </FormBlock>
+
+    </Body>
+    <Buttons>
+        @if (ScreenSize.IsWide()) {
+            <Button
+                Click="@(() => Modal.Close())"
+                Class="btn-modal">
+                Cancel
+            </Button>
+        }
+        <Button
+            Click="@OnCreate"
+            Type="@ButtonType.Button"
+            IsDisabled="@(!context.Validate())"
+            Class="btn-modal btn-primary">
+            Create
+        </Button>
+    </Buttons>
+</DialogFrame>
+</Form>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+    private bool _generatingSmartTitle;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _form = new(ComponentIdGenerator);
+    }
+
+    protected override async Task OnInitializedAsync() {
+        if (ModalModel.TextEntryIds.Length == 0)
+            return;
+
+        _generatingSmartTitle = true;
+        try {
+            var suggestion = await ChatThreads.SuggestThreadTitle(
+                    Session,
+                    ModalModel.ParentChatId,
+                    ModalModel.TextEntryIds,
+                    default)
+                .ConfigureAwait(true); // Continue on Blazor context.
+            if (_form.Title.IsNullOrEmpty())
+                _form.Title = suggestion.Item1;
+            if (_form.Description.IsNullOrEmpty())
+                _form.Description = suggestion.Item2;
+        }
+        catch {
+            // Ignored
+        }
+        finally {
+            _generatingSmartTitle = false;
+        }
+        StateHasChanged();
+    }
+
+    private void OnCreate() {
+        ModalModel.Title = _form.Title;
+        ModalModel.Description = _form.Description;
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed class Model(ChatId parentChatId, TextEntryId[] textEntryIds) {
+        public ChatId ParentChatId { get; } = parentChatId;
+        public TextEntryId[] TextEntryIds { get; } = textEntryIds;
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string DescriptionId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-thread-form");
+            TitleId = $"{FormId}-title";
+            DescriptionId = $"{FormId}-description";
+        }
+    }
+}

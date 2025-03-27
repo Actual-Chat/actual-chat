@@ -14,6 +14,8 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public IChats Chats => field ??= Services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
+    public IChatThreads ChatThreads => field ??= Services.GetRequiredService<IChatThreads>();
+    [field: AllowNull, MaybeNull]
     public IConversations Conversations => field ??= Services.GetRequiredService<IConversations>();
     [field: AllowNull, MaybeNull]
     public IChatPositions ChatPositions => field ??= Services.GetRequiredService<IChatPositions>();

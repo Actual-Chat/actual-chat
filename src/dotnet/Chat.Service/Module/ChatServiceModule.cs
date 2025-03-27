@@ -69,6 +69,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApiOrLocal<IConversations, Conversations>();
         rpcHost.AddBackend<IConversationsBackend, ConversationsBackend>();
 
+        // Chat threads
+        rpcHost.AddApiOrLocal<IChatThreads, ChatThreads>();
+
         // IBackendChatMarkupHub
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
@@ -106,9 +109,12 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         if (Settings.IsSummarizationEnabled) {
             AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIApiKey, Settings.OpenAIChatModel);
             services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
+            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>();
         }
-        else
+        else {
             services.AddSingleton<IConversationSummarizer, ConversationSummarizerStub>();
+            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractorStub>();
+        }
 
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();

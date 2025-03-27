@@ -18,6 +18,9 @@
     Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isPlaceChat = m.IsPlace;
     var publicChatLabel = !isPlaceChat ? "Public" : "Place";
+    var isThread = m.Chat.Id.IsThread;
+    var canEditChatPic = !isThread;
+    var canEditChatType = !isThread;
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -25,44 +28,46 @@
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
     <DataAnnotationsValidator/>
-    <FormBlock Class="chat-settings-header">
-        <div class="c-top">
-            <ChatIcon
-                Chat="@m.Chat"
-                Size="SquareSize.SizeFull"
-                IsSquare="@true"
-                HideTitle="@true"
-                IsBlurred="@true"
-                ShowPresence="@false"/>
-            <ButtonRound
-                Click="@(() => Context.Close())"
-                Class="btn-sm right-panel-close-btn close-btn">
-                <i class="icon-close text-2xl"></i>
-            </ButtonRound>
-        </div>
-        <div class="c-center">
-            <PicUpload
-                UploadUrl="@_form.ImageUploadUrl"
-                Size="@SquareSize.Size16"
-                Title="@_form.Title"
-                Picture="@_form.Picture"
-                AvatarKind="@_avatarKind"
-                AvatarKey="@_avatarKey"
-                Picked="@OnImagePicked"/>
-
-            <div class="c-buttons">
-                <PicUploadButton
+    @if (canEditChatPic) {
+        <FormBlock Class="chat-settings-header">
+            <div class="c-top">
+                <ChatIcon
+                    Chat="@m.Chat"
+                    Size="SquareSize.SizeFull"
+                    IsSquare="@true"
+                    HideTitle="@true"
+                    IsBlurred="@true"
+                    ShowPresence="@false"/>
+                <ButtonRound
+                    Click="@(() => Context.Close())"
+                    Class="btn-sm right-panel-close-btn close-btn">
+                    <i class="icon-close text-2xl"></i>
+                </ButtonRound>
+            </div>
+            <div class="c-center">
+                <PicUpload
                     UploadUrl="@_form.ImageUploadUrl"
+                    Size="@SquareSize.Size16"
+                    Title="@_form.Title"
+                    Picture="@_form.Picture"
+                    AvatarKind="@_avatarKind"
+                    AvatarKey="@_avatarKey"
                     Picked="@OnImagePicked"/>
 
-                @if (m.EnableIncompleteUI) {
-                    <ButtonRound Class="btn-sm" Click="@OnGenerateAvatarClick">
-                        <i class="icon-image text-2xl"></i>
-                    </ButtonRound>
-                }
+                <div class="c-buttons">
+                    <PicUploadButton
+                        UploadUrl="@_form.ImageUploadUrl"
+                        Picked="@OnImagePicked"/>
+
+                    @if (m.EnableIncompleteUI) {
+                        <ButtonRound Class="btn-sm" Click="@OnGenerateAvatarClick">
+                            <i class="icon-image text-2xl"></i>
+                        </ButtonRound>
+                    }
+                </div>
             </div>
-        </div>
-    </FormBlock>
+        </FormBlock>
+    }
 
     <FormBlock>
         <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="Chat title">
@@ -82,17 +87,19 @@
     </FormBlock>
 
     <div class="chat-settings-container">
-        <TileItem Click="OnManageChatTypeClick" Class="chat-type-tile-item">
-            <Icon>
-                <i class="icon-key text-xl"></i>
-            </Icon>
-            <Content>
-                Chat type
-            </Content>
-            <Right>
-                @(m.IsPublic ? $"{publicChatLabel}" : "Private")
-            </Right>
-        </TileItem>
+        @if (canEditChatType) {
+            <TileItem Click="OnManageChatTypeClick" Class="chat-type-tile-item">
+                <Icon>
+                    <i class="icon-key text-xl"></i>
+                </Icon>
+                <Content>
+                    Chat type
+                </Content>
+                <Right>
+                    @(m.IsPublic ? $"{publicChatLabel}" : "Private")
+                </Right>
+            </TileItem>
+        }
 
         @if (m.Chat.Rules.CanEditMembers()) {
             @if (!m.Chat.IsPublicPlaceChat()) {
@@ -132,6 +139,12 @@
                     <Content>Leave chat & delete</Content>
                 </TileItem>
             }
+        }
+        else if (m.CanRemoveThread) {
+            <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteThreadClick(m.Chat))">
+                <Icon><i class="icon-trash02"></i></Icon>
+                <Content>Delete thread</Content>
+            </TileItem>
         }
     </div>
 </Form>
@@ -203,7 +216,16 @@
         var chatId = ChatId;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null || !chat.Rules.CanEditProperties())
+        if (chat == null)
+            return new ComputedModel { Chat = null };
+
+        var isThread = chat.Id.IsThread;
+        if (isThread) {
+            var parentChat = await Chats.Get(Session, chatId.GetOutermostThreadParentOrSelf(), cancellationToken).ConfigureAwait(false);
+            return new ComputedModel { Chat = chat, CanRemoveThread = parentChat?.Rules.IsOwner() ?? false };
+        }
+
+        if (!chat.Rules.CanEditProperties())
             return new() { Chat = chat };
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
@@ -211,6 +233,7 @@
         _placeId = chat.Id.PlaceChatId.PlaceId;
         var isPlace = !_placeId.IsNone;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken);
+
         return new() {
             Chat = chat,
             IsOwner = chat.Rules.IsOwner(),
@@ -242,6 +265,9 @@
 
     private void OnDeleteChatClick(Chat chat)
         => ChatUI.DeleteChat(chat);
+
+    private void OnDeleteThreadClick(Chat chat)
+        => ChatUI.DeleteThread(chat);
 
     private void OnArchiveChatClick(Chat chat)
         => ChatUI.ArchiveChat(chat);
@@ -300,5 +326,6 @@
         public bool IsPlace { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsAdmin { get; init; }
+        public bool CanRemoveThread { get; init; }
     }
 }
