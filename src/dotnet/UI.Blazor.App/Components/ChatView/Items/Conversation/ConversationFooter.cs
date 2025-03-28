@@ -11,10 +11,10 @@ public sealed class ConversationFooter(Conversation conversation): ChatMessage(c
         if (ReferenceEquals(this, other))
             return true;
 
-        if (other is not ConversationMessage otherConversationMessage)
+        if (other is not ConversationFooter otherConversationFooter)
             return false;
 
-        return Conversation.VersionEquals(otherConversationMessage.Conversation)
+        return Conversation.VersionEquals(otherConversationFooter.Conversation)
             && ReplacementKind == other.ReplacementKind
             && Date == other.Date
             && Flags == other.Flags;
