@@ -1,6 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@{
+    var chat = Message.Chat;
+}
 
 <h3>Thread #@Message.Entry.LocalId</h3>
+<h4>@chat.Title</h4>
+@if (chat.Description.IsNullOrEmpty()) {
+    <h4>@chat.Description</h4>
+}
 
 @code {
     private ChatUIHub Hub => ChatContext.Hub;

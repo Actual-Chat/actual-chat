@@ -248,12 +248,15 @@ public partial class ChatUI
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
             if (entry != null && entry.IsThreadStartEntry) {
                 var threadChatId = entry.ChatId.CreateThreadId(entry.LocalId);
-                var message = new ThreadMessage(entry) {
-                    Date = date,
-                    PreviousMessage = prevMessage,
-                };
-                messages.Add(message);
-                prevMessage = message;
+                var threadChat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
+                if (threadChat is not null) {
+                    var message = new ThreadMessage(entry, threadChat) {
+                        Date = date,
+                        PreviousMessage = prevMessage,
+                    };
+                    messages.Add(message);
+                    prevMessage = message;
+                }
             }
             else if (entry != null) {
                 // Ignore matched conversation

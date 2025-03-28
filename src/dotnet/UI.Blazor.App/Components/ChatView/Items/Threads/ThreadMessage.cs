@@ -1,8 +1,9 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
-public sealed class ThreadMessage(ChatEntry entry): ChatMessage(entry.Id.LocalId)
+public sealed class ThreadMessage(ChatEntry entry, Chat.Chat chat): ChatMessage(entry.Id.LocalId)
 {
     public ChatEntry Entry { get; } = entry;
+    public Chat.Chat Chat { get; } = chat;
 
     public override bool Equals(ChatMessage? other)
     {
