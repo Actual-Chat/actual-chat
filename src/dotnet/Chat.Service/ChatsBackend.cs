@@ -249,7 +249,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId && e.Kind == entryKind);
+            .Where(e => e.ChatId == chatId && e.Kind == entryKind)
+            .Where(e => !e.IsThreadEntry);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => e.IsRemoved == false);
         var maxId = await dbChatEntries
@@ -296,7 +297,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Where(e => e.ChatId == chatId
                 && e.Kind == entryKind
                 && e.LocalId >= idRange.Start
-                && e.LocalId < idRange.End)
+                && e.LocalId < idRange.End
+                && !e.IsThreadEntry)
             .OrderBy(e => e.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

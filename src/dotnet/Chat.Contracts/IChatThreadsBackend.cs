@@ -15,10 +15,10 @@ public interface IChatThreadsBackend : IComputeService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatThreadsBackend_Start(
-    [property: DataMember, MemoryPackOrder(1)] ChatId ParentChatId,
-    [property: DataMember, MemoryPackOrder(2)] string Title
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(3)] string Title
 ) : IBackendCommand<ChatThread>, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => ParentChatId;
+    public ChatId ShardKey => ChatId.Parent;
 }

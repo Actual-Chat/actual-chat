@@ -1,0 +1,12 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<h3>Thread #@Message.Entry.LocalId</h3>
+
+@code {
+    private ChatUIHub Hub => ChatContext.Hub;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ThreadMessage Message { get; set; } = null!;
+}

@@ -32,6 +32,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string AuthorId { get; set; } = null!;
     public long? RepliedChatEntryId { get; set; }
     public bool IsSystemEntry { get; set; }
+    public bool IsThreadStartEntry { get; set; }
+    public bool IsThreadEntry { get; set; }
 
     public string? ForwardedChatTitle { get; set; }
     public string? ForwardedAuthorId { get; set; }
@@ -85,6 +87,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         var linkPreviewIds = GetLinkPreviewIds();
         return new (id, Version) {
             IsRemoved = IsRemoved,
+            IsThreadStartEntry = IsThreadStartEntry,
+            IsThreadEntry = IsThreadEntry,
             AuthorId = new AuthorId(AuthorId),
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
@@ -136,6 +140,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
+        IsThreadStartEntry = model.IsThreadStartEntry;
+        IsThreadEntry = model.IsThreadEntry;
 
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;

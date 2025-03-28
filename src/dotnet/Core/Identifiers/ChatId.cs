@@ -160,7 +160,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
         return true;
     }
 
-    public ChatId CreateThreadId(ulong threadId)
+    public ChatId CreateThreadId(long threadId)
     {
         EnsureNonThread();
         if (Kind is not (ChatKind.Group or ChatKind.Place))

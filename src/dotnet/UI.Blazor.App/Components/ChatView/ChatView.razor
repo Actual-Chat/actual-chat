@@ -24,6 +24,10 @@
         {
             <ChatEntryMessageView ChatContext="@_chatContext" Message="@message"/>
         }
+        else if(context is ThreadMessage threadMessage)
+        {
+            <ThreadMessageView ChatContext="@_chatContext" Message="@threadMessage" />
+        }
         else if(context is ConversationMessage conversationMessage)
         {
             <ConversationMessageView ChatContext="@_chatContext" Message="@conversationMessage" />

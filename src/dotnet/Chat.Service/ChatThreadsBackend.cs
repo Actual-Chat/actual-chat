@@ -26,24 +26,19 @@ public class ChatThreadsBackend(IServiceProvider services)
     public virtual async Task<ChatThread> OnStart(ChatThreadsBackend_Start command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive) {
-            _ = ListIds(command.ParentChatId, default);
+            _ = ListIds(command.ChatId.Parent, default);
             return default!;
         }
 
-        var (parentChatId, title) = command;
+        var (chatId, title) = command;
+        var parentChatId = chatId.Parent;
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.ChatThreads.Lock(parentChatId, cancellationToken).ConfigureAwait(false);
-        var maxThreadId = await dbContext.ChatThreads
-            .Where(c => c.ParentChatId == parentChatId.Value)
-            .MaxAsync(c => (ulong?)c.ThreadId, cancellationToken)
-            .ConfigureAwait(false);
-        var threadId = (maxThreadId ?? 0) + 1;
         if (title.IsNullOrEmpty())
-            title = $"Thread #{threadId}";
-        var chatId = parentChatId.CreateThreadId(threadId);
+            title = $"Thread #{chatId.ThreadId}";
         var chatThread = new ChatThread(chatId) {
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,

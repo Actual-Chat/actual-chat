@@ -29,29 +29,51 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var parentChat = await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false);
         parentChat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var chatThread = await Commander.Call(new ChatThreadsBackend_Start(parentChat.Id, title), cancellationToken).ConfigureAwait(false);
-        var chatId = chatThread.Id;
-        var chatChange = Change.Create(new ChatDiff {
-            Title = chatThread.Title,
-        });
-        var chat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange), cancellationToken).ConfigureAwait(false);
-
+        var isFirst = true;
+        var chatId = ChatId.None;
+        ChatThread chatThread = null!;
         foreach (var textEntryId in command.Entries.OrderBy(c => c.LocalId)) {
             var textEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
             if (textEntry is null || textEntry.IsRemoved)
                 continue;
 
-            // Create
-            var textEntryId1 = new TextEntryId(chatId, 0, AssumeValid.Option);
-            var upsertEntryCommand = new ChatsBackend_ChangeEntry(
-                textEntryId1,
-                null,
-                Change.Create(new ChatEntryDiff {
-                    AuthorId = textEntry.AuthorId,
-                    Content = textEntry.Content,
-                    Attachments = textEntry.Attachments.IsEmpty ? null : textEntry.Attachments,
-                }));
-            var textEntry1 = await Commander.Call(upsertEntryCommand, cancellationToken).ConfigureAwait(false);
+
+            if (isFirst) {
+                var threadId = textEntry.LocalId; // Start Entry Id
+                chatId = parentChatId.CreateThreadId(threadId);
+                chatThread = await Commander.Call(new ChatThreadsBackend_Start(chatId, title), cancellationToken).ConfigureAwait(false);
+                var chatChange = Change.Create(new ChatDiff {
+                    Title = chatThread.Title,
+                });
+                var chat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange), cancellationToken).ConfigureAwait(false);
+            }
+
+            // Create thread chat entry.
+            {
+                var textEntryId1 = new TextEntryId(chatId, 0, AssumeValid.Option);
+                var upsertEntryCommand = new ChatsBackend_ChangeEntry(
+                    textEntryId1,
+                    null,
+                    Change.Create(new ChatEntryDiff {
+                        BeginsAt = textEntry.BeginsAt,
+                        AuthorId = textEntry.AuthorId,
+                        Content = textEntry.Content,
+                        Attachments = textEntry.Attachments.IsEmpty ? null : textEntry.Attachments,
+                    }));
+                await Commander.Call(upsertEntryCommand, cancellationToken).ConfigureAwait(false);
+            }
+            {
+                // Mark source entry as thread entry.
+                var diff = isFirst
+                    ? new ChatEntryDiff { IsThreadStartEntry = true }
+                    : new ChatEntryDiff { IsThreadEntry = true };
+                var upsertEntryCommand = new ChatsBackend_ChangeEntry(
+                    textEntryId,
+                    null,
+                    Change.Update(diff));
+                await Commander.Call(upsertEntryCommand, cancellationToken).ConfigureAwait(false);
+                isFirst = false;
+            }
         }
 
         return chatThread;
