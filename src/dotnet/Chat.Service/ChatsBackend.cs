@@ -973,6 +973,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Invalidate min-max Id range at last
             switch (changeKind) {
             case ChangeKind.Create:
+                var createdChatEntry = context.Operation.Items.Get<CreatedChatEntry>();
+                if (createdChatEntry is { Id.LocalId: <= 1 })
+                    _ = GetMinId(chatId, entryKind, default);
                 _ = GetIdRange(chatId, entryKind, true, default);
                 _ = GetIdRange(chatId, entryKind, false, default);
                 break;
@@ -1013,6 +1016,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     HasAttachments = entry.Attachments.Length > 0,
                 };
                 dbContext.Add(dbEntry);
+                context.Operation.Items.Set(new CreatedChatEntry(chatEntryId));
             }
             else if (change.IsUpdate(out update)) {
                 dbEntry.RequireVersion(expectedVersion);
@@ -2082,4 +2086,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return false;
         return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
     }
+
+    private record CreatedChatEntry(ChatEntryId Id);
 }
+

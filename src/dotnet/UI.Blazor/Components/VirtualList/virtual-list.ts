@@ -422,7 +422,7 @@ export class VirtualList {
         for (const entry of entries) {
             const rect = entry.contentRect;
             const key = getItemKey(entry.target as HTMLElement);
-            const size = rect.height;
+            const size = Math.ceil(rect.height);
             if (!key) {
                 notAnItem = true;
                 if (entry.target === this.endAnchorRef)
@@ -453,7 +453,7 @@ export class VirtualList {
                     const item = this.items.get(key);
                     if (item && item.size < 0) {
                         const itemRect = itemRef.getBoundingClientRect();
-                        item.size = itemRect.height;
+                        item.size = Math.ceil(itemRect.height);
                         this.statistics.addItem(item.size);
                     }
                     const hasRemoved = this.unmeasuredItems.delete(key);
@@ -681,7 +681,7 @@ export class VirtualList {
         const startedAt = this.renderStartedAt;
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
-        await this.restoreScrollPosition();
+        await this.restoreScrollPosition(rs);
 
         // const positionSet = this.restoreScrollPosition();
         // if (this.pivots.length && rs.scrollToKey == null) {
@@ -1139,8 +1139,8 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(): Promise<void> {
-        const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize, renderState:rs } = this;
+    private async restoreScrollPosition(rs: VirtualListRenderState): Promise<void> {
+        const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize } = this;
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
 
@@ -1158,6 +1158,28 @@ export class VirtualList {
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
 
+        // let spacerSize = this.defaultSpacerSize;
+        // let endSpacerSize = this.defaultSpacerSize;
+        // if (rs.beforeCount !== null && rs.afterCount !== null) {
+        //     spacerSize = rs.beforeCount * Math.floor(this.statistics.itemSize);
+        //     endSpacerSize = rs.afterCount * Math.floor(this.statistics.itemSize);
+        // } else if (!rs.keyRange?.start) {
+        //     if (rs.renderIndex <= 2) {
+        //         // no data loaded yet
+        //         spacerSize = 1000;
+        //         endSpacerSize = 0;
+        //     } else {
+        //         // empty result list
+        //         spacerSize = 0;
+        //         endSpacerSize = 0;
+        //     }
+        // } else {
+        //     if (rs.hasVeryFirstItem)
+        //         spacerSize = 0;
+        //     if (rs.hasVeryLastItem)
+        //         endSpacerSize = 0;
+        // }
+
         const rafResult  = fastRaf({
             key: `restoreScrollPosition_${this.identity}`,
             read: () => {
@@ -1170,16 +1192,24 @@ export class VirtualList {
                 const fullRange = this.fullRange ?? new NumberRange(0,0);
 
                 scrollTop = this.ref.scrollTop;
-                spacerSize = clamp(start - fullRange.start, 0, fullRange.size - containerSize);
-                endSpacerSize = clamp(fullRange.end - end - endAnchorSize, 0, fullRange.size - containerSize);
+
+                if (rs.beforeCount !== null && rs.afterCount !== null) {
+                    spacerSize = Math.floor(rs.beforeCount * this.statistics.itemSize);
+                    endSpacerSize =  Math.floor(rs.afterCount *this.statistics.itemSize);
+                }
+                else {
+                    spacerSize = clamp(start - fullRange.start, 0, fullRange.size - containerSize);
+                    endSpacerSize = clamp(fullRange.end - end - endAnchorSize, 0, fullRange.size - containerSize);
+                }
                 if (spacerSize == 0 && !rs.hasVeryFirstItem)
                     spacerSize = defaultSpacerSize;
-                else if (rs.hasVeryFirstItem)
-                    spacerSize = 0;
                 if (endSpacerSize == 0 && !rs.hasVeryLastItem)
                     endSpacerSize = defaultSpacerSize;
-                else if (rs.hasVeryLastItem)
+                if (rs.hasVeryFirstItem)
+                    spacerSize = 0;
+                if (rs.hasVeryLastItem)
                     endSpacerSize = 0;
+
                 totalSize = containerSize
                     + spacerSize
                     + endSpacerSize
@@ -1352,7 +1382,7 @@ export class VirtualList {
                 const itemRef = this.getItemRef(key);
                 if (itemRef) {
                     const itemRect = itemRef.getBoundingClientRect();
-                    item.size = itemRect.height;
+                    item.size = Math.ceil(itemRect.height);
                 } else
                     this.items.delete(key);
             }
@@ -1463,8 +1493,14 @@ export class VirtualList {
             const cornerstoneItemIndex = orderedItems.length - 1;
             const cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
-            // try to reuse coords of previously rendered items
-            if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryLastItem) {
+            if (rs.beforeCount !== null && rs.afterCount !== null) {
+                // We are able to calculate range based on before and after counts
+                cornerstoneItem.range = new NumberRange(
+                    0 - Math.floor(rs.afterCount * this.statistics.itemSize) - cornerstoneItem.size,
+                    0 - Math.floor(rs.afterCount * this.statistics.itemSize));
+            }
+            else if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryLastItem) {
+                // try to reuse coords of previously rendered items
                 const { virtualRange } = rs.query;
                 cornerstoneItem.range = new NumberRange(
                     virtualRange.end - cornerstoneItem.size,
@@ -1520,8 +1556,14 @@ export class VirtualList {
             const cornerstoneItemIndex = 0;
             const cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
-            // try to reuse coords of previously rendered items
-            if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryFirstItem) {
+            if (rs.beforeCount !== null && rs.afterCount !== null) {
+                // We are able to calculate range based on before and after counts
+                cornerstoneItem.range = new NumberRange(
+                    Math.floor(rs.beforeCount * this.statistics.itemSize),
+                    Math.floor(rs.beforeCount * this.statistics.itemSize) + cornerstoneItem.size);
+            }
+            else if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryFirstItem) {
+                // try to reuse coords of previously rendered items
                 const { virtualRange } = rs.query;
                 cornerstoneItem.range = new NumberRange(
                     virtualRange.start,
