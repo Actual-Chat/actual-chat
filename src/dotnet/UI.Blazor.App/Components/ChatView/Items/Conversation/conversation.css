@@ -6,6 +6,7 @@
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
 }
 .conversation-message .c-details {
+    @apply flex-y gap-y-2;
     @apply w-full;
 }
 .conversation-message .c-summary {
@@ -47,15 +48,7 @@
     @apply block;
     @apply min-h-6;
     @apply px-4;
-    @apply text-caption-8 text-02;
-    filter: opacity(1);
-    transition-behavior: allow-discrete;
-    transition-property: display, filter, -webkit-filter;
-    transition-timing-function: linear;
-    transition-duration: 500ms;
-    @starting-style {
-        filter: opacity(0);
-    }
+    @apply text-caption-4 text-02;
 }
 
 .conversation-footer-short,

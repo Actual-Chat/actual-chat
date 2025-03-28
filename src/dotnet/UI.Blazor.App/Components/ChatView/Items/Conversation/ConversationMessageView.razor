@@ -15,11 +15,9 @@
     <div class="c-details">
         <div class="c-summary" @onclick="ShowDetails">
             <ConversationMessageHeader Title="@title" MessageCount="@messageCount" ShowMessages="@ToggleShowMessage"/>
-            @if (!_isOpen) {
-                <div class="c-short">
-                    <MarkupView Markup="@_descriptionMarkup"/>
-                </div>
-            }
+            <div class="c-short">
+                <MarkupView Markup="@_descriptionMarkup"/>
+            </div>
         </div>
         @if (_isOpen) {
             <div class="c-long">
