@@ -57,7 +57,7 @@
     "denque": "^2.1.0",
     "firebase": "^9.15.0",
     "heap-js": "^2.2.0",
-    "highlight.js": "^11.7.0",
+    "highlight.js": "^11.11.1",
     "idb-keyval": "^6.2.0",
     "is-plain-object": "5.0.0",
     "lit": "^2.7.3",
