@@ -1,4 +1,5 @@
 import hljs from 'highlight.js/lib/core';
+import { LanguageFn } from "highlight.js";
 import bash from 'highlight.js/lib/languages/bash';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -44,14 +45,14 @@ function applyTheme(themeInfo: ThemeInfo){
 }
 
 function init() {
-    hljs.registerLanguage('bash', bash);
+    hljs.registerLanguage('bash', bash as unknown as LanguageFn); // TODO: remove workaround in case fixed in hljs
     hljs.registerLanguage('javascript', javascript);
     hljs.registerLanguage('typescript', typescript);
     hljs.registerLanguage('json', json);
     hljs.registerLanguage('xml', xml);
     hljs.registerLanguage('yaml', yaml);
     hljs.registerLanguage('css', css);
-    hljs.registerLanguage('python', python);
+    hljs.registerLanguage('python', python as unknown as LanguageFn); // TODO: remove workaround in case fixed in hljs
     hljs.registerLanguage('go', go);
     hljs.registerLanguage('rust', rust);
     hljs.registerLanguage('java', java);
