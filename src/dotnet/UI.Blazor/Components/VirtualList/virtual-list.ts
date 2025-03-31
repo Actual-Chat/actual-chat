@@ -1,6 +1,5 @@
 import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
 import { NumberRange, Range } from './ts/range';
-import { InertialScroll } from './ts/inertial-scroll';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
@@ -16,7 +15,7 @@ import { clamp } from 'math';
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 320;
+const UpdateViewportInterval: number = 64;
 const UpdateItemVisibilityInterval: number = 250;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
@@ -130,7 +129,7 @@ export class VirtualList {
         this.identity = identity;
         this.defaultEdge = defaultEdge;
         this.defaultSpacerSize = spacerSize;
-        this.expandTriggerMultiplier = expandTriggerMultiplier;
+        this.expandTriggerMultiplier = Math.min(expandTriggerMultiplier, expandMultiplier);
         this.expandMultiplier = expandMultiplier;
 
         this.isDisposed = false;
@@ -1537,15 +1536,64 @@ export class VirtualList {
         //     return this.lastQuery; // Debug helper
 
         const viewportSize = viewport.size;
+        const lastQuerySide = this.lastQuery.moveRange.size === 0
+            ? 'none'
+            : (this.lastQuery.moveRange.start >= 0 && this.lastQuery.moveRange.end >= 0
+                ? 'end'
+                : 'start');
+        const alreadyLoadedFromStart = Math.abs(alreadyLoaded.start - viewport.start);
+        const alreadyLoadedTillEnd = Math.abs(alreadyLoaded.end - viewport.end);
+        const loadZoneTrigger = viewportSize * this.expandTriggerMultiplier;
         const loadZoneSize = viewportSize * this.expandMultiplier;
         let loadStart = viewport.start - loadZoneSize;
         let loadEnd = viewport.end + loadZoneSize;
+
+        const loadMoreFrom = lastQuerySide === 'none'
+            ? (this.scrollDirection === 'none'
+                ? 'none'
+                : (this.scrollDirection === 'up'
+                    ? 'start'
+                    : 'end'))
+            : lastQuerySide;
+        switch (loadMoreFrom) {
+            case 'none':
+                break;
+            case 'end':
+                // check whether we need to continue loading from the end
+                if (alreadyLoadedTillEnd < loadZoneTrigger) {
+                    if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
+                        loadEnd = viewport.end + loadZoneTrigger * 1.5;
+                        loadStart = viewport.start - viewportSize / 3;
+                    }
+                } else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
+                    if (!rs.hasVeryFirstItem)
+                        loadStart = viewport.start - loadZoneSize;
+                    else
+                        return this.lastQuery;
+                }
+                break;
+            case 'start':
+                // check whether we need to continue loading from the start
+                if (alreadyLoadedFromStart < loadZoneTrigger) {
+                    if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
+                        loadStart = viewport.start - loadZoneTrigger * 1.5;
+                        loadEnd = viewport.end + viewportSize / 3;
+                    }
+                } else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
+                    if (!rs.hasVeryLastItem)
+                        loadEnd = viewport.end + loadZoneSize;
+                    else
+                        return this.lastQuery;
+                }
+                break;
+        }
 
         // adjust to existing data range
         if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.start;
         if (loadEnd > alreadyLoaded.end && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.end;
+
         const loadZone = new NumberRange(loadStart, loadEnd);
         const orderedItems = [...this.orderedItems];
         if (orderedItems.length == 0) // No entries -> nothing to "align" the query to
@@ -1592,177 +1640,19 @@ export class VirtualList {
                 moveRangeEnd = Math.min(moveRangeEnd, 0); // Prevent loading items after
         }
         const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
-        //     const startGap = Math.max(0, firstItem.range.start - loadZone.start);
-        //     const endGap = Math.max(0, loadZone.end - lastItem.range.end);
-        //     // skip queries that load few more items - we prefer to load more - if not close of the skeletons
-        //     const smallGap = viewportSize * 0.5;
-        //     const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range.end >= viewport.start;
-        //     const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range.start <= viewport.end;
-        //     if (startGap < smallGap && endGap < smallGap && firstItem.range.start && !isFirstItemInViewport && !isLastItemInViewport)
-        //         return this.lastQuery;
+        const startGap = Math.max(0, firstItem.range.start - loadZone.start);
+        const endGap = Math.max(0, loadZone.end - lastItem.range.end);
+        // skip queries that load few more items - we prefer to load more - if not close of the skeletons
+        const smallGap = viewportSize * 0.5;
+        const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range.end >= viewport.start;
+        const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range.start <= viewport.end;
+        if (startGap < smallGap && endGap < smallGap && firstItem.range.start && !isFirstItemInViewport && !isLastItemInViewport)
+            return this.lastQuery;
 
         const query = new VirtualListDataQuery(keyRange, loadZone, moveRange);
         query.expectedCount = Math.ceil(loadZone.size / this.statistics.itemSize);
         return query;
     }
-
-    // private getDataQuery(): VirtualListDataQuery {
-    //     const rs = this.renderState;
-    //     const itemSize = this.statistics.itemSize;
-    //     const responseFulfillmentRatio = rs.beforeCount !== null && rs.afterCount !== null
-    //         ? 1 // We know count precisely
-    //         : this.statistics.responseFulfillmentRatio;
-    //     const viewport = this.viewport;
-    //     const alreadyLoaded = this.itemRange;
-    //     if (!viewport || !alreadyLoaded)
-    //         return this.lastQuery;
-    //
-    //     if (this.hasUnmeasuredItems) { // Let's wait for measurement to complete first
-    //         fastRaf(() => this.measureItems());
-    //         return this.lastQuery;
-    //     }
-    //     if (rs.hasVeryFirstItem && rs.hasVeryLastItem)
-    //         return this.lastQuery; // We have already loaded all data
-    //
-    //     if (this.isRendering)
-    //         return this.lastQuery; // Do not request data during rendering as it might be inconsistent
-    //
-    //     const now = Date.now();
-    //     if (now - this.renderCompletedAt < 500 && this.lastQuery.isNone)
-    //         return this.lastQuery; // Do not request data during the first second after render caused by updated data (not scroll)
-    //     //
-    //     // if (now - this.renderCompletedAt < 5000 && !this.lastQuery.isNone)
-    //     //     return this.lastQuery; // Do not request data during scroll too often for debug purposes
-    //     // if (rs.renderIndex > 1)
-    //     //     return this.lastQuery; // Debug helper
-    //
-    //     const viewportSize = viewport.size;
-    //     const lastQuerySide = this.lastQuery.moveRange.size === 0
-    //         ? 'none'
-    //         : (this.lastQuery.moveRange.start >= 0 && this.lastQuery.moveRange.end >= 0
-    //             ? 'end'
-    //             : 'start');
-    //     const alreadyLoadedFromStart = Math.abs(alreadyLoaded.start - viewport.start);
-    //     const alreadyLoadedTillEnd = Math.abs(alreadyLoaded.end - viewport.end);
-    //     const loadZoneTrigger = viewportSize * Math.max(this.expandTriggerMultiplier, this.expandMultiplier);
-    //     // keep at least _expandMultiplier * viewport more in both directions
-    //     const loadZoneSize = viewportSize * this.expandMultiplier;
-    //     let loadStart = viewport.start - loadZoneSize;
-    //     let loadEnd = viewport.end + loadZoneSize;
-    //
-    //     const loadMoreFrom = lastQuerySide === 'none'
-    //         ? (this.scrollDirection === 'none'
-    //             ? 'none'
-    //             : (this.scrollDirection === 'up'
-    //                 ? 'start'
-    //                 : 'end'))
-    //         : lastQuerySide;
-    //     switch (loadMoreFrom) {
-    //         case 'none':
-    //             break;
-    //         case 'end':
-    //             // check whether we need to continue loading from the end
-    //             if (alreadyLoadedTillEnd < loadZoneTrigger) {
-    //                 if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
-    //                     loadEnd = viewport.end + loadZoneTrigger * 1.5;
-    //                     loadStart = viewport.start - viewportSize / 3;
-    //                 }
-    //             } else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
-    //                 if (!rs.hasVeryFirstItem)
-    //                     loadStart = viewport.start - loadZoneSize;
-    //                 else
-    //                     return this.lastQuery;
-    //             }
-    //             break;
-    //         case 'start':
-    //             // check whether we need to continue loading from the start
-    //             if (alreadyLoadedFromStart < loadZoneTrigger) {
-    //                 if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
-    //                     loadStart = viewport.start - loadZoneTrigger * 1.5;
-    //                     loadEnd = viewport.end + viewportSize / 3;
-    //                 }
-    //             } else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
-    //                 if (!rs.hasVeryLastItem)
-    //                     loadEnd = viewport.end + loadZoneSize;
-    //                 else
-    //                     return this.lastQuery;
-    //             }
-    //             break;
-    //     }
-    //
-    //     // adjust to existing data range
-    //     if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
-    //         loadStart = alreadyLoaded.start;
-    //     if (loadEnd > alreadyLoaded.end && rs.hasVeryLastItem)
-    //         loadEnd = alreadyLoaded.end;
-    //     const loadZone = new NumberRange(loadStart, loadEnd);
-    //
-    //     if (this.items.size == 0) // No entries -> nothing to "align" the query to
-    //         return this.lastQuery;
-    //
-    //     if (alreadyLoaded.contains(loadZone)) {
-    //         // debug helper
-    //         // console.warn('already!', viewport, alreadyLoaded, loadZone);
-    //         return this.lastQuery;
-    //     }
-    //
-    //     let startIndex = -1;
-    //     let endIndex = -1;
-    //     const items = [...this.orderedItems];
-    //     for (let i = 0; i < items.length; i++) {
-    //         const item = items[i];
-    //         if (!item.isChatEntry)
-    //             continue;
-    //
-    //         if (item.range.size == 0)
-    //             continue; // skip items with zero height
-    //
-    //         if (item.isMeasured && item.range.intersectWith(loadZone).size > 0) {
-    //             endIndex = i;
-    //             if (startIndex < 0) {
-    //                 startIndex = i;
-    //                 if (startIndex < 0)
-    //                     startIndex--; // include previous item
-    //             }
-    //         } else if (startIndex >= 0)
-    //             break;
-    //     }
-    //     const keyItemDistance = endIndex - startIndex;
-    //     const firstItem = items[startIndex]
-    //         ?? (items[0].range.start > loadZone.end
-    //             ? items[0]
-    //             : items[items.length - 1]);
-    //     const lastItem = items[endIndex] ?? firstItem;
-    //     // Calculate move range and keep it within at least one boundary of the key items
-    //     let moveRangeStart = clamp(Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio), -Infinity, keyItemDistance);
-    //     let moveRangeEnd = clamp(Math.ceil((loadZone.end - lastItem.range.end) / itemSize / responseFulfillmentRatio), -keyItemDistance, Infinity);
-    //
-    //     // Adjust moveRange based on default edge and viewport proximity
-    //     if (this.defaultEdge === VirtualListEdge.End) {
-    //         const isNearEnd = viewport.end >= this.itemRange.end - viewportSize * 0.1;
-    //         if (isNearEnd)
-    //             moveRangeStart = Math.max(moveRangeStart, 0); // Prevent loading items before
-    //     } else if (this.defaultEdge === VirtualListEdge.Start) {
-    //         const isNearStart = viewport.start <= this.itemRange.start + viewportSize * 0.1;
-    //         if (isNearStart)
-    //             moveRangeEnd = Math.min(moveRangeEnd, 0); // Prevent loading items after
-    //     }
-    //
-    //     const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
-    //     const startGap = Math.max(0, firstItem.range.start - loadZone.start);
-    //     const endGap = Math.max(0, loadZone.end - lastItem.range.end);
-    //     // skip queries that load few more items - we prefer to load more - if not close of the skeletons
-    //     const smallGap = viewportSize * 0.5;
-    //     const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range.end >= viewport.start;
-    //     const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range.start <= viewport.end;
-    //     if (startGap < smallGap && endGap < smallGap && firstItem.range.start && !isFirstItemInViewport && !isLastItemInViewport)
-    //         return this.lastQuery;
-    //
-    //     const keyRange = new Range(firstItem.key, lastItem.key);
-    //     const query = new VirtualListDataQuery(keyRange, loadZone, moveRange);
-    //     query.expectedCount = Math.ceil(loadZone.size / this.statistics.itemSize);
-    //     return query;
-    // }
 }
 
 // Helper functions
