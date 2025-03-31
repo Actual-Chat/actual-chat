@@ -35,6 +35,7 @@ public partial class EditChatTypeModalPage
     private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized()
@@ -145,6 +146,8 @@ public partial class EditChatTypeModalPage
 
         if (!await Save())
             Context.Close();
+        else
+            _ = Modal.StepBack();
     }
 
     private async Task<bool> Save()
