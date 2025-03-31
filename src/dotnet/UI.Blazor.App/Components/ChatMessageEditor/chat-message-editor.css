@@ -487,7 +487,7 @@ body.narrow .related-chat-entry-panel {
     @apply overflow-hidden;
 }
 .related-chat-entry-panel .related-chat-entry > .c-content > .c-center > .c-author {
-    @apply flex-x;
+    @apply flex-x items-center;
 }
 .related-chat-entry-panel .related-chat-entry {
     @apply p-2;

@@ -1,6 +1,6 @@
 .conversation-message {
     @apply flex-y items-start;
-    @apply m-4;
+    @apply m-4 mb-0;
     @apply rounded-lg;
     @apply border-none;
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
@@ -14,7 +14,7 @@
     @apply cursor-pointer;
 }
 .conversation-header {
-    @apply px-4;
+    @apply px-4 mt-4;
     @apply rounded-t-lg;
     @apply bg-01;
 }

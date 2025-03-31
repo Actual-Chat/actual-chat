@@ -60,7 +60,7 @@ body.hoverable .system-entry.message-wrapper:hover {
 
 .chat-message-author-name {
     @apply truncate;
-    @apply text-headline-1 text-03;
+    @apply text-headline-1 text-author-name;
     @apply hover:opacity-80;
     @apply cursor-pointer;
 }
@@ -68,18 +68,15 @@ body.hoverable .system-entry.message-wrapper:hover {
 .forwarded-message .forwarded-chat-header {
     @apply flex-x items-center gap-x-1;
     @apply min-w-0;
-}
-.forwarded-message .forwarded-chat-header-icon {
-    @apply font-normal text-primary;
+    @apply py-0.5;
+    @apply text-03 text-caption-8;
 }
 .forwarded-message .forwarded-chat-header-title {
     @apply max-h-6 truncate;
-    @apply font-normal text-primary;
 }
 .forwarded-message .forwarded-chat-header-name {
     @apply max-h-6;
     @apply truncate;
-    @apply font-medium text-primary;
 }
 .forwarded-message .forwarded-author-header {
     @apply flex-x items-baseline gap-x-2;
@@ -88,7 +85,7 @@ body.hoverable .system-entry.message-wrapper:hover {
 .forwarded-message .forwarded-author-header-name {
     @apply max-h-6;
     @apply truncate;
-    @apply font-medium text-primary;
+    @apply text-headline-1 text-author-name;
 }
 .message-link {
     @apply hover:opacity-80;
@@ -100,7 +97,7 @@ body.hoverable .system-entry.message-wrapper:hover {
 .forwarded-message .message-reactions,
 .forwarded-message .message-link-preview,
 .forwarded-message .forwarded-author-header {
-    @apply pl-2;
+    @apply py-0 pl-2;
     @apply border-l-2 border-primary;
 }
 
@@ -129,7 +126,7 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
 
 .chat-message-timestamp,
 .chat-message-timestamp-on-hover {
-    @apply text-03 text-xs;
+    @apply text-04 text-xs;
 }
 .chat-message-timestamp-on-hover {
     @apply hidden;
@@ -251,9 +248,13 @@ body.hoverable .chat-header-title:hover {
 
 .chat-message-quote {
     @apply flex-x gap-x-2;
-    @apply h-11;
+    @apply pb-0.5 pr-2;
+    @apply rounded-r-lg;
     @apply text-03 cursor-pointer;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
+}
+body.hoverable .chat-message-quote:hover {
+    @apply bg-hover;
 }
 .chat-message-quote.removed {
     @apply italic cursor-default;
@@ -268,7 +269,7 @@ body.hoverable .chat-header-title:hover {
 }
 .chat-message-quote > .c-content > .c-text {
     @apply max-h-6 overflow-hidden truncate;
-    @apply font-medium text-base text-03;
+    @apply text-text-1 text-03;
     @apply pointer-events-none;
 }
 
