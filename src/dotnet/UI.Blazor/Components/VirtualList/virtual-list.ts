@@ -940,6 +940,7 @@ export class VirtualList {
                 if (itemKey === firstItemKey)
                     continue;
 
+                const item = this.items.get(itemKey);
                 const pivotRef = this.getItemRef(itemKey);
                 if (!pivotRef)
                     continue;
@@ -952,6 +953,7 @@ export class VirtualList {
                 const pivot: Pivot = {
                     itemKey,
                     offset: Math.round(itemRect.top),
+                    range: item.range,
                     time,
                     isVisible,
                     isInteractive
@@ -1144,6 +1146,9 @@ export class VirtualList {
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
 
+        const pivots = [...this.pivots];
+        const interactivePivot = pivots.find(p => p.isInteractive);
+
         let scrollTop = 0;
         let scrollTopOffset = 0;
         let offset = 0;
@@ -1216,13 +1221,31 @@ export class VirtualList {
                     + endAnchorSize;
                 // totalSize = this.totalSize;
 
+
                 // const orderedItems = this.orderedItems;
                 if (this.defaultEdge === VirtualListEdge.End) {
-                    // const containerTransform = window.getComputedStyle(this.containerRef).transform;
-                    // const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
-                    // const containerTranslateYOffset = containerTransformMatrix.m42;
-
                     offset = end/* - endSpacerSize*/;
+
+                    if (interactivePivot) {
+                        let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
+                        if (!interactiveItemRef) {
+                            // Interactive item is not found - let's find nearest one
+                            const interactiveRange = interactivePivot.range;
+                            const interactiveItemIndex = binarySearch(this.orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
+                            const interactiveItem = this.orderedItems[interactiveItemIndex];
+                            interactiveItemRef = this.getItemRef(interactiveItem.key);
+                        }
+                        // Debug helper
+                        // interactiveItemRef.style.backgroundColor = 'red';
+
+                        const viewportTopOffset = interactivePivot.offset;
+                        const interactiveItemRect = interactiveItemRef!.getBoundingClientRect();
+                        const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                        const containerTransform = window.getComputedStyle(this.containerRef).transform;
+                        const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
+                        const containerTranslateYOffset = containerTransformMatrix.m42;
+                        offset = containerTranslateYOffset - dOffset;
+                    }
 
                     // restoredSpacerSize = clamp(totalSize + offset - containerSize, 0, totalSize);
                     // restoredEndSpacerSize = clamp(-end, 0, totalSize);
@@ -1246,6 +1269,27 @@ export class VirtualList {
                     offset = start;
                     // spacerOffset = offset - spacerSize;
                     // endSpacerOffset = offset + containerSize;
+                    if (interactivePivot) {
+                        let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
+                        if (!interactiveItemRef) {
+                            // Interactive item is not found - let's find nearest one
+                            const interactiveRange = interactivePivot.range;
+                            const interactiveItemIndex = binarySearch(this.orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
+                            const interactiveItem = this.orderedItems[interactiveItemIndex];
+                            interactiveItemRef = this.getItemRef(interactiveItem.key);
+                        }
+                        // Debug helper
+                        // interactiveItemRef.style.backgroundColor = 'red';
+
+                        const viewportTopOffset = interactivePivot.offset;
+                        const interactiveItemRect = interactiveItemRef!.getBoundingClientRect();
+                        const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                        const containerTransform = window.getComputedStyle(this.containerRef).transform;
+                        const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
+                        const containerTranslateYOffset = containerTransformMatrix.m42;
+                        offset = containerTranslateYOffset - dOffset;
+                    }
+
                     if (offset < 0) {
                         // scroll position does not allow to show the first item
                         scrollTopOffset = offset;

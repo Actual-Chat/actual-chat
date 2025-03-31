@@ -20,7 +20,7 @@ public static class ChatMessageReplacementKindExt
             ChatMessageReplacementKind.NewMessagesLine => "-new-messages",
             ChatMessageReplacementKind.WelcomeBlock => "-welcome-block",
             ChatMessageReplacementKind.SearchWelcomeBlock => "-search-welcome-block",
-            ChatMessageReplacementKind.ConversationStart => "-conversation-start",
+            ChatMessageReplacementKind.ConversationStart => "-conversation", // We should use same suffix for conversation message and header
             ChatMessageReplacementKind.ConversationEnd => "-conversation-end",
             _ => throw new ArgumentOutOfRangeException(nameof(replacementKind), replacementKind, null),
         };

@@ -304,6 +304,17 @@ public partial class ChatUI
                         messages.Add(newLineMessage);
                         prevMessage = newLineMessage;
                     }
+
+                    // Conversation header goes before the date line
+                    if (expandedConversation != null && entry.Id.LocalId == expandedConversation.Id.StartEntryLid) {
+                        var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
+                            ReplacementKind = ChatMessageReplacementKind.ConversationStart,
+                            Date = date,
+                            PreviousMessage = prevMessage,
+                        };
+                        messages.Add(conversationHeaderMessage);
+                        prevMessage = conversationHeaderMessage;
+                    }
                     if (date != prevDate) {
                         var dateLineMessage = new ChatEntryMessage(entry) {
                             ReplacementKind = ChatMessageReplacementKind.DateLine,
@@ -312,17 +323,6 @@ public partial class ChatUI
                         };
                         messages.Add(dateLineMessage);
                         prevMessage = dateLineMessage;
-                    }
-                    if (expandedConversation != null) {
-                        if (entry.Id.LocalId == expandedConversation.Id.StartEntryLid) {
-                            var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
-                                ReplacementKind = ChatMessageReplacementKind.ConversationStart,
-                                Date = date,
-                                PreviousMessage = prevMessage,
-                            };
-                            messages.Add(conversationHeaderMessage);
-                            prevMessage = conversationHeaderMessage;
-                        }
                     }
                     var message = new ChatEntryMessage(entry) {
                         Date = date,
@@ -353,6 +353,7 @@ public partial class ChatUI
             }
             else if (conversation != null && !expandedConversations.Contains(conversation.Id)) {
                 var message = new ConversationMessage(conversation) {
+                    ReplacementKind = ChatMessageReplacementKind.ConversationStart,
                     Date = date,
                     PreviousMessage = prevMessage,
                 };

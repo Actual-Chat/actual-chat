@@ -11,7 +11,6 @@
 }
 .conversation-message .c-summary {
     @apply flex-y;
-    @apply cursor-pointer;
 }
 .conversation-header {
     @apply px-4 pt-2;
@@ -34,6 +33,7 @@
 .conversation-header .c-title {
     @apply max-w-3/4;
     @apply text-text-1 text-02;
+    @apply cursor-pointer;
 }
 .conversation-header-short .c-ending,
 .conversation-header .c-ending {
