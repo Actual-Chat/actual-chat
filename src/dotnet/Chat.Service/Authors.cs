@@ -52,7 +52,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             return author;
 
         var peerChatId = new PeerChatId(account.Id, peerUserId, ParseOrNone.Option);
-        if (peerChatId.IsNone)
+        if (peerChatId.IsNone || peerChatId.AnotherUserIdOrDefault(account.Id).IsGuestOrNone)
             return author;
 
         var contactId = new ContactId(account.Id, peerChatId);
