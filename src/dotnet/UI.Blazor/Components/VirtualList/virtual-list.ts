@@ -276,6 +276,7 @@ export class VirtualList {
         this.items.clear();
         this.orderedItems = [];
         this.pivots = [];
+        this.currentPivots = [];
         this.renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
@@ -476,7 +477,7 @@ export class VirtualList {
 
         // recalculate item range as some elements were updated
         this.shouldRecalculateItemRange = itemsWereMeasured;
-        void this.restoreScrollPosition(this.renderState);
+        // void this.restoreScrollPosition(this.renderState);
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -677,7 +678,7 @@ export class VirtualList {
                 }
             }
             else {
-                if (rs.query.isNone && !this.pivots.length) // TODO(AK): need alternative to checking pivots to detect initial render
+                if (rs.query.isNone && rs.renderIndex === 0)
                     this.scrollToEdge(this.defaultEdge, false, 'no-pivot');
             }
         } finally {
@@ -688,8 +689,6 @@ export class VirtualList {
 
             this.lastViewport = this.viewport;
             this.viewport = null;
-            // Schedule update of the current pivots after the render
-            this.scheduleUpdateCurrentPivots();
         }
     }
 
@@ -826,7 +825,6 @@ export class VirtualList {
             return;
 
         this.updateViewportThrottled();
-        this.scheduleUpdateCurrentPivots();
     };
 
     private onScrollEnd = (ev: Event): void => {
@@ -855,27 +853,17 @@ export class VirtualList {
             // add query edges and second\last items as pivots
 
             // do not use first item as pivot - it might be changed during rendering of items above - e.g. author circle might disappear
-            const firstItemRef = this.getFirstItemRef();
-            const firstItemKey = getItemKey(firstItemRef);
-            const secondItemRef = firstItemRef?.nextElementSibling as HTMLElement;
-            const secondItemKey = getItemKey(secondItemRef);
+
             let medianVisibleKey = null;
             if (this.visibleItems.size) {
                 const visibleItems = [...this.visibleItems.values()];
                 medianVisibleKey = visibleItems[Math.floor(visibleItems.length / 2)];
-            //     const medianRef = this.getItemRef(medianVisibleKey);
-            //     if (medianRef)
-            //         if (!medianRef.classList.contains('anchor'))
-            //             medianRef.classList.add('anchor');
             }
 
             const viewRect = this.ref.getBoundingClientRect();
-            const itemKeys: string[] = [interactiveKey, medianVisibleKey, this.getLastItemKey(), this.query.keyRange?.end, secondItemKey, this.query.keyRange?.start];
+            const itemKeys: string[] = [interactiveKey, medianVisibleKey, this.query.keyRange?.end, this.query.keyRange?.start];
             for (let itemKey of itemKeys) {
                 if (!itemKey)
-                    continue;
-
-                if (itemKey === firstItemKey)
                     continue;
 
                 const item = this.items.get(itemKey);
@@ -905,7 +893,7 @@ export class VirtualList {
 
             const whenRequestDataCompleted = this.whenRequestDataCompleted;
             if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted() && !this.isRendering) {
-                this.scheduleUpdateCurrentPivots();
+                this.scheduleUpdateCurrentPivots(interactiveKey);
             }
         }
     }
@@ -1142,18 +1130,20 @@ export class VirtualList {
                             const interactiveRange = interactivePivot.range;
                             const interactiveItemIndex = binarySearch(this.orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
                             const interactiveItem = this.orderedItems[interactiveItemIndex];
-                            interactiveItemRef = this.getItemRef(interactiveItem.key);
+                            interactiveItemRef = this.getItemRef(interactiveItem?.key);
                         }
                         // Debug helper
                         // interactiveItemRef.style.backgroundColor = 'red';
 
-                        const viewportTopOffset = interactivePivot.offset;
-                        const interactiveItemRect = interactiveItemRef!.getBoundingClientRect();
-                        const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
-                        const containerTransform = window.getComputedStyle(this.containerRef).transform;
-                        const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
-                        const containerTranslateYOffset = containerTransformMatrix.m42;
-                        offset = containerTranslateYOffset - dOffset;
+                        if (interactiveItemRef) {
+                            const viewportTopOffset = interactivePivot.offset;
+                            const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
+                            const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                            const containerTransform = window.getComputedStyle(this.containerRef).transform;
+                            const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
+                            const containerTranslateYOffset = containerTransformMatrix.m42;
+                            offset = containerTranslateYOffset - dOffset;
+                        }
                     }
 
                     if (offset > 0) {
@@ -1176,18 +1166,20 @@ export class VirtualList {
                             const interactiveRange = interactivePivot.range;
                             const interactiveItemIndex = binarySearch(this.orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
                             const interactiveItem = this.orderedItems[interactiveItemIndex];
-                            interactiveItemRef = this.getItemRef(interactiveItem.key);
+                            interactiveItemRef = this.getItemRef(interactiveItem?.key);
                         }
                         // Debug helper
                         // interactiveItemRef.style.backgroundColor = 'red';
 
-                        const viewportTopOffset = interactivePivot.offset;
-                        const interactiveItemRect = interactiveItemRef!.getBoundingClientRect();
-                        const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
-                        const containerTransform = window.getComputedStyle(this.containerRef).transform;
-                        const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
-                        const containerTranslateYOffset = containerTransformMatrix.m42;
-                        offset = containerTranslateYOffset - dOffset;
+                        if (interactiveItemRef) {
+                            const viewportTopOffset = interactivePivot.offset;
+                            const interactiveItemRect = interactiveItemRef!.getBoundingClientRect();
+                            const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                            const containerTransform = window.getComputedStyle(this.containerRef).transform;
+                            const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
+                            const containerTranslateYOffset = containerTransformMatrix.m42;
+                            offset = containerTranslateYOffset - dOffset;
+                        }
                     }
 
                     if (offset < 0) {
@@ -1227,6 +1219,7 @@ export class VirtualList {
 
         await result;
         this.pivots = [];
+        this.currentPivots = [];
 
         // debugLog?.log(`restoreScrollPosition: end`, rafResult);
     }
@@ -1480,7 +1473,6 @@ export class VirtualList {
         this.lastQueryTime = Date.now();
         // debug helper
         // await delayAsync(1500);
-        this.scheduleUpdateCurrentPivots();
         await this.blazorRef.invokeMethodAsync('RequestData', this.query);
         this.lastQuery = this.query;
     }
