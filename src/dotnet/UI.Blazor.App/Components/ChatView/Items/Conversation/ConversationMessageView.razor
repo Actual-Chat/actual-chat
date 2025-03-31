@@ -13,8 +13,8 @@
 <div class="@cls">
     <CascadingValue Value="@_fakeEntry" IsFixed="true">
     <div class="c-details">
-        <div class="c-summary" @onclick="ShowDetails">
-            <ConversationMessageHeader Title="@title" MessageCount="@messageCount" ShowMessages="@ToggleShowMessage"/>
+        <div class="c-summary">
+            <ConversationMessageHeader Title="@title" MessageCount="@messageCount" TitleClick="@ToggleDetails" MessageCountClick="@ToggleShowMessage"/>
             <div class="c-short">
                 <MarkupView Markup="@_descriptionMarkup"/>
             </div>
@@ -63,14 +63,13 @@
         _summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
     }
 
-    private Task ShowDetails() {
-        _isOpen = !_isOpen;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
     private void ToggleShowMessage()
         => ChatUI.ToggleExpandConversation(Message.Conversation.Id);
+
+    private void ToggleDetails() {
+        _isOpen = !_isOpen;
+        StateHasChanged();
+    }
 
     private async Task OnCopyToClipboardRequested() {
         var text = GetText();
