@@ -18,8 +18,6 @@ const { warnLog, debugLog } = Log.get('VirtualList');
 
 const UpdateViewportInterval: number = 320;
 const UpdateItemVisibilityInterval: number = 250;
-const SafetyTimerPeriod: number = 1600;
-const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
 const ScrollDebounce: number = 200;
@@ -53,7 +51,6 @@ export class VirtualList {
     private readonly visibilityObserver: IntersectionObserver;
     private readonly skeletonObserver0: IntersectionObserver;
     private readonly skeletonObserver1: IntersectionObserver;
-    private readonly safetyTimerHandle: number;
     private readonly unmeasuredItems: Set<string>;
     private readonly visibleItems: Set<string>;
     private readonly items: Map<string, VirtualListItem>;
@@ -65,7 +62,6 @@ export class VirtualList {
     private stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
     private whenRequestDataCompleted: PromiseSource<void> | null = null;
     private pivots: Pivot[] = [];
-    private currentPivots: Pivot[] = [];
     private minStart: number | null = null;
     private maxEnd: number | null = null;
     private windowScrollTop: number = 0;
@@ -195,8 +191,6 @@ export class VirtualList {
                 threshold: visibilityThresholds,
             });
 
-        this.safetyTimerHandle = self.setInterval(this.onSafetyTimer, SafetyTimerPeriod);
-
         this.unmeasuredItems = new Set<string>();
         this.visibleItems = new Set<string>();
 
@@ -229,7 +223,6 @@ export class VirtualList {
             // we can do this because Blazor updates attributes before changing nodes
             // we SHOULD NOT fail there - otherwise Blazor will fail
             try {
-                this.pivots = this.currentPivots;
                 const time = Date.now();
                 debugLog?.log(`renderStartedAt: `, time, value);
                 this.renderStartedAt = time;
@@ -259,7 +252,6 @@ export class VirtualList {
         this.sizeObserver.disconnect();
         this.whenRequestDataCompleted?.resolve(undefined);
         this.whenRequestDataCompleted = null;
-        clearInterval(this.safetyTimerHandle);
         this.ref.removeEventListener('scroll', this.onScroll);
         this.ref.removeEventListener('scrollend', this.onScrollEnd);
     }
@@ -276,7 +268,6 @@ export class VirtualList {
         this.items.clear();
         this.orderedItems = [];
         this.pivots = [];
-        this.currentPivots = [];
         this.renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
@@ -886,7 +877,7 @@ export class VirtualList {
                 };
                 pivots.push(pivot);
             }
-            this.currentPivots = pivots;
+            this.pivots = pivots;
         }
         finally {
             this.isUpdatingPivots = false;
@@ -1219,7 +1210,6 @@ export class VirtualList {
 
         await result;
         this.pivots = [];
-        this.currentPivots = [];
 
         // debugLog?.log(`restoreScrollPosition: end`, rafResult);
     }
@@ -1267,14 +1257,11 @@ export class VirtualList {
         if (orderedItems.length == 0)
             return false;
 
-        let cornerstoneItemHasBeenUpdated = false;
         if (this.shouldUpdateCornerstoneItem && (rs.hasVeryLastItem || rs.hasVeryLastItem)) {
             // We have to recalculate cornerstone item
             this.shouldUpdateCornerstoneItem = false;
             for (const item of orderedItems)
                 item.range = null;
-            console.warn(
-                'ensureItemRangeCalculated: resetting cornerstone item');
         }
 
         // Take first or last item as cornerstone item
@@ -1297,7 +1284,6 @@ export class VirtualList {
         if (!cornerstoneItem?.range) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
             void this.resetItemRange(true);
-            cornerstoneItemHasBeenUpdated = true;
         }
         else {
             // calculate range of other items
