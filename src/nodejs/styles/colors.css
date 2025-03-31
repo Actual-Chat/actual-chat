@@ -410,6 +410,7 @@
     --highlighted: var(--blue-50-30);
     --conversation-gradient-01: var(--indigo-40-10);
     --conversation-gradient-02: var(--indigo-40-02);
+    --author-name: var(--blue-30);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);
@@ -702,6 +703,7 @@
     --tile: var(--ash-30);
     --conversation-gradient-01: var(--white-10);
     --conversation-gradient-02: var(--transparent);
+    --author-name: var(--blue-80);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--ash-26);
@@ -993,6 +995,7 @@
     --tile: var(--white);
     --conversation-gradient-01: var(--indigo-40-10);
     --conversation-gradient-02: var(--indigo-40-02);
+    --author-name: var(--blue-30);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);

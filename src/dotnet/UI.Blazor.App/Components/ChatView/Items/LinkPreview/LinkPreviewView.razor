@@ -18,7 +18,7 @@
 } else {
     var isLocal = m.LocalLink is { };
     var target = isLocal ? "_self" : "_blank";
-     <a class="link-preview unfocusable @compactCls" href="@uri" target="@target">
+    <a class="link-preview unfocusable @compactCls" href="@uri" target="@target">
         @RenderMedia()
         <div class="c-info">
             @RenderInfo()
@@ -49,16 +49,14 @@
     RenderFragment RenderMedia() {
         if (preview.PreviewMedia != null) {
             if (preview.IsYouTubeVideo) {
-                return @<div
-                            class="c-thumbnail c-video"
-                            @onclick="@OnVideoClick">
-                    <image-skeleton
-                        class="c-skeleton"
-                        src="@imageUrl"/>
-                    <div class="c-overlay">
-                        <i class="c-play icon-play-fill"></i>
-                    </div>
-                </div>;
+                return @<div class="c-thumbnail c-video">
+                           <image-skeleton
+                               class="c-skeleton"
+                               src="@imageUrl"/>
+                           <div class="c-overlay">
+                               <i class="c-play icon-play-fill"></i>
+                           </div>
+                       </div>;
             }
             return @<image-skeleton
                         class="c-thumbnail"
@@ -103,9 +101,6 @@
         var (width, height) = GetImageMaxSize();
         return UrlMapper.ImagePreviewUrl(imageUrl, width, height);
     }
-
-    private void OnVideoClick() =>
-        _ = VisualMediaViewerUI.Show("", Entry);
 
     private (int? Width, int Height) GetImageMaxSize() {
         const int sizeMultiplier = 2; // reduced images look blurry

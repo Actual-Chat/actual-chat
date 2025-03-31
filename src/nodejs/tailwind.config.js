@@ -204,6 +204,7 @@ module.exports = {
         'place-header-text': 'var(--place-header-text)',
 
         'tile': 'var(--tile)',
+        'author-name': 'var(--author-name)',
 
         // Download Banner
         'download-banner-left': 'var(--download-banner-left)',
