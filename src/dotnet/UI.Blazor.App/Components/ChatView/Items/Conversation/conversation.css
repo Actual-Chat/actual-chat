@@ -14,7 +14,7 @@
     @apply cursor-pointer;
 }
 .conversation-header {
-    @apply px-4 mt-4;
+    @apply px-4 pt-2;
     @apply rounded-t-lg;
     @apply bg-01;
 }
@@ -56,7 +56,7 @@
     @apply w-full;
 }
 .conversation-footer {
-    @apply px-4;
+    @apply px-4 mb-2;
     @apply rounded-b-lg;
     @apply bg-01;
 }
