@@ -152,11 +152,15 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Theory] // TODO(AY): sometimes fails
-    [InlineData(1)]
-    [InlineData(11)]
-    [InlineData(111)]
-    [InlineData(1111)]
-    public async Task WhenShouldWaitForValue(int propertyCount)
+    [InlineData(1, true)]
+    [InlineData(1, false)]
+    [InlineData(11, true)]
+    [InlineData(11, false)]
+    [InlineData(111, true)]
+    [InlineData(111, false)]
+    [InlineData(1111, true)]
+    [InlineData(1111, false)]
+    public async Task WhenShouldWaitForValue(int propertyCount, bool mustUpdateBeforeWaiting)
     {
         var rsg = new RandomSymbolGenerator(alphabet: Alphabet.AlphaNumericLower);
         var keyPrefix = rsg.Next(5);
@@ -173,6 +177,8 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
                 UpdateDelayer = updateDelayer,
             });
             state.Value = true;
+            if (mustUpdateBeforeWaiting)
+                await state.Update(cancellationToken);
             await state.Computed.When(x => x, cancellationToken);
         }
     }
