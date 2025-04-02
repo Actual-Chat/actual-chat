@@ -241,8 +241,18 @@ export class VirtualList {
         if (this.containerRef.classList.contains('hide')) {
             this.containerRef.classList.remove('hide');
         }
-        this.onItemSetChange([], this.itemSetChangeObserver);
-    };
+        const mutationRecord: MutationRecord = {
+            type: 'childList',
+            addedNodes: this.containerRef.childNodes,
+            removedNodes: this.endAnchorRef.childNodes,
+            attributeName: null,
+            attributeNamespace: null,
+            nextSibling: null,
+            oldValue: null,
+            previousSibling: null,
+            target: this.containerRef,
+        };
+        this.onItemSetChange([mutationRecord], this.itemSetChangeObserver);};
 
     /** Called by blazor */
     public dispose() {
@@ -388,8 +398,6 @@ export class VirtualList {
 
                 const newItem = this.createListItem(key, itemRef);
                 const oldItem = oldItems.get(key);
-                itemRef.addEventListener('touchend', this.onInteractiveEvent, { passive: true });
-                itemRef.addEventListener('click', this.onInteractiveEvent, { passive: true });
                 if (oldItem) {
                     this.items.set(key, oldItem);
                     if (oldItem.size > 0)
@@ -405,6 +413,7 @@ export class VirtualList {
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
         let itemsWereMeasured = false;
         let notAnItem = false;
+        let existingResizedCount = 0;
         const itemRefsWithWrongSize = new Array<HTMLElement>();
         for (const entry of entries) {
             const rect = entry.contentRect;
@@ -424,7 +433,12 @@ export class VirtualList {
                 } else {
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
+                    const oldSize = item.size;
                     item.size = size;
+                    if (oldSize > 0 && size > 0 && size != oldSize) {
+                        existingResizedCount++;
+                        itemsWereMeasured = true;
+                    }
                     this.sizeCache.set(key, size);
                     this.statistics.addItem(item.size);
                 }
@@ -481,7 +495,6 @@ export class VirtualList {
 
         // recalculate item range as some elements were updated
         this.shouldRecalculateItemRange = itemsWereMeasured;
-        // void this.restoreScrollPosition(this.renderState);
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -788,6 +801,8 @@ export class VirtualList {
             this.unmeasuredItems.add(itemKey);
         this.sizeObserver.observe(itemRef, { box: 'border-box' });
         this.visibilityObserver.observe(itemRef);
+        itemRef.addEventListener('touchend', this.onInteractiveEvent, { passive: true });
+        itemRef.addEventListener('click', this.onInteractiveEvent, { passive: true });
         return newItem;
     }
 
@@ -800,6 +815,11 @@ export class VirtualList {
         if (this.isRendering)
             return;
 
+        if (!ev.isTrusted)
+            return; // Ignore non-user initiated scrolls
+
+        // Reset pivots on scroll
+        this.pivots = [];
         this.updateViewportThrottled();
     };
 
@@ -866,6 +886,8 @@ export class VirtualList {
         }
         finally {
             this.isUpdatingPivots = false;
+            if (interactiveKey)
+                void this.restoreScrollPosition(this.renderState);
         }
     }
 
@@ -1250,8 +1272,14 @@ export class VirtualList {
 
         await result;
 
-        this.scrollPositionRestoredAt = Date.now();
-        this.pivots = [];
+
+        const now = Date.now();
+        if (now - this.renderCompletedAt < UpdateViewportInterval) {
+            // Reset pivots on restore scroll position after render
+            this.pivots = [];
+        }
+        this.scrollPositionRestoredAt = now;
+
         this.viewport = null;
         // await delayAsync(50);
         // debugLog?.log(`restoreScrollPosition: end`, rafResult);
