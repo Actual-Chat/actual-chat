@@ -25,6 +25,11 @@ const MinViewPortSize: number = 400;
 const RequestDataTimeout: number = 800;
 
 type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'unknown';
+interface ScrollMetadata {
+    shouldUseSmoothScroll: boolean;
+    scrollType: ScrollToEdgeReason;
+    scroll?: () => void;
+}
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -309,8 +314,8 @@ export class VirtualList {
     private get isInitialRender(): boolean {
         const now = Date.now();
         // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
-         // first 2.5 seconds after creating the virtual list
-        return now - this.createdAt < 2500;
+         // first 1.5 seconds after creating the virtual list
+        return now - this.createdAt < 1500;
     }
 
     private get hasUnmeasuredItems(): boolean {
@@ -646,58 +651,17 @@ export class VirtualList {
         const startedAt = this.renderStartedAt;
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
-        await this.restoreScrollPosition(rs);
 
         try {
             // Update statistics
             if (!rs.query.isNone && rs.query.expectedCount)
                 this.statistics.addResponse(rs.count, rs.query.expectedCount);
 
-            const scrollToItemRef = this.getItemRef(rs.scrollToKey);
-            if (scrollToItemRef != null) {
-                // Server-side scroll request
-                if (!this.isKeyVisible(rs.scrollToKey)) {
-                    if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                        if (this.stickyEdge?.edge == VirtualListEdge.End)
-                            this.scrollToEdge(VirtualListEdge.End, true, 'last-item');
-                        else
-                            this.scrollToEdge(VirtualListEdge.End, false, 'last-item');
-                        this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                    } else {
-                        this.scrollTo(scrollToItemRef, false);
-                    }
-                } else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                    this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                    this.scrollToEdge(VirtualListEdge.End, true, 'last-item');
-                }
-            } else if (this.query.isNone && this.stickyEdge != null) {
-                // Sticky edge scroll when we are not requesting data with query - render of new items only
-                const itemKey = this.stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
-                    ? this.getFirstItemKey()
-                    : this.stickyEdge?.edge === VirtualListEdge.End && rs.hasVeryLastItem
-                        ? this.getLastItemKey()
-                        : null;
-                if (itemKey == null) {
-                    console.warn('endRender: sticky edge scroll failed', this.stickyEdge);
-                    // let's scroll to the latest edge key when we've got a lot of new messages
-                    if (this.stickyEdge?.edge === VirtualListEdge.End) {
-                        let itemRef = this.getItemRef(this.stickyEdge.itemKey);
-                        this.scrollTo(itemRef, false);
-                    }
-                    this.setStickyEdge(null);
-                } else {
-                    this.setStickyEdge({ itemKey: itemKey, edge: this.stickyEdge.edge });
-                    if (this.stickyEdge?.edge === VirtualListEdge.End) {
-                        this.scrollToEdge(VirtualListEdge.End, true, 'sticky-edge');
-                    } else if (this.stickyEdge?.edge === VirtualListEdge.Start) {
-                        this.scrollToEdge(VirtualListEdge.Start, true, 'sticky-edge');
-                    }
-                }
-            }
-            else {
-                if (rs.query.isNone && rs.renderIndex === 0)
-                    this.scrollToEdge(this.defaultEdge, false, 'no-pivot');
-            }
+            const scrollMetadata = this.getScrollMetadata(rs);
+
+            await this.restoreScrollPosition(rs, scrollMetadata);
+
+            scrollMetadata.scroll?.();
         } finally {
             this.renderStartedAt = null;
             this.renderCompletedAt = Date.now();
@@ -707,6 +671,67 @@ export class VirtualList {
             this.lastViewport = this.viewport;
             this.viewport = null;
         }
+    }
+
+    private getScrollMetadata(rs: VirtualListRenderState): ScrollMetadata {
+        if (!rs.query.isNone && rs.query.expectedCount)
+            this.statistics.addResponse(rs.count, rs.query.expectedCount);
+
+        const scrollToItemRef = this.getItemRef(rs.scrollToKey);
+        let shouldUseSmoothScroll = false;
+        let scrollType: ScrollToEdgeReason = 'unknown';
+        let scrollFunc: (() => void) | null = null;
+
+        if (scrollToItemRef != null) {
+            // Server-side scroll request
+            if (!this.isKeyVisible(rs.scrollToKey)) {
+                if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
+                    scrollType = 'last-item';
+                    shouldUseSmoothScroll = this.stickyEdge?.edge == VirtualListEdge.End;
+                    scrollFunc = () => {
+                        this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, scrollType);
+                        this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                    };
+                } else {
+                    scrollFunc = () => this.scrollTo(scrollToItemRef, false);
+                }
+            } else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
+                shouldUseSmoothScroll = true;
+                scrollType = 'last-item';
+                scrollFunc = () => {
+                    this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, scrollType);
+                    this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                };
+            }
+        } else if (this.query.isNone && this.stickyEdge != null) {
+            // Sticky edge scroll when we are not requesting data with query - render of new items only
+            const itemKey = this.stickyEdge.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
+                ? this.getFirstItemKey()
+                : this.stickyEdge.edge === VirtualListEdge.End && rs.hasVeryLastItem
+                    ? this.getLastItemKey()
+                    : null;
+            if (itemKey) {
+                shouldUseSmoothScroll = true;
+                scrollType = 'sticky-edge';
+                scrollFunc = () => {
+                    this.setStickyEdge({ itemKey, edge: this.stickyEdge.edge });
+                    this.scrollToEdge(this.stickyEdge.edge, shouldUseSmoothScroll, scrollType);
+                };
+            } else {
+                if (this.stickyEdge.edge === VirtualListEdge.End) {
+                    const itemRef = this.getItemRef(this.stickyEdge.itemKey);
+                    scrollFunc = () => this.scrollTo(itemRef, false);
+                }
+                this.setStickyEdge(null);
+            }
+        } else {
+            if (rs.query.isNone && rs.renderIndex === 0) {
+                scrollType = 'no-pivot';
+                scrollFunc = () => this.scrollToEdge(this.defaultEdge, false, scrollType);
+            }
+        }
+
+        return { shouldUseSmoothScroll: shouldUseSmoothScroll, scrollType, scroll: scrollFunc };
     }
 
     private readonly updateViewportThrottled = throttle(
@@ -1003,16 +1028,15 @@ export class VirtualList {
         if (isInitialRender && (reason === 'non-item-resize' || reason === 'item-resize'))
             return; // do not scroll to the end on initial render on spacer resize
 
-        if (this.renderState.renderIndex <= 2 || isInitialRender)
+        if (this.renderState.renderIndex <= 1 || isInitialRender)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
         this.scrollTime = Date.now();
 
         let scrollHeight = 0;
         fastRaf({
             read: () => {
-                scrollHeight = this.wrapperRef.scrollHeight;
                 const isFarFromEdge = edge == VirtualListEdge.End
-                    ? (scrollHeight - this.ref.scrollTop) > 2 * this.ref.offsetHeight
+                    ? -this.ref.scrollTop > this.ref.offsetHeight
                     : this.ref.scrollTop > this.ref.offsetHeight;
                 useSmoothScroll = useSmoothScroll && !isFarFromEdge;
             },
@@ -1065,12 +1089,13 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(rs: VirtualListRenderState): Promise<void> {
+    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null): Promise<void> {
         const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize } = this;
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
 
         const pivots = [...this.pivots];
+        const orderedItems = [... this.orderedItems];
         const interactivePivot = pivots.find(p => p.isInteractive);
 
         let scrollTop = 0;
@@ -1153,7 +1178,14 @@ export class VirtualList {
                 //     totalSize = Math.max(86000, totalSize);
 
                 if (this.defaultEdge === VirtualListEdge.End) {
-                    offset = end;
+                    if (scrollMetadata?.shouldUseSmoothScroll && scrollMetadata?.scrollType === 'last-item') {
+                        // Find previous item end to make smooth scroll possible with fallback to the latest one
+                        const lastItem = orderedItems[orderedItems.length - 1];
+                        offset = -endAnchorSize;
+                        scrollTopOffset = -lastItem?.size ?? 0;
+                    }
+                    else
+                        offset = end;
 
                     if (interactivePivot) {
                         let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
