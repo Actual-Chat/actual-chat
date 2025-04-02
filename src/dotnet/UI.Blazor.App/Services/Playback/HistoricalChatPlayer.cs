@@ -200,7 +200,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             var initialSleepAndPauseDuration = SleepAndPauseDuration;
             var startedAt = CpuTimestamp.Now;
             await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
-            await Playback.IsPaused.When(x => !x, cancellationToken).ConfigureAwait(false);
+            await Playback.IsPaused.Computed.When(x => !x, cancellationToken).ConfigureAwait(false);
             var actualDelay = startedAt.Elapsed - SleepAndPauseDuration + initialSleepAndPauseDuration;
             delay -= actualDelay;
         }

@@ -21,7 +21,7 @@ public class KeepWebViewAliveUI(UIHub hub) : WorkerBase
 
     private async Task KeepWebViewAlive(CancellationToken cancellationToken)
     {
-        await IsEnabled.When(x => x, cancellationToken).ConfigureAwait(false);
+        await IsEnabled.Computed.When(x => x, cancellationToken).ConfigureAwait(false);
         if (MauiWebView.Current is { } view)
             await view.EvaluateJS("1 + 1").ConfigureAwait(false);
     }

@@ -1,9 +1,8 @@
 ﻿@inherits ComputedStateComponent<ComputeStateTestComponent.Model>
 @{
     var mParent = ParentModel;
-    var m = State.ValueOrDefault;
+    var m = State.Value;
 }
-
 
 <h3>@mParent.Value</h3>
 <h2>Own state value is</h2>
@@ -12,7 +11,7 @@
 @code {
     [Inject] ComputeStateTestService TestService { get; init; } = null!;
 
-    [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; set; }
+    [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; set; } = null!;
 
     protected override ComputedState<ComputeStateTestComponent.Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

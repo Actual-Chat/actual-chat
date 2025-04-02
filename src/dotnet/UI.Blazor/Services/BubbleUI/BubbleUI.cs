@@ -31,12 +31,12 @@ public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost
         // Wait for sign-in
         await AccountUI.WhenLoaded.ConfigureAwait(false);
         await Clocks.Timeout(2)
-            .ApplyTo(ct => AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, ct))
+            .ApplyTo(ct => AccountUI.OwnAccount.Computed.When(x => !x.IsGuestOrNone, ct))
             .SilentAwait(false);
 
         // Wait when settings are read
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        await _settings.Synchronize().ConfigureAwait(false);
+        await _settings.Computed.Synchronize().ConfigureAwait(false);
 
         // Delay first display to not to interfere with permissions
         await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);

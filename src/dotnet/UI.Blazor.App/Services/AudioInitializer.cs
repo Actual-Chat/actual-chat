@@ -81,8 +81,9 @@ public sealed partial class AudioInitializer(UIHub hub)
     private async Task UpdateBackgroundState(CancellationToken cancellationToken)
     {
         var prevState = (ActivityState?)null; // Assuming "unknown"
-        var changes = AppActivity.State.Changes(cancellationToken);
-        await foreach (var cState in changes.ConfigureAwait(false)) {
+        var changes = AppActivity.State.Computed.ChangesUntyped(cancellationToken);
+        await foreach (var c in changes.ConfigureAwait(false)) {
+            var cState = (Computed<ActivityState>)c;
             var state = cState.Value;
             if (state == prevState)
                 continue;

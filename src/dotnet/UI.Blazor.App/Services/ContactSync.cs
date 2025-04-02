@@ -38,7 +38,9 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
         if (deviceId.IsEmpty) // True for non-MAUI apps
             return;
 
-        var cAccount = await AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, cancellationToken).ConfigureAwait(false);
+        var cAccount = await AccountUI.OwnAccount.Computed
+            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .ConfigureAwait(false);
         var account = cAccount.Value;
         var abortCts = cancellationToken.CreateLinkedTokenSource();
         var abortToken = abortCts.Token;
@@ -60,7 +62,9 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
     private async Task Sync(AccountFull account, CancellationToken cancellationToken)
     {
         await ContactsPermission.Check(cancellationToken).ConfigureAwait(false);
-        await ContactsPermission.Cached.When(x => x == true, cancellationToken).ConfigureAwait(false);
+        await ContactsPermission.Cached.Computed
+            .When(x => x == true, cancellationToken)
+            .ConfigureAwait(false);
 
         var deviceContacts = await DeviceContacts.List(cancellationToken).ConfigureAwait(false);
         var deviceRootHash = ExternalContactHasher.Compute(deviceContacts);

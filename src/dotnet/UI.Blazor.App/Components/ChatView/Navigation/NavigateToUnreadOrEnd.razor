@@ -74,7 +74,7 @@
 
         // Delay showing the button for the first time
         if (ReferenceEquals(oldState.Value, Model.None)) {
-            await chatView.ReadPosition.WhenSynchronized(cancellationToken).ConfigureAwait(false);
+            await chatView.ReadPosition.Computed.WhenSynchronized(cancellationToken).ConfigureAwait(false);
             var timeout = itemVisibility == ChatViewItemVisibility.Empty
                 ? TimeSpan.FromSeconds(1)
                 : TimeSpan.FromSeconds(0.5);

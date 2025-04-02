@@ -31,7 +31,7 @@ public class PlatformFeatureTest(ITestOutputHelper @out) : TestBase(@out)
         _ = BackgroundTask.Run(async () => {
             var process = Process.GetCurrentProcess();
             var processorCount = Environment.ProcessorCount;
-            await foreach (var cCpuMean in listener.CpuMean.Changes()) {
+            await foreach (var cCpuMean in listener.CpuMean.Computed.Changes()) {
                 var cpuMean = cCpuMean.Value;
                 var timeSpent = process.TotalProcessorTime;
                 var timePassed = clock.Now - clockZero;
@@ -41,7 +41,7 @@ public class PlatformFeatureTest(ITestOutputHelper @out) : TestBase(@out)
         });
 
         _ = BackgroundTask.Run(async () => {
-            await foreach (var cCpuMean in listener.CpuMean5.Changes()) {
+            await foreach (var cCpuMean in listener.CpuMean5.Computed.Changes()) {
                 var cpuMean = cCpuMean.Value;
                 Out.WriteLine("CPU Mean5: {0};", cpuMean);
             }
@@ -49,7 +49,7 @@ public class PlatformFeatureTest(ITestOutputHelper @out) : TestBase(@out)
 
 
         _ = BackgroundTask.Run(async () => {
-            await foreach (var cCpuMean in listener.CpuMean20.Changes()) {
+            await foreach (var cCpuMean in listener.CpuMean20.Computed.Changes()) {
                 var cpuMean = cCpuMean.Value;
                 Out.WriteLine("CPU Mean20: {0};", cpuMean);
             }

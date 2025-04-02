@@ -23,7 +23,7 @@ partial class PanelsUI
     private Task TrackScreenSize(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
             var lastIsWide = IsWide();
-            await foreach (var _ in ScreenSize.Changes(cancellationToken).ConfigureAwait(true)) {
+            await foreach (var _ in ScreenSize.Computed.ChangesUntyped(cancellationToken).ConfigureAwait(true)) {
                 var isWide = IsWide();
                 if (lastIsWide != isWide) {
                     lastIsWide = isWide;
@@ -35,8 +35,9 @@ partial class PanelsUI
 
     private Task TrackRightPanelSearchMode(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
-            await foreach (var isSearchMode in Right.IsSearchMode.Changes(cancellationToken).ConfigureAwait(true)) {
-                if (!isSearchMode.Value)
+            await foreach (var c in Right.IsSearchMode.Computed.ChangesUntyped(cancellationToken).ConfigureAwait(true)) {
+                var cIsSearchMode = (Computed<bool>)c;
+                if (!cIsSearchMode.Value)
                     continue;
 
                 // Open right panel when search mode is triggered on.

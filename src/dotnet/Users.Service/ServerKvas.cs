@@ -107,9 +107,10 @@ public class ServerKvas : IServerKvas
         // But it should complete with a non-empty one eventually, so...
         try {
             await Clocks.Timeout(3).ApplyTo(
-                ct => Computed
-                    .Capture(() => Auth.GetUser(session, ct), ct)
-                    .When(u => u?.IsGuest() == false, ct),
+                async ct => {
+                    var c = await Computed.Capture(() => Auth.GetUser(session, ct), ct).ConfigureAwait(false);
+                    return await c.When(u => u?.IsGuest() == false, ct).ConfigureAwait(false);
+                },
                 cancellationToken
                 ).ConfigureAwait(false);
         }

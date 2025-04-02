@@ -31,8 +31,9 @@ public partial class ChatUI
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
         var oldChatId = ChatId.None;
-        var changes = SelectedChatId.Changes(cancellationToken);
-        await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
+        var changes = SelectedChatId.Computed.ChangesUntyped(cancellationToken);
+        await foreach (var c in changes.ConfigureAwait(false)) {
+            var cSelectedContactId = (Computed<ChatId>)c;
             var newChatId = cSelectedContactId.Value;
             if (newChatId == oldChatId)
                 continue;
@@ -98,12 +99,14 @@ public partial class ChatUI
 
     private async Task ResetHighlightedEntry(CancellationToken cancellationToken)
     {
-        var changes = HighlightedEntryId
-            .Changes(FixedDelayer.Get(0.1), cancellationToken)
-            .Where(x => !x.Value.IsNone);
         CancellationTokenSource? cts = null;
         try {
-            await foreach (var cHighlightedEntryId in changes.ConfigureAwait(false)) {
+            var changes = HighlightedEntryId.Computed.ChangesUntyped(FixedDelayer.Get(0.1), cancellationToken);
+            await foreach (var c in changes.ConfigureAwait(false)) {
+                var cHighlightedEntryId = (Computed<ChatEntryId>)c;
+                if (cHighlightedEntryId.Value.IsNone)
+                    continue;
+
                 cts.CancelAndDisposeSilently();
                 var highlightedEntryId = cHighlightedEntryId.Value;
                 if (highlightedEntryId.IsNone)
@@ -199,9 +202,12 @@ public partial class ChatUI
 
     private async Task PrefetchChatTails(CancellationToken cancellationToken)
     {
-        var visibleChatsChanges = ChatListUI.VisibleChats.Changes(cancellationToken);
+        var visibleChatsChanges = ChatListUI.VisibleChats.Computed.Changes(cancellationToken);
         var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        await foreach (var cVisibleChats in visibleChatsChanges.Where(c => c.Value.Count > 0).ConfigureAwait(false)) {
+        await foreach (var cVisibleChats in visibleChatsChanges.ConfigureAwait(false)) {
+            if (cVisibleChats.Value.Count == 0)
+                continue;
+
             cts.CancelAndDisposeSilently();
             cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var changeToken = cts.Token;

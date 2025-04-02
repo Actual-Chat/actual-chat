@@ -50,8 +50,9 @@ public partial class ChatAudioUI
     {
         var oldRecordingChat = default(ActiveChat);
         var oldListeningChats = new HashSet<ActiveChat>();
-        var changes = ActiveChatsUI.ActiveChats.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
-        await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
+        var changes = ActiveChatsUI.ActiveChats.Computed.ChangesUntyped(FixedDelayer.NoneUnsafe, cancellationToken);
+        await foreach (var c in changes.ConfigureAwait(false)) {
+            var cActiveContacts = (Computed<ApiArray<ActiveChat>>)c;
             var activeChats = cActiveContacts.Value;
             var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
             var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
@@ -69,8 +70,8 @@ public partial class ChatAudioUI
                 }
                 if (changed.Count > 0) {
                     _ = GetListeningChatIds();
-                    foreach (var c in changed)
-                        _ = GetState(c.ChatId);
+                    foreach (var activeChat in changed)
+                        _ = GetState(activeChat.ChatId);
                 }
             }
 
@@ -82,7 +83,7 @@ public partial class ChatAudioUI
     private async Task InvalidateHistoricalPlaybackDependencies(CancellationToken cancellationToken)
     {
         var oldChatId = ChatId.None;
-        var changes = ChatPlayers.PlaybackState.Changes(cancellationToken);
+        var changes = ChatPlayers.PlaybackState.Computed.Changes(cancellationToken);
         await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
             var newChatId = (cPlaybackState.Value as HistoricalPlaybackState)?.ChatId ?? default;
             if (newChatId == oldChatId)
@@ -362,8 +363,8 @@ public partial class ChatAudioUI
     private async Task StopRecordingOnAwake(CancellationToken cancellationToken)
     {
         var totalSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value;
-        await DeviceAwakeUI.TotalSleepDuration
-            .When(x => x != totalSleepDuration, cancellationToken)
+        await DeviceAwakeUI.TotalSleepDuration.Computed
+            .WhenUntyped(c => ((Computed<TimeSpan>)c).Value != totalSleepDuration, cancellationToken)
             .ConfigureAwait(false);
 
         await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
@@ -435,7 +436,7 @@ public partial class ChatAudioUI
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested) {
-            var cNextBeep = await _nextBeep.When(x => x != null && x.At > CpuNow, cancellationToken).ConfigureAwait(false);
+            var cNextBeep = await _nextBeep.Computed.When(x => x != null && x.At > CpuNow, cancellationToken).ConfigureAwait(false);
             var nextBeepAt = cNextBeep.Value!.At;
             var nextBeepIn = nextBeepAt - CpuNow;
             await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken).ConfigureAwait(false);

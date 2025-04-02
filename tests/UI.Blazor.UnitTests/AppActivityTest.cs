@@ -37,12 +37,12 @@ public class AppActivityTest: TestBase
         appActivity.State.Value.Should().Be(ActivityState.Foreground);
 
         MauiBackgroundStateTracker.SetBackgroundState(true);
-        await appActivity.State
+        await appActivity.State.Computed
             .When(x => x == ActivityState.BackgroundIdle)
             .WaitAsync(TimeSpan.FromSeconds(2));
 
         appActivity.SetIsActiveInBackground(true);
-        await appActivity.State
+        await appActivity.State.Computed
             .When(x => x == ActivityState.BackgroundActive)
             .WaitAsync(TimeSpan.FromSeconds(2));
     }

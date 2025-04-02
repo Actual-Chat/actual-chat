@@ -288,7 +288,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (!isChatViewVisible.Value) {
             // Chat is invisible now, let's suspend & await for it to become visible
             using (Computed.BeginIsolation())
-                await isChatViewVisible.When(x => x, cancellationToken);
+                await isChatViewVisible.Computed.When(x => x, cancellationToken);
             _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
         }
 

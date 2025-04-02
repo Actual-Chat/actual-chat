@@ -6,16 +6,13 @@ namespace ActualChat.Permissions;
 public abstract class PermissionHandler : ScopedWorkerBase<Hub>
 {
     private readonly MutableState<bool?> _cached;
-    private SystemSettingsUI? _systemSettingsUI;
-    private IDispatcherResolver? _dispatcherResolver;
-    private MomentClock? _clock;
 
-    protected SystemSettingsUI SystemSettingsUI
-        => _systemSettingsUI ??= Services.GetRequiredService<SystemSettingsUI>();
-    protected IDispatcherResolver DispatcherResolver
-        => _dispatcherResolver ??= Services.GetRequiredService<IDispatcherResolver>();
-    protected MomentClock Clock => _clock ??= Services.Clocks().CpuClock;
-
+    [field: AllowNull, MaybeNull]
+    protected SystemSettingsUI SystemSettingsUI => field ??= Services.GetRequiredService<SystemSettingsUI>();
+    [field: AllowNull, MaybeNull]
+    protected IDispatcherResolver DispatcherResolver => field ??= Services.GetRequiredService<IDispatcherResolver>();
+    [field: AllowNull, MaybeNull]
+    protected MomentClock Clock => field ??= Services.Clocks().CpuClock;
     protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
@@ -99,7 +96,7 @@ public abstract class PermissionHandler : ScopedWorkerBase<Hub>
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         CancellationTokenSource? expirationCts = null;
-        await foreach (var cCached in Cached.Changes(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var cCached in Cached.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
             Log.LogDebug("Cached: {Cached}", cCached.Value);
             expirationCts.CancelAndDisposeSilently();
             expirationCts = null;

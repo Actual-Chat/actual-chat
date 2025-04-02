@@ -124,7 +124,9 @@ public abstract class ChatPlayer : ProcessorBase
     protected async ValueTask<bool> CanContinuePlayback(CancellationToken cancellationToken)
     {
         if (this is HistoricalChatPlayer)
-            await Playback.IsPaused.When(x => !x, cancellationToken).ConfigureAwait(false);
+            await Playback.IsPaused.Computed
+                .When(x => !x, cancellationToken)
+                .ConfigureAwait(false);
 
         if (InteractiveUI.IsInteractive.Value)
             return true;

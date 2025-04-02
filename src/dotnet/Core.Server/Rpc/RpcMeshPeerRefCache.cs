@@ -68,7 +68,7 @@ public sealed class RpcMeshPeerRefCache
         var meshWatcherState = MeshWatcher.State;
         while (true) {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var whenChanged = meshWatcherState.When(x => IsChanged(target, x), cts.Token);
+            var whenChanged = meshWatcherState.Computed.When(x => IsChanged(target, x), cts.Token);
             if (!nodeRef.IsNone) {
                 if (target.State == MeshNodeState.Online) {
                     _offlineNodeRefs.Remove(nodeRef, out _);

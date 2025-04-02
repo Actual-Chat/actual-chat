@@ -57,7 +57,8 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
         // TODO(AY): Implement _players cleanup here
         try {
             var lastPlaybackState = (PlaybackState?)null;
-            await foreach (var cPlaybackState in PlaybackState.Changes(cancellationToken).ConfigureAwait(false)) {
+            var changes = PlaybackState.Computed.Changes(cancellationToken);
+            await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
                 var newPlaybackState = cPlaybackState.Value;
                 try {
                     await ProcessPlaybackStateChange(lastPlaybackState, newPlaybackState, cancellationToken)

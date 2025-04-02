@@ -53,7 +53,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
 
         // Wait a bit, probably user just pressed "Play" or "Record", but
         // IsInteractive update hasn't made it to Blazor yet.
-        await IsInteractive
+        await IsInteractive.Computed
             .When(x => x, cancellationToken)
             .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .SuppressExceptions(e => e is TimeoutException)
@@ -93,7 +93,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
 
         var isConfirmed = activeDemand.WhenConfirmed.IsCompletedSuccessfully;
         if (isConfirmed) // If confirmed, let's wait for interactivity as well
-            await IsInteractive.When(x => x, cancellationToken).ConfigureAwait(false);
+            await IsInteractive.Computed.When(x => x, cancellationToken).ConfigureAwait(false);
 
         return isConfirmed;
     }

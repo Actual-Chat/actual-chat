@@ -5,14 +5,13 @@ public class ThemeUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub)
     private static readonly string JSThemeClassName = "window.Theme";
     private static readonly string JSSetMethod = $"{JSThemeClassName}.set";
 
-    private IEnumerable<Action<ThemeInfo>>? _themeHandlers;
-    private BrowserInfo? _browserInfo;
-    private IJSRuntime? _js;
-
-    private BrowserInfo BrowserInfo => _browserInfo ??= Services.GetRequiredService<BrowserInfo>();
+    [field: AllowNull, MaybeNull]
+    private BrowserInfo BrowserInfo => field ??= Services.GetRequiredService<BrowserInfo>();
+    [field: AllowNull, MaybeNull]
     private IEnumerable<Action<ThemeInfo>> ThemeHandlers =>
-        _themeHandlers ??= Services.GetRequiredService<IEnumerable<Action<ThemeInfo>>>();
-    private IJSRuntime JS => _js ??= Services.JSRuntime();
+        field ??= Services.GetRequiredService<IEnumerable<Action<ThemeInfo>>>();
+    [field: AllowNull, MaybeNull]
+    private IJSRuntime JS => field ??= Services.JSRuntime();
 
     public IState<ThemeInfo> State => BrowserInfo.ThemeInfo;
     public Task WhenReady => BrowserInfo.WhenReady;
@@ -28,7 +27,7 @@ public class ThemeUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub)
         await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var lastState = State.Value;
         ApplyTheme(lastState);
-        await foreach (var (state, _) in State.Changes(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var (state, _) in State.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
             if (state == lastState)
                 continue;
 

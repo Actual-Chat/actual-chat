@@ -89,13 +89,15 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
     {
         // Wait for sign-in
         await AccountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, cancellationToken).ConfigureAwait(false);
+        await AccountUI.OwnAccount.Computed
+            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .ConfigureAwait(false);
 
         // Wait when settings are read & synchronized
         await _userSettings.WhenFirstTimeRead.ConfigureAwait(false);
-        await _userSettings.Synchronize(cancellationToken).ConfigureAwait(false);
+        await _userSettings.Computed.Synchronize(cancellationToken).ConfigureAwait(false);
         await _localSettings.WhenRead.ConfigureAwait(false);
-        await _localSettings.Synchronize(cancellationToken).ConfigureAwait(false);
+        await _localSettings.Computed.Synchronize(cancellationToken).ConfigureAwait(false);
         var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken).ConfigureAwait(false);
 
         // If there was a recent account change, add a delay to let them hit the client

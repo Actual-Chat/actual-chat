@@ -71,7 +71,9 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
 
     public override async Task<ApiArray<ExternalContactFull>> List(CancellationToken cancellationToken)
     {
-        var cAccount = await AccountUI.OwnAccount.When(x => x.IsActive(), cancellationToken).ConfigureAwait(false);
+        var cAccount = await AccountUI.OwnAccount.Computed
+            .When(x => x.IsActive(), cancellationToken)
+            .ConfigureAwait(false);
         var options = await GetOptions(cancellationToken).ConfigureAwait(false);
         return options is not null
             ? GenerateContacts(options, cAccount.Value.Id).ToApiArray()
