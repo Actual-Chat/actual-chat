@@ -33,11 +33,11 @@
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
             UpdateDelayer = FixedDelayer.NextTick,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
+        => AccountUI.OwnAccount.Use(cancellationToken);
 
     // Nested types
 

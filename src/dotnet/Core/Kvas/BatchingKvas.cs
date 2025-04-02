@@ -103,7 +103,7 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
             .ConfigureAwait(false);
         for (var i = 0; i < batch.Count; i++) {
             var batchItem = batch[i];
-            batchItem.SetResult(results[i], cancellationToken);
+            batchItem.TrySetResult(results[i]);
         }
     }
 

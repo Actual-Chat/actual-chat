@@ -31,7 +31,10 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         //Hub = hub;
         _whenLoaded = new TaskCompletionSource();
         _selectedProfile = hub.StateFactory().NewMutable(Profile.None);
-        _selectedProfile.Updated += OnSelectedProfileChanged;
+        _selectedProfile.Updated += (_, _) => {
+            var profileId = _selectedProfile.Value.Id;
+            _ = Commander.Run(new RouletteProfiles_SelectProfile(Session, profileId));
+        };
         _activeSearch = hub.StateFactory().NewMutable<Search?>();
         _searchCriteria = hub.StateFactory().NewMutable(Preferences.Empty);
     }
@@ -42,18 +45,10 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public Task StartChatRoulette()
         => History.NavigateTo("/chat-roulette");
 
-    private void OnSelectedProfileChanged(IState<Profile> arg1, StateEventKind arg2)
-    {
-       var profile = arg1.Value;
-       _ = Commander.Call(new RouletteProfiles_SelectProfile(Session, profile.Id));
-    }
-
     private void DiscardSelectedProfile()
-    {
-        _selectedProfile.Value = Profile.None;
-        // Discard search request and results.
-    }
+        => _selectedProfile.Value = Profile.None;
 
+    // Discard search request and results.
     public void SelectProfile(Profile profile, bool updateSearchCriteria = false)
     {
         if (profile.IsNone)

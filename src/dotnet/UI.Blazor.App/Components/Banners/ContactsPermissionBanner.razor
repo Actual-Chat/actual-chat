@@ -32,17 +32,17 @@
 }
 
 @code {
-    private IStoredState<Moment> _dismissedAt = null!;
+    private StoredState<Moment> _dismissedAt = null!;
     private bool _permissionStateWasDefined;
     private bool _checkIsRequired;
-    private ILogger? _log;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
     private LocalSettings LocalSettings => Hub.LocalSettings();
     private MomentClockSet Clocks => Hub.Clocks();
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     protected override void OnInitialized()
         => _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));
@@ -55,7 +55,7 @@
             static t => new ComputedState<Model>.Options() {
                 InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

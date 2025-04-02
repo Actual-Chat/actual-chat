@@ -29,7 +29,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
             return ComputedStateComponent.GetStateOptions(GetType(),
                 static t => new ComputedState<Model>.Options() {
                     InitialValue = Model.Loading,
-                    Category = ComputedStateComponent.GetStateCategory(t),
+                    Category = GetStateCategory(t),
                 });
 
         var authorComputed = Computed.GetExisting(() => Authors.Get(Session, AuthorId.ChatId, AuthorId, default));
@@ -48,7 +48,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
         return new () {
             InitialValue = model,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
     }
 

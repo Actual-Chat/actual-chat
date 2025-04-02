@@ -1,16 +1,14 @@
-using ActualChat.Pooling;
-
 namespace ActualChat.Kvas;
 
-public interface IStoredState<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-    : IMutableState<T>
+public interface IStoredState : IMutableState
 {
     Task WhenRead { get; }
 }
 
-public sealed class StoredState<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+public interface IStoredState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : IMutableState<T>, IStoredState;
+
+public sealed class StoredState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : MutableState<T>, IStoredState<T>
 {
     private readonly TaskCompletionSource _whenReadSource = TaskCompletionSourceExt.New();
@@ -29,7 +27,7 @@ public sealed class StoredState<
             Initialize(options);
     }
 
-    protected override StateBoundComputed<T> CreateComputed()
+    protected override Computed CreateComputed()
     {
         var computed = base.CreateComputed();
         var snapshot = Snapshot;
@@ -70,9 +68,9 @@ public sealed class StoredState<
         }
         else {
             // Subsequent change
-            if (computed.IsValue(out var value)) {
+            if (computed.IsValueUntyped(out var value)) {
                 using var _1 = ActualLab.Fusion.Computed.BeginIsolation();
-                _ = Settings.Write(value, CancellationToken.None);
+                _ = Settings.Write((T)value!, CancellationToken.None);
                 DebugLog?.LogDebug("{State}: Write = {Result}", this, value);
             }
         }
@@ -116,11 +114,4 @@ public sealed class StoredState<
         internal override Task Write(T value, CancellationToken cancellationToken)
             => Kvas.Set(Key, value, cancellationToken);
     }
-}
-
-public class StoredStateLease<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(SharedResourcePool<Symbol, IStoredState<T>>.Lease lease)
-    : MutableStateLease<T, IStoredState<T>>(lease), IStoredState<T>
-{
-    public Task WhenRead => State.WhenRead;
 }

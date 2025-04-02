@@ -51,7 +51,7 @@
             static t => new ComputedState<FailedRequirementSet>.Options() {
                 InitialValue = FailedRequirementSet.Empty,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {

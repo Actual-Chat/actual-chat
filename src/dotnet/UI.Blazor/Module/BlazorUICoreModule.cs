@@ -165,7 +165,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
                 SleepPeriod = isDev ? TimeSpan.Zero : TimeSpan.FromMinutes(5).ToRandom(0.2),
                 CollectPeriod = TimeSpan.FromSeconds(isDev ? 10 : 60),
                 AccessFilter = isWasmApp
-                    ? static computed => computed.Input.Function is IRemoteComputeMethodFunction
+                    ? static computed => computed.Input.Function is RemoteComputeMethodFunction
                     : static _ => true,
                 AccessStatisticsPreprocessor = StatisticsPreprocessor,
                 RegistrationStatisticsPreprocessor = StatisticsPreprocessor,

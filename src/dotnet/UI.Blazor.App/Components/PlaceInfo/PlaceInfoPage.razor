@@ -34,7 +34,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = !PlaceSid.IsNullOrEmpty() ? Model.Loading : new Model(SpecialPlace.NoPlaceSelected),
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

@@ -2,6 +2,7 @@ using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Diagnostics;
 using ActualChat.Kvas;
+using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Diagnostics;
@@ -18,7 +19,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
 
     private Task _updateReadStateTask = null!;
-    private SyncedStateLease<ReadPosition> _readPosition = null!;
+    private SharedResourcePool<Symbol, SyncedState<ReadPosition>>.Lease _readPositionLease = null!;
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<Navigation?> _nextNavigation = null!;
@@ -43,7 +44,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
-    public IState<ReadPosition> ReadPosition => _readPosition;
+    public IState<ReadPosition> ReadPosition => _readPositionLease.Resource;
     public IState<long> ShownReadEntryLid => _shownReadEntryLid;
 
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
@@ -76,8 +77,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _shownReadEntryLid = StateFactory.NewMutable(
                 0L,
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
-            _readPosition = await ChatUI.LeaseReadPositionState(ChatId, DisposeToken);
-            _shownReadEntryLid.Value = _readPosition.Value.EntryLid;
+            _readPositionLease = await ChatUI.LeaseReadPositionState(ChatId, DisposeToken);
+            _shownReadEntryLid.Value = _readPositionLease.Resource.Value.EntryLid;
             _whenInitializedSource.TrySetResult();
             _updateReadStateTask = AsyncChain.From(UpdateReadState)
                 .Log(LogLevel.Debug, Log)
@@ -92,7 +93,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // Async part of this method may run after Dispose,
             // so Dispose won't see a new value of ReadPositionState
             if (_disposeTokenSource.IsCancellationRequested)
-                _readPosition.DisposeSilently();
+                _readPositionLease.DisposeSilently();
         }
     }
 
@@ -114,7 +115,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         _disposeTokenSource.CancelAndDisposeSilently();
         _whenInitializedSource.TrySetCanceled();
-        _readPosition.DisposeSilently();
+        _readPositionLease.DisposeSilently();
         Nav.LocationChanged -= OnLocationChanged;
     }
 
@@ -288,7 +289,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             // Chat is invisible now, let's suspend & await for it to become visible
             using (Computed.BeginIsolation())
                 await isChatViewVisible.When(x => x, cancellationToken);
-            _shownReadEntryLid.Value = _readPosition.Value.EntryLid;
+            _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
         }
 
         // Update delay: we want to collect as many dependencies as possible here,
@@ -314,7 +315,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isFirstRender = renderedData.IsNone && query.IsNone;
         var readEntryLid = itemVisibility.IsEndAnchorVisible
             ? long.MaxValue // We are at the end of the chat so avoid displaying new messages line
-            : _readPosition.Value.EntryLid;
+            : ReadPosition.Value.EntryLid;
         var hasReadEntry = readEntryLid != 0 && readEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
             ?? (isFirstRender && hasReadEntry ? new Navigation(readEntryLid, false) : null);
@@ -509,9 +510,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private long UpdateReadPosition(long readEntryLid)
     {
-        readEntryLid = Math.Max(_readPosition.Value.EntryLid, readEntryLid);
-        if (_readPosition.Value.EntryLid < readEntryLid)
-            _readPosition.Value = new ReadPosition(ChatId, readEntryLid);
+        var readPosition = _readPositionLease.Resource;
+        readEntryLid = Math.Max(readPosition.Value.EntryLid, readEntryLid);
+        if (readPosition.Value.EntryLid < readEntryLid)
+            readPosition.Value = new ReadPosition(ChatId, readEntryLid);
         return readEntryLid;
     }
 

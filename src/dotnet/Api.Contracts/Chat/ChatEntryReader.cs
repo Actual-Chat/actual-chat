@@ -218,10 +218,12 @@ public sealed class ChatEntryReader(
         var cIdRange = await cIdRangeTask.ConfigureAwait(false);
 
         while (true) {
-            if (!(cTile.IsConsistent() && cIdRange.IsConsistent()))
-                (cTile, cIdRange) = await ActualLab.Fusion.ComputedExt
-                    .Update(cTile, cIdRange, cancellationToken)
-                    .ConfigureAwait(false);
+            if (!(cTile.IsConsistent() && cIdRange.IsConsistent())) {
+                var updateTileTask = cTile.Update(cancellationToken);
+                var updateRangeTask = cIdRange.Update(cancellationToken);
+                cTile = await updateTileTask.ConfigureAwait(false);
+                cIdRange = await updateRangeTask.ConfigureAwait(false);
+            }
 
             var tile = cTile.Value;
             foreach (var e in tile.Entries) // In fact, .Any, just w/ less allocations

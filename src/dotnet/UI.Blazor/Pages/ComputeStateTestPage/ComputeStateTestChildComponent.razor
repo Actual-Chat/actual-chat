@@ -18,7 +18,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputeStateTestComponent.Model>.Options() {
                 InitialValue = ComputeStateTestComponent.Model.None,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<ComputeStateTestComponent.Model> ComputeState(CancellationToken cancellationToken) {

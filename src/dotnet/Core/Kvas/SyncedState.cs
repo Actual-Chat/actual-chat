@@ -1,5 +1,3 @@
-using ActualChat.Pooling;
-
 namespace ActualChat.Kvas;
 
 public interface ISyncedState : IMutableState, IDisposable
@@ -13,8 +11,7 @@ public interface ISyncedState : IMutableState, IDisposable
     Task WhenWritten(CancellationToken cancellationToken = default);
 }
 
-public interface ISyncedState<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+public interface ISyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : IMutableState<T>, ISyncedState
 {
     new ComputedState<T> ReadState { get; }
@@ -39,8 +36,7 @@ public static class SyncedState
         => OriginPrefix + Interlocked.Increment(ref _lastId).Format();
 }
 
-public sealed class SyncedState<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : MutableState<T>, ISyncedState<T>
 {
     private readonly CancellationTokenSource _disposeTokenSource;
@@ -95,9 +91,9 @@ public sealed class SyncedState<
             Initialize(options);
     }
 
-    protected override void Initialize(State<T>.Options settings)
+    protected override void Initialize(IStateOptions options)
     {
-        base.Initialize(settings);
+        base.Initialize(options);
         WhenDisposed = BackgroundTask.Run(ReadCycle, DisposeToken);
     }
 
@@ -126,15 +122,15 @@ public sealed class SyncedState<
 
     // Private & protected methods
 
-    protected override void OnSetSnapshot(StateSnapshot<T> snapshot, StateSnapshot<T>? prevSnapshot)
+    protected override void OnSetSnapshot(StateSnapshot snapshot, StateSnapshot? prevSnapshot)
     {
-        if (!_isReading && !snapshot.IsInitial && snapshot.Computed.IsValue(out var value)) {
+        if (!_isReading && !snapshot.IsInitial && snapshot.Computed.IsValueUntyped(out var value)) {
             if (OwnOrigin != null && value is IHasOrigin hasOrigin)
                 hasOrigin.SetOrigin(OwnOrigin);
 
             var writeIndex = ++_writeIndex;
             var prevWriteTask = _writeTask;
-            _writeTask = Task.Run(() => Write(value, writeIndex, prevWriteTask), CancellationToken.None);
+            _writeTask = Task.Run(() => Write((T)value!, writeIndex, prevWriteTask), CancellationToken.None);
         }
         base.OnSetSnapshot(snapshot, prevSnapshot);
     }
@@ -180,7 +176,7 @@ public sealed class SyncedState<
     private async Task ReadCycle()
     {
         var cancellationToken = DisposeToken;
-        IStateSnapshot<T>? lastReadSnapshot = null;
+        StateSnapshot? lastReadSnapshot = null;
         while (!cancellationToken.IsCancellationRequested) {
             try {
                 if (lastReadSnapshot == ReadState.Snapshot)
@@ -189,7 +185,7 @@ public sealed class SyncedState<
                 if (lastReadSnapshot is not { IsInitial: false })
                     continue;
 
-                var readResult = lastReadSnapshot.Computed.AsResult();
+                var readResult = ((Computed<T>)lastReadSnapshot.Computed).ToTypedResult();
                 lock (Lock)
                     ReadFromLock(readResult);
             }
@@ -297,21 +293,4 @@ public sealed class SyncedState<
         internal override Task Write(T value, CancellationToken cancellationToken)
             => Kvas.Set(Key, value, cancellationToken);
     }
-}
-
-public class SyncedStateLease<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
-    SharedResourcePool<Symbol, ISyncedState<T>>.Lease lease
-    ) : MutableStateLease<T, ISyncedState<T>>(lease), ISyncedState<T>
-    where T : IHasOrigin
-{
-    public CancellationToken DisposeToken => State.DisposeToken;
-    public Task WhenFirstTimeRead => State.WhenFirstTimeRead;
-    public Task WhenDisposed => State.WhenDisposed;
-    IComputedState ISyncedState.ReadState => ReadState;
-    public ComputedState<T> ReadState => State.ReadState;
-    public string? OwnOrigin => State.OwnOrigin;
-
-    public Task WhenWritten(CancellationToken cancellationToken = default)
-        => State.WhenWritten(cancellationToken);
 }

@@ -25,11 +25,11 @@
         => new() {
             InitialValue = BrowserInfo.ScreenSize.Value,
             UpdateDelayer = FixedDelayer.NextTick,
-            Category = ComputedStateComponent.GetStateCategory(typeof(ScreenSizeProvider)),
+            Category = GetStateCategory(typeof(ScreenSizeProvider)),
         };
 
     protected override Task<ScreenSize> ComputeState(CancellationToken cancellationToken)
-        => BrowserInfo.ScreenSize.Use(cancellationToken).AsTask();
+        => BrowserInfo.ScreenSize.Use(cancellationToken);
 
     protected override bool ShouldRender()
         => !ReferenceEquals(ChildContent, _renderedChildContent)

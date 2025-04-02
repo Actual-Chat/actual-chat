@@ -103,7 +103,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ViewModel>.Options() {
                 InitialValue = ViewModel.None,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {

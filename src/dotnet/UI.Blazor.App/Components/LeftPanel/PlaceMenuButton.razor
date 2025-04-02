@@ -62,7 +62,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
                 InitialValue = new Model(Place, Place.Rules.CanSeeMembers() ? 0 : null),
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

@@ -31,13 +31,12 @@ internal class MauiNetworkStatusListener : INetworkStatusListener
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var tcs = TaskCompletionSourceExt.NewSynchronous();
+        var tcs = TaskCompletionSourceExt.New();
 
         void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs args)
         {
-            if (TreatAsOnline(args.NetworkAccess)) {
+            if (TreatAsOnline(args.NetworkAccess))
                 tcs.TrySetResult();
-            }
         }
 
         _connectivity.ConnectivityChanged += OnConnectivityChanged;

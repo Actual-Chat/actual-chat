@@ -18,9 +18,9 @@
             static t => new ComputedState<UserLanguageSettings>.Options() {
                 InitialValue = new(),
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override Task<UserLanguageSettings> ComputeState(CancellationToken cancellationToken)
-        => LanguageUI.Settings.Use(cancellationToken).AsTask();
+        => LanguageUI.Settings.Use(cancellationToken);
 }

@@ -31,7 +31,7 @@
 </div>
 
 @code {
-    private IStoredState<bool> _isDismissed = null!;
+    private StoredState<bool> _isDismissed = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
@@ -52,7 +52,7 @@
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() {
             InitialValue = true, // We don't want to show & hide it every time
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {

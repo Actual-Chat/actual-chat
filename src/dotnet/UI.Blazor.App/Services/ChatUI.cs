@@ -13,14 +13,14 @@ namespace ActualChat.UI.Blazor.App.Services;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
 {
-    private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
+    private readonly SharedResourcePool<Symbol, SyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
-    private readonly IStoredState<ChatId> _selectedChatId;
+    private readonly StoredState<ChatId> _selectedChatId;
     private readonly MutableState<PlaceId> _selectedPlaceId;
-    private readonly IStoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
+    private readonly StoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
     private readonly MutableState<ChatEntryId> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
-    private readonly ISyncedState<UserNavbarSettings> _navbarSettings;
+    private readonly SyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId _searchEnabledChatId;
     private readonly Lock _lock = new();
     private readonly TaskCompletionSource _whenActivePlaceRestored = TaskCompletionSourceExt.New();
@@ -97,7 +97,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
-        _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ReadPosition>>(CreateReadPositionState);
+        _readPositionStates = new SharedResourcePool<Symbol, SyncedState<ReadPosition>>(CreateReadPositionState);
     }
 
     void INotifyInitialized.Initialized()
@@ -215,8 +215,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             .ConfigureAwait(false);
 
         using var _ = Computed.BeginIsolation();
-        using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
-        var readPosition = readPositionState.Value;
+        using var lease = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
+        var readPosition = lease.Resource.Value;
         return MathExt.Max(readPosition.EntryLid, serverReadPosition.EntryLid);
     }
 
@@ -387,29 +387,27 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             _ = UICommander.RunNothing();
     }
 
-    public async ValueTask<SyncedStateLease<ReadPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
+    public async ValueTask<SharedResourcePool<Symbol, SyncedState<ReadPosition>>.Lease> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
     {
         var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
         try {
-            var result = new SyncedStateLease<ReadPosition>(lease);
-            await result.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
-            InvokeReadPositionUpdated(result.State);
-            result.State.Updated += (s, k) => {
-                if (k == StateEventKind.Updated)
+            var state = lease.Resource;
+            await state.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
+            InvokeReadPositionUpdated(state);
+            state.Updated += (s, stateEventKind) => {
+                if (stateEventKind == StateEventKind.Updated)
                     InvokeReadPositionUpdated(s);
             };
-            return result;
+            return lease;
         }
         catch {
             lease.Dispose();
             throw;
         }
 
-        static void InvokeReadPositionUpdated(IState<ReadPosition> state)
-        {
-            var chatId = state.Value.ChatId;
-            var entryLid = state.Value.EntryLid;
-            OnReadPositionUpdated.Invoke((chatId, entryLid));
+        static void InvokeReadPositionUpdated(State state) {
+            var value = ((IState<ReadPosition>)state).Value;
+            OnReadPositionUpdated.Invoke((value.ChatId, value.EntryLid));
         }
     }
 
@@ -516,7 +514,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
     }
 
-    private Task<ISyncedState<ReadPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
+    private Task<SyncedState<ReadPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
     {
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
 

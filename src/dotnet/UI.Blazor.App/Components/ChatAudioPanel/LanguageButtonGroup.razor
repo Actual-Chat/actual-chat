@@ -50,7 +50,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<(List<Language>?, Language)>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<(List<Language>?, Language)> ComputeState(CancellationToken cancellationToken) {

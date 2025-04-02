@@ -31,7 +31,9 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
         _hasSelection = StateFactory.NewMutable(
             false,
             StateCategories.Get(type, nameof(HasSelection)));
-        _selection.Updated += (state, _) => _hasSelection.Value = state.Value.Count != 0;
+        _selection.Updated += (_, _) => {
+            _hasSelection.Value = _selection.Value.Count != 0;
+        };
     }
 
     public bool IsSelected(ChatEntryId chatEntryId)

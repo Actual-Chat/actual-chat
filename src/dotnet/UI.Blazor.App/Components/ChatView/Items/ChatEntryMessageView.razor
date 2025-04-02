@@ -461,7 +461,7 @@
         }
         return new() {
             InitialValue = initialValue,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
     }
 

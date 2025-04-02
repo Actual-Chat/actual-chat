@@ -11,7 +11,7 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
 
     private string[]? _fontSizes = null;
 
-    public ISyncedState<string> FontSize { get; }
+    public SyncedState<string> FontSize { get; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FontSizeUI))]
     public FontSizeUI(UIHub hub) : base(hub)

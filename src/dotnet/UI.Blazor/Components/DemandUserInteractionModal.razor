@@ -47,7 +47,7 @@
     protected override ComputedState<string>.Options GetStateOptions()
         => new() {
             InitialValue = GetOperationsText(InteractiveUI.ActiveDemand.Value?.Operations),
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {

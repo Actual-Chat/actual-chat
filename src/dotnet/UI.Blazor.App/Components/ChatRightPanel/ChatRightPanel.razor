@@ -33,9 +33,9 @@
             t => new ComputedState<bool>.Options {
                 InitialValue = PanelsUI.Right.IsVisible.Value,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => PanelsUI.Right.IsVisible.Use(cancellationToken).AsTask();
+        => PanelsUI.Right.IsVisible.Use(cancellationToken);
 }

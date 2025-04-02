@@ -20,7 +20,7 @@
             static t => new ComputedState<ChatAudioState>.Options() {
                 InitialValue = ChatAudioState.None,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override Task<ChatAudioState> ComputeState(CancellationToken cancellationToken)

@@ -97,7 +97,8 @@
                 }
             };
             var upsertProfile = new RouletteProfiles_UpsertProfile(Session, profile.Id, Change.Update(profile));
-            profile = await UICommander.Run(upsertProfile, cancellationToken).ConfigureAwait(false);
+            var uiActionResult = await UICommander.Run(upsertProfile, cancellationToken).ConfigureAwait(false);
+            profile = uiActionResult.Value;
         }
 
         if (selectedProfileId.IsEmpty) {

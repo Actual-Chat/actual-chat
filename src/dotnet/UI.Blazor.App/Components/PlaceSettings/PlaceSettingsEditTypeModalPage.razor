@@ -170,7 +170,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
                 InitialValue = ComputedModel.Loading,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
@@ -196,7 +196,8 @@
 
     private async Task OnNewInviteClick() {
         var invite = Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(PlaceId));
-        invite = await UICommander.Run(new Invites_Generate(Session, invite));
+        var uiActionResult = await UICommander.Run(new Invites_Generate(Session, invite));
+        invite = uiActionResult.Value;
         _newInviteId = invite.Id;
     }
 

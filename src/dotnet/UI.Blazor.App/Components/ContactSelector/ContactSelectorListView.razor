@@ -26,7 +26,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Unit>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Unit> ComputeState(CancellationToken cancellationToken) {

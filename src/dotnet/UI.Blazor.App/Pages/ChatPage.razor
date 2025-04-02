@@ -137,7 +137,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Loading,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

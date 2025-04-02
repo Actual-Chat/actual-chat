@@ -6,6 +6,7 @@
 @using ActualChat.Hosting
 @using ActualChat.Kvas
 @using ActualLab.Locking
+@using ActualChat.Pooling
 @using System.Diagnostics.CodeAnalysis
 @{
     var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
@@ -94,7 +95,7 @@
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
-    private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
+    private SharedResourcePool<Symbol, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; } = null!;
     private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -130,8 +131,8 @@
         AttachmentsStorage = null;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
-        ReadPositionState.DisposeSilently();
-        ReadPositionState = null!;
+        ReadPositionStateLease.DisposeSilently();
+        ReadPositionStateLease = null!;
     }
 
     protected override async Task OnInitializedAsync() =>
@@ -144,9 +145,9 @@
             return;
 
         ChatMarkupHub = ChatMarkupHubFactory[chatId];
-        ReadPositionState.DisposeSilently();
-        ReadPositionState = null;
-        ReadPositionState = await ChatUI.LeaseReadPositionState(chatId, default);
+        ReadPositionStateLease.DisposeSilently();
+        ReadPositionStateLease = null;
+        ReadPositionStateLease = await ChatUI.LeaseReadPositionState(chatId, default);
 
         if (JSRef != null!) {
             // Only when rendered
@@ -219,8 +220,9 @@
 
             var readEntryLid = chatEntry.Value.LocalId;
 
-            if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
-                ReadPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+            var readPositionState = ReadPositionStateLease?.Resource;
+            if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
+                readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
             await AttachmentListRef.Clear();
             SearchUI.Clear();
             await clearMarkupTask;

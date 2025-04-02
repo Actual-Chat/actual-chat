@@ -49,7 +49,7 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.Loading,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
     }
 

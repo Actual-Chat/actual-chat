@@ -59,7 +59,10 @@
         _selectedChatIds = StateFactory.NewMutable(
             ImmutableHashSet<ChatId>.Empty,
             StateCategories.Get(type, nameof(SelectedChatIds)));
-        _selectedChatIds.Updated += OnSelectedChatIdsUpdated;
+        _selectedChatIds.Updated += (_, _) => InvokeAsync(
+            () => !State.DisposeToken.IsCancellationRequested
+                ? Changed.InvokeAsync()
+                : Task.CompletedTask);
     }
 
     protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()
@@ -67,7 +70,7 @@
             static t => new ComputedState<IReadOnlyList<ChatInfo>>.Options() {
                 InitialValue = ImmutableList<ChatInfo>.Empty,
                 UpdateDelayer = FixedDelayer.Get(0.25),
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
@@ -89,9 +92,4 @@
             chats = chats.FilterAndOrderBySearchPhrase(searchPhrase);
         return chats.ToList();
     }
-
-    private void OnSelectedChatIdsUpdated(IState<ImmutableHashSet<ChatId>> state, StateEventKind eventKind)
-        => _ = InvokeAsync(() => !State.DisposeToken.IsCancellationRequested
-            ? Changed.InvokeAsync()
-            : Task.CompletedTask);
 }

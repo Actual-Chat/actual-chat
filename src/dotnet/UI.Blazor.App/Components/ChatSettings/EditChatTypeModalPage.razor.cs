@@ -100,7 +100,7 @@ public partial class EditChatTypeModalPage
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
                 InitialValue = ComputedModel.Loading,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken)
@@ -135,7 +135,8 @@ public partial class EditChatTypeModalPage
     private async Task OnNewInviteClick()
     {
         var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
-        invite = await UICommander.Run(new Invites_Generate(Session, invite)).ConfigureAwait(false);
+        var uiActionResult = await UICommander.Run(new Invites_Generate(Session, invite)).ConfigureAwait(false);
+        invite = uiActionResult.Value;
         _newInviteId = invite.Id;
     }
 

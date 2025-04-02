@@ -27,6 +27,7 @@
 
     protected override async Task OnParametersSetAsync() {
         var useCommand = new Invites_Use(Session, InviteId);
-        _useResult = await UICommander.Run(useCommand, CancellationToken.None);
+        var uiActionResult = await UICommander.Run(useCommand, CancellationToken.None);
+        _useResult = uiActionResult.Result;
     }
 }

@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
-    private readonly ISyncedState<UserLanguageSettings> _settings;
+    private readonly SyncedState<UserLanguageSettings> _settings;
 
     private TuneUI TuneUI => Hub.TuneUI;
     private IJSRuntime JS => Hub.JSRuntime();

@@ -12,7 +12,7 @@ public abstract class RequirementComponent : ComputedStateComponent<Unit>
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Unit>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected sealed override Task<Unit> ComputeState(CancellationToken cancellationToken)

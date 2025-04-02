@@ -4,15 +4,15 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>9.8.37</ActualLabFusionVersion>
-    <AspNetCoreVersion>9.0.1</AspNetCoreVersion>
+    <ActualLabFusionVersion>10.0.31</ActualLabFusionVersion>
+    <AspNetCoreVersion>9.0.3</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>9.0.1</EntityFrameworkCoreVersion>
-    <EntityFrameworkCoreNpgsqlVersion>9.0.2</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreVersion>9.0.3</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreNpgsqlVersion>9.0.4</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>9.0.0</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>[9.0.1,)</MicrosoftExtensionsVersion>
-    <NpgsqlVersion>9.0.2</NpgsqlVersion>
+    <MicrosoftExtensionsVersion>[9.0.3,)</MicrosoftExtensionsVersion>
+    <NpgsqlVersion>9.0.3</NpgsqlVersion>
     <RedisVersion>2.8.24</RedisVersion>
     <SignalRVersion>[9.0.0,)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
@@ -20,7 +20,7 @@
     <OpenTelemetryVersion>1.9.0</OpenTelemetryVersion>
     <SentryVersion>4.4.0</SentryVersion>
     <!-- NOTE(AY): v1.20.X is broken, please don't upgrade to it! -->
-    <MemoryPackVersion>1.21.3</MemoryPackVersion>
+    <MemoryPackVersion>1.21.4</MemoryPackVersion>
     <MessagePackVersion>3.1.3</MessagePackVersion>
     <XamarinAndroidLifecycle>2.8.7.1</XamarinAndroidLifecycle>
   </PropertyGroup>
@@ -141,8 +141,8 @@
     <PackageVersion Include="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
     <PackageVersion Include="Grpc.Core" Version="2.46.6" /> <!-- Used by OLTP exporter -->
     <PackageVersion Include="HtmlAgilityPack" Version="1.11.71" />
-    <PackageVersion Include="libphonenumber-csharp" Version="8.13.51" />
-    <PackageVersion Include="MailKit" Version="4.10.0" />
+    <PackageVersion Include="libphonenumber-csharp" Version="9.0.2" />
+    <PackageVersion Include="MailKit" Version="4.11.0" />
     <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Generator" Version="$(MemoryPackVersion)" />
@@ -207,8 +207,8 @@
     <PackageVersion Include="TimeZoneNames" Version="6.0.0" />
     <PackageVersion Include="TimeZoneConverter" Version="6.1.0" />
     <!-- TODO: Remove or migrate from these -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.3.0" />
     <PackageVersion Include="System.Reactive" Version="6.0.0" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
     <!-- OpenSearch client -->
@@ -235,10 +235,12 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.6" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="$(NpgsqlVersion)" />
+
     <!-- Aspire -->
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.0.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.1.0" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.0.0" />
+
     <!-- For the build project -->
     <PackageVersion Include="CliWrap" Version="3.7.1" />
     <PackageVersion Include="Bullseye" Version="4.1.1" />

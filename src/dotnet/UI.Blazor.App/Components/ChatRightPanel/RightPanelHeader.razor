@@ -78,7 +78,7 @@
         => new() {
             InitialValue = Model.Loading,
             UpdateDelayer = FixedDelayer.NextTick,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits StatefulComponentBase<IState<RpcPeerState>>
+@inherits StatefulComponentBase<RpcPeerState>
 @{
     var m = State.Value;
     if (m.Kind == RpcPeerStateKind.Connected)

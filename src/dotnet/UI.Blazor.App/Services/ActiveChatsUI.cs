@@ -9,7 +9,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     public const int MaxActiveChatCount = 3;
 
     private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
-    private readonly IStoredState<ApiArray<ActiveChat>> _activeChats;
+    private readonly StoredState<ApiArray<ActiveChat>> _activeChats;
 
     private IChats Chats => Hub.Chats;
     private UICommander UICommander => Hub.UICommander();

@@ -61,7 +61,7 @@ public sealed class TaskSerializer
             return default;
         }
         catch (Exception e) {
-            return Result.Error<Unit>(e);
+            return Result.NewError<Unit>(e);
         }
     }
 
@@ -78,7 +78,7 @@ public sealed class TaskSerializer
             return await taskFactory.Invoke(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
-            return Result.Error<T>(e);
+            return Result.NewError<T>(e);
         }
     }
 }

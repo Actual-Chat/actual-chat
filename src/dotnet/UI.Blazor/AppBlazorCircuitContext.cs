@@ -31,7 +31,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext, IDispatcherR
     public void Initialize(ComponentBase rootComponent, RenderModeDef renderMode)
     {
         var dispatcher = rootComponent.GetDispatcher();
-        lock (WhenInitializedSource) {
+        lock (Lock) {
             if (WhenInitializedSource.Task.IsCompleted) {
                 if (Dispatcher == dispatcher && RenderMode == renderMode) {
                     RootComponent = rootComponent;
@@ -44,7 +44,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext, IDispatcherR
             RootComponent = rootComponent;
             Dispatcher = dispatcher;
             RenderMode = renderMode;
-            WhenInitializedSource.TrySetResult(default);
+            WhenInitializedSource.TrySetResult();
         }
     }
 }

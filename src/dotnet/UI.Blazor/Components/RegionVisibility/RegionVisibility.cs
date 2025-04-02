@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Components;
 public class RegionVisibility : IDisposable
 {
     private readonly MutableState<bool> _isVisible;
-    private readonly Action<IState<bool>, StateEventKind> _onDependencyUpdated;
+    private readonly Action<State, StateEventKind> _onDependencyUpdated;
 
     public IState<bool> IsDocumentVisible { get; }
     public IState<bool> IsRegionVisible { get; }
@@ -31,6 +31,6 @@ public class RegionVisibility : IDisposable
     private void Update()
         => _isVisible.Value = IsRegionVisible.Value && IsDocumentVisible.Value;
 
-    private void OnDependencyUpdated(IState<bool> state, StateEventKind eventKind)
+    private void OnDependencyUpdated(State state, StateEventKind eventKind)
         => Update();
 }

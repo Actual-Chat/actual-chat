@@ -41,7 +41,7 @@
             static t => new ComputedState<Place?>.Options() {
                 InitialValue = null,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Place?> ComputeState(CancellationToken cancellationToken) {

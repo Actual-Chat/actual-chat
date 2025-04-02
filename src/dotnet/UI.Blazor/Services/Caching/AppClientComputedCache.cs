@@ -37,8 +37,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
         ForceFlushFor = [..Settings.ForceFlushFor]; // Read-only copy
     }
 
-    public async ValueTask<RpcCacheEntry<T>?> Get<T>(
-        ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
+    public async ValueTask<RpcCacheEntry?> Get(ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
     {
         var methodDef = AnyMethodResolver[key.Name];
         if (methodDef == null)
@@ -51,7 +50,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
 
             var resultList = methodDef.ResultListType.Factory.Invoke();
             ArgumentSerializer.Deserialize(ref resultList, methodDef.AllowResultPolymorphism, cacheValue.Data);
-            return new(key, cacheValue, resultList.Get0<T>());
+            return new(key, cacheValue, resultList.Get0Untyped());
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Cached result read failed");

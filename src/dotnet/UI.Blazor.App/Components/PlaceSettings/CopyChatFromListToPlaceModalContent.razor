@@ -33,7 +33,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<List<Contact?>>.Options() {
                 InitialValue = [],
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<List<Contact?>> ComputeState(CancellationToken cancellationToken) {

@@ -94,7 +94,10 @@
         _selectedUserIds = StateFactory.NewMutable(
             ImmutableHashSet<UserId>.Empty,
             StateCategories.Get(GetType(), nameof(SelectedUserIds)));
-        _selectedUserIds.Updated += OnSelectedUserIdsUpdated;
+        _selectedUserIds.Updated += (_, _) => InvokeAsync(
+            () => !DisposeToken.IsCancellationRequested
+                ? Changed.InvokeAsync()
+                : Task.CompletedTask);
 
         var userIds = await ListSource.ListCandidateUserIds(DisposeToken);
 
@@ -117,11 +120,6 @@
             .ToArray();
         FilteredItems = AllItems;
     }
-
-    private void OnSelectedUserIdsUpdated(IState<ImmutableHashSet<UserId>> state, StateEventKind eventKind)
-        => _ = InvokeAsync(() => !DisposeToken.IsCancellationRequested
-            ? Changed.InvokeAsync()
-            : Task.CompletedTask);
 
     public void Dispose()
         => DisposeTokenSource.CancelAndDisposeSilently();

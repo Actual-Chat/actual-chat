@@ -104,7 +104,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             InitialValue = new(AccountUI.OwnAccount.Value),
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {

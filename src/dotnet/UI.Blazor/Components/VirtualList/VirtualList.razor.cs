@@ -154,7 +154,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         return new ComputedState<VirtualListData<TItem>>.Options {
             InitialValue = initialData,
             UpdateDelayer = FixedDelayer.NextTick,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
     }
 

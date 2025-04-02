@@ -54,7 +54,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options {
                 InitialValue = ComputedModel.None,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {

@@ -136,8 +136,8 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         }
         catch (Exception e) {
             return e.IsCancellationOf(cancellationToken)
-                ? Result.Value<ChatEntryLanguage?>(null)
-                : Result.Error<ChatEntryLanguage?>(e);
+                ? Result.New<ChatEntryLanguage?>(null)
+                : Result.NewError<ChatEntryLanguage?>(e);
         }
 
         async Task<Result<ChatEntryLanguage?>> Change()
@@ -154,7 +154,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 
             if (change.IsCreate(out var chatEntryLanguage)) {
                 if (existing != null)
-                    return Result.Value<ChatEntryLanguage?>(existing);
+                    return Result.New<ChatEntryLanguage?>(existing);
 
                 await Lock(dbContext, id, cancellationToken).ConfigureAwait(false);
                 chatEntryLanguage = chatEntryLanguage with {
@@ -178,7 +178,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             }
             else {
                 if (dbChatEntryLanguage == null)
-                    return Result.Value<ChatEntryLanguage?>(null);
+                    return Result.New<ChatEntryLanguage?>(null);
 
                 await Lock(dbContext, id, cancellationToken).ConfigureAwait(false);
                 dbChatEntryLanguage.RequireVersion(expectedVersion);
@@ -186,7 +186,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             }
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return Result.Value<ChatEntryLanguage?>(dbChatEntryLanguage.ToModel());
+            return Result.New<ChatEntryLanguage?>(dbChatEntryLanguage.ToModel());
         }
     }
 

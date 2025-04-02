@@ -45,10 +45,10 @@
         Invite invite;
         try {
             invite = await Commander.Call(useCommand);
-            _useResult = Result.Value(invite);
+            _useResult = Result.New(invite);
         }
         catch (Exception e) {
-            _useResult = Result.Error<Invite>(e); // We show the error on the page, not with error toasts.
+            _useResult = Result.NewError<Invite>(e); // We show the error on the page, not with error toasts.
             return;
         }
 

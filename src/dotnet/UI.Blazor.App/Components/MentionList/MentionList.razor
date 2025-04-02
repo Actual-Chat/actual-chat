@@ -79,7 +79,7 @@
             static t => new ComputedState<MentionSearchResult[]>.Options() {
                 InitialValue = [],
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<MentionSearchResult[]> ComputeState(CancellationToken cancellationToken) {

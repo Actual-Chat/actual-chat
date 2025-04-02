@@ -47,7 +47,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Chat.Id.Kind is ChatKind.Peer ? Model.EnabledUnread : Model.Unavailable,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

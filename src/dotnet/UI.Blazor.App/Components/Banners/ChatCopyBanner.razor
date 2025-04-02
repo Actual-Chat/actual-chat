@@ -31,13 +31,12 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
                 InitialValue = Model.Hidden,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

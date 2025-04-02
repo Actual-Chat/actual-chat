@@ -19,8 +19,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
         Log = services.LogFor(GetType());
 
         KubeInfo = services.KubeInfo();
-        _discoveryWorkerPool = new SharedResourcePool<KubeService, EndpointDiscoveryWorker>(
-            CreateEndpointDiscoveryWorker) {
+        _discoveryWorkerPool = new SharedResourcePool<KubeService, EndpointDiscoveryWorker>(CreateEndpointDiscoveryWorker) {
             ResourceDisposeDelay = TimeSpan.FromDays(3),
         };
     }
@@ -34,7 +33,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
     public ValueTask<Kube> RequireKube(CancellationToken cancellationToken = default)
         => KubeInfo.RequireKube(cancellationToken);
 
-    public async ValueTask<IMutableStateLease<KubeServiceEndpoints>> GetServiceEndpoints(
+    public async ValueTask<SharedResourcePool<KubeService, EndpointDiscoveryWorker>.Lease> GetServiceEndpoints(
         KubeService kubeService,
         CancellationToken cancellationToken)
     {
@@ -50,11 +49,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
 
                 await snapshot.WhenUpdated().WaitAsync(cancellationToken).ConfigureAwait(false);
             }
-            return new MutableStateLease<
-                KubeServiceEndpoints,
-                KubeService,
-                MutableState<KubeServiceEndpoints>,
-                EndpointDiscoveryWorker>(lease, lease.Resource._state);
+            return lease;
         }
         catch {
             lease.Dispose();
@@ -78,10 +73,10 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
 
     // Nested types
 
-    private sealed class EndpointDiscoveryWorker : WorkerBase
+    public sealed class EndpointDiscoveryWorker : WorkerBase
     {
         // ReSharper disable once InconsistentNaming
-        internal readonly MutableState<KubeServiceEndpoints> _state;
+        private readonly MutableState<KubeServiceEndpoints> _state;
 
         public IState<KubeServiceEndpoints> State => _state;
 

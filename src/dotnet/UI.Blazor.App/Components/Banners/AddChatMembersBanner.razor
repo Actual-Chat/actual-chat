@@ -23,8 +23,7 @@
 @code {
     private static readonly TimeSpan DismissDuration = TimeSpan.FromDays(7);
 
-    private ISyncedState<Moment> _dismissedAt = null!;
-    private ILogger? _log;
+    private SyncedState<Moment> _dismissedAt = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
@@ -35,7 +34,8 @@
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private ModalUI ModalUI => Hub.ModalUI;
     private MomentClockSet Clocks => Hub.Clocks();
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
@@ -51,7 +51,7 @@
             static t => new ComputedState<bool>.Options() {
                 InitialValue = false,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {

@@ -20,7 +20,7 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
                 InitialValue = Model.Loading,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

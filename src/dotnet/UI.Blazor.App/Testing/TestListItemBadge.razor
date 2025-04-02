@@ -16,7 +16,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<TestListItem>.Options() {
                 InitialValue = new(0, "Loading..."),
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override Task<TestListItem> ComputeState(CancellationToken cancellationToken)

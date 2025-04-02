@@ -17,5 +17,5 @@
     private SearchUI SearchUI => Hub.SearchUI;
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => SearchUI.IsSearchModeOn.Use(cancellationToken).AsTask();
+        => SearchUI.IsSearchModeOn.Use(cancellationToken);
 }

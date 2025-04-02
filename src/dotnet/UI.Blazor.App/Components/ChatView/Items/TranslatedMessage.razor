@@ -23,7 +23,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Markup>.Options {
                 InitialValue = Markup, // show original text immediately
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Markup> ComputeState(CancellationToken cancellationToken) {

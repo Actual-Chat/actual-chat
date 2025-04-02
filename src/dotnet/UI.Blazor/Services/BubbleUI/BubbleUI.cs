@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost>
 {
     private readonly Acceptor<BubbleHost> _hostAcceptor = new(true);
-    private readonly ISyncedState<UserBubbleSettings> _settings;
+    private readonly SyncedState<UserBubbleSettings> _settings;
 
     private AccountUI AccountUI => Hub.AccountUI;
     Acceptor<BubbleHost> IHasAcceptor<BubbleHost>.Acceptor => _hostAcceptor;

@@ -145,7 +145,7 @@
         return new() {
             InitialValue = new (),
             UpdateDelayer = FixedDelayer.MinDelay,
-            Category = ComputedStateComponent.GetStateCategory(GetType()),
+            Category = GetStateCategory(GetType()),
         };
     }
 

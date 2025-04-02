@@ -37,8 +37,7 @@
 
 
 @code {
-    private IStoredState<Moment> _dismissedAt = null!;
-    private ILogger? _log = null;
+    private StoredState<Moment> _dismissedAt = null!;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
@@ -49,7 +48,8 @@
     private NotificationUI NotificationUI => Hub.NotificationUI;
     private UICommander UICommander => Hub.UICommander();
     private IJSRuntime JS => Hub.JSRuntime();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override void OnInitialized()
         => _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, "Permissions.Notifications.DismissedAt"));
@@ -59,7 +59,7 @@
             static t => new ComputedState<Model>.Options() {
                 InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

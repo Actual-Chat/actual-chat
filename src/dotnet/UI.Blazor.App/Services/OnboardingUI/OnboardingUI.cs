@@ -7,8 +7,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
 {
     private static readonly SemaphoreSlim Lock = new (1);
-    private readonly ISyncedState<UserOnboardingSettings> _userSettings;
-    private readonly IStoredState<LocalOnboardingSettings> _localSettings;
+    private readonly SyncedState<UserOnboardingSettings> _userSettings;
+    private readonly StoredState<LocalOnboardingSettings> _localSettings;
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
 

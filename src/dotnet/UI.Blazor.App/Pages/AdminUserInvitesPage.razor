@@ -22,7 +22,7 @@
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<List<Invite>>.Options() {
                 InitialValue = [],
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override async Task<List<Invite>> ComputeState(CancellationToken cancellationToken)
