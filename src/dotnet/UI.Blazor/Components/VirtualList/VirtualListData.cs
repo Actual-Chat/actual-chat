@@ -23,6 +23,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
     public int Index { get; init; }
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
+    public int? EstimatedCount { get; init; }
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public string? ScrollToKey { get; init; }

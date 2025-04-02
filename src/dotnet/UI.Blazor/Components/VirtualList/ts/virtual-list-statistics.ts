@@ -1,10 +1,6 @@
 import { clamp } from 'math';
 
 const DefaultItemSize: number = 48;
-const MinItemSize: number = 12;
-const MaxItemSize: number = 240;
-const ItemCountResetThreshold: number = 1000;
-const ItemCountResetValue: number = 900;
 const MinResponseFulfillmentRatio: number = 0.25;
 const MaxResponseFulfillmentRatio: number = 2;
 const ResponseExpectedCountSumResetThreshold: number = 1000;
@@ -17,10 +13,9 @@ export class VirtualListStatistics {
     private _responseExpectedCountSum: number = 0;
 
     public get itemSize(): number {
-        const num = this._itemCount == 0
+        return this._itemCount == 0
             ? DefaultItemSize
             : this._itemSizeSum / this._itemCount;
-        return clamp(num, MinItemSize, MaxItemSize);
     }
 
     public get responseFulfillmentRatio(): number {
@@ -36,11 +31,6 @@ export class VirtualListStatistics {
 
         this._itemSizeSum += size;
         this._itemCount++;
-        if (this._itemCount < ItemCountResetThreshold)
-            return;
-
-        this._itemSizeSum *= ItemCountResetValue / this._itemCount;
-        this._itemCount = ItemCountResetValue;
     }
 
     public addResponse(actualCount: number, expectedCount: number): void {
