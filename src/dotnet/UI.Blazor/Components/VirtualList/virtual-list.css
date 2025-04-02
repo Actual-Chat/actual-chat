@@ -88,4 +88,5 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
 
 .virtual-list .skeleton-container {
     @apply flex flex-nowrap items-stretch content-start justify-start flex-col;
+    overflow-anchor: none;
 }

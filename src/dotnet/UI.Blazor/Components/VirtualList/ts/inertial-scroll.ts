@@ -10,14 +10,7 @@ export class InertialScroll {
     public constructor(private readonly element: HTMLElement) {
     }
 
-    private get isRequired() {
-        return DeviceInfo.isIos && DeviceInfo.isWebKit;
-    }
-
     public freeze(): void {
-        if (!this.isRequired)
-            return;
-
         debugLog?.log('-> freeze()');
         if (this.count <= 0) {
             debugLog?.log('backing overflow=', this.element.style.overflow, 'up because freezeCount=', this.count);
@@ -29,9 +22,6 @@ export class InertialScroll {
     }
 
     public unfreeze(): void {
-        if (!this.isRequired)
-            return;
-
         debugLog?.log('-> unfreeze()');
         if (--this.count <= 0) {
             debugLog?.log('restoring overflow to ', this.element.style.overflow, 'because freezeCount=', this.count);

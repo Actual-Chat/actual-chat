@@ -59,14 +59,18 @@ export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
     return true;
 }
 
-let readRafPromise: Promise<void> | null = null;
+let readRafPromise: Promise<boolean> | null = null;
 
-export function fastReadRaf(): Promise<void> {
+export function fastReadRaf(key: string = null): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     if (readRafPromise)
         return readRafPromise;
 
-    readRafPromise = new Promise<void>((resolve) => fastRaf(() => resolve()));
+    readRafPromise = new Promise<boolean>((resolve) => {
+        const hasScheduled = fastRaf(() => resolve(true), key);
+        if (!hasScheduled)
+            resolve(false);
+    });
     void readRafPromise.then(() => {
         readRafPromise = null;
     });
@@ -75,14 +79,18 @@ export function fastReadRaf(): Promise<void> {
 }
 
 
-let writeRafPromise: Promise<void> | null = null;
+let writeRafPromise: Promise<boolean> | null = null;
 
-export function fastWriteRaf(): Promise<void> {
+export function fastWriteRaf(key: string = null): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     if (writeRafPromise)
         return writeRafPromise;
 
-    writeRafPromise = new Promise<void>((resolve) => fastRaf({ write: () => resolve()}));
+    writeRafPromise = new Promise<boolean>((resolve) => {
+        const hasScheduled = fastRaf({ write: () => resolve(true), key });
+        if (!hasScheduled)
+            resolve(false);
+    });
     void writeRafPromise.then(() => {
         writeRafPromise = null;
     });
