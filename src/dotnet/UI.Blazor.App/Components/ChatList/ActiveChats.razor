@@ -20,13 +20,12 @@
 </div>
 
 @code {
-    private ILogger? _log;
-
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
     protected override void OnInitialized()
@@ -37,7 +36,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new(ImmutableList<Chat>.Empty, true),
+            InitialValue = Model.Loading,
             Category = GetStateCategory(GetType()),
         };
 
@@ -46,7 +45,7 @@
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
                 .Select(ac => Chats.Get(Session, ac.ChatId, cancellationToken))
-                .Collect()
+                .Collect(cancellationToken)
                 .ConfigureAwait(false))
             .SkipNullItems()
             .ToList();
@@ -56,7 +55,10 @@
 
     // Nested types
 
-    public record struct Model(
+    public sealed record Model(
         IReadOnlyList<Chat> Chats,
-        bool IsLoading = false);
+        bool IsLoading = false
+    ) {
+        public static readonly Model Loading = new(ImmutableList<Chat>.Empty, true);
+    }
 }

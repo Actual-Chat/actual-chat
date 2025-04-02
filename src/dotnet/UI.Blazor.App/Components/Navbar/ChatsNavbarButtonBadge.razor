@@ -19,6 +19,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
+                InitialValue = new(),
                 UpdateDelayer = FixedDelayer.Get(0.1),
                 Category = GetStateCategory(t),
             });
@@ -33,5 +34,5 @@
 
     // Nested types
 
-    public record struct Model(Trimmed<int> Count);
+    public sealed record Model(Trimmed<int> Count = default);
 }

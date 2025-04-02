@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public readonly record struct FailedRequirementSet(
+public sealed record FailedRequirementSet(
     ImmutableDictionary<RequirementComponent, Exception> Items)
 {
     public static readonly FailedRequirementSet Empty = new(ImmutableDictionary<RequirementComponent, Exception>.Empty);

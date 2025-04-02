@@ -2,12 +2,12 @@ namespace ActualChat.UI.Blazor.Components;
 
 public readonly record struct ShareRequest
 {
-    private readonly string? _text;
-
+    [field: AllowNull, MaybeNull]
     public string Text {
-        get => _text ?? "";
-        init => _text = value;
+        get => field ?? "";
+        init;
     }
+
     public LocalUrl? Link { get; init; }
 
     public ShareRequest(LocalUrl link)
@@ -16,6 +16,7 @@ public readonly record struct ShareRequest
         Link = link;
     }
 
+    // ReSharper disable once ConvertToPrimaryConstructor
     public ShareRequest(string text, LocalUrl? link = null)
     {
         Text = text;
@@ -25,10 +26,10 @@ public readonly record struct ShareRequest
     // WithXxx
 
     public ShareRequest WithText(string text)
-        => this with { Text = text };
+        => new() { Text = text };
 
     public ShareRequest WithTextUnlessEmpty(string text)
-        => text.IsNullOrEmpty() ? this : this with { Text = text };
+        => text.IsNullOrEmpty() ? this : new() { Text = text };
 
     // HasXxx
 
