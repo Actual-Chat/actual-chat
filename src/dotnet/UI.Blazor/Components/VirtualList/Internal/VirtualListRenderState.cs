@@ -11,6 +11,7 @@ public sealed class VirtualListRenderState
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
     public int Count { get; init; }
+    public int? EstimatedCount { get; init; }
 
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }

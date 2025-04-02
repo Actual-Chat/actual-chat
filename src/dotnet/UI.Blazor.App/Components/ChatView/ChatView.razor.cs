@@ -416,6 +416,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         var result = new VirtualListData<ChatMessage>(tiles) {
             Index = renderedData.Index + 1,
+            EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = navEntryId != null && mustScrollToEntry ? navEntryId.Value.Format() : null,

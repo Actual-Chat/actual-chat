@@ -62,7 +62,9 @@ export class VirtualList {
     private whenRequestDataCompleted: PromiseSource<void> | null = null;
     private pivots: Pivot[] = [];
     private minStart: number | null = null;
+    private isStartKnown: boolean = false;
     private maxEnd: number | null = null;
+    private isEndKnown: boolean = false;
     private windowScrollTop: number = 0;
 
     private renderStartedAt: number | null = null;
@@ -210,6 +212,7 @@ export class VirtualList {
             keyRange: new Range<string>('', ''),
             beforeCount: null,
             afterCount: null,
+            estimatedCount: null,
             count: 0,
             hasVeryFirstItem: false,
             hasVeryLastItem: false,
@@ -270,12 +273,17 @@ export class VirtualList {
         this.sizeCache.clear();
         this.orderedItems = [];
         this.pivots = [];
+        this.minStart = null;
+        this.maxEnd = null;
+        this.isStartKnown = false;
+        this.isEndKnown = false;
         this.renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
             keyRange: new Range<string>('', ''),
             beforeCount: null,
             afterCount: null,
+            estimatedCount: null,
             count: 0,
             hasVeryFirstItem: false,
             hasVeryLastItem: false,
@@ -299,7 +307,7 @@ export class VirtualList {
         return this.unmeasuredItems.size > 0 || !this.orderedItems;
     }
 
-    private get fullRange(): NumberRange | null {
+    private get knownRange(): NumberRange | null {
         return this.minStart == null || this.maxEnd == null
             ? null
             : new NumberRange(this.minStart, this.maxEnd);
@@ -1063,15 +1071,38 @@ export class VirtualList {
                     this.ensureItemRangeCalculated();
 
                 const { start, end, size: containerSize } = this.itemRange ?? new NumberRange(0,0);
-                const fullRange = this.fullRange ?? new NumberRange(0,0);
+                const oldTotalSize = this.wrapperRef.offsetHeight;
 
                 scrollTop = this.ref.scrollTop;
 
                 if (rs.beforeCount !== null && rs.afterCount !== null) {
                     spacerSize = Math.floor(rs.beforeCount * this.statistics.itemSize);
-                    endSpacerSize =  Math.floor(rs.afterCount *this.statistics.itemSize);
+                    endSpacerSize =  Math.floor(rs.afterCount * this.statistics.itemSize);
                 }
                 else {
+                    const knownRange = this.knownRange ?? new NumberRange(0,0);
+                    const estimatedTotalSize = rs.estimatedCount
+                        ? Math.floor(rs.estimatedCount * this.statistics.itemSize)
+                        : null;
+
+                    let fullRange: NumberRange;
+                    if (this.isStartKnown && this.isEndKnown)
+                        fullRange = knownRange;
+                    else if (this.isStartKnown) {
+                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size, oldTotalSize);
+                        fullRange = new NumberRange(knownRange.start, fullRangeSize);
+                    }
+                    else if (this.isEndKnown) {
+                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size, oldTotalSize);
+                        fullRange = new NumberRange(knownRange.end - fullRangeSize, knownRange.end);
+                    }
+                    else {
+                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size, oldTotalSize);
+                        fullRange = this.defaultEdge === VirtualListEdge.End
+                            ? new NumberRange(knownRange.end - fullRangeSize, knownRange.end)
+                            : new NumberRange(knownRange.start, knownRange.start + fullRangeSize)
+                    }
+
                     spacerSize = clamp(start - fullRange.start, 0, fullRange.size - containerSize);
                     endSpacerSize = clamp(fullRange.end - end - endAnchorSize, 0, fullRange.size - containerSize);
                 }
@@ -1083,8 +1114,6 @@ export class VirtualList {
                     spacerSize = 0;
                 if (rs.hasVeryLastItem)
                     endSpacerSize = 0;
-
-                const oldTotalSize = this.wrapperRef.offsetHeight;
 
                 totalSize = containerSize
                     + spacerSize
@@ -1186,7 +1215,7 @@ export class VirtualList {
                 const showSpacer = spacerSize > 0;
                 const showEndSpacer = endSpacerSize > 0;
 
-                if (DeviceInfo.isChromium && totalSizeDiff > 0 && this.isScrolling) {
+                if (DeviceInfo.isChromium && totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
                     // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
                     this.turnOffScrollingCallback = () => {
                         fastRaf({
@@ -1321,7 +1350,11 @@ export class VirtualList {
                 orderedItems[orderedItems.length - 1].range.end);
         }
         this.minStart = Math.min(this.minStart ?? Number.MAX_SAFE_INTEGER, this.itemRange.start);
+        if (this.renderState.hasVeryFirstItem)
+            this.isStartKnown = true;
         this.maxEnd = Math.max(this.maxEnd ?? Number.MIN_SAFE_INTEGER, this.itemRange.end);
+        if (this.renderState.hasVeryLastItem)
+            this.isEndKnown = true;
 
         this.shouldRecalculateItemRange = false;
         return true;
@@ -1330,7 +1363,7 @@ export class VirtualList {
     private resetItemRange(canUseQueryRange: boolean = false): number | null {
         console.warn(`resetItemRange:`, canUseQueryRange);
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
-        const fullRangeSize = this.fullRange?.size;
+        const fullRangeSize = this.knownRange?.size;
 
         if (orderedItems.length === 0)
             return null;
@@ -1382,10 +1415,13 @@ export class VirtualList {
             if (fullRangeSize) {
                 this.minStart = 0 - fullRangeSize - endAnchorSize;
                 this.maxEnd = 0  - endAnchorSize;
+                // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
             }
             else {
                 this.minStart = orderedItems[0].range.start;
                 this.maxEnd = orderedItems[orderedItems.length - 1].range.end;
+                this.isEndKnown = rs.hasVeryLastItem;
+                this.isStartKnown = rs.hasVeryFirstItem;
             }
             return cornerstoneItem.range.end;
         }
@@ -1437,10 +1473,13 @@ export class VirtualList {
             if (fullRangeSize) {
                 this.minStart = 0;
                 this.maxEnd = fullRangeSize + endAnchorSize;
+                // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
             }
             else {
                 this.minStart = orderedItems[0].range.start;
                 this.maxEnd = orderedItems[orderedItems.length - 1].range.end;
+                this.isEndKnown = rs.hasVeryLastItem;
+                this.isStartKnown = rs.hasVeryFirstItem;
             }
             return cornerstoneItem.range.start;
         }
