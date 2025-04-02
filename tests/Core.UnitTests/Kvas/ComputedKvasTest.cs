@@ -1,5 +1,6 @@
 using ActualChat.Core.UnitTests.Kvas.Services;
 using ActualChat.Kvas;
+using ActualLab.Generators;
 using CommunityToolkit.HighPerformance.Buffers;
 using MemoryPack;
 
@@ -148,6 +149,32 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         await Task.Delay(timeout);
         s1.Value.Should().Be(s2.Value);
         s1.Value.Origin.Should().Be(s2.Value.Origin);
+    }
+
+    [Theory] // TODO(AY): sometimes fails
+    [InlineData(1)]
+    [InlineData(11)]
+    [InlineData(111)]
+    [InlineData(1111)]
+    public async Task WhenShouldWaitForValue(int propertyCount)
+    {
+        var rsg = new RandomSymbolGenerator(alphabet: Alphabet.AlphaNumericLower);
+        var keyPrefix = rsg.Next(5);
+        var services = CreateServices();
+        var kvas = services.GetRequiredService<IKvas>();
+        var stateFactory = services.StateFactory();
+        var updateDelayer = FixedDelayer.NextTick;
+        var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 5);
+        for (int i = 0; i < propertyCount; i++) {
+            using var cts = new CancellationTokenSource(timeout);
+            var cancellationToken = cts.Token;
+            using var state = stateFactory.NewKvasSynced<bool>(new (kvas, $"{keyPrefix}.b{i}") {
+                InitialValue = false,
+                UpdateDelayer = updateDelayer,
+            });
+            state.Value = true;
+            await state.Computed.When(x => x, cancellationToken);
+        }
     }
 }
 
