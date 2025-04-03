@@ -23,6 +23,7 @@
 
 .virtual-list > .c-wrapper {
     @apply relative w-full shrink-0;
+    overflow: clip;
     overflow-anchor: none;
 }
 
@@ -59,6 +60,7 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
     @apply absolute w-full;
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     list-style-type: none;
+    overflow: clip;
     overflow-anchor: none;
     will-change: transform;
 }
@@ -78,7 +80,8 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
     overflow-anchor: none;
     min-height: 1.5rem;
 }
-.virtual-list > ul.c-virtual-container > li.item:has(.conversation-header) {
+
+.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-header) {
     @apply sticky top-0 z-10;
 }
 

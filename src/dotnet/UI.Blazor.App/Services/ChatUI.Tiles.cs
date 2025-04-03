@@ -57,6 +57,7 @@ public partial class ChatUI
         while (true) {
             var idTiles = GetIdTilesToLoad(dataQuery);
             var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
+            var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
             foreach (var idTile in idTiles) {
                 var lastReadEntryLid = shownReadyEntryLid;
                 if (lastReadEntryLid < idTile.Range.Start)
@@ -73,6 +74,23 @@ public partial class ChatUI
                         lastReadEntryLid,
                         cancellationToken)
                     .ConfigureAwait(false);
+                if (tile.Items.Count == 0)
+                    continue;
+
+                if (expandedConversations.Count > alreadyAddedConversationHeaders.Count) {
+                    // Find conversation headers
+                    var filteredItems = tile.Items
+                        .Where(chatMessage => chatMessage is not ConversationHeader conversationHeader
+                            || alreadyAddedConversationHeaders.Add(conversationHeader.Conversation.Id))
+                        .ToList();
+                    if (filteredItems.Count != tile.Items.Count)
+                        tile = tile with { Items = filteredItems };
+                }
+                else if (alreadyAddedConversationHeaders.Count > 0)
+                    // Skip first conversation header if already added
+                    if (tile.Items[0] is ConversationHeader conversationHeader && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation.Id))
+                        tile = tile with { Items = tile.Items.Skip(1).ToList() };
+
                 if (tile.Items.Count == 0)
                     continue;
 
@@ -190,6 +208,7 @@ public partial class ChatUI
             : idRange;
         var idRangesToSkip = Array.Empty<Range<long>>();
         var conversations = Array.Empty<Conversation>();
+        var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         if (showConversations) {
             var conversationIdTile = ConversationTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
             var conversationTile = await Conversations
@@ -306,7 +325,7 @@ public partial class ChatUI
                     }
 
                     // Conversation header goes before the date line
-                    if (expandedConversation != null && entry.Id.LocalId == expandedConversation.Id.StartEntryLid) {
+                    if (expandedConversation != null && alreadyAddedConversationHeaders.Add(expandedConversation.Id)) {
                         var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
                             ReplacementKind = ChatMessageReplacementKind.ConversationStart,
                             Date = date,
