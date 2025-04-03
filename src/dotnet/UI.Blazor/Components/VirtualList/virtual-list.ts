@@ -1223,7 +1223,10 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     endSpacerSize = -offset;
-                    spacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
+                    if (rs.hasVeryFirstItem)
+                        spacerSize = 0;
+                    else
+                        spacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
                 }
                 else {
                     offset = start;
@@ -1266,7 +1269,11 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     spacerSize = offset;
-                    endSpacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
+                    endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
+                    if (rs.hasVeryLastItem)
+                        endSpacerSize = 0;
+                    else
+                        endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
                 }
             },
             write: () => {
