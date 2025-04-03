@@ -562,7 +562,7 @@ export class VirtualList {
         if (!key)
             return;
 
-        this.scheduleUpdateCurrentPivots(key);
+        this.updateCurrentPivots(key);
     };
 
     private onSkeletonVisibilityChange = (
