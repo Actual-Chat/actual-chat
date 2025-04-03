@@ -12,6 +12,7 @@ import { Log } from 'logging';
 import { fastRaf, fastReadRaf } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
 import { clamp } from 'math';
+import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
@@ -562,7 +563,10 @@ export class VirtualList {
         if (!key)
             return;
 
-        this.updateCurrentPivots(key);
+        if (BrowserInfo.appKind === 'Wasm')
+            this.updateCurrentPivots(key); // Required to do it synchronously at WASM
+        else
+            this.scheduleUpdateCurrentPivots(key);
     };
 
     private onSkeletonVisibilityChange = (
@@ -1129,7 +1133,7 @@ export class VirtualList {
                 else {
                     const knownRange = this.knownRange ?? new NumberRange(0,0);
                     const estimatedTotalSize = rs.estimatedCount
-                        ? Math.floor(rs.estimatedCount * this.statistics.itemSize)
+                        ? clamp(Math.floor(rs.estimatedCount * this.statistics.itemSize), knownRange.size, 1E6)
                         : null;
 
                     let fullRange: NumberRange;
@@ -1169,14 +1173,6 @@ export class VirtualList {
 
                 totalSizeDiff = totalSize - oldTotalSize;
 
-                console.warn(`SIZE: `, oldTotalSize, totalSize, scrollTop);
-
-                // if (DeviceInfo.isChromium && totalSizeDiff > 0)
-                //     this.inertialScroll.freeze();
-
-                // if (!rs.hasVeryFirstItem && /*!rs.hasVeryLastItem &&*/ rs.beforeCount == null && rs.afterCount == null)
-                //     totalSize = Math.max(86000, totalSize);
-
                 if (this.defaultEdge === VirtualListEdge.End) {
                     if (scrollMetadata?.shouldUseSmoothScroll && scrollMetadata?.scrollType === 'last-item') {
                         // Find previous item end to make smooth scroll possible with fallback to the latest one
@@ -1189,7 +1185,7 @@ export class VirtualList {
 
                     if (interactivePivot) {
                         let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
-                        if (!interactiveItemRef) {
+                        if (!interactiveItemRef && interactivePivot.range) {
                             // Interactive item is not found - let's find nearest one
                             const interactiveRange = interactivePivot.range;
                             const interactiveItemIndex = binarySearch(this.orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
@@ -1223,6 +1219,9 @@ export class VirtualList {
                         scrollTopOffset += offset;
                     }
 
+                    // Adjust spacer size to prevent overlap with container
+                    endSpacerSize = -offset;
+                    spacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
                 }
                 else {
                     offset = start;
@@ -1262,6 +1261,10 @@ export class VirtualList {
                         offset = this.resetItemRange();
                         scrollTopOffset -= offset;
                     }
+
+                    // Adjust spacer size to prevent overlap with container
+                    spacerSize = offset;
+                    endSpacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
                 }
             },
             write: () => {
