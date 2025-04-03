@@ -75,6 +75,8 @@
                             <video
                                 class="swiper-active-video video-original"
                                 playsinline
+                                data-width="@attachment.Media.Width"
+                                data-height="@attachment.Media.Height"
                                 width="auto"
                                 height="auto"
                                 preload="auto">
@@ -122,7 +124,7 @@
                     </swiper-slide>
                 } else if (attachment.IsSupportedVideo()) {
                     <swiper-slide>
-                        <VideoAttachmentThumbnail Attachment="attachment"/>
+                        <VideoAttachmentThumbnail Attachment="@attachment"/>
                     </swiper-slide>
                 }
             }

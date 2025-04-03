@@ -10,19 +10,11 @@ class ImageSkeleton extends LitElement {
         display: block;
       }
 
-      :host:has(.video) {
-          width: 100%;
-      }
-      :host(.show-image-original) .video {
-          display: block;
-      }
-
       :host(.show-image-skeleton) {
         animation: pulse 2s infinite;
         background-color: var(--background-05);
       }
 
-      :host(.show-image-skeleton) .video,
       :host(.show-image-skeleton) .image,
       :host(.show-image-thumbnail) .image,
       :host(.show-image-skeleton) .image-thumbnail,
@@ -52,16 +44,7 @@ class ImageSkeleton extends LitElement {
         width: 100%;
         height: 100%;
         border-radius: inherit;
-      }
-
-      .image-thumbnail {
-          object-fit: cover;
-      }
-
-      .video {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+        object-fit: cover;
       }
 
       @keyframes pulse {
@@ -78,7 +61,6 @@ class ImageSkeleton extends LitElement {
     @property() src: string;
     @property() thumbnailSrc: string;
     @property() title: string = "";
-    @property() isVideo: boolean = false;
 
     private _imageRef: Ref<HTMLImageElement> = createRef();
 
@@ -122,21 +104,6 @@ class ImageSkeleton extends LitElement {
                     @load='${this.thumbnailLoaded}'
                 />
             `;
-        } else if (this.isVideo) {
-            return html`
-                <img
-                    part='image'
-                    ${ref(this._imageRef)}
-                    class='video'
-                    crossorigin='${isSubDomain ? nothing : 'anonymous'}'
-                    draggable='false'
-                    alt=''
-                    .src='${this.src}'
-                    .title='${this.title}'
-                    @load='${this.imageLoaded}'
-                    @error='${this.reloadImage}'
-                />
-            `;
         } else {
             return html`
                 <img
@@ -157,9 +124,6 @@ class ImageSkeleton extends LitElement {
 
     async reloadImage(): Promise<void> {
         this.classList.remove('show-image-original');
-        if (!this.isVideo) {
-            this.classList.remove('show-image-thumbnail');
-        }
         this.classList.add('show-image-skeleton');
 
         const isSubDomain = this.isSubDomain(this.src);
@@ -179,16 +143,10 @@ class ImageSkeleton extends LitElement {
     }
 
     async imageLoaded(): Promise<void> {
-        if (this.isVideo) {
-            this.classList.remove('show-image-skeleton');
-            if (!this.classList.contains('show-image-original'))
-                this.classList.add('show-image-original');
-        } else {
-            this.classList.remove('show-image-skeleton');
-            this.classList.remove('show-image-thumbnail');
-            if (!this.classList.contains('show-image-original'))
-                this.classList.add('show-image-original');
-        }
+        this.classList.remove('show-image-skeleton');
+        this.classList.remove('show-image-thumbnail');
+        if (!this.classList.contains('show-image-original'))
+            this.classList.add('show-image-original');
     }
 
     async thumbnailLoaded(): Promise<void> {

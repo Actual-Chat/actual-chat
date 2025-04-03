@@ -17,7 +17,7 @@
        @onclick="@(() => VisualMediaViewerUI.Show(url, ChatEntry))"
        @onclick:preventDefault="true">
         @if (attachment.IsSupportedVideo()) {
-            <VideoAttachmentThumbnail Attachment="attachment"/>
+            <VideoAttachmentThumbnail Attachment="@attachment"/>
         } else {
             <image-skeleton
                 class="show-image-skeleton"
