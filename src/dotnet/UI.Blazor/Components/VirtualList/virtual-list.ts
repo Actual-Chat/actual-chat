@@ -1383,28 +1383,31 @@ export class VirtualList {
                 item.range = null;
         }
 
-        // Take first or last item as cornerstone item
         let cornerstoneItemIndex = 0;
         let cornerstoneItem = orderedItems[0];
-        if (!cornerstoneItem.range) {
+        if (this.defaultEdge === VirtualListEdge.End && !rs.hasVeryLastItem) {
             cornerstoneItemIndex = orderedItems.length - 1;
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            // Find first one from the end
+            while (!cornerstoneItem.range && cornerstoneItemIndex > 0) {
+                cornerstoneItemIndex--;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            }
         }
-
-        // Find cornerstone item with binary search
-        if (!cornerstoneItem.range) {
-            const foundIndex = binarySearch(orderedItems, item => !!item.range);
-            if (foundIndex >= 0) {
-                cornerstoneItemIndex = foundIndex;
+        else if (this.defaultEdge === VirtualListEdge.Start && !rs.hasVeryFirstItem) {
+            // Find first one from the start
+            while (!cornerstoneItem.range && cornerstoneItemIndex < orderedItems.length - 1) {
+                cornerstoneItemIndex++;
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
             }
         }
 
         if (!cornerstoneItem?.range) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
-            void this.resetItemRange(true);
+            this.resetItemRange(true);
         }
         else {
+            console.warn('START RECALC FROM', cornerstoneItem.key, cornerstoneItem.range);
             // calculate range of other items
             let prevItem = cornerstoneItem;
             for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
@@ -1806,7 +1809,7 @@ function getItemKey(itemRef?: HTMLElement): string | null {
 /**
  * Return 0 <= i <= array.length such that !pred(array[i - 1]) && pred(array[i]).
  */
-function binarySearch<T>(array: T[], pred: (item: T) => boolean): number | null {
+function binarySearch<T>(array: T[], pred: (item: T) => boolean): number {
     let low = -1;
     let high = array.length;
     while (1 + low < high) {
@@ -1818,7 +1821,7 @@ function binarySearch<T>(array: T[], pred: (item: T) => boolean): number | null 
         }
     }
     if (high == array.length)
-        return null;
+        return -1;
 
     return high;
 }
