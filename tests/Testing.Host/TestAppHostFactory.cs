@@ -72,9 +72,6 @@ public static class TestAppHostFactory
                 services.AddTestLogging(outputAccessor);
             },
             ConfigureServices = (ctx, services) => {
-                // Overrides from options
-                options.ConfigureServices?.Invoke(ctx, services);
-
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(options.DbInitializeOptions);
@@ -86,6 +83,9 @@ public static class TestAppHostFactory
                     Env = OpenSearchNames.TestPrefix,
                 });
                 services.AddTestLogging(outputAccessor);
+
+                // Overrides from options
+                options.ConfigureServices?.Invoke(ctx, services);
             },
             ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),
         };

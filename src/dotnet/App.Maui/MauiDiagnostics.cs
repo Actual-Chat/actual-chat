@@ -1,14 +1,13 @@
+using ActualChat.App.Maui.Logging;
 using ActualChat.App.Maui.Sentry;
 using ActualChat.App.Maui.Services;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor;
+using ActualChat.Logging;
 using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.IO;
 using OpenTelemetry.Trace;
-using Sentry;
 using Sentry.Maui.Internal;
 using Sentry.Serilog;
 using Serilog;
@@ -53,6 +52,7 @@ public static class MauiDiagnostics
             logging.ClearProviders();
             logging.ConfigureClientFilters(MauiSettings.AppKind);
             logging.AddFilteringSerilog(Log.Logger, dispose: dispose);
+            logging.AddTailLogger();
         });
         return services;
     }
@@ -68,7 +68,8 @@ public static class MauiDiagnostics
             .MinimumLevel.Debug()
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
-            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
+            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui")
+            .WriteTo.TailSink();
         logging = AddPlatformLoggerSinks(logging);
         if (Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp))
             logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);

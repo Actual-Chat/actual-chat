@@ -11,6 +11,7 @@
     <PackageReference Include="ActualLab.Core" />
     <PackageReference Include="ActualLab.Fusion.Blazor" />
     <PackageReference Include="ActualLab.Fusion.Blazor.Authentication" />
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
   <ItemGroup>

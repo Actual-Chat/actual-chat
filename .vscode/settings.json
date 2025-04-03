@@ -84,5 +84,6 @@
   },
   "cSpell.enableFiletypes": [
     "aspnetcorerazor"
-  ]
+  ],
+  "dotnet.defaultSolution": "ActualChat.CI.slnf"
 }

@@ -1,6 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualLab.IO;
 using ActualLab.Testing.Output;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing;
@@ -8,7 +8,9 @@ namespace ActualChat.Testing;
 public abstract class TestBase(ITestOutputHelper @out, ILogger? log = null) : IAsyncLifetime
 {
     protected ITestOutputHelper Out { get; private set; } = @out.ToSafe();
-    protected ILogger Log { get; } = log ?? NullLogger.Instance;
+
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= log ?? Out.ToLoggerFactory().CreateLogger(GetType());
 
     Task IAsyncLifetime.InitializeAsync() => InitializeAsync();
     protected virtual Task InitializeAsync() => Task.CompletedTask;

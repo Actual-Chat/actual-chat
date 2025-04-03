@@ -12,6 +12,7 @@ public static class Links
     public static readonly LocalUrl Chats = "/chat";
     public static readonly LocalUrl ChatUserLinkPrefix = "/chat/@";
     public static readonly LocalUrl AccountUserLinkPrefix = "/u/@";
+    public static readonly LocalUrl Logs = "/test/logs";
 
     public static LocalUrl Chat(ChatEntryId entryId)
         => entryId.IsNone

@@ -1,0 +1,30 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+@{
+    var levelCls = Entry.LogLevel switch {
+        LogLevel.Trace => "trace",
+        LogLevel.Debug => "debug",
+        LogLevel.Information => "info",
+        LogLevel.Warning => "warning",
+        LogLevel.Error => "error",
+        LogLevel.Critical => "critical",
+        _ => "",
+    };
+}
+
+<div class="log-item @levelCls">
+    <div class="c-header">
+        <div class="c-timestamp">@Entry.Timestamp.ToString("HH:mm:ss.fff")</div>
+        <div class="c-level" data-tooltip="@Entry.LogLevel">@Entry.LogLevel.ToString()[0]</div>
+        <div class="c-category" data-tooltip="@Entry.CategoryName">@Entry.CategoryName.OrdinalSuffix(".")</div>
+        <div class="c-id">#@Entry.Id</div>
+    </div>
+    <div class="c-body">
+        <div class="c-message">@Entry.Message</div>
+        <div class="c-exception">@Entry.Exception</div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public LogEntry Entry { get; set; } = null!;
+}

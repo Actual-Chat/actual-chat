@@ -36,6 +36,9 @@ body.device-ios * {
     @apply truncate;
     @apply select-none;
 }
+.btn.compact {
+    @apply p-0;
+}
 .btn[data-button-class="default"],
 .btn.btn-md[data-button-class="default"] {
     @apply min-h-12 h-12 md:min-h-10 md:h-10 w-fit;
