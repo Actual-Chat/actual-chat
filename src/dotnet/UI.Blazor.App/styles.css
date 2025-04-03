@@ -46,6 +46,7 @@
 @import './Components/LeftPanel/LeftSearchPanel/recently-viewed-groups.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-people.css';
 @import './Components/LeftPanel/LeftSearchPanel/recently-contacted-user.css';
+@import './Components/LogView/log-view.css';
 @import './Components/MentionList/mention-list.css';
 @import './Components/Onboarding/onboarding-modal.css';
 @import './Components/Onboarding/line-progress.css';

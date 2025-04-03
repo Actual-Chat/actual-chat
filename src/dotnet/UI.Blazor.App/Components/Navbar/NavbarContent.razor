@@ -20,6 +20,7 @@
             <ChatListNavbarWidget PlaceId="@placeId" />
         }
         else if (isTestPages && m.IsAdmin) {
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/logs">Logs</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>

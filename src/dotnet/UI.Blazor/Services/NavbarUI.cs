@@ -3,10 +3,11 @@ namespace ActualChat.UI.Blazor.Services;
 public class NavbarUI(IServiceProvider services)
 {
     private readonly List<Group> _groups = new ();
-    private ILogger? _log;
 
     private IServiceProvider Services { get; } = services;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public string SelectedGroupId { get; private set; } = "";
     public string SelectedGroupTitle { get; private set; } = "";

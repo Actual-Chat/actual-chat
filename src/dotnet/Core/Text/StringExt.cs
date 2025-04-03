@@ -226,4 +226,14 @@ public static partial class StringExt
         var iEnd = s.LastIndexOf(char.IsLetterOrDigit);
         return iStart < 0 || iEnd < 0 ? "" : s[iStart..(iEnd + 1)];
     }
+
+    public static string OrdinalSuffix(this string s, string separator)
+        => s.Suffix(separator, StringComparison.Ordinal);
+
+    public static string Suffix(this string s, string separator, StringComparison comparison){
+        if (s.IsNullOrEmpty())
+            return s;
+        var i = s.LastIndexOf(separator, comparison);
+        return i < 0 ? s : s[(i + separator.Length)..];
+    }
 }

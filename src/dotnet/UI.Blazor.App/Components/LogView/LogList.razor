@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase
+
+<VirtualList
+    @ref="_virtualListRef"
+    Class="log-list"
+    DataSource="@this"
+    ExpandMultiplier="2"
+    MinExpand="50"
+    SkeletonCount="@_skeletonCount"
+    ItemVisibilityChanged="@OnItemVisibilityChanged">
+    <Item>
+        <LogItem Entry="@context" />
+    </Item>
+    <SkeletonBatch>
+        <chat-view-skeleton count="@context" />
+    </SkeletonBatch>
+</VirtualList>
+
+@code {
+    private VirtualList<LogEntry>? _virtualListRef;
+    private int _skeletonCount;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private LogUI LogUI => Hub.LogUI;
+    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
+
+    protected override void OnInitialized()
+        => _skeletonCount = ScreenSize.IsNarrow() ? 10 : 15;
+
+    protected override void OnParametersSet()
+        => _ = _virtualListRef?.Reset();
+}

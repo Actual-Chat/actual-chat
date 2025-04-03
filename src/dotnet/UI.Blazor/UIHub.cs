@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Logging;
 using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
@@ -81,6 +82,8 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public CaptchaUI CaptchaUI => field ??= Services.GetRequiredService<CaptchaUI>();
     [field: AllowNull, MaybeNull]
     public IDataCollectionSettingsUI DataCollectionSettingsUI => field ??= Services.GetRequiredService<IDataCollectionSettingsUI>();
+    [field: AllowNull, MaybeNull]
+    public LogUI LogUI => field ??= Services.GetRequiredService<LogUI>();
 
     [field: AllowNull, MaybeNull]
     public Escapist Escapist => field ??= Services.GetRequiredService<Escapist>();
@@ -108,6 +111,8 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
     [field: AllowNull, MaybeNull]
     public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
+    [field: AllowNull, MaybeNull]
+    public LogSinks LogSinks => field ??= Services.GetRequiredService<LogSinks>();
 
     // Shortcuts
     public bool IsPrerendering => JSRuntimeInfo.IsPrerendering;

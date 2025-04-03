@@ -20,6 +20,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private readonly ConcurrentDictionary<PlaceId, LazySlim<PlaceId, ChatListUI, PlaceChatListSettings>> _placeChatLists = new();
 
     private ComputedState<Trimmed<int>>? _unreadChatCount;
+    private ComputedState<ChatInfo?>? _notesChat;
 
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
@@ -37,6 +38,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 #pragma warning restore CA1721
 
     public IState<ImmutableHashSet<ChatId>> VisibleChats => _visibleChats;
+    public IState<ChatInfo?> NotesChat => _notesChat!;
 
     private Moment CpuNow => Clocks.CpuClock.Now;
 
@@ -59,6 +61,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             },
             ComputeUnreadChatCount);
         Hub.RegisterDisposable(_unreadChatCount);
+        _notesChat = StateFactory.NewComputed(GetNotes);
+        Hub.RegisterDisposable(_notesChat);
         this.Start();
     }
 
@@ -317,6 +321,12 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     }
 
     // Private methods
+
+    private async Task<ChatInfo?> GetNotes(CancellationToken cancellationToken = default)
+    {
+        var chatById = await ListUnorderedRaw(PlaceId.None, cancellationToken).ConfigureAwait(false);
+        return chatById.Values.FirstOrDefault(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes);
+    }
 
     private async Task<IReadOnlyDictionary<ChatId, ChatInfo>> AddUnlistedSelectedChat(
         IReadOnlyDictionary<ChatId, ChatInfo> chatById, CancellationToken cancellationToken)

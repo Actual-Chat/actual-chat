@@ -551,6 +551,7 @@
     --danger: var(--magenta-50);
     --success: var(--green-40);
     --warning: var(--sienna-40);
+    --fatal: var(--red-40);
 
     /* Banners */
     --background-banner-success: var(--emerald-20);

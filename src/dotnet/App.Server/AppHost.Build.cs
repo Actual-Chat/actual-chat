@@ -7,6 +7,7 @@ using ActualChat.Db.Module;
 using ActualChat.Flows.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
+using ActualChat.Logging;
 using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
@@ -85,6 +86,7 @@ public partial class AppHost
             logging.AddOpenTelemetry(options => options.AddOtlpExporter());
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
+            logging.AddTailLogger();
             if (LoggingExt.DevLog.IsEmpty || !appKind.IsServer() || isTested)
                 return;
 

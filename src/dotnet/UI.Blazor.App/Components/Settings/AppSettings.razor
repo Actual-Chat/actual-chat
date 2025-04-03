@@ -57,6 +57,15 @@
             </Right>
         </TileItem>
     </Tile>
+    <TileTopic Topic="Troubleshooting"/>
+    <Tile>
+        <TileItem Click="@OnLogUIEnabledClick">
+            <Content>Enable local log UI</Content>
+            <Right>
+                <Toggle IsChecked="@m.IsLogUIEnabled"/>
+            </Right>
+        </TileItem>
+    </Tile>
 }
 
 <TileTopic Topic="Walk-through"/>
@@ -87,7 +96,7 @@
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private ToastUI ToastUI => Hub.ToastUI;
-
+    private LogUI LogUI => Hub.LogUI;
     protected override void OnInitialized()
         => NativeAppSettings = Hub.GetService<INativeAppSettings>();
 
@@ -96,12 +105,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
-        var account = Hub.AccountUI.OwnAccount.Value;
+        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var isLogUIEnabled = await LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
         return new(
             settings.IsDataCollectionEnabled ?? false,
             settings.AreExperimentalFeaturesEnabled ?? false,
             settings.IsIncompleteUIEnabled ?? false,
-            account.IsAdmin);
+            account.IsAdmin,
+            isLogUIEnabled);
     }
 
     private async Task OnRestartWalkThrough() {
@@ -131,6 +142,9 @@
             IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled,
         });
 
+    private void OnLogUIEnabledClick()
+        => LogUI.IsEnabled.Value = !State.Value.IsLogUIEnabled;
+
     private async Task UpdateSettings(Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default) {
         var settings = await AccountSettings.GetUserAppSettings(cancellationToken);
         await AccountSettings.SetUserAppSettings(update(settings), cancellationToken);
@@ -142,8 +156,9 @@
         bool IsDataCollectionEnabled,
         bool AreExperimentalFeaturesEnabled,
         bool IsIncompleteUIEnabled,
-        bool IsAdmin)
+        bool IsAdmin,
+        bool IsLogUIEnabled)
     {
-        public static readonly Model None = new(false, false, false, false);
+        public static readonly Model None = new(false, false, false, false, false);
     }
 }

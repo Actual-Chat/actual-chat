@@ -1,12 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@using ActualChat.Contacts
-@inherits ComputedMenuBase<AccountFull>
+@inherits ComputedMenuBase<TopNavbarMenu.Model>
 @{
     var m = State.Value;
 }
 
-@if (!_notesChatId.IsNone) {
+@if (m.NotesChat != null) {
     <MenuEntry
         Icon="icon-file-text"
         Text="Notes"
@@ -28,8 +27,14 @@
     Text="Log out"
     Click="@SignOut">
 </MenuEntry>
-@if (m.IsAdmin) {
+@if (m.Account.IsAdmin) {
     <MenuEntrySeparator/>
+    @if (m.IsLogUIEnabled) {
+        <MenuEntry
+            Icon="icon-hash-fill"
+            Text="Logs"
+            Click="@OnLogsClick" />
+    }
     <MenuEntry
         Icon="icon-alert-triangle"
         Text="Test Pages"
@@ -38,51 +43,33 @@
 }
 
 @code {
-    private ChatId _notesChatId = ChatId.None;
-
     [Inject] protected ChatUIHub Hub { get; init; } = null!;
 
     private UIEventHub UIEventHub => Hub.UIEventHub();
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private AccountUI AccountUI => Hub.AccountUI;
-    private Session Session => Hub.Session();
-    private IContacts Contacts => Hub.Contacts;
-    private IChats Chats => Hub.Chats;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
     private History History => Hub.History;
     private TuneUI TuneUI => Hub.TuneUI;
+    private LogUI LogUI => Hub.LogUI;
 
-    protected override ComputedState<AccountFull>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = AccountUI.OwnAccount.Value,
+            InitialValue = new Model(AccountUI.OwnAccount.Value, ChatListUI.NotesChat.Value, LogUI.IsEnabled.Value),
             Category = GetStateCategory(GetType()),
         };
 
-    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        if (_notesChatId.IsNone) {
-            var contactIds = await Contacts.ListIds(Session, PlaceId.None, cancellationToken).ConfigureAwait(false);
-            var contactList = await contactIds
-                .Select(x => Contacts.Get(Session, x, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-
-            foreach (var contact in contactList) {
-                if (contact == null)
-                    continue;
-                var chatId = contact.ChatId;
-                if (chatId.IsPeerChat(out _))
-                    continue;
-                var chat = await Chats.Get(Session, contact.ChatId, cancellationToken).ConfigureAwait(false);
-                if (chat != null && chat.SystemTag == Constants.Chat.SystemTags.Notes)
-                    _notesChatId = chat.Id;
-            }
-        }
-        return ownAccount;
+        var notesChat = await ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false);
+        var isLogUIEnabled = await LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
+        return new (ownAccount, notesChat, isLogUIEnabled);
     }
 
     private async Task OnNotesClick() {
         await WhenClosed;
-        _ = History.NavigateTo(Links.Chat(_notesChatId));
+        if (State.Value.NotesChat is { } notes)
+            _ = History.NavigateTo(Links.Chat(notes.Id));
     }
 
     private async Task OnSettingsClick() {
@@ -105,4 +92,14 @@
         await WhenClosed;
         Services.GetRequiredService<ReloadUI>().Reload();
     }
+
+    private async Task OnLogsClick() {
+        await WhenClosed;
+        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
+        _ = History.NavigateTo(Links.Logs);
+    }
+
+    // Nested types
+
+    public sealed record Model(AccountFull Account, ChatInfo? NotesChat, bool IsLogUIEnabled);
 }

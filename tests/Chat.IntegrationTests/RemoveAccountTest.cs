@@ -15,7 +15,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
-        var bob = await tester.SignInAsBob();
+        var bob = await tester.SignInAsBobAdmin();
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();
@@ -26,7 +26,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // creating text entries
 
         await ComputedTest.When(async ct => {
-            var author = await authors.GetOwn(session, chat!.Id, ct);
+            var author = await authors.GetOwn(session, chat.Id, ct);
             author.Should().NotBeNull();
         });
 

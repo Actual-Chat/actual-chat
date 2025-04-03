@@ -87,6 +87,7 @@ module.exports = {
         'danger': 'var(--danger)',
         'success': 'var(--success)',
         'warning': 'var(--warning)',
+        'fatal': 'var(--fatal)',
 
         'transparent': 'var(--transparent)',
         'counter': 'var(--counter)',

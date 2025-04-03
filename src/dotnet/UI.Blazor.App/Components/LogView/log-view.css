@@ -1,0 +1,54 @@
+.log-list {
+    @apply font-mono;
+    @apply select-text;
+}
+
+/* Header */
+.log-item .c-header {
+    @apply flex flex-x items-baseline gap-x-1;
+}
+.log-item .c-timestamp {
+    @apply text-03;
+}
+.log-item .c-category {
+    @apply text-03;
+}
+.log-item .c-level {
+    @apply flex justify-center font-bold min-w-3;
+}
+.log-item .c-id {
+    @apply text-sm font-semibold text-cancel-text opacity-20;
+}
+
+.log-item.trace .c-level,
+.log-item.debug .c-level {
+    @apply text-03;
+}
+.log-item.info .c-level {
+    @apply text-01;
+}
+.log-item.warning .c-level {
+    @apply text-warning;
+}
+.log-item.error .c-level {
+    @apply text-danger;
+}
+.log-item.critical .c-level {
+    @apply text-danger;
+}
+
+/* Body */
+.log-item .c-body {
+    @apply ml-4;
+    @apply text-01;
+}
+.log-item.trace .c-body,
+.log-item.debug .c-body {
+    @apply text-03 opacity-70;
+}
+.log-item.warning .c-body {
+    @apply text-warning;
+}
+.log-item.error .c-body {
+    @apply text-danger;
+}
