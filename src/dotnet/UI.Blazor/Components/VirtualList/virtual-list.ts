@@ -1109,6 +1109,7 @@ export class VirtualList {
         let spacerSize = 0;
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
+        // let stickyItems = new Array<HTMLLIElement>();
 
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
@@ -1124,6 +1125,7 @@ export class VirtualList {
                 const { start, end, size: containerSize } = this.itemRange ?? new NumberRange(0,0);
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
+                // stickyItems = [...this.containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item:has(.sticky)')];
                 scrollTop = this.ref.scrollTop;
 
                 if (rs.beforeCount !== null && rs.afterCount !== null) {
@@ -1285,6 +1287,8 @@ export class VirtualList {
                 else
                     this.wrapperRef.style.height = totalSize + 'px';
                 this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
+                // set negative offset translate to all sticky elements - does not work well
+                // stickyItems.forEach(sticky => sticky.style.transform = `translate3d(0, ${-offset}px, 0)`);
                 if (!showSpacer)
                     this.spacerRef.style.display = 'none';
                 else
