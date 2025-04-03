@@ -17,6 +17,7 @@
     @apply px-4 pt-2;
     @apply rounded-t-lg;
     @apply bg-01;
+    box-shadow: 0 8px 12px 8px var(--background-01);
 }
 
 .conversation-header-short .bg-wrapper,
@@ -104,6 +105,11 @@
     @starting-style {
         filter: opacity(0);
     }
+}
+
+.conversation-message .mention-markup {
+    @apply h-4;
+    @apply text-caption-4;
 }
 
 .conversation-message ol {

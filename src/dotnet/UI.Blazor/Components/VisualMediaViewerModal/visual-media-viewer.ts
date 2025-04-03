@@ -1,6 +1,7 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { clearTimeout, setTimeout } from 'timerQueue';
 import { Swiper } from 'swiper';
+import { debounce } from 'promises';
 
 export class VisualMediaViewer {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -13,6 +14,12 @@ export class VisualMediaViewer {
     private timerId: number;
     private videos: HTMLCollectionOf<HTMLVideoElement>;
     private imageContainers: NodeListOf<HTMLElement>;
+    private maxVideoWidth: number = 0;
+    private maxVideoHeight: number = 0;
+    private videoRatio: number = 0;
+    private readonly headerHeight: number = 0;
+    private windowWidth: number = 0;
+    private windowHeight: number = 0;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -24,9 +31,26 @@ export class VisualMediaViewer {
     ) {
         this.overlay = this.imageViewer.closest('.modal-overlay');
         this.header = this.overlay.querySelector('.image-viewer-header');
+        this.headerHeight = this.header.offsetHeight;
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.videos = this.imageViewer.getElementsByTagName('video');
+
+        fromEvent(window.visualViewport, 'resize')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: Event) => {
+                [...this.videos].forEach(video => {
+                    const activeSlide = this.imageViewer.querySelector('.swiper-slide-active');
+                    if (activeSlide) {
+                        const activeVideo = activeSlide.querySelector('video');
+                        if (activeVideo)
+                            this.setMaxSize(activeVideo);
+                    }
+                    this.onUpdateProgressBarDebounced(event, video);
+                });
+            });
+
         [...this.videos].forEach((video: HTMLMediaElement) => {
+            this.setMaxSize(video);
             this.addVideoListeners(video);
             this.videoPlugHandler(video);
         });
@@ -65,34 +89,66 @@ export class VisualMediaViewer {
         this.disposed$.complete();
     }
 
+    private setMaxSize(videoFile: HTMLMediaElement) {
+        const windowWidth = document.documentElement.offsetWidth;
+        const windowHeight = document.documentElement.offsetHeight;
+        if (windowWidth == this.windowWidth
+            && windowHeight == this.windowHeight
+            && this.videoRatio != 0
+            && this.maxVideoWidth != 0
+            && this.maxVideoHeight != 0)
+            return;
+
+        this.windowWidth = windowWidth;
+        this.windowHeight = windowHeight;
+        let maxWidth = Number(videoFile.dataset.width);
+        let maxHeight = Number(videoFile.dataset.height);
+        this.videoRatio = maxWidth / maxHeight;
+        if (windowWidth < maxWidth) {
+            maxWidth = windowWidth;
+            maxHeight = maxWidth / this.videoRatio;
+        }
+        if (windowHeight < maxHeight) {
+            maxHeight = windowHeight;
+            maxWidth = maxHeight * this.videoRatio;
+        }
+        this.maxVideoWidth = maxWidth;
+        this.maxVideoHeight = maxHeight;
+        videoFile.style.maxWidth = `${maxWidth}px`;
+        videoFile.style.maxHeight = `${maxHeight}px`;
+    }
+
     private fixVideoPosition() {
+        const activeSlide = this.imageViewer.querySelector('.swiper-slide-active');
+        if (!activeSlide)
+            return;
+
         const isHeaderVisible = this.isHeaderAndFooterVisible;
-        const videoWrapper = this.imageViewer.querySelector('.single-attachment') as HTMLElement;
+        const videoWrapper = activeSlide.querySelector('.video-wrapper') as HTMLElement;
         if (!videoWrapper)
             return;
+
+        const videoFile = videoWrapper.querySelector('video');
+        if (!videoFile)
+            return;
+
+        this.setMaxSize(videoFile);
 
         if (!isHeaderVisible) {
             videoWrapper.style.transform = "translateY(0)";
             return;
         }
 
-        const videoRect = videoWrapper.getBoundingClientRect();
-        const headerRect = this.header.getBoundingClientRect();
-        const videoHeight = videoRect.height;
-        const headerHeight = headerRect.height;
-        const containerHeight = document.documentElement.getBoundingClientRect().height - headerHeight;
-        if (videoHeight > containerHeight) {
-            videoWrapper.style.transform = `translateY(${headerHeight / 2}px)`;
+        const videoHeight = videoWrapper.offsetHeight;
+        const containerHeight = document.documentElement.offsetHeight - this.headerHeight;
+        if (videoHeight >= containerHeight) {
+            if (!this.footer) {
+                videoWrapper.style.transform = `translateY(${this.headerHeight / 2}px)`;
+            } else {
+                videoWrapper.style.transform = "translateY(0)";
+            }
             return;
         }
-
-        const videoRectTop = videoRect.top;
-        const minTop = headerRect.height;
-        if (videoRectTop >= minTop)
-            return;
-
-        let heightDelta = (minTop - videoRectTop);
-        videoWrapper.style.transform = `translateY(${heightDelta}px)`;
     }
 
     private setShowHeaderTimout() {
@@ -180,6 +236,8 @@ export class VisualMediaViewer {
     private async onSlideChange(event: any): Promise<void> {
         this.updateVideoPlayback();
         const swiper: Swiper = event.detail[0];
+        if (this.maxVideoWidth != 0 || this.maxVideoWidth != 0 || this.videoRatio != 0)
+            this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
         void this.blazorRef.invokeMethodAsync('SlideChanged', swiper.activeIndex);
     }
 
@@ -366,7 +424,7 @@ export class VisualMediaViewer {
     }
 
     private updateLoading(video: HTMLMediaElement) {
-        const wrapper = video.closest('.video-wrapper');
+        const wrapper = video.closest('.video-wrapper') as HTMLElement;
         if (!wrapper)
             return;
 
@@ -382,7 +440,7 @@ export class VisualMediaViewer {
         const duration = video.duration;
         let bufferId = setInterval(() => {
             let buffered = video.buffered.end(0);
-            let maxWidth = progressBar.getBoundingClientRect().width;
+            let maxWidth = progressBar.offsetWidth;
             if (buffered == duration) {
                 clearInterval(bufferId);
                 progressBar.style.setProperty('--data-media-loaded', `${maxWidth}px`);
@@ -391,6 +449,29 @@ export class VisualMediaViewer {
             let loadedValue = buffered / duration;
             progressBar.style.setProperty('--data-media-loaded', `${loadedValue * maxWidth}px`);
         }, 200);
+    }
+
+    private onUpdateProgressBarDebounced: (event: Event, video: HTMLVideoElement) => void = debounce(
+        (event: Event, video: HTMLVideoElement) => this.updateProgressBar(event, video),
+        200
+    );
+
+    private updateProgressBar(event: Event, video: HTMLVideoElement) {
+        const wrapper = video.closest('.video-wrapper') as HTMLElement;
+        if (!wrapper)
+            return;
+
+        const control = wrapper.querySelector('.video-control') as HTMLElement;
+        if (!control)
+            return;
+
+        const progressBar = control.querySelector('.c-progress-bar') as HTMLElement;
+        const loadedBar = window.getComputedStyle(progressBar, ':before');
+        if (!loadedBar)
+            return;
+
+        let maxWidth = progressBar.offsetWidth;
+        progressBar.style.setProperty('--data-media-loaded', `${maxWidth}px`);
     }
 
     private updateTimeline(video: HTMLMediaElement, control: HTMLElement, progressBar: HTMLProgressElement) {

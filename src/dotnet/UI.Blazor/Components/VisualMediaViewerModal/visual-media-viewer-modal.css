@@ -114,7 +114,7 @@ swiper-slide img {
 }
 .video-wrapper {
     @apply relative;
-    @apply flex;
+    @apply flex justify-center;
 }
 .media-swiper .video-wrapper.youtube-wrapper {
     @apply w-full h-full;
@@ -139,7 +139,8 @@ swiper-slide img {
     @apply flex-y items-center gap-x-2;
     @apply h-14;
     @apply px-4;
-    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.5) 100%);
+    @apply rounded-t-xl;
+    background: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 5%,  rgba(0,0,0,0.75) 20% 80%, rgba(0,0,0,0.5) 95%, rgba(0,0,0,0) 100%);
     backdrop-filter: blur(2px);
     transition: filter 300ms ease-in-out, -webkit-filter 300ms ease-in-out;
 }
@@ -238,7 +239,7 @@ swiper-slide img {
 .video-wrapper .video-control progress:before {
     @apply content-empty;
     @apply absolute z-10 left-0;
-    @apply h-full;
+    @apply h-full max-w-none;
     @apply rounded-full;
     @apply bg-[var(--white-50)];
     width: var(--data-media-loaded);
