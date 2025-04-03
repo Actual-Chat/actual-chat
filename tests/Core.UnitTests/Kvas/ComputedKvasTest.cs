@@ -169,7 +169,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var stateFactory = services.StateFactory();
         var updateDelayer = FixedDelayer.NextTick;
         var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 5);
-        for (int i = 0; i < propertyCount; i++) {
+        for (var i = 0; i < propertyCount; i++) {
             using var cts = new CancellationTokenSource(timeout);
             var cancellationToken = cts.Token;
             using var state = stateFactory.NewKvasSynced<bool>(new (kvas, $"{keyPrefix}.b{i}") {
@@ -182,6 +182,30 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
             await state.Computed.When(x => x, cancellationToken);
         }
     }
+
+[Fact] // TODO(AY): sometimes fails
+public async Task ValueOrDefaultMustReturnNewValueAfterUpdate()
+{
+    // arrange
+    var rsg = new RandomSymbolGenerator(alphabet: Alphabet.AlphaNumericLower);
+    var services = CreateServices();
+    var kvas = services.GetRequiredService<IKvas>();
+    var stateFactory = services.StateFactory();
+    var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
+    var updateDelayer = FixedDelayer.NextTick;
+    using var cts = new CancellationTokenSource(timeout);
+    var cancellationToken = cts.Token;
+    using var state = stateFactory.NewKvasSynced<bool>(new(kvas, $"{rsg.Next(5)}.b1") {
+        UpdateDelayer = updateDelayer,
+    });
+
+    // act
+    state.Value = true;
+    await state.Computed.When(x => x, cancellationToken);
+
+    // assert
+    await TestExt.When(() => state.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
+}
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
