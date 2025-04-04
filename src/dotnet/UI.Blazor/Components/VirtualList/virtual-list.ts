@@ -501,6 +501,8 @@ export class VirtualList {
 
         // recalculate item range as some elements were updated
         this.shouldRecalculateItemRange = itemsWereMeasured;
+        // if (existingResizedCount)
+        //     void this.restoreScrollPosition(this.renderState);
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -1135,7 +1137,7 @@ export class VirtualList {
                 else {
                     const knownRange = this.knownRange ?? new NumberRange(0,0);
                     const estimatedTotalSize = rs.estimatedCount
-                        ? clamp(Math.floor(rs.estimatedCount * this.statistics.itemSize), knownRange.size, 1E6)
+                        ? clamp(Math.floor(rs.estimatedCount * this.statistics.itemSize), knownRange.size, 5E6)
                         : null;
 
                     let fullRange: NumberRange;
@@ -1315,8 +1317,10 @@ export class VirtualList {
                 // this.updateViewportThrottled();
             }
         });
-
-        await result;
+        if (!rafResult)
+            result.resolve(undefined);
+        else
+            await result;
 
 
         const now = Date.now();
@@ -1748,8 +1752,10 @@ export class VirtualList {
             return this.lastQuery;
         }
 
-        if (orderedItems.some(item => item.range == null))
-            return this.lastQuery; // We have to wait for all items to be measured
+        if (orderedItems.some(item => item.range == null)) {
+            this.shouldRecalculateItemRange = true;
+            this.ensureItemRangeCalculated();
+        }
 
         const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start) - 1;
         const lastItemIndex = binarySearch(orderedItems, item => item.range.start > loadZone.end);
