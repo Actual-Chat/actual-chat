@@ -586,16 +586,12 @@ export class VirtualList {
             // this.updateViewportThrottled();
         } else
             this.turnOffIsNearSkeletonDebounced();
-        // debug helper
-        // console.warn("skeleton triggered", isNearSkeleton);
     };
 
     private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce);
 
     private turnOffIsNearSkeleton(): void {
         this.isNearSkeleton = false;
-        // debug helper
-        // console.warn("skeleton os off");
     }
 
     private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
@@ -779,7 +775,6 @@ export class VirtualList {
         }
 
         this.viewport = viewport;
-        console.warn(`viewport: `, viewport, isThrottled);
         await this.requestData();
     }
 
@@ -917,8 +912,8 @@ export class VirtualList {
         }
         finally {
             this.isUpdatingPivots = false;
-            if (interactiveKey)
-                void this.restoreScrollPosition(this.renderState);
+            // if (interactiveKey)
+            //     void this.restoreScrollPosition(this.renderState);
         }
     }
 
@@ -1159,7 +1154,7 @@ export class VirtualList {
                     }
 
                     spacerSize = clamp(start - fullRange.start, 0, fullRange.size - containerSize);
-                    endSpacerSize = clamp(fullRange.end - end - endAnchorSize, 0, fullRange.size - containerSize);
+                    endSpacerSize = clamp(fullRange.end - end, 0, fullRange.size - containerSize);
                 }
                 if (spacerSize == 0 && !rs.hasVeryFirstItem)
                     spacerSize = defaultSpacerSize;
@@ -1202,11 +1197,12 @@ export class VirtualList {
                         if (interactiveItemRef) {
                             const viewportTopOffset = interactivePivot.offset;
                             const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
-                            const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                            const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
                             const containerTransform = window.getComputedStyle(this.containerRef).transform;
                             const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
                             const containerTranslateYOffset = containerTransformMatrix.m42;
-                            offset = containerTranslateYOffset - dOffset;
+                            const dTranslateOffset = offset - containerTranslateYOffset;
+                            scrollTopOffset = dTopOffset + dTranslateOffset;
 
                             debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset);
                         }
@@ -1247,12 +1243,13 @@ export class VirtualList {
 
                         if (interactiveItemRef) {
                             const viewportTopOffset = interactivePivot.offset;
-                            const interactiveItemRect = interactiveItemRef!.getBoundingClientRect();
-                            const dOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                            const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
+                            const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
                             const containerTransform = window.getComputedStyle(this.containerRef).transform;
                             const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
                             const containerTranslateYOffset = containerTransformMatrix.m42;
-                            offset = containerTranslateYOffset - dOffset;
+                            const dTranslateOffset = offset - containerTranslateYOffset;
+                            scrollTopOffset = dTopOffset + dTranslateOffset;
 
                             debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset);
                         }
@@ -1279,7 +1276,6 @@ export class VirtualList {
                 }
             },
             write: () => {
-                console.warn(`restoreScrollPosition: write`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
                 const showSpacer = spacerSize > 0;
                 const showEndSpacer = endSpacerSize > 0;
 
@@ -1289,7 +1285,6 @@ export class VirtualList {
                         fastRaf({
                             write: () => {
                                 this.wrapperRef.style.height = totalSize + 'px';
-                                console.warn(`restoreScrollPosition: TOTAL SIZE SET WITH DELAY!`);
                             }});
                     }
                 }
@@ -1324,10 +1319,10 @@ export class VirtualList {
 
 
         const now = Date.now();
-        if (now - this.renderCompletedAt < UpdateViewportInterval) {
-            // Reset pivots on restore scroll position after render
-            this.pivots = [];
-        }
+        // if (now - this.renderCompletedAt < UpdateViewportInterval) {
+        //     // Reset pivots on restore scroll position after render
+        //     this.pivots = [];
+        // }
         this.scrollPositionRestoredAt = now;
 
         this.viewport = null;
@@ -1411,7 +1406,6 @@ export class VirtualList {
             this.resetItemRange(true);
         }
         else {
-            console.warn('START RECALC FROM', cornerstoneItem.key, cornerstoneItem.range);
             // calculate range of other items
             let prevItem = cornerstoneItem;
             for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
@@ -1442,7 +1436,6 @@ export class VirtualList {
     }
 
     private resetItemRange(canUseQueryRange: boolean = false): number | null {
-        console.warn(`resetItemRange:`, canUseQueryRange);
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
@@ -1733,8 +1726,6 @@ export class VirtualList {
                 }
                 break;
         }
-        // console.warn(`getDataQuery: lastQuerySide = ${lastQuerySide}; loadMoreFrom = ${loadMoreFrom};`);
-
         // adjust to existing data range
         if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.start;
