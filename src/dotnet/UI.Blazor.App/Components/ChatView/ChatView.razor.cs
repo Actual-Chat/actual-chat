@@ -452,11 +452,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 secondLayer.GetTile(chatIdRangeEndPlus).End).IntersectWith(new Range<long>(chatIdRange.Start,
                 long.MaxValue)),
 
-            // No query, but there is old data + we know visible items
-            // KEEP THIS case, otherwise virtual list will grow indefinitely!
-            (false, true) when !itemVisibility.IsEmpty
-                => new Range<long>(itemVisibility.MinEntryLid, itemVisibility.MaxEntryLid)
-                    .Expand(ChatUI.SecondTileSize)
+            // No query, there is old data, and we are at the end of the list
+            (false, true) when oldData.HasVeryLastItem
+                => new Range<long>(Math.Max(firstItem!.Id, itemVisibility.MinEntryLid - ChatUI.HalfLoadLimit), lastItem!.Id + 1)
                     .ExpandToTiles(firstLayer),
 
             // No query, but there is old data -> retaining it

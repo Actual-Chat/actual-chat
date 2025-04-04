@@ -31,21 +31,18 @@ public partial class ChatUI
         if (showConversations) {
             expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
             var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
-                .Where(cid => dataQuery.IdRange.Contains(cid
-                    .StartEntryLid)) // Only consider conversations that are in the current data query range
+                .OrderByDescending(c => dataQuery.IdRange.Contains(c.StartEntryLid))
                 .ToList();
             LastExpandedConversations = expandedConversations;
             if (changedExpand.Count > 0) {
                 // Adjust data query to load tiles around expanded conversation entries
-                var minConversationId = changedExpand.OrderBy(cid => cid.StartEntryLid).FirstOrDefault();
-                var isExpanded = expandedConversations.Contains(minConversationId);
-                var minEntryLid = changedExpand.Select(cid => cid.StartEntryLid).Min();
-                var minEntryRange = IdTileStack.Layers[1].GetTile(minEntryLid).Range;
-                var loadBefore = isExpanded ? 0 : HalfLoadLimit + SecondTileSize;
+                var conversationId = changedExpand.FirstOrDefault();
+                var isExpanded = expandedConversations.Contains(conversationId);
+                var loadBefore = isExpanded ? 0 : HalfLoadLimit;
                 var loadAfter = isExpanded ? HalfLoadLimit : HalfLoadLimit + SecondTileSize;
-                var keyRange = isExpanded
-                    ? new Range<long>(dataQuery.IdRange.Start, minEntryRange.End)
-                    : new Range<long>(minEntryRange.Start, dataQuery.IdRange.End);
+                var keyRange = new Range<long>(
+                    Math.Min(dataQuery.IdRange.Start, conversationId.StartEntryLid),
+                    Math.Max(dataQuery.IdRange.End, conversationId.StartEntryLid));
                 dataQuery = new ChatDataQuery(keyRange, loadBefore, loadAfter);
             }
         }
