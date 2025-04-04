@@ -81,9 +81,10 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
     min-height: 1.5rem;
 }
 
-.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-header) {
-    @apply sticky top-0 z-10;
-}
+/* Sticky position does not work due to container transform */
+/*.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-header) {*/
+/*    @apply sticky top-0 z-10;*/
+/*}*/
 
 .virtual-list > .c-wrapper > ul.c-virtual-container > li.item.anchor {
     overflow-anchor: none;
