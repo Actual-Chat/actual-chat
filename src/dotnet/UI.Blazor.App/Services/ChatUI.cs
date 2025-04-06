@@ -256,6 +256,10 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                 .Capture(() => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        if (cIdRange.HasError)
+            return false; // It's fine for this method
+
         var idRange = cIdRange.Value;
         if (idRange.End - idRange.Start >= 100) {
             // Heuristics, it may produce false negatives - e.g. if the chat was cleaned up,
