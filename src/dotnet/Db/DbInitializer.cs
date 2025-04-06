@@ -29,7 +29,7 @@ public abstract class DbInitializer<
 
     public TDbContext CreateDbContext(bool readWrite = false)
     {
-        var dbContext = DbHub.ContextFactory.CreateDbContext(default);
+        var dbContext = DbHub.ContextFactory.CreateDbContext(DbShard.Single);
         dbContext.ReadWrite(readWrite);
 
         // Disable auto prepare for statements as we change Collation during migration

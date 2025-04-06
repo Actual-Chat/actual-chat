@@ -114,11 +114,11 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     sb.Append('?');
                     sb.Append(settings.ClientIdParameterName);
                     sb.Append('=');
-                    sb.Append(peer.ClientId.Value); // Always Url-encoded
+                    sb.Append(peer.ClientId); // Always Url-encoded
                     sb.Append('&');
                     sb.Append(settings.SerializationFormatParameterName);
                     sb.Append('=');
-                    sb.Append(peer.SerializationFormat.Key.Value);
+                    sb.Append(peer.SerializationFormat.Key);
                     return sb.ToStringAndRelease().ToUri();
                 },
             };
@@ -132,7 +132,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                         var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
                         ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
                         if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
-                            ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
+                            ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id);
                         if (Constants.Api.Compression.IsClientSideEnabled)
                             ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
                         return new WebSocketOwner(peer.Ref.Key, ws, client.Services);
@@ -169,7 +169,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                 client.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
                 if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver) {
                     var session = trueSessionResolver.Session;
-                    client.DefaultRequestHeaders.Add(Constants.Session.HeaderName, session.Id.Value);
+                    client.DefaultRequestHeaders.Add(Constants.Session.HeaderName, session.Id);
                 }
             });
             if (hostKind.IsMauiApp())

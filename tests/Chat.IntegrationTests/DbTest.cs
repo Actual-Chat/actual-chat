@@ -207,6 +207,6 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await transaction.CommitAsync(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Unit.Default;
+        return default;
     }
 }

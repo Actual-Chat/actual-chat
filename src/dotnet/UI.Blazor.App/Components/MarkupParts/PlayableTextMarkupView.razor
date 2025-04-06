@@ -19,10 +19,10 @@
     @if (m.Map == null) {
         @Markup.Text
     } else {
-        @for (var i = 0; i < Markup.Words.Count; i++) {
+        @for (var i = 0; i < Markup.Words.Length; i++) {
             var word = Markup.Words[i];
             var status = m.Map != null ? m.Map[i] : WordPlayback.None;
-            var nextStatus = m.Map != null && i < Markup.Words.Count - 1
+            var nextStatus = m.Map != null && i < Markup.Words.Length - 1
                 ? m.Map[i + 1]
                 : WordPlayback.None;
             var cls = GetPlayingClass(status, nextStatus);
@@ -37,9 +37,10 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.PlayableTextMarkupView.create";
 
-    private ILogger? _log;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
     private Model? _rendered;
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
@@ -126,8 +127,8 @@
             if (!playingAtNearbyRange.Overlaps(markup.TimeRange))
                 return Model.None;
 
-            var map1 = new WordPlayback[markup.Words.Count];
-            for (var i = 0; i < markup.Words.Count; i++) {
+            var map1 = new WordPlayback[markup.Words.Length];
+            for (var i = 0; i < markup.Words.Length; i++) {
                 var word = markup.Words[i];
                 var isWordPlaying = word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt);
                 map1[i] = isWordPlaying ? WordPlayback.Playing : WordPlayback.None;
@@ -137,7 +138,7 @@
             if (isEmpty)
                 return Model.None;
 
-            for (var i = 0; i < markup.Words.Count; i++) {
+            for (var i = 0; i < markup.Words.Length; i++) {
                 var prev = i > 0 ? map1[i - 1] : WordPlayback.None;
                 var current = map1[i];
                 var next = i < map1.Length - 1 ? map1[i + 1] : WordPlayback.None;

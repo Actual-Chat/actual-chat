@@ -29,7 +29,9 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
 
     public ChatEntryLanguage ToModel()
         => new (new ChatEntryId(Id), Version) {
-            Languages = !Languages.IsNullOrEmpty() ? JsonSerializer.Deserialize<ApiArray<Language>>(Languages) : [],
+            Languages = Languages.IsNullOrEmpty()
+                ? ApiArray<Language>.Empty
+                : JsonSerializer.Deserialize<ApiArray<Language>>(Languages) ?? ApiArray<Language>.Empty,
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
         };

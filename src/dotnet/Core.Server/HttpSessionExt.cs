@@ -43,7 +43,7 @@ public static class HttpSessionExt
     {
         session.RequireValid();
         var cookie = Cookie.Build(httpContext);
-        httpContext.Response.Cookies.Append(Constants.Session.CookieName, session.Id.Value, cookie);
+        httpContext.Response.Cookies.Append(Constants.Session.CookieName, session.Id, cookie);
         return session;
     }
 }

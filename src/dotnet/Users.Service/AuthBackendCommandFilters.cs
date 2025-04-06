@@ -22,14 +22,14 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         var context = CommandContext.GetCurrent();
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = context.Operation.Items.Get<SessionInfo>(); // Set by default command handler
+        var sessionInfo = context.Operation.Items.KeylessGet<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
 
         var userId = new UserId(sessionInfo.UserId);
         if (Invalidation.IsActive) {
-            if (context.Operation.Items.Get<UserNameChangedTag>() != null)
-                _ = AuthBackend.GetUser(default, userId, default);
+            if (context.Operation.Items.KeylessGet<UserNameChangedTag>() != null)
+                _ = AuthBackend.GetUser(DbShard.Single, userId, default);
             return;
         }
 
@@ -43,7 +43,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         // Let's try to fix auto-generated user name here
         var newName = UserNamer.NormalizeName(dbUser.Name);
         if (!OrdinalEquals(newName, dbUser.Name)) {
-            context.Operation.Items.Set(new UserNameChangedTag());
+            context.Operation.Items.KeylessSet(new UserNameChangedTag());
             dbUser.Name = newName;
         }
 
@@ -53,7 +53,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         // context.Operation.AddEvent(new ServerKvas_MigrateGuestKeys(command.Session));
 
         // Raise events
-        var isNewUser = context.Operation.Items.GetOrDefault<bool>(); // Set by default command handler
+        var isNewUser = context.Operation.Items.KeylessGet<bool>(); // Set by default command handler
         if (isNewUser)
             context.Operation.AddEvent(new NewUserEvent(userId));
     }

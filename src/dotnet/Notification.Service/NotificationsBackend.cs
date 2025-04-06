@@ -145,7 +145,7 @@ public class NotificationsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invIsCreate = context.Operation.Items.GetOrDefault(false);
+            var invIsCreate = context.Operation.Items.KeylessGet(false);
             if (invIsCreate) // Created
                 _ = PseudoListRecentNotificationIds(userId);
 
@@ -173,7 +173,7 @@ public class NotificationsBackend(IServiceProvider services)
                 dbNotification = new DbNotification();
                 dbNotification.UpdateFrom(notification);
                 dbContext.Notifications.Add(dbNotification);
-                context.Operation.Items.Set(true);
+                context.Operation.Items.KeylessSet(true);
             }
             else {
                 // Update
@@ -185,7 +185,7 @@ public class NotificationsBackend(IServiceProvider services)
                     Version = VersionGenerator.NextVersion(notification.Version),
                 };
                 dbNotification.UpdateFrom(notification);
-                context.Operation.Items.Set(false);
+                context.Operation.Items.KeylessSet(false);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -257,8 +257,8 @@ public class NotificationsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var device = context.Operation.Items.Get<DbDevice>();
-            var isNew = context.Operation.Items.GetOrDefault(false);
+            var device = context.Operation.Items.KeylessGet<DbDevice>();
+            var isNew = context.Operation.Items.KeylessGet(false);
             if (isNew && device != null)
                 _ = ListDevices(new UserId(device.UserId), default);
             return;
@@ -306,8 +306,8 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(dbDevice);
-        context.Operation.Items.Set(existingDbDevice == null);
+        context.Operation.Items.KeylessSet(dbDevice);
+        context.Operation.Items.KeylessSet(existingDbDevice == null);
     }
 
     // [CommandHandler]
@@ -316,7 +316,7 @@ public class NotificationsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invUserIds = context.Operation.Items.Get<HashSet<UserId>>();
+            var invUserIds = context.Operation.Items.KeylessGet<HashSet<UserId>>();
             if (invUserIds is { Count: > 0 })
                 foreach (var invUserId in invUserIds)
                     _ = ListDevices(invUserId, default);
@@ -340,7 +340,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Removed {Count} devices", affectedUserIds.Count);
-        context.Operation.Items.Set(affectedUserIds);
+        context.Operation.Items.KeylessSet(affectedUserIds);
     }
 
     // [CommandHandler]

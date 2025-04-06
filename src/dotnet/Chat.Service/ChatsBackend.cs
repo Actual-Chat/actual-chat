@@ -610,7 +610,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invChat = context.Operation.Items.Get<Chat>();
+            var invChat = context.Operation.Items.KeylessGet<Chat>();
             if (invChat != null) {
                 _ = Get(invChat.Id, default);
                 if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
@@ -854,7 +854,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.Require().ToModel();
-        context.Operation.Items.Set(chat);
+        context.Operation.Items.KeylessSet(chat);
 
         // Raise events
         context.Operation.AddEvent(new ChatChangedEvent(chat, oldChat, change.Kind));
@@ -966,7 +966,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invChatEntry = context.Operation.Items.Get<ChatEntry>();
+            var invChatEntry = context.Operation.Items.KeylessGet<ChatEntry>();
             if (invChatEntry != null)
                 InvalidateTiles(chatId, entryKind, invChatEntry.LocalId, changeKind);
 
@@ -1041,7 +1041,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             else
                 throw StandardError.Internal("Invalid ChatEntryDiff state.");
 
-            context.Operation.Items.Set(entry);
+            context.Operation.Items.KeylessSet(entry);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             entry = dbEntry.ToModel().WithPopulatedValues(entry);
         }
@@ -1248,7 +1248,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invChats = context.Operation.Items.Get<Dictionary<string,long>>();
+            var invChats = context.Operation.Items.KeylessGet<Dictionary<string,long>>();
             if (invChats == null)
                 return;
 
@@ -1333,7 +1333,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
         }
 
-        context.Operation.Items.Set(chatEntriesToInvalidate);
+        context.Operation.Items.KeylessSet(chatEntriesToInvalidate);
     }
 
     public virtual async Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken)
@@ -1461,7 +1461,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            if (context.Operation.Items.GetOrDefault<bool>())
+            if (context.Operation.Items.KeylessGet<bool>())
                 _ = GetReadPositionsStat(chatId, default);
             return;
         }
@@ -1531,7 +1531,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.Set(true);
+            context.Operation.Items.KeylessSet(true);
         }
     }
 

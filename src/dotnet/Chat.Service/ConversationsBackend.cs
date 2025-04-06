@@ -60,7 +60,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var chatId = conversationId.ChatId;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            var invConversation = context.Operation.Items.Get<Conversation>();
+            var invConversation = context.Operation.Items.KeylessGet<Conversation>();
             if (invConversation != null) {
                 _ = Get(invConversation.Id, default);
                 foreach (var idTile in IdTileStack.FirstLayer.GetCoveringTiles(invConversation.EntryRange))
@@ -138,7 +138,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         conversation = dbConversation.Require().ToModel();
-        context.Operation.Items.Set(conversation);
+        context.Operation.Items.KeylessSet(conversation);
         return conversation;
 
         Conversation ApplyDiff(Conversation originalConversation, ConversationDiff? diff) {

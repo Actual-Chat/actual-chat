@@ -30,7 +30,7 @@ public readonly struct MenuRef(
         var buffer = MemoryBuffer<string>.LeaseAndSetCount(false, Arguments.Length + 1);
         var span = buffer.Span;
         try {
-            span[0] = MenuRegistry.GetTypeId(MenuType).Value;
+            span[0] = MenuRegistry.GetTypeId(MenuType);
             for (int i = 0; i < Arguments.Length; i++)
                 span[i + 1] = Arguments[i].ToBase64();
             return ZString.Join(Delimiter, (ReadOnlySpan<string>) span);

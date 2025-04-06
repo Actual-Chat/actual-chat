@@ -22,7 +22,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (roleId.ChatId != chatId)
             return null;
 
-        var dbRole = await DbRoleResolver.Get(default, roleId, cancellationToken).ConfigureAwait(false);
+        var dbRole = await DbRoleResolver.Get(DbShard.Single, roleId, cancellationToken).ConfigureAwait(false);
         return dbRole?.ToModel();
     }
 
@@ -71,7 +71,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return default;
+            return ApiArray<Role>.Empty;
 
         await PseudoList(chatId).ConfigureAwait(false);
 
@@ -92,7 +92,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return default;
+            return ApiArray<AuthorId>.Empty;
 
         await PseudoList(chatId).ConfigureAwait(false);
 
@@ -115,7 +115,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invRole = context.Operation.Items.Get<Role>();
+            var invRole = context.Operation.Items.KeylessGet<Role>();
             if (invRole != null) {
                 _ = Get(chatId, invRole.Id, default);
                 _ = PseudoList(chatId);
@@ -241,7 +241,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         role = dbRole.ToModel();
-        context.Operation.Items.Set(role);
+        context.Operation.Items.KeylessSet(role);
         return role;
     }
 

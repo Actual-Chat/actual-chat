@@ -7,5 +7,6 @@ public partial class EntrySearchResultPage
 {
     public static readonly EntrySearchResultPage Empty = new ();
     [DataMember, MemoryPackOrder(0)] public ApiArray<EntrySearchResult> Hits { get; init; }
+        = ApiArray<EntrySearchResult>.Empty;
     [DataMember, MemoryPackOrder(1)] public int Offset { get; init; }
 }

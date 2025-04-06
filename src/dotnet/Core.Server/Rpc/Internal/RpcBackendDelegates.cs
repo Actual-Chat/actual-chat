@@ -77,11 +77,11 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         sb.Append('?');
         sb.Append(settings.ClientIdParameterName);
         sb.Append('=');
-        sb.Append(peer.ClientId.Value); // Always Url-encoded
+        sb.Append(peer.ClientId); // Always Url-encoded
         sb.Append('&');
         sb.Append(settings.SerializationFormatParameterName);
         sb.Append('=');
-        sb.Append(peer.SerializationFormat.Key.Value);
+        sb.Append(peer.SerializationFormat.Key);
         return sb.ToStringAndRelease().ToUri();
     }
 
@@ -89,7 +89,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         RpcServerPeer peer, Channel<RpcMessage> channel, PropertyBag properties,
         CancellationToken cancellationToken)
     {
-        if (!properties.TryGet<HttpContext>(out var httpContext))
+        if (!properties.KeylessTryGet<HttpContext>(out var httpContext))
             return Task.FromResult(new RpcConnection(channel, properties));
 
         var session = httpContext.TryGetSessionFromHeader() ?? httpContext.TryGetSessionFromCookie();

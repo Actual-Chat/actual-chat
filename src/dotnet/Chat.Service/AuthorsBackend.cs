@@ -82,14 +82,14 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return default;
+            return ApiArray<AuthorId>.Empty;
 
         if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
 
         var targetChatId = await GetMembershipChatId(chatId, cancellationToken).ConfigureAwait(false);
         if (targetChatId.IsNone)
-            return default!;
+            return ApiArray<AuthorId>.Empty;
 
         var authorIds = await ListAuthorIdsInternal(targetChatId, cancellationToken).ConfigureAwait(false);
 
@@ -105,14 +105,14 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return default;
+            return ApiArray<UserId>.Empty;
 
         if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToApiArray();
 
         var targetChatId = await GetMembershipChatId(chatId, cancellationToken).ConfigureAwait(false);
         if (targetChatId.IsNone)
-            return default!;
+            return ApiArray<UserId>.Empty;
 
         return await ListUserIdsInternal(targetChatId, cancellationToken).ConfigureAwait(false);
     }
@@ -155,8 +155,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            var (invAuthor, invOldAuthor) = context.Operation.Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
-            if (!invAuthor.Id.IsNone) {
+            var (invAuthor, invOldAuthor) = context.Operation.Items.KeylessGet<(AuthorFull?, AuthorFull?)>();
+            if (invAuthor is { Id.IsNone: false }) {
                 _ = GetInternal(chatId, invAuthor.Id, default);
                 _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
                 var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
@@ -316,7 +316,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
         { // Nested to get a new var scope
             var author = dbAuthor.ToModel();
-            context.Operation.Items.Set((author, existingAuthor));
+            context.Operation.Items.KeylessSet((author, existingAuthor));
 
             if (existingAuthor == null) {
                 // Set chat read position to the very end
@@ -355,12 +355,14 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            var invAuthors = context.Operation.Items.GetOrDefault<AuthorFull[]>();
-            foreach (var invAuthor in invAuthors) {
-                _ = GetInternal(chatId, invAuthor.Id, default);
-                _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
-                _ = ListAuthorIdsInternal(chatId, default);
-                _ = ListUserIdsInternal(chatId, default);
+            var invAuthors = context.Operation.Items.KeylessGet<AuthorFull[]>();
+            if (invAuthors != null) {
+                foreach (var invAuthor in invAuthors) {
+                    _ = GetInternal(chatId, invAuthor.Id, default);
+                    _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
+                    _ = ListAuthorIdsInternal(chatId, default);
+                    _ = ListUserIdsInternal(chatId, default);
+                }
             }
             return;
         }
@@ -406,7 +408,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(authors.ToArray());
+        context.Operation.Items.KeylessSet(authors.ToArray());
         if (authors.Count > 0)
             context.Operation.AddEvent(new AuthorsRemovedEvent(authors.ToApiArray()));
     }
@@ -482,7 +484,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
                 var newAuthor = originalAuthor with {
                     Id = newAuthorId,
-                    RoleIds = new ApiArray<Symbol>()
+                    RoleIds = ApiArray<Symbol>.Empty,
                 };
                 if (newAuthor.Version <= 0) {
                     Log.LogInformation("OnCopyChat({CorrelationId}) Invalid version on DbAuthor with Id={AuthorId}",

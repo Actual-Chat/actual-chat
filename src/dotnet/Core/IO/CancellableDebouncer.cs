@@ -113,5 +113,5 @@ public class CancellableDebouncer(MomentClock clock, ILogger log, TimeSpan inter
     { }
 
     public void Enqueue()
-        => base.Enqueue(Unit.Default);
+        => base.Enqueue(default);
 }

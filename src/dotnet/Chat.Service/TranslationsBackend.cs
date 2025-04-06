@@ -120,7 +120,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!NeedsTranslate(entry, translation))
             return translation;
 
-        var (_, updatedTranslation) = await TranslationLocks.TryRunLocked($"{id}.{entry.ContentHash}",
+        var (_, updatedTranslation) = await TranslationLocks.TryRunLocked(
+                $"{id}.{entry.ContentHash}",
                 RunLockedOptions.NoRelock,
                 ct => TranslateUnsafe(id, ct),
                 cancellationToken)

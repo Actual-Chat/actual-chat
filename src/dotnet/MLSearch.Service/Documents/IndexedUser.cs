@@ -24,7 +24,7 @@ public sealed record IndexedUser(UserId Id) : IIndexedUserUpsertWithoutPlaces,
     IRequirementTarget
 {
     public string Name { get; init; } = "";
-    public ApiArray<PlaceId> PlaceIds { get; init; }
+    public ApiArray<PlaceId> PlaceIds { get; init; } = ApiArray<PlaceId>.Empty;
     public JoinField ContactToUser { get; set; } = JoinField.Root<IndexedUser>();
 
     public static IndexedUser ForPartialPlacesUpsert(UserId userId, params ApiArray<PlaceId> placeIds)

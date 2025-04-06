@@ -36,7 +36,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             var isGranted = await Permissions.Check(cancellationToken).ConfigureAwait(false);
             if (isGranted != true) {
                 Log.LogWarning("Contacts permission is isn't granted");
-                return default;
+                return ApiArray<ExternalContactFull>.Empty;
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
@@ -49,7 +49,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to read device contacts");
-            return default;
+            return ApiArray<ExternalContactFull>.Empty;
         }
     }
 

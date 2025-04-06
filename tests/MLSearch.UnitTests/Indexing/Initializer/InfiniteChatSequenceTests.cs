@@ -65,7 +65,7 @@ public class InfiniteChatSequenceTests
             .Setup(ListChangedCall)
             .Returns<ChangedChatsQuery, CancellationToken>(
                 (q, _) => batchCount++ == 0
-                    ? Task.FromResult(ApiArray.Empty<Chat.Chat>())
+                    ? Task.FromResult(ApiArray<Chat.Chat>.Empty)
                     : GetNextBatch(q)
             );
 
@@ -172,7 +172,7 @@ public class InfiniteChatSequenceTests
             .Setup(ListChangedCall)
             .ReturnsAsync(() => {
                 cancellationSource.Cancel();
-                return ApiArray.Empty<Chat.Chat>();
+                return ApiArray<Chat.Chat>.Empty;
             });
 
         var sequence = new InfiniteChatSequence(clock.Object, chats.Object, Log) {

@@ -38,7 +38,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return null;
 
         // We _must_ have a dependency on AuthBackend.GetUser here
-        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(DbShard.Single, userId, cancellationToken).ConfigureAwait(false);
         AccountFull? account;
         if (user == null) {
             account = GetGuestAccount(userId);
@@ -76,9 +76,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var sid = identity.Id.Value;
+        var id = identity.Id;
         var dbUserIdentity = await dbContext.UserIdentities
-            .FirstOrDefaultAsync(x => x.Id == sid, cancellationToken)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
         return new UserId(dbUserIdentity?.DbUserId);
     }
@@ -155,7 +155,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = Get(account.Id, default);
-            var invUserLinkIds = context.Operation.Items.Get<List<UserLinkId>>();
+            var invUserLinkIds = context.Operation.Items.KeylessGet<List<UserLinkId>>();
             if (invUserLinkIds is not null)
                 foreach (var invUserLinkId in invUserLinkIds)
                     _ = GetIdByUserLink(invUserLinkId, default);
@@ -203,7 +203,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 userLinkIds.Add(oldUserLink);
             if (!newUserLink.IsNone)
                 userLinkIds.Add(newUserLink);
-            context.Operation.Items.Set(userLinkIds);
+            context.Operation.Items.KeylessSet(userLinkIds);
         }
     }
 

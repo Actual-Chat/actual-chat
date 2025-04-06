@@ -74,7 +74,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long? VideoEntryId { get; set; }
     public string? TimeMap { get; set; }
 
-    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, ApiArray<LinkPreview> linkPreviews = default)
+    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, ApiArray<LinkPreview>? linkPreviews = null)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
         var attachmentsArray = attachments == null
@@ -83,6 +83,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
         var linkPreviewIds = GetLinkPreviewIds();
+        linkPreviews ??= ApiArray<LinkPreview>.Empty;
         return new (id, Version) {
             IsRemoved = IsRemoved,
             AuthorId = new AuthorId(AuthorId),
@@ -122,7 +123,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public ApiArray<Symbol> GetLinkPreviewIds()
-        => !LinkPreviewIds.IsNullOrEmpty() ? JsonSerializer.Deserialize<ApiArray<Symbol>>(LinkPreviewIds) : [];
+        => LinkPreviewIds.IsNullOrEmpty()
+            ? ApiArray<Symbol>.Empty
+            : JsonSerializer.Deserialize<ApiArray<Symbol>>(LinkPreviewIds) ?? ApiArray<Symbol>.Empty;
 
     public void UpdateFrom(ChatEntry model)
     {

@@ -20,7 +20,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     public async Task MustHandleEmptyBatch()
     {
         // arrange
-        var id = RandomSymbolGenerator.Default.Next();
+        var id = RandomStringGenerator.Default.Next();
         IReadOnlyList<SimpleItem>[] batches = [
             [],
         ];
@@ -54,7 +54,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     public async Task MustProcessAllBatches(int fullBatchCount, int lastBatchSize)
     {
         // arrange
-        var id = RandomSymbolGenerator.Default.Next();
+        var id = RandomStringGenerator.Default.Next();
         var batches = Enumerable.Range(1, fullBatchCount)
             .Select(_ => NewBatch(BatchSize))
             .ToList();

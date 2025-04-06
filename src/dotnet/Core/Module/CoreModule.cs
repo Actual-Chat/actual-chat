@@ -28,7 +28,7 @@ public sealed class CoreModule(IServiceProvider moduleServices)
 #pragma warning disable CA2000
         Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(20, Alphabet.AlphaNumericDash.Symbols));
 #pragma warning restore CA2000
-        Session.Validator = session => session.Id.Value.Length >= 20;
+        Session.Validator = session => session.Id.Length >= 20;
 
 #if false
         // Default binary serializer

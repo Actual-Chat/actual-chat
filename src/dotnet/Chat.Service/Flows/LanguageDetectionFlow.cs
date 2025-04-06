@@ -104,14 +104,24 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
         async Task SaveLanguages()
         {
             using var _2 = Tracer.Region();
-            var updated = batch.Select(x => x.Language with { Languages = languageMap.GetValueOrDefault(x.Entry.Id) });
+            var updated = batch.Select(x => x.Language with {
+                Languages = languageMap.GetValueOrDefault(x.Entry.Id, ApiArray<Language>.Empty),
+            });
             var cmd = ChatEntryLanguagesBackend_BulkChange.Upserts(updated);
             var results = await Host.Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
             // version mismatch is expected, so we don't log it
-            var failed = results.Zip(batch, (result, entry) => (result, entry)).Where(x => x.result.HasError).Where(x => x.result.Error is not VersionMismatchException).ToList();
-            Log.LogInformation("`{Id}`.ProcessBatch: updated {SuccessCount} entryLanguages successfully, {FailedCount} failed", Id, results.Count - failed.Count, failed.Count);
+            var failed = results
+                .Zip(batch, (result, entry) => (result, entry))
+                .Where(x => x.result.HasError)
+                .Where(x => x.result.Error is not VersionMismatchException)
+                .ToList();
+            Log.LogInformation(
+                "`{Id}`.ProcessBatch: updated {SuccessCount} entryLanguages successfully, {FailedCount} failed",
+                Id, results.Count - failed.Count, failed.Count);
             foreach (var (result, entry) in failed)
-                Log.LogError(result.Error, "`{Id}`.ProcessBatch: failed to update entryLanguage #{Id}", Id, entry.Language.Id);
+                Log.LogError(result.Error,
+                    "`{Id}`.ProcessBatch: failed to update entryLanguage #{Id}",
+                    Id, entry.Language.Id);
         }
     }
 

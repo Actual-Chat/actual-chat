@@ -47,7 +47,7 @@ public abstract record QueuedCommand : IHasId<Ulid>
 
     public static CommandKind GetKind(ICommand command)
         => command is IEventCommand eventCommand
-            ? eventCommand.ChainId.IsEmpty
+            ? eventCommand.ChainId.IsNullOrEmpty()
                 ? CommandKind.UnboundEvent
                 : CommandKind.BoundEvent
             : CommandKind.Command;

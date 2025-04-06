@@ -96,13 +96,16 @@ public sealed partial record ChatEntry(
     [Obsolete("2024.11 Replaced with LinkPreviewIds")]
     [DataMember(Order = 29), MemoryPackOrder(29)] public Symbol LinkPreviewId { get; init; } = "";
     [DataMember(Order = 31), MemoryPackOrder(31)] public ApiArray<Symbol> LinkPreviewIds { get; init; }
+        = ApiArray<Symbol>.Empty;
     [DataMember(Order = 30), MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
 
     // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }
+        = ApiArray<TextEntryAttachment>.Empty;
     [Obsolete("2024.11 Replaced with LinkPreviews")]
     [DataMember(Order = 51), MemoryPackOrder(51)] public LinkPreview? LinkPreview { get; init; }
     [DataMember(Order = 52), MemoryPackOrder(52)] public ApiArray<LinkPreview> LinkPreviews { get; init; }
+        = ApiArray<LinkPreview>.Empty;
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

@@ -49,9 +49,11 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invLanguages = context.Operation.Items.GetOrDefault<ApiArray<ChatEntryLanguage>>();
-            foreach (var entryLanguage in invLanguages)
-                _ = GetLanguage(entryLanguage.Id, default);
+            var invLanguages = context.Operation.Items.KeylessGet<ApiArray<ChatEntryLanguage>>();
+            if (invLanguages != null) {
+                foreach (var entryLanguage in invLanguages)
+                    _ = GetLanguage(entryLanguage.Id, default);
+            }
             return default!;
         }
 
@@ -67,7 +69,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         var changed = results.Where(x => !x.HasError).Select(x => x.Value!).ToApiArray();
         Log.LogDebug("Changed languages for {Count} entries: {Ids}", changed.Count, changed.Select(x => x.Id));
         if (changed.Count > 0) {
-            context.Operation.Items.Set(changed);
+            context.Operation.Items.KeylessSet(changed);
             context.Operation.AddEvent(new ChatEntryLanguagesChangedEvent(changed));
         }
 

@@ -62,15 +62,15 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
 
     // Nested types
 
-    public record Animal
+    public sealed record Animal
     {
         public string Name { get; init; } = "";
         public string? AltName { get; init; }
         public int LegCount { get; init; }
-        public ApiArray<Symbol> Tags { get; init; }
+        public ApiArray<Symbol> Tags { get; init; } = ApiArray<Symbol>.Empty;
     }
 
-    public record AnimalDiff : RecordDiff
+    public sealed record AnimalDiff : RecordDiff
     {
         public string? Name { get; init; }
         public Option<string?> AltName { get; init; }

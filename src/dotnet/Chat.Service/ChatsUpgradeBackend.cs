@@ -48,7 +48,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invChat = context.Operation.Items.Get<Chat>()!;
+            var invChat = context.Operation.Items.KeylessGet<Chat>()!;
             _ = ChatsBackend.Get(invChat.Id, default);
             return;
         }
@@ -114,7 +114,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
-        context.Operation.Items.Set(chat);
+        context.Operation.Items.KeylessSet(chat);
     }
 
     // [CommandHandler]

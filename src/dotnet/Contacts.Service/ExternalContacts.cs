@@ -16,7 +16,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
        if (!account.IsActive())
-            return default;
+            return ApiArray<ExternalContactFull>.Empty;
 
         return await Backend.ListFull(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
     }

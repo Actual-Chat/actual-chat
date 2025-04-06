@@ -13,7 +13,7 @@ public sealed class ScopedTracerProvider
             return;
         }
 
-        var processId = RuntimeInfo.Process.MachinePrefixedId.Value;
+        var processId = RuntimeInfo.Process.MachinePrefixedId;
         var id = Interlocked.Increment(ref _lastId);
         Tracer = new Tracer($"{rootTracer.Name}.Scope-{processId}-{id.Format()}", rootTracer.Writer);
     }

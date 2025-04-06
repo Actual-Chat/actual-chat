@@ -21,21 +21,21 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
     private static partial Regex SpecialCharacterRegexFactory();
     private static readonly Regex SpecialCharacterRegex = SpecialCharacterRegexFactory();
 
-    private readonly ConcurrentDictionary<(Type, Symbol), string> _getTopicCache = new();
-    private NatsSettings? _natsSettings;
-    private NatsConnection? _connection;
+    private readonly ConcurrentDictionary<(Type, string), string> _getTopicCache = new();
 
+    [field: AllowNull, MaybeNull]
     private NatsConnection Connection {
         get {
-            if (_connection != null)
-                return _connection;
+            if (field != null)
+                return field;
 
             lock (Lock)
-                return _connection ??= Services.GetRequiredService<NatsConnection>();
+                return field ??= Services.GetRequiredService<NatsConnection>();
         }
     }
 
-    public NatsSettings NatsSettings => _natsSettings ??= Services.GetRequiredService<NatsSettings>();
+    [field: AllowNull, MaybeNull]
+    public NatsSettings NatsSettings => field ??= Services.GetRequiredService<NatsSettings>();
 
     public override async Task Purge(CancellationToken cancellationToken = default)
     {
@@ -53,19 +53,18 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
     public string GetTopic(ICommand command)
     {
         var eventCommand = command as IEventCommand;
-        return _getTopicCache.GetOrAdd((command.GetType(), eventCommand?.ChainId ?? default), key => {
+        return _getTopicCache.GetOrAdd((command.GetType(), eventCommand?.ChainId ?? ""), key => {
             var (commandType, chainId) = key;
             var sCommandType = commandType.ToIdentifierName();
-            if (chainId.IsEmpty)
+            if (chainId.IsNullOrEmpty())
                 return sCommandType;
 
-            var sChainId = chainId.Value;
-            if (sChainId.OrdinalHasPrefix("ActualChat.", out var suffix))
-                sChainId = suffix;
-            if (sChainId.OrdinalHasPrefix("ActualLab.", out suffix))
-                sChainId = suffix;
-            sChainId = SpecialCharacterRegex.Replace(sChainId, "-");
-            return $"{sCommandType}-{sChainId}";
+            if (chainId.OrdinalHasPrefix("ActualChat.", out var suffix))
+                chainId = suffix;
+            if (chainId.OrdinalHasPrefix("ActualLab.", out suffix))
+                chainId = suffix;
+            chainId = SpecialCharacterRegex.Replace(chainId, "-");
+            return $"{sCommandType}-{chainId}";
         });
     }
 

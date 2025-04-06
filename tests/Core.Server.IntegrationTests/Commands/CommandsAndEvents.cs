@@ -8,14 +8,14 @@ public partial record TestEvent1(
     [property: MemoryPackOrder(1)] string? Error) : EventCommand, IHasShardKey<Unit>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
+    public Unit ShardKey => default;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record TestEvent2 : EventCommand, IHasShardKey<Unit>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public Unit ShardKey => Unit.Default;
+    public Unit ShardKey => default;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

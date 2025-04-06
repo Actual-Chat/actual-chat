@@ -3,13 +3,17 @@ using ActualLab.Scalability;
 
 namespace ActualChat.Kubernetes;
 
-public record KubeServiceEndpoints(
+public sealed record KubeServiceEndpoints(
     KubeService Service,
-    ApiArray<KubeEndpoint> Endpoints = default,
-    ApiArray<KubeEndpoint> ReadyEndpoints = default,
-    ApiArray<KubePort> Ports = default)
+    ApiArray<KubeEndpoint> Endpoints,
+    ApiArray<KubeEndpoint> ReadyEndpoints,
+    ApiArray<KubePort> Ports)
 {
     private readonly Dictionary<string, HashRing<string>> _hashRingCache = new(StringComparer.Ordinal);
+
+    public KubeServiceEndpoints(KubeService service)
+        : this(service, ApiArray<KubeEndpoint>.Empty, ApiArray<KubeEndpoint>.Empty, ApiArray<KubePort>.Empty)
+    { }
 
     public KubePort? GetPort(string portName = "http")
     {
@@ -30,7 +34,7 @@ public record KubeServiceEndpoints(
         }
     }
 
-    protected virtual bool PrintMembers(StringBuilder builder)
+    private bool PrintMembers(StringBuilder builder)
     {
 #pragma warning disable MA0011
         builder.Append("Service = ").Append(Service).Append(", ");

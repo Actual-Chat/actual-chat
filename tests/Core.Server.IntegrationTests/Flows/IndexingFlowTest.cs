@@ -20,7 +20,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task MustProcessAllBatches(int batchCount)
     {
         // arrange
-        var id = RandomSymbolGenerator.Default.Next();
+        var id = RandomStringGenerator.Default.Next();
         var batchSize = 10;
         var batches = Enumerable.Range(1, batchCount)
             .Select(i => new BatchIndexingResult<long>(false, false, i * batchSize, true))
@@ -67,7 +67,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task MustEnd()
     {
         // arrange
-        var id = RandomSymbolGenerator.Default.Next();
+        var id = RandomStringGenerator.Default.Next();
         BatchIndexingResult<long>[] batches = [
             new (true, false, 20, true),
             new (false, false, 30, true),
@@ -88,7 +88,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task MustWaitForReindexingIfVersionIsBumped()
     {
         // arrange
-        var id = RandomSymbolGenerator.Default.Next();
+        var id = RandomStringGenerator.Default.Next();
         BatchIndexingResult<long>[] batches = [
             new (false, true, 20, true),
             new (false, true, 30, true),

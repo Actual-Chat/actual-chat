@@ -7,8 +7,7 @@ namespace ActualChat.Media.IntegrationTests;
 public class LinkPreviewsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static readonly RandomStringGenerator RandomStringGenerator = new (5, Alphabet.AlphaNumericLower);
-    private static readonly RandomSymbolGenerator IdGenerator = new (length: 5);
+    private static readonly RandomStringGenerator IdGenerator = new(length: 5);
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private ILinkPreviewsBackend Backend { get; } = fixture.AppHost.Services.GetRequiredService<ILinkPreviewsBackend>();
 

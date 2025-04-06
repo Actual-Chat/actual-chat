@@ -140,8 +140,8 @@
 
     public sealed record ComputedModel {
         public int MemberCount { get; init; }
-        public ApiArray<AuthorId> AuthorIds { get; init; }
-        public ApiArray<AuthorId> OwnerIds { get; init; }
+        public ApiArray<AuthorId> AuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
+        public ApiArray<AuthorId> OwnerIds { get; init; } = ApiArray<AuthorId>.Empty;
         public AuthorId OwnAuthorId { get; init; }
 
         public bool IsOwner(AuthorId authorId)

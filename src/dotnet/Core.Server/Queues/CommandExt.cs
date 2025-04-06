@@ -2,12 +2,12 @@ namespace ActualChat.Queues;
 
 public static class CommandExt
 {
-    private static readonly Action<IEventCommand, Symbol> ChainIdSetter =
-        typeof(IEventCommand).GetProperty(nameof(IEventCommand.ChainId))!.GetSetter<Symbol>();
+    private static readonly Action<IEventCommand, string> ChainIdSetter =
+        typeof(IEventCommand).GetProperty(nameof(IEventCommand.ChainId))!.GetSetter<string>();
 
     public static CommandKind GetKind(this ICommand command)
         => command is IEventCommand eventCommand
-            ? eventCommand.ChainId.IsEmpty
+            ? eventCommand.ChainId.IsNullOrEmpty()
                 ? CommandKind.UnboundEvent
                 : CommandKind.BoundEvent
             : CommandKind.Command;

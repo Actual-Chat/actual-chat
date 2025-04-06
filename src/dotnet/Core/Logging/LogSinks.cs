@@ -2,13 +2,14 @@ using ActualLab.Generators;
 
 namespace ActualChat.Logging;
 
-public class LogSinks
+public sealed class LogSinks
 {
     private readonly ConcurrentDictionary<ILogSink, Unit> _sinks = [];
-    public Symbol Id { get; } = RandomSymbolGenerator.Default.Next(5);
+
+    public Symbol Id { get; } = RandomStringGenerator.Default.Next(5);
 
     public void Add(ILogSink sink)
-        => _sinks.TryAdd(sink, Unit.Default);
+        => _sinks.TryAdd(sink, default);
 
     public void Remove(ILogSink sink)
         => _sinks.Remove(sink, out _);

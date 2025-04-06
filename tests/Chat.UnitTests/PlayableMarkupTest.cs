@@ -10,7 +10,7 @@ public class PlayableMarkupTest
         var m = new PlayableTextMarkup(text, timeMap);
         m.Text.Should().Be(text);
         var words = m.Words;
-        words.Count.Should().Be(14);
+        words.Length.Should().Be(14);
         words[^1].Value.Should().Be("решать.");
     }
 }

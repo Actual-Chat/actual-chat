@@ -15,8 +15,7 @@ public class EmbeddingsCalculator : IEmbeddingsCalculator
 
     private readonly Uri? _predictionsUri;
 
-    private readonly JsonSerializerOptions _jsonSerializerOptions = new (JsonSerializerOptions.Default)
-    {
+    private readonly JsonSerializerOptions _jsonSerializerOptions = new (JsonSerializerOptions.Default) {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 

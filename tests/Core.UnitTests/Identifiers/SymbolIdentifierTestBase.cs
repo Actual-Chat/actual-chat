@@ -64,13 +64,13 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
         var identifiers = ValidIdentifiers.Select(s => TIdentifier.Parse(s)).Concat(new[] { None }).ToArray();
         foreach (var id in identifiers) {
             var bag = new PropertyBag()
-                .Set("s")
+                .KeylessSet("s")
                 .Set("x", id)
-                .Set(id);
+                .KeylessSet(id);
             bag = bag.PassThroughAllSerializers(Out);
-            bag.GetOrDefault<string>().Should().Be("s");
-            bag.GetOrDefault<TIdentifier>("x").Should().Be(id);
-            bag.GetOrDefault<TIdentifier>().Should().Be(id);
+            bag.KeylessGet<string>().Should().Be("s");
+            bag.Get<TIdentifier>("x").Should().Be(id);
+            bag.KeylessGet<TIdentifier>().Should().Be(id);
         }
     }
 
@@ -80,13 +80,13 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
         var identifiers = ValidIdentifiers.Select(s => TIdentifier.Parse(s)).Concat(new[] { None }).ToArray();
         foreach (var id in identifiers) {
             var bag = new MutablePropertyBag();
-            bag.Set("s");
+            bag.KeylessSet("s");
             bag.Set("x", id);
-            bag.Set(id);
+            bag.KeylessSet(id);
             bag = bag.PassThroughAllSerializers(Out);
-            bag.GetOrDefault<string>().Should().Be("s");
-            bag.GetOrDefault<TIdentifier>("x").Should().Be(id);
-            bag.GetOrDefault<TIdentifier>().Should().Be(id);
+            bag.KeylessGet<string>().Should().Be("s");
+            bag.Get<TIdentifier>("x").Should().Be(id);
+            bag.KeylessGet<TIdentifier>().Should().Be(id);
         }
     }
 }

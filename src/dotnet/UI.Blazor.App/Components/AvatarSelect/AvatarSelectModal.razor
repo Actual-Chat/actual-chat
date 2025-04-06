@@ -180,6 +180,6 @@
     public record RevealModel(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected) : Model(ChatId, false, OnAvatarSelected);
 
     public sealed record ViewModel(ApiArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
-        public static readonly ViewModel None = new(default, default, null);
+        public static readonly ViewModel None = new(ApiArray<AvatarFull>.Empty, default, null);
     }
 }

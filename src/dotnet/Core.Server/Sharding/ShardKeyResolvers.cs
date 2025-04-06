@@ -67,8 +67,8 @@ public static class ShardKeyResolvers
 
         // Classes
         Register<string>(ForString); // Todo: likely, we should get rid of this kind of shard key
-        Register<Session>(x => ForString(x.Id.Value));
-        Register<ISessionCommand>(x => ForString(x.Session.Id.Value));
+        Register<Session>(x => ForString(x.Id));
+        Register<ISessionCommand>(x => ForString(x.Session.Id));
     }
 
     public static void Register<T>(ShardKeyResolver<T> resolver)

@@ -74,7 +74,7 @@ public class Contacts(IServiceProvider services) : IContacts
         if (!placeId.IsNone && !isChatRoulette) {
             var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
             if (place?.Rules.CanRead() != true)
-                return ApiArray.Empty<ContactId>();
+                return ApiArray<ContactId>.Empty;
         }
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var accountId = account.Id;

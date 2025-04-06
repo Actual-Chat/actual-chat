@@ -1,5 +1,5 @@
 namespace ActualChat.Kubernetes;
 
-public record KubeService(
+public sealed record KubeService(
     string Namespace,
     string Name);

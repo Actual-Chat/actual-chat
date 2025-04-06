@@ -1,5 +1,3 @@
-using ActualLab.Generators;
-
 namespace ActualChat.Users.UnitTests;
 
 public class UserExtTest
@@ -15,11 +13,10 @@ public class UserExtTest
         // assert
         user.Identities.Keys.Select(x => x.Id)
             .Should()
-            .BeEquivalentTo(new Symbol[] {
+            .BeEquivalentTo(
                 $"email/{email}",
                 $"email-hash/{expectedEmailHash.OrdinalReplace("/", "\\/")}",
                 $"phone/{phone}",
-                $"phone-hash/{expectedPhoneHash.OrdinalReplace("/", "\\/")}",
-            });
+                $"phone-hash/{expectedPhoneHash.OrdinalReplace("/", "\\/")}");
     }
 }

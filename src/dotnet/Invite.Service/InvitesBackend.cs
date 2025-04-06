@@ -60,7 +60,7 @@ public class InvitesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invInvite = context.Operation.Items.Get<Invite>();
+            var invInvite = context.Operation.Items.KeylessGet<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
@@ -83,7 +83,7 @@ public class InvitesBackend(IServiceProvider services)
         dbContext.Invites.Add(new DbInvite(invite));
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(invite);
+        context.Operation.Items.KeylessSet(invite);
         return invite;
     }
 
@@ -95,12 +95,12 @@ public class InvitesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invInvite = context.Operation.Items.Get<Invite>();
+            var invInvite = context.Operation.Items.KeylessGet<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
             }
-            var invActivationKey = context.Operation.Items.Get<string>();
+            var invActivationKey = context.Operation.Items.KeylessGet<string>();
             if (invActivationKey != null)
                 _ = IsValid(invActivationKey, default);
             return default!;
@@ -163,7 +163,7 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(invite);
+        context.Operation.Items.KeylessSet(invite);
         return invite;
 
         Task OnUseForPlace(PlaceId placeId)
@@ -175,7 +175,7 @@ public class InvitesBackend(IServiceProvider services)
 
             var dbActivationKey = new DbActivationKey(invite.Id);
             dbContext.Add(dbActivationKey);
-            context.Operation.Items.Set(dbActivationKey.Id);
+            context.Operation.Items.KeylessSet(dbActivationKey.Id);
 
             var accountSettings = new AccountSettings(ServerKvas, session);
             await accountSettings
@@ -192,7 +192,7 @@ public class InvitesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invInvite = context.Operation.Items.Get<Invite>();
+            var invInvite = context.Operation.Items.KeylessGet<Invite>();
             if (invInvite != null) {
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
@@ -213,7 +213,7 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(invite);
+        context.Operation.Items.KeylessSet(invite);
     }
 
     [ComputeMethod]

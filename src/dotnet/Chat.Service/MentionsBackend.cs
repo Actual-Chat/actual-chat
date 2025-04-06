@@ -36,7 +36,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invChangedMentionIds = context.Operation.Items.Get<HashSet<MentionId>>();
+            var invChangedMentionIds = context.Operation.Items.KeylessGet<HashSet<MentionId>>();
             if (invChangedMentionIds != null) {
                 foreach (var mentionId in invChangedMentionIds)
                     _ = GetLast(entry.ChatId, mentionId, default);
@@ -80,7 +80,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             return;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(changedMentionIds);
+        context.Operation.Items.KeylessSet(changedMentionIds);
     }
 
     private async Task<HashSet<MentionId>> GetMentionIds(ChatEntry entry, CancellationToken cancellationToken)

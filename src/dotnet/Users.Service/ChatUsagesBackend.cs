@@ -40,7 +40,7 @@ public class ChatUsagesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            if (context.Operation.Items.GetOrDefault<bool>())
+            if (context.Operation.Items.KeylessGet<bool>())
                 _ = GetRecencyList(userId, kind, default);
             return;
         }
@@ -72,7 +72,7 @@ public class ChatUsagesBackend(IServiceProvider services)
 
         if (hasChanges)
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(hasChanges);
+        context.Operation.Items.KeylessSet(hasChanges);
     }
 
     public virtual async Task OnPurgeRecencyList(

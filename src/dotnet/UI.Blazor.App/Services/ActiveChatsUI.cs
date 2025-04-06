@@ -21,6 +21,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     public ActiveChatsUI(ChatUIHub hub) : base(hub)
         => _activeChats = StateFactory.NewKvasStored<ApiArray<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {
+                InitialValue = ApiArray<ActiveChat>.Empty,
                 Corrector = FixStoredActiveChats,
                 Category = StateCategories.Get(GetType(), nameof(ActiveChats)),
             });

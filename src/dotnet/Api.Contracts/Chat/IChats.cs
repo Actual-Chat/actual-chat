@@ -135,13 +135,14 @@ public sealed partial record Chats_UpsertTextEntry(
 ) : ISessionCommand<ChatEntry>, IApiCommand
 {
     [Obsolete($"2023.11: Use '{nameof(EntryAttachments)}' instead.")]
-    [DataMember, MemoryPackOrder(5)] public ApiArray<MediaId> Attachments { get; set; }
+    [DataMember, MemoryPackOrder(5)] public ApiArray<MediaId> Attachments { get; set; } = ApiArray<MediaId>.Empty;
     [DataMember, MemoryPackOrder(6)] public ChatEntryId ForwardedChatEntryId { get; set; }
     [DataMember, MemoryPackOrder(7)] public AuthorId ForwardedAuthorId { get; set; }
     [DataMember, MemoryPackOrder(8)] public string? ForwardedChatTitle { get; set; }
     [DataMember, MemoryPackOrder(9)] public string? ForwardedAuthorName { get; set; }
     [DataMember, MemoryPackOrder(10)] public Moment? ForwardedChatEntryBeginsAt { get; set; }
     [DataMember, MemoryPackOrder(11)] public ApiArray<TextEntryAttachment> EntryAttachments { get; set; }
+        = ApiArray<TextEntryAttachment>.Empty;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

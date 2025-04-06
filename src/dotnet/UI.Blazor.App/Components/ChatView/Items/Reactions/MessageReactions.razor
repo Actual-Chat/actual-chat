@@ -33,7 +33,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(Entry.HasReactions),
+            InitialValue = new Model(Entry.HasReactions, ApiArray<ReactionSummary>.Empty),
             Category = GetStateCategory(GetType()),
         };
 
@@ -61,9 +61,9 @@
 
     public sealed record Model(
         bool HasReactions,
-        ApiArray<ReactionSummary> Reactions = default,
+        ApiArray<ReactionSummary> Reactions,
         Reaction? OwnReaction = null
     ) {
-        public static readonly Model None = new(false);
+        public static readonly Model None = new(false, ApiArray<ReactionSummary>.Empty);
     };
 }

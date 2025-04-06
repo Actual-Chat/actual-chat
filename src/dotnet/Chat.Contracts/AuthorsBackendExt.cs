@@ -21,6 +21,9 @@ public static class AuthorsBackendExt
         return author;
     }
 
-    public static Task<ApiArray<UserId>> ListPlaceUserIds(this IAuthorsBackend authorsBackend, PlaceId placeId, CancellationToken cancellationToken)
+    public static Task<ApiArray<UserId>> ListPlaceUserIds(
+        this IAuthorsBackend authorsBackend,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
         => authorsBackend.ListUserIds(placeId.ToRootChatId(), cancellationToken);
 }

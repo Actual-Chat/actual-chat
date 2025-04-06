@@ -16,7 +16,7 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
         ChatEntryId chatEntryId,
         CancellationToken cancellationToken)
     {
-        if (session.Id.IsEmpty)
+        if (session.Id.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(session));
 
         if (chatEntryId.IsNone)

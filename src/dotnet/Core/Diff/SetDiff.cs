@@ -6,8 +6,8 @@ namespace ActualChat.Diff;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TItem>(
-    ApiArray<TItem> addedItems,
-    ApiArray<TItem> removedItems = default
+    ApiArray<TItem>? addedItems,
+    ApiArray<TItem>? removedItems = null
 ) : IDiff, IEquatable<SetDiff<TItem>>
 {
     public static readonly SetDiff<TItem> Unchanged = default!;
@@ -15,8 +15,19 @@ public readonly partial struct SetDiff<TItem>(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty => AddedItems.IsEmpty && RemovedItems.IsEmpty;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)] public ApiArray<TItem> AddedItems { get; init; } = addedItems;
-    [DataMember(Order = 1), MemoryPackOrder(1)] public ApiArray<TItem> RemovedItems { get; init; } = removedItems;
+    [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]
+    [field: MaybeNull, AllowNull]
+    public ApiArray<TItem> AddedItems {
+        get => field ?? ApiArray<TItem>.Empty;
+        init;
+    } = addedItems!;
+
+    [DataMember(Order = 1), MemoryPackOrder(1), MemoryPackAllowSerialize]
+    [field: MaybeNull, AllowNull]
+    public ApiArray<TItem> RemovedItems {
+        get => field ?? ApiArray<TItem>.Empty;
+        init;
+    } = removedItems!;
 
     // Equality
     public bool Equals(SetDiff<TItem> other)
@@ -32,22 +43,34 @@ public readonly partial struct SetDiff<TItem>(
 }
 
 // SetDiff<T> version which also "encodes" original collection type.
-// Its' the one used by SetDiffHandler.
+// It's the one used by SetDiffHandler.
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TCollection, TItem>(
-    ApiArray<TItem> addedItems,
-    ApiArray<TItem> removedItems = default
-    ) : IDiff, IEquatable<SetDiff<TCollection, TItem>> where TCollection : IReadOnlyCollection<TItem>
+    ApiArray<TItem>? addedItems,
+    ApiArray<TItem>? removedItems = null
+    ) : IDiff, IEquatable<SetDiff<TCollection, TItem>>
+    where TCollection : IReadOnlyCollection<TItem>
 {
     public static readonly SetDiff<TCollection, TItem> Unchanged = default!;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty => AddedItems.IsEmpty && RemovedItems.IsEmpty;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)] public ApiArray<TItem> AddedItems { get; init; } = addedItems;
-    [DataMember(Order = 1), MemoryPackOrder(1)] public ApiArray<TItem> RemovedItems { get; init; } = removedItems;
+    [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]
+    [field: MaybeNull, AllowNull]
+    public ApiArray<TItem> AddedItems {
+        get => field ?? ApiArray<TItem>.Empty;
+        init;
+    } = addedItems!;
+
+    [DataMember(Order = 1), MemoryPackOrder(1), MemoryPackAllowSerialize]
+    [field: MaybeNull, AllowNull]
+    public ApiArray<TItem> RemovedItems {
+        get => field ?? ApiArray<TItem>.Empty;
+        init;
+    } = removedItems!;
 
     // Equality
     public bool Equals(SetDiff<TCollection, TItem> other)

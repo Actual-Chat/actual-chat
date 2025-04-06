@@ -70,7 +70,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invPlace = context.Operation.Items.Get<Place>();
+            var invPlace = context.Operation.Items.KeylessGet<Place>();
             if (invPlace != null)
                 _ = Get(invPlace.Id, default);
             return null!;
@@ -124,7 +124,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             await RemoveUserLink(oldPlace!).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation.Items.Set(place);
+        context.Operation.Items.KeylessSet(place);
 
         long? chatExpectedVersion;
         Change<ChatDiff> chatChange;

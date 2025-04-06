@@ -162,7 +162,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData(1111, false)]
     public async Task WhenShouldWaitForValue(int propertyCount, bool mustUpdateBeforeWaiting)
     {
-        var rsg = new RandomSymbolGenerator(alphabet: Alphabet.AlphaNumericLower);
+        var rsg = new RandomStringGenerator(alphabet: Alphabet.AlphaNumericLower);
         var keyPrefix = rsg.Next(5);
         var services = CreateServices();
         var kvas = services.GetRequiredService<IKvas>();
@@ -187,7 +187,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
 public async Task ValueOrDefaultMustReturnNewValueAfterUpdate()
 {
     // arrange
-    var rsg = new RandomSymbolGenerator(alphabet: Alphabet.AlphaNumericLower);
+    var rsg = new RandomStringGenerator(alphabet: Alphabet.AlphaNumericLower);
     var services = CreateServices();
     var kvas = services.GetRequiredService<IKvas>();
     var stateFactory = services.StateFactory();

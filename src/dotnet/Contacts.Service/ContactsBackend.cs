@@ -246,8 +246,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         const string IsChatRouletteOperationItemKey = "IsChatRoulette";
 
         if (Invalidation.IsActive) {
-            var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
-            var invIsChatRoulette = context.Operation.Items.GetOrDefault<bool>(IsChatRouletteOperationItemKey);
+            var invIndex = context.Operation.Items.KeylessGet(long.MinValue);
+            var invIsChatRoulette = context.Operation.Items.Get<bool>(IsChatRouletteOperationItemKey);
             if (invIsChatRoulette) {
                 _ = Get(ownerId, id, default);
                 _ = ListIds(ownerId, Constants.Place.ChatRouletteId, default);
@@ -317,7 +317,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
+        context.Operation.Items.KeylessSet(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
         context.Operation.Items.Set(IsChatRouletteOperationItemKey, isChatRoulette);
         contact = dbContact.ToModel();
         context.Operation.AddEvent(new ContactChangedEvent(contact, existing, change.Kind));
@@ -334,7 +334,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invIndex = context.Operation.Items.GetOrDefault(long.MinValue);
+            var invIndex = context.Operation.Items.KeylessGet(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 // Contacts are sorted by TouchedAt and we load contacts in 2 stages: the 1st is limited by MinLoadLimit,
@@ -364,7 +364,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         dbContact.UpdateFrom(contact);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set((long)contactIds.IndexOf(id));
+        context.Operation.Items.KeylessSet((long)contactIds.IndexOf(id));
     }
 
     // [CommandHandler]
@@ -406,10 +406,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invPlaceId = context.Operation.Items.GetOrDefault<PlaceId>();
+            var invPlaceId = context.Operation.Items.KeylessGet<PlaceId>();
             if (!invPlaceId.IsNone)
                 _ = PseudoPlaceContact(invPlaceId);
-            var invChatId = context.Operation.Items.GetOrDefault<ChatId>();
+            var invChatId = context.Operation.Items.KeylessGet<ChatId>();
             if (!invChatId.IsNone)
                 _ = PseudoChatContact(invChatId);
             return;
@@ -427,7 +427,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.Set(placeId);
+            context.Operation.Items.KeylessSet(placeId);
         }
         else {
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -439,7 +439,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.Set(chatId);
+            context.Operation.Items.KeylessSet(chatId);
         }
     }
 
@@ -512,7 +512,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invOwnerId = context.Operation.Items.GetOrDefault<UserId>();
+            var invOwnerId = context.Operation.Items.KeylessGet<UserId>();
             if (!invOwnerId.IsNone)
                 _ = ListPlaceIds(invOwnerId, default);
             return;
@@ -546,7 +546,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
         if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.Set(ownerId);
+            context.Operation.Items.KeylessSet(ownerId);
             context.Operation.AddEvent(new PlaceMembershipChangedEvent(ownerId, placeId, hasLeft));
         }
     }

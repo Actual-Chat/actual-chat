@@ -13,10 +13,10 @@ public sealed partial record AuthorFull(AuthorId Id, long Version = 0) : Author(
     public static new readonly AuthorFull None = new() { Avatar = Avatar.None };
     public static new readonly AuthorFull Loading = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
-    [DataMember, MemoryPackOrder(6)] public UserId UserId { get; init; }
-    [DataMember, MemoryPackOrder(7)] public ApiArray<Symbol> RoleIds { get; init; }
-    [DataMember, MemoryPackOrder(10)]public bool IsPlaceAuthor { get; set; }
-    [DataMember, MemoryPackOrder(9)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(6)]  public UserId UserId { get; init; }
+    [DataMember, MemoryPackOrder(7)]  public ApiArray<Symbol> RoleIds { get; init; } = ApiArray<Symbol>.Empty;
+    [DataMember, MemoryPackOrder(10)] public bool IsPlaceAuthor { get; set; }
+    [DataMember, MemoryPackOrder(9)]  public Moment CreatedAt { get; init; }
 
     private AuthorFull() : this(default, 0) { }
 

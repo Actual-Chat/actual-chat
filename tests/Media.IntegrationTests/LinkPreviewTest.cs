@@ -58,7 +58,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entry = await Tester.UpdateTextEntry(entry.Id, $"New text {url2} {url1}");
 
         // assert
-        var updatedEntryLinkPreviews = await GetEntryLinkPreviews(entry.Id, id2, id1).Require();
+        var updatedEntryLinkPreviews = await GetEntryLinkPreviews(entry.Id, id2, id1)!.Require();
         updatedEntryLinkPreviews[0].Url.Should().Be(url2);
         updatedEntryLinkPreviews[0].Title.Should().Be("Title 2");
         updatedEntryLinkPreviews[0].Description.Should().Be("Description 2");

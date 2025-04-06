@@ -68,8 +68,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         await DumpEventCount($"after awaiting {eventCount} events");
         countComputed.Value.Should().BeGreaterThanOrEqualTo(eventCount);
 
-        async Task DumpEventCount(string point)
-        {
+        async Task DumpEventCount(string point) {
             countComputed = await countComputed.Update();
             Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count {point}: {testService.ProcessedEvents.Count} (computed: {countComputed.Value})");
         }

@@ -31,7 +31,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            if (context.Operation.Items.GetOrDefault<bool>())
+            if (context.Operation.Items.KeylessGet<bool>())
                 _ = Get(userId, chatId, kind, default);
             return;
         }
@@ -60,7 +60,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
 
         if (hasChanges)
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.Set(hasChanges);
+        context.Operation.Items.KeylessSet(hasChanges);
 
         if (kind == ChatPositionKind.Read && hasChanges) {
             var stat = await ChatsBackend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);

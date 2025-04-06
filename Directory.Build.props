@@ -21,6 +21,7 @@
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Backend'">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">Contracts</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Service'))">Service</ProjectKind>
+    <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.ML'))">Service</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Migration'))">Migration</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.Contains('.Blazor'))">Blazor</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.Contains('Tests'))">Tests</ProjectKind>
@@ -32,6 +33,7 @@
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Core'">Core</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Core.Server'">Core.Server</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Db'">Db</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'AI'">Service</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Kubernetes'">Kubernetes</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Redis'">Redis</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Testing'">Testing</ProjectKind>
