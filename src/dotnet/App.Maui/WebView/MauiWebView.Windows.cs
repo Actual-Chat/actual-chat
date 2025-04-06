@@ -63,12 +63,11 @@ public partial class MauiWebView
     {
         var webView = WindowsWebView.CoreWebView2;
         var cookieName = Constants.Session.CookieName;
-        var sessionId = session.Id.Value;
 
-        var cookie = webView.CookieManager.CreateCookie(cookieName, sessionId, MauiSettings.LocalHost, "/");
+        var cookie = webView.CookieManager.CreateCookie(cookieName, session.Id, MauiSettings.LocalHost, "/");
         webView.CookieManager.AddOrUpdateCookie(cookie);
 
-        cookie = webView.CookieManager.CreateCookie(cookieName, sessionId, MauiSettings.Host, "/");
+        cookie = webView.CookieManager.CreateCookie(cookieName, session.Id, MauiSettings.Host, "/");
         cookie.SameSite = CoreWebView2CookieSameSiteKind.None;
         cookie.IsHttpOnly = true;
         cookie.IsSecure = true;

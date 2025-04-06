@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.UI.Blazor.App
 @using ActualChat.Hosting
 @using ActualChat.Kvas
 @inherits ComputedStateComponent<NotificationsPermissionBanner.Model>
@@ -52,7 +51,8 @@
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override void OnInitialized()
-        => _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, "Permissions.Notifications.DismissedAt"));
+        => _dismissedAt = StateFactory.NewKvasStored<Moment>(
+            new(LocalSettings, "Permissions.Notifications.DismissedAt"));
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

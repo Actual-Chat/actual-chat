@@ -69,18 +69,17 @@ public partial class MauiWebView
         static void SetupDomainCookie(WKWebView webView, string domain, Session session, bool isSecure)
         {
             var cookieName = Constants.Session.CookieName;
-            var sessionId = session.Id.Value;
             var properties = isSecure
                 ? new NSDictionary(
                     NSHttpCookie.KeyName, cookieName,
-                    NSHttpCookie.KeyValue, sessionId,
+                    NSHttpCookie.KeyValue, session.Id,
                     NSHttpCookie.KeyPath, "/",
                     NSHttpCookie.KeyDomain, domain,
                     NSHttpCookie.KeySameSitePolicy, "none",
                     NSHttpCookie.KeyVersion, "1") // Version 1 supports same site = none
                 : new NSDictionary(
                     NSHttpCookie.KeyName, cookieName,
-                    NSHttpCookie.KeyValue, sessionId,
+                    NSHttpCookie.KeyValue, session.Id,
                     NSHttpCookie.KeyPath, "/",
                     NSHttpCookie.KeyDomain, domain,
                     NSHttpCookie.KeySameSitePolicy, "none",

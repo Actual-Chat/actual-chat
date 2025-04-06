@@ -48,12 +48,11 @@ public partial class MauiWebView
 
         var cookieManager = CookieManager.Instance!;
         var cookieName = Constants.Session.CookieName;
-        var sessionId = session.Id.Value;
 
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(AndroidWebView, true);
-        var sessionCookieValue = $"{cookieName}={sessionId}; path=/; secure; samesite=none; httponly";
+        var sessionCookieValue = $"{cookieName}={session.Id}; path=/; secure; samesite=none; httponly";
         cookieManager.SetCookie("https://" + MauiSettings.LocalHost, sessionCookieValue);
         cookieManager.SetCookie("https://" + MauiSettings.Host, sessionCookieValue);
     }
