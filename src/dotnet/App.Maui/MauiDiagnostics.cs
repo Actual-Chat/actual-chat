@@ -1,4 +1,3 @@
-using ActualChat.App.Maui.Logging;
 using ActualChat.App.Maui.Sentry;
 using ActualChat.App.Maui.Services;
 using ActualChat.Audio.WebM;
@@ -68,8 +67,7 @@ public static class MauiDiagnostics
             .MinimumLevel.Debug()
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
-            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui")
-            .WriteTo.TailSink();
+            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
         logging = AddPlatformLoggerSinks(logging);
         if (Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp))
             logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
