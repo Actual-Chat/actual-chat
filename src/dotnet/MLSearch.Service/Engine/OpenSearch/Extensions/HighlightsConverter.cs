@@ -15,6 +15,7 @@ public static partial class HighlightsConverter
     public const string SkippedPartReplacement = "…";
     private static readonly string AccountNameField = nameof(IndexedUser.Name).Decapitalize();
     private static readonly string ContactNameField = nameof(IndexedUserContact.Name).Decapitalize();
+    private static readonly string ExternalContactNameField = nameof(IndexedUserContact.ExternalContactName).Decapitalize();
     private static readonly string UserRelationName = nameof(IndexedUser).ToLowerInvariant();
     private static readonly string TitleField = nameof(Chat.Chat.Title).Decapitalize();
     private static readonly string ContentField = nameof(ChatEntry.Content).Decapitalize();
@@ -42,11 +43,14 @@ public static partial class HighlightsConverter
 
         (string Name, string? Higlight) GetHighlight()
         {
-            if (hit.Highlight.TryGetValue(AccountNameField, out var highlights))
+            if (hit.Highlight.TryGetValue(ContactNameField, out var highlights))
                 return (hit.Source.Name, highlights.FirstOrDefault(x => !x.IsNullOrEmpty()));
 
+            if (hit.Highlight.TryGetValue(ExternalContactNameField, out highlights))
+                return (hit.Source.ExternalContactName, highlights.FirstOrDefault(x => !x.IsNullOrEmpty()));
+
             foreach (var userHit in hit.InnerHits[UserRelationName].Hits.Hits)
-                if (userHit.Highlight.TryGetValue(ContactNameField, out highlights))
+                if (userHit.Highlight.TryGetValue(AccountNameField, out highlights))
                     return (userHit.Source.As<IndexedUser>().Name, highlights.FirstOrDefault(x => !x.IsNullOrEmpty()));
 
             return (hit.Source.Name, null);

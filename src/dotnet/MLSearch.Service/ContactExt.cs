@@ -8,6 +8,7 @@ public static class ContactExt
     public static IndexedUserContact ToIndexedUserContact(this Contact contact)
         => new () {
             Id = contact.Id,
-            Name = contact.PeerRename ?? "", // TODO(FC): Store both fields: PeerContactName and ExternalContactName
+            Name = contact.PeerContactName,
+            ExternalContactName = contact.ExternalContactName,
         };
 }

@@ -149,6 +149,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
                             .Keyword(p => p.Name(x => x.OwnerId))
                             .Keyword(p => p.Name(x => x.OtherUserId))
                             .Text(p => p.Name(x => x.Name))
+                            .Text(p => p.Name(x => x.ExternalContactName))
                             .Join(j => j.Name(x => x.ContactToUser)
                                 .Relations(r => r.Join<IndexedUser, IndexedUserContact>()))))
             .Settings(s => s.RefreshInterval(Settings.RefreshInterval));

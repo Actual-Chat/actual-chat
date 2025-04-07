@@ -8,6 +8,7 @@ public class IndexedUserContact : IHasId<ContactId>, IHasRoutingKey<ContactId>, 
     public UserId OwnerId => Id.OwnerId;
     public UserId OtherUserId => Id.GetOtherUserId();
     public string Name { get; init; } = "";
+    public string ExternalContactName { get; init; } = "";
     public JoinField ContactToUser => JoinField.Link<IndexedUserContact, IndexedUser>(new (OtherUserId));
 
     public static string GetRoutingKey(ContactId id)
