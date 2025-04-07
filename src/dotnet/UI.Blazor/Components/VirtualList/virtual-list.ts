@@ -1318,17 +1318,11 @@ export class VirtualList {
             }
         });
         if (!rafResult)
-            result.resolve(undefined);
+            await this.restoreScrollPosition(rs, scrollMetadata);
         else
             await result;
 
-
-        const now = Date.now();
-        // if (now - this.renderCompletedAt < UpdateViewportInterval) {
-        //     // Reset pivots on restore scroll position after render
-        //     this.pivots = [];
-        // }
-        this.scrollPositionRestoredAt = now;
+        this.scrollPositionRestoredAt = Date.now();
 
         this.viewport = null;
         // await delayAsync(50);
