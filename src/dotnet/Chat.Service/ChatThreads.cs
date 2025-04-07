@@ -28,6 +28,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var title = command.Title;
         var parentChat = await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false);
         parentChat.Rules.Permissions.Require(ChatPermissions.Write);
+        var ownerId = parentChat.Rules.Account.Id;
 
         var isFirst = true;
         var chatId = ChatId.None;
@@ -37,7 +38,6 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             if (textEntry is null || textEntry.IsRemoved)
                 continue;
 
-
             if (isFirst) {
                 var threadId = textEntry.LocalId; // Start Entry Id
                 chatId = parentChatId.CreateThreadId(threadId);
@@ -45,7 +45,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
                 var chatChange = Change.Create(new ChatDiff {
                     Title = chatThread.Title,
                 });
-                var chat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange), cancellationToken).ConfigureAwait(false);
+                var chat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
             }
 
             // Create thread chat entry.

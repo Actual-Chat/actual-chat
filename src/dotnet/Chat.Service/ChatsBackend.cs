@@ -709,9 +709,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     .ConfigureAwait(false);
             }
             else if (chatId.Kind == ChatKind.Group || chatId.Kind == ChatKind.Place) {
+                // Group chat
+                ownerId.Require("Command.OwnerId");
+                AuthorFull author;
                 if (!chatId.IsThread) {
-                    // Group chat
-                    ownerId.Require("Command.OwnerId");
                     // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
                     // After that they can reveal themself if needed.
                     var upsertCommand = new AuthorsBackend_Upsert(
@@ -722,39 +723,47 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                         new AuthorDiff {
                             IsAnonymous = chat.AllowAnonymousAuthors
                         });
-                    var author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+                    author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+                }
+                else {
+                    author = await AuthorsBackend
+                        .GetByUserId(chatId.Parent, ownerId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                        .Require()
+                        .ConfigureAwait(false);
+                }
 
-                    if (chat.HasSingleAuthor) {
-                        var createCustomRoleCmd = new RolesBackend_Change(chatId,
-                            default,
-                            null,
-                            new () {
-                                Create = new RoleDiff {
-                                    Name = "SingleAuthor",
-                                    SystemRole = SystemRole.None,
-                                    Permissions = ChatPermissions.Write,
-                                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
-                                        AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
-                                    },
+                if (chat.HasSingleAuthor) {
+                    var createCustomRoleCmd = new RolesBackend_Change(chatId,
+                        default,
+                        null,
+                        new () {
+                            Create = new RoleDiff {
+                                Name = "SingleAuthor",
+                                SystemRole = SystemRole.None,
+                                Permissions = ChatPermissions.Write,
+                                AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                                    AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                                 },
-                            });
-                        await Commander.Call(createCustomRoleCmd, cancellationToken).ConfigureAwait(false);
-                    }
-                    else {
-                        var createOwnerRoleCmd = new RolesBackend_Change(chatId,
-                            default,
-                            null,
-                            new () {
-                                Create = new RoleDiff {
-                                    SystemRole = SystemRole.Owner,
-                                    Permissions = ChatPermissions.Owner,
-                                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
-                                        AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
-                                    },
+                            },
+                        });
+                    await Commander.Call(createCustomRoleCmd, cancellationToken).ConfigureAwait(false);
+                }
+                else {
+                    var createOwnerRoleCmd = new RolesBackend_Change(chatId,
+                        default,
+                        null,
+                        new () {
+                            Create = new RoleDiff {
+                                SystemRole = SystemRole.Owner,
+                                Permissions = ChatPermissions.Owner,
+                                AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                                    AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                                 },
-                            });
-                        await Commander.Call(createOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
+                            },
+                        });
+                    await Commander.Call(createOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
 
+                    if (!chatId.IsThread) {
                         var createAnyoneRoleCmd = new RolesBackend_Change(chatId,
                             default,
                             null,
@@ -770,17 +779,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                             });
                         await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
                     }
+                }
 
-                    if (chat.IsAiSearchChat()) {
-                        var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
-                            chat.Id,
-                            default,
-                            Constants.User.Sherlock.UserId,
-                            null,
-                            new AuthorDiff()
-                        );
-                        _ = await Commander.Call(upsertMlBotAuthorCommand, cancellationToken).ConfigureAwait(false);
-                    }
+                if (chat.IsAiSearchChat()) {
+                    var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
+                        chat.Id,
+                        default,
+                        Constants.User.Sherlock.UserId,
+                        null,
+                        new AuthorDiff()
+                    );
+                    _ = await Commander.Call(upsertMlBotAuthorCommand, cancellationToken).ConfigureAwait(false);
                 }
             }
             else
@@ -1170,7 +1179,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task EnqueueChangedEvent()
         {
             var authorId = entry.AuthorId;
-            var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
         }
     }

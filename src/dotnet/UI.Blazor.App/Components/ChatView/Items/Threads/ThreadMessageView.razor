@@ -102,12 +102,13 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = Message.Chat.Id;
         var ownerName = "Unknown";
-        // var ownerAuthorIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
-        // if (ownerAuthorIds.Count > 0) {
-        //     var ownerAuthor = await Authors.Get(Session, chatId, ownerAuthorIds[0], cancellationToken).ConfigureAwait(false);
-        //     if (ownerAuthor is not null)
-        //         ownerName = ownerAuthor.Avatar.Name;
-        // }
+        var ownerAuthorIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownerAuthorIds.Count > 0) {
+            var ownerAuthorId = ownerAuthorIds[0];
+            var ownerAuthor = await Authors.Get(Session, ownerAuthorId.ChatId, ownerAuthorId, cancellationToken).ConfigureAwait(false);
+            if (ownerAuthor is not null)
+                ownerName = ownerAuthor.Avatar.Name;
+        }
         var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;

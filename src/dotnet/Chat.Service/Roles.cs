@@ -60,8 +60,11 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (ownAuthor == null)
             return default;
 
+        var rulesTargetChatId = chatId;
+        if (chatId.IsThread)
+            rulesTargetChatId = chatId.Parent;
         var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
-        var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        var rules = await ChatsBackend.GetRules(rulesTargetChatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
 
