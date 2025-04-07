@@ -8,6 +8,8 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
     private static IMarkupTrimmer? _trimmer;
     private static IMarkupFormatter? _editorHtmlConverter;
 
+    private ChatId NonThreadChatId => ChatId.IsThread ? ChatId.Parent : ChatId;
+
     public IServiceProvider Services { get; } = services;
     public ChatId ChatId { get; } = chatId;
 
@@ -26,11 +28,11 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
 
     [field: AllowNull, MaybeNull]
     public IChatMentionResolver MentionResolver
-        => field ??= new ChatMentionResolver(Services, ChatId);
+        => field ??= new ChatMentionResolver(Services, NonThreadChatId);
 
     [field: AllowNull, MaybeNull]
     public ISearchProvider<MentionSearchResult> MentionSearchProvider
-        => field ??= new ChatMentionSearchProvider(Services, ChatId);
+        => field ??= new ChatMentionSearchProvider(Services, NonThreadChatId);
 
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= new MarkupEditorHtmlConverter();
