@@ -249,7 +249,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Name)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
+                            .Highlight(h => h.Fields(
+                                f => f.Field(x => x.Name).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag),
+                                f => f.Field(x => x.ExternalContactName).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag)))
                             .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName),
                     cancellationToken)
                 .Assert(Log)
@@ -290,8 +292,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                                 .PostTags(HighlightsConverter.PostTag))));
 
         QueryContainer FilterByContactName(QueryContainerDescriptor<IndexedUserContact> descriptor)
-            // TODO: boost for user contact peer name
-            => descriptor.MatchPhrasePrefix(m => m.Field(x => x.Name).Query(query.Criteria).Slop(20));
+            => descriptor.MultiMatch(mm
+                => mm.Fields(f => f.Field(x => x.Name).Field(x => x.ExternalContactName))
+                    .Operator(Operator.Or)
+                    .Query(query.Criteria)
+                    .Type(TextQueryType.PhrasePrefix)
+                    .Slop(20));
 
         ContactSearchResult ToSearchResult(IHit<IndexedUserContact> hit)
             => new (hit.Source!.Id, hit.GetSearchMatch());
@@ -309,7 +315,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQuery))
                             .IgnoreUnavailable()
-                            .Highlight(h => h.Fields(f => f.Field(x => x.Name)).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag))
+                            .Highlight(h => h.Fields(f => f.Field(x => x.Name).PreTags(HighlightsConverter.PreTag).PostTags(HighlightsConverter.PostTag)))
                             .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName),
                     cancellationToken)
                 .Assert(Log)

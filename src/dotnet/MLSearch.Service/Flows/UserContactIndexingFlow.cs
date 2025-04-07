@@ -21,7 +21,7 @@ public partial class UserContactIndexingFlow : BatchedIndexingFlowBase<Contact, 
     [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
-    protected override int CurrentFlowSetVersion => 1;
+    protected override int CurrentFlowSetVersion => 2;
 
     protected override async Task<IReadOnlyList<Contact>> GetBatch(
         IndexingFlowCursor<ContactId>? cursor,

@@ -104,6 +104,33 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
+    [Fact]
+    public async Task ShouldFindUsersByExternalContactName()
+    {
+        // arrange
+        var bob = await Tester.SignInAsUniqueBob();
+        var accounts = await CreateAccounts(10);
+        await Tester.SaveExternalContacts(accounts.Take(5).Select(x => NewExternalContact(bob).WithDisplayName($"Friend - External Contact {x.Name}").WithPhone(x.Phone)));
+
+        // act, assert
+        var expected = bob.BuildSearchResults(accounts[..5].Select(x => x with { Name = $"Friend - External Contact {x.Name}" }));
+        var searchByExternalContactNameResults = await Find("Ext", true, null, expected.Count);
+        searchByExternalContactNameResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+
+        // act, assert
+        var searchResults = await Find("User", true, null, expected.Count);
+        searchResults.Should().BeEquivalentTo(searchByExternalContactNameResults, o => o.ExcludingSearchMatch());
+
+        // act, assert
+        searchResults = await Find("Friend", false, null, 0);
+        searchResults.Should().BeEmpty();
+
+        // act, assert
+        expected = bob.BuildSearchResults(accounts[5..]);
+        searchResults = await Find("User", false, null, expected.Count);
+        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+    }
+
     [Fact(Skip = "Flaky")]
     public async Task ShouldFindByPrefix()
     {
