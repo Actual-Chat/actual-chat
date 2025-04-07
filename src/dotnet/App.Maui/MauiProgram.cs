@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
+using ActualChat.Logging;
 using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
@@ -170,6 +171,7 @@ public static partial class MauiProgram
         var services = blazorViewAppBuilder.Services;
         var svp = app.Services;
         services.Replace(ServiceDescriptor.Singleton(svp.GetRequiredService<ILoggerFactory>()));
+        services.AddSingleton(svp.GetRequiredService<LogSinks>());
         services.AddSingleton(new ParentContainerAccessor(svp));
         var dispatcher = svp.GetRequiredService<IDispatcher>();
         services.AddSingleton(dispatcher);
