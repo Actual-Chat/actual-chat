@@ -156,11 +156,16 @@ export class VirtualList {
         if (this.defaultEdge === VirtualListEdge.Start) {
             this.containerRef.style.top = '0px';
             this.ref.style.flexDirection = 'column';
+            this.spacerRef.style.display = 'flex';
+            this.endSpacerRef.style.display = 'none';
         }
         else {
             this.containerRef.style.bottom = '0px';
             this.ref.style.flexDirection = 'column-reverse';
+            this.spacerRef.style.display = 'none';
+            this.endSpacerRef.style.display = 'flex';
         }
+        this.wrapperRef.style.height = `${spacerSize}px`;
 
         // Events & observers
         const listenerOptions = { signal: this.abortController.signal, passive: true, };
