@@ -37,12 +37,13 @@ public partial class ChatUI
             if (changedExpand.Count > 0) {
                 // Adjust data query to load tiles around expanded conversation entries
                 var conversationId = changedExpand.FirstOrDefault();
+                var conversation = await Conversations.Get(Session, conversationId, cancellationToken).ConfigureAwait(false);
                 var isExpanded = expandedConversations.Contains(conversationId);
-                var loadBefore = isExpanded ? 0 : HalfLoadLimit;
-                var loadAfter = isExpanded ? HalfLoadLimit : HalfLoadLimit + SecondTileSize;
+                var loadBefore = isExpanded ? HalfLoadLimit : SecondTileSize;
+                var loadAfter = isExpanded ? 0 : HalfLoadLimit + SecondTileSize;
                 var keyRange = new Range<long>(
                     Math.Min(dataQuery.IdRange.Start, conversationId.StartEntryLid),
-                    Math.Max(dataQuery.IdRange.End, conversationId.StartEntryLid));
+                    Math.Max(dataQuery.IdRange.End, conversation.Require().EndEntryLid));
                 dataQuery = new ChatDataQuery(keyRange, loadBefore, loadAfter);
             }
         }
@@ -168,7 +169,7 @@ public partial class ChatUI
             return null;
 
         var totalItemCount = tiles.Sum(tile => tile.Items.Count);
-        if (totalItemCount > LoadLimit / 2)
+        if (totalItemCount > 2 * LoadLimit)
             return null; // Stop loading if we have enough items
 
         // Expand load limits and reset tiles if we need to load more just to fulfill one side
