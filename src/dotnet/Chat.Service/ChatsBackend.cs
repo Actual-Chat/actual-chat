@@ -16,6 +16,7 @@ namespace ActualChat.Chat;
 
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
+    private const string CreatedChatEntryId = "CreatedChatEntryId";
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
     private static readonly ILookup<TextEntryId, TextEntryAttachment> EmptyAttachments
@@ -973,8 +974,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Invalidate min-max Id range at last
             switch (changeKind) {
             case ChangeKind.Create:
-                var createdChatEntry = context.Operation.Items.Get<CreatedChatEntry>();
-                if (createdChatEntry is { Id.LocalId: <= 1 })
+                var createdChatEntry = context.Operation.Items.Get<ChatEntryId>(CreatedChatEntryId);
+                if (createdChatEntry is { LocalId: <= 1 })
                     _ = GetMinId(chatId, entryKind, default);
                 _ = GetIdRange(chatId, entryKind, true, default);
                 _ = GetIdRange(chatId, entryKind, false, default);
@@ -1016,7 +1017,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     HasAttachments = entry.Attachments.Length > 0,
                 };
                 dbContext.Add(dbEntry);
-                context.Operation.Items.Set(new CreatedChatEntry(chatEntryId));
+                context.Operation.Items.Set(CreatedChatEntryId, chatEntryId);
             }
             else if (change.IsUpdate(out update)) {
                 dbEntry.RequireVersion(expectedVersion);
@@ -2086,7 +2087,4 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return false;
         return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
     }
-
-    private record CreatedChatEntry(ChatEntryId Id);
 }
-
