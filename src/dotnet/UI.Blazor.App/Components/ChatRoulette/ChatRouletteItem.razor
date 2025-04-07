@@ -34,7 +34,7 @@
     </div>
     <div class="c-bottom">
         @{
-            var matchInterests = HighlightMatchWithProfile?.Preferences.Preferences.Interests ?? ApiArray<Interest>.Empty;
+            var matchInterests = HighlightMatchWithProfile?.Preferences.Preferences.Interests ?? [];
         }
         @foreach (var interest in preferences.Interests) {
             var match = matchInterests.Contains(interest);

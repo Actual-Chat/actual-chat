@@ -4,7 +4,7 @@ namespace ActualChat.Testing.Host;
 
 public static class SearchOperations
 {
-    public static Task<ApiArray<ContactSearchResult>> FindPeople(
+    public static Task<ContactSearchResult[]> FindPeople(
         this IWebTester tester,
         string criteria,
         bool isExistingContact,
@@ -13,7 +13,7 @@ public static class SearchOperations
         => FindContacts(tester, SearchScope.People, isExistingContact, criteria, limit, placeId);
 
 
-    public static Task<ApiArray<ContactSearchResult>> FindGroups(
+    public static Task<ContactSearchResult[]> FindGroups(
         this IWebTester tester,
         string criteria,
         bool own,
@@ -22,7 +22,7 @@ public static class SearchOperations
         => FindContacts(tester, SearchScope.Groups, own, criteria, limit, placeId);
 
 
-    public static Task<ApiArray<ContactSearchResult>> FindPlaces(
+    public static Task<ContactSearchResult[]> FindPlaces(
         this IWebTester tester,
         string criteria,
         bool own,
@@ -30,7 +30,7 @@ public static class SearchOperations
         => FindContacts(tester, SearchScope.Places, own, criteria, limit);
 
 
-    public static async Task<ApiArray<EntrySearchResult>> FindEntries(
+    public static async Task<EntrySearchResult[]> FindEntries(
         this IWebTester tester,
         string criteria,
         PlaceId? placeId = null,
@@ -47,7 +47,7 @@ public static class SearchOperations
         return response.Hits;
     }
 
-    private static async Task<ApiArray<ContactSearchResult>> FindContacts(
+    private static async Task<ContactSearchResult[]> FindContacts(
         IWebTester tester,
         SearchScope scope,
         bool own,

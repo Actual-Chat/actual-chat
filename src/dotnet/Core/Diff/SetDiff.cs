@@ -6,26 +6,26 @@ namespace ActualChat.Diff;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TItem>(
-    ApiArray<TItem>? addedItems,
-    ApiArray<TItem>? removedItems = null
+    TItem[]? addedItems,
+    TItem[]? removedItems = null
 ) : IDiff, IEquatable<SetDiff<TItem>>
 {
     public static readonly SetDiff<TItem> Unchanged = default!;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsEmpty => AddedItems.IsEmpty && RemovedItems.IsEmpty;
+    public bool IsEmpty => AddedItems.Length == 0 && RemovedItems.Length == 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]
     [field: MaybeNull, AllowNull]
-    public ApiArray<TItem> AddedItems {
-        get => field ?? ApiArray<TItem>.Empty;
+    public TItem[] AddedItems {
+        get => field ?? [];
         init;
     } = addedItems!;
 
     [DataMember(Order = 1), MemoryPackOrder(1), MemoryPackAllowSerialize]
     [field: MaybeNull, AllowNull]
-    public ApiArray<TItem> RemovedItems {
-        get => field ?? ApiArray<TItem>.Empty;
+    public TItem[] RemovedItems {
+        get => field ?? [];
         init;
     } = removedItems!;
 
@@ -48,27 +48,27 @@ public readonly partial struct SetDiff<TItem>(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TCollection, TItem>(
-    ApiArray<TItem>? addedItems,
-    ApiArray<TItem>? removedItems = null
+    TItem[]? addedItems,
+    TItem[]? removedItems = null
     ) : IDiff, IEquatable<SetDiff<TCollection, TItem>>
     where TCollection : IReadOnlyCollection<TItem>
 {
     public static readonly SetDiff<TCollection, TItem> Unchanged = default!;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsEmpty => AddedItems.IsEmpty && RemovedItems.IsEmpty;
+    public bool IsEmpty => AddedItems.Length == 0 && RemovedItems.Length == 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]
     [field: MaybeNull, AllowNull]
-    public ApiArray<TItem> AddedItems {
-        get => field ?? ApiArray<TItem>.Empty;
+    public TItem[] AddedItems {
+        get => field ?? [];
         init;
     } = addedItems!;
 
     [DataMember(Order = 1), MemoryPackOrder(1), MemoryPackAllowSerialize]
     [field: MaybeNull, AllowNull]
-    public ApiArray<TItem> RemovedItems {
-        get => field ?? ApiArray<TItem>.Empty;
+    public TItem[] RemovedItems {
+        get => field ?? [];
         init;
     } = removedItems!;
 

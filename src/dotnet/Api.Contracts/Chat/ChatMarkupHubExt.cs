@@ -91,7 +91,7 @@ public static class ChatMarkupHubExt
             return Markup.Empty;
 
         var attachments = entry.Attachments;
-        if (attachments.Count == 0)
+        if (attachments.Length == 0)
             return Markup.Empty;
 
         if (consumer is MarkupConsumer.QuoteView)
@@ -107,7 +107,7 @@ public static class ChatMarkupHubExt
                 videoCount++;
             else if (firstFile is null)
                 firstFile = x;
-        var fileCount = attachments.Count - imageCount - videoCount;
+        var fileCount = attachments.Length - imageCount - videoCount;
 
         var imageText = GetImageText();
         var videoText = GetVideoText();

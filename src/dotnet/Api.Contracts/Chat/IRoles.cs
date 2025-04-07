@@ -8,11 +8,11 @@ public interface IRoles : IComputeService
     Task<Role?> Get(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<Role>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<Role[]> List(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
+    Task<AuthorId[]> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<AuthorId[]> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken);

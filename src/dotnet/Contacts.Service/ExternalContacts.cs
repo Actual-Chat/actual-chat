@@ -11,25 +11,25 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
 
     // [ComputeMethod]
     [Obsolete("2024.04: Replaced with new List implementation.")]
-    public virtual async Task<ApiArray<ExternalContactFull>> LegacyList1(
+    public virtual async Task<ExternalContactFull[]> LegacyList1(
         Session session, Symbol deviceId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
        if (!account.IsActive())
-            return ApiArray<ExternalContactFull>.Empty;
+            return [];
 
         return await Backend.ListFull(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ExternalContact>> List(
+    public virtual async Task<ExternalContact[]> List(
         Session session,
         Symbol deviceId,
         CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
-            return ApiArray<ExternalContact>.Empty;
+            return [];
 
         return await Backend.List(new UserDeviceId(account.Id, deviceId), cancellationToken).ConfigureAwait(false);
     }
@@ -51,7 +51,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
             throw Unauthorized();
 
         var bulkChangeCommand = new ExternalContactsBackend_BulkChange(
-            ApiArray.New(new ExternalContactChange(id, expectedVersion, change)));
+            [new ExternalContactChange(id, expectedVersion, change)]);
         var results = await Commander.Call(bulkChangeCommand, true, cancellationToken).ConfigureAwait(false);
         if (results[0].Error is { } error)
             throw error;
@@ -60,13 +60,13 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(
+    public virtual async Task<Result<ExternalContactFull?>[]> OnBulkChange(
         ExternalContacts_BulkChange command, CancellationToken cancellationToken)
     {
         var (session, changes) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
-            return Enumerable.Repeat(new Result<ExternalContactFull?>(null, null), changes.Count).ToApiArray();
+            return Enumerable.Repeat(new Result<ExternalContactFull?>(null, null), changes.Length).ToArray();
 
         foreach (var itemChange in changes) {
             var (id, _, change) = itemChange;

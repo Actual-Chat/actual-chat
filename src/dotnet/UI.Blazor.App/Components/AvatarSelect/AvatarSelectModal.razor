@@ -116,7 +116,7 @@
             .Select(x => Avatars.GetOwn(Session, x, cancellationToken))
             .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
             .ConfigureAwait(false);
-        var existingAvatars = avatars.SkipNullItems().ToApiArray();
+        var existingAvatars = avatars.SkipNullItems().ToArray();
         var anonymous = GetAnonymous();
         return new (existingAvatars, selectedAvatarId, anonymous);
 
@@ -179,7 +179,7 @@
     public record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
     public record RevealModel(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected) : Model(ChatId, false, OnAvatarSelected);
 
-    public sealed record ViewModel(ApiArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
-        public static readonly ViewModel None = new(ApiArray<AvatarFull>.Empty, default, null);
+    public sealed record ViewModel(AvatarFull[] Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
+        public static readonly ViewModel None = new([], default, null);
     }
 }

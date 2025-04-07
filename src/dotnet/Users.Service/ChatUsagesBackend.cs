@@ -13,7 +13,7 @@ public class ChatUsagesBackend(IServiceProvider services)
     [field: AllowNull, MaybeNull]
     protected IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
-    public virtual async Task<ApiArray<ChatId>> GetRecencyList(UserId userId, ChatUsageListKind kind, CancellationToken cancellationToken)
+    public virtual async Task<ChatId[]> GetRecencyList(UserId userId, ChatUsageListKind kind, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -28,7 +28,7 @@ public class ChatUsagesBackend(IServiceProvider services)
         if (chatSids.Count > RecencyListLimit)
             _ = Commander.Call(new ChatUsagesBackend_PurgeRecencyList(userId, kind, RecencyListLimit), default);
 
-        var chatIds = chatSids.Select(c => new ChatId(c)).ToApiArray();
+        var chatIds = chatSids.Select(c => new ChatId(c)).ToArray();
         return chatIds;
     }
 

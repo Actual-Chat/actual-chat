@@ -8,7 +8,7 @@ public interface IInvitesBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Invite?> Get(string id, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken);
+    Task<Invite[]> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> IsValid(string activationKey, CancellationToken cancellationToken);
 

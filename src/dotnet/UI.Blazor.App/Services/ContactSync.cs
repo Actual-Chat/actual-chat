@@ -91,7 +91,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
     }
 
     private async Task<List<ExternalContactChange>> GetChanges(
-        ApiArray<ExternalContactFull> deviceContacts,
+        ExternalContactFull[] deviceContacts,
         CancellationToken cancellationToken)
     {
         var existingContacts = await ExternalContacts
@@ -134,7 +134,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
                 await Task.Delay(BatchInterval.Next(), cancellationToken).ConfigureAwait(false);
             try {
                 var changeResults = await Commander
-                    .Call(new ExternalContacts_BulkChange(Session, batch.ToApiArray()), cancellationToken)
+                    .Call(new ExternalContacts_BulkChange(Session, batch.ToArray()), cancellationToken)
                     .ConfigureAwait(false);
                 var syncedCount = changeResults.Count(x => x.Error is null);
                 var logLevel = syncedCount != batch.Length ? LogLevel.Warning : LogLevel.Debug;

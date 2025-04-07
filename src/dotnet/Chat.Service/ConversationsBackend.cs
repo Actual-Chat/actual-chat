@@ -31,7 +31,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ConversationId>> List(
+    public virtual async Task<ConversationId[]> List(
         ChatId chatId,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         return sConversationIds
             .Select(s => new ConversationId(s, ParseOrNone.Option))
-            .ToApiArray();
+            .ToArray();
     }
 
     // Commands
@@ -177,7 +177,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (delay > TimeSpan.Zero)
             throw StandardError.Postpone(delay.Value);
 
-        if (entryIdRanges.Count == 0)
+        if (entryIdRanges.Length == 0)
             throw StandardError.Constraint("ConversationBackend_Summarize.EntryIdRanges should not be empty.");
 
         var startEntryLid = entryIdRanges[0].Start;
@@ -221,7 +221,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .GroupBy(a => a.AuthorId)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
-                .ToApiArray()
+                .ToArray()
         };
         var change = existingConversation != null
             ? Change.Update(DiffEngine.Diff<Conversation,ConversationDiff>(existingConversation, conversation))
@@ -245,7 +245,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var existingConversations = await List(chatId, IdTileStack.FirstLayer.GetTile(entryLid).Range, cancellationToken)
             .ConfigureAwait(false);
-        if (existingConversations.Count == 0) {
+        if (existingConversations.Length == 0) {
             // Skip the reply as the conversation is not found - entry group was too small for summarization
             Log.LogInformation("Skipping reply as the conversation for {ChatId} and {EntryLid} is not found", chatId, entryLid);
             return null;
@@ -271,7 +271,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .GroupBy(a => a.AuthorId)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
-                .ToApiArray()
+                .ToArray()
         };
         var change = Change.Update(diff);
         var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
@@ -281,7 +281,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // Private methods
 
 
-    private async Task<IReadOnlyCollection<TextEntry>> GetTextEntries(ChatId chatId, ApiArray<Range<long>> entryIdRanges, CancellationToken cancellationToken)
+    private async Task<IReadOnlyCollection<TextEntry>> GetTextEntries(ChatId chatId, Range<long>[] entryIdRanges, CancellationToken cancellationToken)
     {
         var idTiles = entryIdRanges
             .SelectMany(idRange => IdTileStack.GetOptimalCoveringTiles(idRange))

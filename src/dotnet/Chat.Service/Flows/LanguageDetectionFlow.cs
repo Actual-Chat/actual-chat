@@ -84,7 +84,7 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
         await SaveLanguages().ConfigureAwait(false);
         return;
 
-        async Task<Dictionary<ChatEntryId, ApiArray<Language>>> DetectLanguages()
+        async Task<Dictionary<ChatEntryId, Language[]>> DetectLanguages()
         {
             using var _2 = Tracer.Region();
             using var detectionCts = cancellationToken.CreateLinkedTokenSource(Settings.BulkLanguageDetectionTimeout);
@@ -105,7 +105,7 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
         {
             using var _2 = Tracer.Region();
             var updated = batch.Select(x => x.Language with {
-                Languages = languageMap.GetValueOrDefault(x.Entry.Id, ApiArray<Language>.Empty),
+                Languages = languageMap.GetValueOrDefault(x.Entry.Id, []),
             });
             var cmd = ChatEntryLanguagesBackend_BulkChange.Upserts(updated);
             var results = await Host.Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
@@ -117,7 +117,7 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
                 .ToList();
             Log.LogInformation(
                 "`{Id}`.ProcessBatch: updated {SuccessCount} entryLanguages successfully, {FailedCount} failed",
-                Id, results.Count - failed.Count, failed.Count);
+                Id, results.Length - failed.Count, failed.Count);
             foreach (var (result, entry) in failed)
                 Log.LogError(result.Error,
                     "`{Id}`.ProcessBatch: failed to update entryLanguage #{Id}",

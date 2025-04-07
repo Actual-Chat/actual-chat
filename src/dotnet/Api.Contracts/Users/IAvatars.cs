@@ -9,7 +9,7 @@ public interface IAvatars : IComputeService
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<Avatar?> Get(Session session, Symbol avatarId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken);
+    Task<Symbol[]> ListOwnAvatarIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<AvatarFull> OnChange(Avatars_Change command, CancellationToken cancellationToken);

@@ -22,7 +22,7 @@ public class Invites(IServiceProvider services) : IInvites
     private ILogger Log => _log ??= Services.LogFor<Invites>();
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Invite>> ListUserInvites(
+    public virtual async Task<Invite[]> ListUserInvites(
         Session session,
         CancellationToken cancellationToken)
     {
@@ -33,7 +33,7 @@ public class Invites(IServiceProvider services) : IInvites
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Invite>> ListChatInvites(
+    public virtual async Task<Invite[]> ListChatInvites(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public class Invites(IServiceProvider services) : IInvites
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Invite>> ListPlaceInvites(
+    public virtual async Task<Invite[]> ListPlaceInvites(
         Session session,
         PlaceId placeId,
         CancellationToken cancellationToken)
@@ -225,7 +225,7 @@ public class Invites(IServiceProvider services) : IInvites
         return account;
     }
 
-    private Invite? ChooseInvite(ApiArray<Invite> invites, TimeSpan minInviteLifespan)
+    private Invite? ChooseInvite(Invite[] invites, TimeSpan minInviteLifespan)
     {
         var minExpiresAt = Clocks.SystemClock.Now - minInviteLifespan;
         var invite = invites.Where(x => x.ExpiresOn > minExpiresAt && x.Remaining >= 1).MaxBy(c => c.ExpiresOn);

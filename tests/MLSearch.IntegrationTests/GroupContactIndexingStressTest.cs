@@ -58,9 +58,9 @@ public class GroupContactIndexingStressTest(AppHostFixture fixture, ITestOutputH
         return chat;
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(string criteria, int expected = 50)
+    private async Task<ContactSearchResult[]> Find(string criteria, int expected = 50)
     {
-        ApiArray<ContactSearchResult> results = [];
+        ContactSearchResult[] results = [];
         await TestExt.When(async () => {
                 results = await Tester.FindGroups($"{UniquePart} {criteria}", true, null, expected);
                 results.Should().HaveCount(expected, "for criteria '{Criteria}'", criteria);

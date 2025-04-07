@@ -87,7 +87,7 @@
                 isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
             }
         }
-        return new (chat, audioState, authorIds.Count > 0, isAnimated);
+        return new (chat, audioState, authorIds.Length > 0, isAnimated);
     }
 
     private void OnListenClick() {

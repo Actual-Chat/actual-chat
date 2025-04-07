@@ -170,8 +170,8 @@ public partial class DeepgramTranscriber : ITranscriber
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();
         var suffix = alternative?.Transcript ?? "";
         // NOTE: as for now deepgram does not support language detection in streaming mode so we use language from options
-        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToApiArray() ?? [];
-        if (languages.IsEmpty)
+        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToArray() ?? [];
+        if (languages.Length == 0)
             languages = [options.Language];
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {

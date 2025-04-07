@@ -97,7 +97,7 @@
 
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
-            placeIds = placeIds.Add(selectedChatId.PlaceId, true);
+            placeIds = placeIds.With(selectedChatId.PlaceId, true);
 
         var previewPlaceId = PlaceId.None;
         if (selectedChatId.IsPlaceChat

@@ -73,7 +73,7 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
                 entryLid,
                 new Range<long>(firstEntry.LocalId, lastEntry.LocalId + 1)
             ) {
-                DelayUntil = existingConversations.Count == 0
+                DelayUntil = existingConversations.Length == 0
                     ? Host.Clocks.CoarseSystemClock.Now + (2 * Settings.ChatEntrySummarizationDelay)
                     : null,
             };

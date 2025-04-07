@@ -26,7 +26,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<ChatEntryLanguage>> ListForDetection(int limit, CancellationToken cancellationToken)
+    public async Task<ChatEntryLanguage[]> ListForDetection(int limit, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -37,11 +37,11 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbEntries.Select(x => x.ToModel()).ToApiArray();
+        return dbEntries.Select(x => x.ToModel()).ToArray();
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<Result<ChatEntryLanguage?>>> OnBulkChange(
+    public virtual async Task<Result<ChatEntryLanguage?>[]> OnBulkChange(
         ChatEntryLanguagesBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
@@ -49,7 +49,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invLanguages = context.Operation.Items.KeylessGet<ApiArray<ChatEntryLanguage>>();
+            var invLanguages = context.Operation.Items.KeylessGet<ChatEntryLanguage[]>();
             if (invLanguages != null) {
                 foreach (var entryLanguage in invLanguages)
                     _ = GetLanguage(entryLanguage.Id, default);
@@ -66,14 +66,14 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        var changed = results.Where(x => !x.HasError).Select(x => x.Value!).ToApiArray();
-        Log.LogDebug("Changed languages for {Count} entries: {Ids}", changed.Count, changed.Select(x => x.Id));
-        if (changed.Count > 0) {
+        var changed = results.Where(x => !x.HasError).Select(x => x.Value!).ToArray();
+        Log.LogDebug("Changed languages for {Count} entries: {Ids}", changed.Length, changed.Select(x => x.Id));
+        if (changed.Length > 0) {
             context.Operation.Items.KeylessSet(changed);
             context.Operation.AddEvent(new ChatEntryLanguagesChangedEvent(changed));
         }
 
-        return results.ToApiArray();
+        return results.ToArray();
     }
 
     // [CommandHandler]

@@ -121,7 +121,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
                 return;
             }
 
-            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ApiArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
+            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, KubeEndpoint[] Endpoints)>(StringComparer.Ordinal);
 
             using var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
             var httpClientDisposable = new SafeDisposable(httpClient, 10, Log) { MustWait = false };
@@ -163,8 +163,8 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
                         change.Object,
                         change.Object
                             .Endpoints
-                            .Select(e => new KubeEndpoint(e.Addresses.ToApiArray(), e.Conditions.Ready))
-                            .ToApiArray()
+                            .Select(e => new KubeEndpoint(e.Addresses.ToArray(), e.Conditions.Ready))
+                            .ToArray()
                         );
                     break;
                 case ChangeType.Modified:
@@ -172,26 +172,26 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
                         change.Object,
                         change.Object
                             .Endpoints
-                            .Select(e => new KubeEndpoint(e.Addresses.ToApiArray(), e.Conditions.Ready))
-                            .ToApiArray()
+                            .Select(e => new KubeEndpoint(e.Addresses.ToArray(), e.Conditions.Ready))
+                            .ToArray()
                         );
                     break;
                 default:
                     throw StandardError.Constraint<Api.Change<EndpointSlice>>($"Type {change.Type} is invalid.");
                 }
 
-                var endpoints = endpointsMap.Values.SelectMany(p => p.Endpoints).ToApiArray();
-                var readyEndpoints = endpoints.Where(e => e.IsReady).ToApiArray();
+                var endpoints = endpointsMap.Values.SelectMany(p => p.Endpoints).ToArray();
+                var readyEndpoints = endpoints.Where(e => e.IsReady).ToArray();
                 var ports = endpointsMap.Values
                     .SelectMany(p => p.Slice.Ports)
                     .Select(p => new KubePort(p.Name, (KubeServiceProtocol)(int)p.Protocol, p.Port))
                     .Distinct()
-                    .ToApiArray();
+                    .ToArray();
                 var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
                 cancellationToken.ThrowIfCancellationRequested();
                 // delay update until we get some endpoints in ready state
-                if (_state.Snapshot.IsInitial && serviceEndpoints.ReadyEndpoints.IsEmpty)
+                if (_state.Snapshot.IsInitial && serviceEndpoints.ReadyEndpoints.Length == 0)
                     continue;
 
                 _state.Value = serviceEndpoints;
@@ -205,9 +205,10 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
             var port = urlMapper.BaseUri.Port;
             if (port == 0)
                 port = 80;
-            var ports = ApiArray.New(new KubePort("http", KubeServiceProtocol.Tcp, port));
-            var addresses = ApiArray.New(Kube.PodIP);
-            var endpoints = ApiArray.New(new KubeEndpoint(addresses, true));
+
+            var addresses = new[] { Kube.PodIP };
+            var endpoints = new[] { new KubeEndpoint(addresses, true) };
+            var ports = new[] { new KubePort("http", KubeServiceProtocol.Tcp, port) };
             var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, endpoints, ports);
 
             _state.Value = serviceEndpoints;

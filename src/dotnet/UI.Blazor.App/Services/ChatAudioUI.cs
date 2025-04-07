@@ -97,17 +97,17 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                     Recency = mustListen ? now : chat.Recency,
                     ListeningRecency = mustListen ? now : chat.ListeningRecency,
                 };
-                activeChats = activeChats.AddOrReplace(chat);
+                activeChats = activeChats.WithOrReplace(chat);
             }
             else if (mustListen)
-                activeChats = activeChats.Add(new ActiveChat(chatId, true, false, now, now), true);
+                activeChats = activeChats.With(new ActiveChat(chatId, true, false, now, now), true);
             return activeChats;
         });
     }
 
     public ValueTask ClearListeningChats()
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
-            var newActiveChats = new List<ActiveChat>(activeChats.Count);
+            var newActiveChats = new List<ActiveChat>(activeChats.Length);
             var isUpdated = false;
             foreach (var chat in activeChats) {
                 if (chat.IsListening) {
@@ -117,7 +117,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                 else
                     newActiveChats.Add(chat);
             }
-            return isUpdated ? new ApiArray<ActiveChat>(newActiveChats) : activeChats;
+            return isUpdated ? newActiveChats.ToArray() : activeChats;
         });
 
     [ComputeMethod] // Synced
@@ -134,7 +134,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                 if (chatId.IsNone) {
                     // End recording
                     if (!oldRecordingChat.IsNone) {
-                        activeChats = activeChats.AddOrReplace(oldRecordingChat with {
+                        activeChats = activeChats.WithOrReplace(oldRecordingChat with {
                             IsRecording = false,
                             Recency = now,
                         });
@@ -158,13 +158,13 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                         ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
                     };
                 }
-                activeChats = activeChats.AddOrReplace(chat, true);
+                activeChats = activeChats.WithOrReplace(chat, true);
                 // Turn off listening for all the rest chats if mustListen
                 activeChats = mustListen
-                    ? activeChats.UpdateWhere(
+                    ? activeChats.WithUpdate(
                         c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
                         c => c with { IsRecording = false, IsListening = false })
-                    : activeChats.UpdateWhere(
+                    : activeChats.WithUpdate(
                         c => c.ChatId != chatId && c.IsRecording,
                         c => c with { IsRecording = false });
                 _ = TuneUI.Play(Tune.BeginRecording);
@@ -185,7 +185,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                                 IsListening = true,
                                 ListeningRecency = now,
                             };
-                        activeChats = activeChats.AddOrReplace(chat);
+                        activeChats = activeChats.WithOrReplace(chat);
                     }
                 }
             },

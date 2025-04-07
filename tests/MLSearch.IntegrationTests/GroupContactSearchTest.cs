@@ -148,7 +148,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    private Task<ApiArray<ContactSearchResult>> Find(string criteria, bool own, PlaceId? placeId, int expectedCount)
+    private Task<ContactSearchResult[]> Find(string criteria, bool own, PlaceId? placeId, int expectedCount)
         => TestsExt.When(async () => {
             var groups = await Tester.FindGroups($"{UniquePart} {criteria}", own, placeId, 50);
             groups.Should().HaveCount(expectedCount);

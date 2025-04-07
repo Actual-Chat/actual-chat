@@ -105,9 +105,9 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         Warmup(new UserLanguageSettings() { Primary = Languages.English, Secondary = Languages.German });
         Warmup(new UserOnboardingSettings());
         Warmup(new LocalOnboardingSettings());
-        Warmup(new UserBubbleSettings() { ReadBubbles = new ApiArray<string>(new [] {"test"})});
+        Warmup(new UserBubbleSettings() { ReadBubbles = ["test"] });
         Warmup(new ChatListSettings());
-        Warmup(new ApiArray<ActiveChat>(new[] { new ActiveChat(chatId)}));
+        Warmup(new ActiveChat[] { new(chatId) });
 #pragma warning restore CA1861
 
         static void Warmup<T>(T instance) {

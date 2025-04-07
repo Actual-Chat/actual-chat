@@ -136,8 +136,8 @@
         var preferences = profile.Preferences.Preferences with {
             Country = Country.ParseOrNone(_form.CountryCode),
             Gender = _form.Gender,
-            Languages = _form.Languages.ToApiArray(),
-            Interests = _form.Interests.ToApiArray(),
+            Languages = _form.Languages.ToArray(),
+            Interests = _form.Interests.ToArray(),
         };
         profile = profile with {
             Avatar = avatar,

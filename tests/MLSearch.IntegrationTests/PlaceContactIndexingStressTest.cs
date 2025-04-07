@@ -56,9 +56,9 @@ public class PlaceContactIndexingStressTest(AppHostFixture fixture, ITestOutputH
     private Task<Place> CreatePlace(string title)
         => Tester.CreatePlace(false, $"{title} {UniquePart}");
 
-    private async Task<ApiArray<ContactSearchResult>> Find(string criteria, int expected = 50)
+    private async Task<ContactSearchResult[]> Find(string criteria, int expected = 50)
     {
-        ApiArray<ContactSearchResult> results = [];
+        ContactSearchResult[] results = [];
         await TestExt.When(async () => {
                 results = await Tester.FindPlaces($"{UniquePart} {criteria}", true, expected);
                 results.Should().HaveCount(expected, "for criteria '{Criteria}'", criteria);

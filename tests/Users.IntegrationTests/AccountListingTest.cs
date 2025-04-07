@@ -37,7 +37,7 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
                 lastChangedId,
                 batchSize,
                 cancellationToken);
-            if (retrieved.Count == 0)
+            if (retrieved.Length == 0)
                 break;
 
             minVersion = retrieved[^1].Version;

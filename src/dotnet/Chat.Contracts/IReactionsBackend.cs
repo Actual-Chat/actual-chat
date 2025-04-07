@@ -8,7 +8,7 @@ public interface IReactionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<ReactionSummary>> List(TextEntryId entryId, CancellationToken cancellationToken);
+    Task<ReactionSummary[]> List(TextEntryId entryId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnReact(ReactionsBackend_React command, CancellationToken cancellationToken);

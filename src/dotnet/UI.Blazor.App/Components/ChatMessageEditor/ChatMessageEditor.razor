@@ -189,7 +189,7 @@
         }
 
         await using var attachmentListSnapshot = AttachmentListRef.PopSnapshot();
-        if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0)
+        if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Length == 0)
             return;
 
         _ = TuneUI.Play(Tune.SendMessage);
@@ -216,7 +216,7 @@
                 AnalyticEvents.RaiseMessagePosted(
                     cmd.RepliedEntryLid.HasValue,
                     !cmd.Text.IsNullOrEmpty(),
-                    attachmentListSnapshot.Attachments.Count);
+                    attachmentListSnapshot.Attachments.Length);
 
             var readEntryLid = chatEntry.Value.LocalId;
 

@@ -42,13 +42,13 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         return dbRouletteUserSettings?.ToModel();
     }
 
-    public virtual async Task<ApiArray<ProfilePreferencesFull>> FindProfiles(
+    public virtual async Task<ProfilePreferencesFull[]> FindProfiles(
         UserId ownUserId,
         Symbol ownProfileId,
         Preferences filter,
         CancellationToken cancellationToken)
     {
-        if (filter.Languages.Count == 0)
+        if (filter.Languages.Length == 0)
             throw new ArgumentOutOfRangeException(nameof(filter));
 
         var ownUserSid = ownUserId.Value;
@@ -75,7 +75,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
             queryable = queryable.Where(c => c.Gender == filter.Gender);
         var filterLanguageIds = filter.Languages.Select(l => l.Id.Value).ToArray();
         queryable = queryable.Where(c => filterLanguageIds.Any(l => c.Languages.Contains(l)));
-        if (filter.Interests.Count > 0) {
+        if (filter.Interests.Length > 0) {
             var hasFlexible = filter.Interests.Any(c => Equals(c.Code, Interests.Flexible.Code));
             if (hasFlexible) {
                 // Flexible interest indicates that profiles with any interests will suite.
@@ -88,7 +88,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         }
         var candidates = await queryable.ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return candidates.Select(c => c.ToModel()).ToApiArray();
+        return candidates.Select(c => c.ToModel()).ToArray();
     }
 
     [ComputeMethod]

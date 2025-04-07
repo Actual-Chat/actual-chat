@@ -10,7 +10,7 @@ public interface IPlacesBackend : IComputeService, IBackendService
 
     // Non-compute methods
 
-    Task<ApiArray<Place>> ListChanged(
+    Task<Place[]> ListChanged(
         long minVersion,
         long maxVersion,
         PlaceId lastId,

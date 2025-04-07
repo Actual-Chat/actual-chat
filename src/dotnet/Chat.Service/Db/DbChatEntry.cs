@@ -74,16 +74,16 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long? VideoEntryId { get; set; }
     public string? TimeMap { get; set; }
 
-    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, ApiArray<LinkPreview>? linkPreviews = null)
+    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, LinkPreview[]? linkPreviews = null)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
         var attachmentsArray = attachments == null
-            ? new ApiArray<TextEntryAttachment>([])
-            : new ApiArray<TextEntryAttachment>(attachments.OrderBy(x => x.Index).ToArray());
+            ? []
+            : attachments.OrderBy(x => x.Index).ToArray();
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
         var linkPreviewIds = GetLinkPreviewIds();
-        linkPreviews ??= ApiArray<LinkPreview>.Empty;
+        linkPreviews ??= [];
         return new (id, Version) {
             IsRemoved = IsRemoved,
             AuthorId = new AuthorId(AuthorId),
@@ -122,10 +122,10 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         };
     }
 
-    public ApiArray<Symbol> GetLinkPreviewIds()
+    public Symbol[] GetLinkPreviewIds()
         => LinkPreviewIds.IsNullOrEmpty()
-            ? ApiArray<Symbol>.Empty
-            : JsonSerializer.Deserialize<ApiArray<Symbol>>(LinkPreviewIds) ?? ApiArray<Symbol>.Empty;
+            ? []
+            : JsonSerializer.Deserialize<Symbol[]>(LinkPreviewIds) ?? [];
 
     public void UpdateFrom(ChatEntry model)
     {
@@ -159,7 +159,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         ContentHash = model.SystemEntry != null ? HashString.None : model.Content.Hash().Blake3().ToBlake3Base64HashString();
         IsSystemEntry = model.SystemEntry != null;
-        LinkPreviewIds = !model.LinkPreviewIds.IsEmpty ? JsonSerializer.Serialize(model.LinkPreviewIds) : null;
+        LinkPreviewIds = model.LinkPreviewIds.Length != 0
+            ? JsonSerializer.Serialize(model.LinkPreviewIds)
+            : null;
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)
             : null;

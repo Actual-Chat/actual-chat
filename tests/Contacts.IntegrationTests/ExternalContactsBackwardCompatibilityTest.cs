@@ -133,26 +133,26 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         externalContacts.Should().BeEquivalentTo(new[] { externalContact2 }, Including);
     }
 
-    private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
+    private Task<ExternalContact[]> List(Symbol deviceId)
         => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
 
     private async Task Add(params ExternalContactFull[] externalContacts)
     {
         var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
-        var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToApiArray()));
+        var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToArray()));
         results.Select(x => x.Value).Should().NotContainNulls();
         var errors = results.Select(x => x.Error).SkipNullItems().ToList();
         if (errors.Count > 0)
             throw new AggregateException("Failed to create external contacts", errors);
     }
 
-    private Task<ApiArray<Result<ExternalContactFull?>>> Update(ExternalContactFull externalContactFull)
+    private Task<Result<ExternalContactFull?>[]> Update(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull)))));
+            [new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull))]));
 
-    private Task<ApiArray<Result<ExternalContactFull?>>> Remove(ExternalContactFull externalContactFull)
+    private Task<Result<ExternalContactFull?>[]> Remove(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
-            ApiArray.New(new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>()))));
+            [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())]));
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));

@@ -145,7 +145,7 @@
         var entryAttachments = attachments.Where(x => x.Uploaded).Select(x => new TextEntryAttachment {
             MediaId = x.MediaId,
             ThumbnailMediaId = x.ThumbnailMediaId,
-        }).ToApiArray();
+        }).ToArray();
         return new (entryAttachments, () => Rollback(attachments), InvokeClear);
 
         ImmutableList<Attachment> PopAttachments()
@@ -239,12 +239,12 @@
         private readonly Func<ValueTask> _confirm;
         private readonly Action _rollback;
         private bool _isRolledBack;
-        public ApiArray<TextEntryAttachment> Attachments { get; }
+        public TextEntryAttachment[] Attachments { get; }
 
         public ValueTask DisposeAsync()
             => !_isRolledBack ? _confirm.Invoke() : default;
 
-        internal ResetIntent(ApiArray<TextEntryAttachment> attachments, Action rollback, Func<ValueTask> confirm) {
+        internal ResetIntent(TextEntryAttachment[] attachments, Action rollback, Func<ValueTask> confirm) {
             Attachments = attachments;
             _rollback = rollback;
             _confirm = confirm;

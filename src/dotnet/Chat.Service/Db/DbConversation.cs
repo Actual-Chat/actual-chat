@@ -35,7 +35,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
 
     public Conversation ToModel()
     {
-        var authorIds = JsonSerializer.Deserialize<ApiArray<AuthorId>>(AuthorIds) ?? ApiArray<AuthorId>.Empty;
+        var authorIds = JsonSerializer.Deserialize<AuthorId[]>(AuthorIds) ?? [];
 
         return new Conversation(new ConversationId(Id), Version)
         {

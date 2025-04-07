@@ -24,7 +24,7 @@ public class ReactionsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ReactionSummary>> List(
+    public virtual async Task<ReactionSummary[]> List(
         TextEntryId entryId,
         CancellationToken cancellationToken)
     {
@@ -35,7 +35,7 @@ public class ReactionsBackend(IServiceProvider services)
             .Where(x => x.EntryId == entryId && x.Count > 0)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbReactionSummaries.Select(x => x.ToModel()).ToApiArray();
+        return dbReactionSummaries.Select(x => x.ToModel()).ToArray();
     }
 
     // [CommandHandler]

@@ -6,7 +6,7 @@ public interface IConversations : IComputeService
     Task<Conversation?> Get(Session session, ConversationId conversationId, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 300)]
-    Task<ApiArray<Conversation>> GetTile(
+    Task<Conversation[]> GetTile(
         Session session,
         ChatId chatId,
         Range<long> idTileRange,

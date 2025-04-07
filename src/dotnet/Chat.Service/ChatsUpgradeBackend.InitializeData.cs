@@ -99,23 +99,23 @@ public partial class ChatsUpgradeBackend
             .GetSystem(chatId, SystemRole.Owner, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        var ownerAuthorIds = ApiArray<AuthorId>.Empty;
+        var ownerAuthorIds = Array.Empty<AuthorId>();
         foreach (var userId in userIdByEmail.Values) {
             if (userId == creatorId)
                 continue;
             if (!authorByUserId.TryGetValue(userId, out var author))
                 continue;
 
-            ownerAuthorIds = ownerAuthorIds.Add(author.Id);
+            ownerAuthorIds = ownerAuthorIds.With(author.Id);
         }
 
-        if (ownerAuthorIds.Count > 0) {
+        if (ownerAuthorIds.Length > 0) {
             var changeOwnerRoleCmd = new RolesBackend_Change(chatId,
                 ownerRole.Id,
                 null,
                 new () {
                     Update = new RoleDiff {
-                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                        AuthorIds = new SetDiff<AuthorId[], AuthorId> {
                             AddedItems = ownerAuthorIds,
                         },
                     },
@@ -450,23 +450,23 @@ public partial class ChatsUpgradeBackend
             .GetSystem(chatId, SystemRole.Owner, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        var ownerAuthorIds = ApiArray<AuthorId>.Empty;
+        var ownerAuthorIds = Array.Empty<AuthorId>();
         foreach (var userId in userIdByEmail.Values) {
             if (userId == creatorId)
                 continue;
             if (!authorByUserId.TryGetValue(userId, out var author))
                 continue;
 
-            ownerAuthorIds = ownerAuthorIds.Add(author.Id);
+            ownerAuthorIds = ownerAuthorIds.With(author.Id);
         }
 
-        if (ownerAuthorIds.Count > 0) {
+        if (ownerAuthorIds.Length > 0) {
             var changeOwnerRoleCmd = new RolesBackend_Change(chatId,
                 ownerRole.Id,
                 null,
                 new () {
                     Update = new RoleDiff {
-                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                        AuthorIds = new SetDiff<AuthorId[], AuthorId> {
                             AddedItems = ownerAuthorIds,
                         },
                     },

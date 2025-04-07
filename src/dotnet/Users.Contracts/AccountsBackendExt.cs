@@ -8,7 +8,7 @@ public static class AccountsBackendExt
     public static Task<UserId> GetIdByEmailHash(this IAccountsBackend accountsBackend, string emailHash, CancellationToken cancellationToken)
         => accountsBackend.GetIdByUserIdentity(UserExt.ToHashedEmailIdentity(emailHash), cancellationToken);
 
-    public static async Task<ApiArray<AccountFull>> ListChangedFull(
+    public static async Task<AccountFull[]> ListChangedFull(
         this IAccountsBackend accountsBackend,
         long minVersion,
         long maxVersion,
@@ -22,15 +22,15 @@ public static class AccountsBackendExt
                 batchSize,
                 cancellationToken)
             .ConfigureAwait(false);
-        return userIds.Count > 0 ? await GetAccounts().ConfigureAwait(false) : [];
+        return userIds.Length > 0 ? await GetAccounts().ConfigureAwait(false) : [];
 
-        async Task<ApiArray<AccountFull>> GetAccounts()
+        async Task<AccountFull[]> GetAccounts()
         {
             var accounts = await userIds
                 .Select(id => accountsBackend.Get(id, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-            return accounts.SkipNullItems().ToApiArray();
+            return accounts.SkipNullItems().ToArray();
         }
     }
 }

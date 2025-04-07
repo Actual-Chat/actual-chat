@@ -38,7 +38,9 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
                 },
                 cancellationToken)
             .ConfigureAwait(false);
-        Log.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
+        Log.LogDebug(
+            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
+            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 
@@ -47,7 +49,7 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
         await WhenReady.ConfigureAwait(false);
 
         var placeMap = await GetPlaceMap(batch, cancellationToken).ConfigureAwait(false);
-        var updated = batch.Select(x => x.ToIndexedGroup(placeMap.GetValueOrDefault(x.Id.PlaceId))).ToApiArray();
+        var updated = batch.Select(x => x.ToIndexedGroup(placeMap.GetValueOrDefault(x.Id.PlaceId))).ToArray();
         await IndexedDocuments.SaveGroups(updated, [], cancellationToken).ConfigureAwait(false);
     }
 

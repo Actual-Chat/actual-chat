@@ -35,7 +35,7 @@ internal class ChatContentUpdateLoader(
                     lastEntryVersion = Math.Max(lastEntryVersion, entry.Version);
                     yield return entry;
                 }
-                continueReadUpdates = updatedEntries.Count == batchSize;
+                continueReadUpdates = updatedEntries.Length == batchSize;
             }
             while (continueReadUpdates && !cancellationToken.IsCancellationRequested);
 
@@ -48,7 +48,7 @@ internal class ChatContentUpdateLoader(
                 lastEntryLocalId = Math.Max(lastEntryLocalId, entry.LocalId);
                 yield return entry;
             }
-            continueProcessing = createdEntries.Count == batchSize;
+            continueProcessing = createdEntries.Length == batchSize;
         }
         while (continueProcessing && !cancellationToken.IsCancellationRequested);
     }

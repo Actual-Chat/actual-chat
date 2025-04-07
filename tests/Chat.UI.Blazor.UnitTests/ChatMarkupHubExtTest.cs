@@ -46,7 +46,7 @@ public class ChatMarkupHubExtTest
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment)
-                .ToApiArray(),
+                .ToArray(),
         };
 
         // act
@@ -74,7 +74,7 @@ public class ChatMarkupHubExtTest
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment)
-                .ToApiArray(),
+                .ToArray(),
         };
 
         // act

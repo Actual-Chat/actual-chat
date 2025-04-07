@@ -40,7 +40,7 @@ public static class Languages
     public static readonly Language Main = English;
     public static readonly Language Loading = new("Loading", "Loading", "Loading", AssumeValid.Option);
 
-    public static readonly ApiArray<Language> All = [
+    public static readonly Language[] All = [
         Chinese,
         ChineseTW,
         Czech,
@@ -72,7 +72,7 @@ public static class Languages
         Vietnamese,
     ];
 
-    public static readonly ApiArray<Language> Supported = ApiArray.New(
+    public static readonly Language[] Supported = [
         // Arabic,
         // Chinese,
         English,
@@ -98,7 +98,7 @@ public static class Languages
         Turkish,
         Ukrainian,
         Vietnamese
-    );
+    ];
 
     public static readonly Dictionary<Symbol, Language> Map =
         All.Select(x => new KeyValuePair<Symbol, Language>(x.Id, x))

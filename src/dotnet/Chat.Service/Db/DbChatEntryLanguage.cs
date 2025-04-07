@@ -30,8 +30,8 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
     public ChatEntryLanguage ToModel()
         => new (new ChatEntryId(Id), Version) {
             Languages = Languages.IsNullOrEmpty()
-                ? ApiArray<Language>.Empty
-                : JsonSerializer.Deserialize<ApiArray<Language>>(Languages) ?? ApiArray<Language>.Empty,
+                ? []
+                : JsonSerializer.Deserialize<Language[]>(Languages) ?? [],
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
         };
@@ -43,7 +43,9 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
 
         Id = model.Id;
         Version = model.Version;
-        Languages = !model.Languages.IsEmpty ? JsonSerializer.Serialize(model.Languages) : "";
+        Languages = model.Languages.Length != 0
+            ? JsonSerializer.Serialize(model.Languages)
+            : "";
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
     }

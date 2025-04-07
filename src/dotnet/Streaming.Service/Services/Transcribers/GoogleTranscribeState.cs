@@ -49,7 +49,7 @@ public class GoogleTranscribeState(
     public GoogleTranscribeState Append(
         string suffix,
         float? suffixEndTime,
-        ApiArray<Language> languages,
+        Language[] languages,
         bool appendToUnstable = false)
     {
         Unstable = this[appendToUnstable].WithSuffix(suffix, Unstable.TimeMap, suffixEndTime, languages);

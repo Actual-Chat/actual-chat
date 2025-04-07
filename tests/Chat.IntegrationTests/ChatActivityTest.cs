@@ -35,13 +35,13 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             _ = Task.Run(() => AddChatEntries(session, authors, tcs1.Task, tcs2.Task, ct), ct);
 
             cStreamingEntries.Value.Count.Should().Be(0);
-            cStreamingAuthorIds.Value.Count.Should().Be(0);
+            cStreamingAuthorIds.Value.Length.Should().Be(0);
 
             // Step1
             tcs1.SetResult();
 
             await cStreamingEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
-            cStreamingAuthorIds = await cStreamingAuthorIds.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
+            cStreamingAuthorIds = await cStreamingAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
             var authorId = cStreamingAuthorIds.Value.Single();
             var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorStreaming(authorId, ct), ct);
             await cIsAuthorActive.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
@@ -50,7 +50,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             tcs2.SetResult();
 
             await cStreamingEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
-            await cStreamingAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            await cStreamingAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
             await cIsAuthorActive.When(x => !x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
         }
         finally {

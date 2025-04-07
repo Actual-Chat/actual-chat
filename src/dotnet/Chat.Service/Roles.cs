@@ -25,13 +25,13 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Role>> List(
+    public virtual async Task<Role[]> List(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is null or { HasLeft: true })
-            return ApiArray<Role>.Empty;
+            return [];
 
         var isGuest = account.IsGuestOrNone;
         var isAnonymous = author is { IsAnonymous: true };
@@ -41,35 +41,35 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(
+    public virtual async Task<AuthorId[]> ListAuthorIds(
         Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
-            return ApiArray<AuthorId>.Empty;
+            return [];
 
         // If we're here, current user is either admin or is in owner role
         return await Backend.ListAuthorIds(chatId, roleId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListOwnerIds(
+    public virtual async Task<AuthorId[]> ListOwnerIds(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (ownAuthor == null)
-            return ApiArray<AuthorId>.Empty;
+            return [];
 
         var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
         var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ApiArray<AuthorId>.Empty;
+            return [];
 
         var targetChatId = chatId;
         if (targetChatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
             var chat = await ChatsBackend.Get(targetChatId, cancellationToken).ConfigureAwait(false);
             if (chat == null)
-                return ApiArray<AuthorId>.Empty; // Chat should be not null here, but do check for safety.
+                return []; // Chat should be not null here, but do check for safety.
 
             if (chat.IsPublic)
                 targetChatId = chatId.PlaceChatId.PlaceId.ToRootChatId(); // For public place chats take owner list from root place chat.
@@ -82,7 +82,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
 
         var authorIds = await Backend.ListAuthorIds(targetChatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
         if (targetChatId != chatId)
-            authorIds = authorIds.Select(c => Remap(c, chatId)).ToApiArray();
+            authorIds = authorIds.Select(c => Remap(c, chatId)).ToArray();
         // Mask anonymous owners
         if (!rules.IsOwner())
             authorIds = await MaskAnonymousAuthors(authorIds, cancellationToken).ConfigureAwait(false);
@@ -131,8 +131,8 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
             throw StandardError.Unauthorized("Only this chat's Owners role members can perform this action.");
     }
 
-    private async Task<ApiArray<AuthorId>> MaskAnonymousAuthors(
-        ApiArray<AuthorId> authorIds,
+    private async Task<AuthorId[]> MaskAnonymousAuthors(
+        AuthorId[] authorIds,
         CancellationToken cancellationToken)
     {
         List<AuthorId>? toExclude = null;
@@ -146,7 +146,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (toExclude == null)
             return authorIds;
 
-        return authorIds.Except(toExclude).ToApiArray();
+        return authorIds.Except(toExclude).ToArray();
     }
 
     private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)

@@ -130,7 +130,7 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Author[]> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -141,7 +141,7 @@ public class Chats(IServiceProvider services) : IChats
         return authors
             .SkipNullItems()
             .OrderBy(a => a.Avatar.Name, StringComparer.Ordinal)
-            .ToApiArray();
+            .ToArray();
     }
 
     // [ComputeMethod]
@@ -275,13 +275,13 @@ public class Chats(IServiceProvider services) : IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         var attachments = command.EntryAttachments;
 #pragma warning disable CS0618 // Type or member is obsolete
-        if (attachments.IsEmpty && !command.Attachments.IsEmpty)
+        if (attachments.Length == 0 && command.Attachments.Length != 0)
             attachments = command.Attachments.Select(x => new TextEntryAttachment {
                     MediaId = x,
                 })
-                .ToApiArray();
+                .ToArray();
 #pragma warning restore CS0618 // Type or member is obsolete
-        if (string.IsNullOrWhiteSpace(text) && attachments.IsEmpty)
+        if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
@@ -327,7 +327,7 @@ public class Chats(IServiceProvider services) : IChats
                     ForwardedAuthorName = command.ForwardedAuthorName,
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
                     ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
-                    Attachments = attachments.IsEmpty ? null : attachments,
+                    Attachments = attachments.Length == 0 ? null : attachments,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
@@ -473,7 +473,7 @@ public class Chats(IServiceProvider services) : IChats
             .GroupBy(x => x.Role.Id,
                 (_, xs) => {
                     var tuples = xs.ToList();
-                    return (tuples.FirstOrDefault().Role, AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToApiArray());
+                    return (tuples.FirstOrDefault().Role, AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToArray());
                 })
             .ToList();
 
@@ -484,7 +484,7 @@ public class Chats(IServiceProvider services) : IChats
                     Name = role.Name,
                     SystemRole = role.SystemRole,
                     Permissions = role.Permissions,
-                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                    AuthorIds = new SetDiff<AuthorId[], AuthorId> {
                         AddedItems = roleAuthorIds,
                     },
                 },
@@ -576,7 +576,7 @@ public class Chats(IServiceProvider services) : IChats
                     EntryAttachments = chatEntry.Attachments.Select(x => new TextEntryAttachment {
                         MediaId = x.MediaId,
                         ThumbnailMediaId = x.ThumbnailMediaId,
-                    }).ToApiArray(),
+                    }).ToArray(),
                 };
                 await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);
             }
@@ -776,7 +776,7 @@ public class Chats(IServiceProvider services) : IChats
                 .Collect(cancellationToken)
                 .ConfigureAwait(false))
             .Select(c => new AuthorReadPosition(c.AuthorId, c.EntryLid))
-            .ToApiArray();
+            .ToArray();
 
         return new ReadPositionsStat(chatId, statBackend.StartTrackingEntryLid, top2AuthorReadPositions);
     }

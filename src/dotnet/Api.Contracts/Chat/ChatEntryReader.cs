@@ -70,7 +70,7 @@ public sealed class ChatEntryReader(
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
             var tile = await Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken).ConfigureAwait(false);
-            for (var i = tile.Entries.Count - 1; i >= 0; i--) {
+            for (var i = tile.Entries.Length - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId < minId)
                     break;
@@ -89,7 +89,7 @@ public sealed class ChatEntryReader(
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
             var tile = await Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken).ConfigureAwait(false);
-            for (var i = tile.Entries.Count - 1; i >= 0; i--) {
+            for (var i = tile.Entries.Length - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId < minId)
                     break;
@@ -143,7 +143,7 @@ public sealed class ChatEntryReader(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var tile in ReadTilesReverse(idRange, cancellationToken).ConfigureAwait(false)) {
-            for (var i = tile.Entries.Count - 1; i >= 0; i--) {
+            for (var i = tile.Entries.Length - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId >= idRange.End)
                     continue;

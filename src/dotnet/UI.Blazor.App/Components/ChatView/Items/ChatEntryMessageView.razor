@@ -193,7 +193,7 @@
                             <CascadingValue Value="@entry" IsFixed="true">
                                 <TranslatedMessage Markup="@_markup" ChatContext="ChatContext" />
                             </CascadingValue>
-                            @if (m.IsUnreadByOthers && entry.Attachments.Count == 0) {
+                            @if (m.IsUnreadByOthers && entry.Attachments.Length == 0) {
                                 <ChatMessageSendingStatus
                                     Status="@ChatMessageSendingStatus.MessageStatus.Unread"
                                     IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
@@ -204,7 +204,7 @@
                         </p>
                     }
                 </div>
-                @if (entry.Attachments.Count > 0) {
+                @if (entry.Attachments.Length > 0) {
                     var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                     <div class="message-attachments">
                         <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
@@ -220,7 +220,7 @@
                         }
                     </div>
                 }
-                @if (entry.LinkPreviews.Count > 0) {
+                @if (entry.LinkPreviews.Length > 0) {
                     <div class="message-links">
                         @foreach (var linkPreview in entry.LinkPreviews) {
                             var showLinkPreview = !linkPreview.IsEmpty && entry.LinkPreviewMode != LinkPreviewMode.None;
@@ -333,7 +333,7 @@
                             <CascadingValue Value="@entry" IsFixed="true">
                                 <TranslatedMessage Markup="@_markup" ChatContext="ChatContext"/>
                             </CascadingValue>
-                            @if (m.IsUnreadByOthers && entry.Attachments.Count == 0) {
+                            @if (m.IsUnreadByOthers && entry.Attachments.Length == 0) {
                                 <ChatMessageSendingStatus
                                     Status="@ChatMessageSendingStatus.MessageStatus.Unread"
                                     IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
@@ -344,7 +344,7 @@
                         </p>
                     }
                 </div>
-                @if (entry.Attachments.Count > 0) {
+                @if (entry.Attachments.Length > 0) {
                     var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                     <div class="message-attachments">
                         <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
@@ -360,7 +360,7 @@
                         }
                     </div>
                 }
-                @if (entry.LinkPreviews.Count > 0) {
+                @if (entry.LinkPreviews.Length > 0) {
                     <div class="message-links">
                         @foreach (var linkPreview in entry.LinkPreviews) {
                             var showLinkPreview = !linkPreview.IsEmpty && entry.LinkPreviewMode != LinkPreviewMode.None;
@@ -578,7 +578,7 @@
             return false;
 
         var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
-        if (authors.Count < 2)
+        if (authors.Length < 2)
             return false; // It seems the current user is the only member in the chat hence it has no sense to check unread status.
 
         return true;

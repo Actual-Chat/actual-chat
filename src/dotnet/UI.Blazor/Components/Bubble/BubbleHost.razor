@@ -97,7 +97,7 @@
 
     public async Task ResetBubbles() {
         _bubble = null;
-        await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, ApiArray<string>.Empty);
+        await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, []);
         StateHasChanged();
     }
 

@@ -49,7 +49,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatRouletteContacts = await Hub.Contacts.ListIds(Session, Constants.Place.ChatRouletteId, cancellationToken).ConfigureAwait(false);
-        var isVisible = chatRouletteContacts.Count > 0;
+        var isVisible = chatRouletteContacts.Length > 0;
         return new Model(isVisible);
     }
 

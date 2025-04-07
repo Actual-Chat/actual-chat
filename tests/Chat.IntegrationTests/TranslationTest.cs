@@ -161,7 +161,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     private Task<ChatEntry[]> UpdateEntries(string updatedText, ChatEntry[] entries)
         => entries.Select(x => Tester.UpdateTextEntry(x.Id, updatedText)).Collect(2);
 
-    private Task<ApiArray<Language>> WhenDetected(ChatEntryId id, string sExpectedLanguages, TimeSpan? timeout = null)
+    private Task<Language[]> WhenDetected(ChatEntryId id, string sExpectedLanguages, TimeSpan? timeout = null)
     {
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
         return ComputedTest.When(async ct => {

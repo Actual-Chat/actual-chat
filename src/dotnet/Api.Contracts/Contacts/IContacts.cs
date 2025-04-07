@@ -10,11 +10,11 @@ public interface IContacts : IComputeService
     Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300)]
     [Obsolete("2024.04: Use overload that takes placeId parameter instead.")]
-    Task<ApiArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
+    Task<ContactId[]> ListIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
-    Task<ApiArray<PlaceId>> ListPlaceIds(Session session, CancellationToken cancellationToken);
+    Task<PlaceId[]> ListPlaceIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
-    Task<ApiArray<ContactId>> ListIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<ContactId[]> ListIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);

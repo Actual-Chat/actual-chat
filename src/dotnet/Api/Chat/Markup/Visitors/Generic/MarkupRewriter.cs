@@ -25,7 +25,7 @@ public abstract record MarkupRewriter<TState> : MarkupVisitorWithState<TState, M
                 newItems.Add(newItem);
             isUnchanged &= ReferenceEquals(newItem, item);
         }
-        return isUnchanged ? markup : new MarkupSeq(newItems);
+        return isUnchanged ? markup : new MarkupSeq(newItems.ToArray());
     }
 
     protected override Markup VisitStylized(StylizedMarkup markup, ref TState state)

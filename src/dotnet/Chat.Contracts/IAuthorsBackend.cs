@@ -10,11 +10,11 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<AuthorFull?> GetByUserId(ChatId chatId, UserId userId, AuthorsBackend_GetAuthorOption option, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
+    Task<AuthorId[]> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
+    Task<UserId[]> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
     // Not a [ComputeMethod]!
-    Task<ApiArray<AuthorFull>> ListChanged(
+    Task<AuthorFull[]> ListChanged(
         ChangedAuthorsQuery query,
         CancellationToken cancellationToken);
 

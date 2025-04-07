@@ -217,7 +217,7 @@
             EntryAttachments = media.Select(x => new TextEntryAttachment {
                 MediaId = x.MediaContent.MediaId,
                 ThumbnailMediaId = x.MediaContent.ThumbnailMediaId,
-            }).ToApiArray(),
+            }).ToArray(),
         };
         var chatEntry = await Services.UICommander().Call(cmd).ConfigureAwait(false);
         var textEntryId = new TextEntryId(chatEntry.ChatId, chatEntry.LocalId, AssumeValid.Option);
@@ -231,7 +231,7 @@
                     Media = new Media {
                         ContentType = c.ContentType,
                     },
-                }).ToApiArray(),
+                }).ToArray(),
             };
         return chatEntry;
     }

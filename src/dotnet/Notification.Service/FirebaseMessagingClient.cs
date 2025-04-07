@@ -136,7 +136,7 @@ public class FirebaseMessagingClient(
                 if (responseGroup.Key is MessagingErrorCode.Unregistered or MessagingErrorCode.SenderIdMismatch) {
                     var tokensToRemove = responseGroup
                         .Select(g => g.DeviceId)
-                        .ToApiArray();
+                        .ToArray();
                     _ = Commander.Start(new NotificationsBackend_RemoveDevices(tokensToRemove), true, CancellationToken.None);
                 }
                 else if (responseGroup.Key.HasValue) {

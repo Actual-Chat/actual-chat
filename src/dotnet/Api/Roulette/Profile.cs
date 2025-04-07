@@ -87,19 +87,19 @@ public partial record Preferences
 
     [DataMember, MemoryPackOrder(0)] public Country Country { get; init; } = Country.NotSpecified;
     [DataMember, MemoryPackOrder(1)] public Gender Gender { get; init; } = Gender.NotSpecified;
-    [DataMember, MemoryPackOrder(2)] public ApiArray<Language> Languages { get; init; } = ApiArray<Language>.Empty;
-    [DataMember, MemoryPackOrder(3)] public ApiArray<Interest> Interests { get; init; } = ApiArray<Interest>.Empty;
+    [DataMember, MemoryPackOrder(2)] public Language[] Languages { get; init; } = [];
+    [DataMember, MemoryPackOrder(3)] public Interest[] Interests { get; init; } = [];
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty =>
         Country == Country.NotSpecified
         && Gender == Gender.NotSpecified
-        && Languages.Count == 0
-        && Interests.Count == 0;
+        && Languages.Length == 0
+        && Interests.Length == 0;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsSufficientForFiltering
-        => !IsEmpty && Languages.Count > 0;
+        => !IsEmpty && Languages.Length > 0;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

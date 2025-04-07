@@ -258,7 +258,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
         return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -318,7 +318,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
         return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -348,7 +348,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         CancellationToken cancellationToken)
     {
         var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
-        if (ownGroupContactIds.IsEmpty && query.Own)
+        if (ownGroupContactIds.Length == 0 && query.Own)
             return ContactSearchResultPage.Empty;
 
         var ownGroupIds = ownGroupContactIds.Select(x => x.ChatId).ToList();
@@ -367,7 +367,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
         return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -395,7 +395,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         CancellationToken cancellationToken)
     {
         var ownPlaceIds = await ContactsBackend.ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        if (ownPlaceIds.IsEmpty && query.Own)
+        if (ownPlaceIds.Length == 0 && query.Own)
             return ContactSearchResultPage.Empty;
 
         var searchResponse =
@@ -414,7 +414,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return ContactSearchResultPage.Empty;
 
         return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -459,7 +459,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return EntrySearchResultPage.Empty;
 
         return new EntrySearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 

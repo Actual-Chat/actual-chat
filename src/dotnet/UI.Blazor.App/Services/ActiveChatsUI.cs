@@ -9,25 +9,25 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     public const int MaxActiveChatCount = 3;
 
     private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
-    private readonly StoredState<ApiArray<ActiveChat>> _activeChats;
+    private readonly StoredState<ActiveChat[]> _activeChats;
 
     private IChats Chats => Hub.Chats;
     private UICommander UICommander => Hub.UICommander();
     private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public IMutableState<ApiArray<ActiveChat>> ActiveChats => _activeChats;
+    public IMutableState<ActiveChat[]> ActiveChats => _activeChats;
     public Task WhenLoaded => _activeChats.WhenRead;
 
     public ActiveChatsUI(ChatUIHub hub) : base(hub)
-        => _activeChats = StateFactory.NewKvasStored<ApiArray<ActiveChat>>(
+        => _activeChats = StateFactory.NewKvasStored<ActiveChat[]>(
             new (LocalSettings, nameof(ActiveChats)) {
-                InitialValue = ApiArray<ActiveChat>.Empty,
+                InitialValue = [],
                 Corrector = FixStoredActiveChats,
                 Category = StateCategories.Get(GetType(), nameof(ActiveChats)),
             });
 
     public async ValueTask UpdateActiveChats(
-        Func<ApiArray<ActiveChat>, ApiArray<ActiveChat>> updater,
+        Func<ActiveChat[], ActiveChat[]> updater,
         CancellationToken cancellationToken = default)
     {
         using (var releaser = await _updateLock.Lock(cancellationToken).ConfigureAwait(false)) {
@@ -46,14 +46,14 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
 
     public ValueTask RemoveActiveChat(ChatId chatId)
         => chatId.IsNone ? default
-            : UpdateActiveChats(c => c.RemoveAll(chatId));
+            : UpdateActiveChats(c => c.Without(chatId));
 
-    private async ValueTask<ApiArray<ActiveChat>> FixStoredActiveChats(
-        ApiArray<ActiveChat> activeChats,
+    private async ValueTask<ActiveChat[]> FixStoredActiveChats(
+        ActiveChat[] activeChats,
         CancellationToken cancellationToken = default)
     {
         // Turn off stored recording on restoring state during app start
-        activeChats = await activeChats
+        activeChats = (await activeChats
             .Select(async chat => {
                 if (chat.IsRecording)
                     chat = chat with { IsRecording = false };
@@ -72,16 +72,16 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
                 return chat;
             })
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
-            .ToApiArray()
-            .ConfigureAwait(false);
+            .ConfigureAwait(false)
+            ).ToArray();
         return await FixActiveChats(activeChats, cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask<ApiArray<ActiveChat>> FixActiveChats(
-        ApiArray<ActiveChat> activeChats,
+    private async ValueTask<ActiveChat[]> FixActiveChats(
+        ActiveChat[] activeChats,
         CancellationToken cancellationToken = default)
     {
-        if (activeChats.Count == 0)
+        if (activeChats.Length == 0)
             return activeChats;
 
         // Removing chats that violate access rules + enforce "just 1 recording chat" rule
@@ -109,16 +109,16 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
 
             if (!chat.IsSameAs(newChat))
                 activeChats = newChat.IsNone
-                    ? activeChats.RemoveAll(chat)
-                    : activeChats.AddOrReplace(newChat);
+                    ? activeChats.Without(chat)
+                    : activeChats.WithOrReplace(newChat);
         }
 
         // There must be no more than MaxActiveChatCount active chats
-        while (activeChats.Count > MaxActiveChatCount) {
+        while (activeChats.Length > MaxActiveChatCount) {
             var chat = activeChats[^1];
             if (chat.IsRecording)
                 chat = activeChats[^2];
-            activeChats = activeChats.RemoveAll(chat);
+            activeChats = activeChats.Without(chat);
         }
         return activeChats;
     }

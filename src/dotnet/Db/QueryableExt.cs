@@ -5,27 +5,14 @@ namespace ActualChat.Db;
 
 public static class QueryableExt
 {
-    // ToApiXxx
-
-    public static Task<ApiArray<TSource>> ToApiArrayAsync<TSource>(
-        this IQueryable<TSource> source,
-        CancellationToken cancellationToken = default)
-        => source.AsAsyncEnumerable().ToApiArrayAsync(cancellationToken);
+    // ToXxx
 
     public static Task<ApiList<TSource>> ToApiListAsync<TSource>(
         this IQueryable<TSource> source,
         CancellationToken cancellationToken = default)
         => source.AsAsyncEnumerable().ToApiListAsync(cancellationToken);
 
-    public static IQueryable<TSource> Log<TSource>(
-        this IQueryable<TSource> source,
-        ILogger log,
-        [CallerMemberName] string context = "",
-        LogLevel logLevel = LogLevel.Debug)
-    {
-        log.Log(logLevel, "{Context}: {Query}", context, source.ToQueryString());
-        return source;
-    }
+    // WhereIf
 
     public static IQueryable<TSource> WhereIf<TSource>(this IQueryable<TSource> queryable, Expression<Func<TSource, bool>> filter, bool condition)
         => condition ? queryable.Where(filter) : queryable;
@@ -55,5 +42,17 @@ public static class QueryableExt
 
             skip += count;
         }
+    }
+
+    // Log
+
+    public static IQueryable<TSource> Log<TSource>(
+        this IQueryable<TSource> source,
+        ILogger log,
+        [CallerMemberName] string context = "",
+        LogLevel logLevel = LogLevel.Debug)
+    {
+        log.Log(logLevel, "{Context}: {Query}", context, source.ToQueryString());
+        return source;
     }
 }

@@ -485,7 +485,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (devices.Count == 0)
             return;
 
-        var command = new NotificationsBackend_RemoveDevices(devices.Select(c => c.DeviceId).ToApiArray());
+        var command = new NotificationsBackend_RemoveDevices(devices.Select(c => c.DeviceId).ToArray());
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 

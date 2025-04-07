@@ -17,7 +17,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ChatCandidate>> FindChatCandidates(
+    public virtual async Task<ChatCandidate[]> FindChatCandidates(
         Session session,
         Symbol profileId,
         Preferences filter,
@@ -32,7 +32,7 @@ public class Roulette(IServiceProvider services) : IRoulette
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var profile = await RouletteProfilesBackend.GetProfile(profileId, cancellationToken).ConfigureAwait(false);
         if (profile == null || profile.UserId != account.Id)
-            return ApiArray<ChatCandidate>.Empty;
+            return [];
 
         var result = new List<ChatCandidate>();
 
@@ -56,7 +56,7 @@ public class Roulette(IServiceProvider services) : IRoulette
                 break;
         }
 
-        return result.ToApiArray();
+        return result.ToArray();
     }
 
     // [ComputeMethod]
@@ -154,7 +154,7 @@ public class Roulette(IServiceProvider services) : IRoulette
             ownerRole.Version,
             new Change<RoleDiff> {
                 Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                    AuthorIds = new SetDiff<AuthorId[], AuthorId> {
                         AddedItems = [peerAuthor.Id],
                     },
                 },

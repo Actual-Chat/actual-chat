@@ -81,7 +81,7 @@
             ChatState = chatState,
             TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
             Place = place,
-            MemberCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Length,
             Link = Links.Chat(chatId),
             Item = foundItem,
             IsSelected = selectedFoundItem == foundItem,

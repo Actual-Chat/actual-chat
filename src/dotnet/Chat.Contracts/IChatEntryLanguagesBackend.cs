@@ -10,12 +10,12 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 
     // Non-compute methods
 
-    Task<ApiArray<ChatEntryLanguage>> ListForDetection(int limit, CancellationToken cancellationToken);
+    Task<ChatEntryLanguage[]> ListForDetection(int limit, CancellationToken cancellationToken);
 
     // Command handlers
 
     [CommandHandler]
-    Task<ApiArray<Result<ChatEntryLanguage?>>> OnBulkChange(ChatEntryLanguagesBackend_BulkChange command, CancellationToken cancellationToken);
+    Task<Result<ChatEntryLanguage?>[]> OnBulkChange(ChatEntryLanguagesBackend_BulkChange command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<ChatEntryLanguage?> OnReset(ChatEntryLanguagesBackend_Reset command, CancellationToken cancellationToken);
@@ -35,11 +35,11 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_BulkChange(
-    [property: DataMember, MemoryPackOrder(0)] ApiArray<ChatEntryLanguageChange> Changes
-) : ICommand<ApiArray<Result<ChatEntryLanguage?>>>, IBackendCommand, IHasShardKey<ChatEntryId>
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryLanguageChange[] Changes
+) : ICommand<Result<ChatEntryLanguage?>[]>, IBackendCommand, IHasShardKey<ChatEntryId>
 {
     public static ChatEntryLanguagesBackend_BulkChange Upserts(params IEnumerable<ChatEntryLanguage> languages)
-        => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Upsert(x))).ToApiArray());
+        => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Upsert(x))).ToArray());
 
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatEntryId ShardKey => Changes[0].Id;

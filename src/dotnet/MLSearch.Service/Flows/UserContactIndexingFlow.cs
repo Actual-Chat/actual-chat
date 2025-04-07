@@ -44,13 +44,13 @@ public partial class UserContactIndexingFlow : BatchedIndexingFlowBase<Contact, 
         await WhenReady.ConfigureAwait(false);
 
         // TODO(FC): in one request
-        var indexedUsers = batch.Select(x => new IndexedUser(x.UserId)).Distinct().ToApiArray();
+        var indexedUsers = batch.Select(x => new IndexedUser(x.UserId)).Distinct().ToArray();
         await IndexedDocuments
             .UpsertPartially<IndexedUser, IIndexedUserMinimalUpsert, UserId>(x => x.UserIndexName,
                 indexedUsers,
                 cancellationToken)
             .ConfigureAwait(false);
-        var indexedUserContacts = batch.Select(x => x.ToIndexedUserContact()).ToApiArray();
+        var indexedUserContacts = batch.Select(x => x.ToIndexedUserContact()).ToArray();
         await IndexedDocuments.SaveUserContacts(indexedUserContacts, [], cancellationToken).ConfigureAwait(false);
     }
 

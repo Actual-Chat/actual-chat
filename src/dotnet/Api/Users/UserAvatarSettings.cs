@@ -7,7 +7,7 @@ public sealed partial record UserAvatarSettings
 {
     public const string KvasKey = nameof(UserAvatarSettings);
 
-    [DataMember, MemoryPackOrder(0)] public ApiArray<Symbol> AvatarIds { get; init; } = ApiArray<Symbol>.Empty;
+    [DataMember, MemoryPackOrder(0)] public Symbol[] AvatarIds { get; init; } = [];
     [DataMember, MemoryPackOrder(1)] public Symbol DefaultAvatarId { get; init; }
 
     public UserAvatarSettings WithAvatarId(Symbol avatarId)
@@ -15,7 +15,7 @@ public sealed partial record UserAvatarSettings
         if (AvatarIds.Contains(avatarId))
             return this;
 
-        return this with { AvatarIds = AvatarIds.Add(avatarId) };
+        return this with { AvatarIds = AvatarIds.With(avatarId) };
     }
 
     public UserAvatarSettings WithoutAvatarId(Symbol avatarId)
@@ -23,7 +23,7 @@ public sealed partial record UserAvatarSettings
         if (!AvatarIds.Contains(avatarId))
             return this;
 
-        var avatars = AvatarIds.RemoveAll(x => x == avatarId);
+        var avatars = AvatarIds.Without(x => x == avatarId);
         var defaultAvatarId = DefaultAvatarId != avatarId ? DefaultAvatarId : avatars.GetOrDefault(0);
         return new UserAvatarSettings {
             AvatarIds = avatars,

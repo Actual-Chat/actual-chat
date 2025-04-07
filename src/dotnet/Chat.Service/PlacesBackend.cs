@@ -36,7 +36,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
 
     // TODO: since this method does not return Media, we need Place and PlaceFull
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<Place>> ListChanged(
+    public async Task<Place[]> ListChanged(
         long minVersion,
         long maxVersion,
         PlaceId lastId,
@@ -57,7 +57,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             .Take(limit)
             .AsAsyncEnumerable()
             .Select(x => x.ToModel())
-            .ToApiArrayAsync(cancellationToken)
+            .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 

@@ -19,8 +19,8 @@ public static class MarkupParserExt
             => Uri.TryCreate(x, UriKind.Absolute, out var uri) && SupportedSchemes.Contains(uri.Scheme);
     }
 
-    public static ApiArray<Symbol> ExtractLinkPreviewIds(this IMarkupParser markupParser, ChatEntry entry)
+    public static Symbol[] ExtractLinkPreviewIds(this IMarkupParser markupParser, ChatEntry entry)
         => markupParser.ExtractLinks(entry.Content, Constants.Media.LinkPreviewsPerMessageLimit)
             .Select(LinkPreview.ComposeId)
-            .ToApiArray();
+            .ToArray();
 }

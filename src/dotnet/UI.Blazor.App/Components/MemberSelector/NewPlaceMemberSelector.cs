@@ -9,13 +9,13 @@ internal class NewPlaceMemberSelector(ChatUIHub hub, PlaceId placeId) : IMemberS
 
     public CandidateListKind CandidateListKind => CandidateListKind.Contacts;
 
-    public async Task<ApiArray<UserId>> ListCandidateUserIds(CancellationToken cancellationToken)
+    public async Task<UserId[]> ListCandidateUserIds(CancellationToken cancellationToken)
     {
         var contacts = await hub.Contacts.ListUserContacts(Session, cancellationToken).ConfigureAwait(false);
-        return contacts.ToApiArray(c => c.Account!.Id);
+        return contacts.Select(c => c.Account!.Id).ToArray();
     }
 
-    public async Task<ApiArray<UserId>> ListMemberUserIds(CancellationToken cancellationToken)
+    public async Task<UserId[]> ListMemberUserIds(CancellationToken cancellationToken)
         => await hub.Places.ListUserIds(Session, placeId, cancellationToken);
 
     public async Task<Exception?> Invite(UserId[] userIds, CancellationToken cancellationToken) {

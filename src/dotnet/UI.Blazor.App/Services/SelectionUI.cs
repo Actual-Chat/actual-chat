@@ -105,7 +105,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
             return;
 
         var chatId = selection.Select(x => x.ChatId).First();
-        var localIds = selection.Select(x => x.LocalId).ToApiArray();
+        var localIds = selection.Select(x => x.LocalId).ToArray();
         var removeCommand = new Chats_RemoveTextEntries(Session, chatId, localIds);
         await UICommander.Run(removeCommand).ConfigureAwait(true);
 
@@ -135,8 +135,8 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
         var cmd = new Chats_ForwardTextEntries(
             Session,
             chatId,
-            selection.ToApiArray(),
-            selectedChatIds.ToApiArray());
+            selection.ToArray(),
+            selectedChatIds.ToArray());
         await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
         var firstChatId = selectedChatIds.First();
         var info = await BuildInfoMessage().ConfigureAwait(true);

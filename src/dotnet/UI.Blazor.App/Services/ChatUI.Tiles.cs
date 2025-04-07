@@ -195,7 +195,7 @@ public partial class ChatUI
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
-            conversations = conversationTile.Items
+            conversations = conversationTile
                 .Where(c => !c.EntryRange.IntersectWith(requestedIdRange).IsEmpty)
                 .ToArray();
             idRangesToSkip = conversations

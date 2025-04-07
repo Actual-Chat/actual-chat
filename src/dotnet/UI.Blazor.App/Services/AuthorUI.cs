@@ -87,7 +87,7 @@ public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
         var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(true);
-        var otherAuthorId = authorIds.Items.First(c => c.Id != ownAuthor!.Id);
+        var otherAuthorId = authorIds.First(c => c.Id != ownAuthor!.Id);
         var promoteCommand = new Authors_PromoteToOwner(Session, otherAuthorId);
         var promoteResult = await UICommander.Run(promoteCommand, cancellationToken).ConfigureAwait(true);
         if (promoteResult.HasError)

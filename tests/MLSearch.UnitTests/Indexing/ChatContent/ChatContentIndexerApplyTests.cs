@@ -402,7 +402,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
                 It.IsAny<CancellationToken>()))
             .Returns<ChatId, ChatEntryKind, ActualLab.Mathematics.Range<long>, bool, CancellationToken>(
                 (_, _, range, includeRemoved, _) => {
-                    var tile = new ChatTile(range, includeRemoved, allEntries.ToApiArray());
+                    var tile = new ChatTile(range, includeRemoved, allEntries.ToArray());
                     return Task.FromResult(tile);
                 });
         var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);

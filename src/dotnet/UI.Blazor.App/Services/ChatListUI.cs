@@ -300,7 +300,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
         DebugLog?.LogDebug(
             "<- ListUnorderedRaw({PlaceId}): {Count} items ({IdCount} IDs), {Duration})",
-            placeId, chatById.Count, contactIds.Count, startedAt.Elapsed.ToShortString());
+            placeId, chatById.Count, contactIds.Length, startedAt.Elapsed.ToShortString());
         return chatById;
     }
 

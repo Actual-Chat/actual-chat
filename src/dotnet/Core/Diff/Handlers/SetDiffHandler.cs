@@ -19,8 +19,8 @@ public class SetDiffHandler<
 
     public override SetDiff<TSet, TItem> Diff(TSet source, TSet target)
     {
-        var added = target.Except(source).ToApiArray();
-        var removed = source.Except(target).ToApiArray();
+        var added = target.Except(source).ToArray();
+        var removed = source.Except(target).ToArray();
         return new SetDiff<TSet, TItem>(added, removed);
     }
 
@@ -34,8 +34,8 @@ public class SetDiffHandler<
             .Concat(diff.AddedItems);
         if (_setGenericType == null)
             return (TSet)_setType.CreateInstance(target);
-        if (_setGenericType == typeof(ApiArray<>))
-            return (TSet)(object)new ApiArray<TItem>(target);
+        if (_setGenericType.IsArray)
+            return (TSet)(object)target.ToArray();
         if (_setGenericType == typeof(ImmutableArray<>))
             return (TSet)(object)ImmutableArray.Create(target);
         if (_setGenericType == typeof(ImmutableList<>))

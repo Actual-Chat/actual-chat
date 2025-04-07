@@ -65,7 +65,7 @@ public class EntryIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @
     private Task<ChatEntry> CreateEntry(ChatId chatId, string text)
         => Tester.CreateTextEntry(chatId, $"{text} {UniquePart}");
 
-    private Task<ApiArray<EntrySearchResult>> Find(
+    private Task<EntrySearchResult[]> Find(
         string criteria,
         PlaceId? placeId = null,
         ChatId chatId = default,

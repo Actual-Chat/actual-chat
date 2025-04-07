@@ -120,21 +120,21 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<AuthorId[]> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ApiArray<AuthorId>.Empty;
+            return [];
 
         return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<UserId[]> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ApiArray<UserId>.Empty;
+            return [];
 
         return await Backend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
     }
@@ -395,8 +395,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             ownerRole.Version,
             new Change<RoleDiff> {
                 Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
-                        AddedItems = ApiArray.New(authorId),
+                    AuthorIds = new SetDiff<AuthorId[], AuthorId> {
+                        AddedItems = [authorId],
                     },
                 },
             });

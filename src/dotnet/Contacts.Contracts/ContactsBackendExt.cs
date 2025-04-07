@@ -2,7 +2,7 @@ namespace ActualChat.Contacts;
 
 public static class ContactsBackendExt
 {
-    public static Task<ApiArray<ContactId>> ListPeerContactIds(
+    public static Task<ContactId[]> ListPeerContactIds(
         this IContactsBackend contactsBackend,
         UserId userId,
         CancellationToken cancellationToken)

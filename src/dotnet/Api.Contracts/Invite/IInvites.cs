@@ -5,11 +5,11 @@ namespace ActualChat.Invite;
 public interface IInvites : IComputeService
 {
     [ComputeMethod]
-    Task<ApiArray<Invite>> ListUserInvites(Session session, CancellationToken cancellationToken);
+    Task<Invite[]> ListUserInvites(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<Invite[]> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<Invite>> ListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<Invite[]> ListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Invite?> GetOrGenerateChatInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]

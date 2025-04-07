@@ -12,11 +12,11 @@ public abstract record Markup
             return first;
         if (first is MarkupSeq f) {
             if (second is MarkupSeq s)
-                return new MarkupSeq(f.Items.AddRange(s.Items));
-            return new MarkupSeq(f.Items.Append(second));
+                return new MarkupSeq(f.Items.WithMany(s.Items));
+            return new MarkupSeq(f.Items.With(second));
         }
         else if (second is MarkupSeq s)
-            return new MarkupSeq(ImmutableArray<Markup>.Empty.Add(first).AddRange(s.Items));
+            return new MarkupSeq(new [] { first }.WithMany(s.Items));
         return new MarkupSeq(first, second);
     }
 
@@ -32,7 +32,7 @@ public abstract record Markup
         return items.Count switch {
             0 => Empty,
             1 => items[0],
-            _ => new MarkupSeq(items),
+            _ => new MarkupSeq(items.ToArray()),
         };
     }
 

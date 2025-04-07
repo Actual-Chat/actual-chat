@@ -12,11 +12,11 @@ public interface IPlaces : IComputeService
     Task<ChatId> GetWelcomeChatId(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<UserId[]> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<AuthorId[]> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<AuthorId[]> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<AuthorFull?> GetOwn(Session session, PlaceId placeId, CancellationToken cancellationToken);

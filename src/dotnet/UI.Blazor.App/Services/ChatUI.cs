@@ -287,16 +287,16 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             return;
 
         var newPinnedChats = mustPin
-            ? pinnedChats.Add(chatId, true)
-            : pinnedChats.RemoveAll(chatId);
+            ? pinnedChats.With(chatId, true)
+            : pinnedChats.Without(chatId);
         SetNavbarPinnedChats(newPinnedChats);
     }
 
     public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
-        => _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = pinnedChats.ToApiArray() };
+        => _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = pinnedChats.ToArray() };
 
     public void SetNavbarPlacesOrder(IReadOnlyCollection<PlaceId> places)
-        => _navbarSettings.Value = _navbarSettings.Value with { PlacesOrder = places.ToApiArray() };
+        => _navbarSettings.Value = _navbarSettings.Value with { PlacesOrder = places.ToArray() };
 
     public void LeaveChat(Chat.Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, "chat",
@@ -327,7 +327,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     public async Task JoinPlace(PlaceId placeId) {
         var avatars = await Avatars.ListOwnAvatarIds(Session, default).ConfigureAwait(false); // Continue on Blazor context.
-        var hasMultipleAvatars = avatars.Count > 1;
+        var hasMultipleAvatars = avatars.Length > 1;
 
         if (!hasMultipleAvatars) {
             var command = new Places_Join(Session, placeId);
@@ -641,7 +641,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             var selectedChatIds = SelectedChatIds.Value;
             if (!selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
                 var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
-                if (contactIds.Count > 0)
+                if (contactIds.Length > 0)
                     lastSelectedChatId = contactIds[0].ChatId;
             }
             Chat.Chat? readChat = null;

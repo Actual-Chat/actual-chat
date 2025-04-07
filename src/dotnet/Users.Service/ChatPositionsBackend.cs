@@ -79,8 +79,8 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
                 return false;
 
             var positions = stat.TopReadPositions;
-            return positions.Count == 0
-                || positions.Count == 1 && (positions[0].UserId != userId || positions[0].EntryLid < entryLid)
+            return positions.Length == 0
+                || (positions.Length == 1 && (positions[0].UserId != userId || positions[0].EntryLid < entryLid))
                 || positions[^1].EntryLid < entryLid;
         }
     }

@@ -47,7 +47,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.IsPublic.Should().Be(isPublicChat);
 
         var chatRoles = await roles.List(session, chat.Id, default);
-        chatRoles.Count.Should().Be(2);
+        chatRoles.Length.Should().Be(2);
 
         var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
         owners.Name.Should().Be(SystemRole.Owner.ToString());
@@ -106,7 +106,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.Rules.Author!.Avatar.Should().NotBeNull();
 
         var chatRoles = await roles.List(session, chat.Id, default);
-        chatRoles.Count.Should().Be(2);
+        chatRoles.Length.Should().Be(2);
 
         var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
         owners.Name.Should().Be(SystemRole.Owner.ToString());
@@ -168,7 +168,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.IsPublic.Should().Be(isPublicChat);
 
         var chatRoles = await roles.List(session, chat.Id, default);
-        chatRoles.Count.Should().Be(2);
+        chatRoles.Length.Should().Be(2);
 
         var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
         owners.Name.Should().Be(SystemRole.Owner.ToString());

@@ -38,7 +38,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
-    Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<Author[]> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<ChatCopyState?> GetChatCopyState(Session session, ChatId chatId, CancellationToken cancellationToken);
@@ -113,7 +113,7 @@ public sealed partial record Chats_RestoreTextEntry(
 public sealed partial record Chats_RemoveTextEntries(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<long> LocalIds
+    [property: DataMember, MemoryPackOrder(2)] long[] LocalIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -121,7 +121,7 @@ public sealed partial record Chats_RemoveTextEntries(
 public sealed partial record Chats_RestoreTextEntries(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<long> LocalIds
+    [property: DataMember, MemoryPackOrder(2)] long[] LocalIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -135,14 +135,13 @@ public sealed partial record Chats_UpsertTextEntry(
 ) : ISessionCommand<ChatEntry>, IApiCommand
 {
     [Obsolete($"2023.11: Use '{nameof(EntryAttachments)}' instead.")]
-    [DataMember, MemoryPackOrder(5)] public ApiArray<MediaId> Attachments { get; set; } = ApiArray<MediaId>.Empty;
+    [DataMember, MemoryPackOrder(5)] public MediaId[] Attachments { get; set; } = [];
     [DataMember, MemoryPackOrder(6)] public ChatEntryId ForwardedChatEntryId { get; set; }
     [DataMember, MemoryPackOrder(7)] public AuthorId ForwardedAuthorId { get; set; }
     [DataMember, MemoryPackOrder(8)] public string? ForwardedChatTitle { get; set; }
     [DataMember, MemoryPackOrder(9)] public string? ForwardedAuthorName { get; set; }
     [DataMember, MemoryPackOrder(10)] public Moment? ForwardedChatEntryBeginsAt { get; set; }
-    [DataMember, MemoryPackOrder(11)] public ApiArray<TextEntryAttachment> EntryAttachments { get; set; }
-        = ApiArray<TextEntryAttachment>.Empty;
+    [DataMember, MemoryPackOrder(11)] public TextEntryAttachment[] EntryAttachments { get; set; } = [];
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -159,8 +158,8 @@ public sealed partial record Chats_Change(
 public sealed partial record Chats_ForwardTextEntries(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<ChatEntryId> ChatEntries,
-    [property: DataMember, MemoryPackOrder(3)] ApiArray<ChatId> DestinationChatIds
+    [property: DataMember, MemoryPackOrder(2)] ChatEntryId[] ChatEntries,
+    [property: DataMember, MemoryPackOrder(3)] ChatId[] DestinationChatIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

@@ -29,5 +29,5 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
             ReplacementKind,
             Date,
             Flags,
-            Entry.Attachments.Count);
+            Entry.Attachments.Length);
 }

@@ -17,7 +17,7 @@ public class InfiniteChatSequenceTests
     private static readonly MomentClock Clock = Mock.Of<MomentClock>(MockBehavior.Loose);
     private static readonly IChatsBackend Chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
     private static readonly ILogger<InfiniteChatSequence> Log = Mock.Of<ILogger<InfiniteChatSequence>>(MockBehavior.Loose);
-    private static readonly Expression<Func<IChatsBackend, Task<ApiArray<Chat.Chat>>>> ListChangedCall =
+    private static readonly Expression<Func<IChatsBackend, Task<Chat.Chat[]>>> ListChangedCall =
         x => x.ListChanged(It.IsAny<ChangedChatsQuery>(), It.IsAny<CancellationToken>());
 
     [Fact]
@@ -65,7 +65,7 @@ public class InfiniteChatSequenceTests
             .Setup(ListChangedCall)
             .Returns<ChangedChatsQuery, CancellationToken>(
                 (q, _) => batchCount++ == 0
-                    ? Task.FromResult(ApiArray<Chat.Chat>.Empty)
+                    ? Task.FromResult(Array.Empty<Chat.Chat>())
                     : GetNextBatch(q)
             );
 
@@ -81,14 +81,14 @@ public class InfiniteChatSequenceTests
         clock.VerifyNoOtherCalls();
     }
 
-    private static Task<ApiArray<Chat.Chat>> GetNextBatch(ChangedChatsQuery query)
+    private static Task<Chat.Chat[]> GetNextBatch(ChangedChatsQuery query)
     {
         var batch = new Chat.Chat[query.Limit];
         for (var i = 0; i < query.Limit; i++) {
             var chatId = new ChatId(Generate.Option);
             batch[i] = new Chat.Chat(chatId, query.MinVersion + i + 1);
         }
-        return Task.FromResult(batch.ToApiArray());
+        return Task.FromResult(batch.ToArray());
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class InfiniteChatSequenceTests
             .Setup(ListChangedCall)
             .ReturnsAsync(() => {
                 cancellationSource.Cancel();
-                return ApiArray<Chat.Chat>.Empty;
+                return [];
             });
 
         var sequence = new InfiniteChatSequence(clock.Object, chats.Object, Log) {

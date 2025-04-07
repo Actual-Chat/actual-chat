@@ -14,7 +14,7 @@ public interface IChatStreamingActivity : IDisposable
     [ComputeMethod]
     Task<ImmutableList<ChatEntry>> GetStreamingEntries(CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> GetStreamingAuthorIds(CancellationToken cancellationToken);
+    Task<AuthorId[]> GetStreamingAuthorIds(CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> IsAuthorStreaming(AuthorId authorId, CancellationToken cancellationToken);
 }
@@ -59,8 +59,8 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
         => Task.FromResult(_activeEntries);
 
     // [ComputeMethod]
-    public virtual Task<ApiArray<AuthorId>> GetStreamingAuthorIds(CancellationToken cancellationToken)
-        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToApiArray());
+    public virtual Task<AuthorId[]> GetStreamingAuthorIds(CancellationToken cancellationToken)
+        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToArray());
 
     // [ComputeMethod]
     public virtual Task<bool> IsAuthorStreaming(AuthorId authorId, CancellationToken cancellationToken)

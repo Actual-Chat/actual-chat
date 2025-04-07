@@ -39,7 +39,9 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Contact,
                 },
                 cancellationToken)
             .ConfigureAwait(false);
-        DebugLog?.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
+        DebugLog?.LogDebug(
+            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
+            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 
@@ -52,7 +54,7 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Contact,
             .Select(ToIndexedUser)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        var updated = indexedUsers.SkipNullItems().ToApiArray();
+        var updated = indexedUsers.SkipNullItems().ToArray();
         await IndexedDocuments
             .UpsertPartially<IndexedUser, IIndexedUserUpsertForPlacesOnly, UserId>(x => x.UserIndexName,
                 updated,

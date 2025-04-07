@@ -41,7 +41,9 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
                 },
                 cancellationToken)
             .ConfigureAwait(false);
-        Log.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
+        Log.LogDebug(
+            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
+            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 

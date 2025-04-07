@@ -131,7 +131,7 @@ public class Notifications(IServiceProvider services) : INotifications
         if (!chatId.IsPeerChat(out _)) {
             var authorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
             // Always disabled for middle and large groups.
-            if (authorIds.Count > 10)
+            if (authorIds.Length > 10)
                 throw StandardError.Unavailable("Alert everyone is unavailable in chats with more than 10 people.");
         }
 

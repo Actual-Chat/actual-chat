@@ -255,7 +255,7 @@ partial class Countries
 	public static readonly Country SCG = new ("CS", "Serbia and Montenegro", AssumeValid.Option);
 	public static readonly Country ANT = new ("AN", "Netherlands Antilles", AssumeValid.Option);
 
-	public static readonly ApiArray<Country> All = [
+	public static readonly Country[] All = [
 		Andorra,
 		ARE,
 		Afghanistan,

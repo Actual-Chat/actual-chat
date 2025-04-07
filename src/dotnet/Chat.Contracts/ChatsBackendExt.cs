@@ -138,7 +138,7 @@ public static class ChatsBackendExt
         return tiles.SelectMany(t => t.Entries).ToList();
     }
 
-    public static async IAsyncEnumerable<ApiArray<Chat>> Batch(
+    public static async IAsyncEnumerable<Chat[]> Batch(
         this IChatsBackend chatsBackend,
         Moment minCreatedAt,
         ChatId lastChatId,
@@ -148,7 +148,7 @@ public static class ChatsBackendExt
         while (!cancellationToken.IsCancellationRequested) {
             var chats = await chatsBackend.List(minCreatedAt, lastChatId, batchSize, cancellationToken)
                 .ConfigureAwait(false);
-            if (chats.Count == 0)
+            if (chats.Length == 0)
                 yield break;
 
             yield return chats;
@@ -159,7 +159,7 @@ public static class ChatsBackendExt
         }
     }
 
-    public static async IAsyncEnumerable<ApiArray<Chat>> BatchChangedGroups(
+    public static async IAsyncEnumerable<Chat[]> BatchChangedGroups(
         this IChatsBackend chatsBackend,
         long minVersion,
         long maxVersion,
@@ -178,7 +178,7 @@ public static class ChatsBackendExt
                     },
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (chats.Count == 0)
+            if (chats.Length == 0)
                 yield break;
 
             yield return chats;

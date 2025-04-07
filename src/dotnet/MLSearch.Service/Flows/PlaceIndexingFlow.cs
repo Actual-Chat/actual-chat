@@ -35,7 +35,9 @@ public partial class PlaceIndexingFlow : BatchedIndexingFlowBase<Place, PlaceId>
                 BatchSize,
                 cancellationToken)
             .ConfigureAwait(false);
-        DebugLog?.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
+        DebugLog?.LogDebug(
+            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
+            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 
@@ -43,7 +45,7 @@ public partial class PlaceIndexingFlow : BatchedIndexingFlowBase<Place, PlaceId>
     {
         await WhenReady.ConfigureAwait(false);
 
-        var updated = batch.Select(x => x.ToIndexedPlaceContact()).ToApiArray();
+        var updated = batch.Select(x => x.ToIndexedPlaceContact()).ToArray();
         await IndexedDocuments.SavePlaces(updated, [], cancellationToken).ConfigureAwait(false);
     }
 

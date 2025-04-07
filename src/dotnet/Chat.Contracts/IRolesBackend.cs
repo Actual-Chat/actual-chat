@@ -9,14 +9,14 @@ public interface IRolesBackend : IComputeService, IBackendService
     Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<Role>> List(
+    Task<Role[]> List(
         ChatId chatId, AuthorId authorId,
         bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);
+    Task<Role[]> ListSystem(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
+    Task<AuthorId[]> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Role> Change(RolesBackend_Change command, CancellationToken cancellationToken);

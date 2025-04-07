@@ -33,7 +33,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(Entry.HasReactions, ApiArray<ReactionSummary>.Empty),
+            InitialValue = new Model(Entry.HasReactions, []),
             Category = GetStateCategory(GetType()),
         };
 
@@ -42,7 +42,7 @@
             return Model.None;
 
         var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken).ConfigureAwait(false);
-        if (summaries.Count == 0)
+        if (summaries.Length == 0)
             return new(false, summaries);
 
         var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken).ConfigureAwait(false);
@@ -61,9 +61,9 @@
 
     public sealed record Model(
         bool HasReactions,
-        ApiArray<ReactionSummary> Reactions,
+        ReactionSummary[] Reactions,
         Reaction? OwnReaction = null
     ) {
-        public static readonly Model None = new(false, ApiArray<ReactionSummary>.Empty);
+        public static readonly Model None = new(false, []);
     };
 }

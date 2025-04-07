@@ -110,8 +110,8 @@
         }
 
         return new() {
-            MemberCount = allAuthorIds.Count,
-            AuthorIds = authors.Select(c => c.Item1).ToApiArray(),
+            MemberCount = allAuthorIds.Length,
+            AuthorIds = authors.Select(c => c.Item1).ToArray(),
             OwnerIds = ownerIds,
             OwnAuthorId = ownAuthor!.Id,
         };
@@ -135,8 +135,8 @@
 
     public sealed record ComputedModel {
         public int MemberCount { get; init; }
-        public ApiArray<AuthorId> AuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
-        public ApiArray<AuthorId> OwnerIds { get; init; } = ApiArray<AuthorId>.Empty;
+        public AuthorId[] AuthorIds { get; init; } = [];
+        public AuthorId[] OwnerIds { get; init; } = [];
         public AuthorId OwnAuthorId { get; init; }
 
         public bool IsOwner(AuthorId authorId)

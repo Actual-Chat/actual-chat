@@ -21,7 +21,7 @@ public class ChatUsagesTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
         var account2 = await tester2.SignInAsAlice();
 
         var peerChatId = new PeerChatId(account.Id, account2.Id);
-        ApiArray<ChatId> list1;
+        ChatId[] list1;
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
         list1.Should().BeEmpty();
 

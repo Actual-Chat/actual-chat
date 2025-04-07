@@ -63,7 +63,7 @@
         var showAddMembersButton = false;
         if (place.Rules.CanInvite()) {
             var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-            showAddMembersButton = allAuthorIds.Count < 2;
+            showAddMembersButton = allAuthorIds.Length < 2;
         }
         var initialText = SearchUI.Text.ValueOrDefault ?? ""; // intentionally avoid recompute
         return new(place, showAddMembersButton, InitialText: initialText);

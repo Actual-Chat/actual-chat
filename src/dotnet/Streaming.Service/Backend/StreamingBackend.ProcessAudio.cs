@@ -138,7 +138,7 @@ public partial class StreamingBackend
         await transcribeTask.ConfigureAwait(false);
     }
 
-    private async Task<ApiArray<Language>> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
+    private async Task<Language[]> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
         var kvas = ServerKvas.GetClient(record.Session);
         var settings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);
@@ -150,7 +150,7 @@ public partial class StreamingBackend
             .Where(l => l != null)
             .Select(l => l!.Value)
             .Distinct()
-            .ToApiArray();
+            .ToArray();
     }
 
     private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
@@ -318,7 +318,7 @@ public partial class StreamingBackend
         }
         return;
 
-        Task SaveLanguages(ApiArray<Language> languages)
+        Task SaveLanguages(Language[] languages)
         {
             var entryLanguage = new ChatEntryLanguage(textEntry.Id) { Languages = languages, };
             var cmd = ChatEntryLanguagesBackend_BulkChange.Upserts(entryLanguage);

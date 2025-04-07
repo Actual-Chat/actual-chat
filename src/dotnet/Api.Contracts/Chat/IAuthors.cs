@@ -19,9 +19,9 @@ public interface IAuthors : IComputeService
     Task<ApiNullable8<Moment>> GetLastCheckIn(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
-    Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<AuthorId[]> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<UserId[]> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Commands
 

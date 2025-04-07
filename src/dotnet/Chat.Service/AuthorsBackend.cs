@@ -79,46 +79,46 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<AuthorId[]> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ApiArray<AuthorId>.Empty;
+            return [];
 
         if (chatId.IsPeerChat(out var peerChatId))
-            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToArray();
 
         var targetChatId = await GetMembershipChatId(chatId, cancellationToken).ConfigureAwait(false);
         if (targetChatId.IsNone)
-            return ApiArray<AuthorId>.Empty;
+            return [];
 
         var authorIds = await ListAuthorIdsInternal(targetChatId, cancellationToken).ConfigureAwait(false);
 
-        if (targetChatId != chatId && authorIds.Count > 0)
+        if (targetChatId != chatId && authorIds.Length > 0)
             authorIds = RemapList(authorIds, chatId);
         return authorIds;
 
-        static ApiArray<AuthorId> RemapList(ApiArray<AuthorId> authorIds, ChatId chatId)
-            => authorIds.ToApiArray(c => Remap(c, chatId));
+        static AuthorId[] RemapList(AuthorId[] authorIds, ChatId chatId)
+            => authorIds.Select(c => Remap(c, chatId)).ToArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<UserId[]> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ApiArray<UserId>.Empty;
+            return [];
 
         if (chatId.IsPeerChat(out var peerChatId))
-            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToApiArray();
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToArray();
 
         var targetChatId = await GetMembershipChatId(chatId, cancellationToken).ConfigureAwait(false);
         if (targetChatId.IsNone)
-            return ApiArray<UserId>.Empty;
+            return [];
 
         return await ListUserIdsInternal(targetChatId, cancellationToken).ConfigureAwait(false);
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<AuthorFull>> ListChanged(
+    public async Task<AuthorFull[]> ListChanged(
         ChangedAuthorsQuery query,
         CancellationToken cancellationToken)
     {
@@ -137,7 +137,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             .Take(query.Limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbAuthors.Select(x => x.ToModel()).ToApiArray();
+        return dbAuthors.Select(x => x.ToModel()).ToArray();
     }
 
     // [CommandHandler]
@@ -410,7 +410,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(authors.ToArray());
         if (authors.Count > 0)
-            context.Operation.AddEvent(new AuthorsRemovedEvent(authors.ToApiArray()));
+            context.Operation.AddEvent(new AuthorsRemovedEvent(authors.ToArray()));
     }
 
     // CommandHandler
@@ -484,7 +484,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
                 var newAuthor = originalAuthor with {
                     Id = newAuthorId,
-                    RoleIds = ApiArray<Symbol>.Empty,
+                    RoleIds = [],
                 };
                 if (newAuthor.Version <= 0) {
                     Log.LogInformation("OnCopyChat({CorrelationId}) Invalid version on DbAuthor with Id={AuthorId}",
@@ -628,7 +628,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     [ComputeMethod]
-    protected virtual async Task<ApiArray<AuthorId>> ListAuthorIdsInternal(
+    protected virtual async Task<AuthorId[]> ListAuthorIdsInternal(
         ChatId chatId,
         CancellationToken cancellationToken)
     {
@@ -640,11 +640,11 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return authorSids.Select(x => new AuthorId(x)).ToApiArray();
+        return authorSids.Select(x => new AuthorId(x)).ToArray();
     }
 
     [ComputeMethod]
-    protected virtual async Task<ApiArray<UserId>> ListUserIdsInternal(
+    protected virtual async Task<UserId[]> ListUserIdsInternal(
         ChatId chatId,
         CancellationToken cancellationToken)
     {
@@ -656,7 +656,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return userIds.Select(x => new UserId(x)).ToApiArray();
+        return userIds.Select(x => new UserId(x)).ToArray();
     }
 
     // Private / internal methods
@@ -797,8 +797,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             ownerRole.Version,
             new Change<RoleDiff> {
                 Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
-                        RemovedItems = ApiArray.New(authorId),
+                    AuthorIds = new SetDiff<AuthorId[], AuthorId> {
+                        RemovedItems = [authorId],
                     },
                 },
             });

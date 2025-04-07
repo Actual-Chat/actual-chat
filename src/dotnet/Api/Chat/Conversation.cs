@@ -29,7 +29,7 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(7)] public Moment EndsAt { get; init; }
     [DataMember, MemoryPackOrder(8)] public int MessageCount { get; init; }
 
-    [DataMember, MemoryPackOrder(9)] public ApiArray<AuthorId> AuthorIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(9)] public AuthorId[] AuthorIds { get; init; } = [];
 
 
 
@@ -50,7 +50,7 @@ public sealed partial record ConversationDiff() : RecordDiff
     [DataMember, MemoryPackOrder(4)] public Moment? StartsAt { get; init; }
     [DataMember, MemoryPackOrder(5)] public Moment? EndsAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public int? MessageCount { get; init; }
-    [DataMember, MemoryPackOrder(7)] public ApiArray<AuthorId>? AuthorIds { get; init; }
+    [DataMember, MemoryPackOrder(7)] public AuthorId[]? AuthorIds { get; init; }
 
     public ConversationDiff(Conversation conversation) : this()
     {

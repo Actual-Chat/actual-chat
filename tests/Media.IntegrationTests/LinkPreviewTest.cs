@@ -184,7 +184,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         return linkPreviews.FirstOrDefault();
     }
 
-    private async Task<ApiArray<LinkPreview>> GetEntryLinkPreviews(ChatEntryId entryId, params IReadOnlyList<Symbol> expectedIds)
+    private async Task<LinkPreview[]> GetEntryLinkPreviews(ChatEntryId entryId, params IReadOnlyList<Symbol> expectedIds)
         => await ComputedTest.When(async ct => {
             var chatEntry = await Chats.GetEntry(Session, entryId, ct).Require();
  #pragma warning disable CS0618 // Type or member is obsolete

@@ -28,7 +28,7 @@ public class Translator(IServiceProvider services) : IHasServices
     [field: AllowNull, MaybeNull]
     private string TranslatePromptTemplate => field ??= File.ReadAllText(Settings.TranslatePromptFile);
 
-    public async Task<IReadOnlyList<ApiArray<Language>>> DetectLanguages(IReadOnlyList<string> texts, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Language[]>> DetectLanguages(IReadOnlyList<string> texts, CancellationToken cancellationToken)
     {
         if (!Settings.IsTranslationEnabled)
             return [];
@@ -46,7 +46,7 @@ public class Translator(IServiceProvider services) : IHasServices
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Could not detect languages in bulk");
-            return [.. Enumerable.Repeat(ApiArray<Language>.Empty, texts.Count)];
+            return Enumerable.Repeat(Array.Empty<Language>(), texts.Count).ToArray();
         }
     }
 

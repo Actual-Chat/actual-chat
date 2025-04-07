@@ -36,7 +36,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         var deviceContacts = new Mock<DeviceContacts>(MockBehavior.Loose);
         deviceContacts.SetupGet(x => x.DeviceId).Returns(() => DeviceId);
-        deviceContacts.Setup(x => x.List(It.IsAny<CancellationToken>())).Returns(() => Task.FromResult(DeviceContacts.ToApiArray()));
+        deviceContacts.Setup(x => x.List(It.IsAny<CancellationToken>())).Returns(() => Task.FromResult(DeviceContacts.ToArray()));
         _externalContacts = AppHost.Services.GetRequiredService<IExternalContacts>();
         _tester = AppHost.NewWebClientTester( Out,services => {
             TrueSessionResolver? sessionResolver = null;
@@ -95,13 +95,13 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     private ExternalContactFull NewExternalContact(AccountFull owner)
         => new (new ExternalContactId(new UserDeviceId(owner.Id, DeviceId), RandomStringGenerator.Default.Next()));
 
-    private async Task<ApiArray<ExternalContact>> ListExternalContacts(int expectedCount)
+    private async Task<ExternalContact[]> ListExternalContacts(int expectedCount)
         => await ComputedTest.When(async ct => {
             var externalContacts = await ListExternalContacts(ct);
             externalContacts.Should().HaveCountGreaterThanOrEqualTo(expectedCount);
             return externalContacts;
         }, TimeSpan.FromSeconds(10));
 
-    private Task<ApiArray<ExternalContact>> ListExternalContacts(CancellationToken cancellationToken = default)
+    private Task<ExternalContact[]> ListExternalContacts(CancellationToken cancellationToken = default)
         => _externalContacts.List(_tester.Session, DeviceId, cancellationToken);
 }

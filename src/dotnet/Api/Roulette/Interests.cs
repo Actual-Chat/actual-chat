@@ -3,7 +3,7 @@ namespace ActualChat.Roulette;
 public static class Interests
 {
     private static readonly Dictionary<string, string> InterestTitles = new (StringComparer.Ordinal);
-    public static readonly ApiArray<Interest> All;
+    public static readonly Interest[] All;
 
     public static readonly Interest Flexible = new ("flexible");
     public static readonly Interest Food = new ("food");

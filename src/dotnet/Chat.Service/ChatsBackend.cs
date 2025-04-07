@@ -122,7 +122,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ChatId>> GetPublicChatIdsFor(PlaceId placeId, CancellationToken cancellationToken)
+    public virtual async Task<ChatId[]> GetPublicChatIdsFor(PlaceId placeId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -135,11 +135,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Select(c => c.Id)
             .OrderBy(c => c)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
+        return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ChatId>> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
+    public virtual async Task<ChatId[]> ListPlaceChatIds(PlaceId placeId, CancellationToken cancellationToken)
     {
         if (placeId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(placeId));
@@ -153,7 +153,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Select(c => c.Id)
             .OrderBy(c => c)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
+        return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToArray();
     }
 
     // [ComputeMethod]
@@ -205,7 +205,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken).ConfigureAwait(false);
-        var lastEntry = tile.Entries.Count > 0 ? tile.Entries[^1] : null;
+        var lastEntry = tile.Entries.Length != 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
     }
 
@@ -284,7 +284,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
         if (!includeRemoved) {
             var fullTile = await GetTile(chatId, entryKind, idTileRange, true, cancellationToken).ConfigureAwait(false);
-            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToApiArray());
+            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToArray());
         }
 
         // If we're here, it's the smallest tile & includeRemoved = true
@@ -308,7 +308,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 true,
                 dbEntries
                     .Select(dbe => dbe.ToModel())
-                    .ToApiArray());
+                    .ToArray());
 
         var allAttachmentsTask = GetAttachments();
         var allLinkPreviewsTask = GetLinkPreviews();
@@ -323,10 +323,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var linkPreviews = e.GetLinkPreviewIds()
                 .Select(previewId => allLinkPreviews.GetValueOrDefault(previewId))
                 .SkipNullItems()
-                .ToApiArray();
+                .ToArray();
             return e.ToModel(entryAttachments, linkPreviews);
         });
-        return new ChatTile(idTileRange, true, entries.ToApiArray());
+        return new ChatTile(idTileRange, true, entries.ToArray());
 
         Task<IReadOnlyDictionary<Symbol, LinkPreview>> GetLinkPreviews()
         {
@@ -430,7 +430,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     [ComputeMethod]
-    protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
+    protected virtual async Task<TextEntryAttachment[]> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -457,7 +457,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .DistinctBy(m => m.Id)
                 .ToDictionary(m => m.Id);
         }
-        return dbAttachments.Select(x => WithMedia(x.ToModel())).SkipNullItems().ToApiArray();
+        return dbAttachments.Select(x => WithMedia(x.ToModel())).SkipNullItems().ToArray();
 
         TextEntryAttachment? WithMedia(TextEntryAttachment attachment)
         {
@@ -482,7 +482,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // TODO: Chat and ChatFull. This method must return Chat
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<Chat>> List(
+    public async Task<Chat[]> List(
         Moment minCreatedAt,
         ChatId lastChatId,
         int limit,
@@ -498,21 +498,21 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         if (dbChats.Count == 0)
-            return ApiArray<Chat>.Empty;
+            return [];
 
         if (lastChatId.IsNone || dbChats[0].CreatedAt > dMinCreatedAt)
             // no chats created at minCreatedAt that we need to skip
-            return dbChats.Select(x => x.ToModel()).ToApiArray();
+            return dbChats.Select(x => x.ToModel()).ToArray();
 
         var lastChatIdx = dbChats.FindIndex(x => new ChatId(x.Id) == lastChatId);
         if (lastChatIdx < 0)
-            return dbChats.Select(x => x.ToModel()).ToApiArray();
+            return dbChats.Select(x => x.ToModel()).ToArray();
 
-        return dbChats.Skip(lastChatIdx + 1).Select(x => x.ToModel()).ToApiArray();
+        return dbChats.Skip(lastChatIdx + 1).Select(x => x.ToModel()).ToArray();
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<Chat>> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken)
+    public async Task<Chat[]> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -531,11 +531,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return dbChats.Select(x => x.ToModel()).ToApiArray();
+        return dbChats.Select(x => x.ToModel()).ToArray();
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<ChatEntry>> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken)
+    public async Task<ChatEntry[]> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -553,12 +553,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Take(query.Limit)
             .AsAsyncEnumerable()
             .Select(x => x.ToModel())
-            .ToApiArrayAsync(cancellationToken)
+            .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<ChatEntry>> ListNewEntries(
+    public async Task<ChatEntry[]> ListNewEntries(
         ChatId chatId,
         long minLocalIdExclusive,
         int limit,
@@ -577,11 +577,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
         return dbEntries
             .Select(x => x.ToModel())
-            .ToApiArray();
+            .ToArray();
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<ChatEntry>> ListEntries(
+    public async Task<ChatEntry[]> ListEntries(
         ChatId chatId,
         Moment from,
         CancellationToken cancellationToken)
@@ -598,7 +598,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
         return dbEntries
             .Select(x => x.ToModel())
-            .ToApiArray();
+            .ToArray();
     }
 
     // [CommandHandler]
@@ -718,8 +718,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                             Name = "SingleAuthor",
                             SystemRole = SystemRole.None,
                             Permissions = ChatPermissions.Write,
-                            AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
-                                AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                            AuthorIds = new SetDiff<AuthorId[], AuthorId>() {
+                                AddedItems = [author.Id],
                             },
                         },
                     });
@@ -730,8 +730,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                         Create = new RoleDiff {
                             SystemRole = SystemRole.Owner,
                             Permissions = ChatPermissions.Owner,
-                            AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
-                                AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                            AuthorIds = new SetDiff<AuthorId[], AuthorId>() {
+                                AddedItems = [author.Id],
                             },
                         },
                     });
@@ -1010,7 +1010,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 entry = ApplyDiff(entry, update, false);
                 entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
                 dbEntry = new DbChatEntry(entry) {
-                    HasAttachments = entry.Attachments.Count > 0,
+                    HasAttachments = entry.Attachments.Length > 0,
                 };
                 dbContext.Add(dbEntry);
             }
@@ -1023,7 +1023,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     Version = VersionGenerator.NextVersion(dbEntry.Version),
                 };
                 entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
-                var hasAttachments = update.Attachments is { Count: > 0 } || dbEntry.HasAttachments;
+                var hasAttachments = update.Attachments is { Length: > 0 } || dbEntry.HasAttachments;
                 dbEntry.UpdateFrom(entry);
                 dbEntry.HasAttachments = hasAttachments;
             }
@@ -1062,14 +1062,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (changeKind == ChangeKind.Create)
             AppMeters.MessageCount.Add(1);
 
-        if (change.IsCreate(out var create) && create.Attachments is { Count: > 0 } attachments) {
+        if (change.IsCreate(out var create) && create.Attachments is { Length: > 0 } attachments) {
             var createAttachmentsCmd = new ChatsBackend_CreateAttachments(attachments.Select((x, i) => new TextEntryAttachment {
                     EntryId = chatEntryId.ToTextEntryId(),
                     Index = i,
                     MediaId = x.MediaId,
                     ThumbnailMediaId = x.ThumbnailMediaId,
                 })
-                .ToApiArray());
+                .ToArray());
             var createdAttachments = await Commander.Call(createAttachmentsCmd, cancellationToken).ConfigureAwait(false);
             entry = entry with { Attachments = createdAttachments };
         }
@@ -1100,9 +1100,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     throw StandardError.Constraint("Audio entry should not have ForwardedChatEntryId.");
                 if (!newEntry.ForwardedAuthorId.IsNone)
                     throw StandardError.Constraint("Audio entry should not have ForwardedAuthorId.");
-                if (newEntry.Attachments.Count > 0)
+                if (newEntry.Attachments.Length != 0)
                     throw StandardError.Constraint("Audio entry should not have Attachments.");
-                if (!newEntry.LinkPreviewIds.IsEmpty)
+                if (newEntry.LinkPreviewIds.Length != 0)
                     throw StandardError.Constraint("Audio entry should not have LinkPreviewId.");
                 break;
             case ChatEntryKind.Text:
@@ -1154,12 +1154,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(
+    public virtual async Task<TextEntryAttachment[]> OnCreateAttachments(
         ChatsBackend_CreateAttachments command,
         CancellationToken cancellationToken)
     {
         var attachments = command.Attachments;
-        if (attachments.Count > Constants.Attachments.FileCountLimit)
+        if (attachments.Length > Constants.Attachments.FileCountLimit)
             throw StandardError.Constraint("Too many attachments in bulk.");
 
         var entryIds = attachments.Select(x => x.EntryId).Distinct().ToList();
@@ -1193,7 +1193,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbAttachments.Select(x => x.ToModel()).ToApiArray();
+        return dbAttachments.Select(x => x.ToModel()).ToArray();
     }
 
     // [CommandHandler]
@@ -1812,7 +1812,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         else
             return AuthorRules.None(chatId);
 
-        var roles = ApiArray<Role>.Empty;
+        var roles = Array.Empty<Role>();
         var isJoined = author is { HasLeft: false };
         if (isJoined) {
             var isGuest = account.IsGuestOrNone;
@@ -2008,8 +2008,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             null,
             new Change<RoleDiff> {
                 Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
-                        AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                    AuthorIds = new SetDiff<AuthorId[], AuthorId> {
+                        AddedItems = [author.Id],
                     },
                 },
             });

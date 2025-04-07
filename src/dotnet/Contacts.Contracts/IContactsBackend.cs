@@ -8,22 +8,22 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId? placeId, bool includePublic, CancellationToken cancellationToken);
+    Task<ContactId[]> ListIdsForSearch(UserId userId, PlaceId? placeId, bool includePublic, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ApiArray<ContactId>> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
+    public Task<ContactId[]> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ApiArray<ContactId>> ListPeerContactIds(
+    public Task<ContactId[]> ListPeerContactIds(
         UserId userId,
         PlaceId placeId,
         CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
+    Task<ContactId[]> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
+    Task<PlaceId[]> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
 
     // Non-compute methods
-    Task<ApiArray<Contact>> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
-    Task<ApiArray<Contact>> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
+    Task<Contact[]> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
+    Task<Contact[]> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
 
     // Commands
 

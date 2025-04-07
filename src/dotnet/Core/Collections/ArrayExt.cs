@@ -2,6 +2,22 @@ namespace ActualChat.Collections;
 
 public static class ArrayExt
 {
+    // TryGetValue
+
+    public static bool TryGetValue<T>(this T[] array, T item, out T? foundItem)
+    {
+        var index = Array.IndexOf(array, item);
+        if (index < 0) {
+            foundItem = default;
+            return false;
+        }
+
+        foundItem = array[index];
+        return true;
+    }
+
+    // CommonPrefixLength
+
     public static int CommonPrefixLength<T>(this T[] first, T[] second, IEqualityComparer<T>? comparer = null)
     {
         var c = comparer ?? EqualityComparer<T>.Default;
@@ -23,6 +39,8 @@ public static class ArrayExt
         }
         return length;
     }
+
+    // Deconstruct
 
     public static void Deconstruct<T>(this T[] array, out T? first, out T[] rest)
     {
@@ -49,7 +67,4 @@ public static class ArrayExt
 
     public static void Deconstruct<T>(this T[] array, out T? first, out T? second, out T? third, out T? fourth, out T? fifth, out T[] rest)
         => (first, second, third, fourth, (fifth, rest)) = array;
-
-    public static async Task<ApiArray<T>> ToApiArray<T>(this Task<T[]> arrayTask)
-        => new (await arrayTask.ConfigureAwait(false));
 }

@@ -30,13 +30,13 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<MauiContacts>();
 
-    public override async Task<ApiArray<ExternalContactFull>> List(CancellationToken cancellationToken)
+    public override async Task<ExternalContactFull[]> List(CancellationToken cancellationToken)
     {
         try {
             var isGranted = await Permissions.Check(cancellationToken).ConfigureAwait(false);
             if (isGranted != true) {
                 Log.LogWarning("Contacts permission is isn't granted");
-                return ApiArray<ExternalContactFull>.Empty;
+                return [];
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
@@ -45,11 +45,11 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
                 .GetAllAsync(cancellationToken)
                 .ConfigureAwait(false)).ToList();
-            return deviceContacts.Select(x => ToExternalContact(account.Id, phoneParser, x)).ToApiArray();
+            return deviceContacts.Select(x => ToExternalContact(account.Id, phoneParser, x)).ToArray();
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to read device contacts");
-            return ApiArray<ExternalContactFull>.Empty;
+            return [];
         }
     }
 

@@ -55,7 +55,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var contacts = services.GetRequiredService<IContacts>();
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(session, ct);
-            placeIds.Count.Should().Be(1);
+            placeIds.Length.Should().Be(1);
             placeIds.Should().Contain(place.Id);
         });
 
@@ -327,13 +327,13 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         // Assert user can see the Place.
         await ComputedTest.When(async ct => {
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
-            placeIds.Count.Should().Be(1);
+            placeIds.Length.Should().Be(1);
             placeIds.Should().Contain(place.Id);
         });
 
         if (!isPublicChat) {
             var contactIds = await contacts.ListIds(anotherSession, place.Id, default);
-            contactIds.Count.Should().Be(0);
+            contactIds.Length.Should().Be(0);
 
             var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chat.Id));
             invite = await commander.Call(new Invites_Generate(session, invite));
@@ -382,7 +382,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
 
         var contactIds = await contacts.ListIds(session2, place.Id, default);
-        contactIds.Count.Should().Be(0);
+        contactIds.Length.Should().Be(0);
 
         if (addToPlaceMembers) {
             var user2 = await tester2.Accounts.GetOwn(session2, default);

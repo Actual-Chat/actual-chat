@@ -21,7 +21,7 @@ public static class AuthorsBackendExt
         return author;
     }
 
-    public static Task<ApiArray<UserId>> ListPlaceUserIds(
+    public static Task<UserId[]> ListPlaceUserIds(
         this IAuthorsBackend authorsBackend,
         PlaceId placeId,
         CancellationToken cancellationToken)

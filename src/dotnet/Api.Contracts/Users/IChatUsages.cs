@@ -5,7 +5,7 @@ namespace ActualChat.Users;
 public interface IChatUsages : IComputeService
 {
     [ComputeMethod]
-    Task<ApiArray<ChatId>> GetRecencyList(Session session, ChatUsageListKind kind, CancellationToken cancellationToken);
+    Task<ChatId[]> GetRecencyList(Session session, ChatUsageListKind kind, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnRegisterUsage(ChatUsages_RegisterUsage command, CancellationToken cancellationToken);

@@ -5,7 +5,7 @@ namespace ActualChat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChatEntryLanguagesChangedEvent(
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<ChatEntryLanguage> EntryLanguages
+    [property: DataMember, MemoryPackOrder(1)] ChatEntryLanguage[] EntryLanguages
 ) : EventCommand, IHasShardKey<ChatEntryId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

@@ -14,7 +14,7 @@ public interface IAccountsBackend : IComputeService, IBackendService
 
     // Non-compute methods
 
-    Task<ApiArray<UserId>> ListChanged(
+    Task<UserId[]> ListChanged(
         long minVersion,
         long maxVersion,
         UserId lastId,

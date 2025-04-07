@@ -12,7 +12,7 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
                 newItems.Add(newItem);
             isUnchanged &= ReferenceEquals(newItem, item);
         }
-        return isUnchanged ? markup : new MarkupSeq(newItems);
+        return isUnchanged ? markup : new MarkupSeq(newItems.ToArray());
     }
 
     protected override async ValueTask<Markup> VisitList(ListMarkup markup, CancellationToken cancellationToken)

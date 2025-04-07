@@ -7,7 +7,7 @@ public class ChatUsages(IServiceProvider services) : IChatUsages
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ChatId>> GetRecencyList(Session session, ChatUsageListKind kind, CancellationToken cancellationToken)
+    public virtual async Task<ChatId[]> GetRecencyList(Session session, ChatUsageListKind kind, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return await Backend.GetRecencyList(account.Id, kind, cancellationToken).ConfigureAwait(false);

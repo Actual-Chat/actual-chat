@@ -12,12 +12,12 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
             Name = "Mosya",
             AltName = "Штирлиц",
             LegCount = 4,
-            Tags = ApiArray<Symbol>.Empty.Add("1").Add("2"),
+            Tags = new Symbol[] {"1" }.With("2"),
         };
         var animal2 = animal1 with {
             Name = "Rosha",
             AltName = null,
-            Tags = ApiArray<Symbol>.Empty.Add("2").Add("3"),
+            Tags = new Symbol[] {"2" }.With("3"),
         };
 
         var diff = engine.Diff<Animal, AnimalDiff>(animal1, animal1);
@@ -25,8 +25,8 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
         diff.Name.Should().BeNull();
         diff.AltName.Should().Be(Option.None<string?>());
         diff.LegCount.Should().Be(null);
-        diff.Tags.AddedItems.Count.Should().Be(0);
-        diff.Tags.RemovedItems.Count.Should().Be(0);
+        diff.Tags.AddedItems.Length.Should().Be(0);
+        diff.Tags.RemovedItems.Length.Should().Be(0);
 
         diff = engine.Diff<Animal, AnimalDiff>(animal1, animal2);
         Out.WriteLine($"Diff 2: {diff}");
@@ -48,11 +48,11 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
         var engine = DiffEngine.Default;
         for (var count = 2; count < 20; count++) {
             for (var i = 0; i < 100; i++) {
-                var set1 = authorIds.Shuffle().Take(rnd.Next(count)).ToApiArray();
-                var set2 = authorIds.Shuffle().Take(rnd.Next(count)).ToApiArray();
-                var diff = engine.Diff<ApiArray<AuthorId>, SetDiff<ApiArray<AuthorId>, AuthorId>>(set1, set2);
+                var set1 = authorIds.Shuffle().Take(rnd.Next(count)).ToArray();
+                var set2 = authorIds.Shuffle().Take(rnd.Next(count)).ToArray();
+                var diff = engine.Diff<AuthorId[], SetDiff<AuthorId[], AuthorId>>(set1, set2);
                 var set2a = engine.Patch(set1, diff);
-                if (set2a.Count != set2.Count)
+                if (set2a.Length != set2.Length)
                     Assert.Fail();
                 if (!set2a.All(x => set2.Contains(x)))
                     Assert.Fail();
@@ -67,7 +67,7 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
         public string Name { get; init; } = "";
         public string? AltName { get; init; }
         public int LegCount { get; init; }
-        public ApiArray<Symbol> Tags { get; init; } = ApiArray<Symbol>.Empty;
+        public Symbol[] Tags { get; init; } = [];
     }
 
     public sealed record AnimalDiff : RecordDiff
@@ -75,6 +75,6 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
         public string? Name { get; init; }
         public Option<string?> AltName { get; init; }
         public int? LegCount { get; init; }
-        public SetDiff<ApiArray<Symbol>, Symbol> Tags { get; init; }
+        public SetDiff<Symbol[], Symbol> Tags { get; init; }
     }
 }

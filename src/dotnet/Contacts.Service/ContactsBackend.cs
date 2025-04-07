@@ -59,7 +59,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId? placeId, bool includePublic, CancellationToken cancellationToken)
+    public virtual async Task<ContactId[]> ListIdsForSearch(UserId userId, PlaceId? placeId, bool includePublic, CancellationToken cancellationToken)
     {
         if (placeId != null)
             return await ListPlaceContactIds(userId, placeId.Value, includePublic, cancellationToken).ConfigureAwait(false);
@@ -72,47 +72,47 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ConfigureAwait(false);
         return contactIds
             .Where(x => !x.ChatId.IsPlaceRootChat)
-            .ToApiArray();
+            .ToArray();
     }
 
     [ComputeMethod]
-    protected virtual async Task<ApiArray<ContactId>> ListPlaceContactIds(UserId userId, PlaceId placeId, bool includePublic, CancellationToken cancellationToken)
+    protected virtual async Task<ContactId[]> ListPlaceContactIds(UserId userId, PlaceId placeId, bool includePublic, CancellationToken cancellationToken)
     {
         var contactIds = await ListIds(userId, placeId, cancellationToken).ConfigureAwait(false);
         if (includePublic)
             return contactIds;
 
         var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
-        return contactIds.ExceptBy(publicChatIds, x => x.ChatId).ToApiArray();
+        return contactIds.ExceptBy(publicChatIds, x => x.ChatId).ToArray();
     }
 
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
+    public virtual async Task<ContactId[]> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
     {
         var contactIds = await ListIdsForSearch(userId, placeId, true, cancellationToken).ConfigureAwait(false);
         return contactIds.Where(x => x.ChatId is { Kind: ChatKind.Group or ChatKind.Place })
-            .ToApiArray();
+            .ToArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListPeerContactIds(
+    public virtual async Task<ContactId[]> ListPeerContactIds(
         UserId userId,
         PlaceId placeId,
         CancellationToken cancellationToken)
     {
         var contactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
-        var peerContactIds = contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).ToApiArray();
+        var peerContactIds = contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).ToArray();
         if (placeId.IsNone)
             return peerContactIds;
 
         var placeUserIds = await AuthorsBackend.ListPlaceUserIds(placeId, cancellationToken).ConfigureAwait(false);
         return peerContactIds.IntersectBy(placeUserIds, x => x.ChatId.PeerChatId.UserIds.OtherThan(userId))
-            .ToApiArray();
+            .ToArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken)
+    public virtual async Task<ContactId[]> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken)
     {
         if (ownerId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(ownerId));
@@ -132,15 +132,15 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var isChatRoulette = Constants.Place.ChatRouletteId == placeId;
 
-        ApiArray<ContactId> result;
+        ContactId[] result;
         if (placeId.IsNone) {
             var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
             if (!sContactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
                 sContactIds.Add(announcementChatContactId);
-            result = sContactIds.ToApiArray(c => new ContactId(c));
+            result = sContactIds.Select(c => new ContactId(c)).ToArray();
         }
         else if (isChatRoulette) {
-            result = sContactIds.ToApiArray(c => new ContactId(c));
+            result = sContactIds.Select(c => new ContactId(c)).ToArray();
         }
         else {
             await PseudoPlaceContact(placeId).ConfigureAwait(false);
@@ -152,7 +152,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 var contactsToAdd = chatIdsToAdd.Select(c => new ContactId(ownerId, c, AssumeValid.Option)).ToList();
                 contactIds.InsertRange(0, contactsToAdd);
             }
-            result = contactIds.ToApiArray();
+            result = contactIds.ToArray();
         }
 
         // Subscribe on Chat removal
@@ -168,7 +168,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken)
+    public virtual async Task<PlaceId[]> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken)
     {
         if (ownerId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(ownerId));
@@ -184,7 +184,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var result = contactIds.ToApiArray(c => new PlaceId(c, AssumeValid.Option));
+        var result = contactIds.Select(c => new PlaceId(c, AssumeValid.Option)).ToArray();
         // Subscribe on Place removal
         foreach (var placeId in result)
             await PseudoPlaceContact(placeId).ConfigureAwait(false);
@@ -192,7 +192,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<Contact>> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken)
+    public async Task<Contact[]> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -209,11 +209,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .Take(query.Limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbContacts.Select(x => x.ToModel()).ToApiArray();
+        return dbContacts.Select(x => x.ToModel()).ToArray();
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<Contact>> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken)
+    public async Task<Contact[]> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -230,7 +230,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .Take(query.Limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbContacts.Select(x => x.ToModel()).ToApiArray();
+        return dbContacts.Select(x => x.ToModel()).ToArray();
     }
 
     // [CommandHandler]

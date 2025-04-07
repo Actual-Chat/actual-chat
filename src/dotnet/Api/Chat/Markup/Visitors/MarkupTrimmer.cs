@@ -66,7 +66,7 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
                 newItems.Add(newItem);
             isUnchanged &= ReferenceEquals(newItem, item);
         }
-        return isUnchanged ? markup : new MarkupSeq(newItems);
+        return isUnchanged ? markup : new MarkupSeq(newItems.ToArray());
     }
 
     // We assume any mention is of length 8

@@ -17,7 +17,7 @@ public class ChatStreamingActivityReplica(SharedResourcePool<ChatId, ChatStreami
     public Task<ImmutableList<ChatEntry>> GetStreamingEntries(CancellationToken cancellationToken)
         => _source.GetStreamingEntries(cancellationToken);
 
-    public Task<ApiArray<AuthorId>> GetStreamingAuthorIds(CancellationToken cancellationToken)
+    public Task<AuthorId[]> GetStreamingAuthorIds(CancellationToken cancellationToken)
         => _source.GetStreamingAuthorIds(cancellationToken);
 
     public Task<bool> IsAuthorStreaming(AuthorId authorId, CancellationToken cancellationToken)

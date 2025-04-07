@@ -214,7 +214,7 @@
         return new() {
             Chat = chat,
             IsOwner = chat.Rules.IsOwner(),
-            MemberCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Length,
             IsPublic = isPublic,
             IsPlace = isPlace,
             EnableIncompleteUI = enableIncompleteUI,

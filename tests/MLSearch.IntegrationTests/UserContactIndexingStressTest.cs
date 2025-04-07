@@ -90,7 +90,7 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
     private Task<Place> CreatePlace(string title, params IReadOnlyCollection<AccountFull> usersToInvite)
         => Tester.CreatePlace(false, $"{UniquePart} {title}", usersToInvite);
 
-    private Task<ApiArray<ContactSearchResult>> Find(string criteria, PlaceId? placeId = null, int expected = 50)
+    private Task<ContactSearchResult[]> Find(string criteria, PlaceId? placeId = null, int expected = 50)
         => TestsExt.When(async () => {
                 var results = await Tester.FindPeople($"{UniquePart} {criteria}", false, placeId, expected);
                 results.Should().HaveCount(expected, "for place #{PlaceId} and criteria '{Criteria}'", placeId, criteria);

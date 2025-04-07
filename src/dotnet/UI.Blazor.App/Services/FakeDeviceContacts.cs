@@ -69,14 +69,14 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
             => $"user{contactIndex:00000}.email{i}" + "@gmail.com";
     }
 
-    public override async Task<ApiArray<ExternalContactFull>> List(CancellationToken cancellationToken)
+    public override async Task<ExternalContactFull[]> List(CancellationToken cancellationToken)
     {
         var cAccount = await AccountUI.OwnAccount.Computed
             .When(x => x.IsActive(), cancellationToken)
             .ConfigureAwait(false);
         var options = await GetOptions(cancellationToken).ConfigureAwait(false);
         return options is not null
-            ? GenerateContacts(options, cAccount.Value.Id).ToApiArray()
+            ? GenerateContacts(options, cAccount.Value.Id).ToArray()
             : [];
     }
 

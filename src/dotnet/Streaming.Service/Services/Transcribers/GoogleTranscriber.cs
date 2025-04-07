@@ -333,8 +333,8 @@ public partial class GoogleTranscriber : ITranscriber
                 return;
             }
 
-        ApiArray<Language> languages = Language.TryParse(result.LanguageCode, out var language) ? [language] : [];
-        if (languages.IsEmpty)
+        Language[] languages = Language.TryParse(result.LanguageCode, out var language) ? [language] : [];
+        if (languages.Length == 0)
             languages = [options.Language];
         state.Append(suffix, endTime, languages, appendToUnstable).MakeStable(isFinal);
     }

@@ -122,7 +122,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    private Task<ApiArray<ContactSearchResult>> Find(string criteria, bool own, int expected)
+    private Task<ContactSearchResult[]> Find(string criteria, bool own, int expected)
         => TestsExt.When(async () => {
                 var results = await Tester.FindPlaces($"{UniquePart} {criteria}", own);
                 results.Should().HaveCount(expected);

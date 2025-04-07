@@ -103,7 +103,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ApiArray<UserId>> ListChanged(
+    public async Task<UserId[]> ListChanged(
         long minVersion,
         long maxVersion,
         UserId lastId,
@@ -125,7 +125,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbAccounts.Select(x => new UserId(x.Id)).ToApiArray();
+        return dbAccounts.Select(x => new UserId(x.Id)).ToArray();
     }
 
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)

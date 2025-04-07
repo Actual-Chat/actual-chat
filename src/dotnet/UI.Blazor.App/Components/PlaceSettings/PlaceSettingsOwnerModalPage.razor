@@ -203,7 +203,7 @@
 
         return new() {
             Place = place,
-            MemberCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Length,
             IsOwner = place.Rules.IsOwner(),
         };
     }

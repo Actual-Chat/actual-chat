@@ -3,11 +3,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class PlayableTextPalette
 {
     private const int HistoryLength = 10;
-    private static readonly ApiArray<PlayableTextColor> _colors = ApiArray.New(
+    private static readonly PlayableTextColor[] Colors = [
         PlayableTextColor.Blue,
         PlayableTextColor.Purple,
         PlayableTextColor.Yellow,
-        PlayableTextColor.Green);
+        PlayableTextColor.Green];
 
     private readonly List<PaletteColorLease> _leasingHistory = new (HistoryLength);
     private readonly Dictionary<PlayableTextColor, PaletteColorLease> _activeLeases = new ();
@@ -61,7 +61,7 @@ public class PlayableTextPalette
                 return _leasingHistory.Count - index; // recently used color should have lower priority
             return 0;
         }
-        var freeColors = _colors.Where(c => !_activeLeases.ContainsKey(c));
+        var freeColors = Colors.Where(c => !_activeLeases.ContainsKey(c));
         var color = freeColors.OrderBy(GetColorPriority).FirstOrDefault();
         return color;
     }

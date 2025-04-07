@@ -24,7 +24,7 @@ public class InfiniteChatSequence(
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
 
-            ApiArray<Chat.Chat> batch;
+            Chat.Chat[] batch;
             try {
                 batch = await chats
                     .ListChanged(new ChangedChatsQuery {
@@ -43,7 +43,7 @@ public class InfiniteChatSequence(
                 continue;
             }
 
-            if (batch.Count==0) {
+            if (batch.Length == 0) {
                 await clock.Delay(NoChatsIdleInterval, cancellationToken).ConfigureAwait(false);
                 continue;
             }

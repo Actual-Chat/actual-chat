@@ -95,11 +95,11 @@ public sealed partial record NotificationsBackend_RegisterDevice(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveDevices(
-    [property: DataMember, MemoryPackOrder(0)] ApiArray<Symbol> DeviceIds
+    [property: DataMember, MemoryPackOrder(0)] Symbol[] DeviceIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<Symbol> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public Symbol ShardKey => !DeviceIds.IsEmpty ? DeviceIds[0] : default;
+    public Symbol ShardKey => DeviceIds.FirstOrDefault();
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

@@ -2,7 +2,7 @@ namespace ActualChat;
 
 public static class EnumerableExt
 {
-    // TODO: remove this workaround when linq Reverse for arrays does not overlap with System.MemoryExtensions
+    // TODO: Remove this workaround when LINQ .Reverse for arrays stops overlapping with System.MemoryExtensions
     public static IEnumerable<T> Revert<T>(this IEnumerable<T> source)
         => source.Reverse();
 
@@ -149,13 +149,13 @@ public static class EnumerableExt
     public static IOrderedEnumerable<T> ToFakeOrderedEnumerable<T>(this IEnumerable<T> source)
         => new FakeOrderedEnumerable<T>(source);
 
-    public static async Task<List<T>> Flatten<T>(this Task<ApiArray<T>[]> task)
+    public static async Task<List<T>> Flatten<T>(this Task<T[][]> task)
     {
         var arrays = await task.ConfigureAwait(false);
         return arrays.SelectMany(x => x).ToList();
     }
 
-    public static async Task<List<T>> Flatten<T>(this Task<ApiArray<ApiArray<T>>> task)
+    public static async Task<List<T>> Flatten<T>(this Task<ApiArray<T[]>> task)
     {
         var arrays = await task.ConfigureAwait(false);
         return arrays.SelectMany(x => x).ToList();

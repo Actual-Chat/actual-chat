@@ -75,10 +75,10 @@
             return Model.Unavailable;
 
         var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Count < 2)
+        if (authorIds.Length < 2)
             return Model.Unavailable;
 
-        if (authorIds.Count > 10)
+        if (authorIds.Length > 10)
             return Model.DisabledForLargeGroup; // Always disabled for large groups.
 
         var ownAuthor = chat.Rules.Author;

@@ -5,14 +5,14 @@ namespace ActualChat.Kubernetes;
 
 public sealed record KubeServiceEndpoints(
     KubeService Service,
-    ApiArray<KubeEndpoint> Endpoints,
-    ApiArray<KubeEndpoint> ReadyEndpoints,
-    ApiArray<KubePort> Ports)
+    KubeEndpoint[] Endpoints,
+    KubeEndpoint[] ReadyEndpoints,
+    KubePort[] Ports)
 {
     private readonly Dictionary<string, HashRing<string>> _hashRingCache = new(StringComparer.Ordinal);
 
     public KubeServiceEndpoints(KubeService service)
-        : this(service, ApiArray<KubeEndpoint>.Empty, ApiArray<KubeEndpoint>.Empty, ApiArray<KubePort>.Empty)
+        : this(service, [], [], [])
     { }
 
     public KubePort? GetPort(string portName = "http")
@@ -63,7 +63,7 @@ public sealed record KubeServiceEndpoints(
             return HashRing<string>.Empty;
 
         // fallback to unready endpoints if none are ready
-        var endpoints = ReadyEndpoints.Count > 0
+        var endpoints = ReadyEndpoints.Length > 0
             ? ReadyEndpoints
             : Endpoints;
         var addresses = endpoints

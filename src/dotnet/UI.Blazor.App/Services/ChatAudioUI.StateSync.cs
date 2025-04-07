@@ -52,7 +52,7 @@ public partial class ChatAudioUI
         var oldListeningChats = new HashSet<ActiveChat>();
         var changes = ActiveChatsUI.ActiveChats.Computed.ChangesUntyped(FixedDelayer.NoneUnsafe, cancellationToken);
         await foreach (var c in changes.ConfigureAwait(false)) {
-            var cActiveContacts = (Computed<ApiArray<ActiveChat>>)c;
+            var cActiveContacts = (Computed<ActiveChat[]>)c;
             var activeChats = cActiveContacts.Value;
             var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
             var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();

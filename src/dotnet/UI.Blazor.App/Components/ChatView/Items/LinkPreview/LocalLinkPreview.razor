@@ -16,7 +16,7 @@
     if (place is { Id.IsNone: false })
         linkText += $", {place.Title}";
     var maxCount = entry != null
-        ? entry.Attachments.Count > 3 ? 3 : entry.Attachments.Count
+        ? entry.Attachments.Length > 3 ? 3 : entry.Attachments.Length
         : 0;
 }
 
@@ -43,7 +43,7 @@
             </div>
         }
 
-        @if (entry is not null && entry.Attachments.Count > 0) {
+        @if (entry is not null && entry.Attachments.Length > 0) {
             <div class="link-preview-attachment-list">
             @for (var i = 0; i < maxCount; i++) {
                 var attachment = entry.Attachments[i];
@@ -53,8 +53,8 @@
                     <FileAttachment Attachment="@attachment"/>
                 }
             }
-            @if (entry.Attachments.Count > 3) {
-                <div class="extra-attachment">+@($"{entry.Attachments.Count - maxCount}")</div>
+            @if (entry.Attachments.Length > 3) {
+                <div class="extra-attachment">+@($"{entry.Attachments.Length - maxCount}")</div>
             }
             </div>
         }

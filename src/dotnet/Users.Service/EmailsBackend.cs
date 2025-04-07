@@ -123,7 +123,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             var messages = await ChatsBackend
                 .ListEntries(contactId.ChatId, Clocks.SystemClock.Now + TimeSpan.FromDays(-1), cancellationToken)
                 .ConfigureAwait(false);
-            if (messages.Count == 0)
+            if (messages.Length == 0)
                 return default;
 
             var nonSystemMessages = messages.Where(x => !x.IsSystemEntry).ToList();

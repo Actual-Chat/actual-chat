@@ -26,13 +26,13 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
     public ProfilePreferencesFull ToModel()
     {
         var country = CountryCode.IsNullOrEmpty() ? Country.NotSpecified : new Country(CountryCode);
-        ApiArray<Language> languages =
+        Language[] languages =
             Languages.IsNullOrEmpty()
-                ? ApiArray<Language>.Empty
+                ? []
                 : [..Languages.Split(',').Select(l => new Language(l))];
-        ApiArray<Interest> interests =
+        Interest[] interests =
             Interests.IsNullOrEmpty()
-                ? ApiArray<Interest>.Empty
+                ? []
                 : [..Interests.Split(',').Select(i => new Interest(i))];
         return new ProfilePreferencesFull(new UserId(UserId), Id, Version) {
             Preferences = new Preferences {

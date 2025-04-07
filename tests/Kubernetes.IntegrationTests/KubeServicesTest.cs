@@ -6,14 +6,14 @@ public class KubeServicesTest(ITestOutputHelper @out) : TestBase(@out)
     public void KubeServiceEndpointsStructuralComparisionDoesntWork()
     {
         var a = new KubeServiceEndpoints(new KubeService("n", "n"),
-            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToApiArray(), true) }.ToApiArray(),
-            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToApiArray(), true) }.ToApiArray(),
-            new[] { new KubePort("http", KubeServiceProtocol.Tcp, 8080) }.ToApiArray());
+            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToArray(), true) }.ToArray(),
+            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToArray(), true) }.ToArray(),
+            new[] { new KubePort("http", KubeServiceProtocol.Tcp, 8080) }.ToArray());
 
         var b = new KubeServiceEndpoints(new KubeService("n", "n"),
-            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToApiArray(), true) }.ToApiArray(),
-            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToApiArray(), true) }.ToApiArray(),
-            new[] { new KubePort("http", KubeServiceProtocol.Tcp, 8080) }.ToApiArray());
+            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToArray(), true) }.ToArray(),
+            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToArray(), true) }.ToArray(),
+            new[] { new KubePort("http", KubeServiceProtocol.Tcp, 8080) }.ToArray());
 
         Assert.False(a == b);
     }
@@ -22,9 +22,9 @@ public class KubeServicesTest(ITestOutputHelper @out) : TestBase(@out)
     public void KubeServiceEndpointsToStringIsReadable()
     {
         var a = new KubeServiceEndpoints(new KubeService("n", "n"),
-            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToApiArray(), true) }.ToApiArray(),
-            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToApiArray(), true) }.ToApiArray(),
-            new[] { new KubePort("http", KubeServiceProtocol.Tcp, 8080) }.ToApiArray());
+            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToArray(), true) }.ToArray(),
+            new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToArray(), true) }.ToArray(),
+            new[] { new KubePort("http", KubeServiceProtocol.Tcp, 8080) }.ToArray());
 
         Out.WriteLine(a.ToString());
     }

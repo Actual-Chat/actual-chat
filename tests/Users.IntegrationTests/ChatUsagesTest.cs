@@ -15,8 +15,8 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         var commander = tester.Commander;
         var session = tester.Session;
 
-        ApiArray<ChatId> list1;
-        ApiArray<ChatId> list2;
+        ChatId[] list1;
+        ChatId[] list2;
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
         list1.Should().BeEmpty();
 
@@ -46,7 +46,7 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         var commander2 = tester2.Commander;
         var session2 = tester2.Session;
 
-        ApiArray<ChatId> list3;
+        ChatId[] list3;
         list3 = await chatUsages.GetRecencyList(session2, ChatUsageListKind.PeerChatsWroteTo, default);
         list3.Should().BeEmpty();
         await commander2.Call(new ChatUsages_RegisterUsage(session2, ChatUsageListKind.PeerChatsWroteTo, chatId1));

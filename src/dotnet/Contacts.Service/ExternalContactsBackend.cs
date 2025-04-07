@@ -21,7 +21,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
     // [ComputeMethod]
     [Obsolete("2024.04: Replaced with List - contact info list")]
-    public virtual async Task<ApiArray<ExternalContactFull>> ListFull(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
+    public virtual async Task<ExternalContactFull[]> ListFull(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
     {
         ownerId.Require();
         deviceId.Require();
@@ -38,7 +38,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         return dbExternalContacts.OrderBy(x => x.DisplayName, StringComparer.Ordinal)
             .Select(x => x.ToModel())
-            .ToApiArray();
+            .ToArray();
     }
 
     [ComputeMethod]
@@ -49,7 +49,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ExternalContact>> List(
+    public virtual async Task<ExternalContact[]> List(
         UserDeviceId userDeviceId,
         CancellationToken cancellationToken)
     {
@@ -67,7 +67,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         return dbExternalContacts.Select(x =>
                 new ExternalContact(new ExternalContactId(x.Id), x.Version) { Hash = new HashString(x.Hash) })
-            .ToApiArray();
+            .ToArray();
     }
 
     // [ComputeMethod]
@@ -92,11 +92,11 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         if (list.Count == 0)
             return string.Empty;
 
-        var extContacts = await list
+        var extContacts = (await list
             .Select(c => Get(c, cancellationToken))
             .Collect(cancellationToken)
-            .ToApiArray()
-            .ConfigureAwait(false);
+            .ConfigureAwait(false)
+            ).ToArray();
 
         var extContact = extContacts
             .SkipNullItems()
@@ -158,7 +158,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<Result<ExternalContactFull?>>> OnBulkChange(
+    public virtual async Task<Result<ExternalContactFull?>[]> OnBulkChange(
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
@@ -193,7 +193,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         var overallAffectedHashes = new HashSet<string>();
         var updatedItemHashes = new HashSet<string>();
-        var result = new List<Result<ExternalContactFull?>>(command.Changes.Count);
+        var result = new List<Result<ExternalContactFull?>>(command.Changes.Length);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -223,7 +223,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 context.Operation.AddEvent(new ExternalContactNameMayHaveChangedEvent(ownerId, hashedUserLink));
         }
 
-        return result.ToApiArray();
+        return result.ToArray();
     }
 
     private async Task<ChangeItemResult> ChangeItem(

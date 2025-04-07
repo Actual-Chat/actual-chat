@@ -229,7 +229,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     private Task<ChatEntry> UpdateEntry(ChatEntryId id, string text)
         => Tester.UpdateTextEntry(id, $"{text} {UniquePart}");
 
-    private Task<ApiArray<EntrySearchResult>> Find(
+    private Task<EntrySearchResult[]> Find(
         string criteria,
         PlaceId? placeId = null,
         ChatId chatId = default,

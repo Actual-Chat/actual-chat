@@ -20,7 +20,7 @@ public class Reactions(IServiceProvider services) : IReactions
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ReactionSummary>> ListSummaries(
+    public virtual async Task<ReactionSummary[]> ListSummaries(
         Session session,
         TextEntryId entryId,
         CancellationToken cancellationToken)

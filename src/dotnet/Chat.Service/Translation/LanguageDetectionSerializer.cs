@@ -17,7 +17,7 @@ public class LanguageDetectionSerializer(IServiceProvider services)
         return sb.ToString();
     }
 
-    public IReadOnlyList<ApiArray<Language>> DeserializeResponse(string content, int expectedCount)
+    public IReadOnlyList<Language[]> DeserializeResponse(string content, int expectedCount)
     {
         try {
             using var stringReader = new StringReader(content);
@@ -29,8 +29,8 @@ public class LanguageDetectionSerializer(IServiceProvider services)
                 return Empty(expectedCount);
 
             var resultMap =
-                response.Languages.ToDictionary(x => x.Id, x => x.Languages.Select(Language.ParseOrNone).ToApiArray());
-            return [..Enumerable.Range(1, expectedCount).Select(i => resultMap.GetValueOrDefault(i, ApiArray<Language>.Empty))];
+                response.Languages.ToDictionary(x => x.Id, x => x.Languages.Select(Language.ParseOrNone).ToArray());
+            return [..Enumerable.Range(1, expectedCount).Select(i => resultMap.GetValueOrDefault(i, []))];
         }
         catch (Exception e) {
             Log.LogWarning(e, "Could not deserialize language detection response. \n [[{Response}]]", content);
@@ -38,8 +38,8 @@ public class LanguageDetectionSerializer(IServiceProvider services)
         }
     }
 
-    private static IReadOnlyList<ApiArray<Language>> Empty(int expectedCount)
-        => [..Enumerable.Repeat(ApiArray<Language>.Empty, expectedCount)];
+    private static IReadOnlyList<Language[]> Empty(int expectedCount)
+        => Enumerable.Repeat(Array.Empty<Language>(), expectedCount).ToArray();
 
     // Nested types
 

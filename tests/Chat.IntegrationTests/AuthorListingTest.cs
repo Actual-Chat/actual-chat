@@ -39,7 +39,7 @@ public class AuthorListingTest(ChatCollection.AppHostFixture fixture, ITestOutpu
                     Limit = batchSize,
                 },
                 cancellationToken);
-            if (retrieved.Count == 0)
+            if (retrieved.Length == 0)
                 break;
 
             minVersion = retrieved[^1].Version;

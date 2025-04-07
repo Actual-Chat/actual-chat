@@ -85,11 +85,11 @@
 
             var preferences = profile.Preferences.Preferences;
             preferences = preferences with {
-                Interests = ApiArray<Interest>.Empty.Add(Interests.Flexible)
+                Interests = [Interests.Flexible]
             };
             if (!primaryLanguage.IsNone)
                 preferences = preferences with {
-                    Languages = ApiArray<Language>.Empty.Add(primaryLanguage)
+                    Languages = [primaryLanguage]
                 };
             profile = profile with {
                 Preferences = profile.Preferences with {

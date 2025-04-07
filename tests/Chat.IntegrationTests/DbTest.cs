@@ -119,7 +119,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         return sw.Elapsed;
     }
 
-    private static async Task<ApiArray<ChatEntry>> ReadChatEntries(
+    private static async Task<ChatEntry[]> ReadChatEntries(
         DbHub<ChatDbContext> dbHub,
         ChatId chatId,
         ChatEntryKind entryKind,
@@ -141,7 +141,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await transaction.CommitAsync(cancellationToken);
         var entries = dbEntries
             .Select(e => e.ToModel(null))
-            .ToApiArray();
+            .ToArray();
         return entries;
     }
 

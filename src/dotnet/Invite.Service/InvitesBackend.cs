@@ -30,7 +30,7 @@ public class InvitesBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
+    public virtual async Task<Invite[]> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
     {
         await PseudoGetAll(searchKey).ConfigureAwait(false);
 
@@ -42,7 +42,7 @@ public class InvitesBackend(IServiceProvider services)
             .OrderByDescending(x => x.ExpiresOn)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbInvites.Select(x => x.ToModel()).ToApiArray();
+        return dbInvites.Select(x => x.ToModel()).ToArray();
     }
 
     // [ComputeMethod]

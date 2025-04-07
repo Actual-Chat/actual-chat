@@ -386,14 +386,14 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     // Private methods
 
-    private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
+    private Task<ExternalContact[]> List(Symbol deviceId)
         => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
 
-    private Task<ApiArray<Result<ExternalContactFull?>>> Update(ExternalContactFull externalContactFull)
+    private Task<Result<ExternalContactFull?>[]> Update(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
             [new ExternalContactChange(externalContactFull.Id, null, Change.Update(externalContactFull))]));
 
-    private Task<ApiArray<Result<ExternalContactFull?>>> Remove(ExternalContactFull externalContactFull)
+    private Task<Result<ExternalContactFull?>[]> Remove(ExternalContactFull externalContactFull)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
             [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())]));
 

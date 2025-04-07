@@ -74,19 +74,19 @@ public class Places(IServiceProvider services) : IPlaces
         return welcomeChat?.Id ?? ChatId.None;
     }
 
-    public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    public virtual async Task<UserId[]> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
         ThrowIfNone(placeId);
         return await Authors.ListUserIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    public virtual async Task<AuthorId[]> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
         ThrowIfNone(placeId);
         return await Authors.ListAuthorIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<ApiArray<AuthorId>> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    public virtual async Task<AuthorId[]> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
         ThrowIfNone(placeId);
         return await Roles.ListOwnerIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);

@@ -23,13 +23,13 @@ public class DbReadPositionsStat : IHasId<string>, IHasVersion<long>
 
     string IHasId<string>.Id => ChatId;
 
-    public ApiArray<UserReadPosition> GetTopReadPositions()
+    public UserReadPosition[] GetTopReadPositions()
     {
-        var result = ApiArray<UserReadPosition>.Empty;
+        var result = Array.Empty<UserReadPosition>();
         if (Top1EntryLid > 0)
-            result = result.Add(new UserReadPosition(new UserId(Top1UserId), Top1EntryLid));
+            result = result.With(new UserReadPosition(new UserId(Top1UserId), Top1EntryLid));
         if (Top2EntryLid > 0)
-            result = result.Add(new UserReadPosition(new UserId(Top2UserId), Top2EntryLid));
+            result = result.With(new UserReadPosition(new UserId(Top2UserId), Top2EntryLid));
         return result;
     }
 }

@@ -163,7 +163,7 @@
             AuthorIds = allAuthorIds,
             OwnerIds = ownerIds,
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
-            MemberCount = allAuthorIds.Count,
+            MemberCount = allAuthorIds.Length,
             EnableIncompleteUI = enableIncompleteUI,
             IsPlaceMember = isPlaceMember,
             CanJoinPlace = !isPlaceMember && place.Rules.CanJoin(),
@@ -181,8 +181,8 @@
 
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
-        public ApiArray<AuthorId> AuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
-        public ApiArray<AuthorId> OwnerIds { get; init; } = ApiArray<AuthorId>.Empty;
+        public AuthorId[] AuthorIds { get; init; } = [];
+        public AuthorId[] OwnerIds { get; init; } = [];
         public AuthorId OwnAuthorId { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsPlaceMember { get; init; }

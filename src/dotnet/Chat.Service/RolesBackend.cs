@@ -27,7 +27,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Role>> List(
+    public virtual async Task<Role[]> List(
         ChatId chatId, AuthorId authorId,
         bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         // No need to call PseudoList - it's called by ListSystem anyway
 
         var systemRoles = await ListSystem(chatId, cancellationToken).ConfigureAwait(false);
-        systemRoles = systemRoles.Where(IsInSystemRole).ToApiArray();
+        systemRoles = systemRoles.Where(IsInSystemRole).ToArray();
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -52,7 +52,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             .Concat(systemRoles.Where(IsInSystemRole))
             .DistinctBy(r => r.Id)
             .OrderBy(r => r.Id.Id)
-            .ToApiArray();
+            .ToArray();
         return roles;
 
         bool IsInSystemRole(Role role)
@@ -66,12 +66,12 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<Role>> ListSystem(
+    public virtual async Task<Role[]> ListSystem(
         ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ApiArray<Role>.Empty;
+            return [];
 
         await PseudoList(chatId).ConfigureAwait(false);
 
@@ -82,17 +82,17 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var roles = dbRoles.Select(r => r.ToModel()).ToApiArray();
+        var roles = dbRoles.Select(r => r.ToModel()).ToArray();
         return roles;
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(
+    public virtual async Task<AuthorId[]> ListAuthorIds(
         ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ApiArray<AuthorId>.Empty;
+            return [];
 
         await PseudoList(chatId).ConfigureAwait(false);
 
@@ -104,7 +104,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             .Select(ar => ar.DbAuthorId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var authorIds = dbAuthorIds.Select(id => new AuthorId(id)).ToApiArray();
+        var authorIds = dbAuthorIds.Select(id => new AuthorId(id)).ToArray();
         return authorIds;
     }
 

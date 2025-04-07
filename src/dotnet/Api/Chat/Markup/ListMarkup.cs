@@ -14,9 +14,9 @@ public record ListItemMarkup(Markup Content, bool Ordered, int? Order = null) : 
 public record ListMarkup : Markup
 {
     public bool IsOrdered { get; }
-    public ImmutableArray<ListItemMarkup> Items { get; init; }
+    public ListItemMarkup[] Items { get; init; } // Immutable!
 
-    public ListMarkup(ImmutableArray<ListItemMarkup> items)
+    public ListMarkup(ListItemMarkup[] items)
     {
         if (items.Length <= 0)
             throw new ArgumentException("item list should contain at least 1 item", nameof(items));
@@ -35,6 +35,6 @@ public record ListMarkup : Markup
         return sb.ToString();
     }
 
-    public void Deconstruct(out ImmutableArray<ListItemMarkup> items)
+    public void Deconstruct(out ListItemMarkup[] items)
         => items = Items;
 }

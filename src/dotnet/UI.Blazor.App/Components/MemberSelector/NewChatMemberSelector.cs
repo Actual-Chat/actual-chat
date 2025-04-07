@@ -10,7 +10,7 @@ internal class NewChatMemberSelector(ChatUIHub hub, ChatId chatId) : IMemberSele
     public CandidateListKind CandidateListKind
         => chatId.IsPlaceChat ? CandidateListKind.PlaceMembers : CandidateListKind.Contacts;
 
-    public async Task<ApiArray<UserId>> ListCandidateUserIds(CancellationToken cancellationToken)
+    public async Task<UserId[]> ListCandidateUserIds(CancellationToken cancellationToken)
     {
         if (chatId.IsPlaceChat) {
             var userIds = await hub.Places.ListUserIds(Session, chatId.PlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
@@ -18,10 +18,10 @@ internal class NewChatMemberSelector(ChatUIHub hub, ChatId chatId) : IMemberSele
         }
 
         var contacts = await hub.Contacts.ListUserContacts(Session, cancellationToken).ConfigureAwait(false);
-        return contacts.ToApiArray(c => c.Account!.Id);
+        return contacts.Select(c => c.Account!.Id).ToArray();
     }
 
-    public Task<ApiArray<UserId>> ListMemberUserIds(CancellationToken cancellationToken)
+    public Task<UserId[]> ListMemberUserIds(CancellationToken cancellationToken)
         => hub.Authors.ListUserIds(Session, chatId, cancellationToken);
 
     public async Task<Exception?> Invite(UserId[] userIds, CancellationToken cancellationToken) {

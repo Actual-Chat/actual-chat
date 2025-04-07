@@ -349,7 +349,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     private Task<AccountFull> CreateAccount(string name)
         => Tester.CreateAccount($"{name} {UniquePart}");
 
-    private Task<ApiArray<ContactSearchResult>> Find(
+    private Task<ContactSearchResult[]> Find(
         string criteria,
         bool own,
         PlaceId? placeId = null,

@@ -65,7 +65,7 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         readLength2.Should().Be(tile2Bytes.Length);
 
         tile1.Should().BeEquivalentTo(tile2);
-        tile1.Entries.Count.Should().Be(tile2.Entries.Count);
+        tile1.Entries.Length.Should().Be(tile2.Entries.Length);
         tile1.Entries[0].Should().BeEquivalentTo(tile2.Entries[0]);
 
         var moment1 = tile1.Entries[0].ClientSideBeginsAt;

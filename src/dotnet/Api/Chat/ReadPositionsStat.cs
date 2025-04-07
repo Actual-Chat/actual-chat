@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 public partial record ReadPositionsStat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] long StartTrackingEntryLid,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<AuthorReadPosition> TopReadPositions)
+    [property: DataMember, MemoryPackOrder(2)] AuthorReadPosition[] TopReadPositions)
 {
     public bool CanCalculateHasReadByAnotherAuthor(ChatEntry chatEntry)
         => CanCalculateHasReadByAnotherAuthor(chatEntry.Id);

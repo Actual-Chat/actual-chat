@@ -11,7 +11,7 @@ public interface IConversationsBackend : IComputeService, IBackendService
     Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<ConversationId>> List(ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken);
+    Task<ConversationId[]> List(ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken);
 
     // Commands
 
@@ -42,7 +42,7 @@ public sealed partial record ConversationBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<Range<long>> EntryIdRanges
+    [property: DataMember, MemoryPackOrder(1)] Range<long>[] EntryIdRanges
     ): ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
 {
     [IgnoreDataMember, MemoryPackIgnore]

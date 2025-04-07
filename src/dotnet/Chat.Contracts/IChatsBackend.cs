@@ -50,34 +50,34 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<long?> GetMaxEntryVersion(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<ChatId>> GetPublicChatIdsFor(
+    Task<ChatId[]> GetPublicChatIdsFor(
         PlaceId placeId,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<ChatId>> ListPlaceChatIds(
+    Task<ChatId[]> ListPlaceChatIds(
         PlaceId placeId,
         CancellationToken cancellationToken);
 
     // Non-compute methods
 
-    Task<ApiArray<Chat>> List(
+    Task<Chat[]> List(
         Moment minCreatedAt,
         ChatId lastChatId,
         int limit,
         CancellationToken cancellationToken);
 
-    Task<ApiArray<Chat>> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken);
+    Task<Chat[]> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken);
 
-    Task<ApiArray<ChatEntry>> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken);
+    Task<ChatEntry[]> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken);
 
-    Task<ApiArray<ChatEntry>> ListNewEntries(
+    Task<ChatEntry[]> ListNewEntries(
         ChatId chatId,
         long minLocalIdExclusive,
         int limit,
         CancellationToken cancellationToken);
 
-    Task<ApiArray<ChatEntry>> ListEntries(
+    Task<ChatEntry[]> ListEntries(
         ChatId chatId,
         Moment from,
         CancellationToken cancellationToken);
@@ -103,7 +103,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(ChatsBackend_CreateAttachments command, CancellationToken cancellationToken);
+    Task<TextEntryAttachment[]> OnCreateAttachments(ChatsBackend_CreateAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -134,8 +134,8 @@ public interface IChatsBackend : IComputeService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateAttachments(
-    [property: DataMember, MemoryPackOrder(0)] ApiArray<TextEntryAttachment> Attachments
-) : ICommand<ApiArray<TextEntryAttachment>>, IBackendCommand;
+    [property: DataMember, MemoryPackOrder(0)] TextEntryAttachment[] Attachments
+) : ICommand<TextEntryAttachment[]>, IBackendCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming

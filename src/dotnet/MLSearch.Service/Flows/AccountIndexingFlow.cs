@@ -36,7 +36,9 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
                 BatchSize,
                 cancellationToken)
             .ConfigureAwait(false);
-        DebugLog?.LogDebug("`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}", Id, batch.Count, maxVersion, cursor);
+        DebugLog?.LogDebug(
+            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
+            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 
@@ -44,7 +46,7 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
     {
         await WhenReady.ConfigureAwait(false);
 
-        var updated = batch.Select(x => x.ToIndexedUser()).ToApiArray();
+        var updated = batch.Select(x => x.ToIndexedUser()).ToArray();
         await IndexedDocuments
             .UpsertPartially<IndexedUser, IIndexedUserUpsertWithoutPlaces, UserId>(x => x.UserIndexName,
                 updated,

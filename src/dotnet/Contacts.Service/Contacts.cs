@@ -49,13 +49,13 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [ComputeMethod]
-    public virtual Task<ApiArray<ContactId>> ListIds(
+    public virtual Task<ContactId[]> ListIds(
         Session session,
         CancellationToken cancellationToken)
         => ListIds(session, PlaceId.None, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<PlaceId>> ListPlaceIds(
+    public virtual async Task<PlaceId[]> ListPlaceIds(
         Session session,
         CancellationToken cancellationToken)
     {
@@ -65,7 +65,7 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIds(
+    public virtual async Task<ContactId[]> ListIds(
         Session session,
         PlaceId placeId,
         CancellationToken cancellationToken)
@@ -74,7 +74,7 @@ public class Contacts(IServiceProvider services) : IContacts
         if (!placeId.IsNone && !isChatRoulette) {
             var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
             if (place?.Rules.CanRead() != true)
-                return ApiArray<ContactId>.Empty;
+                return [];
         }
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var accountId = account.Id;
@@ -88,7 +88,7 @@ public class Contacts(IServiceProvider services) : IContacts
                 if (peerContacts.TryGetValue(userId, out var contactId))
                     memberContactIds.Add(contactId);
             if (memberContactIds.Count > 0)
-                contactIds = contactIds.Concat(memberContactIds).ToApiArray();
+                contactIds = contactIds.Concat(memberContactIds).ToArray();
         }
         return contactIds;
     }

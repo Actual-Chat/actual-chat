@@ -70,7 +70,7 @@
         int? memberCount = null;
         if (place.Rules.CanSeeMembers()) {
             var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-            memberCount = allAuthorIds.Count;
+            memberCount = allAuthorIds.Length;
         }
         return new(place, memberCount);
     }

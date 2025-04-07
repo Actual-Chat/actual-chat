@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 public interface IChatUsagesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ApiArray<ChatId>> GetRecencyList(UserId userId, ChatUsageListKind kind, CancellationToken cancellationToken);
+    Task<ChatId[]> GetRecencyList(UserId userId, ChatUsageListKind kind, CancellationToken cancellationToken);
 
     // Commands
 

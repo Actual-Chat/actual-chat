@@ -9,7 +9,7 @@ namespace ActualChat.Transcription;
 public sealed partial record Transcript(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] ApiArray<Language> Languages)
+    [property: DataMember(Order = 2), MemoryPackOrder(2)] Language[] Languages)
 {
     [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex ContentStartRegexFactory();
@@ -86,7 +86,7 @@ public sealed partial record Transcript(
     public Transcript WithSuffix(string suffix, float? suffixEndTime = null)
         => WithSuffix(suffix, TimeMap, suffixEndTime);
 
-    public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime, ApiArray<Language>? languages = null)
+    public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime, Language[]? languages = null)
     {
         if (suffix.IsNullOrEmpty())
             return this;
@@ -100,7 +100,7 @@ public sealed partial record Transcript(
     public Transcript WithSuffix(
         string suffix,
         LinearMap suffixTextToTimeMap,
-        ApiArray<Language>? languages = null)
+        Language[]? languages = null)
     {
         var text = Text + suffix;
         var timeMap = TimeMap.AppendOrUpdateSuffix(suffixTextToTimeMap, TimeMapEpsilon.X);

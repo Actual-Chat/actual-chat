@@ -3,11 +3,9 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
+public sealed record MarkupSeq(params Markup[] Items) : Markup
 {
-    public MarkupSeq(params Markup[] items) : this(ApiArray.Wrap(items)) { }
-    public MarkupSeq(IEnumerable<Markup> items) : this(ImmutableArray.Create(items.ToArray())) { }
-    public MarkupSeq() : this(ImmutableArray<Markup>.Empty) { }
+    public MarkupSeq() : this([]) { }
 
     public override string Format()
     {
@@ -55,7 +53,7 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
         return items.Count switch {
             0 => Empty,
             1 => items[0],
-            _ => new MarkupSeq(items),
+            _ => new MarkupSeq(items.ToArray()),
         };
     }
 

@@ -6,11 +6,11 @@ namespace ActualChat.Users;
 public class TimeZones(ILogger<TimeZones> log) : ITimeZones
 {
     // [ComputeMethod]
-    public virtual Task<ApiArray<TimeZone>> List(string languageCode, CancellationToken cancellationToken)
+    public virtual Task<TimeZone[]> List(string languageCode, CancellationToken cancellationToken)
     {
         var zones = TZNames.GetDisplayNames(languageCode, true)
             .Select(x => new TimeZone(x.Key) { IanaName = x.Value })
-            .ToApiArray();
+            .ToArray();
         return Task.FromResult(zones);
     }
 

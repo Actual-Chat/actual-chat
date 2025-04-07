@@ -101,7 +101,7 @@ public class DeepgramOfflineTranscriber  : ITranscriber
 
         var alternative = result.Channels[0].Alternatives?.FirstOrDefault();
         var text = alternative?.Transcript ?? "";
-        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToApiArray() ?? [];
+        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToArray() ?? [];
         Log.LogDebug("Transcript: {Transcript}", text);
 
         var mapPoints = new List<Vector2>();

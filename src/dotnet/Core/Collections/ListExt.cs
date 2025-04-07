@@ -63,7 +63,7 @@ public static class ListExt
 
             return added.Count == 0 && removed.Count == 0
                 ? SetDiff<T>.Unchanged
-                : new SetDiff<T>(new ApiArray<T>(added.ToArray()), new ApiArray<T>(removed.ToArray()));
+                : new SetDiff<T>(added.ToArray(), removed.ToArray());
         }
         finally {
             added.Release();

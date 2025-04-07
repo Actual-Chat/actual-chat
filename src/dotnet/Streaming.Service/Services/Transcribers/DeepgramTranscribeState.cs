@@ -32,7 +32,7 @@ public class DeepgramTranscribeState(
         return this;
     }
 
-    public DeepgramTranscribeState Append(string suffix, float? suffixEndTime, ApiArray<Language>? languages = null)
+    public DeepgramTranscribeState Append(string suffix, float? suffixEndTime, Language[]? languages = null)
     {
         if (string.IsNullOrWhiteSpace(suffix))
             return this;
@@ -48,7 +48,7 @@ public class DeepgramTranscribeState(
     public DeepgramTranscribeState Append(
         string suffix,
         LinearMap suffixTextToTimeMap,
-        ApiArray<Language>? languages = null)
+        Language[]? languages = null)
     {
         if (string.IsNullOrWhiteSpace(suffix))
             return this;

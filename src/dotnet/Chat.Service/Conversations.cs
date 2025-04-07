@@ -22,7 +22,7 @@ public class Conversations(IServiceProvider services) : IConversations
     }
 
     // [Computed]
-    public virtual async Task<ApiArray<Conversation>> GetTile(Session session, ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
+    public virtual async Task<Conversation[]> GetTile(Session session, ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
     {
         await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         var idTiles = ConversationTileStack.GetOptimalCoveringTiles(idTileRange);
@@ -38,6 +38,6 @@ public class Conversations(IServiceProvider services) : IConversations
         return conversations
             .Where(c => c != null && !c.EntryRange.IntersectWith(idTileRange).IsEmpty)
             .OrderBy(c => c!.EntryRange.Start)
-            .ToApiArray()!;
+            .ToArray()!;
     }
 }

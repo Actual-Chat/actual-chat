@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public static class PlacesBackendExt
 {
-    public static async IAsyncEnumerable<ApiArray<Place>> BatchChanged(
+    public static async IAsyncEnumerable<Place[]> BatchChanged(
         this IPlacesBackend placesBackend,
         long minVersion,
         long maxVersion,
@@ -18,7 +18,7 @@ public static class PlacesBackendExt
                     batchSize,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (places.Count == 0)
+            if (places.Length == 0)
                 yield break;
 
             yield return places;

@@ -68,7 +68,7 @@
             return false;
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (allAuthorIds.Count > 1)
+        if (allAuthorIds.Length > 1)
             return false;
 
         var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
