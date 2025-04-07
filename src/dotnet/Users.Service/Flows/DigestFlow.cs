@@ -11,11 +11,11 @@ namespace ActualChat.Users.Flows;
 public partial class DigestFlow : PeriodicFlow
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    protected UserId UserId { get; set; }
+    private UserId UserId { get; set; }
     [IgnoreDataMember, MemoryPackIgnore]
-    protected TimeZoneInfo TimeZoneInfo { get; set; } = null!;
+    private TimeZoneInfo TimeZoneInfo { get; set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore]
-    protected TimeSpan DigestTime { get; set; }
+    private TimeSpan DigestTime { get; set; }
 
     protected override Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {

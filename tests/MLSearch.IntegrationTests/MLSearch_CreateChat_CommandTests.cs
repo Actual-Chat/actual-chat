@@ -51,7 +51,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         // Assert
         Assert.False(chat.Id.IsNone);
         var chatUsers = await authors.ListUserIds(chat.Id, default);
-        Assert.True(chatUsers.Count == 2);
+        Assert.True(chatUsers.Length == 2);
         Assert.Contains(someUserAccount.Id, chatUsers);
         Assert.Contains(Constants.User.Sherlock.UserId, chatUsers);
     }

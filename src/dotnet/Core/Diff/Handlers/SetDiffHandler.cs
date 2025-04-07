@@ -33,9 +33,9 @@ public class SetDiffHandler<
             .Where(i => !removedItems.Contains(i))
             .Concat(diff.AddedItems);
         if (_setGenericType == null)
-            return (TSet)_setType.CreateInstance(target);
-        if (_setGenericType.IsArray)
-            return (TSet)(object)target.ToArray();
+            return _setType.IsArray
+                ? (TSet)(object)target.ToArray()
+                : (TSet)_setType.CreateInstance(target);
         if (_setGenericType == typeof(ImmutableArray<>))
             return (TSet)(object)ImmutableArray.Create(target);
         if (_setGenericType == typeof(ImmutableList<>))

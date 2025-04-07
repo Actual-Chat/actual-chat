@@ -150,7 +150,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var tiles = await reader.ReadTilesReverse(idRange, CancellationToken.None).ToListAsync();
 
         tiles.Should().HaveCountGreaterThan(400);
-        var entries = tiles.SelectMany(t => t.Entries.Reverse()).ToList();
+        var entries = tiles.SelectMany(t => t.Entries.Revert()).ToList();
         entries
             .Select(x => x.Content)
             .Where(x => !x.IsNullOrEmpty())

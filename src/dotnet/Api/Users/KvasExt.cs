@@ -51,13 +51,13 @@ public static class KvasExt
     public static async Task AddAlwaysListenedChat(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
     {
         var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
-        await kvas.Set(UserListeningSettings.KvasKey, settings.Add(chatId), cancellationToken).ConfigureAwait(false);
+        await kvas.Set(UserListeningSettings.KvasKey, settings.WithAlwaysListeningChat(chatId), cancellationToken).ConfigureAwait(false);
     }
 
     public static async Task RemoveAlwaysListenedChat(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
     {
         var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
-        await kvas.Set(UserListeningSettings.KvasKey, settings.Remove(chatId), cancellationToken).ConfigureAwait(false);
+        await kvas.Set(UserListeningSettings.KvasKey, settings.WithoutAlwaysListeningChat(chatId), cancellationToken).ConfigureAwait(false);
     }
 
     // TranscriptionEngineSettings

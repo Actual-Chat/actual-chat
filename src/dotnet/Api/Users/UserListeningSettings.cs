@@ -8,25 +8,19 @@ public sealed partial record UserListeningSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserListeningSettings);
 
-    [DataMember, MemoryPackOrder(0)] public IReadOnlyList<ChatId> AlwaysListenedChatIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(0)] private ApiArray<ChatId> LegacyAlwaysListenedChatIds { get; init; }
+
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId[] AlwaysListenedChatIds {
+        get => LegacyAlwaysListenedChatIds.Items;
+        init => LegacyAlwaysListenedChatIds = ApiArray.New(value);
+    }
+
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
 
-    public UserListeningSettings Add(ChatId chatId)
-    {
-        if (AlwaysListenedChatIds.Contains(chatId))
-            return this;
+    public UserListeningSettings WithAlwaysListeningChat(ChatId chatId)
+        => this with { AlwaysListenedChatIds = AlwaysListenedChatIds.WithOrSkip(chatId) };
 
-        var skipCount = AlwaysListenedChatIds.Count >= 3
-            ? 1
-            : 0;
-        var listenedChats = new List<ChatId>(AlwaysListenedChatIds.Skip(skipCount)) { chatId };
-        return this with { AlwaysListenedChatIds = listenedChats };
-    }
-
-    public UserListeningSettings Remove(ChatId chatId)
-    {
-        var listenedChats = new List<ChatId>(AlwaysListenedChatIds.Where(cid => cid != chatId));
-        return this with { AlwaysListenedChatIds = listenedChats };
-    }
+    public UserListeningSettings WithoutAlwaysListeningChat(ChatId chatId)
+        => this with { AlwaysListenedChatIds = AlwaysListenedChatIds.Without(chatId) };
 }
-

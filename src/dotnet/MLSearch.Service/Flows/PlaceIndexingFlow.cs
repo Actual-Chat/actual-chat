@@ -13,6 +13,7 @@ public partial class PlaceIndexingFlow : BatchedIndexingFlowBase<Place, PlaceId>
 {
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
+
     [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
     [field: AllowNull, MaybeNull]

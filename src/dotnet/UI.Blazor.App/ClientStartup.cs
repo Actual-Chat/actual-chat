@@ -2,6 +2,7 @@ using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Module;
+using ActualChat.Serialization;
 using ActualChat.UI.Blazor.App.Components.ChatRoulette;
 using ActualChat.UI.Blazor.App.Components.Discover;
 using ActualChat.UI.Blazor.App.Components.PlaceInfo;
@@ -157,15 +158,11 @@ public static class ClientStartup
         }
 
         // Rpc & Fusion defaults
+        CoreSerializerAndRpcStartup.Configure(false);
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
         RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto();
         RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
-#if !DEBUG
-        RpcSerializationFormatResolver.Default = RpcSerializationFormatResolver.Default with {
-            DefaultClientFormatKey = "mempack2c", // "Compact", i.e. use method name hashes instead of actual names
-        };
-#endif
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };

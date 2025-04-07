@@ -13,6 +13,7 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
 {
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
+
     [field: AllowNull, MaybeNull]
     private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
     [field: AllowNull, MaybeNull]

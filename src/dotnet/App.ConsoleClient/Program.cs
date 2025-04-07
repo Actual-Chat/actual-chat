@@ -1,16 +1,13 @@
 using ActualChat.Chat;
 using ActualChat.Hosting;
 using ActualChat.Module;
-using ActualLab.Rpc;
+using ActualChat.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
 using static System.Console;
 
-// NOTE(AY): This could be removed once we update prod to the latest version
-RpcSerializationFormatResolver.Default = RpcSerializationFormatResolver.Default with {
-    DefaultClientFormatKey = "mempack1",
-};
+CoreSerializerAndRpcStartup.Configure(true);
 
 var cancellationTokenSource = new CancellationTokenSource();
 var cancellationToken = cancellationTokenSource.Token;

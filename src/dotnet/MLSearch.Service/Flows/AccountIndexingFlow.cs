@@ -14,6 +14,7 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
 {
     protected override int CurrentFlowSetVersion => 2;
     protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
+
     [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
     [field: AllowNull, MaybeNull]

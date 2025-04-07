@@ -1,5 +1,6 @@
 using System.Text;
 using ActualChat.Audio.WebM;
+using ActualChat.Serialization;
 using ActualLab.Fusion.Client;
 using ActualLab.Rpc;
 using Grpc.Core;
@@ -17,6 +18,7 @@ internal static class Program
             Tracer.None;
 #endif
 
+        CoreSerializerAndRpcStartup.Configure(true);
         RpcDefaults.Mode = RpcMode.Server;
         RpcDefaultDelegates.HashProvider = data => {
             // SIMD-based version of Blake3 we use here is much faster than SSH256.
