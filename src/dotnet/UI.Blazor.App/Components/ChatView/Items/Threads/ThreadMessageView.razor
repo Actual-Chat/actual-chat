@@ -1,10 +1,18 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ThreadMessageView.Model>
+@inherits ComputedStateComponent<ThreadMessageView.Model?>
 @{
     var chat = Message.Chat;
     var m = State.Value;
-    var firstAuthors = m.AuthorIds.Take(3).ToList();
-    var extraAuthorCount = Math.Clamp(m.AuthorIds.Count - 3, 0, 99);
+    if (m is null)
+        return; // Loading
+    var displayAuthorsLimit = 3;
+    var firstAuthors = m.AuthorIds.Take(displayAuthorsLimit).ToList();
+    var extraAuthorCount = Math.Clamp(m.AuthorIds.Count - displayAuthorsLimit, 0, 99);
+    var createdAt = chat.CreatedAt.ToDateTime();
+    var now = Clocks.SystemClock.Now.ToDateTime();
+    var creationDate = createdAt.Year == now.Year
+        ? now.ToString("M")
+        : now.ToString("d");
 }
 
 <div class="thread-message">
@@ -12,23 +20,29 @@
         <div class="c-left">
             <span class="c-text">
                 <span class="c-hash">#</span>
-                How does your honour for this many a day
+                @chat.Title
             </span>
         </div>
         <div class="c-right" @onclick="@OnGoToTheThread">
             <i class="icon-message-stars"></i>
-            <span class="c-message-count">23</span>
+            <span class="c-message-count">@m.MessageCount</span>
             <i class="icon-chevron-right"></i>
         </div>
     </div>
-    <div class="c-short">
-        A thread about faith. Claudius thinks there's no God. Ophelia thinks there is a God. Hamlet doubts God,
-        but does not deny A thread about faith. Claudius thinks there's no God. Ophelia thinks there is a God.
-        Hamlet doubts God, but does not deny
-    </div>
+
+    @if (chat.Description.IsNullOrEmpty()) {
+        @* test description *@
+        <div class="c-short">
+            A thread about faith. Claudius thinks there's no God. Ophelia thinks there is a God. Hamlet doubts God,
+            but does not deny A thread about faith. Claudius thinks there's no God. Ophelia thinks there is a God.
+            Hamlet doubts God, but does not deny
+        </div>
+    } else {
+        <div class="c-short">@chat.Description</div>
+    }
     <Divider/>
     <div class="c-last-messages">
-        @foreach (var chatEntry in m.Entries) {
+        @foreach (var (chatEntry, markup) in m.Entries) {
             <div class="c-message-wrapper">
                 <AuthorCircle
                     AuthorSid="@chatEntry.AuthorId.Value"
@@ -39,7 +53,9 @@
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@chatEntry.BeginsAt"/>
                     </div>
                     <span class="c-message">
-                        @chatEntry.Content
+                        <CascadingValue Value="@chatEntry" IsFixed="true">
+                            <MarkupView Markup="@markup"></MarkupView>
+                        </CascadingValue>
                     </span>
                 </div>
             </div>
@@ -55,7 +71,7 @@
             }
         </div>
         <div class="c-info">
-            23.11 created by Ophelia R.
+            <span>@creationDate</span><span> created by </span><span>@m.OwnerName</span>
         </div>
         <HeaderButton Click="CopyToClipboardRequested">
             <i class="icon-copy"></i>
@@ -65,28 +81,64 @@
 
 
 @code {
+    private IChatMarkupHub _chatMarkupHub = null!;
+
     private ChatUIHub Hub => ChatContext.Hub;
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private IRoles Roles => Hub.Roles;
     private History History => Hub.History;
+    private MomentClockSet Clocks => Hub.Clocks();
 
+    // ChatContext belongs to parent Chat, not to the thread chat.
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ThreadMessage Message { get; set; } = null!;
     [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var tileRange = ChatUI.IdTileStack.GetOptimalCoveringTiles(new Range<long>(0, 2))[0]; // Get tile for the first 2 messages.
-        var chatId = Message.Chat.Id;
-        var tile = await Chats.GetTile(Session, chatId, ChatEntryKind.Text, tileRange.Range, cancellationToken).ConfigureAwait(false);
-        var allEntries = tile.Entries;
-        var authorIds = allEntries.Select(entry => entry.AuthorId).Distinct().ToList();
+    protected override void OnInitialized() =>
+        _chatMarkupHub = Hub.ChatMarkupHubFactory[Message.Chat.Id];
 
-        return new Model(tile.Entries.OrderBy(c => c.LocalId).Take(2).ToImmutableArray(), authorIds);
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Message.Chat.Id;
+        var ownerName = "Unknown";
+        // var ownerAuthorIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        // if (ownerAuthorIds.Count > 0) {
+        //     var ownerAuthor = await Authors.Get(Session, chatId, ownerAuthorIds[0], cancellationToken).ConfigureAwait(false);
+        //     if (ownerAuthor is not null)
+        //         ownerName = ownerAuthor.Avatar.Name;
+        // }
+        var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
+        var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;
+        await foreach (var chatEntry in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
+            if (chatEntry.IsSystemEntry)
+                continue;
+
+            var markup = await _chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
+            chatEntries = chatEntries.Insert(0, (chatEntry, markup));
+            if (chatEntries.Count >= 2)
+                break;
+        }
+
+        var messageCount = 0;
+        var authorIds = new List<AuthorId>();
+        await foreach (var chatEntry in entryReader.Read(range, cancellationToken).ConfigureAwait(false)) {
+            if (chatEntry.IsSystemEntry)
+                continue;
+
+            messageCount++;
+            var authorId = chatEntry.AuthorId;
+            if (!authorIds.Contains(authorId))
+                authorIds.Add(authorId);
+        }
+
+        return new Model(chatEntries, authorIds, messageCount, ownerName);
     }
 
     private void OnGoToTheThread()
         => _ = History.NavigateTo(Links.Chat(Message.Chat.Id));
 
     // Nested types
-    public record Model(IReadOnlyList<ChatEntry> Entries, List<AuthorId> AuthorIds);
+    public record Model(IReadOnlyList<(ChatEntry, Markup)> Entries, List<AuthorId> AuthorIds, int MessageCount, string OwnerName);
 }
