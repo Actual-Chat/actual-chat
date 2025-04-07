@@ -1204,7 +1204,7 @@ export class VirtualList {
                             const dTranslateOffset = offset - containerTranslateYOffset;
                             scrollTopOffset = dTopOffset + dTranslateOffset;
 
-                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset);
+                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
                         }
                         else
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
