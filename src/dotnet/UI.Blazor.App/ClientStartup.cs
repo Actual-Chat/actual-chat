@@ -1,5 +1,6 @@
 using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
+using ActualChat.Logging;
 using ActualChat.Module;
 using ActualChat.UI.Blazor.App.Components.ChatRoulette;
 using ActualChat.UI.Blazor.App.Components.Discover;
@@ -221,7 +222,7 @@ public static class ClientStartup
 
         // Logging
         if (!hostKind.IsMauiApp()) // MauiDiagnostics takes care of that
-            services.AddLogging(logging => logging.ConfigureClientFilters(hostInfo.AppKind));
+            services.AddLogging(logging => logging.ConfigureClientFilters(hostInfo.AppKind).AddTailLogger());
 
         // Other services shared with plugins
         services.AddSingleton(hostInfo);
