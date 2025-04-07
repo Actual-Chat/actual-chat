@@ -49,11 +49,12 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
                 return null;
 
             var resultList = methodDef.ResultListType.Factory.Invoke();
-            ArgumentSerializer.Deserialize(ref resultList, methodDef.AllowResultPolymorphism, cacheValue.Data);
+            ArgumentSerializer.Deserialize(ref resultList, methodDef.HasPolymorphicResult, cacheValue.Data);
             return new(key, cacheValue, resultList.Get0Untyped());
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Cached result read failed");
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning("Read failed for key `{Key}`: {Type}({Message})",
+                key, e.GetType().GetName(), e.Message);
             return null;
         }
     }
