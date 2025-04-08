@@ -57,22 +57,32 @@
         </RenderAtDepth>
     </div>
 
-    <div @key="@VirtualListSpecialKeys.Wrapper"
-         class="c-wrapper">
+    @if (DefaultEdge == VirtualListEdge.Start) {
         <div @key="@VirtualListSpecialKeys.Spacer"
              class="c-spacer-start">
             <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
         </div>
+    } else {
+        <div @key="@VirtualListSpecialKeys.EndAnchor"
+             class="c-end-anchor">
+            &nbsp;
+        </div>
+        <div @key="@VirtualListSpecialKeys.EndSpacer"
+             class="c-spacer-end">
+            <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+        </div>
+    }
 
-        <ul @key="@VirtualListSpecialKeys.Container"
-            class="c-virtual-container @containerClass">
-            @foreach (var tile in tiles) {
-                var isLastTile = data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
-                var isLastTileVisible = isLastTile && LastReportedItemVisibility.IsEndAnchorVisible;
-                <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" IsLastTileVisible="@isLastTileVisible"/>
-            }
-        </ul>
+    <ul @key="@VirtualListSpecialKeys.Container"
+        class="c-virtual-container @containerClass">
+        @foreach (var tile in tiles) {
+            var isLastTile = data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
+            var isLastTileVisible = isLastTile && LastReportedItemVisibility.IsEndAnchorVisible;
+            <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" IsLastTileVisible="@isLastTileVisible"/>
+        }
+    </ul>
 
+    @if (DefaultEdge == VirtualListEdge.Start) {
         <div @key="@VirtualListSpecialKeys.EndSpacer"
              class="c-spacer-end">
             <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
@@ -82,6 +92,10 @@
              class="c-end-anchor">
             &nbsp;
         </div>
-    </div>
-
+    } else {
+        <div @key="@VirtualListSpecialKeys.Spacer"
+             class="c-spacer-start">
+            <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+        </div>
+    }
 </div>

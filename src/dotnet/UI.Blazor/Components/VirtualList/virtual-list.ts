@@ -43,7 +43,6 @@ export class VirtualList {
     private readonly defaultEdge: VirtualListEdge;
     private readonly defaultSpacerSize: number;
     private readonly expandMultiplier: number;
-    private readonly wrapperRef: HTMLElement;
     private readonly spacerRef: HTMLElement;
     private readonly endSpacerRef: HTMLElement;
     private readonly renderIndexRef: HTMLElement;
@@ -93,9 +92,6 @@ export class VirtualList {
     private itemRange: NumberRange | null = null;
     private viewport: NumberRange | null = null;
     private lastViewport: NumberRange | null = null;
-    // private spacerSize: number | null = null;
-    // private endSpacerSize: number | null = null;
-    private endAnchorSize = 4;
     private shouldUpdateOrderedItems: boolean = true;
     private shouldUpdateCornerstoneItem: boolean = true;
     private isUpdatingPivots: boolean = false;
@@ -143,29 +139,28 @@ export class VirtualList {
 
         this.isDisposed = false;
         this.abortController = new AbortController();
-        this.wrapperRef = this.ref.querySelector(':scope > .c-wrapper');
-        this.spacerRef = this.wrapperRef.querySelector(':scope > .c-spacer-start');
-        this.endSpacerRef = this.wrapperRef.querySelector(':scope > .c-spacer-end');
-        this.containerRef = this.wrapperRef.querySelector(':scope > .c-virtual-container');
+        this.spacerRef = this.ref.querySelector(':scope > .c-spacer-start');
+        this.endSpacerRef = this.ref.querySelector(':scope > .c-spacer-end');
+        this.containerRef = this.ref.querySelector(':scope > .c-virtual-container');
         this.renderStateRef = this.ref.querySelector(':scope > .data.render-state');
         this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index');
-        this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor');
+        this.endAnchorRef = this.ref.querySelector(':scope > .c-end-anchor');
         this.layoutFooter = document.querySelector('.layout-body-wrapper > .c-container > .layout-footer');
 
         // Set positioning according to the default edge
         if (this.defaultEdge === VirtualListEdge.Start) {
-            this.containerRef.style.top = '0px';
+            // this.containerRef.style.top = '0px';
             this.ref.style.flexDirection = 'column';
             this.spacerRef.style.display = 'flex';
             this.endSpacerRef.style.display = 'none';
         }
         else {
-            this.containerRef.style.bottom = '0px';
+            // this.containerRef.style.bottom = '0px';
             this.ref.style.flexDirection = 'column-reverse';
             this.spacerRef.style.display = 'none';
             this.endSpacerRef.style.display = 'flex';
         }
-        this.wrapperRef.style.height = `${spacerSize}px`;
+        // this.wrapperRef.style.height = `${spacerSize}px`;
 
         // Events & observers
         const listenerOptions = { signal: this.abortController.signal, passive: true, };
@@ -436,8 +431,6 @@ export class VirtualList {
             const size = Math.ceil(rect.height + rowGap);
             if (!key) {
                 notAnItem = true;
-                if (entry.target === this.endAnchorRef)
-                    this.endAnchorSize = size;
                 continue; // container or footer also can be resized
             }
 
@@ -1089,7 +1082,7 @@ export class VirtualList {
     }
 
     private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null): Promise<void> {
-        const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize } = this;
+        const { hasUnmeasuredItems, defaultSpacerSize } = this;
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
 
@@ -1119,7 +1112,7 @@ export class VirtualList {
 
                 const { start, end, size } = this.itemRange ?? new NumberRange(0,0);
                 const containerSize = size - (rs.hasVeryFirstItem ? this.rowGap : 0);
-                const oldTotalSize = this.wrapperRef.offsetHeight;
+                const oldTotalSize = this.ref.offsetHeight;
 
                 // stickyItems = [...this.containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item:has(.sticky)')];
                 scrollTop = this.ref.scrollTop;
@@ -1166,8 +1159,7 @@ export class VirtualList {
 
                 totalSize = containerSize
                     + spacerSize
-                    + endSpacerSize
-                    + endAnchorSize;
+                    + endSpacerSize;
 
                 if (!rs.hasVeryFirstItem && !rs.hasVeryLastItem)
                     totalSize = Math.max(totalSize, oldTotalSize, end, -start);
@@ -1182,7 +1174,7 @@ export class VirtualList {
                     if (scrollMetadata?.shouldUseSmoothScroll && scrollMetadata?.scrollType === 'last-item') {
                         // Find previous item end to make smooth scroll possible with fallback to the latest one
                         const lastItem = orderedItems[orderedItems.length - 1];
-                        offset = -endAnchorSize;
+                        offset = 0;
                         scrollTopOffset = -lastItem?.size ?? 0;
                     }
                     else
@@ -1230,7 +1222,7 @@ export class VirtualList {
                     if (rs.hasVeryFirstItem)
                         spacerSize = 0;
                     else
-                        spacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
+                        spacerSize = totalSize - containerSize - endSpacerSize;
                 }
                 else {
                     offset = start;
@@ -1274,38 +1266,16 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     spacerSize = offset;
-                    endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
                     if (rs.hasVeryLastItem)
                         endSpacerSize = 0;
                     else
-                        endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
+                        endSpacerSize = totalSize - containerSize - spacerSize;
                 }
             },
             write: () => {
                 const showSpacer = spacerSize > 0;
                 const showEndSpacer = endSpacerSize > 0;
 
-                if (DeviceInfo.isChromium && totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
-                    // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
-                    const setWrapperHeight = () => fastRaf({
-                        write: () => {
-                            if (this.isScrolling)
-                                this.turnOffScrollingCallback = setWrapperHeight;
-                            else {
-                                this.wrapperRef.style.height = totalSize + 'px';
-                                // console.warn(
-                                //     'restoreScrollPosition: wrapper size increased with DELAY!',
-                                //     totalSize);
-                            }
-                        }});
-                    this.turnOffScrollingCallback = setWrapperHeight;
-
-                }
-                else
-                    this.wrapperRef.style.height = totalSize + 'px';
-                this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
-                // set negative offset translate to all sticky elements - does not work well
-                // stickyItems.forEach(sticky => sticky.style.transform = `translate3d(0, ${-offset}px, 0)`);
                 if (!showSpacer)
                     this.spacerRef.style.display = 'none';
                 else
@@ -1448,7 +1418,7 @@ export class VirtualList {
     }
 
     private resetItemRange(canUseQueryRange: boolean = false): number | null {
-        const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
+        const { orderedItems, defaultSpacerSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
         if (orderedItems.length === 0)
@@ -1474,19 +1444,19 @@ export class VirtualList {
             else if (canUseQueryRange && rs.query.isNone && !rs.hasVeryLastItem) {
                 // There is no query range and no very last item, so we have to calculate range manually with end spacer
                 cornerstoneItem.range = new NumberRange(
-                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
-                    0 - defaultSpacerSize - endAnchorSize);
+                    0 - defaultSpacerSize - cornerstoneItem.size,
+                    0 - defaultSpacerSize);
             }
             else if (!canUseQueryRange && !rs.hasVeryLastItem) {
                 // There is no very last item, so we have to calculate range manually with end spacer
                 cornerstoneItem.range = new NumberRange(
-                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
-                    0 - defaultSpacerSize - endAnchorSize);
+                    0 - defaultSpacerSize - cornerstoneItem.size,
+                    0 - defaultSpacerSize);
             }
             else
                 cornerstoneItem.range = new NumberRange(
-                    0 - endAnchorSize - cornerstoneItem.size,
-                    0 - endAnchorSize);
+                    0 - cornerstoneItem.size,
+                    0);
 
             this.shouldUpdateCornerstoneItem = !rs.hasVeryLastItem;
             let prevItem = cornerstoneItem;
@@ -1499,8 +1469,8 @@ export class VirtualList {
                 orderedItems[0].range.start,
                 orderedItems[orderedItems.length - 1].range.end);
             if (fullRangeSize) {
-                this.minStart = 0 - fullRangeSize - endAnchorSize;
-                this.maxEnd = 0  - endAnchorSize;
+                this.minStart = 0 - fullRangeSize;
+                this.maxEnd = 0;
                 // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
             }
             else {
@@ -1558,7 +1528,7 @@ export class VirtualList {
                 orderedItems[orderedItems.length - 1].range.end);
             if (fullRangeSize) {
                 this.minStart = 0;
-                this.maxEnd = fullRangeSize + endAnchorSize;
+                this.maxEnd = fullRangeSize;
                 // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
             }
             else {
