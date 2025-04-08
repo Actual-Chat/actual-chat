@@ -6,14 +6,19 @@ namespace ActualChat.Users;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserBubbleSettings : IHasOrigin
 {
+    private readonly string[] _readBubbles = [];
     public const string KvasKey = nameof(UserBubbleSettings);
 
-    [DataMember, MemoryPackOrder(0)] private ApiArray<string> LegacyReadBubbles { get; init; }
+    [DataMember, MemoryPackOrder(0)]
+    private ApiArray<Symbol> LegacyReadBubbles {
+        get => _readBubbles.Select(x => new Symbol(x)).ToApiArray();
+        init => _readBubbles = value.Select(x => x.Value).ToArray();
+    }
 
     [IgnoreDataMember, MemoryPackIgnore]
     public string[] ReadBubbles {
-        get => LegacyReadBubbles.Items;
-        init => LegacyReadBubbles = value.ToApiArray();
+        get => _readBubbles;
+        init => _readBubbles = value;
     }
 
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
