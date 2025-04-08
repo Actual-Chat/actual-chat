@@ -21,7 +21,7 @@ public partial class ChatUI
         long shownReadyEntryLid,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
+        // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return [];
@@ -197,7 +197,7 @@ public partial class ChatUI
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
     {
-        DebugLog?.LogDebug("GetTile: {ChatId} {IdRange} {LastReadEntryId}", chatId, idRange, lastReadEntryId);
+        // DebugLog?.LogDebug("GetTile: {ChatId} {IdRange} {LastReadEntryId}", chatId, idRange, lastReadEntryId);
         if (idRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(idRange));
 
@@ -416,7 +416,7 @@ public partial class ChatUI
         if (idRange.IsEmptyOrNegative)
             return Task.CompletedTask;
 
-        DebugLog?.LogDebug("PrefetchTiles: {ChatId} {IdRange}", chatId, idRange);
+        // DebugLog?.LogDebug("PrefetchTiles: {ChatId} {IdRange}", chatId, idRange);
 
         return BackgroundTask.Run(async () => {
             // We are making following calls during chat view rendering:
@@ -461,7 +461,7 @@ public partial class ChatUI
 
     private Tile<long>[] GetIdTilesToLoad(ChatDataQuery dataQuery)
     {
-        DebugLog?.LogDebug("GetIdTilesToLoad: {ChatDataQuery}", dataQuery);
+        // DebugLog?.LogDebug("GetIdTilesToLoad: {ChatDataQuery}", dataQuery);
         var idRangeToLoad = new Range<long>(dataQuery.Start, dataQuery.End);
         var firstLayer = IdTileStack.FirstLayer;
         var secondLayer = IdTileStack.Layers[1];

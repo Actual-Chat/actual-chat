@@ -72,6 +72,7 @@ export class VirtualList {
     private maxEnd: number | null = null;
     private isEndKnown: boolean = false;
     private windowScrollTop: number = 0;
+    private rowGap = 2;
 
     private renderStartedAt: number | null = null;
     private renderCompletedAt: number = 0;
@@ -95,7 +96,6 @@ export class VirtualList {
     // private spacerSize: number | null = null;
     // private endSpacerSize: number | null = null;
     private endAnchorSize = 4;
-    private shouldRecalculateItemRange: boolean = true;
     private shouldUpdateOrderedItems: boolean = true;
     private shouldUpdateCornerstoneItem: boolean = true;
     private isUpdatingPivots: boolean = false;
@@ -230,6 +230,9 @@ export class VirtualList {
 
             scrollToKey: null,
         };
+        fastRaf(() => {
+            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 2;
+        });
 
         // set isRendering as soon as possible
         const origSetAttribute = this.renderIndexRef.setAttribute;
@@ -380,7 +383,7 @@ export class VirtualList {
 
         // request recalculation of the item range and order item list as we've got new items
         this.cachedAllItemRefs = null;
-        this.shouldRecalculateItemRange = true;
+        this.itemRange = null;
         this.shouldUpdateOrderedItems = true;
 
         // copy existing items - because we can remove them and add again at another tiles
@@ -429,7 +432,8 @@ export class VirtualList {
         for (const entry of entries) {
             const rect = entry.contentRect;
             const key = getItemKey(entry.target as HTMLElement);
-            const size = Math.ceil(rect.height);
+            const rowGap = this.rowGap;
+            const size = Math.ceil(rect.height + rowGap);
             if (!key) {
                 notAnItem = true;
                 if (entry.target === this.endAnchorRef)
@@ -445,11 +449,11 @@ export class VirtualList {
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                     const oldSize = item.size;
-                    item.size = size;
                     if (oldSize > 0 && size > 0 && size != oldSize) {
                         existingResizedCount++;
                         itemsWereMeasured = true;
                     }
+                    item.size = size;
                     this.sizeCache.set(key, size);
                     this.statistics.addItem(item.size);
                 }
@@ -460,25 +464,11 @@ export class VirtualList {
         }
         if (itemRefsWithWrongSize.length) {
             // ensure we have all sizes calculated
-            fastRaf(() => {
-                for (const itemRef of itemRefsWithWrongSize) {
-                    const key = getItemKey(itemRef);
-                    const item = this.items.get(key);
-                    if (item && item.size < 0) {
-                        const itemRect = itemRef.getBoundingClientRect();
-                        const size = Math.ceil(itemRect.height);
-                        item.size = size;
-                        this.sizeCache.set(key, size);
-                        this.statistics.addItem(item.size);
-                    }
-                    const hasRemoved = this.unmeasuredItems.delete(key);
-                    itemsWereMeasured ||= hasRemoved;
-                }
-
-                // recalculate item range as some elements were updated
-                this.shouldRecalculateItemRange = itemsWereMeasured;
-                // this.restoreScrollPosition();
+            itemRefsWithWrongSize.forEach((itemRef) => {
+                const key = getItemKey(itemRef);
+                this.unmeasuredItems.add(key);
             });
+            fastRaf(() => this.measureItems());
         }
         if (notAnItem) {
             this.windowScrollTop = window.visualViewport.offsetTop;
@@ -505,7 +495,8 @@ export class VirtualList {
         }
 
         // recalculate item range as some elements were updated
-        this.shouldRecalculateItemRange = itemsWereMeasured;
+        if (itemsWereMeasured)
+            this.itemRange = null;
         // if (existingResizedCount)
         //     void this.restoreScrollPosition(this.renderState);
     };
@@ -758,6 +749,8 @@ export class VirtualList {
         // do not update client state when we haven't completed rendering for the first time
         if (rs.renderIndex === -1)
             return;
+
+        this.ensureItemRangeCalculated();
 
         const hasScheduled = await fastReadRaf(`updateViewport_${this.identity}`);
         if (!hasScheduled)
@@ -1121,10 +1114,11 @@ export class VirtualList {
             read: () => {
                 if (hasUnmeasuredItems)
                     this.measureItems();
-                if (this.shouldRecalculateItemRange)
+                if (!this.itemRange)
                     this.ensureItemRangeCalculated();
 
-                const { start, end, size: containerSize } = this.itemRange ?? new NumberRange(0,0);
+                const { start, end, size } = this.itemRange ?? new NumberRange(0,0);
+                const containerSize = size - (rs.hasVeryFirstItem ? this.rowGap : 0);
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
                 // stickyItems = [...this.containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item:has(.sticky)')];
@@ -1174,6 +1168,13 @@ export class VirtualList {
                     + spacerSize
                     + endSpacerSize
                     + endAnchorSize;
+
+                if (!rs.hasVeryFirstItem && !rs.hasVeryLastItem)
+                    totalSize = Math.max(totalSize, oldTotalSize, end, -start);
+                else if (rs.hasVeryFirstItem)
+                    totalSize = Math.max(totalSize, -start);
+                else if (rs.hasVeryLastItem)
+                    totalSize = Math.max(totalSize, end);
 
                 totalSizeDiff = totalSize - oldTotalSize;
 
@@ -1286,12 +1287,19 @@ export class VirtualList {
 
                 if (DeviceInfo.isChromium && totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
                     // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
-                    this.turnOffScrollingCallback = () => {
-                        fastRaf({
-                            write: () => {
+                    const setWrapperHeight = () => fastRaf({
+                        write: () => {
+                            if (this.isScrolling)
+                                this.turnOffScrollingCallback = setWrapperHeight;
+                            else {
                                 this.wrapperRef.style.height = totalSize + 'px';
-                            }});
-                    }
+                                // console.warn(
+                                //     'restoreScrollPosition: wrapper size increased with DELAY!',
+                                //     totalSize);
+                            }
+                        }});
+                    this.turnOffScrollingCallback = setWrapperHeight;
+
                 }
                 else
                     this.wrapperRef.style.height = totalSize + 'px';
@@ -1317,8 +1325,12 @@ export class VirtualList {
                 // this.updateViewportThrottled();
             }
         });
-        if (!rafResult)
-            await this.restoreScrollPosition(rs, scrollMetadata);
+        if (!rafResult) {
+            fastRaf(() => {
+                void this.restoreScrollPosition(rs, scrollMetadata);
+            });
+            return;
+        }
         else
             await result;
 
@@ -1341,7 +1353,8 @@ export class VirtualList {
                 const itemRef = this.getItemRef(key);
                 if (itemRef) {
                     const itemRect = itemRef.getBoundingClientRect();
-                    const size =  Math.ceil(itemRect.height);
+                    const rowGap = this.rowGap;
+                    const size =  Math.ceil(itemRect.height + rowGap);
                     item.size = size;
                     this.sizeCache.set(key, size);
                 } else
@@ -1352,7 +1365,8 @@ export class VirtualList {
         }
 
         // recalculate item range as some elements were updated
-        this.shouldRecalculateItemRange = itemsWereMeasured;
+        if (itemsWereMeasured)
+            this.itemRange = null;
     }
 
     private ensureItemRangeCalculated(): boolean {
@@ -1365,7 +1379,7 @@ export class VirtualList {
         if (this.shouldUpdateOrderedItems)
             this.updateOrderedItems();
 
-        if (!this.shouldRecalculateItemRange && this.itemRange)
+        if (this.itemRange)
             return false;
 
         const { renderState: rs, orderedItems } = this;
@@ -1421,7 +1435,7 @@ export class VirtualList {
 
             this.itemRange = new NumberRange(
                 orderedItems[0].range.start,
-                orderedItems[orderedItems.length - 1].range.end);
+                orderedItems[orderedItems.length - 1].range.end - this.rowGap);
         }
         this.minStart = Math.min(this.minStart ?? Number.MAX_SAFE_INTEGER, this.itemRange.start);
         if (this.renderState.hasVeryFirstItem)
@@ -1430,7 +1444,6 @@ export class VirtualList {
         if (this.renderState.hasVeryLastItem)
             this.isEndKnown = true;
 
-        this.shouldRecalculateItemRange = false;
         return true;
     }
 
@@ -1605,7 +1618,7 @@ export class VirtualList {
         if (!viewport)
             return false;
 
-        if (itemRange.size == 0)
+        if (itemRange.isEmpty)
             return true; // re-request data with empty query
 
         if (this.query === query)
@@ -1671,7 +1684,7 @@ export class VirtualList {
         //     return this.lastQuery; // Do not request data too often
 
         const viewportSize = viewport.size;
-        const lastQuerySide = this.lastQuery.moveRange.size === 0
+        const lastQuerySide = this.lastQuery.moveRange.isEmpty
             ? 'none'
             : (this.lastQuery.moveRange.start >= 0 && this.lastQuery.moveRange.end >= 0
                 ? 'end'
@@ -1679,7 +1692,7 @@ export class VirtualList {
         const alreadyLoadedFromStart = viewport.start - alreadyLoaded.start;
         const alreadyLoadedTillEnd = alreadyLoaded.end - viewport.end;
         const loadZoneTrigger = viewportSize * Math.max(0.5, this.expandMultiplier * 0.5);
-        if (alreadyLoadedFromStart < loadZoneTrigger && alreadyLoadedTillEnd < loadZoneTrigger)
+        if (alreadyLoadedFromStart > loadZoneTrigger && alreadyLoadedTillEnd > loadZoneTrigger)
             return this.lastQuery; // No need to load more data
 
         const loadZoneSize = viewportSize * this.expandMultiplier;
@@ -1700,8 +1713,8 @@ export class VirtualList {
                 // check whether we need to continue loading from the end
                 if (alreadyLoadedTillEnd < loadZoneTrigger) {
                     if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
-                        loadEnd = viewport.end + loadZoneTrigger * 1.5;
-                        loadStart = viewport.start - viewportSize / 3;
+                        loadEnd = viewport.end + loadZoneSize * 1.5;
+                        loadStart = viewport.start - loadZoneTrigger * 1.1;
                     }
                 } else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
                     if (!rs.hasVeryFirstItem)
@@ -1714,8 +1727,8 @@ export class VirtualList {
                 // check whether we need to continue loading from the start
                 if (alreadyLoadedFromStart < loadZoneTrigger) {
                     if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
-                        loadStart = viewport.start - loadZoneTrigger * 1.5;
-                        loadEnd = viewport.end + viewportSize / 3;
+                        loadStart = viewport.start - loadZoneSize * 1.5;
+                        loadEnd = viewport.end + loadZoneTrigger * 1.1;
                     }
                 } else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
                     if (!rs.hasVeryLastItem)
@@ -1743,7 +1756,7 @@ export class VirtualList {
         }
 
         if (orderedItems.some(item => item.range == null)) {
-            this.shouldRecalculateItemRange = true;
+            this.itemRange = null;
             this.ensureItemRangeCalculated();
         }
 
