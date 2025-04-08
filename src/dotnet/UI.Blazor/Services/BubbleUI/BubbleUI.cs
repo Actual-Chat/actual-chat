@@ -38,7 +38,7 @@ public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         await _settings.Computed.Synchronize().ConfigureAwait(false);
 
-        // Delay first display to not to interfere with permissions
+        // Delay first display to not interfere with permissions
         await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
     }
 
