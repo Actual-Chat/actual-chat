@@ -15,6 +15,13 @@
     @apply flex-y items-center gap-y-4;
     @apply px-2 py-2;
 }
+.c-contact-list > .c-no-contacts > .c-text {
+    @apply text-text-1;
+}
+.c-contact-list > .c-no-contacts .c-share {
+    @apply w-full;
+    @apply m-0 p-0;
+}
 .c-contact-list > .c-item {
     @apply flex-x items-center gap-x-1;
     @apply min-h-12 max-h-12;
