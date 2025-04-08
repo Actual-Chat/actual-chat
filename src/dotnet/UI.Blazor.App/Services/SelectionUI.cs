@@ -176,17 +176,19 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
             return;
 
         var chatId = selection.First().ChatId;
+        var textEntryIds = selection.Select(c => c.ToTextEntryId()).ToApiArray();
+        var modalModel = new NewThreadModal.Model(chatId, textEntryIds);
+        await (await ModalUI.Show(modalModel).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
+        if (modalModel.Title.IsNullOrEmpty())
+            return;
+
         var cmd = new ChatThreads_Start(
             Session,
             chatId,
-            "",
-            selection.Select(c => c.ToTextEntryId()).ToApiArray());
-        var chatThread = await UICommander.Call(cmd, CancellationToken.None).ConfigureAwait(true);
-        ToastUI.Show("Thread has been created.", NavigateAction, "Navigate", ToastDismissDelay.Long);
+            modalModel.Title,
+            modalModel.Description,
+            textEntryIds);
+        await UICommander.Call(cmd, CancellationToken.None).ConfigureAwait(true);
         Clear();
-        return;
-
-        void NavigateAction()
-            => _ = History.NavigateTo(Links.Chat(chatThread.Id));
     }
 }

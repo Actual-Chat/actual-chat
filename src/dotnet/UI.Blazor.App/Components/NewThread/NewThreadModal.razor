@@ -1,0 +1,110 @@
+@implements IModalView<NewThreadModal.Model>
+@using System.ComponentModel.DataAnnotations
+@inherits FusionComponentBase
+@namespace ActualChat.UI.Blazor.App.Components
+
+<Form @ref="_formRef" Model="@_form" Class="h-full" Id="@_form.FormId">
+<DialogFrame
+    Class="new-thread-modal modal-sm"
+    Title="New thread"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
+    <Body>
+
+    <FormBlock>
+        <DataAnnotationsValidator/>
+
+        <FormSection
+            For="() => _form.Title"
+            Label="Title"
+            InputId="@_form.TitleId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow"
+            IsRequired="true">
+            <TextBox
+                @bind-Value="@_form.Title"
+                Id="@_form.TitleId"
+                Autofocus="false"
+                Autocomplete="false"/>
+        </FormSection>
+        <FormSection
+            For="() => _form.Description"
+            Label="Description"
+            InputId="@_form.DescriptionId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow">
+            <TextBox
+                @bind-Value="@_form.Description"
+                Id="@_form.DescriptionId"
+                Autofocus="false"
+                Autocomplete="false"/>
+        </FormSection>
+    </FormBlock>
+
+    </Body>
+    <Buttons>
+        @if (ScreenSize.IsWide()) {
+            <Button
+                Click="@(() => Modal.Close())"
+                Class="btn-modal">
+                Cancel
+            </Button>
+        }
+        <Button
+            Click="@OnCreate"
+            Type="@ButtonType.Button"
+            IsDisabled="@(!context.Validate())"
+            Class="btn-modal btn-primary">
+            Create
+        </Button>
+    </Buttons>
+</DialogFrame>
+</Form>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _form = new(ComponentIdGenerator);
+    }
+
+    private void OnCreate() {
+        ModalModel.Title = _form.Title;
+        ModalModel.Description = _form.Description;
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed class Model(ChatId parentChatId, ApiArray<TextEntryId> textEntryIds) {
+        public ChatId ParentChatId { get; } = parentChatId;
+        public ApiArray<TextEntryId> TextEntryIds { get; } = textEntryIds;
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string DescriptionId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-thread-form");
+            TitleId = $"{FormId}-title";
+            DescriptionId = $"{FormId}-description";
+        }
+    }
+}

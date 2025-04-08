@@ -16,6 +16,7 @@ public interface IChatThreads : IComputeService
 public sealed partial record ChatThreads_Start(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ParentChatId,
-    [property: DataMember, MemoryPackOrder(3)] string Title,
+    [property: DataMember, MemoryPackOrder(2)] string Title,
+    [property: DataMember, MemoryPackOrder(3)] string Description,
     [property: DataMember, MemoryPackOrder(4)] ApiArray<TextEntryId> Entries
 ) : ISessionCommand<ChatThread>, IApiCommand;

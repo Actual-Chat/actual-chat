@@ -26,6 +26,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var session = command.Session;
         var parentChatId = command.ParentChatId;
         var title = command.Title;
+        var description = command.Description;
         var parentChat = await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false);
         parentChat.Rules.Permissions.Require(ChatPermissions.Write);
         var ownerId = parentChat.Rules.Account.Id;
@@ -44,6 +45,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
                 chatThread = await Commander.Call(new ChatThreadsBackend_Start(chatId, title), cancellationToken).ConfigureAwait(false);
                 var chatChange = Change.Create(new ChatDiff {
                     Title = chatThread.Title,
+                    Description = description,
                 });
                 var chat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
             }
