@@ -231,7 +231,7 @@ export class VirtualList {
             scrollToKey: null,
         };
         fastRaf(() => {
-            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 2;
+            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
         });
 
         // set isRendering as soon as possible
@@ -497,8 +497,10 @@ export class VirtualList {
         // recalculate item range as some elements were updated
         if (itemsWereMeasured)
             this.itemRange = null;
-        // if (existingResizedCount)
-        //     void this.restoreScrollPosition(this.renderState);
+
+        const now = Date.now();
+        if (existingResizedCount && (now - this.renderCompletedAt) > 500)
+            void this.restoreScrollPosition(this.renderState);
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {

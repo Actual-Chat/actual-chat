@@ -106,7 +106,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     [ComputeMethod(MinCacheDuration = 300)]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        DebugLog?.LogDebug("Get({ChatId})", chatId.Value);
+        // DebugLog?.LogDebug("Get({ChatId})", chatId.Value);
         if (chatId.IsNone)
             return null;
 
@@ -208,7 +208,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         // On another hand, it makes sense to read the most up-to-date read position,
         // so it returns max(leased read position, fetched read position).
 
-        DebugLog?.LogDebug("GetReadEntryLid: {ChatId}", chatId);
+        // DebugLog?.LogDebug("GetReadEntryLid: {ChatId}", chatId);
 
         var serverReadPosition = await ChatPositions
             .GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken)
