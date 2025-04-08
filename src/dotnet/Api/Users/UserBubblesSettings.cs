@@ -12,7 +12,7 @@ public sealed partial record UserBubbleSettings : IHasOrigin
     [DataMember, MemoryPackOrder(0)]
     private ApiArray<Symbol> LegacyReadBubbles {
         get => _readBubbles.Select(x => new Symbol(x)).ToApiArray();
-        init => _readBubbles = value.Select(x => x.Value).ToArray();
+        init => _readBubbles = value.Select(x => x.Value).ToArray(value.Count);
     }
 
     [IgnoreDataMember, MemoryPackIgnore]
