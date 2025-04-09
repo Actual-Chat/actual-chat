@@ -176,7 +176,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
             return;
 
         var chatId = selection.First().ChatId;
-        var textEntryIds = selection.Select(c => c.ToTextEntryId()).ToApiArray();
+        var textEntryIds = selection.OrderBy(c => c.LocalId).Select(c => c.ToTextEntryId()).ToApiArray();
         var modalModel = new NewThreadModal.Model(chatId, textEntryIds);
         await (await ModalUI.Show(modalModel).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
         if (modalModel.Title.IsNullOrEmpty())

@@ -18,5 +18,5 @@ public sealed partial record ChatThreads_Start(
     [property: DataMember, MemoryPackOrder(1)] ChatId ParentChatId,
     [property: DataMember, MemoryPackOrder(2)] string Title,
     [property: DataMember, MemoryPackOrder(3)] string Description,
-    [property: DataMember, MemoryPackOrder(4)] ApiArray<TextEntryId> Entries
+    [property: DataMember, MemoryPackOrder(4)] ApiArray<TextEntryId> EntryIds
 ) : ISessionCommand<Chat>, IApiCommand;

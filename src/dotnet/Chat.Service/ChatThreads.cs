@@ -34,7 +34,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var isFirst = true;
         var chatId = ChatId.None;
         Chat? threadChat = null;
-        foreach (var textEntryId in command.Entries.OrderBy(c => c.LocalId)) {
+        foreach (var textEntryId in command.EntryIds.OrderBy(c => c.LocalId)) {
             var textEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
             if (textEntry is null || textEntry.IsRemoved)
                 continue;
