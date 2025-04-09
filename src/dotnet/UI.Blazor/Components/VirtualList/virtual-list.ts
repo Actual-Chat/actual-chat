@@ -96,7 +96,6 @@ export class VirtualList {
     // private spacerSize: number | null = null;
     // private endSpacerSize: number | null = null;
     private endAnchorSize = 4;
-    private shouldUpdateOrderedItems: boolean = true;
     private shouldUpdateCornerstoneItem: boolean = true;
     private isUpdatingPivots: boolean = false;
 
@@ -384,7 +383,6 @@ export class VirtualList {
         // request recalculation of the item range and order item list as we've got new items
         this.cachedAllItemRefs = null;
         this.itemRange = null;
-        this.shouldUpdateOrderedItems = true;
 
         // copy existing items - because we can remove them and add again at another tiles
         const oldItems = new Map<string, VirtualListItem>(this.items);
@@ -454,6 +452,7 @@ export class VirtualList {
                         itemsWereMeasured = true;
                     }
                     item.size = size;
+                    item.range = null;
                     this.sizeCache.set(key, size);
                     this.statistics.addItem(item.size);
                 }
@@ -499,8 +498,10 @@ export class VirtualList {
             this.itemRange = null;
 
         const now = Date.now();
-        if (existingResizedCount && (now - this.renderCompletedAt) > 500)
+        if (existingResizedCount && (now - this.renderCompletedAt) > 500 && this.pivots.length > 0) {
+            console.warn('onResize: call restore scroll position!');
             void this.restoreScrollPosition(this.renderState);
+        }
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -660,8 +661,6 @@ export class VirtualList {
             const scrollMetadata = this.getScrollMetadata(rs);
 
             await this.restoreScrollPosition(rs, scrollMetadata);
-
-            scrollMetadata.scroll?.();
         } finally {
             this.renderStartedAt = null;
             this.renderCompletedAt = Date.now();
@@ -815,7 +814,6 @@ export class VirtualList {
             }
         }
         this.orderedItems = orderedItems;
-        this.shouldUpdateOrderedItems = false;
     }
 
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
@@ -1090,7 +1088,7 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null): Promise<void> {
+    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null, useRaf = false): Promise<void> {
         const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize } = this;
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
@@ -1111,7 +1109,7 @@ export class VirtualList {
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
 
-        const rafResult  = fastRaf({
+        const options = {
             key: `restoreScrollPosition_${this.identity}`,
             read: () => {
                 if (hasUnmeasuredItems)
@@ -1287,7 +1285,7 @@ export class VirtualList {
                 const showSpacer = spacerSize > 0;
                 const showEndSpacer = endSpacerSize > 0;
 
-                if (DeviceInfo.isChromium && totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
+                if (totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
                     // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
                     const setWrapperHeight = () => fastRaf({
                         write: () => {
@@ -1295,15 +1293,15 @@ export class VirtualList {
                                 this.turnOffScrollingCallback = setWrapperHeight;
                             else {
                                 this.wrapperRef.style.height = totalSize + 'px';
-                                // console.warn(
-                                //     'restoreScrollPosition: wrapper size increased with DELAY!',
-                                //     totalSize);
+                                console.warn(
+                                    'restoreScrollPosition: wrapper size increased with DELAY!',
+                                    totalSize);
                             }
                         }});
                     this.turnOffScrollingCallback = setWrapperHeight;
 
                 }
-                else
+                else if (totalSizeDiff != 0)
                     this.wrapperRef.style.height = totalSize + 'px';
                 this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
                 // set negative offset translate to all sticky elements - does not work well
@@ -1319,22 +1317,26 @@ export class VirtualList {
                 this.spacerRef.style.height = `${spacerSize}px`;
                 this.endSpacerRef.style.height = `${endSpacerSize}px`;
 
-                if (scrollTopOffset)
+                if (scrollTopOffset) {
+                    console.warn('restoreScrollPosition: scrollTopOffset', scrollTopOffset);
                     this.ref.scrollTop = scrollTop + scrollTopOffset;
+                }
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
                 result.resolve(undefined);
                 // this.updateViewportThrottled();
             }
-        });
-        if (!rafResult) {
-            fastRaf(() => {
-                void this.restoreScrollPosition(rs, scrollMetadata);
-            });
-            return;
-        }
-        else
+        };
+        if (useRaf) {
+            fastRaf(options);
             await result;
+        }
+        else {
+            // Handle restore position synchronously after render
+            options.read();
+            options.write();
+            scrollMetadata?.scroll?.();
+        }
 
         this.scrollPositionRestoredAt = Date.now();
 
@@ -1358,6 +1360,7 @@ export class VirtualList {
                     const rowGap = this.rowGap;
                     const size =  Math.ceil(itemRect.height + rowGap);
                     item.size = size;
+                    item.range = null;
                     this.sizeCache.set(key, size);
                 } else
                     this.items.delete(key);
@@ -1378,9 +1381,6 @@ export class VirtualList {
             return false;
         }
 
-        if (this.shouldUpdateOrderedItems)
-            this.updateOrderedItems();
-
         if (this.itemRange)
             return false;
 
@@ -1393,6 +1393,7 @@ export class VirtualList {
         if (this.shouldUpdateCornerstoneItem && (rs.hasVeryLastItem || rs.hasVeryLastItem)) {
             // We have to recalculate cornerstone item
             this.shouldUpdateCornerstoneItem = false;
+            console.warn('resetItemRange: recalculate ranges at the edge!');
             for (const item of orderedItems)
                 item.range = null;
         }
@@ -1450,6 +1451,7 @@ export class VirtualList {
     }
 
     private resetItemRange(canUseQueryRange: boolean = false): number | null {
+        console.warn('resetItemRange', canUseQueryRange);
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
@@ -1701,45 +1703,6 @@ export class VirtualList {
         let loadStart = viewport.start - loadZoneSize;
         let loadEnd = viewport.end + loadZoneSize;
 
-        const loadMoreFrom = lastQuerySide === 'none'
-            ? (this.scrollDirection === 'none'
-                ? 'none'
-                : (this.scrollDirection === 'up'
-                    ? 'start'
-                    : 'end'))
-            : lastQuerySide;
-        switch (loadMoreFrom) {
-            case 'none':
-                break;
-            case 'end':
-                // check whether we need to continue loading from the end
-                if (alreadyLoadedTillEnd < loadZoneTrigger) {
-                    if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
-                        loadEnd = viewport.end + loadZoneSize * 1.5;
-                        loadStart = viewport.start - loadZoneTrigger * 1.1;
-                    }
-                } else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
-                    if (!rs.hasVeryFirstItem)
-                        loadStart = viewport.start - loadZoneSize;
-                    else
-                        return this.lastQuery;
-                }
-                break;
-            case 'start':
-                // check whether we need to continue loading from the start
-                if (alreadyLoadedFromStart < loadZoneTrigger) {
-                    if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
-                        loadStart = viewport.start - loadZoneSize * 1.5;
-                        loadEnd = viewport.end + loadZoneTrigger * 1.1;
-                    }
-                } else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
-                    if (!rs.hasVeryLastItem)
-                        loadEnd = viewport.end + loadZoneSize;
-                    else
-                        return this.lastQuery;
-                }
-                break;
-        }
         // adjust to existing data range
         if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.start;
@@ -1762,11 +1725,13 @@ export class VirtualList {
             this.ensureItemRangeCalculated();
         }
 
-        const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start) - 1;
-        const lastItemIndex = binarySearch(orderedItems, item => item.range.start > loadZone.end);
+        const lastKey = orderedItems[orderedItems.length - 1].key;
+        const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start);
+        const lastItemIndex = binarySearch(orderedItems, item => item.range.start > loadZone.end || (item.key === lastKey && !item.range.intersectWith(loadZone).isEmpty));
         let firstItem = orderedItems[firstItemIndex];
         let lastItem = orderedItems[lastItemIndex];
         if (!firstItem) {
+            console.warn('getDataQuery: firstItem not found', orderedItems, loadZone);
             if (orderedItems[0].range.start >= loadZone.end)
                 firstItem = orderedItems[0];
             else if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
@@ -1775,6 +1740,7 @@ export class VirtualList {
                 firstItem = orderedItems[0];
         }
         if (!lastItem) {
+            console.warn('getDataQuery: lastItem not found', orderedItems, loadZone);
             if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
                 lastItem = orderedItems[orderedItems.length - 1];
             else if (orderedItems[0].range.start >= loadZone.end)
