@@ -27,7 +27,7 @@ public class DbChatThread : IHasId<string>, IHasVersion<long>, IRequirementTarge
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public string Title { get; set; }
+    public string Title { get; set; } = "";
 
     public ChatThread ToModel()
         => new(new ChatId(Id), Version) {

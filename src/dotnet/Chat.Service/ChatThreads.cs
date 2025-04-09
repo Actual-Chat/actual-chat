@@ -18,7 +18,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         return await Backend.ListIds(parentChatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<ChatThread> OnStart(ChatThreads_Start command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default!; //
@@ -33,7 +33,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
 
         var isFirst = true;
         var chatId = ChatId.None;
-        ChatThread chatThread = null!;
+        Chat? threadChat = null;
         foreach (var textEntryId in command.Entries.OrderBy(c => c.LocalId)) {
             var textEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
             if (textEntry is null || textEntry.IsRemoved)
@@ -42,12 +42,11 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             if (isFirst) {
                 var threadId = textEntry.LocalId; // Start Entry Id
                 chatId = parentChatId.CreateThreadId(threadId);
-                chatThread = await Commander.Call(new ChatThreadsBackend_Start(chatId, title), cancellationToken).ConfigureAwait(false);
                 var chatChange = Change.Create(new ChatDiff {
-                    Title = chatThread.Title,
+                    Title = title,
                     Description = description,
                 });
-                var chat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
+                threadChat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
             }
 
             // Create thread chat entry.
@@ -78,6 +77,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             }
         }
 
-        return chatThread;
+        if (threadChat is null)
+            throw StandardError.Internal("Thread chat has not been created.");
+        return threadChat;
     }
 }

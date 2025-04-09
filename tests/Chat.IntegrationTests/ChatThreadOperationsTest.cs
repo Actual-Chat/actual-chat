@@ -1,13 +1,4 @@
-using ActualChat.Chat.Db;
-using ActualChat.Chat.Module;
-using ActualChat.Contacts;
 using ActualChat.Testing.Host;
-using ActualChat.Invite;
-using ActualChat.Queues;
-using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework;
-using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -21,14 +12,14 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
         var session = tester.Session;
-        var account = await tester.SignInAsUniqueBob();
+        await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
         var commander = tester.Commander;
         CancellationToken cancellationToken = default;
 
-        var (parentChatId, _) = await tester.CreateChat(false, title: "test chat");
+        var (parentChatId, _) = await tester.CreateChat(false);
         var parentChat = await chats.Get(session, parentChatId, cancellationToken).Require();
         var messages = new[] {
             "Hello!",
@@ -42,7 +33,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         }
 
         var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToApiArray();
-        var chatThread = await commander.Call(new ChatThreads_Start(session, parentChat.Id, "Thread#1", entryIdsForThread), cancellationToken);
+        var chatThread = await commander.Call(new ChatThreads_Start(session, parentChat.Id, "Thread#1", "Thread description", entryIdsForThread), cancellationToken);
         var chat = await chats.Get(session, chatThread.Id, cancellationToken);
         chat.Require();
 
@@ -59,5 +50,12 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         resultChatEntries[0].Content.Should().Be(parentChatEntries[0].Content);
         resultChatEntries[1].AuthorId.Should().Be(parentChatEntries[2].AuthorId);
         resultChatEntries[1].Content.Should().Be(parentChatEntries[2].Content);
+
+        var chatThreads = services.GetRequiredService<IChatThreads>();
+        await TestExt.When(async () => {
+            var availableThreads = await chatThreads.ListIds(session, parentChat.Id, cancellationToken);
+            availableThreads.Should().HaveCount(1);
+            availableThreads[0].Id.Should().Be(chat.Id);
+        }, TimeSpan.FromSeconds(10));
     }
 }

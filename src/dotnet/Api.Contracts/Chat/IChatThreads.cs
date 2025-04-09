@@ -8,7 +8,7 @@ public interface IChatThreads : IComputeService
     Task<ApiArray<ChatId>> ListIds(Session session, ChatId parentChatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<ChatThread> OnStart(ChatThreads_Start command, CancellationToken cancellationToken);
+    Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -19,4 +19,4 @@ public sealed partial record ChatThreads_Start(
     [property: DataMember, MemoryPackOrder(2)] string Title,
     [property: DataMember, MemoryPackOrder(3)] string Description,
     [property: DataMember, MemoryPackOrder(4)] ApiArray<TextEntryId> Entries
-) : ISessionCommand<ChatThread>, IApiCommand;
+) : ISessionCommand<Chat>, IApiCommand;

@@ -21,3 +21,8 @@ public sealed partial record ChatThread(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record ChatThreadDiff : RecordDiff
+{
+    [DataMember, MemoryPackOrder(0)] public string? Title { get; init; }
+}
