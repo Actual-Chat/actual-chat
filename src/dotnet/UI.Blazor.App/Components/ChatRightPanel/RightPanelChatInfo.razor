@@ -71,13 +71,10 @@
     }
 
     private Task OnNotificationToggleChanged(bool isMuted)
-        => UICommander.RunLocal(async cancellationToken => {
-            var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken).ConfigureAwait(false);
-            userChatSettings = userChatSettings with {
-                NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
-            };
-            await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
-        });
+        => UICommander.RunLocal(ct
+            => AccountSettings.UpdateUserChatSettings(Chat.Id,
+                x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, },
+                ct));
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
         if (Chat.IsSummarized == isSummarized)

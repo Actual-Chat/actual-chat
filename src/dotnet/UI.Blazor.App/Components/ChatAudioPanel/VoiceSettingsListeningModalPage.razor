@@ -60,11 +60,8 @@
     private async Task SetListeningMode(ListeningMode listeningMode) {
         var chatId = ChatId;
 
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default);
-        userChatSettings = userChatSettings with { ListeningMode = listeningMode };
-
         // Save new settings
-        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default);
+        await AccountSettings.UpdateUserChatSettings(chatId, x => x with { ListeningMode = listeningMode }, CancellationToken.None);
         if (listeningMode == ListeningMode.Forever) {
             await Hub.ChatAudioUI.SetListeningState(chatId, true);
             await AccountSettings.AddAlwaysListenedChat(chatId, default);

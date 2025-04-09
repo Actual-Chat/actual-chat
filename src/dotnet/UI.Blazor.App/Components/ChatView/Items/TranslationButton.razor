@@ -1,19 +1,48 @@
 @namespace ActualChat.UI.Blazor.App.Components
-
-@if (_enableIncompleteUI) {
-    <div class="translation-btn-wrapper">
-        <ButtonRound Class="translation-btn btn-sm">
-            <i class="icon-language text-2xl"></i>
-        </ButtonRound>
-    </div>
+@inherits ComputedStateComponent<TranslationButton.Model>
+@{
+    var m = State.Value;
+    if(!m.IsVisible)
+        return;
 }
 
-@code {
-    private bool _enableIncompleteUI;
+<div class="translation-btn-wrapper">
+    <ButtonRound Class="translation-btn btn-sm" Click="OnClick">
+        <i class="icon-language text-2xl"></i>
+    </ButtonRound>
+</div>
 
+@code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Features Features => Hub.Features();
+    private TranslationUI TranslationUI => Hub.TranslationUI;
+    private ModalUI ModalUI => Hub.ModalUI;
 
-    protected override async Task OnInitializedAsync() =>
-        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
+        if (!enableIncompleteUI)
+            return Model.None;
+
+        var isOn = await TranslationUI.IsOn(chatId, cancellationToken).ConfigureAwait(false);
+        return new(isOn == true, chatId);
+    }
+
+    private void OnClick()
+        => ModalUI.Show(new TranslationSettingsModal.Model(State.Value.ChatId));
+
+    // Nested types
+
+    public sealed record Model(bool IsVisible, ChatId ChatId) {
+        public static readonly Model None = new(false, ChatId.None);
+    }
 }

@@ -24,9 +24,9 @@ public class Translator(IServiceProvider services) : IHasServices
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
     [field: AllowNull, MaybeNull]
-    private string DetectLanguagesPrompt => field ??= File.ReadAllText(Settings.DetectLanguagesPromptFile);
+    private string DetectLanguagesPrompt => field ??= File.ReadAllText(Settings.DetectLanguagesPromptFile).RequireNonEmpty();
     [field: AllowNull, MaybeNull]
-    private string TranslatePromptTemplate => field ??= File.ReadAllText(Settings.TranslatePromptFile);
+    private string TranslatePromptTemplate => field ??= File.ReadAllText(Settings.TranslatePromptFile).RequireNonEmpty();
 
     public async Task<IReadOnlyList<Language[]>> DetectLanguages(IReadOnlyList<string> texts, CancellationToken cancellationToken)
     {

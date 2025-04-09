@@ -35,7 +35,7 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
     }
 
     [ComputeMethod]
-    public virtual async ValueTask<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);

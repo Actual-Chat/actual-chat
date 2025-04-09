@@ -375,7 +375,7 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          mkdir -p .config/prompts
+          mkdir -p ./.config/prompts
           cat <<- 'EOF' > ./.config/prompts/detect-languages.md
           ${{secrets.CHATSETTINGS_DETECTLANGUAGESPROMPT_BASE64}}
           EOF

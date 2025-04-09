@@ -201,6 +201,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         UpdateReadPosition(itemVisibility.MaxEntryLid);
+        ChatUI.ItemVisibility.Value = itemVisibility;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

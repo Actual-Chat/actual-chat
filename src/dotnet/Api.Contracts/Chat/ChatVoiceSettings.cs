@@ -5,12 +5,11 @@ namespace ActualChat.Chat;
 
 public sealed class ChatVoiceSettings(IServiceProvider services, AccountSettings accountSettings)
 {
-    private IChats? _chats;
-    private IAuthors? _authors;
-
     private IServiceProvider Services { get; } = services;
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
+    [field: AllowNull, MaybeNull]
+    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    [field: AllowNull, MaybeNull]
+    private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private AccountSettings AccountSettings { get; } = accountSettings;
 
     public async Task<ChatVoiceMode> Get(Session session, ChatId chatId, CancellationToken cancellationToken = default)
@@ -33,10 +32,6 @@ public sealed class ChatVoiceSettings(IServiceProvider services, AccountSettings
         if (!chatVoiceMode.CanChange)
             throw StandardError.Constraint("Voice streaming mode cannot be changed in this chat.");
 
-        var userChatSettings = await AccountSettings
-            .GetUserChatSettings(chatId, cancellationToken)
-            .ConfigureAwait(false);
-        userChatSettings = userChatSettings with { VoiceMode = voiceMode };
-        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
+        await AccountSettings.UpdateUserChatSettings(chatId, x => x with { VoiceMode = voiceMode }, CancellationToken.None).ConfigureAwait(false);
     }
 }

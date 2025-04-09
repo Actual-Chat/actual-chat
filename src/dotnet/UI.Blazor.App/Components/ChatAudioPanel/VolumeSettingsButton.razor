@@ -25,7 +25,7 @@
             });
 
     protected override Task<Language> ComputeState(CancellationToken cancellationToken)
-        => LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).AsTask();
+        => LanguageUI.GetChatLanguage(Chat.Id, cancellationToken);
 
     private void OnClick()
         => ModalUI.Show(new VoiceSettingsModal.Model(Chat.Id));
