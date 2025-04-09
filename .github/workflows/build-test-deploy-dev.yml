@@ -376,13 +376,8 @@ jobs:
           EOF
 
           mkdir -p ./.config/prompts
-          cat <<- 'EOF' > ./.config/prompts/detect-languages.md
-          ${{secrets.CHATSETTINGS_DETECTLANGUAGESPROMPT_BASE64}}
-          EOF
-
-          cat <<- 'EOF' > ./.config/prompts/translate.md
-          ${{secrets.CHATSETTINGS_TRANSLATEPROMPT_BASE64}}
-          EOF
+          echo -n "${{secrets.CHATSETTINGS_DETECTLANGUAGESPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__DetectLanguagesPromptFile }} >/dev/null
+          echo -n "${{secrets.CHATSETTINGS_TRANSLATEPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__TranslatePromptFile }} >/dev/null
 
           ./run-build.cmd integration-tests --configuration Debug
 
