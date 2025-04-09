@@ -92,3 +92,9 @@ public readonly partial struct Language : ISymbolIdentifier<Language>
         return false;
     }
 }
+
+public static class LanguageExt
+{
+    public static bool IsEnglish(this Language language)
+        => language.ShortTitle.Value.OrdinalStartsWith("en");
+}
