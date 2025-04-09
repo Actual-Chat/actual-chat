@@ -2,8 +2,8 @@ import { clamp } from 'math';
 
 export class Range<T> {
     constructor(
-        public start: T,
-        public end: T,
+        public readonly start: T,
+        public readonly end: T,
     ) {
     }
 

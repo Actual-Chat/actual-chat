@@ -164,7 +164,7 @@ export class VirtualList {
             this.spacerRef.style.display = 'none';
             this.endSpacerRef.style.display = 'flex';
         }
-        this.wrapperRef.style.height = `${spacerSize}px`;
+        this.wrapperRef.style.height = `100%`;
 
         // Events & observers
         const listenerOptions = { signal: this.abortController.signal, passive: true, };
@@ -499,7 +499,6 @@ export class VirtualList {
 
         const now = Date.now();
         if (existingResizedCount && (now - this.renderCompletedAt) > 500 && this.pivots.length > 0) {
-            console.warn('onResize: call restore scroll position!');
             void this.restoreScrollPosition(this.renderState);
         }
     };
@@ -1103,7 +1102,10 @@ export class VirtualList {
         let totalSize = 0;
         let spacerSize = 0;
         let endSpacerSize = 0;
+        let delayedSpacerSize = 0;
+        let delayedEndSpacerSize = 0;
         let totalSizeDiff = 0;
+        let isInteractivePositioning = false;
         // let stickyItems = new Array<HTMLLIElement>();
 
         // Cancel any pending viewport calculations
@@ -1118,7 +1120,7 @@ export class VirtualList {
                     this.ensureItemRangeCalculated();
 
                 const { start, end, size } = this.itemRange ?? new NumberRange(0,0);
-                const containerSize = size - (rs.hasVeryFirstItem ? this.rowGap : 0);
+                const containerSize = this.containerRef.offsetHeight;
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
                 // stickyItems = [...this.containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item:has(.sticky)')];
@@ -1209,8 +1211,26 @@ export class VirtualList {
                             const containerTranslateYOffset = containerTransformMatrix.m42;
                             const dTranslateOffset = offset - containerTranslateYOffset;
                             scrollTopOffset = dTopOffset + dTranslateOffset;
-
+                            isInteractivePositioning = true;
                             debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
+
+                            let delayedScrollTop = 0;
+                            // restore scroll position with delay to prevent scroll jump, double RAF is required there
+                            fastRaf(() => {
+                                fastRaf({
+                                    read: () => {
+                                        const viewportTopOffset = interactivePivot.offset;
+                                        const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
+                                        const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                                        const scrollTop = this.ref.scrollTop;
+                                        delayedScrollTop = scrollTop + dTopOffset;
+                                    },
+                                    write: () => {
+                                        this.ref.scrollTop = delayedScrollTop;
+                                    }
+                                });
+                            });
+
                         }
                         else
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
@@ -1227,10 +1247,14 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     endSpacerSize = -offset;
-                    if (rs.hasVeryFirstItem)
+                    if (rs.hasVeryFirstItem) {
                         spacerSize = 0;
-                    else
-                        spacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
+                        delayedSpacerSize = 0;
+                    }
+                    else {
+                        spacerSize = clamp(oldTotalSize - containerSize - endSpacerSize - endAnchorSize, 0, Infinity);
+                        delayedSpacerSize = clamp(totalSize - containerSize - endSpacerSize - endAnchorSize, 0, Infinity);
+                    }
                 }
                 else {
                     offset = start;
@@ -1256,8 +1280,25 @@ export class VirtualList {
                             const containerTranslateYOffset = containerTransformMatrix.m42;
                             const dTranslateOffset = offset - containerTranslateYOffset;
                             scrollTopOffset = dTopOffset + dTranslateOffset;
+                            isInteractivePositioning = true;
+                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
 
-                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset);
+                            let delayedScrollTop = 0;
+                            // restore scroll position with delay to prevent scroll jump, double RAF is required there
+                            fastRaf(() => {
+                                fastRaf({
+                                    read: () => {
+                                        const viewportTopOffset = interactivePivot.offset;
+                                        const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
+                                        const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                                        const scrollTop = this.ref.scrollTop;
+                                        delayedScrollTop = scrollTop + dTopOffset;
+                                    },
+                                    write: () => {
+                                        this.ref.scrollTop = delayedScrollTop;
+                                    }
+                                });
+                            });
                         }
                         else
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
@@ -1274,38 +1315,19 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     spacerSize = offset;
-                    endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
-                    if (rs.hasVeryLastItem)
+                    if (rs.hasVeryLastItem) {
                         endSpacerSize = 0;
-                    else
-                        endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
+                        delayedEndSpacerSize = 0;
+                    }
+                    else {
+                        endSpacerSize = clamp(oldTotalSize - containerSize - spacerSize - endAnchorSize, 0, Infinity);
+                        delayedEndSpacerSize = clamp(totalSize - containerSize - spacerSize - endAnchorSize, 0, Infinity);
+                    }
                 }
             },
             write: () => {
                 const showSpacer = spacerSize > 0;
                 const showEndSpacer = endSpacerSize > 0;
-
-                if (totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
-                    // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
-                    const setWrapperHeight = () => fastRaf({
-                        write: () => {
-                            if (this.isScrolling)
-                                this.turnOffScrollingCallback = setWrapperHeight;
-                            else {
-                                this.wrapperRef.style.height = totalSize + 'px';
-                                console.warn(
-                                    'restoreScrollPosition: wrapper size increased with DELAY!',
-                                    totalSize);
-                            }
-                        }});
-                    this.turnOffScrollingCallback = setWrapperHeight;
-
-                }
-                else if (totalSizeDiff != 0)
-                    this.wrapperRef.style.height = totalSize + 'px';
-                this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
-                // set negative offset translate to all sticky elements - does not work well
-                // stickyItems.forEach(sticky => sticky.style.transform = `translate3d(0, ${-offset}px, 0)`);
                 if (!showSpacer)
                     this.spacerRef.style.display = 'none';
                 else
@@ -1317,8 +1339,38 @@ export class VirtualList {
                 this.spacerRef.style.height = `${spacerSize}px`;
                 this.endSpacerRef.style.height = `${endSpacerSize}px`;
 
+                if (totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
+                    // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
+                    const setWrapperHeight = () => fastRaf({
+                        write: () => {
+                            if (this.isScrolling)
+                                this.turnOffScrollingCallback = setWrapperHeight;
+                            else {
+                                this.wrapperRef.style.height = `${totalSize}px`;
+                                this.spacerRef.style.height = `${delayedSpacerSize}px`;
+                                this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
+                                // console.warn(
+                                //     'restoreScrollPosition: wrapper size increased with DELAY!',
+                                //     totalSize);
+                            }
+                        }});
+                    this.turnOffScrollingCallback = setWrapperHeight;
+
+                }
+                else if (totalSizeDiff != 0) {
+                    this.wrapperRef.style.height = totalSize + 'px';
+                    this.spacerRef.style.height = `${delayedSpacerSize}px`;
+                    this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
+                }
+                else {
+                    this.spacerRef.style.height = `${delayedSpacerSize}px`;
+                    this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
+                }
+                this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
+                // set negative offset translate to all sticky elements - does not work well
+                // stickyItems.forEach(sticky => sticky.style.transform = `translate3d(0, ${-offset}px, 0)`);
+
                 if (scrollTopOffset) {
-                    console.warn('restoreScrollPosition: scrollTopOffset', scrollTopOffset);
                     this.ref.scrollTop = scrollTop + scrollTopOffset;
                 }
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
@@ -1335,7 +1387,8 @@ export class VirtualList {
             // Handle restore position synchronously after render
             options.read();
             options.write();
-            scrollMetadata?.scroll?.();
+            if (!isInteractivePositioning)
+                scrollMetadata?.scroll?.();
         }
 
         this.scrollPositionRestoredAt = Date.now();
@@ -1393,14 +1446,13 @@ export class VirtualList {
         if (this.shouldUpdateCornerstoneItem && (rs.hasVeryLastItem || rs.hasVeryLastItem)) {
             // We have to recalculate cornerstone item
             this.shouldUpdateCornerstoneItem = false;
-            console.warn('resetItemRange: recalculate ranges at the edge!');
             for (const item of orderedItems)
                 item.range = null;
         }
 
         let cornerstoneItemIndex = 0;
         let cornerstoneItem = orderedItems[0];
-        if (this.defaultEdge === VirtualListEdge.End && !rs.hasVeryLastItem) {
+        if (this.defaultEdge === VirtualListEdge.End) {
             cornerstoneItemIndex = orderedItems.length - 1;
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
             // Find first one from the end
@@ -1409,7 +1461,7 @@ export class VirtualList {
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
             }
         }
-        else if (this.defaultEdge === VirtualListEdge.Start && !rs.hasVeryFirstItem) {
+        else if (this.defaultEdge === VirtualListEdge.Start) {
             // Find first one from the start
             while (!cornerstoneItem.range && cornerstoneItemIndex < orderedItems.length - 1) {
                 cornerstoneItemIndex++;
@@ -1435,11 +1487,42 @@ export class VirtualList {
                 item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
                 prevItem = item;
             }
-
-            this.itemRange = new NumberRange(
-                orderedItems[0].range.start,
-                orderedItems[orderedItems.length - 1].range.end - this.rowGap);
         }
+
+        // Adjust item ranges according to default edge invariant
+        // if (this.defaultEdge === VirtualListEdge.End) {
+        //     const end = orderedItems[orderedItems.length - 1].range.end - this.rowGap;
+        //     if (end > 0) {
+        //         cornerstoneItemIndex = orderedItems.length - 1;
+        //         cornerstoneItem = orderedItems[cornerstoneItemIndex];
+        //         cornerstoneItem.range = new NumberRange(0 - cornerstoneItem.size, 0);
+        //         let prevItem = cornerstoneItem;
+        //         for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
+        //             const item = orderedItems[i];
+        //             item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+        //             prevItem = item;
+        //         }
+        //     }
+        // }
+        // else {
+        //     const start = orderedItems[0].range.start + this.rowGap;
+        //     if (start < 0) {
+        //         cornerstoneItemIndex = 0;
+        //         cornerstoneItem = orderedItems[cornerstoneItemIndex];
+        //         cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
+        //         let prevItem = cornerstoneItem;
+        //         for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
+        //             const item = orderedItems[i];
+        //             item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+        //             prevItem = item;
+        //         }
+        //     }
+        // }
+
+        this.itemRange = new NumberRange(
+            orderedItems[0].range.start,
+            orderedItems[orderedItems.length - 1].range.end - this.rowGap);
+
         this.minStart = Math.min(this.minStart ?? Number.MAX_SAFE_INTEGER, this.itemRange.start);
         if (this.renderState.hasVeryFirstItem)
             this.isStartKnown = true;
@@ -1451,7 +1534,6 @@ export class VirtualList {
     }
 
     private resetItemRange(canUseQueryRange: boolean = false): number | null {
-        console.warn('resetItemRange', canUseQueryRange);
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
@@ -1731,7 +1813,6 @@ export class VirtualList {
         let firstItem = orderedItems[firstItemIndex];
         let lastItem = orderedItems[lastItemIndex];
         if (!firstItem) {
-            console.warn('getDataQuery: firstItem not found', orderedItems, loadZone);
             if (orderedItems[0].range.start >= loadZone.end)
                 firstItem = orderedItems[0];
             else if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
@@ -1740,7 +1821,6 @@ export class VirtualList {
                 firstItem = orderedItems[0];
         }
         if (!lastItem) {
-            console.warn('getDataQuery: lastItem not found', orderedItems, loadZone);
             if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
                 lastItem = orderedItems[orderedItems.length - 1];
             else if (orderedItems[0].range.start >= loadZone.end)
