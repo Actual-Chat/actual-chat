@@ -78,7 +78,7 @@ public static class Languages
         English,
         EnglishUK,
         EnglishIN,
-        //Bengali,
+        // Bengali,
         French,
         FrenchCA,
         German,
@@ -93,21 +93,22 @@ public static class Languages
         Spanish,
         SpanishMX,
         SpanishUS,
-        //Tamil,
+        // Tamil,
         Thai,
         Turkish,
         Ukrainian,
         Vietnamese
     ];
 
-    public static readonly Dictionary<Symbol, Language> Map =
-        All.Select(x => new KeyValuePair<Symbol, Language>(x.Id, x))
-            .Concat(All.Select(x => new KeyValuePair<Symbol, Language>(x.Id.Value.ToLowerInvariant(), x)))
-            .Concat(All.Select(x => new KeyValuePair<Symbol, Language>(x.ShortTitle, x)))
-            .Concat(All.Select(x => new KeyValuePair<Symbol, Language>(x.ShortTitle.Value.ToLowerInvariant(), x)))
+    public static readonly Dictionary<string, Language> Map =
+        All.Select(x => new KeyValuePair<string, Language>(x.Id, x))
+            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.Id.Value.ToLowerInvariant(), x)))
+            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle, x)))
+            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle.Value.ToLowerInvariant(), x)))
             .DistinctBy(kv => kv.Key)
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
+            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 
-    public static readonly Dictionary<Symbol, Language> SupportedMap =
-        Map.Where(x => Supported.Contains(x.Value)).ToDictionary(x => x.Key, x => x.Value);
+    public static readonly Dictionary<string, Language> SupportedMap =
+        Map.Where(x => Supported.Contains(x.Value))
+            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 }
