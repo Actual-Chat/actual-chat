@@ -58,9 +58,6 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     // [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
     public async Task ShouldDetectLanguageOnUpdate(string updatedText, int entryCount, string sExpectedLanguages)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldDetectLanguageOnUpdate));
@@ -80,9 +77,6 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     [InlineData("Hola, cómo estás?", "en", "Hi! How are you?")]
     public async Task ShouldTranslateMessage(string sourceText, string targetLanguage, string expectedTranslation)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldTranslateMessage));
@@ -103,9 +97,6 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     [Fact]
     public async Task ShouldTranslateWithContextFromPreviousMessages()
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         const double minSimilarity = 0.7;
         await Tester.SignInAsUniqueAlice();
