@@ -7,8 +7,8 @@ public class ThreadSafeLruCache<TKey, TValue>(LruCache<TKey, TValue> cache)
     public object Lock { get; } = new();
     public LruCache<TKey, TValue> Cache { get; } = cache;
 
-    public ThreadSafeLruCache(int capacity)
-        : this(new LruCache<TKey, TValue>(capacity))
+    public ThreadSafeLruCache(int capacity, IEqualityComparer<TKey>? comparer = null)
+        : this(new LruCache<TKey, TValue>(capacity, comparer))
     { }
 
     public int Capacity {

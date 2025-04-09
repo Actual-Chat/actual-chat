@@ -16,7 +16,9 @@ public static class ExceptionExt
 
     public static Exception LogWarning(this Exception error, ILogger? log)
         => error.LogWarning(log, error);
-    public static T LogWarning<T>(this Exception error, ILogger? log, T result)
+
+    [return: NotNullIfNotNull(nameof(result))]
+    public static T? LogWarning<T>(this Exception error, ILogger? log, T? result)
     {
         ExceptionDispatchInfo.SetCurrentStackTrace(error);
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem

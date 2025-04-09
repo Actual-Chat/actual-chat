@@ -16,9 +16,12 @@ public class CachingKeyedFactory<
         Func<IServiceProvider, TKey, TService>? factory = null)
         : base(services, factory)
     {
+        var comparer = typeof(TKey) == typeof(string)
+            ? (IEqualityComparer<TKey>)StringComparer.Ordinal
+            : null;
         Cache = useConcurrentCache
-            ? new ConcurrentLruCache<TKey, TService>(capacity)
-            : new ThreadSafeLruCache<TKey, TService>(capacity);
+            ? new ConcurrentLruCache<TKey, TService>(capacity, comparer: comparer)
+            : new ThreadSafeLruCache<TKey, TService>(capacity, comparer);
         Factory = CachingFactory(factory ?? DefaultFactory);
     }
 
