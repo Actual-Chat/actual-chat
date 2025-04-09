@@ -1,31 +1,63 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<TranslationSettingsStartModalPage.Model>
+@{
+    var m = State.Value;
+}
 
 <FormBlock Class="first last">
-    <TileItem Class="c-language" Click="@OnClick">
+    <TileItem Class="c-language" Click="@OnLanguageSelectClick">
         <Icon><i class="icon-language text-2xl"></i></Icon>
         <Content>Translation language</Content>
         <Right>
-            Russian
+            @m.TargetLanguage.Title
         </Right>
     </TileItem>
 
-    <TileItem>
-        <Icon><i class="icon-diagonal-arrow-left-down text-2xl"></i></Icon>
-        <Content>Fold</Content>
-    </TileItem>
+    @* TODO(FC): Remove if not used *@
+    @* <TileItem> *@
+    @*     <Icon><i class="icon-diagonal-arrow-left-down text-2xl"></i></Icon> *@
+    @*     <Content>Fold</Content> *@
+    @* </TileItem> *@
 
-    <TileItem>
+    <TileItem Click="@OnDontTranslateClick">
         <Icon><i class="icon-alert-triangle text-2xl"></i></Icon>
         <Content>Don't translate and close</Content>
     </TileItem>
 </FormBlock>
 
 @code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
+
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized()
         => Context.Title = "Translation settings";
 
-    private void OnClick()
-        => Context.StepIn(DiveInDialogPage.New<TranslationSettingsLanguageModalPage>());
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Context.GetModel<ChatId>();
+        var targetLanguage = await TranslationUI.GetTargetLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        return new(targetLanguage, chatId);
+    }
+
+    private void OnLanguageSelectClick()
+        => Context.StepIn(DiveInDialogPage.New<TranslationSettingsLanguageModalPage>(State.Value.ChatId));
+
+    private async Task OnDontTranslateClick() {
+        await TranslationUI.SetIsOn(State.Value.ChatId, false);
+        Context.Close();
+    }
+
+    // Nested types
+
+    public sealed record Model(Language TargetLanguage, ChatId ChatId) {
+        public static readonly Model None = new(Language.None, ChatId.None);
+    }
 }

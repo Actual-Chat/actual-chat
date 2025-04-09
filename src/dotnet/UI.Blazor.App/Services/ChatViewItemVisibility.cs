@@ -1,19 +1,22 @@
-namespace ActualChat.UI.Blazor.App.Components;
+namespace ActualChat.UI.Blazor.App.Services;
 
 // EntryLid = Entry's LocalId
 public sealed record ChatViewItemVisibility(
+    ChatId ChatId,
     IReadOnlySet<long> VisibleEntryLids,
     bool IsEndAnchorVisible)
 {
-    public static readonly ChatViewItemVisibility Empty = new(ImmutableHashSet<long>.Empty, false);
+    public static readonly ChatViewItemVisibility Empty = new(ChatId.None, ImmutableHashSet<long>.Empty, false);
 
     // EntryLid = Entry's LocalId
     public long MinEntryLid { get; } = VisibleEntryLids.Count == 0 ? -1 : VisibleEntryLids.Min();
     public long MaxEntryLid { get; } = VisibleEntryLids.Count == 0 ? -1 : VisibleEntryLids.Max();
     public bool IsEmpty => VisibleEntryLids.Count == 0;
+    public IEnumerable<ChatEntryId> VisibleEntryIds => VisibleEntryLids.Select(lid => new ChatEntryId(ChatId, ChatEntryKind.Text, lid, AssumeValid.Option));
 
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
+            new ChatId(source.ListIdentity),
             source.VisibleKeys.Select(k => NumberExt.TryParseLong(k, out var lid) ? lid : 0).Where(lid => lid > 0).ToHashSet(),
             source.IsEndAnchorVisible)
     { }
@@ -26,8 +29,12 @@ public sealed record ChatViewItemVisibility(
 
     public bool IsIdenticalTo(ChatViewItemVisibility other)
     {
+        if (ChatId != other.ChatId)
+            return false;
+
         if (VisibleEntryLids.Count != other.VisibleEntryLids.Count)
             return false;
+
         if (IsEndAnchorVisible != other.IsEndAnchorVisible)
             return false;
 

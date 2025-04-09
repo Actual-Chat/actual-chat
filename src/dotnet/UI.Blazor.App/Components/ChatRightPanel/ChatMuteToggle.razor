@@ -40,11 +40,10 @@
     }
 
     private Task OnValueChanged(bool isMuted)
-        => UICommander.RunLocal(async cancellationToken => {
-            var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken).ConfigureAwait(false);
-            userChatSettings = userChatSettings with {
-                NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
-            };
-            await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
-        });
+        => UICommander.RunLocal(cancellationToken
+            => AccountSettings.UpdateUserChatSettings(Chat.Id,
+                x => x with {
+                    NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
+                },
+                cancellationToken));
 }

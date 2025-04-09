@@ -6,43 +6,40 @@ public class DiveInModalPageContext
 {
     private readonly IDiveInModalContext _modalContext;
     private readonly DiveInDialogPage _page;
-    private string _title = "";
-    private string _class = "";
-    private DialogButtonInfo[] _buttons = [];
 
     public object? Model => _page.Model;
     public IDictionary<string, object> PageDataBag { get; } = new Dictionary<string, object>(StringComparer.Ordinal);
     public IDictionary<string, object> ModalDataBag => _modalContext.DataBag;
 
     public string Title {
-        get => _title;
+        get;
         set {
             if (OrdinalEquals(Title, value))
                 return;
 
-            _title = value ?? throw new ArgumentOutOfRangeException(nameof(value));
+            field = value ?? throw new ArgumentOutOfRangeException(nameof(value));
             StateHasChanged();
         }
-    }
+    } = "";
 
     public string Class {
-        get => _class;
+        get;
         set {
-            if (OrdinalEquals(_class, value))
+            if (OrdinalEquals(field, value))
                 return;
 
-            _class = value ?? throw new ArgumentOutOfRangeException(nameof(value));
+            field = value ?? throw new ArgumentOutOfRangeException(nameof(value));
             StateHasChanged();
         }
-    }
+    } = "";
 
     public DialogButtonInfo[] Buttons {
-        get => _buttons;
+        get;
         set {
-            _buttons = value ?? throw new ArgumentOutOfRangeException(nameof(value));
+            field = value ?? throw new ArgumentOutOfRangeException(nameof(value));
             StateHasChanged();
         }
-    }
+    } = [];
 
     // ReSharper disable once ConvertToPrimaryConstructor
     public DiveInModalPageContext(IDiveInModalContext modalContext, DiveInDialogPage page)

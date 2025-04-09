@@ -96,6 +96,8 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
     [field: AllowNull, MaybeNull]
     public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
+    [field: AllowNull, MaybeNull]
+    public TranslationUI TranslationUI => field ??= Services.GetRequiredService<TranslationUI>();
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

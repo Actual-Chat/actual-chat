@@ -29,7 +29,7 @@ public class LanguageDetectionSerializer(IServiceProvider services)
                 return Empty(expectedCount);
 
             var resultMap =
-                response.Languages.ToDictionary(x => x.Id, x => x.Languages.Select(Language.ParseOrNone).ToArray());
+                response.Languages.ToDictionary(x => x.Id, x => x.Languages.Select(Language.ParseOrNone).Distinct().ToArray());
             return [..Enumerable.Range(1, expectedCount).Select(i => resultMap.GetValueOrDefault(i, []))];
         }
         catch (Exception e) {

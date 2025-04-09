@@ -73,6 +73,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // ChatRouletteUI
         fusion.AddService<RouletteUI>(ServiceLifetime.Scoped);
 
+        // TranslationUI
+        fusion.AddService<TranslationUI>(ServiceLifetime.Scoped);
+
         // IMarkupViews
         services.AddTypeMapper<IMarkupView>(map => map
             .Add<NewLineMarkup, NewLineMarkupView>()
