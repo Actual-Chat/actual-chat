@@ -131,10 +131,12 @@ body.hoverable .playable-text-markup > span:hover {
 
 ol.list-markup {
     /*@apply flex-y;*/
+    @apply inline-block;
     @apply list-decimal list-inside;
 }
 ul.list-markup {
     /*@apply flex-y;*/
+    @apply inline-block;
     @apply list-disc list-inside;
 }
 
