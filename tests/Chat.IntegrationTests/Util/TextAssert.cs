@@ -8,6 +8,6 @@ public class TextAssert
         var expectedWords = expectedText.SplitIntoWords();
         var intersectingWords = expectedWords.Intersect(translatedWords, StringComparer.OrdinalIgnoreCase).ToHashSet();
         var similarity = (double)intersectingWords.Count / Math.Max(translatedWords.Length, expectedWords.Length);
-        similarity.Should().BeGreaterThanOrEqualTo(minSimilarity);
+        similarity.Should().BeGreaterThanOrEqualTo(minSimilarity, "Text: <<{0}>> \r\nExpected: <<{1}>>", text, expectedText);
     }
 }
