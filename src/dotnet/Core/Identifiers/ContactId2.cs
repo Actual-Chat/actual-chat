@@ -11,25 +11,42 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ContactId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<ContactId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class ContactId2(string value, UserId2 ownerId, ChatId2 chatId, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<ContactId2>
+public sealed class ContactId2 : StringIdentifier, IStringIdentifier<ContactId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ContactId2>();
-    private static readonly ILruCache<string, ContactId2> Cache = CreateCache<ContactId2>(256);
+    private static readonly ILruCache<string, ContactId2> Cache = CreateCache<ContactId2>(512);
 
     [IgnoreDataMember]
-    public UserId2 OwnerId { get; } = ownerId;
+    public UserId2 OwnerId { get; }
     [IgnoreDataMember]
-    public ChatId2 ChatId { get; } = chatId;
+    public ChatId2 ChatId { get; }
 
-    // Factories
+    // Factories and constructors
 
-    public static ContactId2 New(UserId2 ownerId, ChatId2 chatId)
-        => new(Format(ownerId, chatId), ownerId, chatId, AssumeValid.Option);
+    public static ContactId2 NewAny(UserId2 ownerId, ChatId2 chatId)
+        => new(Format(ownerId, chatId), ownerId, chatId);
+
+    public static ContactId2 NewGroup(UserId2 ownerId, GroupChatId groupChatId)
+        => new(Format(ownerId, groupChatId), ownerId, groupChatId);
+
+    public static ContactId2 NewPlace(UserId2 ownerId, PlaceId2 placeId)
+    {
+        var chatId = placeId.RootChatId;
+        return new (Format(ownerId, chatId), ownerId, chatId);
+    }
 
     public static ContactId2 NewPeer(UserId2 ownerId, UserId2 otherUserId)
-        => New(ownerId, PeerChatId2.New(ownerId, otherUserId).AsChatId);
+    {
+        var chatId = PeerChatId2.New(ownerId, otherUserId);
+        return new ContactId2(Format(ownerId, chatId), ownerId, chatId);
+    }
+
+    private ContactId2(string value, UserId2 ownerId, ChatId2 chatId) : base(value)
+    {
+        OwnerId = ownerId;
+        ChatId = chatId;
+    }
 
     // Equality
 
@@ -75,10 +92,10 @@ public sealed class ContactId2(string value, UserId2 ownerId, ChatId2 chatId, As
             return false;
         if (!ChatId2.TryParse(s[(ownerIdLength + 1)..], out var chatId))
             return false;
-        if (chatId.PeerChatId is { } peerChatId && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
+        if (chatId is PeerChatId2 peerChatId && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
             return false;
 
-        result = new ContactId2(s, ownerId, chatId, AssumeValid.Option);
+        result = new ContactId2(s, ownerId, chatId);
         result = Cache.AddOrGet(s, result);
         return true;
     }
@@ -87,7 +104,7 @@ public sealed class ContactId2(string value, UserId2 ownerId, ChatId2 chatId, As
 public static class ContactId2Ext
 {
     public static UserId2? GetOtherUserId(this ContactId2 id)
-        => id.ChatId.PeerChatId is { } peerChatId
+        => id.ChatId is PeerChatId2 peerChatId
             ? peerChatId.AnotherUserIdOrNull(id.OwnerId)
             : null;
 }

@@ -11,24 +11,21 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<PeerChatId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<PeerChatId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class PeerChatId2(string value, UserId2 userId1, UserId2 userId2, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<PeerChatId2>
+public sealed class PeerChatId2 : ChatId2, IStringIdentifier<PeerChatId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PeerChatId2>();
-    private static readonly ILruCache<string, PeerChatId2> Cache = CreateCache<PeerChatId2>(256);
 
     public static readonly string IdPrefix = "p-";
 
     [IgnoreDataMember]
-    public UserId2 UserId1 { get; } = userId1;
+    public UserId2 UserId1 { get; }
     [IgnoreDataMember]
-    public UserId2 UserId2 { get; } = userId2;
+    public UserId2 UserId2 { get; }
     [IgnoreDataMember]
     public (UserId2 UserId1, UserId2 UserId2) UserIds => (UserId1, UserId2);
 
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
-    public ChatId2 AsChatId => field ??= ChatId2.Get(this);
+    // Factories and constructors
 
     public static PeerChatId2 New(UserId2 userId1, UserId2 userId2)
     {
@@ -36,7 +33,14 @@ public sealed class PeerChatId2(string value, UserId2 userId1, UserId2 userId2, 
             throw new ArgumentOutOfRangeException(nameof(userId2), "Both user IDs are the same.");
 
         (userId1, userId2) = (userId1, userId2).Sort(UserId2.Comparer);
-        return new(Format(userId1, userId2), userId1, userId2, AssumeValid.Option);
+        return new(Format(userId1, userId2), userId1, userId2);
+    }
+
+    internal PeerChatId2(string value, UserId2 userId1, UserId2 userId2)
+        : base(value, ChatKind.Peer)
+    {
+        UserId1 = userId1;
+        UserId2 = userId2;
     }
 
     // Helpers
@@ -89,7 +93,7 @@ public sealed class PeerChatId2(string value, UserId2 userId1, UserId2 userId2, 
         => UserIds.OtherThanOrDefault(userId);
 
     public AuthorId2 AnotherAuthorId(UserId2 userId)
-        => AuthorId2.New(AsChatId, UserId1 == userId ? 2 : 1);
+        => AuthorId2.New(this, UserId1 == userId ? 2 : 1);
 
     // Equality
 
@@ -110,40 +114,20 @@ public sealed class PeerChatId2(string value, UserId2 userId1, UserId2 userId2, 
 
     // Format & Parse
 
-    private static string Format(UserId2 userId1, UserId2 userId2)
+    public static string Format(UserId2 userId1, UserId2 userId2)
         => $"{IdPrefix}{userId1}-{userId2}";
 
-    public static PeerChatId2 Parse(string? s)
+    public static new PeerChatId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PeerChatId2>(s);
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out PeerChatId2? result)
     {
-        result = null;
-        if (s.IsNullOrEmpty())
+        if (!ChatId2.TryParse(s, out var chatEntryId)) {
+            result = null;
             return false;
-
-        if (Cache.TryGetValue(s, out var cached)) {
-            result = cached;
-            return true;
         }
 
-        if (!s.OrdinalStartsWith(IdPrefix))
-            return false;
-
-        var tail = s.AsSpan(2);
-        var userId1Length = tail.IndexOf('-');
-        if (userId1Length < 0)
-            return false;
-
-        if (!UserId2.TryParse(tail[..userId1Length].ToString(), out var userId1))
-            return false;
-        if (!UserId2.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2))
-            return false;
-        if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
-            return false; // Wrong sort order or they are the same
-
-        result = new PeerChatId2(s, userId1, userId2, AssumeValid.Option);
-        result = Cache.AddOrGet(s, result);
-        return true;
+        result = chatEntryId as PeerChatId2;
+        return result is not null;
     }
 }

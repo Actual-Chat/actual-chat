@@ -17,7 +17,7 @@ public class ChatEntryId2 : StringIdentifier, IStringIdentifier<ChatEntryId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatEntryId2>();
-    private static readonly ILruCache<string, ChatEntryId2> Cache = CreateCache<ChatEntryId2>(256);
+    private static readonly ILruCache<string, ChatEntryId2> Cache = CreateCache<ChatEntryId2>(2048);
 
     [IgnoreDataMember]
     public ChatId2 ChatId { get; }
@@ -26,7 +26,7 @@ public class ChatEntryId2 : StringIdentifier, IStringIdentifier<ChatEntryId2>
     [IgnoreDataMember]
     public long LocalId { get; }
 
-    // Factories
+    // Factories and constructors
 
     public static ChatEntryId2 New(ChatId2 chatId, ChatEntryKind kind, long localId)
         => kind switch {
@@ -35,10 +35,7 @@ public class ChatEntryId2 : StringIdentifier, IStringIdentifier<ChatEntryId2>
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
 
-    // Constructor
-
-    protected ChatEntryId2(string value, ChatId2 chatId, ChatEntryKind kind, long localId, AssumeValid _)
-        : base(value)
+    protected ChatEntryId2(string value, ChatId2 chatId, ChatEntryKind kind, long localId) : base(value)
     {
         ChatId = chatId;
         Kind = kind;
@@ -103,8 +100,8 @@ public class ChatEntryId2 : StringIdentifier, IStringIdentifier<ChatEntryId2>
             return false;
 
         result = (ChatEntryKind)kind switch {
-            ChatEntryKind.Text => new TextEntryId2(s, chatId, localId, AssumeValid.Option),
-            ChatEntryKind.Audio => new AudioEntryId(s, chatId, localId, AssumeValid.Option),
+            ChatEntryKind.Text => new TextEntryId2(s, chatId, localId),
+            ChatEntryKind.Audio => new AudioEntryId(s, chatId, localId),
             _ => null,
         };
         if (result == null)

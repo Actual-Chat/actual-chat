@@ -11,18 +11,27 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<Language2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<Language2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class Language2(string value, string shortTitle, string title, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<Language2>
+public sealed class Language2 : StringIdentifier, IStringIdentifier<Language2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Language2>();
 
     [IgnoreDataMember]
-    public string ShortTitle { get; } = shortTitle;
+    public string ShortTitle { get; }
     [IgnoreDataMember]
-    public string Title { get; } = title;
+    public string Title { get; }
     [IgnoreDataMember]
-    public bool IsAnyEnglish { get; } = shortTitle.OrdinalStartsWith("en");
+    public bool IsAnyEnglish { get; }
+
+    // Factories and constructors
+
+    internal Language2(string value, string shortTitle, string title)
+        : base(value)
+    {
+        ShortTitle = shortTitle;
+        Title = title;
+        IsAnyEnglish = shortTitle.OrdinalStartsWith("en");
+    }
 
     // Equality
 

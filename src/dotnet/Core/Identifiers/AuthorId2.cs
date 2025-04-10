@@ -11,22 +11,27 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<AuthorId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<AuthorId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class AuthorId2(string value, ChatId2 chatId, long localId, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<AuthorId2>
+public sealed class AuthorId2 : PrincipalId2, IStringIdentifier<AuthorId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<AuthorId2>();
-    private static readonly ILruCache<string, AuthorId2> Cache = CreateCache<AuthorId2>(256);
+    private static readonly ILruCache<string, AuthorId2> Cache = CreateCache<AuthorId2>(512);
 
     [IgnoreDataMember]
-    public ChatId2 ChatId { get; } = chatId;
+    public ChatId2 ChatId { get; }
     [IgnoreDataMember]
-    public long LocalId { get; } = localId;
+    public long LocalId { get; }
 
-    // Factories
+    // Factories and constructors
 
     public static AuthorId2 New(ChatId2 chatId, long localId)
-        => new(Format(chatId, localId), chatId, localId, AssumeValid.Option);
+        => new(Format(chatId, localId), chatId, localId);
+
+    private AuthorId2(string value, ChatId2 chatId, long localId) : base(value, PrincipalKind.Author)
+    {
+        ChatId = chatId;
+        LocalId = localId;
+    }
 
     // Equality
 
@@ -50,7 +55,7 @@ public sealed class AuthorId2(string value, ChatId2 chatId, long localId, Assume
     public static string Format(ChatId2 chatId, long localId)
         => $"{chatId.Value}:{localId.Format()}";
 
-    public static AuthorId2 Parse(string? s)
+    public static new AuthorId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId2>(s);
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out AuthorId2? result)
@@ -75,7 +80,7 @@ public sealed class AuthorId2(string value, ChatId2 chatId, long localId, Assume
         if (!NumberExt.TryParseLong(tail, out var localId))
             return false;
 
-        result = new AuthorId2(s, chatId, localId, AssumeValid.Option);
+        result = new AuthorId2(s, chatId, localId);
         result = Cache.AddOrGet(s, result);
         return true;
     }

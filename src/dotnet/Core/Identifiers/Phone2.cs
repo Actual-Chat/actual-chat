@@ -12,23 +12,29 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<Phone2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<Phone2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class Phone2(string value, string code, string number, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<Phone2>
+public sealed class Phone2 : StringIdentifier, IStringIdentifier<Phone2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Phone2>();
     private static readonly ILruCache<string, Phone2> Cache = CreateCache<Phone2>(256);
-    private const char Delimiter = '-';
+
+    public const char Delimiter = '-';
 
     [IgnoreDataMember]
-    public string Code { get; } = code;
+    public string Code { get; }
     [IgnoreDataMember]
-    public string Number { get; } = number;
+    public string Number { get; }
 
-    // Factories
+    // Factories and constructors
 
     public static Phone2 New(string code, string number)
-        => new(Format(code, number), code, number, AssumeValid.Option);
+        => new(Format(code, number), code, number);
+
+    private Phone2(string value, string code, string number) : base(value)
+    {
+        Code = code;
+        Number = number;
+    }
 
     // Normalization
 
@@ -93,7 +99,7 @@ public sealed class Phone2(string value, string code, string number, AssumeValid
         if (!code.All(char.IsDigit) || !number.All(char.IsDigit))
             return false;
 
-        result = new Phone2(s, code, number, AssumeValid.Option);
+        result = new Phone2(s, code, number);
         result = Cache.AddOrGet(s, result);
         return true;
     }

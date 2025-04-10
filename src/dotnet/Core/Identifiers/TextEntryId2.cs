@@ -11,16 +11,20 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<TextEntryId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<TextEntryId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class TextEntryId2(string value, ChatId2 chatId, long localId, AssumeValid _)
-    : ChatEntryId2(value, chatId, ChatEntryKind.Text, localId, AssumeValid.Option), IStringIdentifier<TextEntryId2>
+public sealed class TextEntryId2 : ChatEntryId2, IStringIdentifier<TextEntryId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<TextEntryId2>();
 
-    // Factories
+    // Factories and constructors
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TextEntryId2 New(ChatId2 chatId, long localId)
-        => new(Format(chatId, ChatEntryKind.Text, localId), chatId, localId, AssumeValid.Option);
+        => new(Format(chatId, ChatEntryKind.Text, localId), chatId, localId);
+
+    internal TextEntryId2(string value, ChatId2 chatId, long localId)
+        : base(value, chatId, ChatEntryKind.Text, localId)
+    { }
 
     // Equality
 

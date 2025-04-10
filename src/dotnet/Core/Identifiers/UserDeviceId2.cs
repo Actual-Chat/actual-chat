@@ -11,23 +11,29 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<UserDeviceId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<UserDeviceId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class UserDeviceId2(string value, UserId2 ownerId, string deviceId, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<UserDeviceId2>
+public sealed class UserDeviceId2 : StringIdentifier, IStringIdentifier<UserDeviceId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UserDeviceId2>();
-    private static readonly ILruCache<string, UserDeviceId2> Cache = CreateCache<UserDeviceId2>(256);
-    private const char Delimiter = ':';
+    private static readonly ILruCache<string, UserDeviceId2> Cache = CreateCache<UserDeviceId2>(16, 256);
+
+    public const char Delimiter = ':';
 
     [IgnoreDataMember]
-    public UserId2 OwnerId { get; } = ownerId;
+    public UserId2 OwnerId { get; }
     [IgnoreDataMember]
-    public string DeviceId { get; } = deviceId;
+    public string DeviceId { get; }
 
-    // Factories
+    // Factories and constructors
 
     public UserDeviceId2 New(UserId2 ownerId, string deviceId)
-        => new(Format(ownerId, deviceId), ownerId, deviceId, AssumeValid.Option);
+        => new(Format(ownerId, deviceId), ownerId, deviceId);
+
+    private UserDeviceId2(string value, UserId2 ownerId, string deviceId) : base(value)
+    {
+        OwnerId = ownerId;
+        DeviceId = deviceId;
+    }
 
     // Equality
 
@@ -72,7 +78,7 @@ public sealed class UserDeviceId2(string value, UserId2 ownerId, string deviceId
         if (!UserId2.TryParse(parts[0], out var ownerId))
             return false;
 
-        result = new UserDeviceId2(s, ownerId, parts[1], AssumeValid.Option);
+        result = new UserDeviceId2(s, ownerId, parts[1]);
         result = Cache.AddOrGet(s, result);
         return true;
     }

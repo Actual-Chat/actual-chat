@@ -14,29 +14,39 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<MediaId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<MediaId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class MediaId2(string value, string scope, string localId, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<MediaId2>
+public sealed class MediaId2 : StringIdentifier, IStringIdentifier<MediaId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<MediaId2>();
-    private static readonly ILruCache<string, MediaId2> Cache = CreateCache<MediaId2>(256);
+    private static readonly ILruCache<string, MediaId2> Cache = CreateCache<MediaId2>(128);
     private static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
+
     public const char Delimiter = ':';
 
     [IgnoreDataMember]
-    public string Scope { get; } = scope;
+    public string Scope { get; }
     [IgnoreDataMember]
-    public string LocalId { get; } = localId;
+    public string LocalId { get; }
 
     [IgnoreDataMember] [field: AllowNull, MaybeNull]
     private string SecureHash
         => field ??= Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 
+    // Factories and constructors
+
     public static MediaId2 New(string scope)
     {
         var localId = IdGenerator.Next();
-        return new MediaId2(Format(scope, localId), scope, localId, AssumeValid.Option);
+        return new MediaId2(Format(scope, localId), scope, localId);
     }
+
+    private MediaId2(string value, string scope, string localId) : base(value)
+    {
+        Scope = scope;
+        LocalId = localId;
+    }
+
+    // Helpers
 
     public string GetContentId(string fileExt)
         => $"media/{SecureHash}/{LocalId}{fileExt}";
@@ -92,7 +102,7 @@ public sealed class MediaId2(string value, string scope, string localId, AssumeV
         if (!Alphabet.AlphaNumeric.IsMatch(localId))
             return false;
 
-        result = new MediaId2(s, scope, localId, AssumeValid.Option);
+        result = new MediaId2(s, scope, localId);
         result = Cache.AddOrGet(s, result);
         return true;
     }

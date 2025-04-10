@@ -49,7 +49,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceId PlaceId => PlaceChatId.PlaceId;
 
-    // Factories
+    // Factories and constructors
 
     public static ChatId Group(Symbol chatId)
         => new(chatId, default, default, AssumeValid.Option);

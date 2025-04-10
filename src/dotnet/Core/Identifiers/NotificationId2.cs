@@ -11,24 +11,30 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<NotificationId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<NotificationId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class NotificationId2(string value, UserId userId, NotificationKind kind, Symbol similarityKey, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<NotificationId2>
+public sealed class NotificationId2 : StringIdentifier, IStringIdentifier<NotificationId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<NotificationId2>();
-    private static readonly ILruCache<string, NotificationId2> Cache = CreateCache<NotificationId2>(256);
+    private static readonly ILruCache<string, NotificationId2> Cache = CreateCache<NotificationId2>(64, 256);
 
     [IgnoreDataMember]
-    public UserId UserId { get; } = userId;
+    public UserId UserId { get; }
     [IgnoreDataMember]
-    public NotificationKind Kind { get; } = kind;
+    public NotificationKind Kind { get; }
     [IgnoreDataMember]
-    public Symbol SimilarityKey { get; } = similarityKey;
+    public Symbol SimilarityKey { get; }
 
-    // Factories
+    // Factories and constructors
 
     public static NotificationId2 New(UserId userId, NotificationKind kind, Symbol similarityKey)
-        => new(Format(userId, kind, similarityKey), userId, kind, similarityKey, AssumeValid.Option);
+        => new(Format(userId, kind, similarityKey), userId, kind, similarityKey);
+
+    private NotificationId2(string value, UserId userId, NotificationKind kind, Symbol similarityKey) : base(value)
+    {
+        UserId = userId;
+        Kind = kind;
+        SimilarityKey = similarityKey;
+    }
 
     // Equality
 
@@ -85,7 +91,7 @@ public sealed class NotificationId2(string value, UserId userId, NotificationKin
             return false;
 
         var similarityKey = (Symbol)s[(kindLength + 1)..];
-        result = new NotificationId2(s, userId, (NotificationKind)kind, similarityKey, AssumeValid.Option);
+        result = new NotificationId2(s, userId, (NotificationKind)kind, similarityKey);
         result = Cache.AddOrGet(s, result);
         return true;
     }

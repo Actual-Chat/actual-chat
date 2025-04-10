@@ -12,18 +12,24 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<PlaceId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<PlaceId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class PlaceId2(string value, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<PlaceId2>
+public sealed class PlaceId2 : StringIdentifier, IStringIdentifier<PlaceId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PlaceId2>();
-    private static readonly ILruCache<string, PlaceId2> Cache = CreateCache<PlaceId2>(256);
-    private static RandomStringGenerator IdGenerator => ChatId2.IdGenerator;
+    private static readonly ILruCache<string, PlaceId2> Cache = CreateCache<PlaceId2>(32);
 
-    // Factories
+    public static readonly RandomStringGenerator IdGenerator = ChatId2.IdGenerator;
+
+    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    public PlaceChatId2 RootChatId => field ??= PlaceChatId2.Parse(PlaceChatId2.Format(this, this.Value));
+
+    // Factories and constructors
 
     public static PlaceId2 New()
-        => new(IdGenerator.Next(), AssumeValid.Option);
+        => new(IdGenerator.Next());
+
+    private PlaceId2(string value) : base(value)
+    { }
 
     // Equality
 
@@ -64,7 +70,7 @@ public sealed class PlaceId2(string value, AssumeValid _)
         if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Place.SystemPlaceIds.Contains(s)))
             return false;
 
-        result = new PlaceId2(s, AssumeValid.Option);
+        result = new PlaceId2(s);
         result = Cache.AddOrGet(s, result);
         return true;
     }

@@ -11,37 +11,41 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<PlaceChatId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<PlaceChatId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class PlaceChatId2(string value, PlaceId2 placeId, string localChatId, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<PlaceChatId2>
+public sealed class PlaceChatId2 : ChatId2, IStringIdentifier<PlaceChatId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PlaceChatId2>();
-    private static readonly ILruCache<string, PlaceChatId2> Cache = CreateCache<PlaceChatId2>(256);
 
     public static readonly string IdPrefix = "s-";
 
     [IgnoreDataMember]
-    public PlaceId2 PlaceId { get; } = placeId;
+    public PlaceId2 PlaceId { get; }
     [IgnoreDataMember]
-    public string LocalChatId { get; } = localChatId;
+    public string LocalChatId { get; }
     [IgnoreDataMember]
-    public bool IsRoot => string.Equals(PlaceId.Value, LocalChatId, StringComparison.Ordinal);
+    public bool IsRoot { get; }
 
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
-    public ChatId2 AsChatId => field ??= ChatId2.Get(this);
-
-    // Factories
+    // Factories and constructors
 
     public static PlaceChatId2 New(PlaceId2 placeId)
     {
-        var localChatId = ChatId2.IdGenerator.Next();
-        return new(Format(placeId, localChatId), placeId, localChatId, AssumeValid.Option);
+        var localChatId = IdGenerator.Next();
+        return new(Format(placeId, localChatId), placeId, localChatId, false);
     }
 
-    public static PlaceChatId2 NewRoot(PlaceId2 placeId)
+    internal PlaceChatId2(string value, PlaceId2 placeId, string localChatId)
+        : base(value, ChatKind.Place)
     {
-        var localChatId = placeId.Value;
-        return new(Format(placeId, localChatId), placeId, localChatId, AssumeValid.Option);
+        PlaceId = placeId;
+        LocalChatId = localChatId;
+        IsRoot = string.Equals(placeId.Value, localChatId, StringComparison.Ordinal);
+    }
+
+    private PlaceChatId2(string value, PlaceId2 placeId, string localChatId, bool isRoot)
+        : base(value, ChatKind.Place)
+    {
+        PlaceId = placeId;
+        LocalChatId = localChatId;
     }
 
     // Equality
@@ -66,37 +70,17 @@ public sealed class PlaceChatId2(string value, PlaceId2 placeId, string localCha
     public static string Format(PlaceId2 placeId, string localChatId)
         => $"{IdPrefix}{placeId}-{localChatId}";
 
-    public static PlaceChatId2 Parse(string? s)
+    public static new PlaceChatId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PlaceChatId2>(s);
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out PlaceChatId2? result)
     {
-        result = null;
-        if (s.IsNullOrEmpty())
+        if (!ChatId2.TryParse(s, out var chatId)) {
+            result = null;
             return false;
-
-        if (Cache.TryGetValue(s, out var cached)) {
-            result = cached;
-            return true;
         }
 
-        if (!s.OrdinalStartsWith(IdPrefix))
-            return false;
-
-        var tail = s.AsSpan(2);
-        var placeIdLength = tail.IndexOf('-');
-        if (placeIdLength < 0)
-            return false;
-
-        if (!PlaceId2.TryParse(tail[..placeIdLength].ToString(), out var placeId))
-            return false;
-        if (!ChatId2.TryParse(tail[(placeIdLength + 1)..].ToString(), out var localChatId))
-            return false;
-        if (localChatId.Kind != ChatKind.Group)
-            return false; // Both PlaceId and local ChatId must be there
-
-        result = new PlaceChatId2(s, placeId, localChatId.Value, AssumeValid.Option);
-        result = Cache.AddOrGet(s, result);
-        return true;
+        result = chatId as PlaceChatId2;
+        return result is not null;
     }
 }

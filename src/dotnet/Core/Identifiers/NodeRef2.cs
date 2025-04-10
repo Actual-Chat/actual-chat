@@ -13,18 +13,22 @@ namespace ActualChat;
 [TypeConverter(typeof(StringIdentifierTypeConverter<NodeRef2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public sealed class NodeRef2(string value, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<NodeRef2>
+public sealed class NodeRef2 : StringIdentifier, IStringIdentifier<NodeRef2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<NodeRef2>();
-    private static readonly ILruCache<string, NodeRef2> Cache = CreateCache<NodeRef2>(256);
+    private static readonly ILruCache<string, NodeRef2> Cache = CreateCache<NodeRef2>(64);
     private static readonly RandomStringGenerator IdGenerator = new(8, Alphabet.AlphaNumeric);
 
-    public static readonly NodeRef2 OwnNodeAlias = new("@", AssumeValid.Option);
+    public static readonly NodeRef2 OwnNodeAlias = new("@");
+
+    // Factories and constructors
 
     public static NodeRef2 New()
-        => new(IdGenerator.Next(), AssumeValid.Option);
+        => new(IdGenerator.Next());
+
+    private NodeRef2(string value) : base(value)
+    { }
 
     // Equality
 
@@ -62,7 +66,7 @@ public sealed class NodeRef2(string value, AssumeValid _)
         if (s.Length is < 6 or > 32 || !Alphabet.AlphaNumericDash.IsMatch(s))
             return false;
 
-        result = new NodeRef2(s, AssumeValid.Option);
+        result = new NodeRef2(s);
         result = Cache.AddOrGet(s, result);
         return true;
     }

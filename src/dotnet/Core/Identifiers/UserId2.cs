@@ -12,28 +12,30 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<UserId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<UserId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class UserId2(string value, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<UserId2>
+public sealed class UserId2 : PrincipalId2, IStringIdentifier<UserId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UserId>();
     private static readonly ILruCache<string, UserId2> Cache = CreateCache<UserId2>(256);
-    private static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
-    private static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
 
+    public static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
+    public static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
     public static readonly Comparer<UserId2> Comparer = Comparer<UserId2>.Default;
     public static readonly char GuestIdPrefixChar = '~';
 
     [IgnoreDataMember]
     public bool IsGuest => Value.Length != 0 && Value[0] == GuestIdPrefixChar;
 
-    // Factories
+    // Factories and constructors
 
     public static UserId2 New()
-        => new(IdGenerator.Next(), AssumeValid.Option);
+        => new(IdGenerator.Next());
 
     public static UserId2 NewGuest()
-        => new(GuestIdPrefixChar + GuestIdGenerator.Next(), AssumeValid.Option);
+        => new(GuestIdPrefixChar + GuestIdGenerator.Next());
+
+    private UserId2(string value) : base(value, PrincipalKind.User)
+    { }
 
     // Equality
 
@@ -54,7 +56,7 @@ public sealed class UserId2(string value, AssumeValid _)
 
     // Format & Parse
 
-    public static UserId2 Parse(string s)
+    public static new UserId2 Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserId2>(s);
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out UserId2? result)
@@ -81,7 +83,7 @@ public sealed class UserId2(string value, AssumeValid _)
             }
         }
 
-        result = new UserId2(s, AssumeValid.Option);
+        result = new UserId2(s);
         result = Cache.AddOrGet(s, result);
         return true;
     }

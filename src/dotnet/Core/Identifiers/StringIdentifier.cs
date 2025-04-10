@@ -3,6 +3,11 @@ using ActualLab.Rpc;
 
 namespace ActualChat;
 
+/* Remaining tasks:
+   - ChatId hierarchy
+   - Switch to new IDs
+*/
+
 public interface IStringIdentifier : IHasId<string>
 {
     public string Value { get; }

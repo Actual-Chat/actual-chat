@@ -11,25 +11,32 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<StreamId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<StreamId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class StreamId2(string value, NodeRef nodeRef, string localId, AssumeValid _)
-    : StringIdentifier(value), IStringIdentifier<StreamId2>
+public sealed class StreamId2 : StringIdentifier, IStringIdentifier<StreamId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<StreamId2>();
-    private static readonly ILruCache<string, StreamId2> Cache = CreateCache<StreamId2>(256);
-    private const char Delimiter = '-';
+    private static readonly ILruCache<string, StreamId2> Cache = CreateCache<StreamId2>(32);
 
-    private static Func<string> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();
+    public static Func<string> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();
+    public const char Delimiter = '-';
 
     [IgnoreDataMember]
-    public NodeRef NodeRef { get; } = nodeRef;
+    public NodeRef NodeRef { get; }
     [IgnoreDataMember]
-    public string LocalId { get; } = localId;
+    public string LocalId { get; }
+
+    // Factories and constructors
 
     public static StreamId2 New(NodeRef nodeRef)
     {
         var localId = LocalIdGenerator.Invoke();
-        return new(Format(nodeRef, localId), nodeRef, localId, AssumeValid.Option);
+        return new(Format(nodeRef, localId), nodeRef, localId);
+    }
+
+    private StreamId2(string value, NodeRef nodeRef, string localId) : base(value)
+    {
+        NodeRef = nodeRef;
+        LocalId = localId;
     }
 
     // Equality
@@ -79,7 +86,7 @@ public sealed class StreamId2(string value, NodeRef nodeRef, string localId, Ass
         if (localId.IsNullOrEmpty() || !Alphabet.AlphaNumericDash.IsMatch(localId))
             return false;
 
-        result = new StreamId2(s, nodeRef, localId, AssumeValid.Option);
+        result = new StreamId2(s, nodeRef, localId);
         result = Cache.AddOrGet(s, result);
         return true;
     }
