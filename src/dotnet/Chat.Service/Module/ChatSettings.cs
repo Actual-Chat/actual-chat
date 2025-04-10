@@ -18,6 +18,7 @@ public sealed class ChatSettings
     public FilePath TranslatePromptFile { get; set; } = "";
     public bool IsTranslationEnabled { get; set; }
     public int TranslationContextMessageCount { get; set; } = 10;
+    public string TranslationContextSeparator { get; set; } = "⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊";
 
     public bool IsSummarizationEnabled => !OpenAIApiKey.IsNullOrEmpty() && !OpenAIChatModel.IsNullOrEmpty();
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
