@@ -40,7 +40,7 @@ public class Translator(IServiceProvider services) : IHasServices
                 {Serializer.SerializeRequest(texts)}
                 ```
                 """;
-            var content = await Ask(DetectLanguagesPrompt, request, "", cancellationToken).ConfigureAwait(false);
+            var content = await Ask(DetectLanguagesPrompt, request, cancellationToken).ConfigureAwait(false);
             content = content.OrdinalIgnoreCaseReplace("```xml", "").OrdinalReplace("```", "");
             return Serializer.DeserializeResponse(content, texts.Count);
         }
@@ -50,20 +50,24 @@ public class Translator(IServiceProvider services) : IHasServices
         }
     }
 
-    public Task<string> Translate(string text, Language targetLanguage, string context = "", CancellationToken cancellationToken = default)
+    public Task<string> Translate(string textToTranslate, Language targetLanguage, string context = "", CancellationToken cancellationToken = default)
     {
-        text.RequireNonEmpty();
+        textToTranslate.RequireNonEmpty();
         if (!Settings.IsTranslationEnabled)
-            return Task.FromResult(text);
+            return Task.FromResult(textToTranslate);
 
-        var prompt = PromptUtils.BuildPrompt(TranslatePromptTemplate, ("TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})"));
-        return Ask(prompt, text, context, cancellationToken);
+        var prompt = PromptUtils.BuildPrompt(TranslatePromptTemplate, ("TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})"), ("ContextSeparator", Settings.TranslationContextSeparator));
+        var text = $"""
+                    {context}
+                    {Settings.TranslationContextSeparator}
+                    {textToTranslate}
+                    """;
+        return Ask(prompt, text, cancellationToken);
     }
 
-    private async Task<string> Ask(string instruction, string text, string context, CancellationToken cancellationToken)
+    private async Task<string> Ask(string instruction, string text, CancellationToken cancellationToken)
     {
         var history = new ChatHistory(new ChatMessageContent[] {
-            new (AuthorRole.User, context),
             new (AuthorRole.User, text),
         }.Where(x => !x.Content.IsNullOrEmpty()));
         var response = await ChatCompletionService

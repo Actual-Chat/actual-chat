@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -62,7 +63,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         Out.WriteLine($"Translated text:\n {translated}");
 
         // assert
-        TextAssert.ShouldBeSimilar(translated, expected, minSimilarity);
+        translated.Should().BeSimilarTo(expected, minSimilarity);
     }
 
     [Theory]
@@ -92,7 +93,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         Out.WriteLine($"Translated text: \n{translated}");
 
         // assert
-        TextAssert.ShouldBeSimilar(translated, expected, minSimilarity);
+        translated.Should().BeSimilarTo(expected, minSimilarity);
     }
 
     [Fact]
