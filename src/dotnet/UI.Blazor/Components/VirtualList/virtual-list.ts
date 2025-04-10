@@ -153,13 +153,13 @@ export class VirtualList {
 
         // Set positioning according to the default edge
         if (this.defaultEdge === VirtualListEdge.Start) {
-            this.containerRef.style.top = '0px';
+            this.containerRef.style.top = `${this.endAnchorSize}px`;
             this.ref.style.flexDirection = 'column';
             this.spacerRef.style.display = 'flex';
             this.endSpacerRef.style.display = 'none';
         }
         else {
-            this.containerRef.style.bottom = '0px';
+            this.containerRef.style.bottom = `${this.endAnchorSize}px`;
             this.ref.style.flexDirection = 'column-reverse';
             this.spacerRef.style.display = 'none';
             this.endSpacerRef.style.display = 'flex';
@@ -229,9 +229,6 @@ export class VirtualList {
 
             scrollToKey: null,
         };
-        fastRaf(() => {
-            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
-        });
 
         // set isRendering as soon as possible
         const origSetAttribute = this.renderIndexRef.setAttribute;
@@ -254,6 +251,8 @@ export class VirtualList {
         if (this.containerRef.classList.contains('hide')) {
             this.containerRef.classList.remove('hide');
         }
+        this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
+
         const mutationRecord: MutationRecord = {
             type: 'childList',
             addedNodes: this.containerRef.childNodes,
@@ -1119,7 +1118,7 @@ export class VirtualList {
                 if (!this.itemRange)
                     this.ensureItemRangeCalculated();
 
-                const { start, end, size } = this.itemRange ?? new NumberRange(0,0);
+                const { start, end } = this.itemRange ?? new NumberRange(0,0);
                 const containerSize = this.containerRef.offsetHeight;
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
@@ -1204,13 +1203,15 @@ export class VirtualList {
 
                         if (interactiveItemRef) {
                             const viewportTopOffset = interactivePivot.offset;
-                            const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
-                            const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
-                            const containerTransform = window.getComputedStyle(this.containerRef).transform;
-                            const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
-                            const containerTranslateYOffset = containerTransformMatrix.m42;
-                            const dTranslateOffset = offset - containerTranslateYOffset;
-                            scrollTopOffset = dTopOffset + dTranslateOffset;
+                            const isSticky = window.getComputedStyle(interactiveItemRef).position === 'sticky';
+                            const interactiveItemOffset = isSticky
+                                ? getOriginalPosition(interactiveItemRef)
+                                : interactiveItemRef.getBoundingClientRect().top;
+                            const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                            const oldContainerBottom = parseFloat(window.getComputedStyle(this.containerRef).bottom) || 0;
+                            const containerBottom = -offset;
+                            const dContainerBottom = containerBottom - oldContainerBottom;
+                            scrollTopOffset = dTopOffset + dContainerBottom;
                             isInteractivePositioning = true;
                             debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
 
@@ -1220,8 +1221,10 @@ export class VirtualList {
                                 fastRaf({
                                     read: () => {
                                         const viewportTopOffset = interactivePivot.offset;
-                                        const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
-                                        const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                                        const interactiveItemOffset = isSticky
+                                            ? getOriginalPosition(interactiveItemRef)
+                                            : interactiveItemRef.getBoundingClientRect().top;
+                                        const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
                                         const scrollTop = this.ref.scrollTop;
                                         delayedScrollTop = scrollTop + dTopOffset;
                                     },
@@ -1273,13 +1276,16 @@ export class VirtualList {
 
                         if (interactiveItemRef) {
                             const viewportTopOffset = interactivePivot.offset;
-                            const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
-                            const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
-                            const containerTransform = window.getComputedStyle(this.containerRef).transform;
-                            const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
-                            const containerTranslateYOffset = containerTransformMatrix.m42;
-                            const dTranslateOffset = offset - containerTranslateYOffset;
-                            scrollTopOffset = dTopOffset + dTranslateOffset;
+                            const isSticky = window.getComputedStyle(interactiveItemRef).position === 'sticky';
+                            const interactiveItemOffset = isSticky
+                                ? getOriginalPosition(interactiveItemRef)
+                                : interactiveItemRef.getBoundingClientRect().top;
+                            const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                            const oldContainerTop = parseFloat(window.getComputedStyle(this.containerRef).top) || 0;
+                            // noinspection UnnecessaryLocalVariableJS
+                            const containerTop = offset;
+                            const dContainerTop = containerTop - oldContainerTop;
+                            scrollTopOffset = dTopOffset + dContainerTop;
                             isInteractivePositioning = true;
                             debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
 
@@ -1289,8 +1295,10 @@ export class VirtualList {
                                 fastRaf({
                                     read: () => {
                                         const viewportTopOffset = interactivePivot.offset;
-                                        const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
-                                        const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
+                                        const interactiveItemOffset = isSticky
+                                            ? getOriginalPosition(interactiveItemRef)
+                                            : interactiveItemRef.getBoundingClientRect().top;
+                                        const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
                                         const scrollTop = this.ref.scrollTop;
                                         delayedScrollTop = scrollTop + dTopOffset;
                                     },
@@ -1366,10 +1374,12 @@ export class VirtualList {
                     this.spacerRef.style.height = `${delayedSpacerSize}px`;
                     this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
                 }
-                this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
-                // set negative offset translate to all sticky elements - does not work well
-                // stickyItems.forEach(sticky => sticky.style.transform = `translate3d(0, ${-offset}px, 0)`);
-
+                if (this.defaultEdge === VirtualListEdge.End) {
+                    this.containerRef.style.bottom = `${-offset}px`;
+                }
+                else {
+                    this.containerRef.style.top = `${offset}px`;
+                }
                 if (scrollTopOffset) {
                     this.ref.scrollTop = scrollTop + scrollTopOffset;
                 }
@@ -1443,7 +1453,7 @@ export class VirtualList {
         if (orderedItems.length == 0)
             return false;
 
-        if (this.shouldUpdateCornerstoneItem && (rs.hasVeryLastItem || rs.hasVeryLastItem)) {
+        if (this.shouldUpdateCornerstoneItem && (rs.hasVeryFirstItem || rs.hasVeryLastItem)) {
             // We have to recalculate cornerstone item
             this.shouldUpdateCornerstoneItem = false;
             for (const item of orderedItems)
@@ -1881,4 +1891,24 @@ function binarySearch<T>(array: T[], pred: (item: T) => boolean): number {
         return -1;
 
     return high;
+}
+
+function getOriginalPosition(element: HTMLElement): number {
+    // Store original inline styles
+    const originalPosition = element.style.position;
+    const originalTop = element.style.top;
+
+    // Temporarily set to static and remove top/left
+    element.style.position = 'static';
+    element.style.top = '';
+
+    // Calculate static position
+    const rect = element.getBoundingClientRect();
+    const staticTop = rect.top;
+
+    // Restore original inline styles
+    element.style.position = originalPosition;
+    element.style.top = originalTop;
+
+    return staticTop;
 }
