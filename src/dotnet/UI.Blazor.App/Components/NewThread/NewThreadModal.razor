@@ -16,7 +16,7 @@
 
         <FormSection
             For="() => _form.Title"
-            Label="Title"
+            Label="Smart title"
             InputId="@_form.TitleId"
             IsLabelInsideInput="true"
             Class="!mt-0 grow"
@@ -29,16 +29,21 @@
         </FormSection>
         <FormSection
             For="() => _form.Description"
-            Label="Description"
+            Label="Smart description"
             InputId="@_form.DescriptionId"
             IsLabelInsideInput="true"
             Class="!mt-0 grow">
-            <TextBox
+            <InputTextArea
                 @bind-Value="@_form.Description"
-                Id="@_form.DescriptionId"
-                Autofocus="false"
-                Autocomplete="false"/>
+                id="@_form.DescriptionId"
+                rows="6" />
         </FormSection>
+        @if (_generatingSmartTitle) {
+            <div>
+                <span>Busy generating smart title and description based on source messages...</span>
+                <spam>Keep fields empty to get them filled in automatically.</spam>
+            </div>
+        }
     </FormBlock>
 
     </Body>
@@ -64,9 +69,12 @@
 @code {
     private Form _formRef = null!;
     private FormModel _form = null!;
+    private bool _generatingSmartTitle;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -74,6 +82,25 @@
 
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
+    }
+
+    protected override async Task OnInitializedAsync() {
+        if (ModalModel.TextEntryIds.Count == 0)
+            return;
+
+        _generatingSmartTitle = true;
+        var suggestion = await ChatThreads.SuggestThreadTitle(
+                Session,
+                ModalModel.ParentChatId,
+                ModalModel.TextEntryIds,
+                default)
+            .ConfigureAwait(true); // Continue on Blazor context.
+        if (_form.Title.IsNullOrEmpty())
+            _form.Title = suggestion.Item1;
+        if (_form.Description.IsNullOrEmpty())
+            _form.Description = suggestion.Item2;
+        _generatingSmartTitle = false;
+        StateHasChanged();
     }
 
     private void OnCreate() {

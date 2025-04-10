@@ -1,3 +1,5 @@
+using ActualChat.Chat.ML;
+
 namespace ActualChat.Chat;
 
 public class ChatThreads(IServiceProvider services) : IChatThreads
@@ -8,6 +10,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= services.GetRequiredService<ICommander>();
+    [field: AllowNull, MaybeNull]
+    private IThreadInsightExtractor ThreadInsightExtractor => field ??= services.GetRequiredService<IThreadInsightExtractor>();
 
     public virtual async Task<ApiArray<ChatId>> ListIds(
         Session session,
@@ -16,6 +20,27 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     {
         await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await Backend.ListIds(parentChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Non-computed
+    public virtual async Task<(string, string)> SuggestThreadTitle(
+        Session session,
+        ChatId parentChatId,
+        ApiArray<TextEntryId> entryIds,
+        CancellationToken cancellationToken)
+    {
+        await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        var textEntries = new List<TextEntry>();
+        foreach (var textEntryId in entryIds) {
+            var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+            if (chatEntry is not null)
+                textEntries.Add(new TextEntry(chatEntry));
+        }
+        if (textEntries.Count is 0)
+            return ("", "");
+
+        var insight = await ThreadInsightExtractor.GetInsight(textEntries, cancellationToken).ConfigureAwait(false);
+        return (insight.Title, insight.Description);
     }
 
     public virtual async Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken)

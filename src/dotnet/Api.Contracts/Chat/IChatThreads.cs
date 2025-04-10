@@ -7,6 +7,8 @@ public interface IChatThreads : IComputeService
     [ComputeMethod]
     Task<ApiArray<ChatId>> ListIds(Session session, ChatId parentChatId, CancellationToken cancellationToken);
 
+    Task<(string, string)> SuggestThreadTitle(Session session, ChatId parentChatId, ApiArray<TextEntryId> entryIds, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken);
 }

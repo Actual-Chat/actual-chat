@@ -139,9 +139,12 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 ConversationSummarizer.ServiceKey,
                 (svp, _) => svp.GetRequiredKeyedService<IChatCompletionService>(rateLimitedChatCompletionServiceKey));
             services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
+            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>();
         }
-        else
+        else {
             services.AddSingleton<IConversationSummarizer, ConversationSummarizerStub>();
+            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractorStub>();
+        }
 
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();
