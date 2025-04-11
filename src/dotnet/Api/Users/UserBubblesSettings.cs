@@ -6,8 +6,8 @@ namespace ActualChat.Users;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserBubbleSettings : IHasOrigin
 {
-    private readonly string[] _readBubbles = [];
     public const string KvasKey = nameof(UserBubbleSettings);
+    private readonly string[] _readBubbles = [];
 
     [DataMember, MemoryPackOrder(0)]
     private ApiArray<Symbol> LegacyReadBubbles {

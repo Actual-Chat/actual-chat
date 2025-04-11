@@ -30,5 +30,5 @@ public static class StateFactoryExt
 
     public static SyncedState<T> NewKvasSynced<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
         this StateFactory stateFactory, SyncedState<T>.KvasOptions options)
-        => new (options, stateFactory.Services);
+        => new(options, stateFactory.Services);
 }
