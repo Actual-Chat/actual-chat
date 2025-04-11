@@ -781,7 +781,7 @@ export class VirtualList {
         UpdateItemVisibilityInterval,
         'delayHead',
         'updateVisibleKeys');
-    private readonly updateVisibleKeys = serialize(async () => {
+    private async updateVisibleKeys(): Promise<void> {
         if (this.isDisposed || !this.renderState.keyRange.start)
             return;
 
@@ -793,7 +793,7 @@ export class VirtualList {
             this.identity,
             visibleItems,
             isEndAnchorVisible);
-    }, 2);
+    }
 
     private updateOrderedItems(): void {
         const orderedItems = new Array<VirtualListItem>();

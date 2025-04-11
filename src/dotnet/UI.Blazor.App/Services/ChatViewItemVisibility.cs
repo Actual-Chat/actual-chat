@@ -17,7 +17,11 @@ public sealed record ChatViewItemVisibility(
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
             new ChatId(source.ListIdentity),
-            source.VisibleKeys.Select(k => NumberExt.TryParseLong(k, out var lid) ? lid : 0).Where(lid => lid > 0).ToHashSet(),
+            source.VisibleKeys
+                .Select(k => k.Split('-')[0])
+                .Select(k =>NumberExt.TryParseLong(k, out var lid) ? lid : 0)
+                .Where(lid => lid > 0)
+                .ToHashSet(),
             source.IsEndAnchorVisible)
     { }
 
