@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>10.1.3</ActualLabFusionVersion>
+    <ActualLabFusionVersion>10.1.6</ActualLabFusionVersion>
     <AspNetCoreVersion>9.0.3</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>9.0.3</EntityFrameworkCoreVersion>

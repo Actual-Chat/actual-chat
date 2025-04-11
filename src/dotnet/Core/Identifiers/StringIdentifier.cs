@@ -8,6 +8,7 @@ namespace ActualChat;
    - Switch to new IDs
 */
 
+// ReSharper disable once PossibleInterfaceMemberAmbiguity
 public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
 {
     public string Value { get; }
@@ -32,7 +33,7 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     [IgnoreDataMember]
     public readonly int HashCode = value.GetHashCode(StringComparison.Ordinal);
     [IgnoreDataMember]
-    public Symbol Id => new Symbol(Value); // TODO: use HashCode here
+    public Symbol Id => new(Value, HashCode);
 
     // IStringIdentifier members
     string IHasId<string>.Id => Value;
