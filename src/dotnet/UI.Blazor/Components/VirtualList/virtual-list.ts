@@ -150,6 +150,8 @@ export class VirtualList {
         this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index');
         this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor');
         this.layoutFooter = document.querySelector('.layout-body-wrapper > .c-container > .layout-footer');
+        this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
+        this.endAnchorSize = this.endAnchorRef.getBoundingClientRect().height;
 
         // Set positioning according to the default edge
         if (this.defaultEdge === VirtualListEdge.Start) {
@@ -250,9 +252,8 @@ export class VirtualList {
 
         if (this.containerRef.classList.contains('hide')) {
             this.containerRef.classList.remove('hide');
+            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
         }
-        this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
-
         const mutationRecord: MutationRecord = {
             type: 'childList',
             addedNodes: this.containerRef.childNodes,
@@ -1460,9 +1461,9 @@ export class VirtualList {
                 item.range = null;
         }
 
-        let cornerstoneItemIndex = 0;
-        let cornerstoneItem = orderedItems[0];
-        if (this.defaultEdge === VirtualListEdge.End) {
+        let cornerstoneItemIndex = -1;
+        let cornerstoneItem: VirtualListItem = null;
+        if (this.defaultEdge === VirtualListEdge.End && !rs.hasVeryLastItem) {
             cornerstoneItemIndex = orderedItems.length - 1;
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
             // Find first one from the end
@@ -1471,7 +1472,9 @@ export class VirtualList {
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
             }
         }
-        else if (this.defaultEdge === VirtualListEdge.Start) {
+        else if (this.defaultEdge === VirtualListEdge.Start && !rs.hasVeryFirstItem) {
+            cornerstoneItemIndex = 0;
+            cornerstoneItem = orderedItems[cornerstoneItemIndex];
             // Find first one from the start
             while (!cornerstoneItem.range && cornerstoneItemIndex < orderedItems.length - 1) {
                 cornerstoneItemIndex++;
@@ -1500,34 +1503,34 @@ export class VirtualList {
         }
 
         // Adjust item ranges according to default edge invariant
-        // if (this.defaultEdge === VirtualListEdge.End) {
-        //     const end = orderedItems[orderedItems.length - 1].range.end - this.rowGap;
-        //     if (end > 0) {
-        //         cornerstoneItemIndex = orderedItems.length - 1;
-        //         cornerstoneItem = orderedItems[cornerstoneItemIndex];
-        //         cornerstoneItem.range = new NumberRange(0 - cornerstoneItem.size, 0);
-        //         let prevItem = cornerstoneItem;
-        //         for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
-        //             const item = orderedItems[i];
-        //             item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
-        //             prevItem = item;
-        //         }
-        //     }
-        // }
-        // else {
-        //     const start = orderedItems[0].range.start + this.rowGap;
-        //     if (start < 0) {
-        //         cornerstoneItemIndex = 0;
-        //         cornerstoneItem = orderedItems[cornerstoneItemIndex];
-        //         cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
-        //         let prevItem = cornerstoneItem;
-        //         for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
-        //             const item = orderedItems[i];
-        //             item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
-        //             prevItem = item;
-        //         }
-        //     }
-        // }
+        if (this.defaultEdge === VirtualListEdge.End) {
+            const end = orderedItems[orderedItems.length - 1].range.end - this.rowGap;
+            if (end > 0) {
+                cornerstoneItemIndex = orderedItems.length - 1;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                cornerstoneItem.range = new NumberRange(0 - cornerstoneItem.size, 0);
+                let prevItem = cornerstoneItem;
+                for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
+                    const item = orderedItems[i];
+                    item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+                    prevItem = item;
+                }
+            }
+        }
+        else {
+            const start = orderedItems[0].range.start + this.rowGap;
+            if (start < 0) {
+                cornerstoneItemIndex = 0;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
+                let prevItem = cornerstoneItem;
+                for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
+                    const item = orderedItems[i];
+                    item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+                    prevItem = item;
+                }
+            }
+        }
 
         this.itemRange = new NumberRange(
             orderedItems[0].range.start,
