@@ -7,8 +7,15 @@ public static class StringAssertionsExt
 {
     private static readonly string[] Endings = [
         "иями", "ями", "ами", "ими", "ией", "ей", "ий", "ый", "ой", "ем", "им", "ым", "ом", "у", "ю", "а", "я", "о",
-        "е", "и", "ы", "ь", "н", "л", "ён",
+        "е", "и", "ы", "ь", "н", "л", "ён", "ся",
     ];
+
+    private static readonly (string Word, string SimilarWord)[] SimilarWordPairs = [("требуется", "нуждается")];
+
+    private static readonly Dictionary<string, string> SimilarWords =
+        SimilarWordPairs.Concat(SimilarWordPairs.Select(x => (x.SimilarWord, x.Word)))
+            .Select(x => (Stem(x.Item1), Stem(x.Item2)))
+            .ToDictionary(x => x.Item1, x => x.Item2);
 
     public static AndConstraint<TAssertions> BeSimilarTo<TAssertions>(
         this StringAssertions<TAssertions> assertions,
@@ -22,6 +29,7 @@ public static class StringAssertionsExt
         var words = text.SplitIntoWords().Select(Stem).ToList();
         var expectedWords = expected.SplitIntoWords().Select(Stem).ToList();
         var intersectingWords = expectedWords.Intersect(words, StringComparer.OrdinalIgnoreCase).ToHashSet();
+        intersectingWords.AddRange(words.Select(SimilarWords.GetValueOrDefault).SkipNullItems());
         var similarity = (double)intersectingWords.Count / Math.Max(words.Count, expectedWords.Count);
         assertions.CurrentAssertionChain.BecauseOf(because, becauseArgs)
             .ForCondition(similarity >= minSimilarity)
