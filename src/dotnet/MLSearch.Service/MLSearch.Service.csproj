@@ -5,7 +5,6 @@
     <ProjectReference Include="..\Chat.ML\Chat.ML.csproj" />
     <ProjectReference Include="..\Contacts.Contracts\Contacts.Contracts.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
-    <ProjectReference Include="..\AI\AI.csproj" />
     <ProjectReference Include="..\MLSearch.Contracts\MLSearch.Contracts.csproj" />
     <ProjectReference Include="..\Search.Contracts\Search.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />

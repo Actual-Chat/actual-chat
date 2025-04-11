@@ -7,6 +7,7 @@
   <ItemGroup>
     <PackageReference Include="ActualLab.Core" />
     <PackageReference Include="ActualLab.Fusion.Server" />
+    <PackageReference Include="Anthropic.SDK" />
     <PackageReference Include="Blake3" />
     <PackageReference Include="CliWrap" />
     <PackageReference Include="FFMpegCore" />
@@ -18,6 +19,12 @@
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="OpenTelemetry.Api.ProviderBuilderExtensions" />
+    <PackageReference Include="ZString" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ActualChat.MLSearch.IntegrationTests"/>
+    <InternalsVisibleTo Include="ActualChat.Chat.IntegrationTests"/>
   </ItemGroup>
 
 </Project>
