@@ -173,7 +173,7 @@ public partial class StreamingBackend
             .ConfigureAwait(false);
         var transcriber = TranscriberFactory.Get(transcriptionEngine);
         var transcripts = transcriber
-            .Transcribe(audioSegment.StreamId, audioSegment.Source, transcriptionOptions, cancellationToken)
+            .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, cancellationToken)
             .Throttle(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
             .Memoize(CancellationToken.None);
         cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
@@ -210,7 +210,7 @@ public partial class StreamingBackend
             Change.Create(new ChatEntryDiff {
                 AuthorId = audioSegment.Author.Id,
                 Content = "",
-                StreamId = audioSegment.StreamId,
+                StreamId = audioSegment.StreamId.Value,
                 BeginsAt = beginsAt,
                 ClientSideBeginsAt = recordedAt,
             }));
@@ -274,7 +274,7 @@ public partial class StreamingBackend
                     Change.Create(new ChatEntryDiff {
                         AuthorId = authorId,
                         Content = "",
-                        StreamId = transcriptStreamId,
+                        StreamId = transcriptStreamId.Value,
                         AudioEntryLid = audioEntry?.LocalId,
                         BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                         RepliedEntryLid = repliedEntryLid,

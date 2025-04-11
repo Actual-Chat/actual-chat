@@ -18,10 +18,10 @@ public sealed class StreamBackendClient : IStreamClient
         Backend = services.GetRequiredService<IStreamingBackend>();
     }
 
-    public async Task<AudioSource> GetAudio(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public async Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId.Value, skipTo.ToShortString());
-        var rpcStream = await Backend.GetAudio(new StreamId(streamId), skipTo, cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
+        var rpcStream = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
         var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<byte[]>();
         var (headerDataTask, dataStream) = stream.SplitHead(cancellationToken);
         var frameStream = dataStream
@@ -44,11 +44,11 @@ public sealed class StreamBackendClient : IStreamClient
     }
 
     public async IAsyncEnumerable<TranscriptDiff> GetTranscript(
-        Symbol streamId,
+        string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetTranscript({StreamId})", streamId.Value);
-        var diffs = await Backend.GetTranscript(new StreamId(streamId), cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("GetTranscript({StreamId})", streamId);
+        var diffs = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
         if (diffs == null)
             yield break;
 

@@ -149,7 +149,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff
     [DataMember, MemoryPackOrder(16)] public string? Content { get; init; }
     [DataMember, MemoryPackOrder(17)] public Option<SystemEntry?> SystemEntry { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool? HasReactions { get; init; }
-    [DataMember, MemoryPackOrder(19)] public Symbol? StreamId { get; init; }
+    [DataMember, MemoryPackOrder(19)] public string? StreamId { get; init; }
     [DataMember, MemoryPackOrder(20)] public Option<long?> AudioEntryLid { get; init; }
     [DataMember, MemoryPackOrder(21)] public Option<long?> VideoEntryLid { get; init; }
     [DataMember, MemoryPackOrder(22)] public LinearMap? TimeMap { get; init; }

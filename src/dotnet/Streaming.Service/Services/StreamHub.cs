@@ -32,7 +32,7 @@ public class StreamHub(IServiceProvider services) : Hub
         TimeSpan skipTo,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var stream = await Backend.GetAudio(new StreamId(streamId), skipTo, cancellationToken).ConfigureAwait(false);
+        var stream = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
         if (stream == null)
             yield break;
 
@@ -44,7 +44,7 @@ public class StreamHub(IServiceProvider services) : Hub
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var stream = await Backend.GetTranscript(new StreamId(streamId), cancellationToken).ConfigureAwait(false);
+        var stream = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
         if (stream == null)
             yield break;
 
@@ -95,7 +95,7 @@ public class StreamHub(IServiceProvider services) : Hub
         }
 
         var nodeRef = _preferOwnNode ? MeshWatcher.OwnNode.Ref : nodes.GetRandom().Ref;
-        var streamId = new StreamId(nodeRef, Generate.Option);
+        var streamId = StreamId.New(nodeRef);
         var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedChatEntryIdTyped);
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);
         var frames = audioStream

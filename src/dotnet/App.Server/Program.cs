@@ -18,7 +18,7 @@ internal static class Program
             Tracer.None;
 #endif
 
-        CoreSerializerAndRpcStartup.Configure(true);
+        CoreSerializerAndRpcSetup.Configure(true);
         RpcDefaults.Mode = RpcMode.Server;
         RpcDefaultDelegates.HashProvider = data => {
             // SIMD-based version of Blake3 we use here is much faster than SSH256.

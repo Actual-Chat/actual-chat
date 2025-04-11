@@ -158,7 +158,7 @@ public static class ClientStartup
         }
 
         // Rpc & Fusion defaults
-        CoreSerializerAndRpcStartup.Configure(false);
+        CoreSerializerAndRpcSetup.Configure(false);
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
         RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto();

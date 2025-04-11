@@ -11,7 +11,7 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
         CancellationToken cancellationToken)
     {
         var streamIndex = closedAudioSegment.StreamId.OrdinalReplace($"{closedAudioSegment.AudioRecord.StreamId}-", "");
-        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.StreamId, streamIndex + ".opuss");
+        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.StreamId.Value, streamIndex + ".opuss");
 
         var converter = new ActualOpusStreamConverter(Clocks, Log);
         var audioSource = closedAudioSegment.Audio;

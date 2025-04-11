@@ -1,17 +1,20 @@
 using System.ComponentModel;
 using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringIdentifierJsonConverter<PrincipalId2>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<PrincipalId2>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<PrincipalId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<PrincipalId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public class PrincipalId2 : StringIdentifier, IStringIdentifier<PrincipalId2>
+public partial class PrincipalId2 : StringIdentifier, IStringIdentifier<PrincipalId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PrincipalId2>();

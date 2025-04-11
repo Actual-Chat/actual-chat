@@ -1,16 +1,21 @@
+using ActualChat.Internal;
 using ActualLab.Rpc;
+using MemoryPack;
 
 namespace ActualChat.Serialization;
 
 #pragma warning disable CA2255
 
-public static class CoreSerializerAndRpcStartup
+public static class CoreSerializerAndRpcSetup
 {
     [ModuleInitializer]
     internal static void ModuleInitializer()
+    {
         // This is super important: TypeRef and some other types which were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
-        => StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
+        StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<StreamId>());
+    }
 
     public static void Configure(bool isServer)
     {

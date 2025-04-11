@@ -29,7 +29,7 @@ public sealed class OpenAudioSegment(
     public static StreamId GetStreamId(AudioRecord record, int index)
     {
         var streamId = record.StreamId;
-        return new(streamId.NodeRef, $"{streamId.LocalId}-{index.ToString("D4", CultureInfo.InvariantCulture)}");
+        return StreamId.New(streamId.NodeRef, $"{streamId.LocalId}-{index.ToString("D4", CultureInfo.InvariantCulture)}");
     }
 
     public void SetRecordedAt(Moment? recordedAt)

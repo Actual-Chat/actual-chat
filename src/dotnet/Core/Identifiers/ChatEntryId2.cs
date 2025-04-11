@@ -1,19 +1,22 @@
 using System.ComponentModel;
 using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringIdentifierJsonConverter<ChatEntryId2>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ChatEntryId2>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ChatEntryId2>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<ChatEntryId2>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 // This type is technically abstract, but we don't want to make it abstract,
 // coz this forces RPC to use polymorphic serialization for this type.
-public class ChatEntryId2 : StringIdentifier, IStringIdentifier<ChatEntryId2>
+public partial class ChatEntryId2 : StringIdentifier, IStringIdentifier<ChatEntryId2>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatEntryId2>();

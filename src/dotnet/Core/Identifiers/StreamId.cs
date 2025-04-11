@@ -1,93 +1,85 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<StreamId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<StreamId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<StreamId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<StreamId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<StreamId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<StreamId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<StreamId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct StreamId : ISymbolIdentifier<StreamId>, IHasNodeRef
+public sealed partial class StreamId : StringIdentifier, IStringIdentifier<StreamId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<StreamId>();
-    private const char Delimiter = '-';
+    private static readonly ILruCache<string, StreamId> Cache = CreateCache<StreamId>(32);
 
-    private static Func<Symbol> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();
+    public static Func<string> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();
+    public const char Delimiter = '-';
 
-    public static StreamId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public NodeRef NodeRef { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol LocalId { get; }
+    [IgnoreDataMember]
+    public string LocalId { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public StreamId(Symbol id)
-        => this = Parse(id);
-    public StreamId(string? id)
-        => this = Parse(id);
-    public StreamId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-    public StreamId(NodeRef nodeRef, Generate _)
-        => this = new StreamId(Format(nodeRef, LocalIdGenerator.Invoke()));
-    public StreamId(NodeRef nodeRef, Symbol localId)
-        => this = new StreamId(Format(nodeRef, localId));
-
-    public StreamId(Symbol id, NodeRef nodeRef, Symbol localId, AssumeValid _)
+    public static StreamId New(NodeRef nodeRef)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
+        var localId = LocalIdGenerator.Invoke();
+        return new(Format(nodeRef, localId), nodeRef, localId);
+    }
 
-        Id = id;
+    public static StreamId New(NodeRef nodeRef, string localId)
+        => new(Format(nodeRef, localId), nodeRef, localId);
+
+    private StreamId(string value, NodeRef nodeRef, string localId) : base(value)
+    {
         NodeRef = nodeRef;
         LocalId = localId;
     }
 
-    // Conversion
-    public override string ToString() => Value;
-    public static implicit operator Symbol(StreamId source) => source.Id;
-    public static implicit operator string(StreamId source) => source.Id.Value;
-
     // Equality
-    public bool Equals(StreamId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is StreamId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(StreamId left, StreamId right) => left.Equals(right);
-    public static bool operator !=(StreamId left, StreamId right) => !left.Equals(right);
 
-    // Parsing
-    private static string Format(NodeRef nodeRef, Symbol localId)
+    public bool Equals(StreamId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is StreamId other && Equals(other);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(StreamId? left, StreamId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(StreamId? left, StreamId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
+
+    public static string Format(NodeRef nodeRef, string localId)
         => $"{nodeRef}{Delimiter}{localId}";
 
-    public static StreamId Parse(string? s)
+    public static StreamId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<StreamId>(s);
-    public static StreamId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<StreamId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out StreamId result)
+    public static bool TryParse(string? s, [NotNullWhen(true)] out StreamId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
 
         var parts = s.Split(Delimiter, 2);
         if (parts.Length != 2)
@@ -100,7 +92,8 @@ public readonly partial struct StreamId : ISymbolIdentifier<StreamId>, IHasNodeR
         if (localId.IsNullOrEmpty() || !Alphabet.AlphaNumericDash.IsMatch(localId))
             return false;
 
-        result = new StreamId(s, nodeRef, localId, AssumeValid.Option);
+        result = new StreamId(s, nodeRef, localId);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 }

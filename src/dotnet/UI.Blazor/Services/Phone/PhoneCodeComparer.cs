@@ -16,7 +16,7 @@ public class PhoneCodeComparer : IEqualityComparer<string>, IEqualityComparer<Ph
     }
 
     public int GetHashCode(string obj)
-        => Phone.Normalize(obj).OrdinalHashCode();
+        => Phone.Normalize(obj).GetOrdinalHashCode();
 
     public bool Equals(PhoneCode? x, PhoneCode? y)
     {

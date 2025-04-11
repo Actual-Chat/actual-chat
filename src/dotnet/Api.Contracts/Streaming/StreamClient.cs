@@ -8,21 +8,21 @@ public class StreamClient(IServiceProvider services) : IStreamClient
 {
     private static readonly int StreamBufferSize = 64;
 
-    private ILogger? _log;
-    private ILogger? _audioSourceLog;
-    private IStreamServer? _streamServer;
-
     private IServiceProvider Services { get; } = services;
-    private IStreamServer StreamServer => _streamServer ??= Services.GetRequiredService<IStreamServer>();
-    private ILogger AudioSourceLog => _audioSourceLog ??= Services.LogFor<AudioSource>();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
+    [field: AllowNull, MaybeNull]
+    private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AudioSource> GetAudio(
-        Symbol streamId,
+        string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId.Value, skipTo.ToShortString());
+        Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
         var rpcStream = await StreamServer.GetAudio(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<byte[]>();
         var (headerDataTask, dataStream) = stream
@@ -48,10 +48,10 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     }
 
     public async IAsyncEnumerable<TranscriptDiff> GetTranscript(
-        Symbol streamId,
+        string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetTranscript({StreamId})", streamId.Value);
+        Log.LogDebug("GetTranscript({StreamId})", streamId);
         var diffs = await StreamServer.GetTranscript(streamId, cancellationToken).ConfigureAwait(false);
         if (diffs == null)
             yield break;

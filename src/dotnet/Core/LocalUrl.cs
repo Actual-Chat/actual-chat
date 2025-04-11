@@ -61,7 +61,7 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     // Equality
     public bool Equals(LocalUrl other) => OrdinalEquals(Value, other.Value);
     public override bool Equals(object? obj) => obj is LocalUrl other && Equals(other);
-    public override int GetHashCode() => Value.OrdinalHashCode();
+    public override int GetHashCode() => Value.GetOrdinalHashCode();
     public static bool operator ==(LocalUrl left, LocalUrl right) => left.Equals(right);
     public static bool operator !=(LocalUrl left, LocalUrl right) => !left.Equals(right);
 }

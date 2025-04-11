@@ -10,7 +10,7 @@ public sealed class ClosedAudioSegment(
     TimeSpan audibleDuration)
 {
     public int Index { get; init; } = openSegment.Index;
-    public string StreamId { get; init; } = openSegment.StreamId;
+    public string StreamId { get; init; } = openSegment.StreamId.Value;
     public AudioRecord AudioRecord { get; init; } = openSegment.Record;
     public AudioSource Audio { get; init; } = openSegment.Source;
     public Moment? RecordedAt { get; init; } = recordedAt;

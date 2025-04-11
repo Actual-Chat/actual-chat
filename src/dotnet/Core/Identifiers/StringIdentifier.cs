@@ -8,7 +8,7 @@ namespace ActualChat;
    - Switch to new IDs
 */
 
-public interface IStringIdentifier : IHasId<string>
+public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
 {
     public string Value { get; }
     public int HashCode { get; }
@@ -31,6 +31,8 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     public readonly string Value = value;
     [IgnoreDataMember]
     public readonly int HashCode = value.GetHashCode(StringComparison.Ordinal);
+    [IgnoreDataMember]
+    public Symbol Id => new Symbol(Value); // TODO: use HashCode here
 
     // IStringIdentifier members
     string IHasId<string>.Id => Value;
