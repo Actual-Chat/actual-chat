@@ -201,6 +201,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         UpdateReadPosition(itemVisibility.MaxEntryLid);
+        ChatUI.ItemVisibility.Value = itemVisibility;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -410,9 +411,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         if (tiles.Count != 0) {
             if (tiles[0].Items.Count != 0)
-                hasVeryFirstItem = chatIdRange.Start >= tiles[0].Items[0].Id;
+                hasVeryFirstItem = hasVeryFirstItem || chatIdRange.Start >= tiles[0].Items[0].Id;
             if (tiles[^1].Items.Count != 0)
-                hasVeryLastItem = chatIdRange.End - 1 <= tiles[^1].Items[^1].Id;
+                hasVeryLastItem = hasVeryLastItem || chatIdRange.End - 1 <= tiles[^1].Items[^1].Id;
         }
         var result = new VirtualListData<ChatMessage>(tiles) {
             Index = renderedData.Index + 1,

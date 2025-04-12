@@ -25,4 +25,12 @@ public static class ChatEntryOperations
 
     public static Task RemoveTextEntry(this IWebTester tester, ChatEntryId id)
         => tester.Commander.Call(new Chats_RemoveTextEntry(tester.Session, id.ChatId, id.LocalId));
+
+    public static async Task<ChatEntry[]> CreateTextEntries(this IWebTester tester, ChatId chatId, string textPrefix, int entryCount)
+    {
+        var entries = await Enumerable.Range(1, entryCount)
+            .Select(async i => await tester.CreateTextEntry(chatId, $"{textPrefix} {i}").ConfigureAwait(false))
+            .Collect(1);
+        return entries;
+    }
 }

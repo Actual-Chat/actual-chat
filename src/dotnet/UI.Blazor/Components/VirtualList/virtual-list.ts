@@ -96,7 +96,6 @@ export class VirtualList {
     // private spacerSize: number | null = null;
     // private endSpacerSize: number | null = null;
     private endAnchorSize = 4;
-    private shouldUpdateOrderedItems: boolean = true;
     private shouldUpdateCornerstoneItem: boolean = true;
     private isUpdatingPivots: boolean = false;
 
@@ -151,21 +150,23 @@ export class VirtualList {
         this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index');
         this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor');
         this.layoutFooter = document.querySelector('.layout-body-wrapper > .c-container > .layout-footer');
+        this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
+        this.endAnchorSize = this.endAnchorRef.getBoundingClientRect().height;
 
         // Set positioning according to the default edge
         if (this.defaultEdge === VirtualListEdge.Start) {
-            this.containerRef.style.top = '0px';
+            this.containerRef.style.top = `${this.endAnchorSize}px`;
             this.ref.style.flexDirection = 'column';
             this.spacerRef.style.display = 'flex';
             this.endSpacerRef.style.display = 'none';
         }
         else {
-            this.containerRef.style.bottom = '0px';
+            this.containerRef.style.bottom = `${this.endAnchorSize}px`;
             this.ref.style.flexDirection = 'column-reverse';
             this.spacerRef.style.display = 'none';
             this.endSpacerRef.style.display = 'flex';
         }
-        this.wrapperRef.style.height = `${spacerSize}px`;
+        this.wrapperRef.style.height = `100%`;
 
         // Events & observers
         const listenerOptions = { signal: this.abortController.signal, passive: true, };
@@ -230,9 +231,6 @@ export class VirtualList {
 
             scrollToKey: null,
         };
-        fastRaf(() => {
-            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
-        });
 
         // set isRendering as soon as possible
         const origSetAttribute = this.renderIndexRef.setAttribute;
@@ -254,6 +252,7 @@ export class VirtualList {
 
         if (this.containerRef.classList.contains('hide')) {
             this.containerRef.classList.remove('hide');
+            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
         }
         const mutationRecord: MutationRecord = {
             type: 'childList',
@@ -384,7 +383,6 @@ export class VirtualList {
         // request recalculation of the item range and order item list as we've got new items
         this.cachedAllItemRefs = null;
         this.itemRange = null;
-        this.shouldUpdateOrderedItems = true;
 
         // copy existing items - because we can remove them and add again at another tiles
         const oldItems = new Map<string, VirtualListItem>(this.items);
@@ -454,6 +452,7 @@ export class VirtualList {
                         itemsWereMeasured = true;
                     }
                     item.size = size;
+                    item.range = null;
                     this.sizeCache.set(key, size);
                     this.statistics.addItem(item.size);
                 }
@@ -499,8 +498,9 @@ export class VirtualList {
             this.itemRange = null;
 
         const now = Date.now();
-        if (existingResizedCount && (now - this.renderCompletedAt) > 500)
+        if (existingResizedCount && (now - this.renderCompletedAt) > 500 && this.pivots.length > 0) {
             void this.restoreScrollPosition(this.renderState);
+        }
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -660,8 +660,6 @@ export class VirtualList {
             const scrollMetadata = this.getScrollMetadata(rs);
 
             await this.restoreScrollPosition(rs, scrollMetadata);
-
-            scrollMetadata.scroll?.();
         } finally {
             this.renderStartedAt = null;
             this.renderCompletedAt = Date.now();
@@ -783,7 +781,7 @@ export class VirtualList {
         UpdateItemVisibilityInterval,
         'delayHead',
         'updateVisibleKeys');
-    private readonly updateVisibleKeys = serialize(async () => {
+    private async updateVisibleKeys(): Promise<void> {
         if (this.isDisposed || !this.renderState.keyRange.start)
             return;
 
@@ -795,7 +793,7 @@ export class VirtualList {
             this.identity,
             visibleItems,
             isEndAnchorVisible);
-    }, 2);
+    }
 
     private updateOrderedItems(): void {
         const orderedItems = new Array<VirtualListItem>();
@@ -815,7 +813,6 @@ export class VirtualList {
             }
         }
         this.orderedItems = orderedItems;
-        this.shouldUpdateOrderedItems = false;
     }
 
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
@@ -1090,7 +1087,7 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null): Promise<void> {
+    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null, useRaf = false): Promise<void> {
         const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize } = this;
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
@@ -1105,13 +1102,16 @@ export class VirtualList {
         let totalSize = 0;
         let spacerSize = 0;
         let endSpacerSize = 0;
+        let delayedSpacerSize = 0;
+        let delayedEndSpacerSize = 0;
         let totalSizeDiff = 0;
+        let isInteractivePositioning = false;
         // let stickyItems = new Array<HTMLLIElement>();
 
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
 
-        const rafResult  = fastRaf({
+        const options = {
             key: `restoreScrollPosition_${this.identity}`,
             read: () => {
                 if (hasUnmeasuredItems)
@@ -1119,8 +1119,8 @@ export class VirtualList {
                 if (!this.itemRange)
                     this.ensureItemRangeCalculated();
 
-                const { start, end, size } = this.itemRange ?? new NumberRange(0,0);
-                const containerSize = size - (rs.hasVeryFirstItem ? this.rowGap : 0);
+                const { start, end } = this.itemRange ?? new NumberRange(0,0);
+                const containerSize = this.containerRef.offsetHeight;
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
                 // stickyItems = [...this.containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item:has(.sticky)')];
@@ -1204,15 +1204,37 @@ export class VirtualList {
 
                         if (interactiveItemRef) {
                             const viewportTopOffset = interactivePivot.offset;
-                            const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
-                            const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
-                            const containerTransform = window.getComputedStyle(this.containerRef).transform;
-                            const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
-                            const containerTranslateYOffset = containerTransformMatrix.m42;
-                            const dTranslateOffset = offset - containerTranslateYOffset;
-                            scrollTopOffset = dTopOffset + dTranslateOffset;
-
+                            const isSticky = window.getComputedStyle(interactiveItemRef).position === 'sticky';
+                            const interactiveItemOffset = isSticky
+                                ? getOriginalPosition(interactiveItemRef)
+                                : interactiveItemRef.getBoundingClientRect().top;
+                            const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                            const oldContainerBottom = parseFloat(window.getComputedStyle(this.containerRef).bottom) || 0;
+                            const containerBottom = -offset;
+                            const dContainerBottom = containerBottom - oldContainerBottom;
+                            scrollTopOffset = dTopOffset + dContainerBottom;
+                            isInteractivePositioning = true;
                             debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
+
+                            let delayedScrollTop = 0;
+                            // restore scroll position with delay to prevent scroll jump, double RAF is required there
+                            fastRaf(() => {
+                                fastRaf({
+                                    read: () => {
+                                        const viewportTopOffset = interactivePivot.offset;
+                                        const interactiveItemOffset = isSticky
+                                            ? getOriginalPosition(interactiveItemRef)
+                                            : interactiveItemRef.getBoundingClientRect().top;
+                                        const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                                        const scrollTop = this.ref.scrollTop;
+                                        delayedScrollTop = scrollTop + dTopOffset;
+                                    },
+                                    write: () => {
+                                        this.ref.scrollTop = delayedScrollTop;
+                                    }
+                                });
+                            });
+
                         }
                         else
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
@@ -1229,10 +1251,14 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     endSpacerSize = -offset;
-                    if (rs.hasVeryFirstItem)
+                    if (rs.hasVeryFirstItem) {
                         spacerSize = 0;
-                    else
-                        spacerSize = totalSize - containerSize - endSpacerSize - endAnchorSize;
+                        delayedSpacerSize = 0;
+                    }
+                    else {
+                        spacerSize = clamp(oldTotalSize - containerSize - endSpacerSize - endAnchorSize, 0, Infinity);
+                        delayedSpacerSize = clamp(totalSize - containerSize - endSpacerSize - endAnchorSize, 0, Infinity);
+                    }
                 }
                 else {
                     offset = start;
@@ -1251,15 +1277,37 @@ export class VirtualList {
 
                         if (interactiveItemRef) {
                             const viewportTopOffset = interactivePivot.offset;
-                            const interactiveItemRect = interactiveItemRef.getBoundingClientRect();
-                            const dTopOffset = Math.floor(interactiveItemRect.top - viewportTopOffset);
-                            const containerTransform = window.getComputedStyle(this.containerRef).transform;
-                            const containerTransformMatrix = new WebKitCSSMatrix(containerTransform);
-                            const containerTranslateYOffset = containerTransformMatrix.m42;
-                            const dTranslateOffset = offset - containerTranslateYOffset;
-                            scrollTopOffset = dTopOffset + dTranslateOffset;
+                            const isSticky = window.getComputedStyle(interactiveItemRef).position === 'sticky';
+                            const interactiveItemOffset = isSticky
+                                ? getOriginalPosition(interactiveItemRef)
+                                : interactiveItemRef.getBoundingClientRect().top;
+                            const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                            const oldContainerTop = parseFloat(window.getComputedStyle(this.containerRef).top) || 0;
+                            // noinspection UnnecessaryLocalVariableJS
+                            const containerTop = offset;
+                            const dContainerTop = containerTop - oldContainerTop;
+                            scrollTopOffset = dTopOffset + dContainerTop;
+                            isInteractivePositioning = true;
+                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
 
-                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset);
+                            let delayedScrollTop = 0;
+                            // restore scroll position with delay to prevent scroll jump, double RAF is required there
+                            fastRaf(() => {
+                                fastRaf({
+                                    read: () => {
+                                        const viewportTopOffset = interactivePivot.offset;
+                                        const interactiveItemOffset = isSticky
+                                            ? getOriginalPosition(interactiveItemRef)
+                                            : interactiveItemRef.getBoundingClientRect().top;
+                                        const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                                        const scrollTop = this.ref.scrollTop;
+                                        delayedScrollTop = scrollTop + dTopOffset;
+                                    },
+                                    write: () => {
+                                        this.ref.scrollTop = delayedScrollTop;
+                                    }
+                                });
+                            });
                         }
                         else
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
@@ -1276,38 +1324,19 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     spacerSize = offset;
-                    endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
-                    if (rs.hasVeryLastItem)
+                    if (rs.hasVeryLastItem) {
                         endSpacerSize = 0;
-                    else
-                        endSpacerSize = totalSize - containerSize - spacerSize - endAnchorSize;
+                        delayedEndSpacerSize = 0;
+                    }
+                    else {
+                        endSpacerSize = clamp(oldTotalSize - containerSize - spacerSize - endAnchorSize, 0, Infinity);
+                        delayedEndSpacerSize = clamp(totalSize - containerSize - spacerSize - endAnchorSize, 0, Infinity);
+                    }
                 }
             },
             write: () => {
                 const showSpacer = spacerSize > 0;
                 const showEndSpacer = endSpacerSize > 0;
-
-                if (DeviceInfo.isChromium && totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
-                    // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
-                    const setWrapperHeight = () => fastRaf({
-                        write: () => {
-                            if (this.isScrolling)
-                                this.turnOffScrollingCallback = setWrapperHeight;
-                            else {
-                                this.wrapperRef.style.height = totalSize + 'px';
-                                // console.warn(
-                                //     'restoreScrollPosition: wrapper size increased with DELAY!',
-                                //     totalSize);
-                            }
-                        }});
-                    this.turnOffScrollingCallback = setWrapperHeight;
-
-                }
-                else
-                    this.wrapperRef.style.height = totalSize + 'px';
-                this.containerRef.style.transform = `translate3d(0, ${offset}px, 0)`;
-                // set negative offset translate to all sticky elements - does not work well
-                // stickyItems.forEach(sticky => sticky.style.transform = `translate3d(0, ${-offset}px, 0)`);
                 if (!showSpacer)
                     this.spacerRef.style.display = 'none';
                 else
@@ -1319,22 +1348,59 @@ export class VirtualList {
                 this.spacerRef.style.height = `${spacerSize}px`;
                 this.endSpacerRef.style.height = `${endSpacerSize}px`;
 
-                if (scrollTopOffset)
+                if (totalSizeDiff != 0 && this.isScrolling && rs.renderIndex > 0) {
+                    // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
+                    const setWrapperHeight = () => fastRaf({
+                        write: () => {
+                            if (this.isScrolling)
+                                this.turnOffScrollingCallback = setWrapperHeight;
+                            else {
+                                this.wrapperRef.style.height = `${totalSize}px`;
+                                this.spacerRef.style.height = `${delayedSpacerSize}px`;
+                                this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
+                                // console.warn(
+                                //     'restoreScrollPosition: wrapper size increased with DELAY!',
+                                //     totalSize);
+                            }
+                        }});
+                    this.turnOffScrollingCallback = setWrapperHeight;
+
+                }
+                else if (totalSizeDiff != 0) {
+                    this.wrapperRef.style.height = totalSize + 'px';
+                    this.spacerRef.style.height = `${delayedSpacerSize}px`;
+                    this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
+                }
+                else {
+                    this.spacerRef.style.height = `${delayedSpacerSize}px`;
+                    this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
+                }
+                if (this.defaultEdge === VirtualListEdge.End) {
+                    this.containerRef.style.bottom = `${-offset}px`;
+                }
+                else {
+                    this.containerRef.style.top = `${offset}px`;
+                }
+                if (scrollTopOffset) {
                     this.ref.scrollTop = scrollTop + scrollTopOffset;
+                }
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
                 result.resolve(undefined);
                 // this.updateViewportThrottled();
             }
-        });
-        if (!rafResult) {
-            fastRaf(() => {
-                void this.restoreScrollPosition(rs, scrollMetadata);
-            });
-            return;
-        }
-        else
+        };
+        if (useRaf) {
+            fastRaf(options);
             await result;
+        }
+        else {
+            // Handle restore position synchronously after render
+            options.read();
+            options.write();
+            if (!isInteractivePositioning)
+                scrollMetadata?.scroll?.();
+        }
 
         this.scrollPositionRestoredAt = Date.now();
 
@@ -1358,6 +1424,7 @@ export class VirtualList {
                     const rowGap = this.rowGap;
                     const size =  Math.ceil(itemRect.height + rowGap);
                     item.size = size;
+                    item.range = null;
                     this.sizeCache.set(key, size);
                 } else
                     this.items.delete(key);
@@ -1378,9 +1445,6 @@ export class VirtualList {
             return false;
         }
 
-        if (this.shouldUpdateOrderedItems)
-            this.updateOrderedItems();
-
         if (this.itemRange)
             return false;
 
@@ -1390,15 +1454,15 @@ export class VirtualList {
         if (orderedItems.length == 0)
             return false;
 
-        if (this.shouldUpdateCornerstoneItem && (rs.hasVeryLastItem || rs.hasVeryLastItem)) {
+        if (this.shouldUpdateCornerstoneItem && (rs.hasVeryFirstItem || rs.hasVeryLastItem)) {
             // We have to recalculate cornerstone item
             this.shouldUpdateCornerstoneItem = false;
             for (const item of orderedItems)
                 item.range = null;
         }
 
-        let cornerstoneItemIndex = 0;
-        let cornerstoneItem = orderedItems[0];
+        let cornerstoneItemIndex = -1;
+        let cornerstoneItem: VirtualListItem = null;
         if (this.defaultEdge === VirtualListEdge.End && !rs.hasVeryLastItem) {
             cornerstoneItemIndex = orderedItems.length - 1;
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
@@ -1409,6 +1473,8 @@ export class VirtualList {
             }
         }
         else if (this.defaultEdge === VirtualListEdge.Start && !rs.hasVeryFirstItem) {
+            cornerstoneItemIndex = 0;
+            cornerstoneItem = orderedItems[cornerstoneItemIndex];
             // Find first one from the start
             while (!cornerstoneItem.range && cornerstoneItemIndex < orderedItems.length - 1) {
                 cornerstoneItemIndex++;
@@ -1434,11 +1500,42 @@ export class VirtualList {
                 item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
                 prevItem = item;
             }
-
-            this.itemRange = new NumberRange(
-                orderedItems[0].range.start,
-                orderedItems[orderedItems.length - 1].range.end - this.rowGap);
         }
+
+        // Adjust item ranges according to default edge invariant
+        if (this.defaultEdge === VirtualListEdge.End) {
+            const end = orderedItems[orderedItems.length - 1].range.end - this.rowGap;
+            if (end > 0) {
+                cornerstoneItemIndex = orderedItems.length - 1;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                cornerstoneItem.range = new NumberRange(0 - cornerstoneItem.size, 0);
+                let prevItem = cornerstoneItem;
+                for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
+                    const item = orderedItems[i];
+                    item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+                    prevItem = item;
+                }
+            }
+        }
+        else {
+            const start = orderedItems[0].range.start + this.rowGap;
+            if (start < 0) {
+                cornerstoneItemIndex = 0;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
+                let prevItem = cornerstoneItem;
+                for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
+                    const item = orderedItems[i];
+                    item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+                    prevItem = item;
+                }
+            }
+        }
+
+        this.itemRange = new NumberRange(
+            orderedItems[0].range.start,
+            orderedItems[orderedItems.length - 1].range.end - this.rowGap);
+
         this.minStart = Math.min(this.minStart ?? Number.MAX_SAFE_INTEGER, this.itemRange.start);
         if (this.renderState.hasVeryFirstItem)
             this.isStartKnown = true;
@@ -1701,45 +1798,6 @@ export class VirtualList {
         let loadStart = viewport.start - loadZoneSize;
         let loadEnd = viewport.end + loadZoneSize;
 
-        const loadMoreFrom = lastQuerySide === 'none'
-            ? (this.scrollDirection === 'none'
-                ? 'none'
-                : (this.scrollDirection === 'up'
-                    ? 'start'
-                    : 'end'))
-            : lastQuerySide;
-        switch (loadMoreFrom) {
-            case 'none':
-                break;
-            case 'end':
-                // check whether we need to continue loading from the end
-                if (alreadyLoadedTillEnd < loadZoneTrigger) {
-                    if (!rs.hasVeryLastItem && (rs.afterCount === null || rs.afterCount > 5)) {
-                        loadEnd = viewport.end + loadZoneSize * 1.5;
-                        loadStart = viewport.start - loadZoneTrigger * 1.1;
-                    }
-                } else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
-                    if (!rs.hasVeryFirstItem)
-                        loadStart = viewport.start - loadZoneSize;
-                    else
-                        return this.lastQuery;
-                }
-                break;
-            case 'start':
-                // check whether we need to continue loading from the start
-                if (alreadyLoadedFromStart < loadZoneTrigger) {
-                    if (!rs.hasVeryFirstItem && (rs.beforeCount === null || rs.beforeCount > 5)) {
-                        loadStart = viewport.start - loadZoneSize * 1.5;
-                        loadEnd = viewport.end + loadZoneTrigger * 1.1;
-                    }
-                } else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
-                    if (!rs.hasVeryLastItem)
-                        loadEnd = viewport.end + loadZoneSize;
-                    else
-                        return this.lastQuery;
-                }
-                break;
-        }
         // adjust to existing data range
         if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.start;
@@ -1762,8 +1820,9 @@ export class VirtualList {
             this.ensureItemRangeCalculated();
         }
 
-        const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start) - 1;
-        const lastItemIndex = binarySearch(orderedItems, item => item.range.start > loadZone.end);
+        const lastKey = orderedItems[orderedItems.length - 1].key;
+        const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start);
+        const lastItemIndex = binarySearch(orderedItems, item => item.range.start > loadZone.end || (item.key === lastKey && !item.range.intersectWith(loadZone).isEmpty));
         let firstItem = orderedItems[firstItemIndex];
         let lastItem = orderedItems[lastItemIndex];
         if (!firstItem) {
@@ -1835,4 +1894,24 @@ function binarySearch<T>(array: T[], pred: (item: T) => boolean): number {
         return -1;
 
     return high;
+}
+
+function getOriginalPosition(element: HTMLElement): number {
+    // Store original inline styles
+    const originalPosition = element.style.position;
+    const originalTop = element.style.top;
+
+    // Temporarily set to static and remove top/left
+    element.style.position = 'static';
+    element.style.top = '';
+
+    // Calculate static position
+    const rect = element.getBoundingClientRect();
+    const staticTop = rect.top;
+
+    // Restore original inline styles
+    element.style.position = originalPosition;
+    element.style.top = originalTop;
+
+    return staticTop;
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -31,7 +32,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldDetectLanguageOnInsert));
+        var (chatId, _) = await Tester.CreateChat(false);
 
         // act
         var entries = await CreateEntries(chatId, text, entryCount);
@@ -58,12 +59,9 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     // [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
     public async Task ShouldDetectLanguageOnUpdate(string updatedText, int entryCount, string sExpectedLanguages)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldDetectLanguageOnUpdate));
+        var (chatId, _) = await Tester.CreateChat(false);
 
         // act
         var entries = await CreateEntries(chatId, "some text", entryCount);
@@ -80,12 +78,9 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     [InlineData("Hola, cómo estás?", "en", "Hi! How are you?")]
     public async Task ShouldTranslateMessage(string sourceText, string targetLanguage, string expectedTranslation)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false, nameof(ShouldTranslateMessage));
+        var (chatId, _) = await Tester.CreateChat(false);
         var entry = await Tester.CreateTextEntry(chatId, sourceText);
         var targetLang = Language.Parse(targetLanguage);
 
@@ -95,7 +90,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
             // assert
             translation.Should().NotBeNull();
-            TextAssert.ShouldBeSimilar(translation.Content, expectedTranslation, 0.7);
+            translation.Content.Should().BeSimilarTo(expectedTranslation, 0.7);
         },
             TimeSpan.FromSeconds(10));
     }
@@ -104,7 +99,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     public async Task ShouldTranslateWithContextFromPreviousMessages()
     {
         if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
+            return; // local dev only until model results are stable
 
         // arrange
         const double minSimilarity = 0.7;
@@ -120,7 +115,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             ("The bank needs maintenance", "Банк нуждается в обслуживании", "Банк"),
             ("The bank is eroding", "Берег размывается", "Берег"),
             ("The bank is dangerous", "Берег опасен", "Берег"),
-            ("Hence the bank should be strengthened", "Берег должен быть укреплён", "Берег"),
+            ("Hence the bank should be strengthened", "Поэтому берег должен быть укреплен", "Берег"),
         };
         var entries = await messages
             .Select(x => Tester.CreateTextEntry(chatId, x.Text))
@@ -129,18 +124,18 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         // act
         var translations = await Enumerable.Range(0, messages.Length)
             .Select(i => WhenTranslated(entries[i].Id, Languages.Russian))
-            .Collect();
+            .Collect(1);
 
         // assert
         for (var i = 0; i < messages.Length; i++) {
             var (_, expectedTranslation, mainExpectedWord) = messages[i];
             var translation = translations[i];
             translation.Should().NotBeNull();
-            var translatedText = translation.Content.TrimNonWord();
-            translatedText.Should().NotBeNullOrEmpty();
-            Out.WriteLine("Translation: \r\n{0} \r\nExpected: \r\n{1}", translatedText, expectedTranslation);
-            TextAssert.ShouldBeSimilar(translatedText, expectedTranslation, minSimilarity);
-            translatedText.SplitIntoWords().Should().Contain(x => x.OrdinalIgnoreCaseContains(mainExpectedWord));
+            translation.Content.TrimNonWord()
+                .Should()
+                .NotBeNullOrEmpty()
+                .And.BeSimilarTo(expectedTranslation, minSimilarity)
+                .And.ContainWord(mainExpectedWord);
         }
         return;
 
@@ -165,10 +160,11 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     {
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
         return ComputedTest.When(async ct => {
-            var language = await Translations.GetLanguage(Tester.Session, id, ct).Require();
-            language.Languages.Should().BeEquivalentTo(expectedLanguages, "for #{0}", id);
-            return language.Languages;
-        },
-            (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20))).Debuggable());
+                var language = await Translations.GetLanguage(Tester.Session, id, ct).Require();
+                language.Languages.Should().BeEquivalentTo(expectedLanguages, "for #{0}", id);
+                return language.Languages;
+            },
+            (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20)))
+            .Debuggable());
     }
 }

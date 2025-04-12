@@ -16,6 +16,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly SharedResourcePool<Symbol, SyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly StoredState<ChatId> _selectedChatId;
+    private readonly MutableState<ChatViewItemVisibility> _itemVisibility;
     private readonly MutableState<PlaceId> _selectedPlaceId;
     private readonly StoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
     private readonly MutableState<ChatEntryId> _highlightedEntryId;
@@ -48,7 +49,6 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private History History => Hub.History;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private KeepAwakeUI KeepAwakeUI => Hub.KeepAwakeUI;
-    private TuneUI TuneUI => Hub.TuneUI;
     private ModalUI ModalUI => Hub.ModalUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private UICommander UICommander => Hub.UICommander();
@@ -63,6 +63,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenLoaded => _selectedChatId.WhenRead;
     public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
+    public IMutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
     public static event Action<(ChatId, long)> OnReadPositionUpdated = _ => { };
 
@@ -94,6 +95,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                 Category = StateCategories.Get(GetType(), nameof(NavbarSettings)),
             });
         Hub.RegisterDisposable(_navbarSettings);
+        _itemVisibility = StateFactory.NewMutable(ChatViewItemVisibility.Empty, StateCategories.Get(type, nameof(ItemVisibility)));
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);

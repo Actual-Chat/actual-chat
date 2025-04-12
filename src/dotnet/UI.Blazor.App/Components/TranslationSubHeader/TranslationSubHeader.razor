@@ -1,47 +1,75 @@
-@using ActualLab.Rpc
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<TranslationSubHeader.Model>
 
-@if (_enableIncompleteUI) {
-    <div class="translation-sub-header">
-        <div class="c-content">
-            <div class="c-left">
-                <i class="icon-language text-xl"></i>
-            </div>
-
-            <div class="c-center">
-                <div class="c-text">
-                    Translate to
-                    <span class="c-language">Russian</span>
-                </div>
-                <div class="c-toggle" @onclick="@OnToggleClick">
-                    <Toggle IsChecked="@_isChecked"/>
-                </div>
-            </div>
-
-            <div class="c-right">
-                <HeaderButton Click="@OnClick">
-                    <i class="icon-more-vertical"></i>
-                </HeaderButton>
-            </div>
-        </div>
-    </div>
+@{
+    var m = State.Value;
+    if (!m.IsVisible)
+        return;
 }
 
-@code {
-    private bool _isChecked;
-    private bool _enableIncompleteUI;
+<div class="translation-sub-header">
+    <div class="c-content">
+        <div class="c-left">
+            <i class="icon-language text-xl"></i>
+        </div>
 
+        <div class="c-center">
+            <div class="c-text">
+                Translate to
+                <span class="c-language">@m.TargetLanguage.Title</span>
+            </div>
+            <div class="c-toggle" @onclick="@OnToggleClick">
+                <Toggle IsChecked="@m.IsOn"/>
+            </div>
+        </div>
+
+        <div class="c-right">
+            <HeaderButton Click="@OnClick">
+                <i class="icon-more-vertical"></i>
+            </HeaderButton>
+        </div>
+    </div>
+</div>
+
+@code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Features Features => Hub.Features();
     private ModalUI ModalUI => Hub.ModalUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
 
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() =>
-        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
 
-    private void OnToggleClick()
-        => _isChecked = !_isChecked;
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        var isIncompleteUIEnabled = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isIncompleteUIEnabled)
+            return Model.None;
+
+        var mustSuggest = await TranslationUI.MustSuggest(chat.Id, cancellationToken).ConfigureAwait(false);
+        if (!mustSuggest)
+            return Model.None;
+
+        var isOn = await TranslationUI.IsOn(chat.Id, cancellationToken).ConfigureAwait(false);
+        var targetLanguage = await TranslationUI.GetTargetLanguage(chat.Id, cancellationToken).ConfigureAwait(false);
+        return new(true, isOn ?? false,  targetLanguage, chat);
+    }
+
+    private Task OnToggleClick()
+        => TranslationUI.SetIsOn(State.Value.Chat.Id, !State.Value.IsOn);
 
     private void OnClick()
-        => ModalUI.Show(new TranslationSettingsModal.Model());
+        => ModalUI.Show(new TranslationSettingsModal.Model(State.Value.Chat.Id));
+
+    // Nested types
+
+    public sealed record Model(bool IsVisible, bool IsOn, Language TargetLanguage, Chat Chat) {
+        public static readonly Model None = new(false, false, Language.None, null!);
+    }
 }

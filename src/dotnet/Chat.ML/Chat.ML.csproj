@@ -3,7 +3,6 @@
     <ProjectReference Include="..\Api\Api.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\AI\AI.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
   </ItemGroup>
   <ItemGroup>

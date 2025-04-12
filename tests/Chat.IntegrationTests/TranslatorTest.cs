@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -52,9 +53,6 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     [InlineData("en", "Поехали", "Let's go")]
     public async Task ShouldTranslateWithoutContext(Language destLanguage, string text, string expected)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         var minSimilarity = 0.7;
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
@@ -65,7 +63,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         Out.WriteLine($"Translated text:\n {translated}");
 
         // assert
-        TextAssert.ShouldBeSimilar(translated, expected, minSimilarity);
+        translated.Should().BeSimilarTo(expected, minSimilarity);
     }
 
     [Theory]
@@ -85,9 +83,6 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     [InlineData("fr", "I saw a bank", "I need to go to the bank to withdraw money", "J'ai vu une banque")]
     public async Task ShouldTranslateWithContext(Language destLanguage, string text, string context, string expected)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         var minSimilarity = 0.7;
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
@@ -98,15 +93,12 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         Out.WriteLine($"Translated text: \n{translated}");
 
         // assert
-        TextAssert.ShouldBeSimilar(translated, expected, minSimilarity);
+        translated.Should().BeSimilarTo(expected, minSimilarity);
     }
 
     [Fact]
     public async Task ShouldDetectLanguages()
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         (string Text, Language[] ExpectedLanguages)[] texts = [
             (ComplexText, [Languages.English]),
@@ -135,9 +127,6 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     [Fact]
     public async Task ShouldDetectLanguagesForManyEntries()
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         (string Text, Language[] ExpectedLanguages)[] texts = [
             ("hello", [Languages.English]),

@@ -143,17 +143,11 @@ public partial class ChatUI
         CancellationToken cancellationToken)
     {
         var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts(dataQuery, tiles);
-        var isLoadingBefore = originalLoadBefore > originalLoadAfter;
+        // var isLoadingBefore = originalLoadBefore > originalLoadAfter;
         var hasBeforeOrAfter = originalLoadBefore > 0 || originalLoadAfter > 0;
         var beforeFulfilled = hasBeforeOrAfter && beforeCount >= originalLoadBefore / 2;
         var afterFulfilled = hasBeforeOrAfter && afterCount >= originalLoadAfter / 2;
         if (beforeFulfilled && afterFulfilled)
-            return null;
-
-        if (isLoadingBefore && beforeFulfilled)
-            return null;
-
-        if (!isLoadingBefore && afterFulfilled)
             return null;
 
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
@@ -162,23 +156,19 @@ public partial class ChatUI
         if (hasVeryFirstItem && hasVeryLastItem)
             return null;
 
-        if (hasBeforeOrAfter && isLoadingBefore && hasVeryFirstItem)
+        if (beforeFulfilled && hasVeryLastItem)
             return null;
 
-        if (hasBeforeOrAfter && !isLoadingBefore && hasVeryLastItem)
+        if (afterFulfilled && hasVeryFirstItem)
             return null;
-
-        var totalItemCount = tiles.Sum(tile => tile.Items.Count);
-        if (totalItemCount > 2 * LoadLimit)
-            return null; // Stop loading if we have enough items
 
         // Expand load limits and reset tiles if we need to load more just to fulfill one side
-        var expandedLoadBefore = hasVeryFirstItem || dataQuery.LoadBefore < dataQuery.LoadAfter
+        var expandedLoadBefore = hasVeryFirstItem || beforeFulfilled
             ? dataQuery.LoadBefore
-            : Math.Max(dataQuery.LoadBefore * 4, LoadLimit) + 1; // Load before should be greater than load after if both are zero
-        var expandedLoadAfter = hasVeryLastItem || dataQuery.LoadAfter < dataQuery.LoadBefore
+            : Math.Max(dataQuery.LoadBefore * 4, 4 * LoadLimit);
+        var expandedLoadAfter = hasVeryLastItem || afterFulfilled
             ? dataQuery.LoadAfter
-            : Math.Max(dataQuery.LoadAfter * 4, LoadLimit);
+            : Math.Max(dataQuery.LoadAfter * 4, 4 * LoadLimit);
         return new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,

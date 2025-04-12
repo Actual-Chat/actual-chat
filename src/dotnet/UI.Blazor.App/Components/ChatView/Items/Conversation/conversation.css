@@ -12,7 +12,7 @@
     @apply flex-y;
 }
 .conversation-header {
-    @apply p-2 mb-2;
+    @apply mb-2;
     @apply rounded-t-lg;
     @apply bg-01;
 }
@@ -55,7 +55,7 @@
     @apply w-full;
 }
 .conversation-footer {
-    @apply p-2 my-2;
+    @apply my-2;
     @apply rounded-b-lg;
     @apply bg-01;
 }
@@ -155,6 +155,8 @@
     scrollbar-width: none;
 }
 
-.virtual-list > ul.c-virtual-container > li.item:has(.conversation-message) {
+.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-message),
+.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-header),
+.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-footer) {
     @apply p-2;
 }
