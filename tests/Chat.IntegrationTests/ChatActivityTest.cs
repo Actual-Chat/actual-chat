@@ -93,7 +93,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             }));
         entry = await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
 
-        entry.StreamId.Should().Be(Symbol.Empty);
+        entry.StreamId.IsNullOrEmpty().Should().BeTrue();
         entry.EndsAt.Should().Be(endsAt);
     }
 }

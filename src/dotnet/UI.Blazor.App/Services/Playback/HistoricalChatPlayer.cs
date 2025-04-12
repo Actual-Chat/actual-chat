@@ -143,7 +143,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var entries = audioEntryReader.Read(idRange, cancellationToken);
         ChatEntry? lastEntry = null;
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.StreamId.IsEmpty) // Streaming entry
+            if (!entry.StreamId.IsNullOrEmpty()) // Streaming entry
                 continue;
             if (entry.EndsAt >= playingAt) {
                 // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
@@ -162,7 +162,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var remainedShift = shift;
         var lastShiftPosition = playingAt;
         await foreach (var entry in reverseEntries.ConfigureAwait(false)) {
-            if (!entry.StreamId.IsEmpty) // Streaming entry
+            if (!entry.StreamId.IsNullOrEmpty()) // Streaming entry
                 continue;
             if (entry.BeginsAt >= playingAt)
                 // We're normally should not enter here due to way how last entry is looked up.

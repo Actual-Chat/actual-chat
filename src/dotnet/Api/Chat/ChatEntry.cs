@@ -83,7 +83,7 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 32), MemoryPackOrder(32)] public HashString ContentHash { get; init; }
     [DataMember(Order = 17), MemoryPackOrder(17)] public SystemEntry? SystemEntry { get; init; }
     [DataMember(Order = 18), MemoryPackOrder(18)] public bool HasReactions { get; init; }
-    [DataMember(Order = 19), MemoryPackOrder(19)] public Symbol StreamId { get; init; } = "";
+    [DataMember(Order = 19), MemoryPackOrder(19)] public string StreamId { get; init; } = "";
     [DataMember(Order = 20), MemoryPackIgnore] public long? AudioEntryLid { get; init; }
     [DataMember(Order = 21), MemoryPackIgnore] public long? VideoEntryLid { get; init; }
     [DataMember(Order = 22), MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
@@ -115,7 +115,7 @@ public sealed partial record ChatEntry(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public double? Duration => EndsAt is { } endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsStreaming => !StreamId.IsEmpty;
+    public bool IsStreaming => !StreamId.IsNullOrEmpty();
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsSystemEntry => SystemEntry != null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

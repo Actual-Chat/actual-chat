@@ -51,7 +51,8 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HeadOutlet))]
     // Diffs
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ObjectDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(StringDiffHandler))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NullableDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]

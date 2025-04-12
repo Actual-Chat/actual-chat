@@ -2,7 +2,7 @@ using ActualChat.Diff.Handlers;
 
 namespace ActualChat.Diff;
 
-public class DiffEngine(
+public sealed class DiffEngine(
     IServiceProvider services,
     TypeMapper<IDiffHandler>? diffHandlerFinder = null
     ) : IHasServices
@@ -73,13 +73,15 @@ public class DiffEngine(
 
 #pragma warning disable IL2067, IL2070, IL2072
     [UnconditionalSuppressMessage("Trimming", "IL2072:NotSatisfyDynamicallyAccessedMemberTypes.PublicConstructors", Justification = "T is marked with DynamicallyAccessedMembers.")]
-    protected virtual IDiffHandler CreateHandler(
+    private IDiffHandler CreateHandler(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type sourceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type diffType)
     {
         var tHandler = DiffHandlerResolver.TryGet(diffType);
         if (tHandler == null && sourceType == diffType)
-            tHandler = typeof(CloneDiffHandler<>).MakeGenericType(sourceType);
+            tHandler = sourceType == typeof(string)
+                ? typeof(StringDiffHandler)
+                : typeof(ObjectDiffHandler<>).MakeGenericType(sourceType);
         if (tHandler == null && diffType.IsAssignableTo(typeof(RecordDiff)))
             tHandler = typeof(RecordDiffHandler<,>).MakeGenericType(sourceType, diffType);
         tHandler ??= typeof(MissingDiffHandler<,>).MakeGenericType(sourceType, diffType);

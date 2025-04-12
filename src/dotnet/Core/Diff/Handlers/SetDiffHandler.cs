@@ -1,9 +1,9 @@
 namespace ActualChat.Diff.Handlers;
 
-public class SetDiffHandler<
+public sealed class SetDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TSet,
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TItem> : DiffHandlerBase<TSet,
-    SetDiff<TSet, TItem>>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TItem>
+    : DiffHandlerBase<TSet, SetDiff<TSet, TItem>>
     where TSet : IReadOnlyCollection<TItem>
 {
     private readonly Type _setType;

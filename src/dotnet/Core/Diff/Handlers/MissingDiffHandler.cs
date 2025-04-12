@@ -1,6 +1,6 @@
 namespace ActualChat.Diff.Handlers;
 
-public class MissingDiffHandler<
+public sealed class MissingDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiff>(DiffEngine engine)
     : DiffHandlerBase<T, TDiff>(engine)

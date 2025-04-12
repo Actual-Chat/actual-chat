@@ -1,6 +1,6 @@
 namespace ActualChat.Diff.Handlers;
 
-public class OptionDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, Option<T>>(engine)
+public sealed class OptionDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, Option<T>>(engine)
 {
     public override Option<T> Diff(T source, T target)
         => EqualityComparer<T>.Default.Equals(source, target) ? default : Option.Some(target);
