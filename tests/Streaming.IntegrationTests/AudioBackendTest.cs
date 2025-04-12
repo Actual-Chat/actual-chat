@@ -30,7 +30,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
             await accountSettings.SetUserLanguageSettings(new () { Primary = Languages.Main, }, CancellationToken.None);
 
         var ownNode = services.MeshWatcher().OwnNode;
-        var streamId = new StreamId(ownNode.Ref, Generate.Option);
+        var streamId = StreamId.New(ownNode.Ref);
         var audioRecord = new AudioRecord(
             streamId, session, Constants.Chat.DefaultChatId,
             CpuClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -75,7 +75,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
-        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
+        var streamId = StreamId.New(services.MeshWatcher().OwnNode.Ref);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -125,7 +125,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
-        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
+        var streamId = StreamId.New(services.MeshWatcher().OwnNode.Ref);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -193,7 +193,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
-        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
+        var streamId = StreamId.New(services.MeshWatcher().OwnNode.Ref);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -259,7 +259,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         using var cts = new CancellationTokenSource();
 
-        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
+        var streamId = StreamId.New(services.MeshWatcher().OwnNode.Ref);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -301,7 +301,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         using var cts = new CancellationTokenSource();
 
-        var streamId = new StreamId(services.MeshWatcher().OwnNode.Ref, Generate.Option);
+        var streamId = StreamId.New(services.MeshWatcher().OwnNode.Ref);
         var audioRecord = new AudioRecord(
             streamId, session, chat.Id,
             SystemClock.Instance.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -322,7 +322,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
     {
         var audioStreamId = OpenAudioSegment.GetStreamId(audioRecord, 0);
         var transcriptStreamId = audioStreamId;
-        var diffs = client.GetTranscript(transcriptStreamId, CancellationToken.None);
+        var diffs = client.GetTranscript(transcriptStreamId.Value, CancellationToken.None);
         var transcript = Transcript.Empty;
         var length = 0;
         await foreach (var diff in diffs) {
@@ -341,7 +341,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         CancellationToken cancellationToken = default)
     {
         var streamId = OpenAudioSegment.GetStreamId(audioRecord, 0);
-        var audio = await client.GetAudio(streamId, skip, cancellationToken);
+        var audio = await client.GetAudio(streamId.Value, skip, cancellationToken);
 
         var sum = 0;
         await foreach (var audioFrame in audio.GetFrames(default))
