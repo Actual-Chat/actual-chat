@@ -7,7 +7,8 @@ public sealed partial record UserAvatarSettings
 {
     public const string KvasKey = nameof(UserAvatarSettings);
 
-    [DataMember, MemoryPackOrder(0)] private ApiArray<Symbol> LegacyAvatarIds { get; init; }
+    [DataMember, MemoryPackOrder(0), MemoryPackInclude]
+    private ApiArray<Symbol> LegacyAvatarIds { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore]
     public Symbol[] AvatarIds {

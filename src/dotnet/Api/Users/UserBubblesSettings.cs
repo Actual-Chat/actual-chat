@@ -9,7 +9,7 @@ public sealed partial record UserBubbleSettings : IHasOrigin
     public const string KvasKey = nameof(UserBubbleSettings);
     private readonly string[] _readBubbles = [];
 
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember, MemoryPackOrder(0), MemoryPackInclude]
     private ApiArray<Symbol> LegacyReadBubbles {
         get => _readBubbles.Select(x => new Symbol(x)).ToApiArray();
         init => _readBubbles = value.Select(x => x.Value).ToArray(value.Count);
