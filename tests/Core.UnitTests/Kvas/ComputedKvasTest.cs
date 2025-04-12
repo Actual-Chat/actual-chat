@@ -183,29 +183,29 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         }
     }
 
-[Fact] // TODO(AY): sometimes fails
-public async Task ValueOrDefaultMustReturnNewValueAfterUpdate()
-{
-    // arrange
-    var rsg = new RandomStringGenerator(alphabet: Alphabet.AlphaNumericLower);
-    var services = CreateServices();
-    var kvas = services.GetRequiredService<IKvas>();
-    var stateFactory = services.StateFactory();
-    var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
-    var updateDelayer = FixedDelayer.NextTick;
-    using var cts = new CancellationTokenSource(timeout);
-    var cancellationToken = cts.Token;
-    using var state = stateFactory.NewKvasSynced<bool>(new(kvas, $"{rsg.Next(5)}.b1") {
-        UpdateDelayer = updateDelayer,
-    });
+    [Fact] // TODO(AY): sometimes fails
+    public async Task ValueOrDefaultMustReturnNewValueAfterUpdate()
+    {
+        // arrange
+        var rsg = new RandomStringGenerator(alphabet: Alphabet.AlphaNumericLower);
+        var services = CreateServices();
+        var kvas = services.GetRequiredService<IKvas>();
+        var stateFactory = services.StateFactory();
+        var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
+        var updateDelayer = FixedDelayer.NextTick;
+        using var cts = new CancellationTokenSource(timeout);
+        var cancellationToken = cts.Token;
+        using var state = stateFactory.NewKvasSynced<bool>(new(kvas, $"{rsg.Next(5)}.b1") {
+            UpdateDelayer = updateDelayer,
+        });
 
-    // act
-    state.Value = true;
-    await state.Computed.When(x => x, cancellationToken);
+        // act
+        state.Value = true;
+        await state.Computed.When(x => x, cancellationToken);
 
-    // assert
-    await TestExt.When(() => state.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
-}
+        // assert
+        await TestExt.When(() => state.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
+    }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
