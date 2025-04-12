@@ -42,13 +42,14 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 {
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
-    private readonly Queue<Expiring<T>> _recentlyWritten = new();
     private bool _isReading;
     private int _writeIndex;
     private volatile Task<bool>? _writeTask;
 
     private Options Settings { get; }
     private MomentClock CpuClock { get; }
+    [field: AllowNull, MaybeNull]
+    private Queue<Expiring<T>> RecentlyWritten => field ??= new Queue<Expiring<T>>(2); // Use only inside lock (Lock)!
     private ILogger? DebugLog => Constants.DebugMode.SyncedState ? Log : null;
 
     public CancellationToken DisposeToken { get; }
@@ -252,7 +253,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
     public void AddRecentlyWritten(T value)
     {
         CleanupRecentlyWritten();
-        _recentlyWritten.Enqueue(new Expiring<T>(value, CpuClock.Now + SyncedState.MaxDiscardedWriteAge));
+        RecentlyWritten.Enqueue(new Expiring<T>(value, CpuClock.Now + SyncedState.MaxDiscardedWriteAge));
     }
 
     public bool IsRecentlyWritten(T value, bool mustRemove)
@@ -260,7 +261,8 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         var now = CpuClock.Now;
         var equalityComparer = EqualityComparer<T>.Default;
         var removeCount = 0;
-        foreach (var item in _recentlyWritten) {
+        var recentlyWritten = RecentlyWritten;
+        foreach (var item in recentlyWritten) {
             removeCount++;
             if (item.ExpiresAt < now)
                 continue;
@@ -270,7 +272,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
                 return true;
             }
         }
-        _recentlyWritten.Clear();
+        recentlyWritten.Clear();
         return false;
     }
 
@@ -278,8 +280,9 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
     {
         var now = CpuClock.Now;
         var i = 0;
-        while (_recentlyWritten.TryPeek(out var item) && (i++ < removeCount || item.ExpiresAt < now))
-            _recentlyWritten.Dequeue();
+        var recentlyWritten = RecentlyWritten;
+        while (recentlyWritten.TryPeek(out var item) && (i++ < removeCount || item.ExpiresAt < now))
+            recentlyWritten.Dequeue();
     }
 
     // Nested types
