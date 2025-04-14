@@ -359,7 +359,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var tiles = await ChatUI.GetTiles(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
         var itemCount = tiles.Sum(t => t.Items.Count);
         var isQueryFulfilled = query.ExpectedCount > itemCount / 2;
-        var isLoadLimitReached = itemCount / 2 >= ChatUI.LoadLimit;
+        var isLoadLimitReached = itemCount >= ChatUI.LoadLimit;
         if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -396,17 +396,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // Locating navigation entry
-        long? navEntryId = null;
+        string? navKey = null;
         if (nav != null) {
-            navEntryId = tiles
-                .SkipWhile(t => t.Items[^1].Id < nav.EntryLid)
+            var navChatMessage = tiles
                 .SelectMany(t => t.Items)
-                .FirstOrDefault(x => x.Id == nav.EntryLid && !x.IsReplacement)
-                ?.Id;
-            if (navEntryId == null)
+                .LastOrDefault(x => x.Id <= nav.EntryLid);
+            navKey = navChatMessage?.Key;
+            if (navChatMessage == null)
                 Log.LogWarning("GetData: entry not found in the loaded set: #{EntryLid}", nav.EntryLid);
             else if (nav.MustHighlight)
-                ChatUI.HighlightEntry(new ChatEntryId(chatId, ChatEntryKind.Text, navEntryId.Value, AssumeValid.Option),
+                // TODO(AK): Implement highlighting of conversations
+                ChatUI.HighlightEntry(
+                    new ChatEntryId(chatId, ChatEntryKind.Text, navChatMessage.Id, AssumeValid.Option),
                     false);
         }
         if (tiles.Count != 0) {
@@ -420,7 +421,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
-            ScrollToKey = navEntryId != null && mustScrollToEntry ? navEntryId.Value.Format() : null,
+            ScrollToKey = navKey != null && mustScrollToEntry ? navKey : null,
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = ItemVisibility.Value,
         };

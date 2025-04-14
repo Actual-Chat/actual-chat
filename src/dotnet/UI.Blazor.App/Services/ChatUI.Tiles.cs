@@ -165,10 +165,10 @@ public partial class ChatUI
         // Expand load limits and reset tiles if we need to load more just to fulfill one side
         var expandedLoadBefore = hasVeryFirstItem || beforeFulfilled
             ? dataQuery.LoadBefore
-            : Math.Max(dataQuery.LoadBefore * 4, 4 * LoadLimit);
+            : Math.Max(dataQuery.LoadBefore * 4, HalfLoadLimit);
         var expandedLoadAfter = hasVeryLastItem || afterFulfilled
             ? dataQuery.LoadAfter
-            : Math.Max(dataQuery.LoadAfter * 4, 4 * LoadLimit);
+            : Math.Max(dataQuery.LoadAfter * 4, HalfLoadLimit);
         return new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
