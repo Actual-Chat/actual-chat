@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
-using Microsoft.SemanticKernel.Agents.History;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
@@ -157,7 +156,10 @@ internal class ChatBotConversationHandler(
         };
 
         // Invoke and display assistant response
-        await foreach (var response in _agent.InvokeAsync(chat, arguments: arguments, cancellationToken: cancellationToken).ConfigureAwait(false)) {
+        var responseItems = _agent.InvokeAsync(new ChatHistoryAgentThread(chat),
+            new AgentInvokeOptions { KernelArguments = arguments },
+            cancellationToken);
+        await foreach (var response in responseItems.ConfigureAwait(false)) {
             chat.Add(response);
             await PostResponse(response).ConfigureAwait(false);
         }
