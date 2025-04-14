@@ -151,9 +151,6 @@
     @apply bg-01;
     @apply text-cr-item-badge-selected-text text-caption-6;
 }
-.default-layout .layout-body:has(.conversation-message) {
-    scrollbar-width: none;
-}
 
 .virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-message),
 .virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-header),

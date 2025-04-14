@@ -35,6 +35,25 @@ export class VisualMediaViewer {
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.videos = this.imageViewer.getElementsByTagName('video');
 
+        const swiperEl = document.querySelector('.media-swiper');
+        const swiperParams = {
+            touchRatio: 1,
+            touchAngle: 45,
+            resistanceRatio: 0.85,
+            threshold: 10,
+        };
+        Object.assign(swiperEl, swiperParams);
+        swiperEl.initialize();
+        const swiper = swiperEl.swiper;
+
+        swiper.on('slideChange', () => {
+            void this.onSlideChange(swiper);
+        });
+
+        swiper.on('touchStart', (swiper: Swiper, event: TouchEvent) => {
+            this.onZoomedSlideSwipe(swiper, event);
+        });
+
         fromEvent(window.visualViewport, 'resize')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: Event) => {
@@ -63,10 +82,6 @@ export class VisualMediaViewer {
          fromEvent(this.overlay, 'click')
              .pipe(takeUntil(this.disposed$))
              .subscribe((event: PointerEvent) => this.onClick(event));
-
-        fromEvent(this.overlay, 'swiperslidechange')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event) => this.onSlideChange(event));
 
         fromEvent(this.overlay, 'youtubeplayeronstatechange')
             .pipe(takeUntil(this.disposed$))
@@ -199,6 +214,34 @@ export class VisualMediaViewer {
 
     // Event handlers
 
+    private onZoomedSlideSwipe(swiper: Swiper, event: TouchEvent) {
+        if (swiper.zoom.scale > 1) {
+            if (!swiper)
+                return;
+
+            const activeIndex = swiper.activeIndex;
+            const activeSlide = swiper.slides[activeIndex];
+            const image = activeSlide.querySelector('img');
+            const prevButton = swiper.navigation.prevEl;
+            const nextButton = swiper.navigation.nextEl;
+
+            if (prevButton && prevButton.contains(event.target as Node) && !prevButton.classList.contains('.swiper-button-disabled'))
+                return;
+
+            if (nextButton && nextButton.contains(event.target as Node) && !nextButton.classList.contains('.swiper-button-disabled'))
+                return;
+
+            const rect = image.getBoundingClientRect();
+            const windowWidth = window.innerWidth;
+
+            if (rect.right - rect.left <= windowWidth)
+                return;
+
+            swiper.allowSlidePrev = rect.left > -10;
+            swiper.allowSlideNext = rect.right - windowWidth < 10;
+        }
+    }
+
     private onClick(event: PointerEvent | MouseEvent) {
         const { pageY } = event;
         const cursorInHeaderArea = pageY <= this.header.offsetHeight;
@@ -233,9 +276,8 @@ export class VisualMediaViewer {
         }
     }
 
-    private async onSlideChange(event: any): Promise<void> {
+    private async onSlideChange(swiper: Swiper): Promise<void> {
         this.updateVideoPlayback();
-        const swiper: Swiper = event.detail[0];
         if (this.maxVideoWidth != 0 || this.maxVideoWidth != 0 || this.videoRatio != 0)
             this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
         void this.blazorRef.invokeMethodAsync('SlideChanged', swiper.activeIndex);

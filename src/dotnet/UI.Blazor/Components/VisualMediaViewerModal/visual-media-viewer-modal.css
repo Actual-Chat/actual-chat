@@ -86,6 +86,9 @@ swiper-container {
     width: 100%;
     height: 100%;
 }
+swiper-slide {
+    @apply overflow-hidden;
+}
 swiper-slide img {
     max-width: 100%;
     max-height: 100%;
@@ -93,9 +96,9 @@ swiper-slide img {
     background-size: 32px 32px;
     background-position: 0 0, 16px 16px;
 }
-.media-swiper {
-    height: 100%;
-    width: 100%;
+body.device-ios swiper-slide .swiper-zoom-container,
+body.device-ios swiper-slide img {
+    touch-action: none;
 }
 .media-swiper .video-wrapper {
     max-height: calc(100vh - 7rem);
