@@ -2,13 +2,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<string>
 @{
-    var m = State.Value;
-    _lastDate = m.IsNullOrEmpty() ? _lastDate : m;
+    var m = State.Value.NullIfEmpty() ?? _lastDate;
+    _lastDate = m;
 }
 
 <div @ref="Ref" class="date-visor-wrapper">
     <div class="date-visor">
-        @_lastDate
+        @m
     </div>
 </div>
 
