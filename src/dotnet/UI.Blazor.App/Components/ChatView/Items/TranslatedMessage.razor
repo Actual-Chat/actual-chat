@@ -46,7 +46,8 @@
         if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
             return markup;
 
-        if (await TranslationUI.IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
+        var isOn = await TranslationUI.IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) ?? false;
+        if (!isOn)
             return markup;
 
         if (!await TranslationUI.NeedsTranslation(entry.Id, cancellationToken).ConfigureAwait(false))
