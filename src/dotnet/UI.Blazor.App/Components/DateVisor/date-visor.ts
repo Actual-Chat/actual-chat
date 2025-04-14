@@ -3,7 +3,7 @@ import { debounce, PromiseSourceWithTimeout, throttle } from 'promises';
 
 export class DateVisor {
     private readonly dateVisor: HTMLElement;
-    private readonly chatView: HTMLElement;
+    private chatView: HTMLElement;
     private isScrolling: boolean;
     private disposed$: Subject<void> = new Subject<void>();
 
@@ -13,14 +13,16 @@ export class DateVisor {
 
     constructor(dateVisor: HTMLElement) {
         this.dateVisor = dateVisor;
-        this.chatView = document.body.querySelector('.chat-view');
+        const checkInterval = setInterval(() => {
+            this.chatView = document.querySelector('.chat-view');
+            if (this.chatView) {
+                clearInterval(checkInterval);
 
-        if (this.chatView == null)
-            return;
-
-        fromEvent(this.chatView, 'scroll')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(this.onScrollHandler);
+                fromEvent(this.chatView, 'scroll')
+                    .pipe(takeUntil(this.disposed$))
+                    .subscribe(this.onScrollHandler);
+            }
+        }, 200);
     }
 
     public dispose() {
