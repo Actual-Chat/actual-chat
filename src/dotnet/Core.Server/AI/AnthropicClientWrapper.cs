@@ -22,7 +22,7 @@ internal sealed class AnthropicClientWrapper(AnthropicClient anthropicClient) : 
         };
 
         var response = await anthropicClient.Messages
-            .GetClaudeMessageAsync(parameters, null, token)
+            .GetClaudeMessageAsync(parameters, token)
             .ConfigureAwait(false);
         return response.Message.ToString()!;
     }
