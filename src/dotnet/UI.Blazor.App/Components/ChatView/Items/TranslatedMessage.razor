@@ -7,6 +7,8 @@
 <MarkupView Markup="@m"/>
 
 @code {
+    private Markup? _initialData = null;
+
     private ChatUIHub Hub => ChatContext.Hub;
     private ITranslations Translations => Hub.Translations;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
@@ -18,12 +20,25 @@
     [Parameter, EditorRequired, ParameterComparer(typeof(ByRefParameterComparer))]
     public Markup Markup { get; set; } = null!;
 
-    protected override ComputedState<Markup>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        parameters.SetParameterProperties(this);
+        _initialData = await ComputeState(CancellationToken.None).ConfigureAwait(true);
+        if (ReferenceEquals(State, null)) {
+            var (state, stateOptions) = CreateState();
+            SetState(state, stateOptions);
+        }
+        await base.SetParametersAsync(ParameterView.Empty);
+    }
+
+    protected override ComputedState<Markup>.Options GetStateOptions() {
+        var initialData = _initialData ?? Markup;
+        return ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Markup>.Options {
-                InitialValue = Markup, // show original text immediately
+                InitialValue = initialData, // show original text immediately
                 Category = GetStateCategory(t),
             });
+    }
 
     protected override async Task<Markup> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
