@@ -190,13 +190,13 @@ body.hoverable .thread-list-item:hover {
     @apply flex-x items-end gap-x-1;
     @apply w-full h-3.5;
     @apply truncate;
-    @apply text-xs text-03;
+    @apply text-caption-4 text-03;
 }
 .thread-list-item .c-bottom .c-last-message .c-name {
     @apply flex;
     @apply truncate;
     @apply whitespace-pre;
-    @apply text-xs text-[var(--blue-30)] font-medium;
+    @apply text-caption-1 text-[var(--blue-30)];
 }
 .thread-list-item .c-bottom .c-last-message .c-name:has(.non-shrinkable) {
     @apply flex-none;
@@ -206,7 +206,7 @@ body.hoverable .thread-list-item:hover {
 }
 .thread-list-item .c-bottom .c-last-message .c-colon {
     @apply -ml-1;
-    @apply text-xs text-02 font-medium;
+    @apply text-caption-1 text-02;
 }
 .thread-list-item .c-bottom .c-last-message .c-text {
     @apply min-w-8;
