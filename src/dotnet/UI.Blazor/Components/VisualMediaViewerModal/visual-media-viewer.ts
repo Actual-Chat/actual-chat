@@ -3,6 +3,11 @@ import { clearTimeout, setTimeout } from 'timerQueue';
 import { Swiper } from 'swiper';
 import { debounce } from 'promises';
 
+interface SwiperElement extends HTMLElement {
+    swiper: any;
+    initialize: () => void;
+}
+
 export class VisualMediaViewer {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly overlay: HTMLElement;
@@ -35,7 +40,7 @@ export class VisualMediaViewer {
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.videos = this.imageViewer.getElementsByTagName('video');
 
-        const swiperEl = document.querySelector('.media-swiper');
+        const swiperEl = document.querySelector('.media-swiper') as SwiperElement;
         const swiperParams = {
             touchRatio: 1,
             touchAngle: 45,
