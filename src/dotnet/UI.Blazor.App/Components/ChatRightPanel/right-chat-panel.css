@@ -92,6 +92,7 @@
     line-height: 0.875rem;
     max-height: calc(0.875rem * 3);
     scrollbar-width: none;
+    word-break: break-word;
 }
 .right-chat-panel > .c-header > .c-bottom > .c-info > .c-bullet {
     @apply px-1;
@@ -176,6 +177,7 @@ body.hoverable .thread-list-item:hover {
     @apply overflow-hidden;
 }
 .thread-list-item .c-chat-title {
+    @apply w-full;
     @apply line-clamp-2;
     @apply text-text-1 text-01;
 }

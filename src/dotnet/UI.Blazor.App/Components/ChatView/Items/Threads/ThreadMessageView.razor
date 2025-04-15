@@ -5,14 +5,23 @@
     var m = State.Value;
     if (m is null)
         return; // Loading
+
     var displayAuthorsLimit = 3;
     var firstAuthors = m.AuthorIds.Take(displayAuthorsLimit).ToList();
     var extraAuthorCount = Math.Clamp(m.AuthorIds.Count - displayAuthorsLimit, 0, 99);
-    var createdAt = chat.CreatedAt.ToDateTime();
-    var now = Clocks.SystemClock.Now.ToDateTime();
-    var creationDate = createdAt.Year == now.Year
-        ? now.ToString("M")
-        : now.ToString("d");
+    var createdAt = DateTimeConverter.ToLocalTime(chat.CreatedAt.ToDateTime());
+    var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now.ToDateTime());
+    var daysDelta = (now.Date - createdAt.Date).Days;
+    var creationDate = createdAt.Year != now.Year // prev year
+        ? DateTimeConverter.ToLocalTime(createdAt).ToString("MMM dd, yyyy")
+        : daysDelta == 0 // today
+            ? "Today"
+                : daysDelta == 1 // yesterday
+                ? "Yesterday"
+                    : daysDelta < 8 // this week
+                    ? DateTimeConverter.ToLocalTime(createdAt).ToString("dddd")
+                        : DateTimeConverter.ToLocalTime(createdAt).ToString("MMM dd"); // this year
+
 }
 
 <div class="thread-message">
@@ -71,7 +80,7 @@
             }
         </div>
         <div class="c-info">
-            <span>@creationDate</span><span> created by </span><span>@m.OwnerName</span>
+            <span>@creationDate,</span><span> created by </span><span>@m.OwnerName</span>
         </div>
         <HeaderButton Click="CopyToClipboardRequested">
             <i class="icon-copy"></i>
@@ -90,6 +99,7 @@
     private IRoles Roles => Hub.Roles;
     private History History => Hub.History;
     private MomentClockSet Clocks => Hub.Clocks();
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     // ChatContext belongs to parent Chat, not to the thread chat.
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;

@@ -55,4 +55,5 @@
 }
 .thread-message .c-footer .c-info {
     @apply flex-1;
+    @apply text-caption-6 text-03;
 }
