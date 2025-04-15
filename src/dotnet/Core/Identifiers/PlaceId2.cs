@@ -57,6 +57,9 @@ public sealed partial class PlaceId2 : StringIdentifier, IStringIdentifier<Place
     public static PlaceId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PlaceId2>(s);
 
+    public static PlaceId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static PlaceId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

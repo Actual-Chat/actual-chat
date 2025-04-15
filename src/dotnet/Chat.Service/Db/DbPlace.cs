@@ -39,8 +39,8 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Description = Description,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
-            MediaId = new MediaId(MediaId),
-            BackgroundMediaId = new MediaId(BackgroundMediaId),
+            MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
+            BackgroundMediaId = ActualChat.MediaId.ParseOrNull(BackgroundMediaId),
             UserLinkId = new UserLinkId(UserLinkId),
         };
 
@@ -56,8 +56,8 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Description = model.Description;
         CreatedAt = model.CreatedAt;
         IsPublic = model.IsPublic;
-        MediaId = model.MediaId;
-        BackgroundMediaId = model.BackgroundMediaId;
+        MediaId = model.MediaId?.Value ?? "";
+        BackgroundMediaId = model.BackgroundMediaId?.Value ?? "";
         UserLinkId = model.UserLinkId.Value;
     }
 }

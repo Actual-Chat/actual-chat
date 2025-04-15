@@ -11,7 +11,7 @@ public partial record ChatRoulette(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0)
     : IHasId<ChatRouletteId>, IHasVersion<long>
 {
-    public static readonly MediaId MediaId = new ("system-icons:chatroulette");
+    public static readonly MediaId MediaId = MediaId.Parse("system-icons:chatroulette");
 
     [DataMember, MemoryPackOrder(2)] public ChatId ChatId { get; init; }
 

@@ -241,8 +241,8 @@
         var newPlace = place with {
             Title = _form!.Title,
             Description = _form!.Description,
-            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
-            BackgroundMediaId = _form.Background?.MediaContent?.MediaId ?? MediaId.None,
+            MediaId = _form.Picture?.MediaContent?.MediaId,
+            BackgroundMediaId = _form.Background?.MediaContent?.MediaId,
         };
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),

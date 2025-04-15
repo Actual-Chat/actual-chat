@@ -8,5 +8,5 @@ namespace ActualChat;
 public partial record MediaContent(
     [property: DataMember, MemoryPackOrder(0)] MediaId MediaId,
     [property: DataMember, MemoryPackOrder(1)] string ContentId,
-    [property: DataMember, MemoryPackOrder(2)] MediaId ThumbnailMediaId = default,
+    [property: DataMember, MemoryPackOrder(2)] MediaId? ThumbnailMediaId = null,
     [property: DataMember, MemoryPackOrder(3)] string? ThumbnailContentId = null);

@@ -53,7 +53,10 @@ public sealed partial class GroupChatId : ChatId2, IStringIdentifier<GroupChatId
     public static new GroupChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<GroupChatId>(s);
 
-    public static GroupChatId? TryParse(string? s)
+    public static new GroupChatId? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static new GroupChatId? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out GroupChatId? result)

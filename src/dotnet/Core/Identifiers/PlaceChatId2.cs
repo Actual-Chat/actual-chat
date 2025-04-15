@@ -77,7 +77,10 @@ public sealed partial class PlaceChatId2 : ChatId2, IStringIdentifier<PlaceChatI
     public static new PlaceChatId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PlaceChatId2>(s);
 
-    public static PlaceChatId2? TryParse(string? s)
+    public static new PlaceChatId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static new PlaceChatId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out PlaceChatId2? result)

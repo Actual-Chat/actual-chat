@@ -45,7 +45,6 @@ public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirement
         init => this.SetMetadataValue(value);
     }
 
-    public Media() : this(MediaId.None) { }
     public Media(MediaId id)
         => Id = id;
 

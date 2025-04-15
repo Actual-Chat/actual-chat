@@ -37,8 +37,8 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         var mentions = ImmutableArray.Create(activeUser);
         var reactions = ImmutableArray.Create(activeUser);
         var attachments = ImmutableArray.Create(
-            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary1"),
-            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary2")
+            new ChatSliceAttachment(MediaId.New("chat"), "summary1"),
+            new ChatSliceAttachment(MediaId.New("chat"), "summary2")
         );
         const string lang = "en-US";
         var timestamp = DateTime.Now;

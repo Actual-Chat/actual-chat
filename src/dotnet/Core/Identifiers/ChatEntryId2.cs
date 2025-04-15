@@ -71,6 +71,9 @@ public partial class ChatEntryId2 : StringIdentifier, IStringIdentifier<ChatEntr
     public static ChatEntryId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId2>(s);
 
+    public static ChatEntryId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static ChatEntryId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

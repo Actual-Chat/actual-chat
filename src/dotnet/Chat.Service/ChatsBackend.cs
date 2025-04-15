@@ -81,7 +81,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chat == null)
             return null;
 
-        if (chat.MediaId.IsNone)
+        if (chat.MediaId == null)
             return chat;
 
         var media = await MediaBackend.Get(chat.MediaId, cancellationToken).ConfigureAwait(false);
@@ -444,8 +444,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var mediaIds = dbAttachments.Select(x => x.MediaId)
             .Concat(dbAttachments.Select(x => x.ThumbnailMediaId))
-            .Select(MediaId.ParseOrNone)
-            .Where(mid => !mid.IsNone)
+            .Select(MediaId.ParseOrNull)
+            .SkipNullItems()
             .ToList();
         var mediaMap = EmptyMediaMap;
         if (mediaIds.Count > 0) {
@@ -462,15 +462,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         TextEntryAttachment? WithMedia(TextEntryAttachment attachment)
         {
-            if (attachment.MediaId.IsNone)
-                return attachment;
-
             var media = mediaMap.GetValueOrDefault(attachment.MediaId);
             if (media is null)
                 return null;
 
             Media.Media? thumbnailMedia = null;
-            if (!attachment.ThumbnailMediaId.IsNone)
+            if (attachment.ThumbnailMediaId != null)
                 thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId);
             return attachment with {
                 Media = media,
@@ -791,7 +788,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             if (!dbChat.MediaId.IsNullOrEmpty()) {
                 var removeMediaCommand = new MediaBackend_Change(
-                    new MediaId(dbChat.MediaId),
+                    MediaId.Parse(dbChat.MediaId),
                     new Change<Media.Media> { Remove = true });
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
@@ -802,9 +799,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
             foreach (var mediaSid in attachmentMediaIds) {
-                var mediaId = new MediaId(mediaSid);
+                var mediaId = MediaId.Parse(mediaSid);
                 if (!OrdinalEquals(mediaId.Scope, chatId.Value))
                     continue; // NOTE(DF): Do not remove media from current chat scope. Forwarded messages can contain media from another chat.
+
                 var removeMediaCommand = new MediaBackend_Change(
                     mediaId,
                     new Change<Media.Media> { Remove = true });
@@ -1293,7 +1291,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
             foreach (var mediaId in attachmentMediaIds) {
                 var removeMediaCommand = new MediaBackend_Change(
-                    new MediaId(mediaId),
+                    MediaId.Parse(mediaId),
                     new Change<Media.Media> { Remove = true });
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
@@ -1374,7 +1372,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     Title = "Notes",
                     Kind = ChatKind.Group,
                     IsPublic = false,
-                    MediaId = new MediaId("system-icons:notes"),
+                    MediaId = MediaId.Parse("system-icons:notes"),
                     IsTemplate = false,
                     AllowGuestAuthors = false,
                     AllowAnonymousAuthors = false,

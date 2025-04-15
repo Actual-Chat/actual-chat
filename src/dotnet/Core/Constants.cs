@@ -102,7 +102,7 @@ public static partial class Constants
             public static readonly UserId UserId = new("sherlock", AssumeValid.Option);
             public static readonly long AuthorLocalId = -2;
             public static readonly string Name =  "AI Search Bot";
-            public static readonly MediaId MediaId = new ("system-icons:sherlock");
+            public static readonly MediaId MediaId = MediaId.Parse("system-icons:sherlock");
 
             public static AuthorId GetSherlockAuthorId(ChatId chatId)
                 => new(chatId, AuthorLocalId, AssumeValid.Option);

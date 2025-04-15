@@ -54,6 +54,9 @@ public sealed partial class UserLinkId2 : StringIdentifier, IStringIdentifier<Us
     public static UserLinkId2 Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserLinkId2>(s);
 
+    public static UserLinkId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static UserLinkId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

@@ -16,8 +16,8 @@ public sealed partial record Place(
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public bool IsPublic { get; init; }
-    [DataMember, MemoryPackOrder(5)] public MediaId MediaId { get; init; }
-    [DataMember, MemoryPackOrder(6)] public MediaId BackgroundMediaId { get; init; }
+    [DataMember, MemoryPackOrder(5)] public MediaId? MediaId { get; init; }
+    [DataMember, MemoryPackOrder(6)] public MediaId? BackgroundMediaId { get; init; }
     [DataMember, MemoryPackOrder(7)] public string Description { get; init; } = "";
     [DataMember, MemoryPackOrder(14)] public UserLinkId UserLinkId { get; init; } = UserLinkId.None;
 

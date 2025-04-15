@@ -54,6 +54,9 @@ public partial class ChatId2 : StringIdentifier, IStringIdentifier<ChatId2>
     public static ChatId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId2>(s);
 
+    public static ChatId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static ChatId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

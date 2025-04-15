@@ -6,7 +6,7 @@ namespace ActualChat.Media;
 public interface IMediaBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken);
+    Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Media?> GetByMediaIdScope(string mediaIdScope, CancellationToken cancellationToken);
     [ComputeMethod]

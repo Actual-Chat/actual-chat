@@ -63,6 +63,9 @@ public sealed partial class UserId2 : PrincipalId2, IStringIdentifier<UserId2>
     public static new UserId2 Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserId2>(s);
 
+    public static new UserId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static new UserId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

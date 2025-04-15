@@ -51,7 +51,10 @@ public sealed partial class AudioEntryId : ChatEntryId2, IStringIdentifier<Audio
     public static new AudioEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AudioEntryId>(s);
 
-    public static AudioEntryId? TryParse(string? s)
+    public static new AudioEntryId? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static new AudioEntryId? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out AudioEntryId? result)

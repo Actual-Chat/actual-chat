@@ -62,6 +62,9 @@ public sealed partial class AuthorId2 : PrincipalId2, IStringIdentifier<AuthorId
     public static new AuthorId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId2>(s);
 
+    public static new AuthorId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static new AuthorId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

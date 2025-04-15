@@ -64,6 +64,9 @@ public sealed partial class ExternalContactId2 : StringIdentifier, IStringIdenti
     public static ExternalContactId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ExternalContactId2>(s);
 
+    public static ExternalContactId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static ExternalContactId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

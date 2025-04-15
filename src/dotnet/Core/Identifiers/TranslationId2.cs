@@ -64,6 +64,9 @@ public sealed partial class TranslationId2 : StringIdentifier, IStringIdentifier
     public static TranslationId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TranslationId2>(s);
 
+    public static TranslationId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static TranslationId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

@@ -8,9 +8,9 @@ public static class ChatEntryOperations
         this IWebTester tester,
         ChatId chatId,
         string text,
-        MediaId mediaId = default)
+        MediaId? mediaId = null)
         => tester.Commander.Call(new Chats_UpsertTextEntry(tester.Session, chatId, null, text) {
-            EntryAttachments = mediaId.IsNone
+            EntryAttachments = mediaId == null
                 ? []
                 : [
                     new TextEntryAttachment {

@@ -185,14 +185,14 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             }
 
             // NOTE(DF): force sync after changes are committed
-            var isLocal = context.Operation.HostId == HostId.Id;
+            var isLocal = OrdinalEquals(context.Operation.HostId, HostId.Id);
             if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
                 ContactLinker.Activate();
             return default!;
         }
 
-        var overallAffectedHashes = new HashSet<string>();
-        var updatedItemHashes = new HashSet<string>();
+        var overallAffectedHashes = new HashSet<string>(StringComparer.Ordinal);
+        var updatedItemHashes = new HashSet<string>(StringComparer.Ordinal);
         var result = new List<Result<ExternalContactFull?>>(command.Changes.Length);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -242,8 +242,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ConfigureAwait(false);
         var existing = dbExternalContact?.ToModel();
         var now = Clocks.SystemClock.Now;
-
-        var modifiedItemHashes = new HashSet<string>();
+        var modifiedItemHashes = new HashSet<string>(StringComparer.Ordinal);
 
         if (change.IsCreate(out var externalContact)) {
             if (existing != null)

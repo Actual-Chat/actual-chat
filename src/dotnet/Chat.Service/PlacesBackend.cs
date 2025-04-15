@@ -23,11 +23,11 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         if (place == null)
             return null;
 
-        if (!place.MediaId.IsNone) {
+        if (place.MediaId != null) {
             var media = await MediaBackend.Get(place.MediaId, cancellationToken).ConfigureAwait(false);
             place = place with { Picture = media };
         }
-        if (!place.BackgroundMediaId.IsNone) {
+        if (place.BackgroundMediaId != null) {
             var background = await MediaBackend.Get(place.BackgroundMediaId, cancellationToken).ConfigureAwait(false);
             place = place with { Background = background };
         }
@@ -175,7 +175,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         {
             if (!mediaSid.IsNullOrEmpty()) {
                 var removeMediaCommand = new MediaBackend_Change(
-                    new MediaId(mediaSid),
+                    MediaId.Parse(mediaSid),
                     new Change<Media.Media> { Remove = true });
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }

@@ -23,7 +23,7 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         if (userAvatar == null)
             return null;
 
-        if (userAvatar.MediaId.IsNone)
+        if (userAvatar.MediaId == null)
             return userAvatar;
 
         var media = await MediaBackend.Get(userAvatar.MediaId, cancellationToken).ConfigureAwait(false);
@@ -56,7 +56,7 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         }
         else {
             var dbAvatar = await dbContext.Avatars
-                .Get(avatarId, cancellationToken)
+                .Get(avatarId.Value, cancellationToken)
                 .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
             existingAvatar = dbAvatar.ToModel();

@@ -77,6 +77,9 @@ public sealed partial class ContactId2 : StringIdentifier, IStringIdentifier<Con
     public static ContactId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId2>(s);
 
+    public static ContactId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static ContactId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

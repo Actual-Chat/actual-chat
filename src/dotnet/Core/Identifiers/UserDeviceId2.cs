@@ -64,6 +64,9 @@ public sealed partial class UserDeviceId2 : StringIdentifier, IStringIdentifier<
     public static UserDeviceId2 Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserDeviceId2>(s);
 
+    public static UserDeviceId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static UserDeviceId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

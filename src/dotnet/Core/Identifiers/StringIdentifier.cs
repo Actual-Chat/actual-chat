@@ -1,5 +1,6 @@
 using System.Numerics;
 using ActualLab.Rpc;
+using MemoryPack;
 
 namespace ActualChat;
 
@@ -20,6 +21,7 @@ public interface IStringIdentifier<TSelf> : IStringIdentifier,
     where TSelf : StringIdentifier, IStringIdentifier<TSelf>
 {
     public static abstract TSelf Parse(string s); // Must rely on TryParse
+    public static abstract TSelf? ParseOrNull(string? s); // Must rely on TryParse
     public static abstract TSelf? TryParse(string? s); // Must rely on TryParse
     public static abstract bool TryParse(string? s, [NotNullWhen(true)] out TSelf? result);
 

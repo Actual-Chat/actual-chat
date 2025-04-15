@@ -20,19 +20,19 @@ public class DbMedia : IHasId<string>, IRequirementTarget
     public string MetadataJson { get; set; } = "";
 
     public Media ToModel()
-        => new (new MediaId(Id, Scope, LocalId, AssumeValid.Option)) {
+        => new (MediaId.New(Id, Scope, LocalId, AssumeValid.Option)) {
             ContentId = ContentId,
             Metadata = MetadataSerializer.Read(MetadataJson),
         };
 
     public void UpdateFrom(Media model)
     {
-        this.RequireSameOrEmptyId(model.Id);
+        this.RequireSameOrEmptyId(model.Id.Value);
 
         if (!Id.IsNullOrEmpty())
             return;
 
-        Id = model.Id;
+        Id = model.Id.Value;
         Scope = model.Id.Scope;
         LocalId = model.Id.LocalId;
         ContentId = model.ContentId;

@@ -228,7 +228,7 @@
                     EntryId = textEntryId,
                     MediaId = c.MediaContent.MediaId,
                     ThumbnailMediaId = c.MediaContent.ThumbnailMediaId,
-                    Media = new Media {
+                    Media = new Media(c.MediaContent.MediaId) {
                         ContentType = c.ContentType,
                     },
                 }).ToArray(),

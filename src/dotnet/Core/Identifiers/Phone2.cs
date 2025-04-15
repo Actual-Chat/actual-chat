@@ -80,6 +80,9 @@ public sealed partial class Phone2 : StringIdentifier, IStringIdentifier<Phone2>
     public static Phone2 Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Phone2>(s);
 
+    public static Phone2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static Phone2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

@@ -124,7 +124,10 @@ public sealed partial class PeerChatId2 : ChatId2, IStringIdentifier<PeerChatId2
     public static new PeerChatId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PeerChatId2>(s);
 
-    public static PeerChatId2? TryParse(string? s)
+    public static new PeerChatId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static new PeerChatId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out PeerChatId2? result)

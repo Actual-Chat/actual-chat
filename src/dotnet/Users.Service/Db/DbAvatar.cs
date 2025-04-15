@@ -30,7 +30,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public AvatarFull ToModel()
         => new(new UserId(UserId), Id, Version) {
             Name = Name,
-            MediaId = new MediaId(MediaId),
+            MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
             Bio = Bio,
             PictureUrl = Picture,
             AvatarKey = AvatarKey,
@@ -52,7 +52,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Name = model.Name;
-        MediaId = model.MediaId;
+        MediaId = model.MediaId?.Value ?? "";
         Bio = model.Bio;
         Picture = model.PictureUrl;
         AvatarKey = model.AvatarKey;

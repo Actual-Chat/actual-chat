@@ -35,7 +35,7 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(7)] public UserId? TemplatedForUserId { get; init; }
     [DataMember, MemoryPackOrder(8)] public bool AllowGuestAuthors { get; init; }
     [DataMember, MemoryPackOrder(9)] public bool AllowAnonymousAuthors { get; init; }
-    [DataMember, MemoryPackOrder(10)] public MediaId MediaId { get; init; }
+    [DataMember, MemoryPackOrder(10)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
     [DataMember, MemoryPackOrder(16)] public string Description { get; init; } = "";

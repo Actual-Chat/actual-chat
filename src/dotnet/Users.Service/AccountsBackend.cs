@@ -277,7 +277,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     internal static bool IsAdmin(User user)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
-        if (HasIdentity(user, "internal") && user.Id == Constants.User.Admin.UserId)
+        if (HasIdentity(user, "internal") && OrdinalEquals(user.Id, Constants.User.Admin.UserId.Value))
             return true;
 
         var email = user.GetEmail();

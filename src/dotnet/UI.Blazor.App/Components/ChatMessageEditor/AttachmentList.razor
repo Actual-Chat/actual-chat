@@ -256,11 +256,19 @@
         }
     }
 
-    public record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default, MediaId ThumbnailMediaId = default)
+    public sealed record Attachment(
+        int Id,
+        string Url,
+        string FileName,
+        string FileType,
+        int Length,
+        int Progress = 0,
+        MediaId? MediaId = null,
+        MediaId? ThumbnailMediaId = null)
     {
         public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
         public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
         public bool Failed { get; init; }
-        public bool Uploaded => Progress == 100 && !MediaId.IsNone;
+        public bool Uploaded => Progress == 100 && MediaId != null;
     }
 }

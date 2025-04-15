@@ -34,7 +34,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var linkPreview = dbLinkPreview?.ToModel();
 
         await ScheduleRefreshIfRequired().ConfigureAwait(false);
-        if (linkPreview?.PreviewMediaId.IsNone != false)
+        if (linkPreview == null || linkPreview.PreviewMediaId == null)
             return linkPreview;
 
         return linkPreview with {

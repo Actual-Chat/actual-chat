@@ -14,7 +14,7 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
     [Fact]
     public void AttachmentSerializesProperly()
     {
-        var id = new MediaId("testscope", Generate.Option);
+        var id = MediaId.New("testscope");
         var attachment = new ChatSliceAttachment(id, AttachmentSummary);
 
         var jsonString = JsonSerializer.Serialize(attachment, SerializerOptions);
@@ -27,7 +27,7 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
     [Fact]
     public void AttachmentDeserializesProperly()
     {
-        var id = new MediaId("testscope", Generate.Option);
+        var id = MediaId.New("testscope");
         var attachment = new ChatSliceAttachment(id, AttachmentSummary);
 
         var jsonString = JsonSerializer.Serialize(attachment, SerializerOptions);
@@ -70,8 +70,8 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         var mentions = ImmutableArray.Create(activeUser);
         var reactions = ImmutableArray.Create(activeUser);
         var attachments = ImmutableArray.Create(
-            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary1"),
-            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary2")
+            new ChatSliceAttachment(MediaId.New("chat"), "summary1"),
+            new ChatSliceAttachment(MediaId.New("chat"), "summary2")
         );
         const string lang = "en-US";
         var timestamp = DateTime.Now;

@@ -31,7 +31,7 @@ public class SystemProperties(IServiceProvider services)
             // It should happen inside this block to make sure it runs on every node
             var hostId = Services.GetRequiredService<HostId>();
             var operation = context.Operation;
-            if (everywhere || operation.HostId == hostId.Id)
+            if (everywhere || OrdinalEquals(operation.HostId, hostId.Id))
                 ComputedRegistry.Instance.InvalidateEverything();
             return;
         }
@@ -60,7 +60,7 @@ public class SystemProperties(IServiceProvider services)
             // It should happen inside this block to make sure it runs on every node
             var hostId = Services.GetRequiredService<HostId>();
             var operation = context.Operation;
-            if (everywhere || operation.HostId == hostId.Id)
+            if (everywhere || OrdinalEquals(operation.HostId, hostId.Id))
                 _ = computedGraphPruner.PruneOnce(CancellationToken.None);
             return;
         }

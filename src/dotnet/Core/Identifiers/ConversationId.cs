@@ -5,6 +5,8 @@ using MemoryPack;
 
 namespace ActualChat;
 
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<ConversationId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ConversationId>))]

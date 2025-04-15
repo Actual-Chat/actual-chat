@@ -7,12 +7,12 @@ namespace ActualChat.Chat;
 public sealed class MediaStorage(ICommander commander, IContentSaver contentSaver)
 {
     public Task<Media.Media?> Save(ChatId chatId, UploadedFile file, Size? size, CancellationToken cancellationToken)
-        => Save(file, size, new MediaId(chatId, Generate.Option), cancellationToken);
+        => Save(file, size, MediaId.New(chatId.Value), cancellationToken);
 
     public async Task<Media.Media?> Save(UploadedFile file, Size? size, MediaId mediaId, CancellationToken cancellationToken)
     {
         var media = new Media.Media(mediaId) {
-            ContentId = mediaId.ContentId(Path.GetExtension(file.FileName)),
+            ContentId = mediaId.GetContentId(Path.GetExtension(file.FileName)),
             FileName = file.FileName,
             Length = file.Length,
             ContentType = file.ContentType,

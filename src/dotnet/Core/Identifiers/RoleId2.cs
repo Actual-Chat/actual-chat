@@ -67,6 +67,9 @@ public sealed partial class RoleId2 : StringIdentifier, IStringIdentifier<RoleId
     public static RoleId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<RoleId2>(s);
 
+    public static RoleId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static RoleId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

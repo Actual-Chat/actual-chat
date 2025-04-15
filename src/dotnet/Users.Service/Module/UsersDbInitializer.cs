@@ -166,7 +166,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         var avatarBio = userInfo.AvatarBio.NullIfEmpty() ?? $"I'm just a {userName} test bot";
         var avatarMediaId = userInfo.AvatarMediaId;
         string avatarPictureUrl = "";
-        if (avatarMediaId.IsNone)
+        if (avatarMediaId == null)
             avatarPictureUrl = userInfo.AvatarPictureUrl.NullIfEmpty() ??
                 $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
 
@@ -214,7 +214,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             return;
 
         var avatar = account.Avatar;
-        if (!avatar.MediaId.IsNone && OrdinalEquals(avatar.Bio, Constants.User.Sherlock.Name))
+        if (avatar.MediaId != null && OrdinalEquals(avatar.Bio, Constants.User.Sherlock.Name))
             return;
 
         //using var dbContext = dbInitializer.CreateDbContext(true);
@@ -240,7 +240,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         string AvatarName = "")
     {
         public string AvatarBio { get; init; } = "";
-        public MediaId AvatarMediaId { get; init; } = MediaId.None;
+        public MediaId? AvatarMediaId { get; init; }
         public string AvatarPictureUrl { get; init; } = "";
 
         public string UserNameOrDefault => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLowerInvariant()}_{LastName.ToLowerInvariant()}";

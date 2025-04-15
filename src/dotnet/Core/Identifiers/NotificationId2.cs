@@ -65,6 +65,9 @@ public sealed partial class NotificationId2 : StringIdentifier, IStringIdentifie
     public static NotificationId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<NotificationId2>(s);
 
+    public static NotificationId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static NotificationId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

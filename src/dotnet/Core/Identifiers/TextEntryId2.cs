@@ -52,7 +52,10 @@ public sealed partial class TextEntryId2 : ChatEntryId2, IStringIdentifier<TextE
     public static new TextEntryId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TextEntryId2>(s);
 
-    public static TextEntryId2? TryParse(string? s)
+    public static new TextEntryId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static new TextEntryId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out TextEntryId2? result)

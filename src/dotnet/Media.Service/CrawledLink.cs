@@ -1,8 +1,8 @@
 namespace ActualChat.Media;
 
 public sealed record CrawledLink(
-    MediaId PreviewMediaId,
+    MediaId? PreviewMediaId,
     OpenGraph OpenGraph
 ) {
-    public static readonly CrawledLink None = new (MediaId.None, OpenGraph.None);
+    public static readonly CrawledLink None = new(null, OpenGraph.None);
 }

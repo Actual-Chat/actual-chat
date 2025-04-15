@@ -57,6 +57,9 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     public static Language Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Language>(s);
 
+    public static Language? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static Language? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

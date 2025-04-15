@@ -16,6 +16,7 @@ public static class CoreSerializerAndRpcSetup
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Language>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<StreamId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MediaId>());
     }
 
     public static void Configure(bool isServer)

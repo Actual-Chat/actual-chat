@@ -48,6 +48,9 @@ public partial class PrincipalId2 : StringIdentifier, IStringIdentifier<Principa
     public static PrincipalId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PrincipalId2>(s);
 
+    public static PrincipalId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static PrincipalId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

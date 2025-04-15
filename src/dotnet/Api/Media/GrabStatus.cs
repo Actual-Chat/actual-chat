@@ -18,7 +18,7 @@ public sealed partial record GrabStatus(
 
     // Computed properties
 
-    public GrabStatus() : this(MediaId.None) { }
+    public GrabStatus() : this(Symbol.Empty) { }
 
     // This record relies on referential equality
     public bool Equals(GrabStatus? other) => ReferenceEquals(this, other);

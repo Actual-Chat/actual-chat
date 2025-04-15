@@ -69,6 +69,9 @@ public sealed partial class ConversationId2 : StringIdentifier, IStringIdentifie
     public static ConversationId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ConversationId2>(s);
 
+    public static ConversationId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static ConversationId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

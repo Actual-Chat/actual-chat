@@ -260,7 +260,7 @@
         var newChat = chat with {
             Title = _form!.Title,
             Description = _form!.Description,
-            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
+            MediaId = _form.Picture?.MediaContent?.MediaId,
         };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),

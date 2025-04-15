@@ -186,10 +186,13 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
         // Make chat private, so only owner who executed copying can see the chat.
         // Publishing copied chat command will set actual value of IsPublic property later.
-        var newChatMediaId = !chat.MediaId.IsNone ? new MediaId(newChatId, chat.MediaId.LocalId) : MediaId.None;
-        var copyMedia = !newChatMediaId.IsNone && (dbChat == null || !OrdinalEquals(newChatMediaId.Value, dbChat.MediaId));
+        var newChatMediaId = chat.MediaId != null
+            ? MediaId.New(newChatId, chat.MediaId.LocalId)
+            : null;
+        var copyMedia = newChatMediaId != null && (dbChat == null || !OrdinalEquals(newChatMediaId.Value, dbChat.MediaId));
         if (copyMedia)
-            await Commander.Call(new MediaBackend_CopyChat(newChatId, correlationId, [chat.MediaId]), true, cancellationToken)
+            await Commander
+                .Call(new MediaBackend_CopyChat(newChatId, correlationId, [chat.MediaId!]), true, cancellationToken)
                 .ConfigureAwait(false);
         chat = chat with {
             IsPublic = false,
@@ -204,7 +207,7 @@ public partial class ChatsBackend
             dbChat.Title = chat.Title;
             dbChat.Description = chat.Description;
             dbChat.IsPublic = chat.IsPublic;
-            dbChat.MediaId = chat.MediaId;
+            dbChat.MediaId = chat.MediaId?.Value ?? "";
             dbChat.Version = chat.Version;
             newChat = dbChat.ToModel();
         }
@@ -624,14 +627,14 @@ public partial class ChatsBackend
 
         var mediaIds = attachments
             .Select(c => c.MediaId)
-            .Where(c => !string.IsNullOrEmpty(c))
-            .Select(c => new MediaId(c))
+            .Where(c => !c.IsNullOrEmpty())
+            .Select(MediaId.Parse)
             .ToArray();
 
         var thumbnailMediaIds = attachments
             .Select(c => c.ThumbnailMediaId)
-            .Where(c => !string.IsNullOrEmpty(c))
-            .Select(c => new MediaId(c))
+            .Where(c => !c.IsNullOrEmpty())
+            .Select(MediaId.Parse)
             .ToArray();
 
         var allMediaIdToCopy = mediaIds.Concat(thumbnailMediaIds).Where(CanRemapMedia).Distinct().ToArray();
@@ -643,7 +646,7 @@ public partial class ChatsBackend
             var entryId = new TextEntryId(dbAttachment.EntryId);
             var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
             dbAttachment.Id = DbTextEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
-            dbAttachment.EntryId = newEntryId;
+            dbAttachment.EntryId = newEntryId.Value;
             dbAttachment.MediaId = RemapMedia(dbAttachment.MediaId);
             dbAttachment.ThumbnailMediaId = RemapMedia(dbAttachment.ThumbnailMediaId);
             dbContext.TextEntryAttachments.Add(dbAttachment);
@@ -659,13 +662,12 @@ public partial class ChatsBackend
         bool CanRemapMedia(MediaId mediaId)
              => OrdinalEquals(mediaId.Scope, chatSid);
 
-        MediaId RemapMedia(string mediaSid)
+        string RemapMedia(string mediaSid)
         {
-            var mediaId = new MediaId(mediaSid);
-            if (mediaId.IsNone || !CanRemapMedia(mediaId))
-                return mediaId;
-
-            return new MediaId(newChatId, mediaId.LocalId);
+            var mediaId = MediaId.ParseOrNull(mediaSid);
+            return mediaId != null && CanRemapMedia(mediaId)
+                ? MediaId.New(newChatId, mediaId.LocalId).Value
+                : "";
         }
     }
 

@@ -329,7 +329,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         foreach (var deviceId in command.DeviceIds) {
             var dbDevice = await dbContext.Devices
-                .Get(deviceId, cancellationToken)
+                .Get(deviceId.Value, cancellationToken)
                 .ConfigureAwait(false);
             if (dbDevice == null)
                 continue;

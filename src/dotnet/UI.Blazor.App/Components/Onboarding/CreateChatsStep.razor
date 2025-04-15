@@ -130,7 +130,7 @@
                 Create = new ChatDiff {
                     Title = title,
                     Kind = ChatKind.Group,
-                    MediaId = new MediaId(mediaId ?? $"system-icons:{systemTag.Value}"),
+                    MediaId = MediaId.Parse(mediaId ?? $"system-icons:{systemTag.Value}"),
                     IsPublic = false,
                     SystemTag = systemTag,
                 },

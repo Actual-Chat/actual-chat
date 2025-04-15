@@ -62,6 +62,9 @@ public sealed partial class MentionId2 : StringIdentifier, IStringIdentifier<Men
     public static MentionId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MentionId2>(s);
 
+    public static MentionId2? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
     public static MentionId2? TryParse(string? s)
         => TryParse(s, out var result) ? result : null;
 

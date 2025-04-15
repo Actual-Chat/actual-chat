@@ -76,7 +76,7 @@ public class CrawlerTest(AppHostFixture fixture, ITestOutputHelper @out)
         var meta = await sut.Crawl(url, CancellationToken.None);
 
         // assert
-        meta.PreviewMediaId.Should().Be(MediaId.None);
+        meta.PreviewMediaId.Should().Be(null);
         meta.OpenGraph.Title.Should().Be("Title 1");
         meta.OpenGraph.Description.Should().Be("Description 1");
     }

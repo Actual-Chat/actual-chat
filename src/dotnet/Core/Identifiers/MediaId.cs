@@ -1,96 +1,110 @@
 using System.ComponentModel;
 using System.Text;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Generators;
-using ActualLab.Identifiers.Internal;
 using ActualChat.Hashing;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<MediaId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<MediaId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<MediaId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<MediaId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<MediaId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<MediaId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<MediaId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
+public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<MediaId>();
+    private static readonly ILruCache<string, MediaId> Cache = CreateCache<MediaId>(128);
+    private static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
+
     public const char Delimiter = ':';
 
-    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
-
-    public static MediaId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public string Scope { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public string LocalId { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    private string SecureHash
+        => field ??= Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public MediaId(Symbol id)
-        => this = Parse(id);
-    public MediaId(string? id)
-        => this = Parse(id);
-    public MediaId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-    public MediaId(string scope, Generate _)
-        => this = new MediaId(Format(scope, IdGenerator.Next()));
-    public MediaId(string scope, string localId)
-        => this = new MediaId(Format(scope, localId));
+    // Factories and constructors
 
-    public MediaId(Symbol id, string scope, string localId, AssumeValid _)
+    public static MediaId New(string scope)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
+        var localId = IdGenerator.Next();
+        return new MediaId(Format(scope, localId), scope, localId);
+    }
 
-        Id = id;
+    public static MediaId New(string scope, string localId)
+        => new (Format(scope, localId), scope, localId);
+
+    public static MediaId New(string value, string scope, string localId, AssumeValid _)
+        => new(value, scope, localId);
+
+    private MediaId(string value, string scope, string localId) : base(value)
+    {
         Scope = scope;
         LocalId = localId;
     }
 
-    // Conversion
-    public override string ToString() => Value;
-    public static implicit operator Symbol(MediaId source) => source.Id;
-    public static implicit operator string(MediaId source) => source.Id.Value;
+    // Helpers
+
+    public string GetContentId(string fileExt)
+        => $"media/{SecureHash}/{LocalId}{fileExt}";
 
     // Equality
-    public bool Equals(MediaId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is MediaId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(MediaId left, MediaId right) => left.Equals(right);
-    public static bool operator !=(MediaId left, MediaId right) => !left.Equals(right);
+
+    public bool Equals(MediaId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is MediaId other && Equals(other);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(MediaId? left, MediaId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(MediaId? left, MediaId? right)
+        => !(left?.Equals(right) ?? right is null);
 
     // Parsing
+
     private static string Format(string scope, string localId)
         => $"{scope}{Delimiter}{localId}";
 
     public static MediaId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MediaId>(s);
-    public static MediaId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<MediaId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out MediaId result)
+    public static MediaId? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static MediaId? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out MediaId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
+
+        if (s.Length > 2048)
+            return false;
 
         var parts = s.Split(Delimiter);
         if (parts.Length != 2)
@@ -104,15 +118,8 @@ public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
         if (!Alphabet.AlphaNumeric.IsMatch(localId))
             return false;
 
-        result = new MediaId(s, scope, localId, AssumeValid.Option);
+        result = new MediaId(s, scope, localId);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
-
-    // ContentId
-
-    public string ContentId(string fileExt)
-        => $"media/{Hash()}/{LocalId}{fileExt}";
-
-    private string Hash()
-        => this.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 }

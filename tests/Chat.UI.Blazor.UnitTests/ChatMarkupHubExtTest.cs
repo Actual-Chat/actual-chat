@@ -1,8 +1,7 @@
-using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.AspNetCore.StaticFiles;
 
-namespace ActualChat.UI.Blazor.App.UnitTests;
+namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class ChatMarkupHubExtTest
 {
@@ -45,8 +44,7 @@ public class ChatMarkupHubExtTest
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
-            Attachments = attachments.Select(Attachment)
-                .ToArray(),
+            Attachments = attachments.Select(Attachment).ToArray(),
         };
 
         // act
@@ -73,8 +71,7 @@ public class ChatMarkupHubExtTest
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
-            Attachments = attachments.Select(Attachment)
-                .ToArray(),
+            Attachments = attachments.Select(Attachment).ToArray(),
         };
 
         // act
@@ -91,7 +88,7 @@ public class ChatMarkupHubExtTest
             throw StandardError.Constraint($"Failed to find content type for '{file}'.");
 
         return new TextEntryAttachment {
-            Media = new Media.Media {
+            Media = new Media.Media(null!) {
                 FileName = file,
                 ContentType = contentType,
             },

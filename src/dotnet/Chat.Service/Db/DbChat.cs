@@ -65,7 +65,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             SystemTag = SystemTag.IsNullOrEmpty()
                 ? Symbol.Empty
                 : new Symbol(SystemTag),
-            MediaId = new MediaId(MediaId),
+            MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
             UserLinkId = new UserLinkId(UserLinkId),
             IsSummarized = IsSummarized,
         };
@@ -92,7 +92,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ? null
             : model.SystemTag.Value;
         Kind = model.Kind;
-        MediaId = model.MediaId;
+        MediaId = model.MediaId?.Value ?? "";
         IsPlaceRootChat = model.Id.IsPlaceRootChat;
         UserLinkId = model.UserLinkId.Value;
         IsSummarized = model.IsSummarized;

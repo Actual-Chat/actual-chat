@@ -193,7 +193,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         }
         else {
             var dbPrefs = await dbContext.RouletteProfilePrefs
-                .Get(profileId, cancellationToken)
+                .Get(profileId.Value, cancellationToken)
                 .ConfigureAwait(false);
 
             if (change.IsUpdate(out profile)) {

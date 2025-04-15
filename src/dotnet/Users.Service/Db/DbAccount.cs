@@ -34,7 +34,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public AccountFull ToModel(User user)
     {
-        if (user.Id != Id)
+        if (!OrdinalEquals(user.Id, Id))
             throw new ArgumentOutOfRangeException(nameof(user));
 
         return new(user, Version) {

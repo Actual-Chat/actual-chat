@@ -22,7 +22,7 @@ public partial record Avatar(
 
     [DataMember, MemoryPackOrder(2)] public string Name { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string PictureUrl { get; init; } = "";
-    [DataMember, MemoryPackOrder(4)] public MediaId MediaId { get; init; }
+    [DataMember, MemoryPackOrder(4)] public MediaId? MediaId { get; init; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Picture? Picture => Media.ToPicture(PictureUrl, AvatarKey);
     [DataMember, MemoryPackOrder(5)] public string Bio { get; init; } = "";
@@ -43,7 +43,7 @@ public partial record Avatar(
             avatar = avatar with { Name = other.Name };
         if (avatar.Bio.IsNullOrEmpty())
             avatar = avatar with { Bio = other.Bio };
-        if (avatar.MediaId.IsNone)
+        if (avatar.MediaId == null)
             avatar = avatar with { MediaId = other.MediaId };
         if (avatar.PictureUrl.IsNullOrEmpty())
             avatar = avatar with { PictureUrl = other.PictureUrl };
@@ -58,7 +58,7 @@ public partial record Avatar(
             return this;
 
         return this with {
-            MediaId = picture.MediaContent?.MediaId ?? MediaId.None,
+            MediaId = picture.MediaContent?.MediaId,
             PictureUrl = picture.MediaContent is null ? picture.ExternalUrl ?? "" : "",
             AvatarKey = picture.MediaContent is null ? picture.AvatarKey ?? "" : "",
         };
