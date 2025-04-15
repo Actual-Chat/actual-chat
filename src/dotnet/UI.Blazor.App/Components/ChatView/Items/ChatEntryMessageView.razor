@@ -168,7 +168,7 @@
                             <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
                         }
                         <CascadingValue Value="@entry" IsFixed="true">
-                            <TranslatedMessage Markup="@_markup" ChatContext="ChatContext"/>
+                            <TranslatedMessage Markup="@_markup" ChatContext="ChatContext" Message="@message"/>
                         </CascadingValue>
                         @if (m.IsUnreadByOthers && entry.Attachments.Length == 0) {
                             <ChatMessageSendingStatus
