@@ -15,6 +15,8 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
 {
+    public const char ThreadIdSeparator = '-';
+
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatId>();
 
@@ -165,7 +167,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
         EnsureNonThread();
         if (Kind is not (ChatKind.Group or ChatKind.Place))
             throw StandardError.NotSupported($"{Kind} chats do not support threads");
-        return Parse(Value + "-" + threadId.ToInvariantString());
+        return Parse(Value + ThreadIdSeparator + threadId.ToInvariantString());
     }
 
     public void EnsureNonThread()

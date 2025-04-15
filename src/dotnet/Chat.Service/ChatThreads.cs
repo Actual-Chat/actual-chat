@@ -1,4 +1,6 @@
 using ActualChat.Chat.ML;
+using ActualChat.Contacts;
+using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
@@ -9,17 +11,44 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
+    private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    private IContactsBackend ContactsBackend => field ??= services.GetRequiredService<IContactsBackend>();
+    [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= services.GetRequiredService<ICommander>();
     [field: AllowNull, MaybeNull]
     private IThreadInsightExtractor ThreadInsightExtractor => field ??= services.GetRequiredService<IThreadInsightExtractor>();
 
+    // [ComputeMethod]
     public virtual async Task<ApiArray<ChatId>> ListIds(
         Session session,
         ChatId parentChatId,
         CancellationToken cancellationToken)
     {
         await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-        return await Backend.ListIds(parentChatId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuest)
+            return ApiArray<ChatId>.Empty;
+
+        return await ContactsBackend.ListChatThreadIds(account.Id, parentChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> GetThreadFollowStatus(Session session, ChatId threadChatId, CancellationToken cancellationToken)
+    {
+        if (!threadChatId.IsThread)
+            throw new ArgumentOutOfRangeException(nameof(threadChatId));
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuest)
+            return false;
+
+        var contactId = new ContactId(account.Id, threadChatId, ParseOrNone.Option);
+        if (contactId.IsNone)
+            return false;
+
+        var threadContact = await ContactsBackend.GetThreadContact(account.Id, contactId, cancellationToken).ConfigureAwait(false);
+        return threadContact is not null;
     }
 
     // Non-computed
@@ -43,6 +72,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         return (insight.Title, insight.Description);
     }
 
+    // [CommandHandler]
     public virtual async Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
@@ -105,5 +135,29 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         if (threadChat is null)
             throw StandardError.Internal("Thread chat has not been created.");
         return threadChat;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<Unit> OnToggleThreadFollowStatus(
+        ChatThreads_ToggleThreadFollowStatus command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return default;
+
+        var (session, threadChatId) = command;
+        if (!threadChatId.IsThread)
+            throw new ArgumentOutOfRangeException(nameof(threadChatId));
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuest)
+            throw new ArgumentOutOfRangeException(nameof(session));
+
+        var contactId = new ContactId(account.Id, threadChatId);
+        var threadContact = await ContactsBackend.GetThreadContact(account.Id, contactId, cancellationToken).ConfigureAwait(false);
+        var change = threadContact is null ? Change.Create(new ThreadContact(contactId)) : Change.Remove<ThreadContact>();
+        var toggleCommand = new ContactsBackend_ChangeThreadContact(contactId, null, change);
+        await Commander.Call(toggleCommand, cancellationToken).ConfigureAwait(false);
+        return Unit.Default;
     }
 }

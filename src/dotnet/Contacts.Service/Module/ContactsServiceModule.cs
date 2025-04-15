@@ -51,6 +51,9 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbExternalContact>(_ => new () {
                 QueryTransformer = query => query.Include(a => a.ExternalContactLinks),
             });
+
+            // DbThreadContact
+            db.AddEntityResolver<string, DbThreadContact>();
         });
     }
 }

@@ -20,6 +20,10 @@ public interface IContactsBackend : IComputeService, IBackendService
     Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ThreadContact?> GetThreadContact(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ApiArray<ChatId>> ListChatThreadIds(UserId ownerId, ChatId parentChatId, CancellationToken cancellationToken);
 
     // Non-compute methods
     Task<ApiArray<Contact>> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
@@ -43,6 +47,8 @@ public interface IContactsBackend : IComputeService, IBackendService
     Task OnPublishCopiedChat(ContactsBackend_PublishCopiedChat command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnReviewExternalContactName(ContactsBackend_ReviewExternalContactName command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<ThreadContact?> OnChangeThreadContact(ContactsBackend_ChangeThreadContact command, CancellationToken cancellationToken);
 
     // Events
 
@@ -55,6 +61,10 @@ public interface IContactsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnExternalContactNameMayHaveChangedEvent(
         ExternalContactNameMayHaveChangedEvent eventCommand,
+        CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnUserMentionedInThreadChatEvent(
+        UserMentionedInThreadChatEvent eventCommand,
         CancellationToken cancellationToken);
 }
 
@@ -137,6 +147,18 @@ public sealed partial record ContactsBackend_PublishCopiedChat(
 public sealed partial record ContactsBackend_ReviewExternalContactName(
     [property: DataMember, MemoryPackOrder(0)] ContactId Id
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ContactId ShardKey => Id;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_ChangeThreadContact(
+    [property: DataMember, MemoryPackOrder(0)] ContactId Id,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<ThreadContact> Change
+) : ICommand<ThreadContact?>, IBackendCommand, IHasShardKey<ContactId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ContactId ShardKey => Id;

@@ -57,6 +57,9 @@
                 <i class="icon-ai-search"></i>
             </HeaderButton>
         }
+        @if (chat.Id.IsThread) {
+            <ChatHeaderFollowThreadToggle ThreadChatId="@chat.Id" />
+        }
         @if (IsRightNavigateButtonVisible) {
             <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
         }

@@ -94,7 +94,7 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
             return false;
 
         var sRawChatId = s;
-        var rawChatIdLength = s.LastIndexOf('-');
+        var rawChatIdLength = s.LastIndexOf(ActualChat.ChatId.ThreadIdSeparator);
         ulong threadId = 0;
         if (rawChatIdLength > -1) {
             var sThreadId = s.AsSpan().Slice(rawChatIdLength + 1);
