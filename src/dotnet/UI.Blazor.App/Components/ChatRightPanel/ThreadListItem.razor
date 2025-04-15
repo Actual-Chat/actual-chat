@@ -1,23 +1,117 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<ThreadListItem.Model>
+@{
+    var m = State.Value;
+    var chat = m.Chat ?? Chat;
+    var lastTextEntry = m.LastTextEntry;
+    _renderedModel = m;
+}
 
-<div class="c-container flex-x items-center cursor-pointer gap-x-2" @onclick="OnItemClicked">
-    <ChatIcon Chat="@Chat" ShowPresence="@false"/>
+<div class="thread-list-item" @onclick="OnItemClicked">
     <div class="c-description">
-        <span class="c-chat-title">
-            <span>@Chat.Title</span>
-            @* <span class="c-incut"></span> *@
-            @* @if (lastTextEntry != null && !showEnding) { *@
-            @*     <LastEntryTime LastEntry="@lastTextEntry"/> *@
-            @* } *@
-        </span>
+        <div class="c-top">
+            <span class="c-chat-title">
+                <span class="c-hash">#</span>
+                @Chat.Title
+            </span>
+            @if (lastTextEntry != null) {
+                <LastEntryTime LastEntry="@lastTextEntry"/>
+            }
+        </div>
+        <div class="c-bottom">
+            @if (lastTextEntry != null) {
+                <div class="c-last-message">
+                    @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                        <span class="c-name">
+                            <AuthorName
+                                AuthorSid="@lastTextEntry.AuthorId"
+                                ShowDetailsOnClick="false"
+                                ShowAsYou="true"/>
+                        </span>
+                        <span class="c-colon">:</span>
+                    }
+                    @if (lastTextEntry.IsStreaming) {
+                        <chat-activity-svg size="4" isActive="true"/>
+                    } else {
+                        <span class="c-text">
+                            @m.LastTextEntryText
+                        </span>
+                    }
+                    <div class="c-incut"></div>
+                    <UnreadCount
+                        Value="@m.UnreadCount"
+                        NotificationMode="@m.NotificationMode"
+                        HasMentions="m.HasUnreadMentions"/>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
 @code {
+    private Model? _renderedModel;
+    private ChatEntryId _hasBeenReadEntryId;
+
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private Session Session => Hub.Session();
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
     private Task OnItemClicked()
         => Hub.History.NavigateTo(Links.Chat(Chat.Id));
+
+    protected override bool ShouldRender() {
+        if (_renderedModel == null)
+            return true;
+
+        var m = State.LastNonErrorValue;
+        var isTheSame = m == _renderedModel;
+        return !isTheSame;
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options {
+                InitialValue = new () {
+                    AudioState = ChatAudioState.None,
+                },
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var chat = Chat;
+        var chatId = chat.Id;
+        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        if (chatState == null)
+            return Model.None;
+
+        var lastEntry = chatState.Info.LastTextEntry;
+        return new() {
+            Chat = chatState.Chat,
+            AudioState = chatState.AudioState,
+            NotificationMode = chatState.Info.UserSettings.NotificationMode,
+            UnreadCount = chatState.Info.UnreadCount,
+            HasUnreadMentions = chatState.Info.HasUnreadMentions,
+            LastTextEntry = lastEntry,
+            LastTextEntryText = chatState.Info.LastTextEntryText,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new() { AudioState = ChatAudioState.None };
+
+        public Chat? Chat { get; init; }
+        public string LastTextEntryText { get; init; } = "";
+        public ChatEntry? LastTextEntry { get; init; }
+        public ChatAudioState AudioState { get; init; }
+        public ChatNotificationMode NotificationMode { get; init; }
+        public Trimmed<int> UnreadCount { get; init; }
+        public bool HasUnreadMentions { get; init; }
+    }
 }
