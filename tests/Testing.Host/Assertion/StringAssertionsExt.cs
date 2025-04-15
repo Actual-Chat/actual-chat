@@ -11,7 +11,10 @@ public static class StringAssertionsExt
         "ел", "ен", "а", "у", "ие", "ии", "ся",
     ];
 
-    private static readonly (string Word, string SimilarWord)[] Synonyms = [("требуется", "нуждается")];
+    private static readonly (string Word, string SimilarWord)[] Synonyms = [
+        ("требуется", "нуждается"),
+        ("разрушается", "размывается"),
+    ];
 
     private static readonly Dictionary<string, string> SimilarWords =
         Synonyms.Concat(Synonyms.Select(x => (x.SimilarWord, x.Word)))
