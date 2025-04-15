@@ -8,13 +8,13 @@ public static class StringAssertionsExt
     private static readonly string[] Prefixes = ["у"];
 
     private static readonly string[] Suffixes = [
-        "ел", "ен",
+        "ел", "ен", "а", "у",
     ];
 
-    private static readonly (string Word, string SimilarWord)[] SimilarWordPairs = [("требуется", "нуждается")];
+    private static readonly (string Word, string SimilarWord)[] Synonyms = [("требуется", "нуждается")];
 
     private static readonly Dictionary<string, string> SimilarWords =
-        SimilarWordPairs.Concat(SimilarWordPairs.Select(x => (x.SimilarWord, x.Word)))
+        Synonyms.Concat(Synonyms.Select(x => (x.SimilarWord, x.Word)))
             .Select(x => (Stem(x.Item1), Stem(x.Item2)))
             .ToDictionary(x => x.Item1, x => x.Item2);
 
