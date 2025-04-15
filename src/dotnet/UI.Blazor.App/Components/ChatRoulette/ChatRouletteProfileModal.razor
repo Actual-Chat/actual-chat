@@ -59,13 +59,15 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
-        var profiles = await avatarIds
+        var profiles = (await avatarIds
             .Select(id => RouletteProfiles.GetOwnProfile(Session, id, cancellationToken))
             .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
-            .ConfigureAwait(false);
+            .ConfigureAwait(false)
+            ).SkipNullItems()
+            .ToArray();
 
         var selectedProfileId = await RouletteProfiles.GetSelectedProfileId(Session, cancellationToken).ConfigureAwait(false);
-        return new ComputedModel(profiles.SkipNullItems().ToImmutableArray(), selectedProfileId);
+        return new ComputedModel(profiles, selectedProfileId);
     }
 
     private void SelectProfile(Profile profile) {
@@ -88,7 +90,7 @@
 
     public sealed record Model;
 
-    public record ComputedModel(ImmutableArray<Profile> Profiles, Symbol SelectedProfileId) {
+    public record ComputedModel(IReadOnlyList<Profile> Profiles, Symbol SelectedProfileId) {
         public static readonly ComputedModel None = new ([], default);
     }
 }

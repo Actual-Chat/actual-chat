@@ -517,7 +517,7 @@ public partial class ChatAudioUI
     {
         var chatId = await GetRecordingChatId().ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
-        return new(chatId, chatId.IsNone ? Language.None : language);
+        return new(chatId, chatId.IsNone ? null : language);
     }
 
     [ComputeMethod]
@@ -608,7 +608,7 @@ public partial class ChatAudioUI
     // Nested types
 
     [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingState(ChatId ChatId, Language Language)
+    public readonly record struct RecordingState(ChatId ChatId, Language? Language)
     {
         public static readonly RecordingState None = default;
     }

@@ -13,7 +13,8 @@
         (false, _, _) => (false, "", false),
         (_, false, _) => (true, "Starting recording...", false),
         (_, _, false) => (true, "Reconnecting...", false),
-        _ => (true , $"Recording - {language.Title}", true), // (true, true, true) => ...
+        // (true, true, true) => ...
+        _ => (true , language == null ? "Recording" : $"Recording - {language.Title}", true),
     };
     // start endless animation when auto hide is not needed
     var hasNoAnimation = _tooltipAnimator.AnimationEndsAt > _tooltipAnimator.Clock.Now + TimeSpan.FromDays(1);
@@ -91,7 +92,7 @@
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
     private ComponentAnimator _tooltipAnimator = null!;
-    private Language _oldRecordingLanguage = Language.None;
+    private Language? _oldRecordingLanguage = null;
     private TaskSerializer _taskSerializer = new();
     private CpuTimestamp _lastActionAt;
 
@@ -223,13 +224,13 @@
 
     public sealed record Model(
         Chat Chat,
-        Language Language,
+        Language? Language,
         bool IsRecordingHere = false,
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool? HasMicrophonePermission = null,
         bool IsTransitioning = false
     ) {
-        public static readonly Model Loading = new(SpecialChat.Loading, Language.None, default, false, true, false);
+        public static readonly Model Loading = new(SpecialChat.Loading, null, default, false, true, false);
     }
 }

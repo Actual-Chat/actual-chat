@@ -40,8 +40,8 @@
         => _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
 
     private void OnSubmit() {
-        var language = ModalModel.AvailableLanguages.FirstOrDefault(c => c.Id == _form.LanguageId);
-        if (language.IsNone)
+        var language = ModalModel.AvailableLanguages.FirstOrDefault(c => c.Value == _form.LanguageId);
+        if (language == null)
             return;
 
         Modal.Close();
@@ -50,13 +50,15 @@
 
     // Nested types
 
-    public record Model(ImmutableArray<Language> AvailableLanguages, Action<Language> OnLanguageSelected);
+    public record Model(
+        IReadOnlyList<Language> AvailableLanguages,
+        Action<Language> OnLanguageSelected);
 
-    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel : FormModel<FormModel> {
-        public string LanguageId { get; set; } = Language.None.Id;
+        public string LanguageId { get; set; } = "";
         public string LanguageIdFieldId { get; set; } = "";
 
+        // ReSharper disable once ConvertToPrimaryConstructor
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("languages-selector-popup", componentIdGenerator) {
         }

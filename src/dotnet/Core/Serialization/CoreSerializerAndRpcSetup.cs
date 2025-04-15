@@ -14,6 +14,7 @@ public static class CoreSerializerAndRpcSetup
         // This is super important: TypeRef and some other types which were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Language>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<StreamId>());
     }
 

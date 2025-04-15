@@ -210,11 +210,11 @@
             @if (entry.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
-            @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Value.Length > 0) {
+            @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {
                 <div class="notify-mentioned-members-line"> @* Takes full line *@
                     <NotifyMentionedMembers
                         ChatContext="@ChatContext"
-                        AuthorIds="m.MentionedAuthorIds.Value"
+                        AuthorIds="m.MentionedAuthorIds"
                         ChatEntry="@Entry"/>
                 </div>
             }
@@ -316,13 +316,13 @@
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
         var isForward = !entry.ForwardedChatEntryId.IsNone;
-        ImmutableArray<AuthorId>? mentionedAuthorIds = null;
+        IReadOnlyList<AuthorId>? mentionedAuthorIds = null;
         if (isOwnMessage && hasAnyMentions && !isForward) {
             var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
             mentionedAuthorIds = mentionIds
                 .Where(c => c.Kind == PrincipalKind.Author && c.AuthorId != ownAuthorId)
                 .Select(c => c.AuthorId)
-                .ToImmutableArray();
+                .ToList();
         }
         var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
@@ -549,7 +549,7 @@
         public Author? ForwardedPeerAuthor { get; init; }
         public bool IsUnreadByOthers { get; init; }
         public bool IsUnreadByOthersBlockStart { get; init; }
-        public ImmutableArray<AuthorId>? MentionedAuthorIds { get; init; }
+        public IReadOnlyList<AuthorId>? MentionedAuthorIds { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }
 }

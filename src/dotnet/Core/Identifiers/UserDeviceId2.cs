@@ -7,6 +7,7 @@ using MessagePack;
 namespace ActualChat;
 
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringIdentifierJsonConverter<UserDeviceId2>))]
@@ -62,6 +63,9 @@ public sealed partial class UserDeviceId2 : StringIdentifier, IStringIdentifier<
 
     public static UserDeviceId2 Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserDeviceId2>(s);
+
+    public static UserDeviceId2? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out UserDeviceId2? result)
     {

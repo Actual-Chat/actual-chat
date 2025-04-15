@@ -29,7 +29,7 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
         Language[] languages =
             Languages.IsNullOrEmpty()
                 ? []
-                : [..Languages.Split(',').Select(l => new Language(l))];
+                : [..Languages.Split(',').Select(Language.Parse)];
         Interest[] interests =
             Interests.IsNullOrEmpty()
                 ? []

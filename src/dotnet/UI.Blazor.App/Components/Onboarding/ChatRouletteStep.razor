@@ -80,17 +80,13 @@
         if (profile.Preferences.Preferences.IsEmpty) {
             var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
             var primaryLanguage = languages.Primary;
-            if (primaryLanguage.IsNone)
-                return null;
-
             var preferences = profile.Preferences.Preferences;
             preferences = preferences with {
                 Interests = [Interests.Flexible]
             };
-            if (!primaryLanguage.IsNone)
-                preferences = preferences with {
-                    Languages = [primaryLanguage]
-                };
+            preferences = preferences with {
+                Languages = [primaryLanguage]
+            };
             profile = profile with {
                 Preferences = profile.Preferences with {
                     Preferences = preferences

@@ -51,7 +51,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         """)]
     [InlineData("it", "Поехали", "Andiamo!")]
     [InlineData("en", "Поехали", "Let's go")]
-    public async Task ShouldTranslateWithoutContext(Language destLanguage, string text, string expected)
+    public async Task ShouldTranslateWithoutContext(string destLanguage, string text, string expected)
     {
         // arrange
         var minSimilarity = 0.7;
@@ -59,7 +59,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, destLanguage, "", cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(destLanguage), "", cancellationToken);
         Out.WriteLine($"Translated text:\n {translated}");
 
         // assert
@@ -81,7 +81,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     [InlineData("ru", "I saw a bank", "I need to go to the bank to withdraw money", "Я увидел банк")]
     [InlineData("fr", "I saw a bank", "I was walking along the river bank", "J'ai vu une rive")]
     [InlineData("fr", "I saw a bank", "I need to go to the bank to withdraw money", "J'ai vu une banque")]
-    public async Task ShouldTranslateWithContext(Language destLanguage, string text, string context, string expected)
+    public async Task ShouldTranslateWithContext(string destLanguage, string text, string context, string expected)
     {
         // arrange
         var minSimilarity = 0.7;
@@ -89,7 +89,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var cancellationToken = cts.Token;
 
         // act
-        var translated = await Translator.Translate(text, destLanguage, context, cancellationToken);
+        var translated = await Translator.Translate(text, Language.Parse(destLanguage), context, cancellationToken);
         Out.WriteLine($"Translated text: \n{translated}");
 
         // assert
@@ -100,15 +100,16 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     public async Task ShouldDetectLanguages()
     {
         // arrange
-        (string Text, Language[] ExpectedLanguages)[] texts = [
+        (string Text, Language?[] ExpectedLanguages)[] texts = [
             (ComplexText, [Languages.English]),
             ("Hello! Привет! Bonjour!", [Languages.English, Languages.Russian, Languages.French]),
+            ("Hello! Привет! Bonjour! Привет!", [Languages.English, Languages.Russian, Languages.French]),
             ("hello", [Languages.English]),
             ("привет", [Languages.Russian]),
-            ("```", [Language.None]),
-            ("````123```", [Language.None]),
-            ("123", [Language.None]),
-            ("0xDEADBEEF", [Language.None]),
+            ("```", []),
+            ("````123```", []),
+            ("123", []),
+            ("0xDEADBEEF", []),
             ("Hello! @#$%^&*()_+", [Languages.English]),
         ];
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10).Debuggable());

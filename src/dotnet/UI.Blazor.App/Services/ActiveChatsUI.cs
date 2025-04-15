@@ -46,7 +46,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
 
     public ValueTask RemoveActiveChat(ChatId chatId)
         => chatId.IsNone ? default
-            : UpdateActiveChats(c => c.Without(chatId));
+            : UpdateActiveChats(c => c.Without(chatId).ToArray());
 
     private async ValueTask<ActiveChat[]> FixStoredActiveChats(
         ActiveChat[] activeChats,
@@ -109,8 +109,8 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
 
             if (!chat.IsSameAs(newChat))
                 activeChats = newChat.IsNone
-                    ? activeChats.Without(chat)
-                    : activeChats.WithOrReplace(newChat);
+                    ? activeChats.Without(chat).ToArray()
+                    : activeChats.WithOrReplace(newChat).ToArray();
         }
 
         // There must be no more than MaxActiveChatCount active chats
@@ -118,7 +118,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
             var chat = activeChats[^1];
             if (chat.IsRecording)
                 chat = activeChats[^2];
-            activeChats = activeChats.Without(chat);
+            activeChats = activeChats.Without(chat).ToArray();
         }
         return activeChats;
     }

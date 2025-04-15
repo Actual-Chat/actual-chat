@@ -6,8 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
-    public static readonly ImmutableArray<Country> CountryOptions
-        = ImmutableArray<Country>.Empty.Add(Country.NotSpecified).AddRange(Countries.All);
+    public static readonly IReadOnlyList<Country> CountryOptions = [Country.NotSpecified, ..Countries.All];
 
     private readonly TaskCompletionSource _whenLoaded;
     private readonly MutableState<Profile> _selectedProfile;
@@ -89,12 +88,13 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
         var search = new Search(new SearchRequest(selectedProfile.Id, searchCriteria));
         _activeSearch.Value = search;
-        var candidates = await Roulette.FindChatCandidates(Session, selectedProfile.Id, search.Request.Criteria, default)
+        var candidates = await Roulette
+            .FindChatCandidates(Session, selectedProfile.Id, search.Request.Criteria, default)
             .ConfigureAwait(false);
         if (_activeSearch.Value != search)
             return;
 
-        _activeSearch.Value = search.Complete(candidates.ToImmutableArray());
+        _activeSearch.Value = search.Complete(candidates);
     }
 
     public async Task ReviewState()
@@ -142,25 +142,24 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     public record SearchRequest(Symbol ProfileId, Preferences Criteria);
 
-    public record Search
+    public sealed class Search
     {
         public SearchRequest Request { get; }
         public bool IsCompleted { get; }
-        public ImmutableArray<ChatCandidate> Results { get; private set; } = ImmutableArray<ChatCandidate>.Empty;
+        public IReadOnlyList<ChatCandidate> Results { get; private set; }
 
         public Search(SearchRequest request)
             : this(request, null)
-        {
-        }
+        { }
 
-        private Search(SearchRequest request, ImmutableArray<ChatCandidate>? results)
+        private Search(SearchRequest request, IReadOnlyList<ChatCandidate>? results)
         {
             Request = request;
             IsCompleted = results is not null;
-            Results = results ?? ImmutableArray<ChatCandidate>.Empty;
+            Results = results ?? [];
         }
 
-        public Search Complete(ImmutableArray<ChatCandidate> results)
+        public Search Complete(IReadOnlyList<ChatCandidate> results)
         {
             if (IsCompleted)
                 throw StandardError.Constraint("Search is already completed");

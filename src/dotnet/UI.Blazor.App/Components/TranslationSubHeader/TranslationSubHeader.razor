@@ -3,7 +3,7 @@
 
 @{
     var m = State.Value;
-    if (!m.IsVisible)
+    if (ReferenceEquals(m, Model.None))
         return;
 }
 
@@ -58,7 +58,7 @@
 
         var isOn = await TranslationUI.IsOn(chat.Id, cancellationToken).ConfigureAwait(false);
         var targetLanguage = await TranslationUI.GetTargetLanguage(chat.Id, cancellationToken).ConfigureAwait(false);
-        return new(true, isOn ?? false,  targetLanguage, chat);
+        return new(isOn ?? false, targetLanguage, chat);
     }
 
     private Task OnToggleClick()
@@ -69,7 +69,7 @@
 
     // Nested types
 
-    public sealed record Model(bool IsVisible, bool IsOn, Language TargetLanguage, Chat Chat) {
-        public static readonly Model None = new(false, false, Language.None, null!);
+    public sealed record Model(bool IsOn, Language TargetLanguage, Chat Chat) {
+        public static readonly Model None = new(false, null!, null!);
     }
 }

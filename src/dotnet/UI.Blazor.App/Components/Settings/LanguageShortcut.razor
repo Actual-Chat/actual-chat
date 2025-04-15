@@ -1,9 +1,9 @@
 @inherits ComputedStateComponent<UserLanguageSettings>
 @{
     var m = State.Value;
-    var text = m.Primary.ShortTitle.Value.ToSentenceCase();
+    var text = m.Primary.ShortTitle.ToSentenceCase();
     if (m.Secondary is { } secondary)
-        text += ", " + secondary.ShortTitle.Value.ToSentenceCase();
+        text += ", " + secondary.ShortTitle.ToSentenceCase();
 }
 
 <div class="text-primary text-sm">

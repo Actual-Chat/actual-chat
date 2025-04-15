@@ -2,6 +2,8 @@
 @inherits ComputedStateComponent<TranslationSettingsLanguageModalPage.Model>
 @{
     var m = State.Value;
+    if (ReferenceEquals(m, Model.None))
+        return;
 }
 
 <FormBlock Class="first last c-languages">
@@ -37,7 +39,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Context.GetModel<ChatId>();
-        var languages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
+        var languages = await LanguageUI.ListSpokenLanguages(cancellationToken).ConfigureAwait(false);
         var targetLanguage = await TranslationUI.GetTargetLanguage(chatId, cancellationToken).ConfigureAwait(false);
         return new(languages, targetLanguage, chatId);
     }
@@ -50,7 +52,7 @@
 
     // Nested types
 
-    public sealed record Model(IReadOnlyCollection<Language> Languages, Language Selected, ChatId ChatId) {
-        public static readonly Model None = new([], Language.None, ChatId.None);
+    public sealed record Model(IReadOnlyList<Language> Languages, Language Selected, ChatId ChatId) {
+        public static readonly Model None = new([], null!, ChatId.None);
     }
 }

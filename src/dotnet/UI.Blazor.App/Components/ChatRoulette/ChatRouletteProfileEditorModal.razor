@@ -114,9 +114,9 @@
             _form.Name = avatar.Name;
             _form.Bio = avatar.Bio;
             _form.CountryCode = preferences.Country.Code;
-            _form.Languages = preferences.Languages.ToImmutableArray();
+            _form.Languages = preferences.Languages;
             _form.Gender = preferences.Gender;
-            _form.Interests = preferences.Interests.ToImmutableArray();
+            _form.Interests = preferences.Interests;
         } else {
             var account = await Accounts.GetOwn(Session, default);
             _form.Name = account.Avatar.Name;
@@ -177,11 +177,11 @@
         public string CountryCode { get; set; } = "";
         public string CountryCodeFieldId { get; set; } = "";
         [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
-        public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
+        public IReadOnlyList<Language> Languages { get; set; } = [];
         public string LanguagesFieldId { get; set; } = "";
         public Gender Gender { get; set; } = Gender.NotSpecified;
         public string GenderFieldId { get; set; } = "";
-        public ImmutableArray<Interest> Interests { get; set; } = ImmutableArray<Interest>.Empty;
+        public IReadOnlyList<Interest> Interests { get; set; } = [];
         public string InterestsFieldId { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)

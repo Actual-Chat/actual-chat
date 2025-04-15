@@ -20,6 +20,7 @@ public interface IStringIdentifier<TSelf> : IStringIdentifier,
     where TSelf : StringIdentifier, IStringIdentifier<TSelf>
 {
     public static abstract TSelf Parse(string s); // Must rely on TryParse
+    public static abstract TSelf? TryParse(string? s); // Must rely on TryParse
     public static abstract bool TryParse(string? s, [NotNullWhen(true)] out TSelf? result);
 
     int IComparable<TSelf>.CompareTo(TSelf? other)

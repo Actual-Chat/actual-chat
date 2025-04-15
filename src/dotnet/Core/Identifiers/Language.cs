@@ -1,100 +1,80 @@
 using System.ComponentModel;
 using ActualChat.Internal;
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<Language>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<Language>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<Language>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<Language>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<Language>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<Language>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<Language>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct Language : ISymbolIdentifier<Language>
+public sealed partial class Language : StringIdentifier, IStringIdentifier<Language>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Language>();
 
-    public static Language None => default;
+    [IgnoreDataMember]
+    public string ShortTitle { get; }
+    [IgnoreDataMember]
+    public string Title { get; }
+    [IgnoreDataMember]
+    public bool IsAnyEnglish { get; }
 
-    private readonly LanguageHandle? _handle;
+    // Factories and constructors
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id => Handle.Id;
-
-    // Set on deserialization
-    private LanguageHandle Handle => _handle ?? LanguageHandle.None;
-
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol ShortTitle => Handle.ShortTitle;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Title => Handle.Title;
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public Language(Symbol id)
-        => this = ParseOrNone(id); // Intended: if we remove the language, we want the deserialization to work
-    public Language(string? id)
-        => this = Parse(id);
-    public Language(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-
-    internal Language(Symbol id, Symbol shortcut, string title, AssumeValid _)
-        => _handle = new LanguageHandle(id, shortcut, title);
-
-    public Language? NullIfNone()
-        => IsNone ? (Language?)null : this;
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(Language source) => source.Id;
-    public static implicit operator string(Language source) => source.Id.Value;
-    public static implicit operator Language(Symbol source) => new (source);
-    public static implicit operator Language(string source) => new (source);
+    internal Language(string value, string shortTitle, string title)
+        : base(value)
+    {
+        ShortTitle = shortTitle;
+        Title = title;
+        IsAnyEnglish = shortTitle.OrdinalStartsWith("en");
+    }
 
     // Equality
 
-    public bool Equals(Language other) => ReferenceEquals(Handle, other.Handle);
-    public override bool Equals(object? obj) => obj is Language other && Equals(other);
-    public override int GetHashCode() => RuntimeHelpers.GetHashCode(Handle);
-    public static bool operator ==(Language left, Language right) => left.Equals(right);
-    public static bool operator !=(Language left, Language right) => !left.Equals(right);
+    public bool Equals(Language? other)
+        => ReferenceEquals(this, other); // Fine for Language
+    public override bool Equals(object? obj)
+        => ReferenceEquals(this, obj); // Fine for Language
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(Language? left, Language? right)
+        => ReferenceEquals(left, right); // Fine for Language
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(Language? left, Language? right)
+        => !ReferenceEquals(left, right); // Fine for Language
 
     // Parsing
 
     public static Language Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Language>(s);
-    public static Language ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<Language>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out Language result)
+    public static Language? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out Language? result)
     {
-        var id = (Symbol)s;
-        if (id.IsEmpty) {
-            result = default;
-            return true; // None
-        }
+        result = null;
+        if (s.IsNullOrEmpty())
+            return false;
 
-        if (Languages.Map.TryGetValue(id, out result))
+        if (Languages.Map.TryGetValue(s, out var language)) {
+            result = language;
             return true;
-        if (Languages.Map.TryGetValue(id.Value.ToLowerInvariant(), out result))
+        }
+        if (Languages.Map.TryGetValue(s.ToLowerInvariant(), out language)) {
+            result = language;
             return true;
+        }
 
         return false;
     }
-}
-
-public static class LanguageExt
-{
-    public static bool IsEnglish(this Language language)
-        => language.ShortTitle.Value.OrdinalStartsWith("en");
 }

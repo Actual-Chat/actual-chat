@@ -25,7 +25,8 @@ public record ListMarkup : Markup
         Items = items;
     }
 
-    public ListMarkup(IEnumerable<ListItemMarkup> items) : this([..items]) { }
+    public ListMarkup(IEnumerable<ListItemMarkup> items)
+        : this(items.ToArray()) { }
 
     public override string Format()
     {

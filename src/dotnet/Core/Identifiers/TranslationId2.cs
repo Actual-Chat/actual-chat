@@ -7,6 +7,7 @@ using MessagePack;
 namespace ActualChat;
 
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringIdentifierJsonConverter<TranslationId2>))]
@@ -25,14 +26,14 @@ public sealed partial class TranslationId2 : StringIdentifier, IStringIdentifier
     [IgnoreDataMember]
     public TextEntryId2 ChatEntryId { get; }
     [IgnoreDataMember]
-    public Language2 Language { get; }
+    public Language Language { get; }
 
     // Factories and constructors
 
-    public static TranslationId2 New(TextEntryId2 chatEntryId, Language2 language)
+    public static TranslationId2 New(TextEntryId2 chatEntryId, Language language)
         => new(Format(chatEntryId, language), chatEntryId, language);
 
-    private TranslationId2(string value, TextEntryId2 chatEntryId, Language2 language) : base(value)
+    private TranslationId2(string value, TextEntryId2 chatEntryId, Language language) : base(value)
     {
         ChatEntryId = chatEntryId;
         Language = language;
@@ -57,11 +58,14 @@ public sealed partial class TranslationId2 : StringIdentifier, IStringIdentifier
 
     // Format & Parse
 
-    public static string Format(TextEntryId2 chatEntryId, Language2 language)
+    public static string Format(TextEntryId2 chatEntryId, Language language)
         => $"{chatEntryId.Value}{Delimiter}{language.Value}";
 
     public static TranslationId2 Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TranslationId2>(s);
+
+    public static TranslationId2? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out TranslationId2? result)
     {
@@ -82,7 +86,7 @@ public sealed partial class TranslationId2 : StringIdentifier, IStringIdentifier
             return false;
 
         var languageStart = entryIdLength + 1;
-        if (!Language2.TryParse(s[languageStart..], out var language))
+        if (!Language.TryParse(s[languageStart..], out var language))
             return false;
 
         result = new TranslationId2(s, entryId, language);

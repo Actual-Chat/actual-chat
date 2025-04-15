@@ -241,7 +241,7 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> ListBlock =
         SafeTryOneOf(UnorderedListItem, OrderedListItem)
             .AtLeastOnce()
-            .Select(items => (Markup)new ListMarkup(items.Select(c => (ListItemMarkup)c).ToImmutableArray()))
+            .Select(items => (Markup)new ListMarkup(items.Select(c => (ListItemMarkup)c).ToArray()))
             .Debug("<List>");
 
     // Unparsed block

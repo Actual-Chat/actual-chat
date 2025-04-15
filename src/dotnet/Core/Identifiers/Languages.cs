@@ -3,42 +3,42 @@ namespace ActualChat;
 public static class Languages
 {
     // For Arabic we need RTL support.
-    //public static readonly Language Arabic = new("ar-SA", "SA", "Arabic", AssumeValid.Option);
+    //public static readonly Language2 Arabic = new("ar-SA", "SA", "Arabic", AssumeValid.Option);
     // Chinese does support only `chirp` recognition model which does not support streaming.
-    //public static readonly Language Arabic       = new("ar-SA", "AR", "Arabic (Saudi Arabia)", AssumeValid.Option); We need RTL support
-    //public static readonly Language Bengali      = new("bn-BD", "BN", "Bengali", AssumeValid.Option); Not supported
-    public static readonly Language Chinese = new("zh-CN", "CN", "Chinese", AssumeValid.Option);
-    public static readonly Language ChineseTW = new("zh-TW", "TW", "Chinese (Taiwan)", AssumeValid.Option);
-    public static readonly Language Czech = new("cs-CZ", "CZ", "Czech", AssumeValid.Option);
-    public static readonly Language Danish = new("da-DK", "DK", "Danish", AssumeValid.Option);
-    public static readonly Language Dutch = new("nl-NL", "NL", "Dutch", AssumeValid.Option);
-    public static readonly Language English = new("en-US", "EN", "English (USA)", AssumeValid.Option);
-    public static readonly Language EnglishIN = new("en-IN", "EN-IN", "English (India)", AssumeValid.Option);
-    public static readonly Language EnglishUK = new("en-GB", "EN-GB", "English (UK)", AssumeValid.Option);
-    public static readonly Language Finnish = new("fi-FI", "FI", "Finnish", AssumeValid.Option);
-    public static readonly Language French = new("fr-FR", "FR", "French", AssumeValid.Option);
-    public static readonly Language FrenchCA = new("fr-CA", "FR-CA", "French (Canada)", AssumeValid.Option);
-    public static readonly Language German = new("de-DE", "DE", "German", AssumeValid.Option);
-    public static readonly Language Hindi = new("hi-IN", "HI", "Hindi", AssumeValid.Option);
-    public static readonly Language Italian = new("it-IT", "IT", "Italian", AssumeValid.Option);
-    public static readonly Language Japanese = new("ja-JP", "JP", "Japanese", AssumeValid.Option);
-    public static readonly Language Korean = new("ko-KR", "KR", "Korean", AssumeValid.Option);
-    public static readonly Language Polish = new("pl-PL", "PL", "Polish", AssumeValid.Option);
-    public static readonly Language Portuguese = new("pt-PT", "PT", "Portuguese", AssumeValid.Option);
-    public static readonly Language PortugueseBR = new("pt-BR", "PT-BR", "Portuguese (Brazil)", AssumeValid.Option);
-    public static readonly Language Russian = new("ru-RU", "RU", "Russian", AssumeValid.Option);
-    public static readonly Language Spanish = new("es-ES", "ES", "Spanish", AssumeValid.Option);
-    public static readonly Language SpanishMX = new("es-MX", "ES-MX", "Spanish (Mexico)", AssumeValid.Option);
-    public static readonly Language SpanishUS = new("es-US", "ES-US", "Spanish (USA)", AssumeValid.Option);
-    public static readonly Language Swedish = new("sv-SE", "SE", "Swedish", AssumeValid.Option);
-    public static readonly Language Thai = new("th-TH", "TH", "Thai", AssumeValid.Option);
-    public static readonly Language Tamil = new ("ta-IN", "TA", "Tamil", AssumeValid.Option); // Supports only Chirp Model in us-central1 Location
-    public static readonly Language Turkish = new("tr-TR", "TR", "Turkish", AssumeValid.Option);
-    public static readonly Language Ukrainian = new("uk-UA", "UA", "Ukrainian", AssumeValid.Option);
-    public static readonly Language Vietnamese = new("vi-VN", "VN", "Vietnamese", AssumeValid.Option);
+    //public static readonly Language2 Arabic       = new("ar-SA", "AR", "Arabic (Saudi Arabia)", AssumeValid.Option); We need RTL support
+    //public static readonly Language2 Bengali      = new("bn-BD", "BN", "Bengali", AssumeValid.Option); Not supported
+    public static readonly Language Chinese = new("zh-CN", "CN", "Chinese");
+    public static readonly Language ChineseTW = new("zh-TW", "TW", "Chinese (Taiwan)");
+    public static readonly Language Czech = new("cs-CZ", "CZ", "Czech");
+    public static readonly Language Danish = new("da-DK", "DK", "Danish");
+    public static readonly Language Dutch = new("nl-NL", "NL", "Dutch");
+    public static readonly Language English = new("en-US", "EN", "English (USA)");
+    public static readonly Language EnglishIN = new("en-IN", "EN-IN", "English (India)");
+    public static readonly Language EnglishUK = new("en-GB", "EN-GB", "English (UK)");
+    public static readonly Language Finnish = new("fi-FI", "FI", "Finnish");
+    public static readonly Language French = new("fr-FR", "FR", "French");
+    public static readonly Language FrenchCA = new("fr-CA", "FR-CA", "French (Canada)");
+    public static readonly Language German = new("de-DE", "DE", "German");
+    public static readonly Language Hindi = new("hi-IN", "HI", "Hindi");
+    public static readonly Language Italian = new("it-IT", "IT", "Italian");
+    public static readonly Language Japanese = new("ja-JP", "JP", "Japanese");
+    public static readonly Language Korean = new("ko-KR", "KR", "Korean");
+    public static readonly Language Polish = new("pl-PL", "PL", "Polish");
+    public static readonly Language Portuguese = new("pt-PT", "PT", "Portuguese");
+    public static readonly Language PortugueseBR = new("pt-BR", "PT-BR", "Portuguese (Brazil)");
+    public static readonly Language Russian = new("ru-RU", "RU", "Russian");
+    public static readonly Language Spanish = new("es-ES", "ES", "Spanish");
+    public static readonly Language SpanishMX = new("es-MX", "ES-MX", "Spanish (Mexico)");
+    public static readonly Language SpanishUS = new("es-US", "ES-US", "Spanish (USA)");
+    public static readonly Language Swedish = new("sv-SE", "SE", "Swedish");
+    public static readonly Language Thai = new("th-TH", "TH", "Thai");
+    public static readonly Language Tamil = new ("ta-IN", "TA", "Tamil"); // Supports only Chirp Model in us-central1 Location
+    public static readonly Language Turkish = new("tr-TR", "TR", "Turkish");
+    public static readonly Language Ukrainian = new("uk-UA", "UA", "Ukrainian");
+    public static readonly Language Vietnamese = new("vi-VN", "VN", "Vietnamese");
 
     public static readonly Language Main = English;
-    public static readonly Language Loading = new("Loading", "Loading", "Loading", AssumeValid.Option);
+    public static readonly Language Loading = new("Loading", "Loading", "Loading");
 
     public static readonly Language[] All = [
         Chinese,
@@ -101,10 +101,10 @@ public static class Languages
     ];
 
     public static readonly Dictionary<string, Language> Map =
-        All.Select(x => new KeyValuePair<string, Language>(x.Id, x))
-            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.Id.Value.ToLowerInvariant(), x)))
+        All.Select(x => new KeyValuePair<string, Language>(x.Value, x))
+            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.Value.ToLowerInvariant(), x)))
             .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle, x)))
-            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle.Value.ToLowerInvariant(), x)))
+            .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle.ToLowerInvariant(), x)))
             .DistinctBy(kv => kv.Key)
             .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 

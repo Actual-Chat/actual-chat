@@ -12,9 +12,9 @@ public sealed partial record UserListeningSettings : IHasOrigin
     private ApiArray<ChatId> LegacyAlwaysListenedChatIds { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId[] AlwaysListenedChatIds {
+    public IReadOnlyList<ChatId> AlwaysListenedChatIds {
         get => LegacyAlwaysListenedChatIds.Items;
-        init => LegacyAlwaysListenedChatIds = ApiArray.New(value);
+        init => LegacyAlwaysListenedChatIds = ApiArray.New(value.ToArray());
     }
 
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";

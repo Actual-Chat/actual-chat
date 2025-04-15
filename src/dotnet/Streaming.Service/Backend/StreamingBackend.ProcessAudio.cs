@@ -144,11 +144,14 @@ public partial class StreamingBackend
         var settings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);
         var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);
         var language = await settings.LanguageOrPrimary(kvas, cancellationToken).ConfigureAwait(false);
-        Language?[] languages = [language, languageSettings.Primary, languageSettings.Secondary, languageSettings.Tertiary];
+        Language?[] languages = [
+            language,
+            languageSettings.Primary,
+            languageSettings.Secondary,
+            languageSettings.Tertiary];
 
         return languages
-            .Where(l => l != null)
-            .Select(l => l!.Value)
+            .SkipNullItems()
             .Distinct()
             .ToArray();
     }

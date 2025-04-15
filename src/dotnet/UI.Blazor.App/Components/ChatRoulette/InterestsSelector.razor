@@ -12,16 +12,16 @@
 </div>
 
 @code {
-    [Parameter] public ImmutableArray<Interest> Interests { get; set; } = ImmutableArray<Interest>.Empty;
-    [Parameter] public EventCallback<ImmutableArray<Interest>> InterestsChanged { get; set; }
+    [Parameter] public IReadOnlyList<Interest> Interests { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyList<Interest>> InterestsChanged { get; set; }
 
     private Task Select(Interest interest, bool select) {
         var interests = Interests;
         if (select) {
             if (!interests.Contains(interest))
-                interests = interests.Add(interest);
+                interests = interests.With(interest);
         } else {
-            interests = interests.Remove(interest);
+            interests = interests.Without(interest);
         }
         return InterestsChanged.InvokeAsync(interests);
     }

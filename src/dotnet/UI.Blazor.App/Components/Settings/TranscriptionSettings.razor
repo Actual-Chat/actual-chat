@@ -9,10 +9,10 @@
     if (ReferenceEquals(m, Model.Loading))
         return;
 
-    var languages = m.Languages.ToList();
-    _formModel.PrimaryLanguageId = languages.GetOrDefault(0).Value;
-    _formModel.SecondaryLanguageId = languages.GetOrDefault(1).Value;
-    _formModel.TertiaryLanguageId = languages.GetOrDefault(2).Value;
+    var languages = m.Languages.AllSpoken;
+    _formModel.PrimaryLanguageId = languages.GetOrDefault(0)?.Value ?? "";
+    _formModel.SecondaryLanguageId = languages.GetOrDefault(1)?.Value ?? "";
+    _formModel.TertiaryLanguageId = languages.GetOrDefault(2)?.Value ?? "";
     var shouldDisplayTranscriberEngineSettings = m.ShouldDisplayTranscriberEngineSettings;
 }
 
@@ -104,7 +104,7 @@
     }
 
     private void OnLanguageChanged(int index, string languageId) {
-        var language = Language.ParseOrNone(languageId);
+        var language = languageId.IsNullOrEmpty() ? null : Language.Parse(languageId);
         var languages = State.Value.Languages;
         Hub.LanguageUI.UpdateSettings(languages.With(index, language));
         State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected

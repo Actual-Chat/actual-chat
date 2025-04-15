@@ -17,7 +17,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     // [ComputeMethod]
-    public virtual async Task<ChatCandidate[]> FindChatCandidates(
+    public virtual async Task<IReadOnlyList<ChatCandidate>> FindChatCandidates(
         Session session,
         Symbol profileId,
         Preferences filter,

@@ -5,8 +5,8 @@
     var m = State.Value;
     var availableLanguages = m.AvailableLanguages;
     foreach (var language in Languages)
-        availableLanguages = availableLanguages.Remove(language);
-    if (_renderedLanguages.HasValue && !_renderedLanguages.Value.Equals(Languages))
+        availableLanguages = availableLanguages.Without(language);
+    if (!ReferenceEquals(_renderedLanguages, Languages) && _renderedLanguages != null)
         _renderedLanguagesHasChanged = true;
     _renderedLanguages = Languages;
 }
@@ -18,8 +18,9 @@
             <span class="clickable"><i class="icon-close" @onclick="@(() => Remove(option))"></i></span>
         </div>
     }
-    @if (availableLanguages.Length > 0) {
-        <div class="cr-badge profile-badge special clickable" @onclick="@(() => OnAddLanguageClick(availableLanguages))">Add</div>
+    @if (availableLanguages.Count > 0) {
+        <div class="cr-badge profile-badge special clickable"
+             @onclick="@(() => OnAddLanguageClick(availableLanguages))">Add</div>
     }
 </div>
 
@@ -27,14 +28,14 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ModalUI ModalUI => Hub.ModalUI;
     private FieldIdentifier? _fieldIdentifier;
-    private ImmutableArray<Language>? _renderedLanguages;
+    private IReadOnlyList<Language>? _renderedLanguages;
     private bool _renderedLanguagesHasChanged;
 
 
     [CascadingParameter] private EditContext? CascadedEditContext { get; set; }
-    [Parameter] public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
-    [Parameter] public EventCallback<ImmutableArray<Language>> LanguagesChanged { get; set; }
-    [Parameter] public Expression<Func<ImmutableArray<Language>>>? ValueExpression { get; set; }
+    [Parameter] public IReadOnlyList<Language> Languages { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyList<Language>> LanguagesChanged { get; set; }
+    [Parameter] public Expression<Func<IReadOnlyList<Language>>>? ValueExpression { get; set; }
 
     protected override void OnInitialized()
         => _fieldIdentifier = ValueExpression is not null ? FieldIdentifier.Create(ValueExpression) : null;
@@ -48,11 +49,13 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
-        var possibleLanguages = new List<Language>();
-        AddPossibleLanguage(possibleLanguages, languages.Primary);
-        AddPossibleLanguage(possibleLanguages, languages.Secondary);
-        AddPossibleLanguage(possibleLanguages, languages.Tertiary);
-        return new Model { AvailableLanguages = [..possibleLanguages]};
+        var availableLanguages = new List<Language>();
+        AddAvailableLanguage(availableLanguages, languages.Primary);
+        AddAvailableLanguage(availableLanguages, languages.Secondary);
+        AddAvailableLanguage(availableLanguages, languages.Tertiary);
+        return new Model {
+            AvailableLanguages = availableLanguages,
+        };
     }
 
     protected override void OnAfterRender(bool firstRender) {
@@ -62,12 +65,13 @@
         }
     }
 
-    private void AddPossibleLanguage(List<Language> list, Language? languageOpt) {
-        if (!languageOpt.HasValue)
+    private void AddAvailableLanguage(List<Language> list, Language? language) {
+        if (language == null)
             return;
 
-        var language = languageOpt.Value;
-        if (language.ShortTitle.Value.Length > 2 && ActualChat.Languages.SupportedMap.TryGetValue(language.ShortTitle.Value[..2], out var alternative) && alternative != language)
+        if (language.ShortTitle.Length > 2
+            && ActualChat.Languages.SupportedMap.TryGetValue(language.ShortTitle[..2], out var alternative)
+            && alternative != language)
             language = alternative;
 
         if (!list.Contains(language))
@@ -79,7 +83,7 @@
         if (languages.Contains(language))
             return;
 
-        languages = languages.Add(language);
+        languages = languages.With(language);
         OnChange(languages);
     }
 
@@ -88,19 +92,19 @@
         if (!languages.Contains(language))
             return;
 
-        languages = languages.Remove(language);
+        languages = languages.Without(language);
         OnChange(languages);
     }
 
-    private void OnChange(ImmutableArray<Language> languages)
+    private void OnChange(IReadOnlyList<Language> languages)
     {
         _ = LanguagesChanged.InvokeAsync(languages);
         if (CascadedEditContext is not null && _fieldIdentifier is not null)
             CascadedEditContext.NotifyFieldChanged(_fieldIdentifier.Value);
     }
 
-    private void OnAddLanguageClick(ImmutableArray<Language> availableLanguages) {
-        if (availableLanguages.Length == 1) {
+    private void OnAddLanguageClick(IReadOnlyList<Language> availableLanguages) {
+        if (availableLanguages.Count == 1) {
             Add(availableLanguages[0]);
             return;
         }
@@ -110,6 +114,6 @@
 
     // Nested types
     public record Model {
-        public ImmutableArray<Language> AvailableLanguages { get; init; } = ImmutableArray<Language>.Empty;
+        public IReadOnlyList<Language> AvailableLanguages { get; init; } = [];
     }
 }

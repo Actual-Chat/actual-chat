@@ -2,6 +2,8 @@
 @inherits ComputedStateComponent<TranslationSettingsStartModalPage.Model>
 @{
     var m = State.Value;
+    if (ReferenceEquals(m, Model.None))
+        return;
 }
 
 <FormBlock Class="first last">
@@ -58,6 +60,6 @@
     // Nested types
 
     public sealed record Model(Language TargetLanguage, ChatId ChatId) {
-        public static readonly Model None = new(Language.None, ChatId.None);
+        public static readonly Model None = new(null!, ChatId.None);
     }
 }

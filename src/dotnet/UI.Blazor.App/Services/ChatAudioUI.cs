@@ -97,7 +97,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                     Recency = mustListen ? now : chat.Recency,
                     ListeningRecency = mustListen ? now : chat.ListeningRecency,
                 };
-                activeChats = activeChats.WithOrReplace(chat);
+                activeChats = activeChats.WithOrReplace(chat).ToArray();
             }
             else if (mustListen)
                 activeChats = activeChats.With(new ActiveChat(chatId, true, false, now, now), true);
@@ -137,7 +137,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                         activeChats = activeChats.WithOrReplace(oldRecordingChat with {
                             IsRecording = false,
                             Recency = now,
-                        });
+                        }).ToArray();
                         _ = RestoreListening(StopToken);
                         _ = TuneUI.Play(Tune.EndRecording);
                     }
@@ -158,15 +158,17 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                         ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
                     };
                 }
-                activeChats = activeChats.WithOrReplace(chat, true);
+                activeChats = activeChats.WithOrReplace(chat, true).ToArray();
                 // Turn off listening for all the rest chats if mustListen
                 activeChats = mustListen
                     ? activeChats.WithUpdate(
                         c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
                         c => c with { IsRecording = false, IsListening = false })
+                        .ToArray()
                     : activeChats.WithUpdate(
                         c => c.ChatId != chatId && c.IsRecording,
-                        c => c with { IsRecording = false });
+                        c => c with { IsRecording = false })
+                        .ToArray();
                 _ = TuneUI.Play(Tune.BeginRecording);
                 return activeChats;
 
@@ -185,7 +187,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                                 IsListening = true,
                                 ListeningRecency = now,
                             };
-                        activeChats = activeChats.WithOrReplace(chat);
+                        activeChats = activeChats.WithOrReplace(chat).ToArray();
                     }
                 }
             },

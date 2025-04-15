@@ -386,7 +386,7 @@ public class NotificationsBackend(IServiceProvider services)
         var chatId = textEntryId.ChatId;
 
         var subscribedUserIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        var userIds = subscribedUserIds.Intersect(mentionedUserIds).ToImmutableArray();
+        var userIds = subscribedUserIds.Intersect(mentionedUserIds).ToArray();
         if (userIds.Length == 0)
             return;
 
@@ -522,7 +522,7 @@ public class NotificationsBackend(IServiceProvider services)
         string content,
         NotificationKind kind,
         Symbol similarityKey,
-        IReadOnlyCollection<UserId> userIds,
+        IReadOnlyList<UserId> userIds,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdCount}",
@@ -622,7 +622,8 @@ public class NotificationsBackend(IServiceProvider services)
         return devices;
     }
 
-    private async Task NotifyMembersInternal(UserId userId, ChatId chatId, long textEntryLid, IReadOnlyList<UserId> userIds,
+    private async Task NotifyMembersInternal(
+        UserId userId, ChatId chatId, long textEntryLid, IReadOnlyList<UserId> userIds,
         CancellationToken cancellationToken)
     {
         var author = await AuthorsBackend

@@ -9,11 +9,11 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     [Fact]
     public void ParseTest()
     {
-        var parsed = ValidIdentifiers.Select(s => TIdentifier.TryParse(s, out var id) ? id : null).ToArray();
+        var parsed = ValidIdentifiers.Select(TIdentifier.TryParse).ToArray();
         Out.WriteLine(parsed.ToDelimitedString());
         parsed.All(id => id != null).Should().BeTrue();
 
-        parsed = InvalidIdentifiers.Select(s => TIdentifier.TryParse(s, out var id) ? id : null).ToArray();
+        parsed = InvalidIdentifiers.Select(TIdentifier.TryParse).ToArray();
         Out.WriteLine(parsed.ToDelimitedString());
         parsed.All(id => id == null).Should().BeTrue();
     }

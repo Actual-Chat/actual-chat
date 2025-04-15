@@ -8,41 +8,54 @@ public sealed partial record UserLanguageSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserLanguageSettings);
 
-    [DataMember, MemoryPackOrder(0)] public Language Primary { get; init; } = Languages.Main;
+    // TODO(AY): Serialization(Language)
+    [DataMember, MemoryPackOrder(0)]
+    [field: AllowNull, MaybeNull]
+    public Language Primary {
+        get => field ?? Languages.Main;
+        init;
+    }
+    // TODO(AY): Serialization(Language?)
     [DataMember, MemoryPackOrder(1)] public Language? Secondary { get; init; }
+    // TODO(AY): Serialization(Language?)
     [DataMember, MemoryPackOrder(3)] public Language? Tertiary { get; init; }
     [DataMember, MemoryPackOrder(2)] public string Origin { get; init; } = "";
 
-    public List<Language> ToList()
-    {
-        var result = new List<Language>();
-        if (!Primary.IsNone)
-            result.Add(Primary);
-        if (Secondary is { IsNone: false } secondary && !result.Contains(secondary))
-            result.Add(secondary);
-        if (Tertiary is { IsNone: false } tertiary && !result.Contains(tertiary))
-            result.Add(tertiary);
-        if (result.Count == 0)
-            result.Add(Languages.Main);
-        return result;
+    [IgnoreDataMember, MemoryPackIgnore]
+    [field: AllowNull, MaybeNull]
+    public IReadOnlyList<Language> AllSpoken {
+        get {
+            if (field != null)
+                return field;
+
+            var list = new List<Language> { Primary };
+            if (Secondary is { } secondary && !list.Contains(secondary))
+                list.Add(secondary);
+            if (Tertiary is { } tertiary && !list.Contains(tertiary))
+                list.Add(tertiary);
+            if (list.Count == 0)
+                list.Add(ActualChat.Languages.Main);
+            return field = list.ToArray();
+        }
     }
 
-    public UserLanguageSettings With(int index, Language language)
+    public UserLanguageSettings With(int index, Language? language)
     {
         if (index is < 0 or > 2)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        var languages = ToList();
+        var languages = AllSpoken.ToList();
         if (index < languages.Count)
-            languages[index] = language;
-        else
+            languages[index] = language!;
+        else if (language != null)
             languages.Add(language);
-        languages = languages.Where(x => !x.IsNone).DistinctBy(x => x.Id).ToList();
+        languages = languages.SkipNullItems().DistinctBy(x => x.Id).ToList();
 
+        // ReSharper disable once WithExpressionModifiesAllMembers
         return this with {
-            Primary = languages.GetOrDefault(0, Languages.Main),
-            Secondary = languages.GetOrDefault(1).NullIfNone(),
-            Tertiary = languages.GetOrDefault(2).NullIfNone(),
+            Primary = languages.GetOrDefault(0, ActualChat.Languages.Main),
+            Secondary = languages.GetOrDefault(1),
+            Tertiary = languages.GetOrDefault(2),
         };
     }
 }

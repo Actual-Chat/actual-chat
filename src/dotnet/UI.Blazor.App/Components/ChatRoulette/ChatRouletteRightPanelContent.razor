@@ -107,10 +107,10 @@
         if (form.Gender != searchFilter.Gender)
             return true;
 
-        if (!Enumerable.SequenceEqual(form.Languages, searchFilter.Languages))
+        if (!form.Languages.SequenceEqual(searchFilter.Languages))
             return true;
 
-        if (!Enumerable.SequenceEqual(form.Interests, searchFilter.Interests))
+        if (!form.Interests.SequenceEqual(searchFilter.Interests))
             return true;
 
         return false;
@@ -119,8 +119,8 @@
     private void FillInForm(FormModel form, Preferences searchCriteria) {
         form.CountryCode = searchCriteria.Country.Code;
         form.Gender = searchCriteria.Gender;
-        form.Languages = searchCriteria.Languages.ToImmutableArray();
-        form.Interests = searchCriteria.Interests.ToImmutableArray();
+        form.Languages = searchCriteria.Languages;
+        form.Interests = searchCriteria.Interests;
         form.CopyToBase();
     }
 
@@ -132,11 +132,11 @@
         public string CountryCode { get; set; } = "";
         public string CountryCodeFieldId { get; set; } = "";
         [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
-        public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
+        public IReadOnlyList<Language> Languages { get; set; } = [];
         public string LanguagesFieldId { get; set; } = "";
         public Gender Gender { get; set; } = Gender.NotSpecified;
         public string GenderFieldId { get; set; } = "";
-        public ImmutableArray<Interest> Interests { get; set; } = ImmutableArray<Interest>.Empty;
+        public IReadOnlyList<Interest> Interests { get; set; } = [];
         public string InterestsFieldId { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)

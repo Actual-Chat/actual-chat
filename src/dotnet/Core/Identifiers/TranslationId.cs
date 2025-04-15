@@ -58,7 +58,7 @@ public readonly partial struct TranslationId : ISymbolIdentifier<TranslationId>
 
     public TranslationId(ChatEntryId chatEntryId, Language language, AssumeValid _)
     {
-        if (chatEntryId.IsNone || language.IsNone) {
+        if (chatEntryId.IsNone) {
             this = None;
             return;
         }

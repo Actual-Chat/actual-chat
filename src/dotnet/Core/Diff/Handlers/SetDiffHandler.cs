@@ -36,6 +36,8 @@ public sealed class SetDiffHandler<
             return _setType.IsArray
                 ? (TSet)(object)target.ToArray()
                 : (TSet)_setType.CreateInstance(target);
+        if (_setGenericType == typeof(IReadOnlyList<>))
+            return (TSet)(object)target.ToList();
         if (_setGenericType == typeof(ImmutableArray<>))
             return (TSet)(object)ImmutableArray.Create(target);
         if (_setGenericType == typeof(ImmutableList<>))

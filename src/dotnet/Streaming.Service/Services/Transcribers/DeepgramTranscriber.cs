@@ -71,7 +71,7 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
             var language = options.Language.ToDeepgram();
-            var model = options.Language.IsEnglish() ? "nova-3" : "nova-2";
+            var model = options.Language.IsAnyEnglish ? "nova-3" : "nova-2";
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,

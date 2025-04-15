@@ -329,7 +329,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     public async Task JoinPlace(PlaceId placeId) {
         var avatars = await Avatars.ListOwnAvatarIds(Session, default).ConfigureAwait(false); // Continue on Blazor context.
-        var hasMultipleAvatars = avatars.Length > 1;
+        var hasMultipleAvatars = avatars.Count > 1;
 
         if (!hasMultipleAvatars) {
             var command = new Places_Join(Session, placeId);

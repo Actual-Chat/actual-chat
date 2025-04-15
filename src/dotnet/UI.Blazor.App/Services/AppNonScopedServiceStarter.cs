@@ -102,7 +102,10 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         var authorId = new AuthorId(chatId, 1L, AssumeValid.Option);
         var account = new AccountFull(new User(userId, "User"), 1);
         Warmup(new Chat.Chat(chatId) { Rules = new AuthorRules(chatId, new AuthorFull(userId, authorId), account) });
-        Warmup(new UserLanguageSettings() { Primary = Languages.English, Secondary = Languages.German });
+        Warmup(new UserLanguageSettings() {
+            Primary = Languages.English,
+            Secondary = Languages.German,
+        });
         Warmup(new UserOnboardingSettings());
         Warmup(new LocalOnboardingSettings());
         Warmup(new UserBubbleSettings() { ReadBubbles = ["test"] });

@@ -43,10 +43,10 @@ public class TranslationUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), I
     {
         var session = Session;
         var entryLanguage = await Translations.GetLanguage(session, entryId, cancellationToken).ConfigureAwait(false);
-        if (entryLanguage.IsEmpty())
+        if (entryLanguage == null)
             return false;
 
-        var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
+        var spokenLanguages = await LanguageUI.ListSpokenLanguages(cancellationToken).ConfigureAwait(false);
         return entryLanguage.Languages.Any(x => !spokenLanguages.Contains(x));
     }
 
@@ -54,9 +54,6 @@ public class TranslationUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), I
     public virtual async Task<Translation?> Get(ChatEntryId entryId, CancellationToken cancellationToken = default){
         var session = Session;
         var targetLanguage = await GetTargetLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-        if (targetLanguage.IsNone)
-            return null;
-
         return await Translations.Get(session, new TranslationId(entryId, targetLanguage, AssumeValid.Option), cancellationToken).ConfigureAwait(false);
     }
 

@@ -28,10 +28,10 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
         => _settings.Dispose();
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlySet<Language>> ListSpoken(CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<Language>> ListSpokenLanguages(CancellationToken cancellationToken)
     {
         var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
-        return settings.ToList().ToHashSet();
+        return settings.AllSpoken;
     }
 
     [ComputeMethod]
@@ -44,10 +44,7 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
     public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language, CancellationToken cancellationToken = default)
     {
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        var settings = Settings.Value;
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        var oldLanguage = userChatSettings.Language.Or(settings.Primary);
-        language = language.Or(oldLanguage);
         if (language == userChatSettings.Language)
             return language;
 
@@ -83,8 +80,8 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
         var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return languages
-            .Select(x => new Language(x, ParseOrNone.Option))
-            .Where(x => !x.IsNone)
+            .Select(Language.TryParse)
+            .SkipNullItems()
             .Distinct()
             .ToList();
     }

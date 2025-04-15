@@ -23,9 +23,9 @@
         <span class="not-mentioned">Alert mentioned</span>
     } else {
         <span class="text-primary font-semibold">You</span><span class="default-text">&nbsp;notified&nbsp;</span>
-        @for (var i = 0; i < AuthorIds.Length; i++) {
+        @for (var i = 0; i < AuthorIds.Count; i++) {
             var isFirst = i == 0;
-            var isLast = i == AuthorIds.Length - 1;
+            var isLast = i == AuthorIds.Count - 1;
             var authorId = AuthorIds[i];
             if (!isFirst) {
                 if (!isLast) {
@@ -55,7 +55,7 @@
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
-    [Parameter, EditorRequired] public ImmutableArray<AuthorId> AuthorIds { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<AuthorId> AuthorIds { get; set; } = [];
 
     private ChatUIHub Hub => ChatContext.Hub;
     private Session Session => Hub.Session();

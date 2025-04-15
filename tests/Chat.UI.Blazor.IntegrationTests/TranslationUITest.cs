@@ -42,11 +42,18 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     [InlineData]
     [InlineData("en")]
     [InlineData("en", "ru")]
-    public async Task ShouldSuggestTranslationIfLanguageDoesNotMatchSpoken(Language primary = default, Language secondary = default)
+    public async Task ShouldSuggestTranslationIfLanguageDoesNotMatchSpoken(
+        string primaryLanguage = "",
+        string secondaryLanguage = "")
     {
         // arrange
+        var primary = Language.TryParse(primaryLanguage);
+        var secondary = Language.TryParse(secondaryLanguage);
         var languageSettings = await LanguageUI.Settings.Use(CancellationToken.None);
-        LanguageUI.UpdateSettings(languageSettings with { Primary = primary, Secondary = secondary });
+        LanguageUI.UpdateSettings(languageSettings with {
+            Primary = primary!,
+            Secondary = secondary,
+        });
         var (chatId, _) = await Tester.CreateChat(false);
 
         // act
@@ -63,7 +70,10 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     {
         // arrange
         var languageSettings = await LanguageUI.Settings.Use(CancellationToken.None);
-        LanguageUI.UpdateSettings(languageSettings with { Primary = Languages.English, Secondary = Languages.French });
+        LanguageUI.UpdateSettings(languageSettings with {
+            Primary = Languages.English,
+            Secondary = Languages.French,
+        });
         var (chatId, _) = await Tester.CreateChat(false);
 
         // act

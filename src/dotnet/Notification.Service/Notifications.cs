@@ -187,18 +187,21 @@ public class Notifications(IServiceProvider services) : INotifications
             return MentionExtractor.Instance.GetMentionIds(markup);
         }
 
-        async Task<ImmutableArray<UserId>> GetMentionedUserIds(UserId excludeUserId)
+        async Task<UserId[]> GetMentionedUserIds(UserId excludeUserId)
         {
             var mentionedAuthorIds = mentionIds
                 .Where(c => c.Kind == PrincipalKind.Author)
                 .Select(c => c.AuthorId)
-                .ToImmutableArray();
+                .ToList();
             var mentionedAuthors = await mentionedAuthorIds
                 .Select(id => AuthorsBackend.Get(chatId, id, AuthorsBackend_GetAuthorOption.Full, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-            var immutableArray = mentionedAuthors.SkipNullItems().Select(a => a.UserId).Where(c => c != excludeUserId).ToImmutableArray();
-            return immutableArray;
+            return mentionedAuthors
+                .SkipNullItems()
+                .Select(a => a.UserId)
+                .Where(c => c != excludeUserId)
+                .ToArray();
         }
     }
 

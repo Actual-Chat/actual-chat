@@ -27,7 +27,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
         var services = CreateServices();
         var transcriber = new DeepgramTranscriber(services);
         var options = new TranscriptionOptions {
-            Language = "ru-RU",
+            Language = Language.Parse("ru-RU"),
         };
         var audio = await GetAudio(fileName, withDelay: withDelay);
 

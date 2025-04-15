@@ -81,7 +81,7 @@ public partial record Interest([property: DataMember, MemoryPackOrder(0)] string
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public partial record Preferences
+public sealed partial record Preferences
 {
     public static readonly Preferences Empty = new ();
 

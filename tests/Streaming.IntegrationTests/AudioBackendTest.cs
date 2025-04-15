@@ -26,8 +26,10 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var backend = services.GetRequiredService<IStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var accountSettings = services.AccountSettings(session);
-        if (mustSetUserLanguageSettings)
-            await accountSettings.SetUserLanguageSettings(new () { Primary = Languages.Main, }, CancellationToken.None);
+        if (mustSetUserLanguageSettings) {
+            var userLanguageSettings = new UserLanguageSettings() { Primary = Languages.Main };
+            await accountSettings.SetUserLanguageSettings(userLanguageSettings, CancellationToken.None);
+        }
 
         var ownNode = services.MeshWatcher().OwnNode;
         var streamId = StreamId.New(ownNode.Ref);

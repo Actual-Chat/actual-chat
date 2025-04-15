@@ -13,7 +13,7 @@
 
 <div class="cr-center">
     @if (m.SearchState == SearchState.Completed) {
-        @if (candidates.IsEmpty) {
+        @if (candidates.Count == 0) {
             <div class="cr-main-title">No people found to chat. Try to change filter criteria.</div>
         } else {
             <div class="cr-main-title">Here are some people ready to chat:</div>
@@ -85,6 +85,6 @@
         public Profile Profile { get; init; } = Profile.None;
         public SearchState SearchState { get; init; } = SearchState.None;
         public Preferences SearchCriteria { get; init; } = Preferences.Empty;
-        public ImmutableArray<ChatCandidate> ChatCandidates { get; init; } = ImmutableArray<ChatCandidate>.Empty;
+        public IReadOnlyList<ChatCandidate> ChatCandidates { get; init; } = [];
     }
 }

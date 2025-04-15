@@ -266,7 +266,7 @@
                     .ListOwnAvatarIds(session, cancellationToken)
                     .WaitAsync(LoadTimeout, cancellationToken)
                     .ConfigureAwait(false);
-                hasMultipleAvatars = avatars.Length > 1;
+                hasMultipleAvatars = avatars.Count > 1;
             }
         }
 
