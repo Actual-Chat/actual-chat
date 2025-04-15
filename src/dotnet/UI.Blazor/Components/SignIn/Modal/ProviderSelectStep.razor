@@ -163,7 +163,7 @@
     protected override async Task<bool> Save() {
         var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
         PhoneSignInModel.Phone = phone;
-        return phone.IsValid;
+        return phone != null;
     }
 
     private void OnSignInWith(string schema)

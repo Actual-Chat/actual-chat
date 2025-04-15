@@ -142,10 +142,11 @@
         var attachments = PopAttachments();
         StateHasChanged();
 
-        var entryAttachments = attachments.Where(x => x.Uploaded).Select(x => new TextEntryAttachment {
-            MediaId = x.MediaId,
-            ThumbnailMediaId = x.ThumbnailMediaId,
-        }).ToArray();
+        var entryAttachments = attachments.Where(x => x.Uploaded)
+            .Select(x => new TextEntryAttachment {
+                MediaId = x.MediaId!,
+                ThumbnailMediaId = x.ThumbnailMediaId,
+            }).ToArray();
         return new (entryAttachments, () => Rollback(attachments), InvokeClear);
 
         ImmutableList<Attachment> PopAttachments()
@@ -269,6 +270,6 @@
         public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
         public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
         public bool Failed { get; init; }
-        public bool Uploaded => Progress == 100 && MediaId != null;
+        [MemberNotNullWhen(true, nameof(MediaId))] public bool Uploaded => Progress == 100 && MediaId != null;
     }
 }

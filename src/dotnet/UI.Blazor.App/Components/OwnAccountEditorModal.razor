@@ -81,15 +81,15 @@
                         disabled="@isPhoneVerified"/>
                 </ChildContent>
                 <Right>
-                    @if (phone.IsValid) {
+                    @if (phone != null) {
                         <VerificationStatus IsVerified="isPhoneVerified"/>
                     }
                 </Right>
             </FormSection>
 
-            @if (phone.IsValid && !isPhoneVerified) {
+            @if (phone != null && !isPhoneVerified) {
                 <PhoneVerifier
-                    Phone="@phone.Value"
+                    Phone="@phone"
                     Class="my-3"
                     Verified="OnPhoneVerified"/>
             }
@@ -182,7 +182,7 @@
         _account = await Hub.Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
         _form.Email = _account.Email.NullIfEmpty();
-        _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : "";
+        _form.Phone = _account.Phone?.ToReadable() ?? "";
         _form.ParsedPhone = _account.Phone;
         _form.UserLinkId = _form.CurrentUserLinkId = _account.UserLinkId.Value;
 
@@ -196,7 +196,7 @@
         var account = await Hub.Accounts.GetOwn(Session, default);
         var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, default);
         if (phone != account.Phone) {
-            if (!phone.IsValid)
+            if (phone != null)
                 return;
         }
 
@@ -245,7 +245,7 @@
         [EmailAddress] public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
         [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = "";
-        public Phone ParsedPhone { get; set; }
+        public Phone? ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
         [UserLinkId]
         public string UserLinkId { get; set; } = "";

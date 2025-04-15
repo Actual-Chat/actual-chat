@@ -144,5 +144,5 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
     private bool TryGetPredefined(Phone phone, out int predefinedTotp)
         // removing dashes due to issue with dash in bash env var names
-        => Settings.PredefinedTotps.TryGetValue(Phone.Normalize(phone.Value), out predefinedTotp);
+        => Settings.PredefinedTotps.TryGetValue(Phone.NormalizePart(phone.Value), out predefinedTotp);
 }

@@ -2,7 +2,6 @@
 @using ActualChat.Users
 @using System.ComponentModel.DataAnnotations
 
-
 <RequireAccount MustBeAdmin="true"/>
 
 <div class="flex-y flex-1 items-center justify-center">
@@ -66,6 +65,6 @@
         [Required, PhoneNumber] public string ReadablePhone { get; set; } = "+1(234)-567-89-10";
         public bool IsVerified { get; set; }
         public bool ShowVerifier { get; set; }
-        public Phone Phone { get; set; }
+        public Phone? Phone { get; set; }
     }
 }

@@ -68,7 +68,7 @@
             <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
         </Right>
         <Content>
-            @account.Phone.ToReadable()
+            @account.Phone?.ToReadable()
         </Content>
         <Caption>
             Phone

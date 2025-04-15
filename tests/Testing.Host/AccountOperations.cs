@@ -37,14 +37,14 @@ public static class AccountOperations
         string name,
         string secondName = "",
         string email = "",
-        Phone phone = default)
+        Phone? phone = null)
     {
         await using var __ = await tester.BackupAuth();
         var user = new User("", name).WithClaim(ClaimTypes.GivenName, name)
             .WithClaim(ClaimTypes.Surname, secondName);
         if (email.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.Email, email);
-        if (!phone.IsNone)
+        if (phone != null)
             user = user.WithPhone(phone);
         return await tester.SignIn(user);
     }

@@ -1,127 +1,104 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using Cysharp.Text;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<Phone>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<Phone>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<Phone>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<Phone>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<Phone>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<Phone>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<Phone>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct Phone : ISymbolIdentifier<Phone>
+public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Phone>();
+    private static readonly ILruCache<string, Phone> Cache = CreateCache<Phone>(256);
 
-    private const char Delimiter = '-';
-    public static Phone None => default;
+    public const char Delimiter = '-';
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public string Code { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public string Number { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsValid
-        => !IsNone && IsNormalized(Code) && IsNormalized(Number) && TryParse(Id, out _);
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public Phone(Symbol id)
-        => this = Parse(id);
-    public Phone(string? id)
-        => this = Parse(id);
-    public Phone(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    public static Phone New(string code, string number)
+        => new(Format(code, number), code, number);
 
-    public Phone(Symbol id, string code, string number, AssumeValid _)
+    private Phone(string value, string code, string number) : base(value)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
         Code = code;
         Number = number;
     }
 
-    public Phone(string code, string number, AssumeValid _)
-    {
-        if (code.IsNullOrEmpty() || number.IsNullOrEmpty()) {
-            this = None;
-            return;
-        }
-        Id = Format(code, number);
-        Code = code;
-        Number = number;
-    }
+    // Normalization
 
-    public Phone(string code, string number, bool normalize = true)
-    {
-        if (code.IsNullOrEmpty() || number.IsNullOrEmpty()) {
-            this = None;
-            return;
-        }
+    public bool IsNormalized()
+        => IsPartNormalized(Code) && IsPartNormalized(Number);
 
-        if (normalize) {
-            code = Normalize(code);
-            number = Normalize(number);
-            if (code.IsNullOrEmpty() || number.IsNullOrEmpty())
-                throw StandardError.Format<Phone>(Format(code, number));
-        }
-        else {
-            if (!IsNormalized(code) || !IsNormalized(number))
-                throw StandardError.Format<Phone>(Format(code, number));
-        }
+    public Phone Normalize()
+        => IsNormalized()
+            ? this
+            : New(NormalizePart(Code), NormalizePart(Number));
 
-        Id = Format(code, number);
-        Code = code;
-        Number = number;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(Phone source) => source.Id;
-    public static implicit operator string(Phone source) => source.Id.Value;
-
-    public string ToE164()
-        => $"+{Code}{Number}";
+    public Phone RequireNormalized()
+        => IsNormalized()
+            ? this
+            : throw StandardError.Format<Phone>(Value);
 
     // Equality
 
-    public bool Equals(Phone other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is Phone other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(Phone left, Phone right) => left.Equals(right);
-    public static bool operator !=(Phone left, Phone right) => !left.Equals(right);
+    public bool Equals(Phone? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is Phone other && Equals(other);
 
-    // Parsing
-    private static string Format(string code, string number)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(Phone? left, Phone? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(Phone? left, Phone? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
+
+    public static string Format(string code, string number)
         => $"{code}{Delimiter}{number}";
-    public static Phone Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<Phone>(s);
-    public static Phone ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<Phone>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out Phone result)
+    public static Phone Parse(string s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<Phone>(s);
+
+    public static Phone? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static Phone? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out Phone? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
+
+        if (s.Length > 64)
+            return false;
 
         var idx = s.LastIndexOf(Delimiter);
         if (idx < 0)
@@ -132,15 +109,37 @@ public readonly partial struct Phone : ISymbolIdentifier<Phone>
         if (!code.All(char.IsDigit) || !number.All(char.IsDigit))
             return false;
 
-        var id = Format(code, number);
-
-        result = new Phone(id, code, number, AssumeValid.Option);
+        result = new Phone(s, code, number);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 
-    public static string Normalize(string phonePart)
-        => new (phonePart.Where(char.IsDigit).ToArray());
+    // Helpers
 
-    public static bool IsNormalized(string phonePart)
-        => phonePart.All(char.IsDigit);
+    public static bool IsPartNormalized(string? phonePart)
+    {
+        if (phonePart.IsNullOrEmpty())
+            return false;
+
+        foreach (var c in phonePart)
+            if (!char.IsDigit(c))
+                return false;
+
+        return true;
+    }
+
+    public static string NormalizePart(string phonePart)
+    {
+        using var sb = ZString.CreateStringBuilder();
+        foreach (var c in phonePart)
+            if (char.IsDigit(c))
+                sb.Append(c);
+        return sb.ToString();
+    }
+
+    public string Hash()
+        => ContactLinkExt.Hash(Value);
+
+    public string ToE164()
+        => $"+{Code}{Number}";
 }

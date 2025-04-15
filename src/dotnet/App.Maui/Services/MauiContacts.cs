@@ -86,16 +86,13 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         }.WithHash(ExternalContactHasher);
 
     private static string? GetPhoneHash(ContactPhone contactPhone, PhoneParser phoneParser)
-    {
-        var phone = phoneParser.Parse(contactPhone.PhoneNumber);
-        return !phone.IsValid ? null : phone.Hash(Encoding.UTF8).SHA256().Base64();
-    }
+        => phoneParser.Parse(contactPhone.PhoneNumber)?.Hash();
 
     private static string? GetEmailHash(ContactEmail contactEmail)
     {
         if (contactEmail.EmailAddress.IsNullOrEmpty() || !MailAddress.TryCreate(contactEmail.EmailAddress, out _))
             return null;
 
-        return contactEmail.EmailAddress.ToLowerInvariant().Hash(Encoding.UTF8).SHA256().Base64();
+        return ContactLinkExt.Hash(contactEmail.EmailAddress);
     }
 }

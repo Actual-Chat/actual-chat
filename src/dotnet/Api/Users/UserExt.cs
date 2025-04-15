@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Text;
-using ActualChat.Hashing;
 
 namespace ActualChat.Users;
 
@@ -9,7 +7,7 @@ public static class UserExt
     public static string? GetEmail(this User user)
         => user.GetEmailIdentity().SchemaBoundId.NullIfEmpty();
     public static Phone GetPhone(this User user)
-        => new (user.GetPhoneIdentity().SchemaBoundId);
+        => Phone.Parse(user.GetPhoneIdentity().SchemaBoundId);
 
     public static string? GetPhoneHash(this User user)
         => user.GetHashedPhoneIdentity().SchemaBoundId.NullIfEmpty();
@@ -22,7 +20,7 @@ public static class UserExt
         => user.GetEmailIdentity().IsValid;
 
     public static User WithPhone(this User user, Phone phone)
-        => user.WithPhoneIdentities(phone).WithClaim(ClaimTypes.MobilePhone, phone);
+        => user.WithPhoneIdentities(phone).WithClaim(ClaimTypes.MobilePhone, phone.Value);
 
     public static User WithPhoneIdentities(this User user, Phone phone)
     {
@@ -32,8 +30,8 @@ public static class UserExt
             throw StandardError.Constraint("Phone identity already set for this user.");
 
         return user.WithIdentity(ToPhoneIdentity(phone))
-            .WithIdentity(ToHashedPhoneIdentity(phone.Hash(Encoding.UTF8).SHA256().Base64()))
-            .WithClaim(ClaimTypes.MobilePhone, phone);
+            .WithIdentity(ToHashedPhoneIdentity(phone.Hash()))
+            .WithClaim(ClaimTypes.MobilePhone, phone.Value);
     }
 
     public static User WithEmailIdentities(this User user, string email)
@@ -45,7 +43,7 @@ public static class UserExt
             throw StandardError.Constraint("Email identity already set for this user.");
 
         return user.WithIdentity(ToEmailIdentity(email))
-            .WithIdentity(ToHashedEmailIdentity(email.Hash(Encoding.UTF8).SHA256().Base64()));
+            .WithIdentity(ToHashedEmailIdentity(ContactLinkExt.Hash(email)));
     }
 
     public static UserIdentity GetPhoneIdentity(this User user)

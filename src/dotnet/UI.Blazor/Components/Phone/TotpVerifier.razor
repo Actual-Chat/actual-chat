@@ -5,7 +5,7 @@
 <UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
-        Enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
+        Enter the code we've sent to <span class="whitespace-nowrap">@(Phone.ToReadable())</span>
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsVerifying="@_isVerifying"/>
     @if (_totpExpiresAt is { } totpExpiresAt) {
@@ -33,7 +33,7 @@
     private MomentClockSet Clocks => Hub.Clocks();
     private TuneUI TuneUI => Hub.TuneUI;
 
-    [Parameter] public string Phone { get; set; } = "";
+    [Parameter] public Phone Phone { get; set; } = null!;
     [Parameter] public string Email { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public TotpPurpose Purpose { get; set; }
@@ -66,8 +66,8 @@
         _isVerifying = true;
         StateHasChanged();
         ICommand<bool> cmd = Purpose switch {
-            TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, new Phone(Phone), totp),
-            TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, new Phone(Phone), totp),
+            TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, Phone, totp),
+            TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone, totp),
             TotpPurpose.VerifyEmail => new Emails_VerifyEmail(Session, totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
         };

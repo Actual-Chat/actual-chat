@@ -20,10 +20,10 @@ public class TotpUI(UIHub hub): ScopedServiceBase<UIHub>(hub), IComputeService
         return canExpire;
     }
 
-    public async Task<bool> SendPhoneCode(TotpPurpose purpose, string phone, CancellationToken cancellationToken)
+    public async Task<bool> SendPhoneCode(TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
     {
         var cmd = purpose switch {
-            TotpPurpose.SignIn or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, new Phone(phone), purpose),
+            TotpPurpose.SignIn or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, phone, purpose),
             _ => throw new ArgumentOutOfRangeException(nameof(purpose)),
         };
         var (totpExpiresAt, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);

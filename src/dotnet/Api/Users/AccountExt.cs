@@ -18,7 +18,7 @@ public static class AccountExt
     }
 
     public static bool HasVerifiedPhone(this AccountFull account)
-        => account.Phone.IsValid && account.User.GetPhone() == account.Phone;
+        => account.Phone is { } phone && phone.IsNormalized() && account.User.GetPhone() == phone;
 
     public static bool HasVerifiedEmail(this AccountFull account) {
         if (account.Email.IsNullOrEmpty())

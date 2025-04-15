@@ -22,7 +22,7 @@
             in their list of contacts on Actual Chat
         </p>
     </div>
-    <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.SignIn" Phone="@phone.Value" Verified="OnTotpVerified"/>
+    <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.SignIn" Phone="@phone" Verified="OnTotpVerified"/>
 </div>
 
 @code {

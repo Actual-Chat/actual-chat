@@ -82,7 +82,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         // act
         await _tester.SaveExternalContacts(externalContact);
 
-        externalContact = externalContact.WithoutPhone(new ("1-234567890"))
+        externalContact = externalContact.WithoutPhone(Phone.Parse("1-234567890"))
             .WithPhone(UniqueNames.Phone())
             .WithoutEmail(UniqueNames.Email("John.White", "icloud.com"))
             .WithEmail("John.White@somedomain.com");
@@ -313,12 +313,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         // assert
         var contactId = BuildContactId(bob, jack);
-        bobContacts.Should().BeEquivalentTo(new[] { contactId });
+        bobContacts.Should().BeEquivalentTo([contactId]);
 
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().Be(contactDisplayName);
+            contact1.ExternalContactName.Should().Be(contactDisplayName);
             return contact1;
         }, TimeSpan.FromSeconds(10));
     }
@@ -347,12 +347,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         // assert
         var contactId = BuildContactId(bob, jack);
-        bobContacts.Should().BeEquivalentTo(new[] { contactId });
+        bobContacts.Should().BeEquivalentTo([contactId]);
 
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().Be(contactDisplayName);
+            contact1.ExternalContactName.Should().Be(contactDisplayName);
             return contact1;
         }, TimeSpan.FromSeconds(10));
 
@@ -368,7 +368,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().Be(contactDisplayName2);
+            contact1.ExternalContactName.Should().Be(contactDisplayName2);
             return contact1;
         }, TimeSpan.FromSeconds(10));
 
@@ -379,7 +379,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().BeEmpty();
+            contact1.ExternalContactName.Should().BeEmpty();
             return contact1;
         }, TimeSpan.FromSeconds(10));
     }

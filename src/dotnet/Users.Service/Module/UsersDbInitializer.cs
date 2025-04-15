@@ -145,7 +145,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         if (!userInfo.LastName.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.Surname, userInfo.LastName);
         if (!userInfo.Phone.IsNullOrEmpty())
-            user = user.WithPhone(new (userInfo.Phone));
+            user = user.WithPhone(Phone.Parse(userInfo.Phone));
         if (!userInfo.Email.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.Email, userInfo.Email);
         var signInCommand = new AuthBackend_SignIn(session, user, userIdentity);

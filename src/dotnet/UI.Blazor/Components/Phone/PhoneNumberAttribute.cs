@@ -18,7 +18,7 @@ public sealed class PhoneNumberAttribute : AsyncValidationAttribute
 
         var phones = validationContext.GetRequiredService<IPhones>();
         var phone = await phones.Parse(sValue, cancellationToken);
-        return phone.IsValid
+        return phone != null
             ? ValidationResult.Success
             : validationContext.Error(ErrorMessage ?? "Your phone number is incorrect");
     }

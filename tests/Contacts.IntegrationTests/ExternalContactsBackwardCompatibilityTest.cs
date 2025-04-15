@@ -16,7 +16,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     private ICommander _commander = null!;
 
     private static string BobEmail => "bob@actual.chat";
-    private static Phone BobPhone => new ("1-2345678901");
+    private static Phone BobPhone => Phone.Parse("1-2345678901");
     private static User Bob { get; } = new User("", $"Bob-{nameof(ExternalContactsTest)}")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
         .WithPhone(BobPhone)
@@ -67,8 +67,8 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         var deviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
         var externalContact = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("1-234567890"))
-            .WithPhone(new Phone("2-345678901"))
+            .WithPhone(Phone.Parse("1-234567890"))
+            .WithPhone(Phone.Parse("2-345678901"))
             .WithEmail("John.White@gmail.com")
             .WithEmail("John.White@icloud.com");
 
@@ -87,16 +87,16 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         var deviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
         var externalContact = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("1-234567890"))
-            .WithPhone(new Phone("2-345678901"))
+            .WithPhone(Phone.Parse("1-234567890"))
+            .WithPhone(Phone.Parse("2-345678901"))
             .WithEmail("John.White@gmail.com")
             .WithEmail("John.White@icloud.com");
 
         // act
         await Add(externalContact);
 
-        externalContact = externalContact.WithoutPhone(new ("1-234567890"))
-            .WithPhone(new ("1-4567890123"))
+        externalContact = externalContact.WithoutPhone(Phone.Parse("1-234567890"))
+            .WithPhone(Phone.Parse("1-4567890123"))
             .WithoutEmail("John.White@icloud.com")
             .WithEmail("John.White@somedomain.com");
         await Update(externalContact);
@@ -114,13 +114,13 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         var deviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
         var externalContact1 = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("1-234567890"))
-            .WithPhone(new Phone("2-345678901"))
+            .WithPhone(Phone.Parse("1-234567890"))
+            .WithPhone(Phone.Parse("2-345678901"))
             .WithEmail("John.White@gmail.com")
             .WithEmail("John.White@icloud.com");
         var externalContact2 = NewExternalContact(bob, deviceId)
-            .WithPhone(new Phone("3-34567890"))
-            .WithPhone(new Phone("4-345678901"))
+            .WithPhone(Phone.Parse("3-34567890"))
+            .WithPhone(Phone.Parse("4-345678901"))
             .WithEmail("Jack.Snack@gmail.com")
             .WithEmail("jack.snack@icloud.com");
 
@@ -130,7 +130,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         var externalContacts = await List(deviceId);
 
         // assert
-        externalContacts.Should().BeEquivalentTo(new[] { externalContact2 }, Including);
+        externalContacts.Should().BeEquivalentTo([externalContact2], Including);
     }
 
     private Task<ExternalContact[]> List(Symbol deviceId)

@@ -11,7 +11,6 @@ namespace ActualChat.Users.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
@@ -28,8 +27,8 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string TimeZone { get; set; } = "";
     public string UserLinkId { get; set; } = "";
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public AccountFull ToModel(User user)
@@ -41,7 +40,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Status = Status,
             Email = Email,
             IsEmailVerified = IsEmailVerified,
-            Phone = new Phone(Phone),
+            Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
             SyncContacts = SyncContacts,
             Name = Name,
             Username = Username,
@@ -66,7 +65,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Status = model.Status;
-        Phone = model.Phone;
+        Phone = model.Phone?.Value ?? "";
         SyncContacts = model.SyncContacts;
         Email = model.Email;
         IsEmailVerified = model.IsEmailVerified;

@@ -36,7 +36,7 @@ public sealed partial record AccountFull(
     [Obsolete("2023.07: Allows legacy clients to deserialize new version of this type.")]
     [DataMember, MemoryPackOrder(6)] public string LegacyPhone { get; private set; } = "";
     [DataMember, MemoryPackOrder(7)] public bool SyncContacts { get; init; }
-    [DataMember, MemoryPackOrder(12)] public Phone Phone { get; init; }
+    [DataMember, MemoryPackOrder(12)] public Phone? Phone { get; init; }
     [DataMember, MemoryPackOrder(8)] public string Email { get; init; } = "";
     [DataMember, MemoryPackOrder(9)] public string Name { get; init; } = "";
     [Obsolete("2024.11: Allows legacy clients to get/set LastName.")]
@@ -62,7 +62,7 @@ public sealed partial record AccountFull(
 #pragma warning disable CS0618
     [MemoryPackOnSerializing]
     private void OnSerializing()
-        => LegacyPhone = Phone.Value;
+        => LegacyPhone = Phone?.Value ?? "";
 
     [MemoryPackOnDeserialized]
     private void OnDeserialized()
@@ -70,10 +70,10 @@ public sealed partial record AccountFull(
         var legacyPhone = LegacyPhone;
         if (legacyPhone.IsNullOrEmpty())
             return;
-        if (!Phone.IsNone)
+        if (Phone != null)
             return;
 
-        var phone = new Phone(legacyPhone, ParseOrNone.Option);
+        var phone = Phone.Parse(legacyPhone);
         PhoneSetter.Invoke(this, phone);
     }
 #pragma warning restore CS0618

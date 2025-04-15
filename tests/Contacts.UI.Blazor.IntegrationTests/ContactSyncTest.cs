@@ -18,7 +18,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private Symbol DeviceId { get; set; } = RandomStringGenerator.Default.Next();
     private List<ExternalContactFull> DeviceContacts { get; set; } = new ();
-    private static Phone BobPhone { get; } = new ("1-2345678901");
+    private static Phone BobPhone { get; } = Phone.Parse("1-2345678901");
     private static string BobEmail => "bob@actual.chat";
 
     private static User Bob { get; } = new User("", "BobAdmin")
@@ -26,10 +26,10 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         .WithPhone(BobPhone)
         .WithClaim(ClaimTypes.Email, BobEmail);
 
-    private static Phone JackPhone => new ("1-3456789012");
+    private static Phone JackPhone => Phone.Parse("1-3456789012");
     private static string JackEmail => "jack@actual.chat";
 
-    private static Phone JanePhone => new ("1-3456789012");
+    private static Phone JanePhone => Phone.Parse("1-3456789012");
     private static string JaneEmail => "jane@actual.chat";
 
     protected override async Task InitializeAsync()
@@ -78,7 +78,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         await scope.DisposeAsync();
 
         // arrange
-        DeviceContacts[0] = DeviceContacts[0].WithoutPhone(JackPhone).WithPhone(new Phone("1-1002003000"));
+        DeviceContacts[0] = DeviceContacts[0].WithoutPhone(JackPhone).WithPhone(Phone.Parse("1-1002003000"));
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JanePhone).WithEmail(JaneEmail));
 
         // act

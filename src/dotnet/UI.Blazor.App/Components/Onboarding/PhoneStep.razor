@@ -117,7 +117,7 @@
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, default);
         _showVerificationStatus = !account.HasVerifiedPhone();
-        if (!account.Phone.IsNone)
+        if (account.Phone != null)
             _model.Phone = account.Phone.ToReadable();
 
         await CaptchaUI.EnsureInitialized();
@@ -136,6 +136,9 @@
 
     protected override async Task<bool> Save() {
         var phone = await Phones.Parse(_model.Phone, default);
+        if (phone is null)
+            return false;
+
         var account = await Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
         var (_, error) = await UICommander.Run(command);

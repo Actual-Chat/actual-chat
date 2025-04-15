@@ -1,6 +1,4 @@
-using System.Text;
 using ActualChat.Contacts;
-using ActualChat.Hashing;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -9,11 +7,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContacts
 {
-    private AccountUI? _accountUI;
-    private ExternalContactHasher? _externalContactHasher;
-
-    private AccountUI AccountUI => _accountUI ??= services.GetRequiredService<AccountUI>();
-    private ExternalContactHasher ExternalContactHasher => _externalContactHasher ??= services.GetRequiredService<ExternalContactHasher>();
+    [field: AllowNull, MaybeNull]
+    private AccountUI AccountUI => field ??= services.GetRequiredService<AccountUI>();
+    [field: AllowNull, MaybeNull]
+    private ExternalContactHasher ExternalContactHasher => field ??= services.GetRequiredService<ExternalContactHasher>();
 
     private IKvas LocalSettings { get; } = services.LocalSettings().WithPrefix<FakeDeviceContacts>();
 
@@ -43,11 +40,11 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
             var externalContactId = new ExternalContactId(userDeviceId, $"contact{contactIndex}");
             var phoneHashes = Enumerable.Range(1, options.PhoneCount)
                 .Select(GeneratePhone)
-                .Select(x => x.Hash(Encoding.UTF8).SHA256().Base64())
+                .Select(x => x.Hash())
                 .ToApiSet();
             var emailHashes = Enumerable.Range(1, options.EmailCount)
                 .Select(i => GenerateEmail(contactIndex, i))
-                .Select(x => x.Hash(Encoding.UTF8).SHA256().Base64())
+                .Select(ContactLinkExt.Hash)
                 .ToApiSet();
             return new ExternalContactFull(externalContactId) {
                 GivenName = $"User {contactIndex}",
@@ -62,7 +59,7 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
         {
             var code = phoneCodes[random.Next(0, phoneCodes.Count)];
             var number = "555" + contactIndex.ToString("00000", CultureInfo.InvariantCulture) + i.ToString("00", CultureInfo.InvariantCulture);
-            return new Phone(code.Code, number);
+            return Phone.New(code.Code, number);
         }
 
         string GenerateEmail(int contactIndex, int i)

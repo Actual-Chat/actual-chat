@@ -54,7 +54,7 @@
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     private MomentClockSet Clocks => Hub.Clocks();
 
-    [Parameter, EditorRequired] public string Phone { get; set; } = "";
+    [Parameter, EditorRequired] public Phone Phone { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Verified { get; set; }
 

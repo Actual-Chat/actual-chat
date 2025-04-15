@@ -4,9 +4,6 @@ public static class PhoneFormatterExt
 {
     public static string ToReadable(this Phone phone)
     {
-        if (phone.IsNone)
-            return "";
-
         var phoneCode = PhoneCodes.GetByCode(phone.Code);
         if (phoneCode is null)
             return $"+{phone.Code} {phone.Number}";
