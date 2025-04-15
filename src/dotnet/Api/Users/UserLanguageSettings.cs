@@ -34,7 +34,7 @@ public sealed partial record UserLanguageSettings : IHasOrigin
             if (Tertiary is { } tertiary && !list.Contains(tertiary))
                 list.Add(tertiary);
             if (list.Count == 0)
-                list.Add(ActualChat.Languages.Main);
+                list.Add(Languages.Main);
             return field = list.ToArray();
         }
     }
@@ -53,7 +53,7 @@ public sealed partial record UserLanguageSettings : IHasOrigin
 
         // ReSharper disable once WithExpressionModifiesAllMembers
         return this with {
-            Primary = languages.GetOrDefault(0, ActualChat.Languages.Main),
+            Primary = languages.GetOrDefault(0, Languages.Main),
             Secondary = languages.GetOrDefault(1),
             Tertiary = languages.GetOrDefault(2),
         };
