@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(TranslationCollection))]
 public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {
     [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);

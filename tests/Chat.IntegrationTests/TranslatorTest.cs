@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(TranslationCollection))]
 public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {
     private const string ComplexText = """
                                        Hello, **Bob**! This is a test message with a code block:
@@ -77,9 +77,9 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         ```
         В этом коде `number = 5`.
         """)]
-    [InlineData("ru", "I saw a bank", "I was walking along the river bank", "Я увидел берег")]
+    [InlineData("ru", "I saw a bank", "I was heading towards the river", "Я увидел берег")]
     [InlineData("ru", "I saw a bank", "I need to go to the bank to withdraw money", "Я увидел банк")]
-    [InlineData("fr", "I saw a bank", "I was walking along the river bank", "J'ai vu une rive")]
+    [InlineData("fr", "I saw a bank", "I was heading towards the river", "J'ai vu une rive")]
     [InlineData("fr", "I saw a bank", "I need to go to the bank to withdraw money", "J'ai vu une banque")]
     public async Task ShouldTranslateWithContext(Language destLanguage, string text, string context, string expected)
     {
