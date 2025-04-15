@@ -91,11 +91,6 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public override Task SetParametersAsync(ParameterView parameters) {
-        var parametersAsync = base.SetParametersAsync(parameters);
-        return parametersAsync;
-    }
-
     protected override async Task OnParametersSetAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         if (!ModalModel.ProfileId.IsEmpty) {
