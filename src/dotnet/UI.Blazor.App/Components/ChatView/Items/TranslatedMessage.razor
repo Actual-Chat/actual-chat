@@ -2,11 +2,12 @@
 @inherits ComputedRenderStateComponent<TranslatedMessage.Model>
 @{
     var m = State.Value;
-    Log.LogInformation("!!! #{Id} <<<{Content}>>> ||| <<<{Markup}>>>", m.Entry.Id, m.Entry.Content, m.Markup.Format());
+    Log.LogInformation("!!! #{Id} <<<{Content}>>> ||| <<<{Markup}>>>", m.Entry.Id, m.Entry.Content, m.Markup.Format()); // TODO: remove before PR
     _rendered = m;
 }
 
 <MarkupView Markup="@m.Markup"/>
+@* TODO: remove before PR !!!!!!!!!!!!!! *@
 <span class="px-2">#@m.Entry.LocalId</span>
 <span>@m.Entry.Content</span>
 <span class="px-2">#@m.Message.Id</span>
