@@ -11,11 +11,11 @@
         } else {
             <ChatEntryKindView Kind="@ChatEntryKind.Text"/>
         }
-    }@*
-    *@<span class="retained">@RetainedText</span>@*
-    *@<span class="changes">@*
-        *@<span>@ChangedText</span>@*
-        *@@{
+    }
+    <span class="retained">@RetainedText</span>
+    <span class="changes">
+        <span>@ChangedText</span>
+        @{
             for (var spanIndex = 0; spanIndex < AnimationSpanCount; spanIndex++) {
                 var spanStart = AnimatedText.Length * spanIndex / AnimationSpanCount;
                 var spanEnd = AnimatedText.Length * (spanIndex + 1) / AnimationSpanCount;
@@ -26,8 +26,8 @@
                 var style = $"transition-delay: {spanDelay}ms;";
                 <span class="change-item" style="@style">@AnimatedText[spanStart..spanEnd]</span>
             }
-        }@*
-    *@</span>
+        }
+    </span>
 </p>
 
 @code {

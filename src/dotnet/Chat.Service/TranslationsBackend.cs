@@ -126,14 +126,25 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 ct => TranslateUnsafe(id, ct),
                 cancellationToken)
             .ConfigureAwait(false);
+        if (updatedTranslation is null)
+            return null;
+
         var cmd = new TranslationsBackend_Change(id, updatedTranslation.Version, Change.Upsert(updatedTranslation));
         return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
-    private static bool NeedsTranslate([NotNullWhen(true)] ChatEntry? entry, [NotNullWhen(false)] Translation? translation)
-        => entry != null && (translation == null || translation.SourceContentHash != entry.ContentHash);
+    private static bool NeedsTranslate([NotNullWhen(true)] ChatEntry? entry, Translation? translation)
+    {
+        if (entry is null)
+            return false;
+
+        if (translation is null)
+            return true;
+
+        return translation.SourceContentHash != entry.ContentHash;
+    }
 
     private async Task<(ChatEntry? entry, Translation? translation)> GetExisting(TranslationId id, CancellationToken cancellationToken)
     {
@@ -146,7 +157,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return (entry, translation);
     }
 
-    private async Task<Translation> TranslateUnsafe(TranslationId id, CancellationToken cancellationToken)
+    private async Task<Translation?> TranslateUnsafe(TranslationId id, CancellationToken cancellationToken)
     {
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (!NeedsTranslate(entry, translation))

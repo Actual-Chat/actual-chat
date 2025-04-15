@@ -1251,6 +1251,7 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     endSpacerSize = -offset;
+                    delayedEndSpacerSize = endSpacerSize;
                     if (rs.hasVeryFirstItem) {
                         spacerSize = 0;
                         delayedSpacerSize = 0;
@@ -1324,6 +1325,7 @@ export class VirtualList {
 
                     // Adjust spacer size to prevent overlap with container
                     spacerSize = offset;
+                    delayedSpacerSize = spacerSize;
                     if (rs.hasVeryLastItem) {
                         endSpacerSize = 0;
                         delayedEndSpacerSize = 0;

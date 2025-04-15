@@ -22,6 +22,7 @@
         ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
     <swiper-container
         @ref="@Ref"
+        init="false"
         style="--swiper-navigation-color: #fff; --swiper-pagination-color: #fff"
         class="media-swiper"
         space-between="10"

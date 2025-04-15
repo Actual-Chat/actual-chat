@@ -2,7 +2,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<string>
 @{
-    var m = State.Value;
+    var m = State.Value.NullIfEmpty() ?? _lastDate;
+    _lastDate = m;
 }
 
 <div @ref="Ref" class="date-visor-wrapper">
@@ -12,6 +13,7 @@
 </div>
 
 @code {
+    private string _lastDate = "";
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.DateVisor.create";
 
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -52,14 +54,14 @@
         var chatView = ChatView;
         var chatId = ChatId;
         if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
-            return string.Empty;
+            return "";
 
         await chatView.WhenInitialized.ConfigureAwait(false);
         var itemVisibility = await chatView.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, itemVisibility.MinEntryLid, AssumeValid.Option);
         var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
         if (chatEntry == null)
-            return string.Empty;
+            return "";
 
         var beginsDateTime = chatEntry.BeginsAt.ToDateTime();
         var localDateTime = DateTimeConverter.ToLocalTime(beginsDateTime);
