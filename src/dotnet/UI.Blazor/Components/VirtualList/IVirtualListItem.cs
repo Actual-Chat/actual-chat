@@ -4,4 +4,5 @@ public interface IVirtualListItem
 {
     string Key { get; }
     string RenderKey => Key;
+    bool IsGroup { get; }
 }

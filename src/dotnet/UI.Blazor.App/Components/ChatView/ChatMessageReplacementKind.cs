@@ -7,6 +7,7 @@ public enum ChatMessageReplacementKind
     NewMessagesLine,
     WelcomeBlock,
     SearchWelcomeBlock,
+    ConversationBlock,
     ConversationStart,
     ConversationEnd,
 }
@@ -20,6 +21,7 @@ public static class ChatMessageReplacementKindExt
             ChatMessageReplacementKind.NewMessagesLine => "-new-messages",
             ChatMessageReplacementKind.WelcomeBlock => "-welcome-block",
             ChatMessageReplacementKind.SearchWelcomeBlock => "-search-welcome-block",
+            ChatMessageReplacementKind.ConversationBlock => "-conversation-block",
             ChatMessageReplacementKind.ConversationStart => "-conversation", // We should use same suffix for conversation message and header
             ChatMessageReplacementKind.ConversationEnd => "-conversation-end",
             _ => throw new ArgumentOutOfRangeException(nameof(replacementKind), replacementKind, null),

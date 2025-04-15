@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var conversation = Footer.Conversation;
+    var conversation = Footer.Conversation!;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
 }

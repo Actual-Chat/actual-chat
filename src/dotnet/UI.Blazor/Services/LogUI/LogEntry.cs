@@ -10,6 +10,7 @@ public record LogEntry(
     Moment Timestamp) : IVirtualListItem
 {
     public string Key { get; } = Id.ToInvariantString();
+    public bool IsGroup => false;
 
     public override int GetHashCode()
         => Id.GetHashCode();

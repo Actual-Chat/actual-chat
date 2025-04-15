@@ -79,14 +79,14 @@ public partial class ChatUI
                     // Find conversation headers
                     var filteredItems = tile.Items
                         .Where(chatMessage => chatMessage is not ConversationHeader conversationHeader
-                            || alreadyAddedConversationHeaders.Add(conversationHeader.Conversation.Id))
+                            || alreadyAddedConversationHeaders.Add(conversationHeader.Conversation!.Id))
                         .ToList();
                     if (filteredItems.Count != tile.Items.Count)
                         tile = tile with { Items = filteredItems };
                 }
                 else if (alreadyAddedConversationHeaders.Count > 0)
                     // Skip first conversation header if already added
-                    if (tile.Items[0] is ConversationHeader conversationHeader && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation.Id))
+                    if (tile.Items[0] is ConversationHeader conversationHeader && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation!.Id))
                         tile = tile with { Items = tile.Items.Skip(1).ToList() };
 
                 if (tile.Items.Count == 0)
@@ -125,7 +125,61 @@ public partial class ChatUI
             dataQuery = expandedDataQuery;
             tiles.Clear();
         }
-        return tiles;
+        if (expandedConversations.Count == 0)
+            return tiles;
+
+        var groupedTiles = new List<VirtualListTile<ChatMessage>>();
+        var groupedItems = new List<ChatMessage>();
+        Conversation? ongoingConversation = null;
+        var ongoingConversationItems = new List<ChatMessage>();
+        foreach (var tile in tiles) {
+            if (tile.Items.All(item => item.Conversation == null || item is ConversationMessage)) {
+                FinalizeOngoingConversation();
+                groupedTiles.Add(tile);
+                continue;
+            }
+
+            // Group items by conversation
+            foreach (var item in tile.Items)
+                if (item.Conversation == null || item is ConversationMessage) {
+                    // If there is an ongoing conversation, finalize it
+                    if (ongoingConversation != null) {
+                        groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
+                        ongoingConversation = null;
+                        ongoingConversationItems = [];
+                    }
+                    groupedItems.Add(item);
+                } else {
+                    // If the conversation changes, finalize the previous one
+                    if (ongoingConversation != null && ongoingConversation != item.Conversation) {
+                        groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
+                        ongoingConversationItems = [];
+                    }
+                    ongoingConversation = item.Conversation;
+                    ongoingConversationItems.Add(item);
+                }
+        }
+
+        FinalizeOngoingConversation();
+
+        return groupedTiles;
+
+        void FinalizeOngoingConversation()
+        {
+            // Finalize any remaining ongoing conversation
+            if (ongoingConversation != null) {
+                groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
+                ongoingConversation = null;
+                ongoingConversationItems = [];
+            }
+
+            if (groupedItems.Count > 0) {
+                var newTileRange = new Range<long>(groupedItems[0].Id, groupedItems[^1].Id + 1);
+                var newTile = new VirtualListTile<ChatMessage>(newTileRange, groupedItems);
+                groupedTiles.Add(newTile);
+                groupedItems = [];
+            }
+        }
     }
 
     [ComputeMethod]
@@ -307,6 +361,7 @@ public partial class ChatUI
                             ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
                             Date = date,
                             PreviousMessage = prevMessage,
+                            Conversation = expandedConversation,
                         };
                         messages.Add(newLineMessage);
                         prevMessage = newLineMessage;
@@ -327,6 +382,7 @@ public partial class ChatUI
                             ReplacementKind = ChatMessageReplacementKind.DateLine,
                             Date = date,
                             PreviousMessage = prevMessage,
+                            Conversation = expandedConversation,
                         };
                         messages.Add(dateLineMessage);
                         prevMessage = dateLineMessage;
@@ -342,7 +398,7 @@ public partial class ChatUI
                     messages.Add(message);
                     prevMessage = message;
 
-                    if (expandedConversation != null) {
+                    if (expandedConversation != null)
                         if (entry.Id.LocalId == expandedConversation.EndEntryLid) {
                             var conversationFooterMessage = new ConversationFooter(expandedConversation) {
                                 ReplacementKind = ChatMessageReplacementKind.ConversationEnd,
@@ -352,7 +408,6 @@ public partial class ChatUI
                             messages.Add(conversationFooterMessage);
                             prevMessage = conversationFooterMessage;
                         }
-                    }
                 }
                 prevEntry = entry;
                 isPrevUnread = isEntryUnread;
@@ -375,30 +430,33 @@ public partial class ChatUI
             // Remove messages that are outside requested range
             messages.RemoveAll(m =>
                 (m is ChatEntryMessage && !idRange.Contains(m.Id))
-                || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation.EntryRange).IsEmpty));
+                || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation!.EntryRange).IsEmpty));
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
 
     private (int, int) GetLoadedBeforeAndAfterCounts(ChatDataQuery dataQuery, List<VirtualListTile<ChatMessage>> tiles)
     {
+
         var before = 0;
         var after = 0;
-        foreach (var tile in tiles) {
-            if (tile.Items.Count == 0)
-                continue;
-
-            var startId = tile.Items[0].Id;
-            var endId = tile.Items[^1].Id;
-            var tileRange = new Range<long>(startId, endId);
-            if (dataQuery.IdRange.Contains(tileRange))
-                continue;
-
-            if (startId < dataQuery.IdRange.Start)
-                before += tile.Items.Count(item => item.Id < dataQuery.IdRange.Start);
-            if (endId > dataQuery.IdRange.End)
-                after += tile.Items.Count(item => item.Id > dataQuery.IdRange.End);
-        }
+        var chatMessages = tiles
+            .Where(tile => tile.Items.Count != 0)
+            .SelectMany(tile => tile.Items);
+        foreach (var item in chatMessages)
+            if (item is IVirtualListGroup<ChatMessage> group)
+                foreach (var nestedItem in group.Items)
+                    UpdateCounts(nestedItem);
+            else
+                UpdateCounts(item);
         return (before, after);
+
+        void UpdateCounts(ChatMessage item)
+        {
+            if (item.Id < dataQuery.IdRange.Start)
+                before++;
+            else if (item.Id > dataQuery.IdRange.End)
+                after++;
+        }
     }
 
     private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)

@@ -72,18 +72,14 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
     display: none;
 }
 
-.virtual-list > .c-wrapper > ul.c-virtual-container > li.item {
+.virtual-list > .c-wrapper > ul.c-virtual-container > li {
     @apply flex flex-y;
     overflow-anchor: none;
     min-height: 1.5rem;
 }
 
-.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-header) {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-header) {
     @apply sticky top-0 z-10;
-}
-
-.virtual-list > .c-wrapper > ul.c-virtual-container > li.item.anchor {
-    overflow-anchor: none;
 }
 
 .virtual-list .skeleton-container {

@@ -7,15 +7,15 @@
 }
 
 @foreach (var item in Tile.Items) {
-    var itemCls = IsLastTileVisible && ReferenceEquals(item, Tile.Items[^1])
-        ? "item anchor"
-        : "item";
-
-        <li @key="@item.RenderKey"
-            class="@itemCls"
-            data-key="@item.Key">
-        @Item(item)
-    </li>
+    @if (item.IsGroup) {
+        <li @key="@item.RenderKey" class="group">
+            @Item(item)
+        </li>
+    } else {
+        <li @key="@item.RenderKey" class="item" data-key="@item.Key">
+            @Item(item)
+        </li>
+    }
 }
 
 @code {
@@ -23,7 +23,6 @@
 
     [Parameter, EditorRequired] public VirtualListTile<TItem> Tile { get; set; } = null!;
     [Parameter] public RenderFragment<TItem> Item { get; set; } = null!;
-    [Parameter] public bool IsLastTileVisible { get; set; }
 
     protected override bool ShouldRender()
         => !ReferenceEquals(_renderedDataTile, Tile);

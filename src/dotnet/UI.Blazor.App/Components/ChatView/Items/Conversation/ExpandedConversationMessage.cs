@@ -1,9 +1,17 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
-public sealed class ConversationMessage : ChatMessage
+public sealed class ExpandedConversationMessage : ChatMessage, IVirtualListGroup<ChatMessage>
 {
-    public ConversationMessage(Conversation conversation) : base(conversation.Id.StartEntryLid)
-        => Conversation = conversation;
+    public ExpandedConversationMessage(Conversation conversation, IReadOnlyList<ChatMessage> items)
+        : base(conversation.Id.StartEntryLid)
+    {
+        Conversation = conversation;
+        Items = items;
+        ReplacementKind = ChatMessageReplacementKind.ConversationBlock;
+    }
+
+    public override bool IsGroup => true;
+    public IReadOnlyList<ChatMessage> Items { get; }
 
     public override bool Equals(ChatMessage? other)
     {
@@ -12,7 +20,7 @@ public sealed class ConversationMessage : ChatMessage
         if (ReferenceEquals(this, other))
             return true;
 
-        if (other is not ConversationMessage otherConversationMessage)
+        if (other is not ExpandedConversationMessage otherConversationMessage)
             return false;
 
         return Conversation!.VersionEquals(otherConversationMessage.Conversation)
