@@ -9,5 +9,6 @@ public sealed class TestListItemRef(int id, int rangeSeed, int? contentSeed) : I
 
     public string Key { get; } = id.Format();
     public int CountAs { get; init; } = 1;
+    public bool IsGroup => false;
     public bool IsFirstTimeRendered { get; } = true;
 }

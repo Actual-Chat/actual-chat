@@ -4,8 +4,6 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
 {
     public ChatEntry Entry { get; } = entry;
 
-    public Conversation? Conversation { get; init; }
-
     public override bool Equals(ChatMessage? other)
     {
         if (ReferenceEquals(null, other))

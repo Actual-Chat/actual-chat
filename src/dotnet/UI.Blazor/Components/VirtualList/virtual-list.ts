@@ -63,7 +63,7 @@ export class VirtualList {
     private readonly keySortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
     private isDisposed = false;
-    private cachedAllItemRefs: Array<HTMLLIElement> | null = null;
+    private cachedAllItemRefs: Array<HTMLElement> | null = null;
     private stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
     private whenRequestDataCompleted: PromiseSource<void> | null = null;
     private pivots: Pivot[] = [];
@@ -387,37 +387,58 @@ export class VirtualList {
         // copy existing items - because we can remove them and add again at another tiles
         const oldItems = new Map<string, VirtualListItem>(this.items);
         for (const mutation of mutations) {
-            if (mutation.type !== 'childList') { continue; }
+            if (mutation.type !== 'childList')
+                continue;
+
             for (const node of mutation.removedNodes) {
-                if (!node['dataset'])
+                const nodeElement = node as HTMLElement;
+                const isGroup = nodeElement.className === 'group';
+                if (!node['dataset'] && !isGroup)
                     continue;
 
-                const itemRef = node as HTMLElement;
-                const key = getItemKey(itemRef);
-                this.items.delete(key);
-                this.unmeasuredItems.delete(key);
-                this.visibleItems.delete(key);
-                this.sizeObserver.unobserve(itemRef);
-                this.visibilityObserver.unobserve(itemRef);
-                itemRef.removeEventListener('touchend', this.onInteractiveEvent);
-                itemRef.removeEventListener('click', this.onInteractiveEvent);
+                const itemRefs = isGroup
+                    ? [...nodeElement.children] as HTMLElement[]
+                    : [nodeElement];
+                for (const itemRef of itemRefs) {
+                    const key = getItemKey(itemRef);
+                    this.items.delete(key);
+                    this.unmeasuredItems.delete(key);
+                    this.visibleItems.delete(key);
+                    this.sizeObserver.unobserve(itemRef);
+                    this.visibilityObserver.unobserve(itemRef);
+                    itemRef.removeEventListener('touchend', this.onInteractiveEvent);
+                    itemRef.removeEventListener('click', this.onInteractiveEvent);
+                }
             }
             for (const node of mutation.addedNodes) {
-                const itemRef = node as HTMLElement;
-                const key = getItemKey(itemRef);
-                if (!key)
+                const nodeElement = node as HTMLElement;
+                const isGroup = nodeElement.className === 'group';
+                if (!node['dataset'] && !isGroup)
                     continue;
 
-                const newItem = this.createListItem(key, itemRef);
-                const oldItem = oldItems.get(key);
-                if (oldItem) {
-                    this.items.set(key, oldItem);
-                    if (oldItem.size > 0)
-                        this.unmeasuredItems.delete(key);
-                } else
-                    this.items.set(key, newItem);
+                if (isGroup)
+                    this.itemSetChangeObserver.observe(nodeElement, { childList: true });
+                const itemRefs = isGroup
+                    ? [...nodeElement.children] as HTMLElement[]
+                    : [nodeElement];
+                for (const itemRef of itemRefs) {
+                    const key = getItemKey(itemRef);
+                    if (!key)
+                        continue;
+
+                    const newItem = this.createListItem(key, itemRef);
+                    const oldItem = oldItems.get(key);
+                    if (oldItem) {
+                        this.items.set(key, oldItem);
+                        if (oldItem.size > 0)
+                            this.unmeasuredItems.delete(key);
+                    } else
+                        this.items.set(key, newItem);
+                }
             }
         }
+
+
         this.updateOrderedItems();
         void this.endRender();
     };
@@ -937,9 +958,9 @@ export class VirtualList {
         this.updateVisibleKeysThrottled();
     }
 
-    private getAllItemRefs(): HTMLLIElement[] {
+    private getAllItemRefs(): HTMLElement[] {
         if (this.cachedAllItemRefs === null) {
-            const elementRefs = this.containerRef.children as HTMLCollectionOf<HTMLLIElement>;
+            const elementRefs = this.containerRef.querySelectorAll<HTMLElement>(`:scope .item`);
             this.cachedAllItemRefs = Array.from(elementRefs);
         }
         return this.cachedAllItemRefs;
@@ -949,7 +970,7 @@ export class VirtualList {
         if (key == null)
             return null;
 
-        return this.containerRef.querySelector(`:scope > li.item[data-key="${key}"]`);
+        return this.containerRef.querySelector(`:scope .item[data-key="${key}"]`);
     }
 
     private getFirstItemRef(): HTMLElement | null {
@@ -1106,7 +1127,6 @@ export class VirtualList {
         let delayedEndSpacerSize = 0;
         let totalSizeDiff = 0;
         let isInteractivePositioning = false;
-        // let stickyItems = new Array<HTMLLIElement>();
 
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
@@ -1123,7 +1143,6 @@ export class VirtualList {
                 const containerSize = this.containerRef.offsetHeight;
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
-                // stickyItems = [...this.containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item:has(.sticky)')];
                 scrollTop = this.ref.scrollTop;
 
                 if (rs.beforeCount !== null && rs.afterCount !== null) {
