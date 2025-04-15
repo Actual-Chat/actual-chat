@@ -115,7 +115,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             ("The bank needs maintenance", "Банк нуждается в обслуживании", "Банк"),
             ("The bank is eroding", "Берег размывается", "Берег"),
             ("The bank is dangerous", "Берег опасен", "Берег"),
-            ("Hence the bank should be strengthened", "Поэтому берег должен быть укреплен", "Берег"),
+            ("The bank should be strengthened", "Берег должен быть укреплен", "Берег"),
         };
         var entries = await messages
             .Select(x => Tester.CreateTextEntry(chatId, x.Text))

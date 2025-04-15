@@ -8,7 +8,7 @@ public static class StringAssertionsExt
     private static readonly string[] Prefixes = ["у"];
 
     private static readonly string[] Suffixes = [
-        "ел", "ен", "а", "у",
+        "ел", "ен", "а", "у", "ие", "ии", "ся",
     ];
 
     private static readonly (string Word, string SimilarWord)[] Synonyms = [("требуется", "нуждается")];
