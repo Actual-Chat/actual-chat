@@ -23,15 +23,12 @@ public sealed class ExpandedConversationMessage : ChatMessage, IVirtualListGroup
         if (other is not ExpandedConversationMessage otherConversationMessage)
             return false;
 
-        return Conversation!.VersionEquals(otherConversationMessage.Conversation)
-            && ReplacementKind == other.ReplacementKind
-            && Date == other.Date
-            && Flags == other.Flags;
+        return Key.Equals(otherConversationMessage.Key)
+            && Conversation!.VersionEquals(otherConversationMessage.Conversation)
+            && Items.Count == otherConversationMessage.Items.Count
+            && Items.SequenceEqual(otherConversationMessage.Items);
     }
 
     public override int GetHashCode()
-        => HashCode.Combine(Conversation,
-            ReplacementKind,
-            Date,
-            Flags);
+        => HashCode.Combine(Conversation, Key);
 }

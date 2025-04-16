@@ -357,7 +357,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return VirtualListData<ChatMessage>.None;
 
         var tiles = await ChatUI.GetTiles(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
-        var itemCount = tiles.Sum(t => t.Items.Count);
+        var itemCount = tiles.Sum(t => t.Items.Sum(item => item is IVirtualListGroup group ? group.Count : 1));
         var isQueryFulfilled = query.ExpectedCount > itemCount / 2;
         var isLoadLimitReached = itemCount >= ChatUI.LoadLimit;
         if (tiles.Count == 0) {
