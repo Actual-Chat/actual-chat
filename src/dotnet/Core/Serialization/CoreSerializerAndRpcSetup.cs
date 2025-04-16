@@ -17,6 +17,7 @@ public static class CoreSerializerAndRpcSetup
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Language>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<StreamId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MediaId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Phone>());
     }
 
     public static void Configure(bool isServer)
