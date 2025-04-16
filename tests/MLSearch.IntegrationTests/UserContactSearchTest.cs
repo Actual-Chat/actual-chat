@@ -365,7 +365,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     // Private methods
 
     private ExternalContactFull NewExternalContact(AccountFull owner)
-        => new (new ExternalContactId(new UserDeviceId(owner.Id, DeviceId), NewDeviceContactId()));
+        => new (new ExternalContactId(UserDeviceId.New(owner.Id, DeviceId), NewDeviceContactId()));
 
     private static Symbol NewDeviceContactId()
         => UniqueNames.Prefix();

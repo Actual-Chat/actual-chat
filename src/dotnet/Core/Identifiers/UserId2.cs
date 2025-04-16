@@ -58,6 +58,9 @@ public sealed partial class UserId2 : PrincipalId2, IStringIdentifier<UserId2>
     public static bool operator !=(UserId2? left, UserId2? right)
         => !(left?.Equals(right) ?? right is null);
 
+    // TODO: remove when id refactoring is complete
+    public static implicit operator UserId(UserId2 userId2) => new UserId(userId2.Value);
+
     // Format & Parse
 
     public static new UserId2 Parse(string s)

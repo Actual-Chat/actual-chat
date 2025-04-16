@@ -1,116 +1,99 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<UserDeviceId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<UserDeviceId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<UserDeviceId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<UserDeviceId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<UserDeviceId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<UserDeviceId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<UserDeviceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct UserDeviceId : ISymbolIdentifier<UserDeviceId>
+public sealed partial class UserDeviceId : StringIdentifier, IStringIdentifier<UserDeviceId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UserDeviceId>();
-    private const char Delimiter = ':';
+    private static readonly ILruCache<string, UserDeviceId> Cache = CreateCache<UserDeviceId>(16, 256);
 
-    public static UserDeviceId None => default;
+    public const char Delimiter = ':';
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
+    [IgnoreDataMember]
+    public UserId2 OwnerId { get; }
+    [IgnoreDataMember]
+    public string DeviceId { get; }
 
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public UserId OwnerId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol DeviceId { get; }
+    // Factories and constructors
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    public static UserDeviceId New(UserId2 ownerId, string deviceId)
+        => new(Format(ownerId, deviceId), ownerId, deviceId);
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public UserDeviceId(Symbol id)
-        => this = Parse(id);
-    public UserDeviceId(UserId ownerId, Symbol deviceId)
-        => this = Parse(Format(ownerId, deviceId));
-    public UserDeviceId(UserId ownerId, Symbol deviceId, ParseOrNone _)
-        => this = ParseOrNone(Format(ownerId, deviceId));
-    public UserDeviceId(string id)
-        => this = Parse(id);
-    public UserDeviceId(string id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    // TODO: remove when id refactoring is complete
+    public static UserDeviceId New(UserId ownerId, string deviceId)
+        => New(UserId2.Parse(ownerId), deviceId);
 
-    public UserDeviceId(Symbol id, UserId ownerId, Symbol deviceId, AssumeValid _)
+    private UserDeviceId(string value, UserId2 ownerId, string deviceId) : base(value)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
         OwnerId = ownerId;
         DeviceId = deviceId;
     }
-
-    public UserDeviceId(UserId ownerId, Symbol deviceId, AssumeValid _)
-    {
-        if (ownerId.IsNone || deviceId.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = Format(ownerId, deviceId);
-        OwnerId = ownerId;
-        DeviceId = deviceId;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(UserDeviceId source) => source.Id;
-    public static implicit operator string(UserDeviceId source) => source.Id.Value;
 
     // Equality
 
-    public bool Equals(UserDeviceId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is UserDeviceId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(UserDeviceId left, UserDeviceId right) => left.Equals(right);
-    public static bool operator !=(UserDeviceId left, UserDeviceId right) => !left.Equals(right);
+    public bool Equals(UserDeviceId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is UserDeviceId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(UserDeviceId? left, UserDeviceId? right)
+        => left?.Equals(right) ?? right is null;
 
-    private static string Format(UserId ownerId, Symbol deviceId)
-        => ownerId.IsNone || deviceId.IsEmpty ? "" : $"{ownerId}{Delimiter}{deviceId}";
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(UserDeviceId? left, UserDeviceId? right)
+        => !(left?.Equals(right) ?? right is null);
 
-    public static UserDeviceId Parse(string? s)
+    // Format & Parse
+
+    public static string Format(UserId2 ownerId, string deviceId)
+        => $"{ownerId}{Delimiter}{deviceId}";
+
+    public static UserDeviceId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserDeviceId>(s);
-    public static UserDeviceId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<UserDeviceId>(s).LogWarning<UserDeviceId>(Log, None);
 
-    public static bool TryParse(string? s, out UserDeviceId result)
+    public static UserDeviceId? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static UserDeviceId? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out UserDeviceId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
 
         var parts = s.Split(Delimiter, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 2)
             return false;
 
-        if (!UserId.TryParse(parts[0], out var ownerId))
+        if (!UserId2.TryParse(parts[0], out var ownerId))
             return false;
 
-        result = new UserDeviceId(s,
-            ownerId,
-            new Symbol(parts[1]),
-            AssumeValid.Option);
+        result = new UserDeviceId(s, ownerId, parts[1]);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 

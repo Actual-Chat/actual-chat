@@ -32,7 +32,7 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
     {
         var phoneCodes = PhoneCodes.List;
         var random = new Random(options.Seed); // no random values)
-        var userDeviceId = new UserDeviceId(ownerId, DeviceId);
+        var userDeviceId = UserDeviceId.New(ownerId, DeviceId);
         return Enumerable.Range(options.ContactStartIndex, options.ContactCount).Select(GenerateExternalContact);
 
         ExternalContactFull GenerateExternalContact(int contactIndex)

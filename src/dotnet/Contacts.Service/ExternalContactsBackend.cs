@@ -29,7 +29,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ExternalContactId.Prefix(new UserDeviceId(ownerId, deviceId));
+        var idPrefix = ExternalContactId.Prefix(UserDeviceId.New(ownerId, deviceId));
         var dbExternalContacts = await dbContext.ExternalContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .Include(x => x.ExternalContactLinks)

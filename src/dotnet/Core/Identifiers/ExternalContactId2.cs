@@ -21,19 +21,19 @@ public sealed partial class ExternalContactId2 : StringIdentifier, IStringIdenti
     private static ILogger Log => _log ??= StaticLog.For<ExternalContactId2>();
     private static readonly ILruCache<string, ExternalContactId2> Cache = CreateCache<ExternalContactId2>(256);
 
-    public const char Delimiter = UserDeviceId2.Delimiter;
+    public const char Delimiter = ActualChat.UserDeviceId.Delimiter;
 
     [IgnoreDataMember]
-    public UserDeviceId2 UserDeviceId { get; }
+    public UserDeviceId UserDeviceId { get; }
     [IgnoreDataMember]
     public Symbol DeviceContactId { get; }
 
     // Factories and constructors
 
-    public static ExternalContactId2 New(UserDeviceId2 userDeviceId, Symbol deviceContactId)
+    public static ExternalContactId2 New(UserDeviceId userDeviceId, Symbol deviceContactId)
         => new(Format(userDeviceId, deviceContactId), userDeviceId, deviceContactId);
 
-    private ExternalContactId2(string value, UserDeviceId2 userDeviceId, Symbol deviceContactId) : base(value)
+    private ExternalContactId2(string value, UserDeviceId userDeviceId, Symbol deviceContactId) : base(value)
     {
         UserDeviceId = userDeviceId;
         DeviceContactId = deviceContactId;
@@ -58,7 +58,7 @@ public sealed partial class ExternalContactId2 : StringIdentifier, IStringIdenti
 
     // Format & Parse
 
-    private static string Format(UserDeviceId2 userDeviceId, Symbol deviceContactId)
+    private static string Format(UserDeviceId userDeviceId, Symbol deviceContactId)
         => $"{userDeviceId.Value}{Delimiter}{deviceContactId}";
 
     public static ExternalContactId2 Parse(string? s)
@@ -85,7 +85,7 @@ public sealed partial class ExternalContactId2 : StringIdentifier, IStringIdenti
         if (delimIndex < 0 || delimIndex >= s.Length - 1)
             return false;
 
-        if (!UserDeviceId2.TryParse(s[..delimIndex], out var userDeviceId))
+        if (!UserDeviceId.TryParse(s[..delimIndex], out var userDeviceId))
             return false;
         var deviceContactId = new Symbol(s[(delimIndex + 1)..]);
 
@@ -97,7 +97,7 @@ public sealed partial class ExternalContactId2 : StringIdentifier, IStringIdenti
     // Helpers
 
     public static string GetFormatPrefix(UserId2 ownerId)
-        => $"{ownerId.Value}{UserDeviceId2.Delimiter}";
-    public static string GetFormatPrefix(UserDeviceId2 userDeviceId)
+        => $"{ownerId.Value}{UserDeviceId.Delimiter}";
+    public static string GetFormatPrefix(UserDeviceId userDeviceId)
         => $"{userDeviceId.Value}{Delimiter}";
 }

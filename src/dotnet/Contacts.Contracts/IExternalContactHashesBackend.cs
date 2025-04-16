@@ -19,10 +19,10 @@ public sealed partial record ExternalContactHashesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] UserDeviceId Id,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(2)] Change<ExternalContactsHash> Change
-) : ICommand<ExternalContactsHash?>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<ExternalContactsHash?>, IBackendCommand, IHasShardKey<UserId2>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public UserId ShardKey => Id.OwnerId;
+    public UserId2 ShardKey => Id.OwnerId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

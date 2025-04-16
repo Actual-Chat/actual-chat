@@ -61,7 +61,7 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
 
     public ExternalContactId(UserDeviceId userDeviceId, Symbol deviceContactId, AssumeValid _)
     {
-        if (userDeviceId.IsNone || deviceContactId.IsEmpty) {
+        if (deviceContactId.IsEmpty) {
             this = None;
             return;
         }
@@ -87,7 +87,7 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
     // Parsing
 
     private static string Format(UserDeviceId userDeviceId, Symbol deviceContactId)
-        => userDeviceId.IsNone || deviceContactId.IsEmpty ? "" : $"{userDeviceId}{Delimiter}{deviceContactId}";
+        => deviceContactId.IsEmpty ? "" : $"{userDeviceId}{Delimiter}{deviceContactId}";
 
     public static ExternalContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ExternalContactId>(s);

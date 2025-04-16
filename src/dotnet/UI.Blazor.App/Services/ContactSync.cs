@@ -81,7 +81,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
         // The logic here implies that it's going to retry sync in case we somehow didn't get
         // to this point.
 
-        var rootHash = existingRootHash ?? new ExternalContactsHash(new UserDeviceId(account.Id, DeviceContacts.DeviceId));
+        var rootHash = existingRootHash ?? new ExternalContactsHash(UserDeviceId.New(account.Id, DeviceContacts.DeviceId));
         rootHash = rootHash with { Hash = deviceRootHash };
         var changeHashCmd = new ExternalContactHashes_Change(Session,
             DeviceContacts.DeviceId,

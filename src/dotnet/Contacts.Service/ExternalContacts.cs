@@ -31,7 +31,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         if (!account.IsActive())
             return [];
 
-        return await Backend.List(new UserDeviceId(account.Id, deviceId), cancellationToken).ConfigureAwait(false);
+        return await Backend.List(UserDeviceId.New(account.Id, deviceId), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
