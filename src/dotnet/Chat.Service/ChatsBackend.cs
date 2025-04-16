@@ -417,14 +417,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         if (placeId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(placeId));
-        if (userLinkId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(userLinkId));
 
-        userLinkId = userLinkId.ToLower();
         var placeChatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
         foreach (var placeChatId in placeChatIds) {
             var placeChat = await Get(placeChatId, cancellationToken).ConfigureAwait(false);
-            if (placeChat is not null && placeChat.UserLinkId.Equals(userLinkId))
+            if (placeChat is not null && placeChat.UserLinkId == userLinkId)
                 return placeChatId.PlaceChatId;
         }
         return PlaceChatId.None;
@@ -861,10 +858,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         Chat ApplyDiff(Chat originalChat, ChatDiff? diff) {
             // Update
-            if (diff?.UserLinkId != null)
-                diff = diff with {
-                    UserLinkId = diff.UserLinkId.Value.ToLower()
-                };
             var newChat = DiffEngine.Patch(originalChat, diff) with {
                 Version = VersionGenerator.NextVersion(originalChat.Version),
             };
@@ -894,19 +887,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task UpdateUserLink(Chat? oldChat1, Chat chat1)
         {
             if (chat1.Id.Kind == ChatKind.Peer) {
-                if (!chat1.UserLinkId.IsNone)
+                if (chat1.UserLinkId != null)
                     throw StandardError.NotSupported("User links are not allowed for place chats.");
                 return;
             }
 
-            var oldUserLinkId = oldChat1?.UserLinkId ?? UserLinkId.None;
-            var userLinkId = chat1.IsPublic ? chat1.UserLinkId.ToLower() : UserLinkId.None;
+            var oldUserLinkId = oldChat1?.UserLinkId;
+            var userLinkId = chat1.IsPublic ? chat1.UserLinkId : null;
 
             if (chat1.Id.Kind == ChatKind.Group)
-                await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, userLinkId, UserLinkKind.Chat, chat1.Id, cancellationToken).ConfigureAwait(false);
+                await Commander.UpdateUserLink(oldUserLinkId, userLinkId, UserLinkKind.Chat, chat1.Id, cancellationToken).ConfigureAwait(false);
             else if (chat1.Id.Kind == ChatKind.Place) {
                 // Validate user link is not used by another place chat.
-                if (!userLinkId.IsNone && userLinkId != oldUserLinkId) {
+                if (userLinkId is not null && userLinkId != oldUserLinkId) {
                     var placeChatId = await GetPlaceChatIdByUserLink(chat1.Id.PlaceId, userLinkId, cancellationToken).ConfigureAwait(false);
                     if (!placeChatId.IsNone && placeChatId != chat1.Id)
                         throw StandardError.Constraint($"User link id '{userLinkId}' already used for another chat on the same place.");
@@ -917,11 +910,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task RemoveUserLink(Chat oldChat1)
         {
             var oldUserLinkId = oldChat1.UserLinkId;
-            if (oldUserLinkId.IsNone)
+            if (oldUserLinkId is null)
                 return;
 
             if (oldChat1.Id.Kind == ChatKind.Group)
-                await UserLinksBackendExt.UpdateUserLink(Commander, oldUserLinkId, UserLinkId.None, UserLinkKind.Chat, ChatId.None, cancellationToken).ConfigureAwait(false);
+                await Commander.UpdateUserLink(oldUserLinkId, null, UserLinkKind.Chat, ChatId.None, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -1648,7 +1641,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (place, oldPlace, kind) = eventCommand;
+        var (_, oldPlace, kind) = eventCommand;
         if (kind != ChangeKind.Remove)
             return;
 

@@ -86,7 +86,7 @@
         if (OrdinalEquals(sUserLinkId, CurrentUserLinkId))
             return;
 
-        if (!UserLinkId.TryParse(sUserLinkId, out var userLinkId) || userLinkId.IsNone)
+        if (!UserLinkId.TryParse(sUserLinkId, out var userLinkId))
             return;
 
         if (ReferenceEquals(Kind, UserLinkKind.AccountLink)) {

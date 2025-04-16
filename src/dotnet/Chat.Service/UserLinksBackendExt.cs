@@ -3,9 +3,9 @@ namespace ActualChat.Chat;
 internal static class UserLinksBackendExt
 {
     public static async Task UpdateUserLink(
-        ICommander commander,
-        UserLinkId oldUserLinkId,
-        UserLinkId userLinkId,
+        this ICommander commander,
+        UserLinkId? oldUserLinkId,
+        UserLinkId? userLinkId,
         UserLinkKind kind,
         ISymbolIdentifier identifier,
         CancellationToken cancellationToken)
@@ -13,12 +13,12 @@ internal static class UserLinksBackendExt
         if (oldUserLinkId == userLinkId)
             return;
 
-        if (!oldUserLinkId.IsNone) {
+        if (oldUserLinkId is not null) {
             var removeCommand = new UserLinksBackend_Change(oldUserLinkId, null, Change.Remove<UserLink>());
             await commander.Call(removeCommand, false, cancellationToken).ConfigureAwait(false);
         }
 
-        if (!userLinkId.IsNone) {
+        if (userLinkId is not null) {
             var createCommand = new UserLinksBackend_Change(userLinkId, null, Change.Create(new UserLink(userLinkId) {
                 Kind = kind,
                 TargetId = identifier.Value,

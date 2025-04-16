@@ -39,7 +39,7 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
     [DataMember, MemoryPackOrder(16)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(17)] public UserLinkId UserLinkId { get; init; } = UserLinkId.None;
+    [DataMember, MemoryPackOrder(17)] public UserLinkId? UserLinkId { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool? IsSummarized { get; init; }
 
     // Populated only on front-end

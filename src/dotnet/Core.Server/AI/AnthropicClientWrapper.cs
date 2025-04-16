@@ -6,12 +6,12 @@ namespace ActualChat.AI;
 
 public interface IAnthropicClient
 {
-    Task<string> Execute(string prompt, CancellationToken token);
+    Task<string> Execute(string prompt, CancellationToken cancellationToken);
 }
 
 internal sealed class AnthropicClientWrapper(AnthropicClient anthropicClient) : IAnthropicClient
 {
-    public async Task<string> Execute(string prompt, CancellationToken token)
+    public async Task<string> Execute(string prompt, CancellationToken cancellationToken)
     {
         var parameters = new MessageParameters {
             Messages = [new Message(RoleType.User, prompt)],
@@ -22,7 +22,7 @@ internal sealed class AnthropicClientWrapper(AnthropicClient anthropicClient) : 
         };
 
         var response = await anthropicClient.Messages
-            .GetClaudeMessageAsync(parameters, token)
+            .GetClaudeMessageAsync(parameters, cancellationToken)
             .ConfigureAwait(false);
         return response.Message.ToString()!;
     }

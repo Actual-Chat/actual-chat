@@ -46,7 +46,7 @@ public sealed partial record AccountFull(
     [DataMember, MemoryPackOrder(14)] public bool IsEmailVerified { get; init; }
     [DataMember, MemoryPackOrder(15)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(16)] public string TimeZone { get; init; } = "";
-    [DataMember, MemoryPackOrder(17)] public UserLinkId UserLinkId { get; init; } = UserLinkId.None;
+    [DataMember, MemoryPackOrder(17)] public UserLinkId? UserLinkId { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

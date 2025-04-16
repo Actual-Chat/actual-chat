@@ -86,14 +86,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [ComputeMethod]
     public virtual async Task<UserId> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken)
     {
-        if (userLinkId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(userLinkId));
-
-        userLinkId = userLinkId.ToLower();
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var sUserLinkId = userLinkId.Value;
+        var sUserLinkId = userLinkId.NormalizedValue;
         var accountId = await dbContext.Accounts
             .Where(x => x.UserLinkId == sUserLinkId)
             .Select(x => x.Id)
@@ -162,11 +158,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
-        if (!account.UserLinkId.IsNone)
-            account = account with {
-                UserLinkId = account.UserLinkId.ToLower()
-            };
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -195,16 +186,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             context.Operation.AddEvent(e);
         }
 
-        var oldUserLink = existing?.UserLinkId ?? UserLinkId.None;
+        var oldUserLink = existing?.UserLinkId;
         var newUserLink = account.UserLinkId;
-        if (oldUserLink != newUserLink) {
-            var userLinkIds = new List<UserLinkId>();
-            if (!oldUserLink.IsNone)
-                userLinkIds.Add(oldUserLink);
-            if (!newUserLink.IsNone)
-                userLinkIds.Add(newUserLink);
-            context.Operation.Items.KeylessSet(userLinkIds);
-        }
+        if (oldUserLink != newUserLink)
+            context.Operation.Items.KeylessSet(new[] { oldUserLink, newUserLink }.SkipNullItems());
     }
 
     // [CommandHandler]

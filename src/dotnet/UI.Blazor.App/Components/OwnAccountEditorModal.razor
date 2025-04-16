@@ -184,7 +184,7 @@
         _form.Email = _account.Email.NullIfEmpty();
         _form.Phone = _account.Phone?.ToReadable() ?? "";
         _form.ParsedPhone = _account.Phone;
-        _form.UserLinkId = _form.CurrentUserLinkId = _account.UserLinkId.Value;
+        _form.UserLinkId = _form.CurrentUserLinkId = _account.UserLinkId?.Value ?? "";
 
         _form.CopyToBase();
     }
@@ -205,7 +205,7 @@
             account with {
                 Name = _form.Name,
                 Phone = phone,
-                UserLinkId = UserLinkId.ParseOrNone(_form.UserLinkId),
+                UserLinkId = UserLinkId.ParseOrNull(_form.UserLinkId),
             },
             account.Version);
         var (_, error) = await Hub.UICommander().Run(updateAccountCommand);

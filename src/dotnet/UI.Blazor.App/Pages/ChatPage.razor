@@ -327,7 +327,7 @@
             if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
                 return PageRoute.UnknownUserLink;
 
-            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(chatUserLinkId.ToLower(), cancellationToken);
+            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(chatUserLinkId, cancellationToken);
             if (userLinkRef.IsNone || userLinkRef.Kind != UserLinkKind.Chat)
                 return PageRoute.UnknownUserLink;
 
@@ -341,7 +341,7 @@
             if (!UserLinkId.TryParse(sPlaceUserLink, out var placeUserLinkId))
                 return PageRoute.UnknownUserLink;
 
-            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(placeUserLinkId.ToLower(), cancellationToken);
+            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(placeUserLinkId, cancellationToken);
             if (userLinkRef.IsNone || userLinkRef.Kind != UserLinkKind.Place)
                 return PageRoute.UnknownUserLink;
 
@@ -365,7 +365,7 @@
                 if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
                     return PageRoute.UnknownUserLink;
 
-                placeChatId = await Hub.UserLinks.GetPlaceChatIdByUserLink(placeId, chatUserLinkId.ToLower(), cancellationToken).ConfigureAwait(false);
+                placeChatId = await Hub.UserLinks.GetPlaceChatIdByUserLink(placeId, chatUserLinkId, cancellationToken).ConfigureAwait(false);
                 if (placeChatId.IsNone)
                     return PageRoute.UnknownUserLink;
             }

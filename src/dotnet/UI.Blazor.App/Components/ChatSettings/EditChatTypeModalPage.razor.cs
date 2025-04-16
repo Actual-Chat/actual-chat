@@ -57,12 +57,12 @@ public partial class EditChatTypeModalPage
     protected override async Task OnInitializedAsync()
     {
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
-        var chat = await Chats.Get(Session, ChatId, default).Require();
+        var chat = await Chats.Get(Session, ChatId, CancellationToken.None).Require();
         _placeId = chat.Id.PlaceChatId.PlaceId;
         if (!_placeId.IsNone) {
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
-            _place = await Places.Get(Session, _placeId, default).Require().ConfigureAwait(false);
-            if (_place.IsPublic && !_place.UserLinkId.IsNone)
+            _place = await Places.Get(Session, _placeId, CancellationToken.None).Require().ConfigureAwait(false);
+            if (_place.IsPublic && _place.UserLinkId is not null)
                 _userLinkLocalPrefix = Links.ChatUserLinkPrefix + _place.UserLinkId + Links.Separator + Links.UserLinkPrefix;
             else
                 _placeUserLinkRequiredFirst = true;
@@ -75,8 +75,8 @@ public partial class EditChatTypeModalPage
 
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = chat.IsPublic,
-            UserLinkId = chat.UserLinkId.Value,
-            CurrentUserLinkId = chat.UserLinkId.Value,
+            UserLinkId = chat.UserLinkId?.Value ?? "",
+            CurrentUserLinkId = chat.UserLinkId?.Value ?? "",
             IsTemplate = chat.IsTemplate,
             AllowGuestAuthors = chat.AllowGuestAuthors,
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
@@ -84,7 +84,7 @@ public partial class EditChatTypeModalPage
         if (_place is not null && !_place.Rules.CanApplyPublicChatType())
             _form.IsPublic = false;
         if (_userLinkLocalPrefix.IsNullOrEmpty()) // User links are not allowed.
-            _form.UserLinkId = UserLinkId.None.Value;
+            _form.UserLinkId = "";
 
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
@@ -153,11 +153,11 @@ public partial class EditChatTypeModalPage
 
     private async Task<bool> Save()
     {
-        var chat = await Chats.Get(Session, ChatId, default).Require().ConfigureAwait(false);
+        var chat = await Chats.Get(Session, ChatId, CancellationToken.None).Require().ConfigureAwait(false);
         var isPlaceChat = chat.Id.IsPlaceChat;
         var newChat = chat with {
             IsPublic = _form!.IsPublic,
-            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNone(_form.UserLinkId) : UserLinkId.None,
+            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNull(_form.UserLinkId) : null,
             AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
             AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
         };
@@ -211,7 +211,7 @@ public partial class EditChatTypeModalPage
 
         public string CurrentUserLinkId { get; set; } = "";
         [UserLinkId]
-        public string ActualUserLinkId => IsPublic ? UserLinkId : ActualChat.UserLinkId.None.Value;
+        public string ActualUserLinkId => IsPublic ? UserLinkId : "";
 
         public string FormId { get; }
         public string UserLinkIdFormId { get; }

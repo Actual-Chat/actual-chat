@@ -19,7 +19,7 @@ public sealed partial record Place(
     [DataMember, MemoryPackOrder(5)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(6)] public MediaId? BackgroundMediaId { get; init; }
     [DataMember, MemoryPackOrder(7)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(14)] public UserLinkId UserLinkId { get; init; } = UserLinkId.None;
+    [DataMember, MemoryPackOrder(14)] public UserLinkId? UserLinkId { get; init; }
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public PlaceRules Rules { get; init; } = null!;

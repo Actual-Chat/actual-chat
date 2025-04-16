@@ -10,9 +10,6 @@ public class UserLinks(IServiceProvider services) : IUserLinks
 
     public virtual async Task<UserLinkRef> GetUserLinkRef(UserLinkId userLinkId, CancellationToken cancellationToken = default)
     {
-        if (userLinkId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(userLinkId));
-
         var userLink = await Backend.Get(userLinkId, cancellationToken).ConfigureAwait(false);
         if (userLink is null)
             return UserLinkRef.None;
@@ -24,17 +21,10 @@ public class UserLinks(IServiceProvider services) : IUserLinks
     {
         if (placeId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(placeId));
-        if (userLinkId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(userLinkId));
 
-        return ChatsBackend.GetPlaceChatIdByUserLink(placeId, userLinkId.ToLower(), cancellationToken);
+        return ChatsBackend.GetPlaceChatIdByUserLink(placeId, userLinkId, cancellationToken);
     }
 
     public virtual Task<UserId> GetUserIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken = default)
-    {
-        if (userLinkId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(userLinkId));
-
-        return AccountsBackend.GetIdByUserLink(userLinkId, cancellationToken);
-    }
+        => AccountsBackend.GetIdByUserLink(userLinkId, cancellationToken);
 }

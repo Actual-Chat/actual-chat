@@ -47,7 +47,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
-            UserLinkId = new UserLinkId(UserLinkId),
+            UserLinkId = UserLinkId.IsNullOrEmpty() ? null : ActualChat.UserLinkId.Parse(UserLinkId),
         };
     }
 
@@ -74,7 +74,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;
         TimeZone = model.TimeZone;
-        UserLinkId = model.UserLinkId.Value;
+        UserLinkId = model.UserLinkId?.NormalizedValue ?? "";
         if (!model.Username.IsNullOrEmpty())
             UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }

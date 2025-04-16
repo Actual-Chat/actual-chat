@@ -41,7 +41,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsPublic = IsPublic,
             MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
             BackgroundMediaId = ActualChat.MediaId.ParseOrNull(BackgroundMediaId),
-            UserLinkId = new UserLinkId(UserLinkId),
+            UserLinkId = UserLinkId.IsNullOrEmpty() ? null : ActualChat.UserLinkId.Parse(UserLinkId),
         };
 
     public void UpdateFrom(Place model)
@@ -58,6 +58,6 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPublic = model.IsPublic;
         MediaId = model.MediaId?.Value ?? "";
         BackgroundMediaId = model.BackgroundMediaId?.Value ?? "";
-        UserLinkId = model.UserLinkId.Value;
+        UserLinkId = model.UserLinkId?.NormalizedValue ?? "";
     }
 }

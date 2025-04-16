@@ -149,11 +149,11 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        var place = await Places.Get(Session, PlaceId, default).Require();
+        var place = await Places.Get(Session, PlaceId, CancellationToken.None).Require();
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = place.IsPublic,
-            UserLinkId = place.UserLinkId.Value,
-            CurrentUserLinkId = place.UserLinkId.Value,
+            UserLinkId = place.UserLinkId?.Value ?? "",
+            CurrentUserLinkId = place.UserLinkId?.Value ?? "",
         };
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
@@ -212,7 +212,7 @@
         var place = await Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             IsPublic = _form!.IsPublic,
-            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNone(_form.UserLinkId) : UserLinkId.None,
+            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNull(_form.UserLinkId) : null,
         };
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
@@ -239,7 +239,7 @@
 
         public string CurrentUserLinkId { get; set; } = "";
         [UserLinkId]
-        public string ActualUserLinkId => IsPublic ? UserLinkId : ActualChat.UserLinkId.None.Value;
+        public string ActualUserLinkId => IsPublic ? UserLinkId : "";
 
         public string FormId { get; }
         public string UserLinkIdFormId { get; }

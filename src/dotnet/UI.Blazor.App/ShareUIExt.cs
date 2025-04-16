@@ -84,15 +84,15 @@ public static class ShareUIExt
             throw new ArgumentOutOfRangeException(nameof(place));
 
         if (place is null)
-            return chat.UserLinkId.IsNone ? Links.Chat(chat.Id) : Links.ChatUserLinkPrefix + chat.UserLinkId;
+            return chat.UserLinkId is null ? Links.Chat(chat.Id) : Links.ChatUserLinkPrefix + chat.UserLinkId;
 
-        if (place.UserLinkId.IsNone)
+        if (place.UserLinkId is null)
             return Links.Chat(chat.Id);
 
         return Links.ChatUserLinkPrefix
             + place.UserLinkId
             + Links.Separator
-            + (chat.UserLinkId.IsNone
+            + (chat.UserLinkId is null
                 ? chat.Id.PlaceChatId.LocalChatId
                 : Links.UserLinkPrefix + chat.UserLinkId);
     }

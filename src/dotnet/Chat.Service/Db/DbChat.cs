@@ -11,8 +11,6 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-
     public DbChat() { }
     public DbChat(Chat model) => UpdateFrom(model);
 
@@ -42,8 +40,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool? IsSummarized { get; set; }
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public Chat ToModel()
@@ -66,7 +64,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 ? Symbol.Empty
                 : new Symbol(SystemTag),
             MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
-            UserLinkId = new UserLinkId(UserLinkId),
+            UserLinkId = UserLinkId.IsNullOrEmpty() ? null : ActualChat.UserLinkId.Parse(UserLinkId),
             IsSummarized = IsSummarized,
         };
 
@@ -94,7 +92,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Kind = model.Kind;
         MediaId = model.MediaId?.Value ?? "";
         IsPlaceRootChat = model.Id.IsPlaceRootChat;
-        UserLinkId = model.UserLinkId.Value;
+        UserLinkId = model.UserLinkId?.NormalizedValue ?? "";
         IsSummarized = model.IsSummarized;
     }
 }

@@ -1,96 +1,81 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<UserLinkId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<UserLinkId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<UserLinkId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<UserLinkId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<UserLinkId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<UserLinkId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<UserLinkId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct UserLinkId : ISymbolIdentifier<UserLinkId>
+public sealed partial class UserLinkId : StringIdentifier, IStringIdentifier<UserLinkId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UserLinkId>();
-    public static readonly Alphabet Alphabet = Alphabet.AlphaNumeric + "_" + "-";
+    private static readonly ILruCache<string, UserLinkId> Cache = CreateCache<UserLinkId>(256);
 
-    public static UserLinkId None => default;
+    public static readonly Alphabet Alphabet = Alphabet.AlphaNumeric.Symbols + "_-";
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
+    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    public string NormalizedValue => field ??= Value.ToLowerInvariant();
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public UserLinkId(Symbol id)
-        => this = Parse(id);
-    public UserLinkId(string? id)
-        => this = Parse(id);
-    public UserLinkId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    // Factories and constructors
 
-    private UserLinkId(Symbol id, AssumeValid _)
-    {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
+    private UserLinkId(string value) : base(value)
+    { }
 
     // Equality
 
-    public bool Equals(UserLinkId other) => Id == other.Id;
-    public override bool Equals(object? obj) => obj is UserLinkId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(UserLinkId left, UserLinkId right) => left.Equals(right);
-    public static bool operator !=(UserLinkId left, UserLinkId right) => !left.Equals(right);
+    public bool Equals(UserLinkId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is UserLinkId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(UserLinkId? left, UserLinkId? right)
+        => left?.Equals(right) ?? right is null;
 
-    public static UserLinkId Parse(string? s)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(UserLinkId? left, UserLinkId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
+
+    public static UserLinkId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserLinkId>(s);
-    public static UserLinkId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<UserLinkId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out UserLinkId result)
+    public static UserLinkId? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static UserLinkId? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out UserLinkId? result)
     {
-        result = None;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
-
-        if (s.Length < 5)
             return false;
 
-        if (!Alphabet.IsMatch(s))
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
+
+        if (s.Length < 5 || !Alphabet.IsMatch(s))
             return false;
 
-        result = new UserLinkId(s, AssumeValid.Option);
+        result = new UserLinkId(s);
+        result = Cache.AddOrGet(s, result);
         return true;
-    }
-
-    public UserLinkId ToLower()
-    {
-        if (IsNone)
-            return None;
-
-        var lValue = Value.ToLowerInvariant();
-        if (OrdinalEquals(lValue, Value))
-            return this;
-
-        return new UserLinkId(lValue, AssumeValid.Option);
     }
 }

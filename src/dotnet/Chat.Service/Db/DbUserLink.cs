@@ -8,23 +8,21 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbUserLink : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public UserLinkKind Kind { get; set; }
     public string TargetId { get; set; } = "";
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DbUserLink() { }
 
     public DbUserLink(UserLink userLink)
     {
-        var id = userLink.Id.Value;
+        var id = userLink.Id.NormalizedValue;
         this.RequireSameOrEmptyId(id);
         userLink.RequireSomeVersion();
 
@@ -36,7 +34,7 @@ public class DbUserLink : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public UserLink ToModel()
-        => new (new UserLinkId(Id), Version) {
+        => new (UserLinkId.Parse(Id), Version) {
             CreatedAt = CreatedAt,
             Kind = Kind,
             TargetId = TargetId,

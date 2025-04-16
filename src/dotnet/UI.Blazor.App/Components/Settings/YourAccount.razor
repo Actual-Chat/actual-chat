@@ -1,6 +1,7 @@
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
+    var readablePhone = account.Phone?.ToReadable() ?? "";
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 }
@@ -24,13 +25,13 @@
         </Caption>
     </TileItem>
 
-    @if (!account.UserLinkId.IsNone) {
+    @if (account.UserLinkId is { } userLinkId) {
         <TileItem>
             <Icon>
                 <i class="icon-link-2 text-xl"></i>
             </Icon>
             <Content>
-                @("@" + account.UserLinkId.Value)
+                @("@" + userLinkId.Value)
             </Content>
             <Caption>
                 User link
@@ -64,7 +65,7 @@
             <i class="icon-phone text-xl"></i>
         </Icon>
         <Right>
-            <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@account.Phone.ToReadable()"/>
+            <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
             <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
         </Right>
         <Content>
