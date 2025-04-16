@@ -42,7 +42,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     protected virtual async Task<string> GetTranslationContext(ChatEntryId id, CancellationToken cancellationToken)
     {
         var entries = await ListEntries().Take(10).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return string.Join('\n', entries.Select(e => e.Content));
+        return string.Join(".\n", entries.Select(e => e.Content));
 
         async IAsyncEnumerable<ChatEntry> ListEntries()
         {

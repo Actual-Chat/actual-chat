@@ -8,7 +8,7 @@ public static class StringAssertionsExt
     private static readonly string[] Prefixes = ["у"];
 
     private static readonly string[] Suffixes = [
-        "ел", "ен", "а", "у", "ие", "ии", "ся", "е",
+        "ами", "ими", "ел", "ен", "у", "ие", "ии", "ся", "е", "ы", "а",
     ];
 
     private static readonly (string Word, string SimilarWord)[] Synonyms = [
@@ -69,7 +69,7 @@ public static class StringAssertionsExt
     private static string TrimFirstFoundPrefix(this string source)
     {
         foreach (var prefix in Prefixes)
-            if (source.OrdinalIgnoreCaseHasPrefix(prefix, out var suffix))
+            if (source.OrdinalIgnoreCaseHasPrefix(prefix, out var suffix)  && suffix.Length > 2)
                 return suffix;
 
         return source;
@@ -79,7 +79,7 @@ public static class StringAssertionsExt
     {
         foreach (var suffix in Suffixes) {
             var trimmedText = source.TrimSuffix(suffix);
-            if (!ReferenceEquals(trimmedText, source))
+            if (!ReferenceEquals(trimmedText, source) && trimmedText.Length > 3)
                 return trimmedText;
         }
         return source;

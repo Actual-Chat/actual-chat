@@ -58,7 +58,8 @@ public class Translator(IServiceProvider services) : IHasServices
 
         var prompt = PromptUtils.BuildPrompt(TranslatePromptTemplate, ("TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})"), ("ContextSeparator", Settings.TranslationContextSeparator));
         var text = $"""
-                    {context}
+                    {context}.
+
                     {Settings.TranslationContextSeparator}
                     {textToTranslate}
                     """;
