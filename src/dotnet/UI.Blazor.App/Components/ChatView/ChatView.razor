@@ -1,29 +1,35 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Events
 
+@* ReSharper disable once UnusedParameter.Local *@
 @code {
-    private static readonly RenderFragment<(ChatMessage, ChatContext)> RenderChatMessage = context => __builder => {
-        @if (context.Item1 is ChatEntryMessage message) {
-            <ChatEntryMessageView ChatContext="@context.Item2" Message="@message"/>
+    public static readonly RenderFragment<(ChatMessage Item, ChatContext Context)> RenderChatMessage = context => __builder => {
+        var item = context.Item;
+        var chatContext = context.Context;
+        if (item is ChatEntryMessage message) {
+            <ChatEntryMessageView ChatContext="@chatContext" Message="@message"/>
         }
-        else if (context.Item1 is ConversationMessage conversationMessage)
+        else if (item is ConversationMessage conversationMessage)
         {
-            <ConversationMessageView ChatContext="@context.Item2" Message="@conversationMessage" />
+            <ConversationMessageView ChatContext="@chatContext" Message="@conversationMessage" />
         }
-        else if (context.Item1 is ConversationHeader conversationHeader)
+        else if (item is ConversationHeader conversationHeader)
         {
-            <ConversationHeaderView ChatContext="@context.Item2" Header="@conversationHeader" />
+            <ConversationHeaderView ChatContext="@chatContext" Header="@conversationHeader" />
         }
-        else if (context.Item1 is ConversationFooter conversationFooter)
+        else if (item is ConversationFooter conversationFooter)
         {
-            <ConversationFooterView ChatContext="@context.Item2" Footer="@conversationFooter" />
+            <ConversationFooterView ChatContext="@chatContext" Footer="@conversationFooter" />
         }
-        else if (context.Item1 is ExpandedConversationMessage expandedConversationMessage) {
-            foreach (var item in expandedConversationMessage.Items) {
-                <div @key="@item.Key" class="item" data-key="@item.Key">
-                    @RenderChatMessage!((item, context.Item2))
+        else if (item is ExpandedConversationMessage expandedConversationMessage) {
+            foreach (var childItem in expandedConversationMessage.Items) {
+                <div @key="@childItem.Key" class="item" data-key="@childItem.Key">
+                    @RenderChatMessage!((childItem, chatContext))
                 </div>
             }
+        }
+        else if (item is ChatEntryGroup chatEntryGroup) {
+            <ChatEntryGroupView ChatContext="@chatContext" Message="@chatEntryGroup" />
         }
     };
 }

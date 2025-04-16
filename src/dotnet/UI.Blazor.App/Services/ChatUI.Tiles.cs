@@ -125,61 +125,14 @@ public partial class ChatUI
             dataQuery = expandedDataQuery;
             tiles.Clear();
         }
+
+        tiles = GroupAuthorMessages(tiles);
+
         if (expandedConversations.Count == 0)
             return tiles;
 
-        var groupedTiles = new List<VirtualListTile<ChatMessage>>();
-        var groupedItems = new List<ChatMessage>();
-        Conversation? ongoingConversation = null;
-        var ongoingConversationItems = new List<ChatMessage>();
-        foreach (var tile in tiles) {
-            if (tile.Items.All(item => item.Conversation == null || item is ConversationMessage)) {
-                FinalizeOngoingConversation();
-                groupedTiles.Add(tile);
-                continue;
-            }
-
-            // Group items by conversation
-            foreach (var item in tile.Items)
-                if (item.Conversation == null || item is ConversationMessage) {
-                    // If there is an ongoing conversation, finalize it
-                    if (ongoingConversation != null) {
-                        groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
-                        ongoingConversation = null;
-                        ongoingConversationItems = [];
-                    }
-                    groupedItems.Add(item);
-                } else {
-                    // If the conversation changes, finalize the previous one
-                    if (ongoingConversation != null && ongoingConversation != item.Conversation) {
-                        groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
-                        ongoingConversationItems = [];
-                    }
-                    ongoingConversation = item.Conversation;
-                    ongoingConversationItems.Add(item);
-                }
-        }
-
-        FinalizeOngoingConversation();
-
+        var groupedTiles = GroupExpandedConversations(tiles);
         return groupedTiles;
-
-        void FinalizeOngoingConversation()
-        {
-            // Finalize any remaining ongoing conversation
-            if (ongoingConversation != null) {
-                groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
-                ongoingConversation = null;
-                ongoingConversationItems = [];
-            }
-
-            if (groupedItems.Count > 0) {
-                var newTileRange = new Range<long>(groupedItems[0].Id, groupedItems[^1].Id + 1);
-                var newTile = new VirtualListTile<ChatMessage>(newTileRange, groupedItems);
-                groupedTiles.Add(newTile);
-                groupedItems = [];
-            }
-        }
     }
 
     [ComputeMethod]
@@ -197,7 +150,6 @@ public partial class ChatUI
         CancellationToken cancellationToken)
     {
         var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts(dataQuery, tiles);
-        // var isLoadingBefore = originalLoadBefore > originalLoadAfter;
         var hasBeforeOrAfter = originalLoadBefore > 0 || originalLoadAfter > 0;
         var beforeFulfilled = hasBeforeOrAfter && beforeCount >= originalLoadBefore / 2;
         var afterFulfilled = hasBeforeOrAfter && afterCount >= originalLoadAfter / 2;
@@ -432,6 +384,100 @@ public partial class ChatUI
                 (m is ChatEntryMessage && !idRange.Contains(m.Id))
                 || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation!.EntryRange).IsEmpty));
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
+    }
+
+
+    private static List<VirtualListTile<ChatMessage>> GroupAuthorMessages(List<VirtualListTile<ChatMessage>> tiles)
+    {
+        var groupedTiles = new List<VirtualListTile<ChatMessage>>();
+        var groupedItems = new List<ChatMessage>();
+        var ongoingGroupItems = new List<ChatMessage>();
+
+        foreach (var message in tiles.SelectMany(tile => tile.Items))
+            if (message.Flags.HasFlag(ChatMessageFlags.BlockStart) || message.IsReplacement) {
+                FinalizeCurrentGroup(false);
+                ongoingGroupItems = [message];
+            } else
+                ongoingGroupItems.Add(message);
+
+        FinalizeCurrentGroup(true);
+
+        return groupedTiles;
+
+        void FinalizeCurrentGroup(bool finalizeTile)
+        {
+            if (ongoingGroupItems.Count > 0) {
+                groupedItems.Add(ongoingGroupItems.Count == 1
+                    ? ongoingGroupItems[0]
+                    : new ChatEntryGroup(ongoingGroupItems) {
+                        Conversation = ongoingGroupItems[0].Conversation,
+                    });
+                ongoingGroupItems = [];
+            }
+
+            if (groupedItems.Count <= 5 && !finalizeTile)
+                return;
+
+            var newTileRange = new Range<long>(groupedItems[0].Id, groupedItems[^1].Id + 1);
+            groupedTiles.Add(new VirtualListTile<ChatMessage>(newTileRange, groupedItems));
+            groupedItems = [];
+        }
+    }
+
+    private static List<VirtualListTile<ChatMessage>> GroupExpandedConversations(List<VirtualListTile<ChatMessage>> tiles)
+    {
+        var groupedTiles = new List<VirtualListTile<ChatMessage>>();
+        var groupedItems = new List<ChatMessage>();
+        Conversation? ongoingConversation = null;
+        var ongoingConversationItems = new List<ChatMessage>();
+        foreach (var tile in tiles) {
+            if (tile.Items.All(item => item.Conversation == null || item is ConversationMessage)) {
+                FinalizeOngoingConversation();
+                groupedTiles.Add(tile);
+                continue;
+            }
+
+            // Group items by conversation
+            foreach (var item in tile.Items)
+                if (item.Conversation == null || item is ConversationMessage) {
+                    // If there is an ongoing conversation, finalize it
+                    if (ongoingConversation != null) {
+                        groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
+                        ongoingConversation = null;
+                        ongoingConversationItems = [];
+                    }
+                    groupedItems.Add(item);
+                } else {
+                    // If the conversation changes, finalize the previous one
+                    if (ongoingConversation != null && ongoingConversation != item.Conversation) {
+                        groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
+                        ongoingConversationItems = [];
+                    }
+                    ongoingConversation = item.Conversation;
+                    ongoingConversationItems.Add(item);
+                }
+        }
+
+        FinalizeOngoingConversation();
+
+        return groupedTiles;
+
+        void FinalizeOngoingConversation()
+        {
+            // Finalize any remaining ongoing conversation
+            if (ongoingConversation != null) {
+                groupedItems.Add(new ExpandedConversationMessage(ongoingConversation, ongoingConversationItems));
+                ongoingConversation = null;
+                ongoingConversationItems = [];
+            }
+
+            if (groupedItems.Count > 0) {
+                var newTileRange = new Range<long>(groupedItems[0].Id, groupedItems[^1].Id + 1);
+                var newTile = new VirtualListTile<ChatMessage>(newTileRange, groupedItems);
+                groupedTiles.Add(newTile);
+                groupedItems = [];
+            }
+        }
     }
 
     private (int, int) GetLoadedBeforeAndAfterCounts(ChatDataQuery dataQuery, List<VirtualListTile<ChatMessage>> tiles)

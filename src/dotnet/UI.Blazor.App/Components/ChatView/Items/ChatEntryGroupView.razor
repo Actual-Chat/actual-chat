@@ -1,0 +1,12 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@foreach (var item in Message.Items) {
+    <div @key="@item.Key" class="item" data-key="@item.Key">
+        @ChatView.RenderChatMessage((item, ChatContext))
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryGroup Message { get; set; } = null!;
+}
