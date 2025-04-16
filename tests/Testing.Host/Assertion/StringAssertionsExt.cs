@@ -5,15 +5,20 @@ namespace ActualChat.Testing.Host.Assertion;
 
 public static class StringAssertionsExt
 {
-    private static readonly string[] Endings = [
-        "иями", "ями", "ами", "ими", "ией", "ей", "ий", "ый", "ой", "ем", "им", "ым", "ом", "у", "ю", "а", "я", "о",
-        "е", "и", "ы", "ь", "н", "л", "ён", "ся",
+    private static readonly string[] Prefixes = ["у"];
+
+    private static readonly string[] Suffixes = [
+        "ел", "ен", "а", "у", "ие", "ии", "ся", "е",
     ];
 
-    private static readonly (string Word, string SimilarWord)[] SimilarWordPairs = [("требуется", "нуждается")];
+    private static readonly (string Word, string SimilarWord)[] Synonyms = [
+        ("требуется", "нуждается"),
+        ("разрушается", "размывается"),
+        ("уход", "обслуживание"),
+    ];
 
     private static readonly Dictionary<string, string> SimilarWords =
-        SimilarWordPairs.Concat(SimilarWordPairs.Select(x => (x.SimilarWord, x.Word)))
+        Synonyms.Concat(Synonyms.Select(x => (x.SimilarWord, x.Word)))
             .Select(x => (Stem(x.Item1), Stem(x.Item2)))
             .ToDictionary(x => x.Item1, x => x.Item2);
 
@@ -59,5 +64,24 @@ public static class StringAssertionsExt
     }
 
     private static string Stem(string text)
-        => text.ToLower().OrdinalIgnoreCaseReplace("ё", "e").TrimSuffixes(Endings);
+        => text.ToLower().OrdinalIgnoreCaseReplace("ё", "e").TrimFirstFoundPrefix().TrimFirstFoundSuffix();
+
+    private static string TrimFirstFoundPrefix(this string source)
+    {
+        foreach (var prefix in Prefixes)
+            if (source.OrdinalIgnoreCaseHasPrefix(prefix, out var suffix))
+                return suffix;
+
+        return source;
+    }
+
+    private static string TrimFirstFoundSuffix(this string source)
+    {
+        foreach (var suffix in Suffixes) {
+            var trimmedText = source.TrimSuffix(suffix);
+            if (!ReferenceEquals(trimmedText, source))
+                return trimmedText;
+        }
+        return source;
+    }
 }

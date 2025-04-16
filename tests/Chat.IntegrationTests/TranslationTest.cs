@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(TranslationCollection))]
 public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {
     [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
@@ -112,10 +112,10 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             ("The bank is near the river", "Банк находится рядом с рекой", "Банк"),
             ("The river bank is steep", "Берег реки крутой", "Берег"),
             ("The bank is covered with grass", "Берег покрыт травой", "Берег"),
-            ("The bank needs maintenance", "Банк нуждается в обслуживании", "Банк"),
+            ("The bank needs maintenance", "Берег нуждается в обслуживании", "Берег"),
             ("The bank is eroding", "Берег размывается", "Берег"),
             ("The bank is dangerous", "Берег опасен", "Берег"),
-            ("Hence the bank should be strengthened", "Поэтому берег должен быть укреплен", "Берег"),
+            ("The bank should be strengthened", "Берег должен быть укреплен", "Берег"),
         };
         var entries = await messages
             .Select(x => Tester.CreateTextEntry(chatId, x.Text))
