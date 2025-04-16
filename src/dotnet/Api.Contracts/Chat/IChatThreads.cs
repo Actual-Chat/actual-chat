@@ -5,7 +5,10 @@ namespace ActualChat.Chat;
 public interface IChatThreads : IComputeService
 {
     [ComputeMethod]
-    Task<ApiArray<ChatId>> ListIds(Session session, ChatId parentChatId, CancellationToken cancellationToken);
+    Task<ApiArray<ChatId>> ListIdsForChat(Session session, ChatId parentChatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ApiArray<ChatId>> ListIdsForPlace(Session session, PlaceId parentPlaceId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<bool> GetThreadFollowStatus(Session session, ChatId threadChatId, CancellationToken cancellationToken);

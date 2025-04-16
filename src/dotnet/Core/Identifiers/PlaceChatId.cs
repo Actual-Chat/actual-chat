@@ -116,7 +116,7 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
         if (placeId.IsNone || localChatId.IsNone || localChatId.Kind != ChatKind.Group)
             return false; // Both PlaceId and local ChatId must be there
 
-        result = new PlaceChatId((Symbol)s, placeId, localChatId, localChatId.ThreadId, AssumeValid.Option);
+        result = new PlaceChatId((Symbol)s, placeId, localChatId.Parent.Value, localChatId.ThreadId, AssumeValid.Option);
         return true;
     }
 }

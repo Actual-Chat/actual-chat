@@ -11,6 +11,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
+    private IPlaces Places => field ??= services.GetRequiredService<IPlaces>();
+    [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= services.GetRequiredService<IContactsBackend>();
@@ -20,7 +22,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     private IThreadInsightExtractor ThreadInsightExtractor => field ??= services.GetRequiredService<IThreadInsightExtractor>();
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ChatId>> ListIds(
+    public virtual async Task<ApiArray<ChatId>> ListIdsForChat(
         Session session,
         ChatId parentChatId,
         CancellationToken cancellationToken)
@@ -30,7 +32,24 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         if (account.IsGuest)
             return ApiArray<ChatId>.Empty;
 
-        return await ContactsBackend.ListChatThreadIds(account.Id, parentChatId, cancellationToken).ConfigureAwait(false);
+        return await ContactsBackend.ListThreadIdsForChat(account.Id, parentChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> ListIdsForPlace(
+        Session session,
+        PlaceId parentPlaceId,
+        CancellationToken cancellationToken)
+    {
+        await Places.Get(session, parentPlaceId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the place
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuest)
+            return ApiArray<ChatId>.Empty;
+
+        var placeContacts = await ContactsBackend.ListIds(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
+        var placeChatIds = placeContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Place).ToHashSet();
+        var placeTheadIds = await ContactsBackend.ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
+        return placeTheadIds.Where(c => placeChatIds.Contains(c.Parent)).ToApiArray();
     }
 
     // [ComputeMethod]

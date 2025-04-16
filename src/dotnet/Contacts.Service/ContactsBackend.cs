@@ -211,7 +211,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ChatId>> ListChatThreadIds(
+    public virtual async Task<ApiArray<ChatId>> ListThreadIdsForChat(
         UserId ownerId,
         ChatId parentChatId,
         CancellationToken cancellationToken)
@@ -222,6 +222,32 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var idPrefix = ownerId.Value + ' ' + parentChatId.Value + ChatId.ThreadIdSeparator;
+        var sChatIds = await dbContext.ThreadContacts
+            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .OrderByDescending(a => a.IsPinned)
+            .ThenByDescending(a => a.TouchedAt)
+            .Select(a => a.ThreadChatId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return sChatIds
+            .Select(ChatId.ParseOrNone)
+            .Where(c => !c.IsNone && c.IsThread)
+            .ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> ListThreadIdsForPlace(
+        UserId ownerId,
+        PlaceId parentPlaceId,
+        CancellationToken cancellationToken)
+    {
+        if (ownerId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(ownerId));
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var idPrefix = ownerId.Value + ' ' + PlaceChatId.Format(parentPlaceId, Symbol.Empty);
         var sChatIds = await dbContext.ThreadContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .OrderByDescending(a => a.IsPinned)
@@ -679,7 +705,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         if (Invalidation.IsActive) {
             _ = GetThreadContact(ownerId, id, default);
-            _ = ListChatThreadIds(ownerId, chatId.Parent, default);
+            _ = ListThreadIdsForChat(ownerId, chatId.Parent, default);
+            if (chatId.Parent.IsPlaceChat)
+                _ = ListThreadIdsForPlace(ownerId, chatId.Parent.PlaceId, default);
             return default!;
         }
 

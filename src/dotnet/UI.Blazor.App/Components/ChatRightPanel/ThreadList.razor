@@ -21,6 +21,7 @@
     private IChatThreads ChatThreads => Hub.ChatThreads;
 
     [Parameter] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter] public PlaceId PlaceId { get; set; } = PlaceId.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -30,12 +31,26 @@
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
+    protected override void OnParametersSet() {
+        if (ChatId.IsNone && PlaceId.IsNone)
+            throw StandardError.Constraint("ChatId or PlaceId parameter should be provided.");
+    }
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        if (chatId.IsNone || chatId.IsThread || chatId.Kind is not (ChatKind.Group or ChatKind.Place))
+        var placeId = PlaceId;
+        ApiArray<ChatId> threadIds;
+        if (!ChatId.IsNone) {
+            if (chatId.IsThread || chatId.Kind is not (ChatKind.Group or ChatKind.Place))
+                return Model.None;
+
+            threadIds = await ChatThreads.ListIdsForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        }
+        else if (!placeId.IsNone)
+            threadIds = await ChatThreads.ListIdsForPlace(Session, placeId, cancellationToken).ConfigureAwait(false);
+        else
             return Model.None;
 
-        var threadIds = await ChatThreads.ListIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var threadChats = await threadIds
             .Select(c => Chats.Get(Session, c, cancellationToken))
             .Collect(cancellationToken)

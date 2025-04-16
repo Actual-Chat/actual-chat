@@ -1156,19 +1156,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task EnsurePlaceChatAuthorExists(AuthorId authorId1)
         {
             var author1 = await AuthorsBackend
-                .Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                .Get(authorId1.ChatId, authorId1, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
                 .ConfigureAwait(false);
             if (author1 is { HasLeft: false })
                 return;
 
             var author2 = await AuthorsBackend
-                .Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                .Get(authorId1.ChatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
             var accountId = author2.UserId.Require();
 
             var upsertCommand = new AuthorsBackend_Upsert(
-                chatId, authorId1, accountId, null,
+                authorId1.ChatId, authorId1, accountId, null,
                 new AuthorDiff() {
                     IsAnonymous = false,
                     HasLeft = false,
