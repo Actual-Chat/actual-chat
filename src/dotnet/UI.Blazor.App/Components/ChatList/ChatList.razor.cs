@@ -84,16 +84,10 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
         var hasVeryFirstItem = range.Start == 0;
         var hasVeryLastItem = range.End >= chatCount;
 
-        // use single tile as multiple tiles don't provide benefits for randomly changed list
-        var resultTile = new VirtualListTile<ChatListItemModel>("0", resultItems);
-        var resultTiles = new List<VirtualListTile<ChatListItemModel>>();
-        if (resultItems.Count > 0)
-            resultTiles.Add(resultTile);
-
         // Console.WriteLine(Computed.Current.DebugDump());
         var firstItemPosition = resultItems.FirstOrDefault()?.Position ?? 0;
         var lastItemPosition = resultItems.LastOrDefault()?.Position ?? chatCount;
-        var result = new VirtualListData<ChatListItemModel>(resultTiles) {
+        var result = new VirtualListData<ChatListItemModel>(resultItems) {
             Index = renderedData.Index + 1,
             BeforeCount = firstItemPosition,
             AfterCount = (chatCount - lastItemPosition - 1).Clamp(0, chatCount),

@@ -16,7 +16,7 @@
         ? "hide"
         : "";
 
-    var count = data.Tiles.Sum(t => t.Items.Sum(item => item is IVirtualListGroup group ? group.Count : 1));
+    var count = data.Items.Sum(item => item is IVirtualListGroup group ? group.Count : 1);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
@@ -29,7 +29,7 @@
         HasVeryLastItem = data.HasVeryLastItem,
         ScrollToKey = data.ScrollToKey,
     };
-    var tiles = data.Tiles;
+    var items = data.Items;
     var startSkeletonCount = data.BeforeCount.HasValue && data.BeforeCount < SkeletonCount
         ? data.BeforeCount.Value
         : SkeletonCount;
@@ -66,8 +66,16 @@
 
         <ul @key="@VirtualListSpecialKeys.Container"
             class="c-virtual-container @containerClass">
-            @foreach (var tile in tiles) {
-                <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" />
+            @foreach (var item in items) {
+                @if (item.IsGroup) {
+                    <li @key="@item.RenderKey" class="group">
+                        @Item(item)
+                    </li>
+                } else {
+                    <li @key="@item.RenderKey" class="item" data-key="@item.Key">
+                        @Item(item)
+                    </li>
+                }
             }
         </ul>
 
