@@ -9,11 +9,9 @@ namespace ActualChat.Chat.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDetectionFlow.Item, ChatEntryId>, IMasterFlow
 {
-    private List<Item> _tail = [];
-
     protected override int CurrentFlowSetVersion => 1;
-    protected override int BatchSize => Settings.LanguageDetectionBatchSize;
-    protected override int Quota => Settings.LanguageDetectionQuota;
+    protected override int BatchSize => Settings.LanguageDetectionFlowBatchSize;
+    protected override int Quota => Settings.LanguageDetectionFlowQuota;
 
     [field: AllowNull, MaybeNull]
     private IChatEntryLanguagesBackend ChatEntryLanguagesBackend => field ??= Host.Services.GetRequiredService<IChatEntryLanguagesBackend>();
@@ -41,50 +39,30 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Region();
-        var remainingLength = Settings.LanguageDetectionBatchMaxTokenLength;
-        var batch = new List<Item>();
-        // when BatchedFlow continues within same quota _tail is not empty
-        if (AddToBatch(_tail))
-            return batch;
-
-        var entryLanguages = await ChatEntryLanguagesBackend.ListForDetection(BatchSize, cancellationToken).ConfigureAwait(false);
+        var entryLanguages = await ChatEntryLanguagesBackend.ListForDetection(Settings.LanguageDetectionFlowBatchSize, cancellationToken).ConfigureAwait(false);
         var entries = await entryLanguages.Select(x => x.Id)
             .GroupBy(id => id.ChatId)
             .Select(x => ChatsBackend.GetEntries(x, false, cancellationToken).AsTask())
             .Collect(cancellationToken)
             .Flatten()
             .ConfigureAwait(false);
-        var items = entryLanguages.Join(entries, x => x.Id, x => x.Id, Item.From).ToList();
-        AddToBatch(items);
-        return batch;
-
-        bool AddToBatch(IReadOnlyList<Item> source)
-        {
-            var tail = new List<Item>();
-            foreach (var item in source)
-            {
-                var contentLength = item.Entry.Content.Length.Clamp(0, Settings.LanguageDetectionEntryContentLimit);
-                if (remainingLength >= 0 && remainingLength >= contentLength) {
-                    remainingLength -= contentLength;
-                    batch.Add(item);
-                }
-                else
-                    tail.Add(item);
-            }
-            _tail = tail;
-            return tail.Count == 0 && batch.Count > 0;
-        }
+        return entryLanguages.Join(entries, x => x.Id, x => x.Id, Item.From).ToList();
     }
 
-    protected override async Task ProcessBatch(IReadOnlyList<Item> batch, CancellationToken cancellationToken)
+    protected override Task ProcessBatch(IReadOnlyList<Item> batch, CancellationToken cancellationToken)
+        => ToChunks(batch)
+            .Select(x => DetectLanguages(x, cancellationToken))
+            .Collect(Settings.LanguageDetectionParallelDegree, cancellationToken);
+
+    private async Task DetectLanguages(IReadOnlyList<Item> batch, CancellationToken cancellationToken)
     {
         using var _1 = Tracer.Region();
-        var languageMap = await DetectLanguages().ConfigureAwait(false);
-        await SaveLanguages().ConfigureAwait(false);
+        DebugLog?.LogDebug("DetectLanguages: Detecting for {Count} entries", batch.Count);
+        var languageMap = await Detect().ConfigureAwait(false);
+        await Save().ConfigureAwait(false);
         return;
 
-        async Task<Dictionary<ChatEntryId, Language[]>> DetectLanguages()
+        async Task<Dictionary<ChatEntryId, Language[]>> Detect()
         {
             using var _2 = Tracer.Region();
             using var detectionCts = cancellationToken.CreateLinkedTokenSource(Settings.BulkLanguageDetectionTimeout);
@@ -97,11 +75,11 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
                 .WithErrorLog(Log, "Failed to detect languages for {Count} texts with total length {TotalLength}", texts.Count, totalLength)
                 .ConfigureAwait(false);
             Log.LogInformation("`{Id}`.DetectLanguages: detected for {Count} texts with total length {TotalLength} in {Elapsed}", Id, texts.Count, totalLength, sw.Elapsed);
-            return batch.Zip(languageBulk, (entry, languages) => (entry, languages))
-                .ToDictionary(x => x.entry.Entry.Id, x => x.languages);
+            return batch.Zip(languageBulk, (item, languages) => (item, languages))
+                .ToDictionary(x => x.item.Entry.Id, x => x.languages);
         }
 
-        async Task SaveLanguages()
+        async Task Save()
         {
             using var _2 = Tracer.Region();
             var updated = batch.Select(x => x.Language with {
@@ -123,6 +101,29 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
                     "`{Id}`.ProcessBatch: failed to update entryLanguage #{Id}",
                     Id, entry.Language.Id);
         }
+    }
+
+    private IEnumerable<List<Item>> ToChunks(IReadOnlyList<Item> source)
+    {
+        var batch = new List<Item>();
+        var remainingLength = Settings.LanguageDetectionRequestTokenLimit;
+        foreach (var item in source) {
+            var contentLength = item.Entry.Content.Length.Clamp(0, Settings.LanguageDetectionEntryContentLimit);
+            if (contentLength <= remainingLength) {
+                batch.Add(item);
+                remainingLength -= contentLength;
+            }
+            else {
+                if (batch.Count > 0)
+                    yield return batch;
+
+                batch = [];
+                remainingLength = Settings.LanguageDetectionRequestTokenLimit;
+            }
+        }
+
+        if (batch.Count > 0)
+            yield return batch;
     }
 
     // Helper methods

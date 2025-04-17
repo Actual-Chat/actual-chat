@@ -45,8 +45,8 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
             Id,
             totalCount,
             batchCount,
-            cursor,
-            sw.Elapsed);
+            sw.Elapsed,
+            cursor);
         return new (false, totalCount < Quota, cursor, totalCount > 0);
     }
 
