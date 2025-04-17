@@ -57,7 +57,6 @@
         await JS.InvokeVoidAsync(JSInitMethod);
     }
 
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
