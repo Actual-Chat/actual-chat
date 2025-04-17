@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     where TItem : class, IVirtualListItem
 {
-    public static readonly VirtualListData<TItem> None = new(Array.Empty<TItem>());
+    public static readonly VirtualListData<TItem> None = new([]);
 
     public bool IsNone
         => ReferenceEquals(this, None);
@@ -13,7 +13,13 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     /// </summary>
     public Range<string> KeyRange
         => Items.Count > 0
-            ? new Range<string>(Items[0].Key, Items[^1].Key)
+            ? new Range<string>(
+                Items[0] is IVirtualListGroup<TItem> { Count: > 0 } firstGroup
+                    ? firstGroup.Items[0].Key
+                    : Items[0].Key,
+                Items[^1] is IVirtualListGroup<TItem> { Count: > 0 } lastGroup
+                    ? lastGroup.Items[^1].Key
+                    : Items[^1].Key)
             : default;
 
     public IReadOnlyList<TItem> Items { get; } = items;
@@ -33,8 +39,9 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     public TItem? LastItem => Items.Count == 0 ? null : Items[^1];
 
     public bool IsSimilarTo(VirtualListData<TItem> other)
-        => HasVeryFirstItem == other.HasVeryFirstItem
+        => ReferenceEquals(this, other) ||
+            (HasVeryFirstItem == other.HasVeryFirstItem
             && HasVeryLastItem == other.HasVeryLastItem
             && OrdinalEquals(ScrollToKey, other.ScrollToKey)
-            && Items.SequenceEqual(other.Items);
+            && Items.SequenceEqual(other.Items));
 }
