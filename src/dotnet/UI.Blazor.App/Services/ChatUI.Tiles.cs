@@ -403,15 +403,20 @@ public partial class ChatUI
     private static List<ChatMessage> GroupAuthorMessages(IEnumerable<ChatMessage> messages)
     {
         var result = new List<ChatMessage>();
-        var groupedItems = new List<ChatMessage>();
+        var groupedItems = new List<ChatEntryMessage>();
 
-        foreach (var message in messages) {
-            if (message.Flags.HasFlag(ChatMessageFlags.BlockStart) || message.IsReplacement) {
+        foreach (var message in messages)
+            if (message is not ChatEntryMessage cem || message.IsReplacement) {
                 AddGroupToResult();
                 groupedItems = [];
+                result.Add(message);
             }
-            groupedItems.Add(message);
-        }
+            else if (message.Flags.HasFlag(ChatMessageFlags.BlockStart)) {
+                AddGroupToResult();
+                groupedItems = [cem];
+            }
+            else
+                groupedItems.Add(cem);
 
         AddGroupToResult();
         return result;
@@ -423,7 +428,7 @@ public partial class ChatUI
 
             result.Add(groupedItems.Count == 1
                 ? groupedItems[0]
-                : new ChatEntryGroup(groupedItems) { Conversation = groupedItems[0].Conversation });
+                : new ChatEntryAuthorGroup(groupedItems[0].Entry.AuthorId, groupedItems) { Conversation = groupedItems[0].Conversation });
         }
     }
 

@@ -27,10 +27,11 @@ body.hoverable .system-entry.message-wrapper:hover {
 }
 
 .chat-message > .c-author-badge {
-    @apply absolute inset-0 z-20 top-2;
+    @apply absolute inset-0 top-2;
     @apply flex-none flex-y;
     @apply w-fit;
     @apply select-none;
+    @apply ml-0.5;
 }
 .chat-message > .c-author-badge .avatar-badge {
     @apply sticky z-10 bottom-1 top-2;
@@ -571,4 +572,37 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply flex-none flex-x items-center justify-center;
     @apply w-8 h-8;
     @apply rounded-full;
+}
+
+.chat-view.virtual-list .c-virtual-container .chat-message-group {
+    @apply relative;
+    @apply flex-x;
+    @apply w-full;
+}
+
+.chat-view.virtual-list .c-virtual-container .chat-message-group > .c-left {
+    @apply absolute inset-0 top-2;
+    @apply flex-none flex-y;
+    @apply w-fit;
+    @apply select-none;
+    @apply m-2;
+    @apply ml-3;
+}
+
+.chat-view.virtual-list .c-virtual-container .chat-message-group > .c-left > .avatar-badge {
+    @apply sticky z-10 bottom-1 top-2;
+    @apply h-fit w-fit;
+}
+
+.chat-view.virtual-list .c-virtual-container div.item > .chat-message-group > .c-left > .avatar-badge {
+    @apply top-14;
+}
+
+.chat-view.virtual-list .c-virtual-container .chat-message-group > .c-group-items {
+    @apply w-full;
+    @apply flex-y;
+}
+
+.chat-view.virtual-list .c-virtual-container div.item .chat-message > .c-author-badge .avatar-badge {
+    @apply top-14;
 }

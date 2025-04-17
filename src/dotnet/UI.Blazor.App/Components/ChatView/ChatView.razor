@@ -28,8 +28,8 @@
                 </div>
             }
         }
-        else if (item is ChatEntryGroup chatEntryGroup) {
-            <ChatEntryGroupView ChatContext="@chatContext" Message="@chatEntryGroup" />
+        else if (item is ChatEntryAuthorGroup chatEntryGroup) {
+            <ChatEntryAuthorGroupView ChatContext="@chatContext" Message="@chatEntryGroup" />
         }
     };
 }
