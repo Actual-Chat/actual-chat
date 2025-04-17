@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using Cysharp.Text
 @inherits ComputedStateComponent<ThreadMessageView.Model?>
 @{
     var chat = Message.Chat;
@@ -6,7 +7,7 @@
     if (m is null)
         return; // Loading
 
-    var displayAuthorsLimit = 3;
+    const int displayAuthorsLimit = 3;
     var topAuthorIds = m.TopAuthorIds.Take(displayAuthorsLimit).ToList();
     var extraAuthorCount = Math.Clamp(m.AuthorCount - topAuthorIds.Count, 0, 99);
     var createdAt = DateTimeConverter.ToLocalTime(chat.CreatedAt.ToDateTime());
@@ -81,7 +82,7 @@
         <div class="c-info">
             <span>@creationDate,</span><span> created by </span><span>@m.OwnerName</span>
         </div>
-        <HeaderButton Click="CopyToClipboardRequested">
+        <HeaderButton Click="OnCopyToClipboardRequested">
             <i class="icon-copy"></i>
         </HeaderButton>
     </div>
@@ -100,11 +101,12 @@
     private History History => Hub.History;
     private MomentClockSet Clocks => Hub.Clocks();
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     // ChatContext belongs to parent Chat, not to the thread chat.
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ThreadMessage Message { get; set; } = null!;
-    [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
 
     protected override void OnInitialized() =>
         _chatMarkupHub = Hub.ChatMarkupHubFactory[Message.Chat.Id];
@@ -141,6 +143,21 @@
 
     private void OnGoToTheThread()
         => _ = History.NavigateTo(Links.Chat(Message.Chat.Id));
+
+    private async Task OnCopyToClipboardRequested() {
+        var text = GetText();
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+    }
+
+    private string GetText() {
+        var threadTitle = Message.Chat.Title;
+        using var sb = ZString.CreateStringBuilder();
+        sb.Append("Thread \"");
+        sb.Append(threadTitle);
+        sb.Append("\" on Actual Chat: ");
+        sb.Append(UrlMapper.ToAbsolute(Links.Chat(Message.Chat.Id)));
+        return sb.ToString();
+    }
 
     // Nested types
     public record Model(IReadOnlyList<(ChatEntry, Markup)> Entries, ApiArray<AuthorId> TopAuthorIds, int AuthorCount, long MessageCount, string OwnerName);
