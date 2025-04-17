@@ -17,6 +17,7 @@ public sealed class ExpandedConversationMessage : ChatMessage, IVirtualListGroup
     {
         if (ReferenceEquals(null, other))
             return false;
+
         if (ReferenceEquals(this, other))
             return true;
 

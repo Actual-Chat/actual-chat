@@ -18,6 +18,7 @@ public class ChatEntryAuthorGroup : ChatMessage, IVirtualListGroup<ChatEntryMess
     {
         if (ReferenceEquals(null, other))
             return false;
+
         if (ReferenceEquals(this, other))
             return true;
 
