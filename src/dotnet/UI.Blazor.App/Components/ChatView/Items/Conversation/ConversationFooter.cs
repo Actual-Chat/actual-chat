@@ -9,6 +9,7 @@ public sealed class ConversationFooter : ChatMessage
     {
         if (ReferenceEquals(null, other))
             return false;
+
         if (ReferenceEquals(this, other))
             return true;
 

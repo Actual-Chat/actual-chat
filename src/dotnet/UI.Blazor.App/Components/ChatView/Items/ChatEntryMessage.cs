@@ -8,6 +8,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
     {
         if (ReferenceEquals(null, other))
             return false;
+
         if (ReferenceEquals(this, other))
             return true;
 
