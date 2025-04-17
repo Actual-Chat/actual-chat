@@ -11,6 +11,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= services.GetRequiredService<IChatsBackend>();
+    [field: AllowNull, MaybeNull]
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>();
     [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
@@ -68,6 +70,37 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
 
         var threadContact = await ContactsBackend.GetThreadContact(account.Id, contactId, cancellationToken).ConfigureAwait(false);
         return threadContact is not null;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ThreadStat> GetThreadStat(
+        Session session,
+        ChatId threadChatId,
+        CancellationToken cancellationToken)
+    {
+        await Chats.Get(session, threadChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        return await GetThreadStatInternal(threadChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    protected virtual async Task<ThreadStat> GetThreadStatInternal(ChatId threadChatId, CancellationToken cancellationToken)
+    {
+        const int displayAuthorsLimit = 3;
+        var messageCount = 0;
+        var topAuthorIds = new List<AuthorId>();
+        var authorIds = new HashSet<AuthorId>();
+        var range = await ChatsBackend.GetIdRange(threadChatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+        var entries = ChatsBackend.ReadEntries(threadChatId, ChatEntryKind.Text, range, false, cancellationToken);
+        await foreach (var chatEntry in entries.ConfigureAwait(false)) {
+            if (chatEntry.IsSystemEntry)
+                continue;
+
+            messageCount++;
+            var authorId = chatEntry.AuthorId;
+            if (authorIds.Add(authorId) && topAuthorIds.Count < displayAuthorsLimit)
+                topAuthorIds.Add(authorId);
+        }
+        return new ThreadStat(messageCount, topAuthorIds.ToApiArray(), authorIds.Count);
     }
 
     // Non-computed

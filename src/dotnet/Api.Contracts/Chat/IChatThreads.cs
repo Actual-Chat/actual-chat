@@ -13,6 +13,9 @@ public interface IChatThreads : IComputeService
     [ComputeMethod]
     Task<bool> GetThreadFollowStatus(Session session, ChatId threadChatId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ThreadStat> GetThreadStat(Session session, ChatId threadChatId, CancellationToken cancellationToken);
+
     Task<(string, string)> SuggestThreadTitle(Session session, ChatId parentChatId, ApiArray<TextEntryId> entryIds, CancellationToken cancellationToken);
 
     [CommandHandler]
@@ -38,3 +41,9 @@ public sealed partial record ChatThreads_ToggleThreadFollowStatus(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ThreadChatId
 ) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record ThreadStat(
+    [property: DataMember, MemoryPackOrder(0)] long MessageCount,
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<AuthorId> TopAuthorIds,
+    [property: DataMember, MemoryPackOrder(2)] int AuthorCount);
