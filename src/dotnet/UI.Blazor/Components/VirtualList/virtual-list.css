@@ -79,7 +79,7 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
 }
 
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-header) {
-    @apply sticky top-0 z-10;
+    @apply sticky top-0 z-20;
 }
 
 .virtual-list .skeleton-container {

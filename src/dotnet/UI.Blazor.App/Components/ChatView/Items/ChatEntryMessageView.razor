@@ -17,6 +17,8 @@
     var isBlockStart = message.Flags.HasFlag(ChatMessageFlags.BlockStart);
     var isUnreadByOthersBlockStart = m.IsUnreadByOthersBlockStart;
     var showAuthor = !isSystem && (isBlockStart || isReply);
+    var showAuthorBadge = showAuthor && ShowAuthorBadge;
+    var showTime = !showAuthor && ShowAuthorBadge;
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
     var isAiSearchChat = chat.IsAiSearchChat();
@@ -62,7 +64,7 @@
              data-menu="@(MenuRef.New<MessageMenu>(entry.Id, bool.TrueString, "", ""))"
              @onmouseenter="@ShowHoverMenu"
              @onmouseleave="@HideHoverMenu">
-            <div class="chat-message group">
+            <div class="chat-message">
                 <div class="c-content">
                     <div class="message-content">
                         <p class="chat-message-markup">
@@ -89,11 +91,11 @@
      @onmouseleave="@HideHoverMenu">
     <div class="chat-message group">
         <div class="c-author-badge">
-            @if (showAuthor) {
+            @if (showAuthorBadge) {
                 <ChatMessageAuthorCircle
                     AuthorSid="@entry.AuthorId"
                     Click="@_onClickCallback"/>
-            } else {
+            } else if (showTime) {
                 var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
                 <div class="c-empty">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
@@ -261,6 +263,7 @@
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
+    [Parameter] public bool ShowAuthorBadge { get; set; } = true;
 
     protected override void OnInitialized()
         => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
