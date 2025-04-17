@@ -45,7 +45,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         {
             try {
                 var userId = await FindUserId(link, cancellationToken).ConfigureAwait(false);
-                var externalContactId = new ExternalContactId(link.DbExternalContactId);
+                var externalContactId = ExternalContactId.Parse(link.DbExternalContactId);
                 var ownerId = externalContactId.UserDeviceId.OwnerId;
                 await EnsureContactExists(ownerId, userId, externalContactId, cancellationToken).ConfigureAwait(false);
                 link.IsChecked = true;

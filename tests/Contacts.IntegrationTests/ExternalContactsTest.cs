@@ -131,7 +131,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
-        var externalContact = new ExternalContactFull(new ExternalContactId(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
+        var externalContact = new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(jackIdentities.Phone)
             .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
@@ -158,7 +158,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var bobContacts0 = await ListContactIds(0);
-        var externalContact = new ExternalContactFull(new ExternalContactId(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
+        var externalContact = new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(jackIdentities.Phone)
             .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
@@ -192,7 +192,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var externalContact =
-            new ExternalContactFull(new ExternalContactId(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
+            new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
                 .WithEmail(jackIdentities.Email)
                 .WithHash(_hasher);
 
@@ -414,7 +414,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     }
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
-        => new (new ExternalContactId(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
+        => new (ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());

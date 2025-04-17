@@ -29,7 +29,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ExternalContactId.Prefix(UserDeviceId.New(ownerId, deviceId));
+        var idPrefix = ExternalContactId.GetFormatPrefix(UserDeviceId.New(ownerId, deviceId));
         var dbExternalContacts = await dbContext.ExternalContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .Include(x => x.ExternalContactLinks)
@@ -44,7 +44,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     [ComputeMethod]
     public virtual async Task<ExternalContactFull?> Get(ExternalContactId externalContactId, CancellationToken cancellationToken)
     {
-        var dbExternalContact = await DbExternalContactResolver.Get(externalContactId, cancellationToken).ConfigureAwait(false);
+        var dbExternalContact = await DbExternalContactResolver.Get(externalContactId.Value, cancellationToken).ConfigureAwait(false);
         return dbExternalContact?.ToModel();
     }
 
@@ -58,7 +58,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ExternalContactId.Prefix(userDeviceId);
+        var idPrefix = ExternalContactId.GetFormatPrefix(userDeviceId);
         var dbExternalContacts = await dbContext.ExternalContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .Select(x => new { x.Id, x.Version, x.Hash })
@@ -66,7 +66,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ConfigureAwait(false);
 
         return dbExternalContacts.Select(x =>
-                new ExternalContact(new ExternalContactId(x.Id), x.Version) { Hash = new HashString(x.Hash) })
+                new ExternalContact(ExternalContactId.Parse(x.Id), x.Version) { Hash = new HashString(x.Hash) })
             .ToArray();
     }
 
@@ -110,7 +110,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     protected virtual async Task<ImmutableArray<ExternalContactId>> List(UserId ownerId, string link, CancellationToken cancellationToken)
     {
         Log.LogInformation("-> List ('{OwnerId}', '{Link}')", ownerId, link);
-        var idPrefix = ExternalContactId.Prefix(ownerId);
+        var idPrefix = ExternalContactId.GetFormatPrefix(ownerId);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -122,7 +122,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return externalContactIds.Select(sid => new ExternalContactId(sid)).ToImmutableArray();
+        return [..externalContactIds.Select(ExternalContactId.Parse)];
     }
 
     // Not compute method!
@@ -142,7 +142,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return externalContactIds.Select(sid => new ExternalContactId(sid)).ToApiSet();
+        return [..externalContactIds.Select(ExternalContactId.Parse)];
     }
 
     private static ImmutableArray<string> GetLinksFor(User user)
@@ -204,7 +204,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             try {
                 var changeResult = await ChangeItem(dbContext, itemChange, cancellationToken).ConfigureAwait(false);
                 overallAffectedHashes.AddRange(changeResult.AffectedHashes);
-                result.Add(new Result<ExternalContactFull?>(changeResult.ExternalContactFull, null));
+                result.Add(new (changeResult.ExternalContactFull));
                 if (itemChange.Change.Kind is ChangeKind.Remove or ChangeKind.Update)
                     updatedItemHashes.AddRange(changeResult.AffectedHashes);
             }
@@ -238,7 +238,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         // Can't use .ForUpdate() here due to join
         var dbExternalContact = await dbContext.ExternalContacts
             .Include(x => x.ExternalContactLinks)
-            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
         var existing = dbExternalContact?.ToModel();
         var now = Clocks.SystemClock.Now;
@@ -297,7 +297,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ExternalContactId.Prefix(userId);
+        var idPrefix = ExternalContactId.GetFormatPrefix(userId);
         // we remove contacts without invalidation since nobody else sees these contacts
         await dbContext.ExternalContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach

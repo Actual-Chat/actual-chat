@@ -93,7 +93,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     private ExternalContactFull NewExternalContact(AccountFull owner)
-        => new (new ExternalContactId(UserDeviceId.New(owner.Id, DeviceId), RandomStringGenerator.Default.Next()));
+        => new (ExternalContactId.New(UserDeviceId.New(owner.Id, DeviceId), RandomStringGenerator.Default.Next()));
 
     private async Task<ExternalContact[]> ListExternalContacts(int expectedCount)
         => await ComputedTest.When(async ct => {

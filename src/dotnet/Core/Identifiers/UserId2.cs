@@ -59,7 +59,17 @@ public sealed partial class UserId2 : PrincipalId2, IStringIdentifier<UserId2>
         => !(left?.Equals(right) ?? right is null);
 
     // TODO: remove when id refactoring is complete
-    public static implicit operator UserId(UserId2 userId2) => new UserId(userId2.Value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(UserId2? left, UserId right)
+        => left?.Equals(right) ?? !right.IsNone;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(UserId2? left, UserId right)
+        => !(left?.Equals(right) ?? !right.IsNone);
+
+    // TODO: remove when id refactoring is complete
+    public static implicit operator UserId(UserId2 userId2) => new (userId2.Value);
+    public static implicit operator UserId2(UserId userId) => Parse(userId);
 
     // Format & Parse
 

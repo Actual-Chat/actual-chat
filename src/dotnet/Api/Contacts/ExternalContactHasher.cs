@@ -25,7 +25,7 @@ public sealed class ExternalContactHasher
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 internal sealed partial record HashedExternalContact
 {
-    [DataMember, MemoryPackOrder(0)] public ExternalContactId Id { get; init; }
+    [DataMember, MemoryPackOrder(0)] public ExternalContactId Id { get; init; } = null!;
     [DataMember, MemoryPackOrder(1)] public string DisplayName { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public string GivenName { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string FamilyName { get; init; } = "";

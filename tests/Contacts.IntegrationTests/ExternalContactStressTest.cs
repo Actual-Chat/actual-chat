@@ -150,7 +150,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     }
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
-        => new (new ExternalContactId(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
+        => new (ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol deviceId, string prefix, int i)
         => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(prefix, i)).WithEmail(BuildEmail(prefix, i));

@@ -1,104 +1,85 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<ExternalContactId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ExternalContactId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<ExternalContactId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<ExternalContactId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ExternalContactId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ExternalContactId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<ExternalContactId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalContactId>
+public sealed partial class ExternalContactId : StringIdentifier, IStringIdentifier<ExternalContactId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ExternalContactId>();
-    private const char Delimiter = ':';
+    private static readonly ILruCache<string, ExternalContactId> Cache = CreateCache<ExternalContactId>(256);
 
-    public static ExternalContactId None => default;
+    public const char Delimiter = UserDeviceId.Delimiter;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public UserDeviceId UserDeviceId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public Symbol DeviceContactId { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public ExternalContactId(Symbol id)
-        => this = Parse(id);
-    public ExternalContactId(UserDeviceId userDeviceId, Symbol deviceContactId)
-        => this = Parse(Format(userDeviceId, deviceContactId));
-    public ExternalContactId(UserDeviceId userDeviceId, Symbol deviceContactId, ParseOrNone _)
-        => this = ParseOrNone(Format(userDeviceId, deviceContactId));
-    public ExternalContactId(string id)
-        => this = Parse(id);
-    public ExternalContactId(string id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    public static ExternalContactId New(UserDeviceId userDeviceId, Symbol deviceContactId)
+        => new(Format(userDeviceId, deviceContactId), userDeviceId, deviceContactId);
 
-    public ExternalContactId(Symbol id, UserDeviceId userDeviceId, Symbol deviceContactId, AssumeValid _)
+    private ExternalContactId(string value, UserDeviceId userDeviceId, Symbol deviceContactId) : base(value)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
         UserDeviceId = userDeviceId;
         DeviceContactId = deviceContactId;
     }
-
-    public ExternalContactId(UserDeviceId userDeviceId, Symbol deviceContactId, AssumeValid _)
-    {
-        if (deviceContactId.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = Format(userDeviceId, deviceContactId);
-        UserDeviceId = userDeviceId;
-        DeviceContactId = deviceContactId;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(ExternalContactId source) => source.Id;
-    public static implicit operator string(ExternalContactId source) => source.Id.Value;
 
     // Equality
 
-    public bool Equals(ExternalContactId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is ExternalContactId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(ExternalContactId left, ExternalContactId right) => left.Equals(right);
-    public static bool operator !=(ExternalContactId left, ExternalContactId right) => !left.Equals(right);
+    public bool Equals(ExternalContactId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is ExternalContactId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(ExternalContactId? left, ExternalContactId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(ExternalContactId? left, ExternalContactId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
 
     private static string Format(UserDeviceId userDeviceId, Symbol deviceContactId)
-        => deviceContactId.IsEmpty ? "" : $"{userDeviceId}{Delimiter}{deviceContactId}";
+        => $"{userDeviceId.Value}{Delimiter}{deviceContactId}";
 
     public static ExternalContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ExternalContactId>(s);
-    public static ExternalContactId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<ExternalContactId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out ExternalContactId result)
+    public static ExternalContactId? ParseOrNull(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static ExternalContactId? TryParse(string? s)
+        => TryParse(s, out var result) ? result : null;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out ExternalContactId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
 
         var delimIndex = s.LastIndexOf(Delimiter);
         if (delimIndex < 0 || delimIndex >= s.Length - 1)
@@ -108,15 +89,15 @@ public readonly partial struct ExternalContactId : ISymbolIdentifier<ExternalCon
             return false;
         var deviceContactId = new Symbol(s[(delimIndex + 1)..]);
 
-        result = new ExternalContactId(s,
-            userDeviceId,
-            new Symbol(deviceContactId),
-            AssumeValid.Option);
+        result = new ExternalContactId(s, userDeviceId, deviceContactId);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 
-    public static string Prefix(UserId ownerId)
-        => UserDeviceId.Prefix(ownerId);
-    public static string Prefix(UserDeviceId userDeviceId)
-        => $"{userDeviceId}{Delimiter}";
+    // Helpers
+
+    public static string GetFormatPrefix(UserId2 ownerId)
+        => $"{ownerId.Value}{UserDeviceId.Delimiter}";
+    public static string GetFormatPrefix(UserDeviceId userDeviceId)
+        => $"{userDeviceId.Value}{Delimiter}";
 }

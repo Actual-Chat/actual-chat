@@ -155,7 +155,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
             [new ExternalContactChange(externalContactFull.Id, null, Change.Remove<ExternalContactFull>())]));
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
-        => new (new ExternalContactId(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
+        => new (ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());

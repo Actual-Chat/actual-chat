@@ -45,6 +45,6 @@ public class ExternalContactGenerator(int seed = 100)
 
     public ExternalContactId NewId(UserDeviceId? id = null)
         => id is null
-            ? new (NewUserDeviceId(), NewDeviceContactId())
-            : new (id, NewDeviceContactId());
+            ? ExternalContactId.New(NewUserDeviceId(), NewDeviceContactId())
+            : ExternalContactId.New(id, NewDeviceContactId());
 }

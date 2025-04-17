@@ -37,7 +37,7 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
 
         ExternalContactFull GenerateExternalContact(int contactIndex)
         {
-            var externalContactId = new ExternalContactId(userDeviceId, $"contact{contactIndex}");
+            var externalContactId = ExternalContactId.New(userDeviceId, $"contact{contactIndex}");
             var phoneHashes = Enumerable.Range(1, options.PhoneCount)
                 .Select(GeneratePhone)
                 .Select(x => x.Hash())

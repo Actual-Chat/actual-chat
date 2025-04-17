@@ -20,6 +20,7 @@ public static class CoreSerializerAndRpcSetup
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Phone>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserLinkId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserDeviceId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ExternalContactId>());
     }
 
     public static void Configure(bool isServer)
