@@ -18,7 +18,7 @@ public partial class LogList : IVirtualListDataSource<LogEntry>
         if (tiles.Count == 0)
             return VirtualListData<LogEntry>.None;
 
-        var result = new VirtualListData<LogEntry>(tiles.ToVirtualListTiles()) {
+        var result = new VirtualListData<LogEntry>(tiles.ToLogEntries()) {
             Index = renderedData.Index + 1,
             HasVeryFirstItem = tiles.ContainStart(fullIdRange.Start),
             HasVeryLastItem = tiles.ContainEnd(fullIdRange.End),

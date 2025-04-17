@@ -337,9 +337,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _itemVisibility.Value);
         var originalLoadBefore = dataQuery.LoadBefore;
         var originalLoadAfter = dataQuery.LoadAfter;
-        var hasVeryFirstItem = dataQuery.HasVeryFirstItem;
-        var hasVeryLastItem = dataQuery.HasVeryLastItem;
-        var hasAllItems = hasVeryFirstItem && hasVeryLastItem;
         if (dataQuery.End + ChatUI.HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
@@ -352,21 +349,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         rebuildTiles: // Building actual virtual list tiles
 
+        var hasVeryFirstItem = dataQuery.HasVeryFirstItem;
+        var hasVeryLastItem = dataQuery.HasVeryLastItem;
+        var hasAllItems = hasVeryFirstItem && hasVeryLastItem;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return VirtualListData<ChatMessage>.None;
 
-        var tiles = await ChatUI.GetTiles(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
-        var itemCount = tiles.Sum(t => t.Items.Count);
+        var items = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
+        var itemCount = items.Sum(item => item is IVirtualListGroup group ? group.Count : 1);
         var isQueryFulfilled = query.ExpectedCount > itemCount / 2;
         var isLoadLimitReached = itemCount >= ChatUI.LoadLimit;
-        if (tiles.Count == 0) {
+        if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessage>([
-                    new VirtualListTile<ChatMessage>(default(Range<long>),
-                        [ChatMessage.Welcome(ChatId, chat.IsAiSearchChat())]),
-                ]) {
+                return new VirtualListData<ChatMessage>([ChatMessage.Welcome(ChatId, chat.IsAiSearchChat())]) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
@@ -381,7 +378,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     dataQuery,
                     originalLoadBefore,
                     originalLoadAfter,
-                    tiles,
+                    items,
                     cancellationToken)
                 .ConfigureAwait(false);
             if (expandedDataQuery != null) {
@@ -390,7 +387,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             }
         }
 
-        if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(tiles, ref readEntryLid)) {
+        if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(items, ref readEntryLid)) {
             tryUpdateShownReadEntryLid = false;
             goto rebuildTiles;
         }
@@ -398,8 +395,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Locating navigation entry
         string? navKey = null;
         if (nav != null) {
-            var navChatMessage = tiles
-                .SelectMany(t => t.Items)
+            var navChatMessage = items
+                .SelectMany(item => item is IVirtualListGroup<ChatMessage> group ? group.Items : [item])
                 .LastOrDefault(x => x.Id <= nav.EntryLid);
             navKey = navChatMessage?.Key;
             if (navChatMessage == null)
@@ -410,13 +407,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     new ChatEntryId(chatId, ChatEntryKind.Text, navChatMessage.Id, AssumeValid.Option),
                     false);
         }
-        if (tiles.Count != 0) {
-            if (tiles[0].Items.Count != 0)
-                hasVeryFirstItem = hasVeryFirstItem || chatIdRange.Start >= tiles[0].Items[0].Id;
-            if (tiles[^1].Items.Count != 0)
-                hasVeryLastItem = hasVeryLastItem || chatIdRange.End - 1 <= tiles[^1].Items[^1].Id;
+        if (items.Count != 0) {
+            hasVeryFirstItem = hasVeryFirstItem || chatIdRange.Start >= items[0].Id;
+            hasVeryLastItem = hasVeryLastItem || chatIdRange.End - 1 <= items[^1].Id;
         }
-        var result = new VirtualListData<ChatMessage>(tiles) {
+        var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
             HasVeryFirstItem = hasVeryFirstItem,
@@ -526,10 +521,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return readEntryLid;
     }
 
-    private bool TryUpdateShownReadEntryLid(List<VirtualListTile<ChatMessage>> tiles, ref long readEntryLid)
+    private bool TryUpdateShownReadEntryLid(IReadOnlyList<ChatMessage> items, ref long readEntryLid)
     {
         var itemVisibility = ItemVisibility.Value;
-        if (tiles.Count == 0 || tiles[^1].Items.Count == 0)
+        if (items.Count == 0)
             return false; // Not loaded yet or wrong load range
 
         if (itemVisibility.IsEmpty || !itemVisibility.IsEndAnchorVisible) {
@@ -543,9 +538,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         var shownReadEntryLid = _shownReadEntryLid.Value;
-        var newMessagesLine = tiles
-            .SkipWhile(t => t.Items[^1].Id < shownReadEntryLid)
-            .SelectMany(t => t.Items)
+        var newMessagesLine = items
+            .SkipWhile(i => i.Id < shownReadEntryLid)
             .FirstOrDefault(i => i.ReplacementKind == ChatMessageReplacementKind.NewMessagesLine);
         var hasNewMessagesLine = newMessagesLine != null;
         if (!hasNewMessagesLine) {
@@ -554,7 +548,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // We see end anchor, when the new message appears so we can update shownReadEntryLid
-        var lastEntryLid = tiles[^1].Items[^1].Id;
+        var lastEntryLid = items[^1].Id;
         var maxVisibleEntryLid = itemVisibility.MaxEntryLid;
         var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
         if (newShownReadEntryLid == shownReadEntryLid) {

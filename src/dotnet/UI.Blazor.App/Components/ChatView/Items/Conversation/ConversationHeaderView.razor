@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var conversation = Header.Conversation;
+    var conversation = Header.Conversation!;
     var title = conversation.Title;
     var messageCount = conversation.MessageCount;
 }
@@ -20,5 +20,5 @@
     [Parameter, EditorRequired] public ConversationHeader Header { get; set; } = null!;
 
     private void ToggleShowMessage()
-        => ChatUI.ToggleExpandConversation(Header.Conversation.Id);
+        => ChatUI.ToggleExpandConversation(Header.Conversation!.Id);
 }

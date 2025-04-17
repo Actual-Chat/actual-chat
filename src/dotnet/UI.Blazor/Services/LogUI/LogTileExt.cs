@@ -8,6 +8,9 @@ public static class LogTileExt
     public static IReadOnlyList<VirtualListTile<LogEntry>> ToVirtualListTiles(this IReadOnlyList<LogTile> logTiles)
         => [..logTiles.Select(x => x.ToVirtualListTile())];
 
+    public static IReadOnlyList<LogEntry> ToLogEntries(this IReadOnlyList<LogTile> logTiles)
+        => [..logTiles.SelectMany(x => x.Entries)];
+
     public static bool ContainStart(this IReadOnlyList<LogTile> logTiles, long startId)
         => logTiles.Count != 0 && logTiles[0].IdRange.Start <= startId;
 

@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="chat-message-group">
+    <div class="c-left">
+        <ChatMessageAuthorCircle
+            AuthorSid="@Message.AuthorId"
+            Click="@_onClickCallback"/>
+    </div>
+    <div class="c-group-items">
+        @foreach (var item in Message.Items) {
+            <div @key="@item.Key" class="item" data-key="@item.Key">
+                <ChatEntryMessageView ChatContext="@ChatContext" Message="@item" ShowAuthorBadge="false"/>
+            </div>
+        }
+    </div>
+</div>
+
+
+@code {
+    private EventCallback<AuthorId> _onClickCallback;
+
+    private ChatUIHub Hub => ChatContext.Hub;
+    private AuthorUI AuthorUI => Hub.AuthorUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryAuthorGroup Message { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
+
+    private void OnAuthorBadgeClick(AuthorId authorId)
+        => _ = AuthorUI.Show(authorId);
+}

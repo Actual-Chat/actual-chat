@@ -1,7 +1,7 @@
 @using Cysharp.Text
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var conversation = Message.Conversation;
+    var conversation = Message.Conversation!;
     var title = conversation.Title;
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
@@ -55,7 +55,7 @@
         if (ReferenceEquals(_lastMessage, Message))
             return;
 
-        var conversation = Message.Conversation;
+        var conversation = Message.Conversation!;
         var chatEntryId = new ChatEntryId(conversation.Id.ChatId, ChatEntryKind.Text, conversation.Id.StartEntryLid, AssumeValid.Option);
         _fakeEntry = new ChatEntry(chatEntryId);
         _lastMessage = Message;
@@ -64,7 +64,7 @@
     }
 
     private void ToggleShowMessage()
-        => ChatUI.ToggleExpandConversation(Message.Conversation.Id);
+        => ChatUI.ToggleExpandConversation(Message.Conversation!.Id);
 
     private void ToggleDetails() {
         _isOpen = !_isOpen;
@@ -77,7 +77,7 @@
     }
 
     private string GetText() {
-        var conversation = Message.Conversation;
+        var conversation = Message.Conversation!;
         using var sb = ZString.CreateStringBuilder();
         sb.AppendLine(conversation.Title);
         sb.AppendLine();

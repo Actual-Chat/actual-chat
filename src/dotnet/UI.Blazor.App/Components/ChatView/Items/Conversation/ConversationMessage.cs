@@ -1,20 +1,22 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
-public sealed class ConversationMessage(Conversation conversation): ChatMessage(conversation.Id.StartEntryLid)
+public sealed class ConversationMessage : ChatMessage
 {
-    public Conversation Conversation { get; } = conversation;
+    public ConversationMessage(Conversation conversation) : base(conversation.Id.StartEntryLid)
+        => Conversation = conversation;
 
     public override bool Equals(ChatMessage? other)
     {
         if (ReferenceEquals(null, other))
             return false;
+
         if (ReferenceEquals(this, other))
             return true;
 
         if (other is not ConversationMessage otherConversationMessage)
             return false;
 
-        return Conversation.VersionEquals(otherConversationMessage.Conversation)
+        return Conversation!.VersionEquals(otherConversationMessage.Conversation)
             && ReplacementKind == other.ReplacementKind
             && Date == other.Date
             && Flags == other.Flags;

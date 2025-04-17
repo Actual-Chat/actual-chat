@@ -13,8 +13,10 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public DateOnly Date { get; init; }
     public ChatMessageFlags Flags { get; init; }
     public ChatMessage? PreviousMessage { get; init; }
+    public Conversation? Conversation { get; init; }
     public bool ShowIndexDocId { get; init; }
     public string IndexDocId { get; init; } = "";
+    public virtual bool IsGroup => false;
 
     public bool IsReplacement
         => ReplacementKind != ChatMessageReplacementKind.None;

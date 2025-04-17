@@ -1,6 +1,39 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Events
 
+@* ReSharper disable once UnusedParameter.Local *@
+@code {
+    public static readonly RenderFragment<(ChatMessage Item, ChatContext Context)> RenderChatMessage = context => __builder => {
+        var item = context.Item;
+        var chatContext = context.Context;
+        if (item is ChatEntryMessage message) {
+            <ChatEntryMessageView ChatContext="@chatContext" Message="@message"/>
+        }
+        else if (item is ConversationMessage conversationMessage)
+        {
+            <ConversationMessageView ChatContext="@chatContext" Message="@conversationMessage" />
+        }
+        else if (item is ConversationHeader conversationHeader)
+        {
+            <ConversationHeaderView ChatContext="@chatContext" Header="@conversationHeader" />
+        }
+        else if (item is ConversationFooter conversationFooter)
+        {
+            <ConversationFooterView ChatContext="@chatContext" Footer="@conversationFooter" />
+        }
+        else if (item is ExpandedConversationMessage expandedConversationMessage) {
+            foreach (var childItem in expandedConversationMessage.Items) {
+                <div @key="@childItem.Key" class="item" data-key="@childItem.Key">
+                    @RenderChatMessage!((childItem, chatContext))
+                </div>
+            }
+        }
+        else if (item is ChatEntryAuthorGroup chatEntryGroup) {
+            <ChatEntryAuthorGroupView ChatContext="@chatContext" Message="@chatEntryGroup" />
+        }
+    };
+}
+
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     @key="@ChatId.Value"
@@ -13,22 +46,7 @@
     RequestDataOnParameterSet="true"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
-        @if(context is ChatEntryMessage message)
-        {
-            <ChatEntryMessageView ChatContext="@_chatContext" Message="@message"/>
-        }
-        else if(context is ConversationMessage conversationMessage)
-        {
-            <ConversationMessageView ChatContext="@_chatContext" Message="@conversationMessage" />
-        }
-        else if (context is ConversationHeader conversationHeader)
-        {
-            <ConversationHeaderView ChatContext="@_chatContext" Header="@conversationHeader" />
-        }
-        else if (context is ConversationFooter conversationFooter)
-        {
-            <ConversationFooterView ChatContext="@_chatContext" Footer="@conversationFooter" />
-        }
+        @RenderChatMessage((context, _chatContext))
     </Item>
     <SkeletonBatch>
         <chat-view-skeleton count="@context" />
