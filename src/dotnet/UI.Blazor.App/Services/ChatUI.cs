@@ -302,6 +302,16 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "chat",
             m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
 
+    public void DeleteThread(Chat.Chat chat)
+    {
+        if (!chat.Id.IsThread)
+            throw new ArgumentOutOfRangeException(nameof(chat), "Given chat should be a thread");
+
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true,
+            "thread",
+            m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
+    }
+
     public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "place",
             m => _ = DeleteOrLeavePlaceInternal(placeId, true, onBeforeExecuteCommand, m)));

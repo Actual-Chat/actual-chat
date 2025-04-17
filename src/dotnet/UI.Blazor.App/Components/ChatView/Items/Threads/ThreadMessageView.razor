@@ -111,6 +111,10 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = Message.Chat.Id;
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return null;
+
         var ownerName = "Unknown";
         var ownerAuthorIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (ownerAuthorIds.Count > 0) {

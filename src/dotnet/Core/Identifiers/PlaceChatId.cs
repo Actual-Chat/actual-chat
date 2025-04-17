@@ -30,7 +30,7 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Symbol LocalChatId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ulong ThreadId { get; }
+    public long ThreadId { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -59,7 +59,7 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
         this = new PlaceChatId(Format(placeId, localChatId), placeId, localChatId, 0, AssumeValid.Option);
     }
 
-    private PlaceChatId(Symbol id, PlaceId placeId, Symbol localChatId, ulong threadId, AssumeValid _)
+    private PlaceChatId(Symbol id, PlaceId placeId, Symbol localChatId, long threadId, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;

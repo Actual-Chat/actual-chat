@@ -252,15 +252,26 @@ public class Chats(IServiceProvider services) : IChats
             await ValidatePlaceChatChangeConstraints(placeId, chatDiff1).ConfigureAwait(false);
         }
         else {
-            var requiredPermissions = change.Remove
-                ? ChatPermissions.Owner
-                : ChatPermissions.EditProperties;
-            chat.Require().Rules.Permissions.Require(requiredPermissions);
-
-            if (change.IsUpdate(out var chatDiff2)) {
-                if (chatId.IsThread)
+            if (chatId.IsThread) {
+                if (change.IsUpdate(out var chatDiff2)) {
+                    chat.Require().Rules.Permissions.Require(ChatPermissions.EditProperties);
                     ValidateThreadChatChangeConstraints(chatDiff2);
+                }
+                else if (change.Kind is ChangeKind.Remove) {
+                    var parentChatId = chatId.Parent;
+                    var parentChat = await Get(session, parentChatId, cancellationToken).ConfigureAwait(false);
+                    parentChat.Require().Rules.Permissions.Require(ChatPermissions.Owner); // Thread can be removed only by parent chat owner.
+                }
                 else
+                    throw StandardError.Internal("Invalid ChangeKind");
+            }
+            else {
+                var requiredPermissions = change.Remove
+                    ? ChatPermissions.Owner
+                    : ChatPermissions.EditProperties;
+                chat.Require().Rules.Permissions.Require(requiredPermissions);
+
+                if (change.IsUpdate(out var chatDiff2))
                     await ValidatePlaceChatChangeConstraints(chat.Id.PlaceId, chatDiff2).ConfigureAwait(false);
             }
         }

@@ -47,7 +47,7 @@ public class DbChatThread : IHasId<string>, IHasVersion<long>, IRequirementTarge
 
         Id = id;
         ParentChatId = id.Parent;
-        ThreadId = id.ThreadId;
+        ThreadId = (ulong)id.ThreadId;
         CreatedAt = model.CreatedAt;
     }
 

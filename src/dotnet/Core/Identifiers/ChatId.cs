@@ -51,7 +51,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceId PlaceId => PlaceChatId.PlaceId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ulong ThreadId => Kind switch {
+    public long ThreadId => Kind switch {
         ChatKind.Group => GroupChatId.ThreadId,
         ChatKind.Place => PlaceChatId.ThreadId,
         _ => 0,

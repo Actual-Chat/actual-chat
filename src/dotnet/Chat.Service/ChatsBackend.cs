@@ -874,9 +874,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Where(r => r.ChatId == chatId)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-            // Remove authors
-            var removeAuthorsCommand = new AuthorsBackend_Remove(chatId, AuthorId.None, UserId.None);
-            await Commander.Call(removeAuthorsCommand, false, cancellationToken).ConfigureAwait(false);
+            if (!chatId.IsThread) {
+                // Remove authors
+                var removeAuthorsCommand = new AuthorsBackend_Remove(chatId, AuthorId.None, UserId.None);
+                await Commander.Call(removeAuthorsCommand, false, cancellationToken).ConfigureAwait(false);
+            }
+            else {
+                // Thread chat does not own authors. It uses authors from the parent chat.
+            }
             dbContext.Remove(dbChat);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -1702,6 +1707,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var (chat, oldChat, kind) = eventCommand;
+        if (chat.Id.IsThread && kind == ChangeKind.Remove) {
+            var parentChatId = chat.Id.Parent;
+            var startThreadEntryId = new TextEntryId(parentChatId, chat.Id.ThreadId, AssumeValid.Option);
+            var chatEntry = await this.GetEntry(startThreadEntryId, cancellationToken).ConfigureAwait(false);
+            if (chatEntry is not null && chatEntry.IsThreadStartEntry) {
+                var markChatEntryAsRemoved = new ChatsBackend_ChangeEntry(startThreadEntryId,
+                    null,
+                    Change.Update(new ChatEntryDiff { IsRemoved = true }));
+                await Commander.Call(markChatEntryAsRemoved, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
         if (kind == ChangeKind.Remove || chat.IsSummarized == false)
             // TODO(AK): Check if we need any events to stop flow
             return;

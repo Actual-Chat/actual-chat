@@ -29,7 +29,7 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Symbol ChatId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ulong ThreadId { get; }
+    public long ThreadId { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -52,7 +52,7 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
     public GroupChatId(Generate _)
         => this = new GroupChatId(IdGenerator.Next());
 
-    private GroupChatId(Symbol id, Symbol chatId, ulong threadId, AssumeValid _)
+    private GroupChatId(Symbol id, Symbol chatId, long threadId, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
@@ -95,10 +95,10 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
 
         var sRawChatId = s;
         var rawChatIdLength = s.LastIndexOf(ActualChat.ChatId.ThreadIdSeparator);
-        ulong threadId = 0;
+        long threadId = 0;
         if (rawChatIdLength > -1) {
             var sThreadId = s.AsSpan().Slice(rawChatIdLength + 1);
-            if (ulong.TryParse(sThreadId, CultureInfo.InvariantCulture, out threadId))
+            if (long.TryParse(sThreadId, CultureInfo.InvariantCulture, out threadId))
                 sRawChatId = s.Substring(0, rawChatIdLength);
         }
 

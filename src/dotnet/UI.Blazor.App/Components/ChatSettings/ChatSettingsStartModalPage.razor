@@ -140,6 +140,12 @@
                 </TileItem>
             }
         }
+        else if (m.CanRemoveThread) {
+            <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteThreadClick(m.Chat))">
+                <Icon><i class="icon-trash02"></i></Icon>
+                <Content>Delete thread</Content>
+            </TileItem>
+        }
     </div>
 </Form>
 
@@ -210,7 +216,16 @@
         var chatId = ChatId;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null || !chat.Rules.CanEditProperties())
+        if (chat == null)
+            return new ComputedModel { Chat = null };
+
+        var isThread = chat.Id.IsThread;
+        if (isThread) {
+            var parentChat = await Chats.Get(Session, chatId.Parent, cancellationToken).ConfigureAwait(false);
+            return new ComputedModel { Chat = chat, CanRemoveThread = parentChat?.Rules.IsOwner() ?? false };
+        }
+
+        if (!chat.Rules.CanEditProperties())
             return new() { Chat = chat };
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
@@ -218,6 +233,7 @@
         _placeId = chat.Id.PlaceChatId.PlaceId;
         var isPlace = !_placeId.IsNone;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken);
+
         return new() {
             Chat = chat,
             IsOwner = chat.Rules.IsOwner(),
@@ -249,6 +265,9 @@
 
     private void OnDeleteChatClick(Chat chat)
         => ChatUI.DeleteChat(chat);
+
+    private void OnDeleteThreadClick(Chat chat)
+        => ChatUI.DeleteThread(chat);
 
     private void OnArchiveChatClick(Chat chat)
         => ChatUI.ArchiveChat(chat);
@@ -307,5 +326,6 @@
         public bool IsPlace { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsAdmin { get; init; }
+        public bool CanRemoveThread { get; init; }
     }
 }
