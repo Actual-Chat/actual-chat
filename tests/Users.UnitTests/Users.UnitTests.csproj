@@ -5,4 +5,10 @@
     <ProjectReference Include="..\..\src\dotnet\Users.Service\Users.Service.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Data\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
