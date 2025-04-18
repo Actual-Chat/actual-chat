@@ -35,7 +35,6 @@
     @apply overflow-hidden;
 }
 .left-place-search-overlay-panel .tab-panel .btn-group {
-    @apply gap-x-4;
     @apply py-0 px-2;
     @apply overflow-x-auto;
     scrollbar-width: none;

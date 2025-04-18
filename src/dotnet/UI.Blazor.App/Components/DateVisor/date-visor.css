@@ -4,7 +4,7 @@
     @apply bg-transparent;
     @apply duration-500;
     filter: opacity(0);
-    transition-property: display, filter, -webkit-filter;
+    transition-property: display, filter, -webkit-filter, transform, -webkit-transform;
     transition-behavior: allow-discrete;
 }
 .date-visor-wrapper.show {
@@ -26,4 +26,6 @@
     @apply bg-01;
     @apply text-caption-6 text-01;
     @apply drop-shadow-lg;
+    transition-property: transform;
+    transition-duration: 300ms;
 }

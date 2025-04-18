@@ -5,6 +5,9 @@
     @apply md:select-text;
     @apply translate-z-0;
 }
+.message-wrapper {
+    @apply rounded-lg;
+}
 body.hoverable .message-wrapper:hover {
     @apply bg-message-hover;
     @apply border-message-hover;
@@ -123,6 +126,17 @@ body.hoverable .message-wrapper.replied-message:hover,
 body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply border-l-2 border-replied-message-border;
     @apply bg-replied-message-hover;
+}
+
+.message-wrapper.selected-message,
+.message-wrapper.mention.selected-message {
+    @apply border-l-2 border-selected-message-border;
+    @apply bg-selected-message;
+}
+body.hoverable .message-wrapper.selected-message:hover,
+body.hoverable .message-wrapper.mention.selected-message:hover {
+    @apply border-l-2 border-selected-message-border;
+    @apply bg-selected-message-hover;
 }
 
 .chat-message-timestamp,
@@ -555,7 +569,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 }
 
 .hover-menu-wrapper {
-    @apply absolute right-0 z-10;
+    @apply absolute right-0 -top-2 z-10;
     @apply -flex-x;
     @apply h-full w-4;
 }
@@ -572,6 +586,10 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply flex-none flex-x items-center justify-center;
     @apply w-8 h-8;
     @apply rounded-full;
+}
+.message-hover-menu-new i,
+.system-entry .message-hover-menu-new i {
+    @apply text-xl;
 }
 
 .chat-view.virtual-list .c-virtual-container .chat-message-group {

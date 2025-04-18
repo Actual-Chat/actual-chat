@@ -250,12 +250,6 @@ body.hoverable .chat-list:not(.chat-list-active) .navbar-item:hover .navbar-item
 }
 
 /* Tabs */
-.navbar-chats .tab-panel .tab-panel-tabs,
-.navbar-chats .tab-panel .tab-panel-tabs .btn-group,
-.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container,
-.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .btn.tab-btn {
-    @apply min-h-10 max-h-10;
-}
 .navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .c-bottom-hill {
     @apply min-h-1 -mt-1;
 }

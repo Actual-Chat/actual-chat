@@ -32,7 +32,7 @@
     var ownMessageClass = m.IsOwnMessage ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
-    var selectedClass = m.IsSelected ? "replied-message" : "";
+    var selectedClass = m.IsSelected ? "selected-message" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
     var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {marginClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
 
@@ -258,6 +258,7 @@
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private Features Features => Hub.Features();
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
@@ -460,11 +461,15 @@
         return hasAnyMentions && MarkupValidator.ContainsMention(new MentionId(authorId, AssumeValid.Option)).IsValid(markup);
     }
 
-    private void ShowHoverMenu()
-        => _messageHoverMenuNew?.Show();
+    private void ShowHoverMenu() {
+        if (!BrowserInfo.IsTouchCapable)
+            _messageHoverMenuNew?.Show();
+    }
 
-    private void HideHoverMenu()
-        => _messageHoverMenuNew?.Hide();
+    private void HideHoverMenu() {
+        if (!BrowserInfo.IsTouchCapable)
+            _messageHoverMenuNew?.Hide();
+    }
 
     private (List<TextEntryAttachment>, List<TextEntryAttachment>) GetOrderedAttachmentList(ChatEntry entry) {
         var mediaList = new List<TextEntryAttachment>();
