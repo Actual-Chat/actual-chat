@@ -5,7 +5,7 @@
 @{
 #pragma warning disable IL2026
 
-    // Console.Out.WriteLine("VirtualList.Render(" + Identity + ") = "  + Data.KeyRange + " BUT ["+ State?.Value.KeyRange+"]!" + State + " @" + RenderIndex + " #" + GetHashCode() + " == " + (_initialData == null));
+    // Console.Out.WriteLine("VirtualList.Render(" + Identity + ") = "  + Data.KeyRange + " BUT ["+ State?.Value.KeyRange+"]!" + State + " @" + RenderIndex + " #" + Data.GetHashCode() + " == " + (_initialData == null));
     var renderIndex = RenderIndex++;
 
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
@@ -16,6 +16,12 @@
         ? "hide"
         : "";
 
+    var spacerStyleDisplay = DefaultEdge == VirtualListEdge.End
+        ? "none"
+        : "flex";
+    var endSpacerStyleDisplay = DefaultEdge == VirtualListEdge.End
+        ? "flex"
+        : "none";
     var count = data.Items.Sum(item => item is IVirtualListGroup group ? group.Count : 1);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
@@ -60,7 +66,8 @@
     <div @key="@VirtualListSpecialKeys.Wrapper"
          class="c-wrapper">
         <div @key="@VirtualListSpecialKeys.Spacer"
-             class="c-spacer-start">
+             class="c-spacer-start"
+             style="display: @spacerStyleDisplay">
             <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
         </div>
 
@@ -80,7 +87,8 @@
         </ul>
 
         <div @key="@VirtualListSpecialKeys.EndSpacer"
-             class="c-spacer-end">
+             class="c-spacer-end"
+             style="display: @endSpacerStyleDisplay">
             <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
         </div>
 
@@ -89,5 +97,4 @@
             &nbsp;
         </div>
     </div>
-
 </div>

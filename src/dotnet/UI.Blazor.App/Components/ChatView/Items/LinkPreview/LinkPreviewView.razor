@@ -79,13 +79,9 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
-    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private SelectionUI SelectionUI => Hub.SelectionUI;
-    private IChats Chats => Hub.Chats;
-    private IPlaces Places => Hub.Places;
-    private IAuthors Authors => Hub.Authors;
-    private Session Session => Hub.Session();
+    private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public LinkPreview LinkPreview { get; set; } = null!;
@@ -134,38 +130,12 @@
         if (uri == null)
             return Model.None;
 
-        var model = new Model { ChatEntry = chatEntry, Preview = linkPreview, Uri = uri };
-        return LocalUrl.FromAbsolute(linkPreview.Url, UrlMapper) is { } localUrlOpt
-            ? model with { LocalLink = await ComputeLocalLinkModel(localUrlOpt.Value, cancellationToken).ConfigureAwait(false) }
-            : model;
-    }
-
-    private async Task<LocalLinkPreview.Model> ComputeLocalLinkModel(LocalUrl localUrl, CancellationToken cancellationToken)
-    {
-        var localLinkModel = new LocalLinkPreview.Model(localUrl);
-        if (localUrl.IsChatCompat(out var chatId, out var entryLid)) {
-            // Chat message link
-            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-            if (chat is not null) {
-                localLinkModel = localLinkModel with { Chat = chat };
-                if (entryLid > 0) {
-                    var textEntryId = new TextEntryId(chatId, entryLid, AssumeValid.Option);
-                    var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
-                    localLinkModel = localLinkModel with { Entry = entry };
-                    if (entry is not null) {
-                        var authorId = entry.AuthorId;
-                        var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
-                        localLinkModel = localLinkModel with { Author = author };
-                    }
-                }
-            }
-            var placeId = chatId.PlaceChatId.PlaceId;
-            if (!placeId.IsNone) {
-                var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
-                localLinkModel = localLinkModel with { Place = place };
-            }
-        }
-        return localLinkModel;
+        return new Model {
+            ChatEntry = chatEntry,
+            Preview = linkPreview,
+            Uri = uri,
+            LocalLink = await LinkPreviewUI.TryGetLocal(linkPreview.Url, cancellationToken),
+        };
     }
 
     // Nested types
@@ -176,6 +146,6 @@
         public ChatEntry ChatEntry { get; init; } = null!;
         public LinkPreview Preview { get; init; } = null!;
         public Uri Uri { get; init; } = null!;
-        public LocalLinkPreview.Model? LocalLink { get; init; }
+        public LocalLinkInfo? LocalLink { get; init; }
     }
 }

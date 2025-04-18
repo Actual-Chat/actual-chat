@@ -161,7 +161,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
         return ComputedTest.When(async ct => {
                 var language = await Translations.GetLanguage(Tester.Session, id, ct).Require();
-                language.Languages.Should().BeEquivalentTo(expectedLanguages, "for #{0}", id);
+                language.Languages.Should().BeEquivalentTo(expectedLanguages, "expected {0} for #{1}", sExpectedLanguages, id);
                 return language.Languages;
             },
             (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20)))

@@ -124,7 +124,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     protected override bool ShouldRender()
-        => !ReferenceEquals(Data, LastData) // Data changed
+        => !Data.IsSimilarTo(LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
             || LastReportedItemVisibility.VisibleKeys.Count == 0; // OR there are no visible items
 
@@ -186,7 +186,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             var end = query1.MoveRange.End;
             var startExpand = start < 0 ? Math.Min(start, -MinExpand) : start;
             var endExpand = end > 0 ? Math.Max(end, MinExpand) : end;
-            return new VirtualListDataQuery(query1.KeyRange, query1.VirtualRange, new Range<int>(startExpand, endExpand));
+            return new VirtualListDataQuery(query1.KeyRange, query1.VirtualRange, new Range<int>(startExpand, endExpand)) {
+                ExpectedCount = query1.ExpectedCount,
+            };
         }
     }
 }

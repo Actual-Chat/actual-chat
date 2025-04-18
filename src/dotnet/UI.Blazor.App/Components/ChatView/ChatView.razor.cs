@@ -371,7 +371,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     ItemVisibilityState = ItemVisibility.Value,
                 };
         }
-        else if (((query.IsNone && !isLoadLimitReached) || (!query.IsNone && !isQueryFulfilled)) && !hasAllItems) {
+        else if (!isQueryFulfilled && !isLoadLimitReached && !hasAllItems) {
             // We need to load more data to fulfill the query
             var expandedDataQuery = await ChatUI
                 .ExpandDataQuery(chatId,

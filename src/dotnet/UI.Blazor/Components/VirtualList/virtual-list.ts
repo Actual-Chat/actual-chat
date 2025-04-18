@@ -1,4 +1,4 @@
-import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
+import { debounce, delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
@@ -462,9 +462,9 @@ export class VirtualList {
 
             const item = this.items.get(key);
             if (item) {
-                if (item.size < 0 && size == 0) {
+                if (size == 0)
                     itemRefsWithWrongSize.push(entry.target as HTMLElement);
-                } else {
+                else {
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                     const oldSize = item.size;
@@ -985,10 +985,23 @@ export class VirtualList {
     }
 
     private getLastItemRef(): HTMLElement | null {
-        const itemRef = this.containerRef.lastElementChild;
-        if (itemRef == null || !itemRef.classList.contains('item'))
+        let ref = this.containerRef.lastElementChild;
+        if (ref == null)
             return null;
-        return itemRef as HTMLElement;
+
+        if (ref.classList.contains('item'))
+            return ref as HTMLElement;
+
+        if (ref.classList.contains('group')) {
+            while (ref) {
+                ref = ref.lastElementChild;
+                if (ref.classList.contains('item'))
+                    return ref as HTMLElement;
+            }
+            return ref.lastElementChild as HTMLElement;
+        }
+
+        return null;
     }
 
     private getLastItemKey(): string | null {
@@ -1269,7 +1282,7 @@ export class VirtualList {
                     }
 
                     // Adjust spacer size to prevent overlap with container
-                    endSpacerSize = -offset;
+                    endSpacerSize = -offset - endAnchorSize;
                     delayedEndSpacerSize = endSpacerSize;
                     if (rs.hasVeryFirstItem) {
                         spacerSize = 0;
@@ -1436,22 +1449,40 @@ export class VirtualList {
 
         const unmeasuredItems = [...this.unmeasuredItems];
         let itemsWereMeasured = false;
+        const removeUnmeasuredItem = (key: string): void => {
+            const wasRemoved = this.unmeasuredItems.delete(key);
+            itemsWereMeasured ||= wasRemoved;
+        };
+
         for (const key of unmeasuredItems) {
             const item = this.items.get(key);
-            if (item && item.size < 0) {
-                const itemRef = this.getItemRef(key);
-                if (itemRef) {
-                    const itemRect = itemRef.getBoundingClientRect();
-                    const rowGap = this.rowGap;
-                    const size =  Math.ceil(itemRect.height + rowGap);
-                    item.size = size;
-                    item.range = null;
-                    this.sizeCache.set(key, size);
-                } else
-                    this.items.delete(key);
+            if (!item) {
+                removeUnmeasuredItem(key);
+                continue;
             }
-            const hasRemoved = this.unmeasuredItems.delete(key);
-            itemsWereMeasured ||= hasRemoved;
+
+            const itemSizeIsValid = item.size > 0;
+            if (itemSizeIsValid) {
+                removeUnmeasuredItem(key);
+                continue;
+            }
+
+            const itemRef = this.getItemRef(key);
+            if (!itemRef) {
+                this.items.delete(key);
+                removeUnmeasuredItem(key);
+                continue;
+            }
+
+            const boundingRect = itemRef.getBoundingClientRect();
+            const size = Math.ceil(boundingRect.height + this.rowGap);
+
+            if (size > 0) {
+                item.size = size;
+                item.range = null;
+                this.sizeCache.set(key, size);
+                removeUnmeasuredItem(key);
+            }
         }
 
         // recalculate item range as some elements were updated
@@ -1799,16 +1830,8 @@ export class VirtualList {
         const now = Date.now();
         if (now - this.renderCompletedAt < 500 && this.lastQuery.isNone)
             return this.lastQuery; // Do not request data during the first second after render caused by updated data (not scroll)
-        //
-        // if (now - this.renderCompletedAt < UpdateViewportInterval)
-        //     return this.lastQuery; // Do not request data too often
 
         const viewportSize = viewport.size;
-        const lastQuerySide = this.lastQuery.moveRange.isEmpty
-            ? 'none'
-            : (this.lastQuery.moveRange.start >= 0 && this.lastQuery.moveRange.end >= 0
-                ? 'end'
-                : 'start');
         const alreadyLoadedFromStart = viewport.start - alreadyLoaded.start;
         const alreadyLoadedTillEnd = alreadyLoaded.end - viewport.end;
         const loadZoneTrigger = viewportSize * Math.max(0.5, this.expandMultiplier * 0.5);
