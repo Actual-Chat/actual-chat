@@ -2,66 +2,61 @@
 @inherits ComputedRenderStateComponent<TranslatedMessage.Model>
 @{
     var m = State.Value;
-    Log.LogInformation("!!! #{Id} <<<{Content}>>> ||| <<<{Markup}>>>", m.Entry.Id, m.Entry.Content, m.Markup.Format()); // TODO: remove before PR
     _rendered = m;
 }
 
-<MarkupView Markup="@m.Markup"/>
-@* TODO: remove before PR !!!!!!!!!!!!!! *@
-<span class="px-2">#@m.Entry.LocalId</span>
-<span>@m.Entry.Content</span>
-<span class="px-2">#@m.Message.Id</span>
-<span>#@m.Message.Entry.LocalId</span>
+<MarkupView Markup="@m.Markup" />
 
 @code {
     private Model _rendered = Model.None;
     private ChatUIHub Hub => ChatContext.Hub;
-    private ITranslations Translations => Hub.Translations;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private Features Features => Hub.Features();
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private ILogger Log => Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [CascadingParameter] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByRefParameterComparer))]
     public Markup Markup { get; set; } = null!;
 
     protected override bool ShouldRender()
         => !ReferenceEquals(_rendered, State.Value)
-           || _rendered.Entry.Id != State.Value.Entry.Id
-           || _rendered.Entry.ContentHash != State.Value.Entry.ContentHash
-           || _rendered.Markup != State.Value.Markup;
+            && (_rendered.Message.Entry.ContentHash != State.Value.Message.Entry.ContentHash
+                || _rendered.Markup != State.Value.Markup);
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions<Model>(GetType(),
-            t => new ComputedState<Model>.Options {
-                InitialValue = new(Markup, Entry, Message),
-                Category = GetStateCategory(t),
-            });
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        // Do not use cached options as we need to pass Message and Markup parameters.
+        var initialData = new Model(Markup, Message);
+        return new() {
+            InitialValue = initialData, // show original text immediately
+            Category = GetStateCategory(GetType()),
+        };
+    }
+
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var entry = Entry;
-        var markup = Markup;
         var message = Message;
+        var markup = Markup;
+        var entry = message.Entry;
         if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-            return new(markup, entry, message);
+            return new(markup, message);
 
         var isOn = await TranslationUI.IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) ?? false;
         if (!isOn)
-            return new(markup, entry, message);
+            return new(markup, message);
 
-        if (!await TranslationUI.NeedsTranslation(entry.Id, cancellationToken).ConfigureAwait(false))
-            return new(markup, entry, message);
+        var needsTranslation = await TranslationUI.NeedsTranslation(entry.Id, cancellationToken).ConfigureAwait(false);
+        if (!needsTranslation)
+            return new(markup, message);
 
         var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
-        return new Model(translation == null ? markup : MarkupParser.Parse(translation.Content), entry, message);
+        return new (translation == null ? markup : MarkupParser.Parse(translation.Content), message);
     }
 
     // Nested types
 
-    public sealed record Model(Markup Markup, ChatEntry Entry, ChatEntryMessage Message) {
-        public static readonly Model None = new(Markup.Empty, ChatEntry.Loading, null!);
+    public sealed record Model(Markup Markup, ChatEntryMessage Message) {
+        public static readonly Model None = new(Markup.Empty, new (ChatEntry.Loading));
     }
 }

@@ -28,7 +28,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!Settings.IsTranslationEnabled)
             return null;
 
-        await Task.Delay(3000, cancellationToken).ConfigureAwait(false); // TODO: remove before PR !!!!!!!
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (!NeedsTranslate(entry, translation))
             return translation;
@@ -164,7 +163,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!NeedsTranslate(entry, translation))
             return translation;
 
-        await Task.Delay(3000, cancellationToken).ConfigureAwait(false); // TODO:  !!!!!!!!!!!!!!! remove before PR!!!!!!!!!!
         var context = await GetTranslationContext(entry.Id, cancellationToken).ConfigureAwait(false);
         var translatedText = await Translator.Translate(
             entry.Content,
