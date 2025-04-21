@@ -53,7 +53,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
 
         var chatThreads = services.GetRequiredService<IChatThreads>();
         await TestExt.When(async () => {
-            var availableThreads = await chatThreads.ListIds(session, parentChat.Id, cancellationToken);
+            var availableThreads = await chatThreads.ListIdsForChat(session, parentChat.Id, cancellationToken);
             availableThreads.Should().HaveCount(1);
             availableThreads[0].Id.Should().Be(chat.Id);
         }, TimeSpan.FromSeconds(10));
