@@ -243,6 +243,9 @@ export class VirtualList {
                 debugLog?.log(`renderStartedAt: `, time, value);
                 this.renderStartedAt = time;
                 origSetAttribute.call(this.renderIndexRef, qualifiedName, value);
+                fastRaf(() => {
+                    void this.endRender();
+                });
             } catch (e) {
                 warnLog?.log('renderIndex.setAttribute: failed', e);
             }
@@ -440,7 +443,8 @@ export class VirtualList {
 
 
         this.updateOrderedItems();
-        void this.endRender();
+        if (this.renderState.renderIndex <= 0)
+            void this.endRender();
     };
 
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
@@ -1250,23 +1254,25 @@ export class VirtualList {
 
                             let delayedScrollTop = 0;
                             // restore scroll position with delay to prevent scroll jump, double RAF is required there
-                            fastRaf(() => {
-                                fastRaf({
-                                    read: () => {
-                                        const viewportTopOffset = interactivePivot.offset;
-                                        const interactiveItemOffset = isSticky
-                                            ? getOriginalPosition(interactiveItemRef)
-                                            : interactiveItemRef.getBoundingClientRect().top;
-                                        const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
-                                        const scrollTop = this.ref.scrollTop;
-                                        delayedScrollTop = scrollTop + dTopOffset;
-                                    },
-                                    write: () => {
+                            const reRestoreOptions = {
+                                read: () => {
+                                    const viewportTopOffset = interactivePivot.offset;
+                                    const interactiveItemOffset = isSticky
+                                        ? getOriginalPosition(interactiveItemRef)
+                                        : interactiveItemRef.getBoundingClientRect().top;
+                                    const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                                    const scrollTop = this.ref.scrollTop;
+                                    delayedScrollTop = scrollTop + dTopOffset;
+                                },
+                                write: () => {
+                                    this.ref.scrollTop = delayedScrollTop;
+                                    reRestoreOptions.write = () => {
                                         this.ref.scrollTop = delayedScrollTop;
-                                    }
-                                });
-                            });
-
+                                    };
+                                    fastRaf(reRestoreOptions);
+                                }
+                            };
+                            fastRaf(reRestoreOptions);
                         }
                         else
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
@@ -1325,22 +1331,25 @@ export class VirtualList {
 
                             let delayedScrollTop = 0;
                             // restore scroll position with delay to prevent scroll jump, double RAF is required there
-                            fastRaf(() => {
-                                fastRaf({
-                                    read: () => {
-                                        const viewportTopOffset = interactivePivot.offset;
-                                        const interactiveItemOffset = isSticky
-                                            ? getOriginalPosition(interactiveItemRef)
-                                            : interactiveItemRef.getBoundingClientRect().top;
-                                        const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
-                                        const scrollTop = this.ref.scrollTop;
-                                        delayedScrollTop = scrollTop + dTopOffset;
-                                    },
-                                    write: () => {
+                            const reRestoreOptions = {
+                                read: () => {
+                                    const viewportTopOffset = interactivePivot.offset;
+                                    const interactiveItemOffset = isSticky
+                                        ? getOriginalPosition(interactiveItemRef)
+                                        : interactiveItemRef.getBoundingClientRect().top;
+                                    const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
+                                    const scrollTop = this.ref.scrollTop;
+                                    delayedScrollTop = scrollTop + dTopOffset;
+                                },
+                                write: () => {
+                                    this.ref.scrollTop = delayedScrollTop;
+                                    reRestoreOptions.write = () => {
                                         this.ref.scrollTop = delayedScrollTop;
-                                    }
-                                });
-                            });
+                                    };
+                                    fastRaf(reRestoreOptions);
+                                }
+                            };
+                            fastRaf(reRestoreOptions);
                         }
                         else
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
@@ -1515,7 +1524,7 @@ export class VirtualList {
 
         let cornerstoneItemIndex = -1;
         let cornerstoneItem: VirtualListItem = null;
-        if (this.defaultEdge === VirtualListEdge.End && !rs.hasVeryLastItem) {
+        if (this.defaultEdge === VirtualListEdge.End) {
             cornerstoneItemIndex = orderedItems.length - 1;
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
             // Find first one from the end
@@ -1524,7 +1533,7 @@ export class VirtualList {
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
             }
         }
-        else if (this.defaultEdge === VirtualListEdge.Start && !rs.hasVeryFirstItem) {
+        else if (this.defaultEdge === VirtualListEdge.Start) {
             cornerstoneItemIndex = 0;
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
             // Find first one from the start
@@ -1555,31 +1564,32 @@ export class VirtualList {
         }
 
         // Adjust item ranges according to default edge invariant
-        if (this.defaultEdge === VirtualListEdge.End) {
-            const end = orderedItems[orderedItems.length - 1].range.end - this.rowGap;
-            if (end > 0) {
-                cornerstoneItemIndex = orderedItems.length - 1;
-                cornerstoneItem = orderedItems[cornerstoneItemIndex];
-                cornerstoneItem.range = new NumberRange(0 - cornerstoneItem.size, 0);
-                let prevItem = cornerstoneItem;
-                for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
-                    const item = orderedItems[i];
-                    item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
-                    prevItem = item;
+        if (!rs.query.isNone) {
+            if (this.defaultEdge === VirtualListEdge.End) {
+                const end = orderedItems[orderedItems.length - 1].range.end - this.rowGap;
+                if (end > 0) {
+                    cornerstoneItemIndex = orderedItems.length - 1;
+                    cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                    cornerstoneItem.range = new NumberRange(0 - cornerstoneItem.size, 0);
+                    let prevItem = cornerstoneItem;
+                    for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
+                        const item = orderedItems[i];
+                        item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+                        prevItem = item;
+                    }
                 }
-            }
-        }
-        else {
-            const start = orderedItems[0].range.start + this.rowGap;
-            if (start < 0) {
-                cornerstoneItemIndex = 0;
-                cornerstoneItem = orderedItems[cornerstoneItemIndex];
-                cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
-                let prevItem = cornerstoneItem;
-                for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
-                    const item = orderedItems[i];
-                    item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
-                    prevItem = item;
+            } else {
+                const start = orderedItems[0].range.start + this.rowGap;
+                if (start < 0) {
+                    cornerstoneItemIndex = 0;
+                    cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                    cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
+                    let prevItem = cornerstoneItem;
+                    for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
+                        const item = orderedItems[i];
+                        item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+                        prevItem = item;
+                    }
                 }
             }
         }
