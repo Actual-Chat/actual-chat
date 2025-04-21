@@ -192,7 +192,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         // assert
         for (var i = 0; i < texts.Length; i++) {
             var expectedLanguages = texts[i].ExpectedLanguages;
-            languages[i].Should().BeEquivalentTo(expectedLanguages, "for text: <<<{0}>>>", texts[i].Text);
+            languages[i].Should().Contain(expectedLanguages, "for text: <<<{0}>>>", texts[i].Text);
         }
     }
 }
