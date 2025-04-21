@@ -1,34 +1,24 @@
-using System.ComponentModel;
 using MemoryPack;
-using ActualLab.Fusion.Blazor;
 using ActualLab.Generators;
-using ActualLab.Identifiers.Internal;
 
 namespace ActualChat;
 
 #pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<GroupChatId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<GroupChatId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<GroupChatId>))]
-[ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
+public sealed class GroupChatId : IEquatable<GroupChatId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<GroupChatId>();
     internal static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
-    public static GroupChatId None => default;
+    public static GroupChatId None { get; }
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
-    // Parsed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol ChatId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    static GroupChatId()
+        => None = new (Symbol.Empty, AssumeValid.Option);
+
+    public GroupChatId? ParentChatId { get; }
     public long ThreadId { get; }
 
     // Computed
@@ -38,27 +28,34 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsThread => ThreadId > 0;
-    public ChatId GetThreadParentOrSelf() => !IsThread ? this : new GroupChatId(ChatId, ChatId, 0, AssumeValid.Option);
+    public ChatId GetThreadParentOrSelf() => IsThread ? ParentChatId! : this;
 
     internal static GroupChatId Group(string chatId)
-        => new (chatId, chatId, 0, AssumeValid.Option);
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public GroupChatId(Symbol id) => this = Parse(id);
-    public GroupChatId(string? id) => this = Parse(id);
-    public GroupChatId(string? id, ParseOrNone _) => ParseOrNone(id);
+        => new (chatId, AssumeValid.Option);
 
     public GroupChatId(Generate _)
-        => this = new GroupChatId(IdGenerator.Next());
-
-    private GroupChatId(Symbol id, Symbol chatId, long threadId, AssumeValid _)
+        : this(IdGenerator.Next(), AssumeValid.Option)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
+    }
+
+    private GroupChatId(Symbol id, AssumeValid _)
+    {
         Id = id;
-        ChatId = chatId;
+        ThreadId = 0;
+        ParentChatId = null;
+    }
+
+    private GroupChatId(Symbol id, GroupChatId parentChatId, long threadId, AssumeValid _)
+    {
+        if (id.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(id));
+        if (parentChatId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(parentChatId));
+        if (threadId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(threadId));
+
+        Id = id;
+        ParentChatId = parentChatId;
         ThreadId = threadId;
     }
 
@@ -70,7 +67,7 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
 
     // Equality
 
-    public bool Equals(GroupChatId other) => Id == other.Id;
+    public bool Equals(GroupChatId? other) => other is not null && Id == other.Id;
     public override bool Equals(object? obj) => obj is GroupChatId other && Equals(other);
     public override int GetHashCode() => Id.GetHashCode();
     public static bool operator ==(GroupChatId left, GroupChatId right) => left.Equals(right);
@@ -85,30 +82,48 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
 
     public static bool TryParse(string? s, out GroupChatId result)
     {
-        result = default;
+        result = None;
         if (s.IsNullOrEmpty())
             return true; // None
 
         if (s.Length < 6)
             return false;
 
-        var sRawChatId = s;
-        var rawChatIdLength = s.LastIndexOf(ActualChat.ChatId.ThreadIdSeparator);
-        long threadId = 0;
-        if (rawChatIdLength > -1) {
-            var sThreadId = s.AsSpan().Slice(rawChatIdLength + 1);
-            if (long.TryParse(sThreadId, CultureInfo.InvariantCulture, out threadId))
-                sRawChatId = s.Substring(0, rawChatIdLength);
-        }
+        var span = s.AsSpan();
+        List<long>? threadIds = null;
+        while (true) {
+            var threadIdIndex = span.LastIndexOf(ActualChat.ChatId.ThreadIdSeparator);
+            if (threadIdIndex < 0)
+                break;
 
-        if (sRawChatId.Length < 6)
+            var sThreadId = span.Slice(threadIdIndex + 1);
+            if (!long.TryParse(sThreadId, CultureInfo.InvariantCulture, out var threadId))
+                break;
+
+            threadIds ??= new List<long>();
+            threadIds.Insert(0, threadId);
+            span = span.Slice(0, threadIdIndex);
+        }
+        if (span.Length < 6)
             return false;
 
+        var sRawChatId = span.ToString();
         if (!(Alphabet.AlphaNumeric.IsMatch(sRawChatId) || Constants.Chat.SystemChatIds.Contains(sRawChatId)))
             return false;
 
         // Group chat ID
-        result = new GroupChatId(s, sRawChatId, threadId, AssumeValid.Option);
+        result = new GroupChatId(sRawChatId, AssumeValid.Option);
+        if (threadIds is null)
+            return true;
+
+        foreach (var threadId in threadIds)
+            result = result.CreateThreadId(threadId);
         return true;
+    }
+
+    private GroupChatId CreateThreadId(long threadId)
+    {
+        var s = Value + ActualChat.ChatId.ThreadIdSeparator + threadId.ToInvariantString();
+        return new GroupChatId(s, this, threadId, AssumeValid.Option);
     }
 }

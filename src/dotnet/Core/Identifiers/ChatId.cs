@@ -20,7 +20,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatId>();
 
-    public static ChatId None => default;
+    public static ChatId None { get; } = new ChatId(AssumeValid.Option);
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
@@ -31,7 +31,7 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceChatId PlaceChatId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public GroupChatId GroupChatId { get; }
+    public GroupChatId GroupChatId { get; } = GroupChatId.None;
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -112,6 +112,15 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
         PlaceChatId = placeChatId;
     }
 
+    private ChatId(AssumeValid _)
+    {
+        // NOTE(DF): This constructor should be used to create None instance only.
+        Id = "";
+        GroupChatId = GroupChatId.None;
+        PeerChatId = PeerChatId.None;
+        PlaceChatId = PlaceChatId.None;
+    }
+
     // Helpers
 
     public bool IsPeerChat(out PeerChatId peerChatId)
@@ -180,7 +189,6 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
 
     public ChatId CreateThreadId(long threadId)
     {
-        EnsureNonThread();
         if (Kind is not (ChatKind.Group or ChatKind.Place))
             throw StandardError.NotSupported($"{Kind} chats do not support threads");
         return Parse(Value + ThreadIdSeparator + threadId.ToInvariantString());
