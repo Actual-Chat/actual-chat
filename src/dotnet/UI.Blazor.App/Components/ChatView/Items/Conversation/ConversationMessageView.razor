@@ -11,21 +11,23 @@
     var cls = $"conversation-message message-wrapper {openClass}";
 }
 <div class="@cls">
+    <CascadingValue Value="@_fakeEntry" IsFixed="true">
     <div class="c-details">
         <div class="c-summary">
             <ConversationMessageHeader Title="@title" MessageCount="@messageCount" TitleClick="@ToggleDetails" MessageCountClick="@ToggleShowMessage"/>
             <div class="c-short">
-                <MarkupView Markup="@_descriptionMarkup" Entry="@_fakeEntry"/>
+                <MarkupView Markup="@_descriptionMarkup" />
             </div>
         </div>
         @if (_isOpen) {
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
-                    <MarkupView Markup="@_summaryMarkup" Entry="@_fakeEntry"/>
+                    <MarkupView Markup="@_summaryMarkup" />
                 </div>
             </div>
         }
     </div>
+    </CascadingValue>
     <ConversationMessageFooter
         CopyToClipboardRequested="@OnCopyToClipboardRequested"
         Authors="@conversation.AuthorIds"
