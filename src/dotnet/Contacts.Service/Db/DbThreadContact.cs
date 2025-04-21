@@ -50,8 +50,8 @@ public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTa
         Id = id;
         OwnerId = model.OwnerId.Value.NullIfEmpty() ?? throw StandardError.Constraint("OwnerId cannot be empty.");
         ThreadChatId = model.ThreadChatId;
-        ParentChatId = model.ThreadChatId.Parent;
-        var outermostParentChatId = model.ThreadChatId.Parent;
+        ParentChatId = model.ThreadChatId.GetThreadParentOrSelf();
+        var outermostParentChatId = model.ThreadChatId.GetOutermostThreadParentOrSelf();
         OutermostParentChatId = outermostParentChatId;
         PlaceId = outermostParentChatId.PlaceId;
     }

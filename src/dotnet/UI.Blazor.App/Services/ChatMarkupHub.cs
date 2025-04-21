@@ -8,7 +8,7 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
     private static IMarkupTrimmer? _trimmer;
     private static IMarkupFormatter? _editorHtmlConverter;
 
-    private ChatId NonThreadChatId => ChatId.IsThread ? ChatId.Parent : ChatId;
+    private ChatId NonThreadChatId => ChatId.GetOutermostThreadParentOrSelf();
 
     public IServiceProvider Services { get; } = services;
     public ChatId ChatId { get; } = chatId;

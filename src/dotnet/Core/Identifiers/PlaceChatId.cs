@@ -41,8 +41,7 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
     public bool IsRoot => !IsNone && PlaceId.Id == LocalChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsThread => ThreadId > 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId Parent => !IsThread ? this : new PlaceChatId(Format(PlaceId, LocalChatId), PlaceId, LocalChatId, 0, AssumeValid.Option);
+    public ChatId GetThreadParentOrSelf() => !IsThread ? this : new PlaceChatId(Format(PlaceId, LocalChatId), PlaceId, LocalChatId, 0, AssumeValid.Option);
 
     public static PlaceChatId Root(PlaceId placeId)
         => new(Format(placeId, placeId.Id), placeId, placeId.Id, 0, AssumeValid.Option);
@@ -116,7 +115,7 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
         if (placeId.IsNone || localChatId.IsNone || localChatId.Kind != ChatKind.Group)
             return false; // Both PlaceId and local ChatId must be there
 
-        result = new PlaceChatId((Symbol)s, placeId, localChatId.Parent.Value, localChatId.ThreadId, AssumeValid.Option);
+        result = new PlaceChatId((Symbol)s, placeId, localChatId.GetThreadParentOrSelf().Value, localChatId.ThreadId, AssumeValid.Option);
         return true;
     }
 }

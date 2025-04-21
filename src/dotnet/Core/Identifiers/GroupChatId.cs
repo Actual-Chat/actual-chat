@@ -38,8 +38,7 @@ public readonly partial struct GroupChatId : ISymbolIdentifier<GroupChatId>
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsThread => ThreadId > 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId Parent => !IsThread ? this : new GroupChatId(ChatId, ChatId, 0, AssumeValid.Option);
+    public ChatId GetThreadParentOrSelf() => !IsThread ? this : new GroupChatId(ChatId, ChatId, 0, AssumeValid.Option);
 
     internal static GroupChatId Group(string chatId)
         => new (chatId, chatId, 0, AssumeValid.Option);

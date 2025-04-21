@@ -35,7 +35,7 @@ public class ChatThreadsBackend(IServiceProvider services)
         var (chatId, expectedVersion, change) = command;
         if (Invalidation.IsActive) {
             if (change.Kind is ChangeKind.Create or ChangeKind.Remove)
-                _ = ListIds(command.ChatId.Parent, default);
+                _ = ListIds(command.ChatId.GetThreadParent(), default);
             return default!;
         }
 

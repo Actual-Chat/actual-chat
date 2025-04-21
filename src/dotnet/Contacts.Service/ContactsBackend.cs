@@ -705,9 +705,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         if (Invalidation.IsActive) {
             _ = GetThreadContact(ownerId, id, default);
-            _ = ListThreadIdsForChat(ownerId, chatId.Parent, default);
-            if (chatId.Parent.IsPlaceChat)
-                _ = ListThreadIdsForPlace(ownerId, chatId.Parent.PlaceId, default);
+            var parent = chatId;
+            do {
+                parent = parent.GetThreadParentOrSelf();
+                _ = ListThreadIdsForChat(ownerId, parent, default);
+            } while (parent.IsThread);
+            if (chatId.IsPlaceChat)
+                _ = ListThreadIdsForPlace(ownerId, chatId.PlaceId, default);
             return default!;
         }
 
@@ -934,7 +938,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return; // It just spawns other commands, so nothing to do here
 
         var (chatId, mentionIds) = eventCommand;
-        var parentChat = chatId.Parent;
+        var parentChat = chatId.GetOutermostThreadParentOrSelf();
         foreach (var mentionId in mentionIds) {
             AuthorFull? author = null;
             if (mentionId.IsAuthor(out var authorId))

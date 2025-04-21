@@ -112,7 +112,7 @@ public class Chats(IServiceProvider services) : IChats
         CancellationToken cancellationToken)
     {
         var isThread = chatId.IsThread;
-        chatId = chatId.Parent;
+        chatId = chatId.GetOutermostThreadParentOrSelf();
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (isThread) {
@@ -258,7 +258,7 @@ public class Chats(IServiceProvider services) : IChats
                     ValidateThreadChatChangeConstraints(chatDiff2);
                 }
                 else if (change.Kind is ChangeKind.Remove) {
-                    var parentChatId = chatId.Parent;
+                    var parentChatId = chatId.GetThreadParentOrSelf();
                     var parentChat = await Get(session, parentChatId, cancellationToken).ConfigureAwait(false);
                     parentChat.Require().Rules.Permissions.Require(ChatPermissions.Owner); // Thread can be removed only by parent chat owner.
                 }
@@ -809,7 +809,7 @@ public class Chats(IServiceProvider services) : IChats
             return new ReadPositionsStat(chatId, long.MaxValue, []);
 
         var positions = statBackend.TopReadPositions;
-        var parentChatId = chatId.Parent;
+        var parentChatId = chatId.GetOutermostThreadParentOrSelf();
         var top2AuthorReadPositions = (await positions
                 .Select(async c => {
                     var authorId = AuthorId.None;

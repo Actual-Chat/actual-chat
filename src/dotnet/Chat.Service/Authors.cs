@@ -74,7 +74,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         // the ability to access the chat, otherwise we'll hit the recursion here.
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetByUserId(chatId.Parent, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetByUserId(chatId.GetOutermostThreadParentOrSelf(), account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -125,7 +125,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [ComputeMethod]
     public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        chatId = chatId.Parent;
+        chatId = chatId.GetOutermostThreadParentOrSelf();
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
@@ -136,7 +136,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [ComputeMethod]
     public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        chatId = chatId.Parent;
+        chatId = chatId.GetOutermostThreadParentOrSelf();
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
@@ -444,8 +444,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (authorId.ChatId != chatId)
             throw StandardError.Constraint("Provided authorId should belong to given chatId.");
 
-        chatId = chatId.Parent;
-        authorId = new AuthorId(chatId.Parent, authorId.LocalId, AssumeValid.Option);
+        chatId = chatId.GetOutermostThreadParentOrSelf();
+        authorId = new AuthorId(chatId, authorId.LocalId, AssumeValid.Option);
         return (chatId, authorId);
     }
 }

@@ -51,7 +51,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var placeContacts = await ContactsBackend.ListIds(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
         var placeChatIds = placeContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Place).ToHashSet();
         var placeTheadIds = await ContactsBackend.ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
-        return placeTheadIds.Where(c => placeChatIds.Contains(c.Parent)).ToApiArray();
+        return placeTheadIds.Where(c => placeChatIds.Contains(c.GetOutermostThreadParentOrSelf())).ToApiArray();
     }
 
     // [ComputeMethod]

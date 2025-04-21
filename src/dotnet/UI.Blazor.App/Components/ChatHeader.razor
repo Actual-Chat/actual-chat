@@ -102,7 +102,7 @@
 
     private async Task OnOpenLeftPanelClick() {
         if (Chat.Id.IsThread) {
-            var parentChatId = Chat.Id.Parent;
+            var parentChatId = Chat.Id.GetThreadParent();
             var parentChatLink = Links.Chat(parentChatId);
             if (History.TryGetStepBackUrl(out var backUrl)) {
                 var threadChatLink = Links.Chat(Chat.Id);

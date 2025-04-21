@@ -727,7 +727,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 }
                 else {
                     author = await AuthorsBackend
-                        .GetByUserId(chatId.Parent, ownerId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                        .GetByUserId(chatId.GetOutermostThreadParentOrSelf(), ownerId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
                         .Require()
                         .ConfigureAwait(false);
                 }
@@ -1708,7 +1708,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var (chat, oldChat, kind) = eventCommand;
         if (chat.Id.IsThread && kind == ChangeKind.Remove) {
-            var parentChatId = chat.Id.Parent;
+            var parentChatId = chat.Id.GetThreadParent();
             var startThreadEntryId = new TextEntryId(parentChatId, chat.Id.ThreadId, AssumeValid.Option);
             var chatEntry = await this.GetEntry(startThreadEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry is not null && chatEntry.IsThreadStartEntry) {

@@ -29,6 +29,6 @@ public class ThreadChatIdTest
         chatId.IsNone.Should().BeFalse();
         chatId.IsThread.Should().BeTrue();
         chatId.ThreadId.Should().Be(10);
-        chatId.Parent.Value.Should().Be("s-t5i1xQXr0X-YeehSAvEXG");
+        chatId.GetThreadParentOrSelf().Value.Should().Be("s-t5i1xQXr0X-YeehSAvEXG");
     }
 }

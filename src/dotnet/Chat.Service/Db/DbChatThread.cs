@@ -46,7 +46,7 @@ public class DbChatThread : IHasId<string>, IHasVersion<long>, IRequirementTarge
             return; // Only the above properties can be changed for already existing threads
 
         Id = id;
-        ParentChatId = id.Parent;
+        ParentChatId = id.GetThreadParent();
         ThreadId = (ulong)id.ThreadId;
         CreatedAt = model.CreatedAt;
     }
