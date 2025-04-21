@@ -20,6 +20,22 @@ public class SettingsRoundTripSerializationTest
         }
     }
 
+    [Fact]
+    public async Task ShouldSerializeBackwardCompatible()
+    {
+        foreach (var (name, expected) in GetCases()) {
+            // arrange
+            var bytes = await File.ReadAllBytesAsync($"Data/{GetFileName(expected, name)}");
+
+            // act
+            using var newVersionBuffer = KvasSerializer.Default.Write(expected, expected.GetType());
+            var newVersionBytes = newVersionBuffer.WrittenMemory.ToArray();
+
+            // assert
+            newVersionBytes.Should().BeEquivalentTo(bytes, "test case '{0}'", name);
+        }
+    }
+
     [Fact(Skip = "Only for manual runs to generate new test data")]
     // [Fact] // NOTE: only for manual runs to generate test data.
     // It must be run on a previous version any earlier version to keep backward compatibility.
