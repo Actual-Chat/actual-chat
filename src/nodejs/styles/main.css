@@ -148,7 +148,7 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .layout-subheader {
     @apply sticky top-0 z-10;
-    @apply flex-none flex-y items-center;
+    @apply flex-none flex-y items-center gap-1;
     @apply w-full;
     @apply -mt-px p-2 pb-0;
     @apply overflow-visible;
@@ -190,7 +190,7 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .list-view-layout > .layout-header > .c-content {
     @apply flex-1;
-    @apply max-w-160;
+    @apply md:max-w-160;
     @apply md:p-2.5;
 }
 .list-view-layout .layout-body {
@@ -311,7 +311,7 @@ body.narrow .layout-header > .c-content.selection-header {
 
 .page-with-header-and-footer .layout-body-wrapper > .c-container {
     @apply relative flex-1 -flex-y;
-    @apply h-full max-w-160;
+    @apply h-full md:max-w-160;
     @apply overflow-hidden;
 }
 

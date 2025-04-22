@@ -2,6 +2,16 @@
 .bubble-content {
     @apply text-bubble-text;
 }
+.bubble-content .c-body {
+    @apply flex-y gap-4;
+}
+body.narrow .ac-bubble-host.landscape .bubble-content .c-body {
+    @apply flex-x;
+}
+.bubble-content .c-body .c-video {
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
 .bubble-content > video {
     @apply rounded-lg;
     @apply mb-4;
