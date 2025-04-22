@@ -46,8 +46,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
         async IAsyncEnumerable<ChatEntry> ListEntries()
         {
-            for (var maxLidExclusive = id.LocalId; maxLidExclusive >= 0; maxLidExclusive -= Settings.TranslationContextMessageCount) {
-                var minLid = (maxLidExclusive - Settings.TranslationContextMessageCount).Clamp(0, long.MaxValue);
+            for (var maxLidExclusive = id.LocalId; maxLidExclusive >= 0; maxLidExclusive -= Settings.Translation.ContextMessageCount) {
+                var minLid = (maxLidExclusive - Settings.Translation.ContextMessageCount).Clamp(0, long.MaxValue);
                 var idRange = new Range<long>(minLid, maxLidExclusive);
                 var foundEntries = await ChatsBackend.GetEntries(id.ChatId, ChatEntryKind.Text, idRange, false, cancellationToken).ConfigureAwait(false);
                 foreach (var entry in foundEntries.Where(e => e.LocalId < maxLidExclusive))

@@ -235,9 +235,9 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
         return Flows.GetAndResume<LanguageDetectionFlow>("",
-            Settings.LanguageDetectionDelay,
+            Settings.LanguageDetection.Delay,
             nameof(OnChatEntryLanguagesChangedEvent),
-            Settings.LanguageDetectionDelay,
+            Settings.LanguageDetection.Delay,
             cancellationToken);
     }
 
