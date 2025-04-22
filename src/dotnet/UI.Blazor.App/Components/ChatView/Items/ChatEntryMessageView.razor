@@ -306,7 +306,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
-        var prevEntry = (Message.PreviousMessage as ChatEntryMessage)?.Entry;
+        var previousMessage = Message.PreviousMessage as ChatEntryMessage;
+        var nextMessage = Message.NextMessage as ChatEntryMessage;
+        var prevEntry = previousMessage?.Entry;
         var chatId = ChatId;
         var chatMessage = Message;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false) ?? SpecialChat.Unavailable;
@@ -351,13 +353,20 @@
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
+        var isPreviousSelected = previousMessage != null && selectedChatEntries.Contains(previousMessage.Entry.Id);
+        var isNextSelected = nextMessage != null && selectedChatEntries.Contains(nextMessage.Entry.Id);
+        var isSelected = selectedChatEntries.Contains(entry.Id);
+
+        var isSelectionStart = isSelected && !isPreviousSelected;
+        var isSelectionEnd = isSelected && !isNextSelected;
+
         var (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
             IsOwnMessage = isOwnMessage,
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
-            IsSelected = selectedChatEntries.Contains(entry.Id),
+            IsSelected = isSelected,
             HasSelection = hasSelection,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
