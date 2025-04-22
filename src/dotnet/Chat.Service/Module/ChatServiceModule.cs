@@ -78,47 +78,20 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // The services below are used only when this module operates in non-client mode
 
-        const string openAiChatCompletionServiceKey = "open_ai:chat_completion";
-        var rateLimitedChatCompletionServiceKey = RateLimitedServiceKey.GetFor(openAiChatCompletionServiceKey);
-
-        if (Settings.IsTranslationEnabled || Settings.IsSummarizationEnabled) {
-            var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler(new OpenAIRateLimitsLoggingHandler.Options(false)) {
-                InnerHandler = new HttpClientHandler {
-                    Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
-                    UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
-                },
-            }) {
-                Timeout = Settings.TranslatorHttpClientTimeout,
-            };
-            services.AddKernel()
-                .AddOpenAIChatCompletion(Settings.OpenAIChatModel,
-                    Settings.OpenAIApiKey,
-                    httpClient: httpClient,
-                    serviceId: openAiChatCompletionServiceKey);
-            services.AddKeyedSingleton(openAiChatCompletionServiceKey, httpClient); // for disposal
-
-            services.AddKeyedSingleton<IChatCompletionService>(rateLimitedChatCompletionServiceKey,
-                (svp, _) => {
-                    var chatCompletion = svp.GetRequiredKeyedService<IChatCompletionService>(openAiChatCompletionServiceKey);
-                    var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
-                        new RedisTokenBucketRateLimiter.Options(
-                            "rate_limit:openai_chat_completion",
-                            200_000,
-                            TimeSpan.FromSeconds(60)
-                        ),
-                        svp);
-                    return chatCompletion.WrapWithRateLimiter(rateLimiter);
-                });
-        }
-
         if (Settings.IsTranslationEnabled) {
-            Settings.DetectLanguagesPromptFile.RequireFileExists();
-            Settings.TranslatePromptFile.RequireFileExists();
-            services.AddKeyedTransient<IChatCompletionService>(
-                Translator.ServiceKey,
-                (svp, _) => svp.GetRequiredKeyedService<IChatCompletionService>(rateLimitedChatCompletionServiceKey));
+            AddKeyedOpenAI(services,
+                Constants.Translation.ServiceKey,
+                Settings.Translation.OpenAIModel,
+                Settings.Translation.OpenAIKey,
+                Settings.Translation.HttpTimeout);
+            AddKeyedOpenAI(services,
+                Constants.LanguageDetection.ServiceKey,
+                Settings.LanguageDetection.OpenAIModel,
+                Settings.LanguageDetection.OpenAIKey,
+                Settings.LanguageDetection.HttpTimeout);
         }
         services.AddSingleton<Translator>();
+        services.AddSingleton<LanguageDetector>();
         services.AddSingleton<LanguageDetectionSerializer>();
         services.AddAIServices();
 
@@ -131,9 +104,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            services.AddKeyedTransient<IChatCompletionService>(
-                ConversationSummarizer.ServiceKey,
-                (svp, _) => svp.GetRequiredKeyedService<IChatCompletionService>(rateLimitedChatCompletionServiceKey));
+            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIApiKey, Settings.OpenAIChatModel);
             services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
         }
         else
@@ -204,5 +175,41 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             // DbConversation
             db.AddEntityResolver<string, DbConversation>();
         });
+    }
+
+    private void AddKeyedOpenAI(IServiceCollection services, string serviceKey, string openAIModel, string openAIKey, TimeSpan? httpClientTimeout = null)
+    {
+        var httpClient = new HttpClient(new OpenAIRateLimitsLoggingHandler(new OpenAIRateLimitsLoggingHandler.Options(false)) {
+            InnerHandler = new HttpClientHandler {
+                Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
+                UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
+            },
+        }) {
+            Timeout = httpClientTimeout ?? TimeSpan.FromSeconds(100),
+        };
+        services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
+
+        // unlimited
+        var unlimitedServiceKey = serviceKey + "_Unlimited";
+        services.AddKernel().AddOpenAIChatCompletion(openAIModel, openAIKey, serviceId: unlimitedServiceKey, httpClient: httpClient);
+
+        // rate-limited
+        var rateLimitedKey = serviceKey + "_RateLimited";
+        services.AddKeyedSingleton<IChatCompletionService>(rateLimitedKey,
+            (c, _) => {
+                var chatCompletion = c.GetRequiredKeyedService<IChatCompletionService>(unlimitedServiceKey);
+                var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
+                    new RedisTokenBucketRateLimiter.Options(
+                        $"rate_limit:openai:{serviceKey}",
+                        200_000,
+                        TimeSpan.FromSeconds(60)
+                    ),
+                    c);
+                return chatCompletion.WrapWithRateLimiter(rateLimiter);
+            });
+
+        // for serviceKey
+        services.AddKeyedSingleton<IChatCompletionService>(serviceKey,
+            (c, _) => c.GetRequiredKeyedService<IChatCompletionService>(rateLimitedKey));
     }
 }

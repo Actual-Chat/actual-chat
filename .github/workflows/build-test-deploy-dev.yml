@@ -368,16 +368,18 @@ jobs:
           DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
           CoreSettings__GoogleProjectId: ${{secrets.CORESETTINGS_GOOGLEPROJECTID}}
           ChatSettings__OpenAIApiKey: ${{secrets.OPENAI_API_KEY}}
-          ChatSettings__DetectLanguagesPromptFile: ${{github.workspace}}/.config/prompts/detect-languages.md
-          ChatSettings__TranslatePromptFile: ${{github.workspace}}/.config/prompts/translate.md
+          ChatSettings__Translation__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
+          ChatSettings__Translation__PromptFile: ${{github.workspace}}/.config/prompts/translate.md
+          ChatSettings__LanguageDetection__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
+          ChatSettings__LanguageDetection__PromptFile: ${{github.workspace}}/.config/prompts/detect-languages.md
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
           mkdir -p ./.config/prompts
-          echo -n "${{secrets.CHATSETTINGS_DETECTLANGUAGESPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__DetectLanguagesPromptFile }} >/dev/null
-          echo -n "${{secrets.CHATSETTINGS_TRANSLATEPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__TranslatePromptFile }} >/dev/null
+          echo -n "${{secrets.CHATSETTINGS_TRANSLATEPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__Translation__PromptFile }} >/dev/null
+          echo -n "${{secrets.CHATSETTINGS_DETECTLANGUAGESPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__LanguageDetection__PromptFile }} >/dev/null
 
           ./run-build.cmd integration-tests --configuration Debug
 
