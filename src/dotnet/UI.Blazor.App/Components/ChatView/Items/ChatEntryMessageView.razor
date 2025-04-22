@@ -352,7 +352,6 @@
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
-        var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isPreviousSelected = previousMessage != null && selectedChatEntries.Contains(previousMessage.Entry.Id);
         var isNextSelected = nextMessage != null && selectedChatEntries.Contains(nextMessage.Entry.Id);
         var isSelected = selectedChatEntries.Contains(entry.Id);
@@ -367,7 +366,6 @@
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
             IsSelected = isSelected,
-            HasSelection = hasSelection,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
             ForwardedChatEntryId = forwardedChatEntryId,
@@ -558,7 +556,6 @@
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
         public bool IsSelected { get; init; }
-        public bool HasSelection { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
         public ChatEntryId ForwardedChatEntryId { get; init; }
