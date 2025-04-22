@@ -5,7 +5,7 @@
 @{
 #pragma warning disable IL2026
 
-    // Console.Out.WriteLine("VirtualList.Render(" + Identity + ") = "  + Data.KeyRange + " BUT ["+ State?.Value.KeyRange+"]!" + State + " @" + RenderIndex + " #" + Data.GetHashCode() + " == " + (_initialData == null));
+    // Console.Out.WriteLine("VirtualList.Render(" + Identity + ") = "  + Data.KeyRange + " [" + string.Join(", ", Data.Items.Select(i => i.Key)) + "]"+ " @" + RenderIndex);
     var renderIndex = RenderIndex++;
 
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract

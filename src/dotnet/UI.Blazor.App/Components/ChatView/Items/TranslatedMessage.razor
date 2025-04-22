@@ -1,59 +1,62 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedRenderStateComponent<Markup>
+@inherits ComputedRenderStateComponent<TranslatedMessage.Model>
 @{
     var m = State.Value;
+    _rendered = m;
 }
 
-<MarkupView Markup="@m"/>
+<MarkupView Markup="@m.Markup" />
 
 @code {
-    private Markup? _initialData = null;
-
+    private Model _rendered = Model.None;
     private ChatUIHub Hub => ChatContext.Hub;
-    private ITranslations Translations => Hub.Translations;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private Features Features => Hub.Features();
     private TranslationUI TranslationUI => Hub.TranslationUI;
+    private ILogger Log => Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [CascadingParameter] public ChatEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByRefParameterComparer))]
     public Markup Markup { get; set; } = null!;
 
-    public override async Task SetParametersAsync(ParameterView parameters)
-    {
-        parameters.SetParameterProperties(this);
-        _initialData = await ComputeState(CancellationToken.None).ConfigureAwait(true);
-        if (ReferenceEquals(State, null)) {
-            var (state, stateOptions) = CreateState();
-            SetState(state, stateOptions);
-        }
-        await base.SetParametersAsync(ParameterView.Empty);
+    protected override bool ShouldRender()
+        => !ReferenceEquals(_rendered, State.Value)
+            && (_rendered.Message.Entry.ContentHash != State.Value.Message.Entry.ContentHash
+                || _rendered.Markup != State.Value.Markup);
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        // Do not use cached options as we need to pass Message and Markup parameters.
+        var initialData = new Model(Markup, Message);
+        return new() {
+            InitialValue = initialData, // show original text immediately
+            Category = GetStateCategory(GetType()),
+        };
     }
 
-    protected override ComputedState<Markup>.Options GetStateOptions() {
-        var initialData = _initialData ?? Markup;
-        return ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<Markup>.Options {
-                InitialValue = initialData, // show original text immediately
-                Category = GetStateCategory(t),
-            });
-    }
 
-    protected override async Task<Markup> ComputeState(CancellationToken cancellationToken) {
-        var entry = Entry;
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var message = Message;
         var markup = Markup;
+        var entry = message.Entry;
         if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-            return markup;
+            return new(markup, message);
 
         var isOn = await TranslationUI.IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) ?? false;
         if (!isOn)
-            return markup;
+            return new(markup, message);
 
-        if (!await TranslationUI.NeedsTranslation(entry.Id, cancellationToken).ConfigureAwait(false))
-            return markup;
+        var needsTranslation = await TranslationUI.NeedsTranslation(entry.Id, cancellationToken).ConfigureAwait(false);
+        if (!needsTranslation)
+            return new(markup, message);
 
         var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
-        return translation == null ? markup : MarkupParser.Parse(translation.Content);
+        return new (translation == null ? markup : MarkupParser.Parse(translation.Content), message);
+    }
+
+    // Nested types
+
+    public sealed record Model(Markup Markup, ChatEntryMessage Message) {
+        public static readonly Model None = new(Markup.Empty, new (ChatEntry.Loading));
     }
 }

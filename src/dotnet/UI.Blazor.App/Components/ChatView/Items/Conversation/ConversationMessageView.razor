@@ -16,13 +16,13 @@
         <div class="c-summary">
             <ConversationMessageHeader Title="@title" MessageCount="@messageCount" TitleClick="@ToggleDetails" MessageCountClick="@ToggleShowMessage"/>
             <div class="c-short">
-                <MarkupView Markup="@_descriptionMarkup"/>
+                <MarkupView Markup="@_descriptionMarkup" />
             </div>
         </div>
         @if (_isOpen) {
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
-                    <MarkupView Markup="@_summaryMarkup"/>
+                    <MarkupView Markup="@_summaryMarkup" />
                 </div>
             </div>
         }
@@ -57,7 +57,7 @@
 
         var conversation = Message.Conversation!;
         var chatEntryId = new ChatEntryId(conversation.Id.ChatId, ChatEntryKind.Text, conversation.Id.StartEntryLid, AssumeValid.Option);
-        _fakeEntry = new ChatEntry(chatEntryId);
+        _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
         _descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
         _summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);

@@ -51,18 +51,19 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        _hasRead = Entry.IsSystemEntry ? null : false;
+        var chatEntry = Entry;
+        _hasRead = chatEntry.IsSystemEntry ? null : false;
 
         if (_hasRead == null)
-            return new Model(null); // Do not track hasRead status for mentions inside system messages.
+            return new(null); // Do not track hasRead status for mentions inside system messages.
 
-        var chat = await Chats.Get(Session, Entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.Author?.Id == _authorId)
-            return new Model(true);
+            return new(true);
 
         if (!_hasRead.Value)
-            _hasRead = await Chats.IsEntryReadByMentionedUser(Session, Entry.Id.ToTextEntryId(), Markup.Id, cancellationToken).ConfigureAwait(false);
-        return new Model(_hasRead);
+            _hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id.ToTextEntryId(), Markup.Id, cancellationToken).ConfigureAwait(false);
+        return new(_hasRead);
     }
 
     // Nested types

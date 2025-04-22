@@ -13,13 +13,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     /// </summary>
     public Range<string> KeyRange
         => Items.Count > 0
-            ? new Range<string>(
-                Items[0] is IVirtualListGroup<TItem> { Count: > 0 } firstGroup
-                    ? firstGroup.Items[0].Key
-                    : Items[0].Key,
-                Items[^1] is IVirtualListGroup<TItem> { Count: > 0 } lastGroup
-                    ? lastGroup.Items[^1].Key
-                    : Items[^1].Key)
+            ? new Range<string>(FirstItem!.Key, LastItem!.Key)
             : default;
 
     public IReadOnlyList<TItem> Items { get; } = items;
@@ -35,8 +29,17 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     public CpuTimestamp ComputedAt { get; init; } = CpuTimestamp.Now;
 
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
-    public TItem? FirstItem => Items.Count == 0 ? null : Items[0];
-    public TItem? LastItem => Items.Count == 0 ? null : Items[^1];
+    public TItem? FirstItem => Items.Count > 0
+        ? Items[0] is IVirtualListGroup<TItem> { Count: > 0 } firstGroup
+            ? firstGroup.Items[0]
+            : Items[0]
+        : null;
+
+    public TItem? LastItem => Items.Count > 0
+        ? Items[^1] is IVirtualListGroup<TItem> { Count: > 0 } lastGroup
+            ? lastGroup.Items[^1]
+            : Items[^1]
+        : null;
 
     public bool IsSimilarTo(VirtualListData<TItem> other)
         => ReferenceEquals(this, other) ||
