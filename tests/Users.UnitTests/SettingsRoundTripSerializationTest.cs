@@ -6,7 +6,7 @@ namespace ActualChat.Users.UnitTests;
 public class SettingsRoundTripSerializationTest
 {
     [Fact]
-    public async Task ShouldDeserializeCorrectly()
+    public async Task ShouldDeserializePreviousVersionCorrectly()
     {
         foreach (var (name, expected) in GetCases()) {
             // arrange
@@ -20,19 +20,19 @@ public class SettingsRoundTripSerializationTest
         }
     }
 
-    [Fact(Skip = "Does not work")]
-    public async Task ShouldSerializeBackwardCompatible()
+    [Fact]
+    public void ShouldSerializeDeserializeForLatestVersion()
     {
         foreach (var (name, expected) in GetCases()) {
             // arrange
-            var bytes = await File.ReadAllBytesAsync($"Data/{GetFileName(expected, name)}");
 
             // act
-            using var newVersionBuffer = KvasSerializer.Default.Write(expected, expected.GetType());
-            var newVersionBytes = newVersionBuffer.WrittenMemory.ToArray();
+            using var buffer = KvasSerializer.Default.Write(expected, expected.GetType());
+            var bytes = buffer.WrittenMemory.ToArray();
+            var deserialized = KvasSerializer.Default.Read(bytes, expected.GetType());
 
             // assert
-            newVersionBytes.Should().BeEquivalentTo(bytes, "test case '{0}'", name);
+            deserialized.Should().BeEquivalentTo(expected, "test case '{0}'", name);
         }
     }
 
