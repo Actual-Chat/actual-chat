@@ -70,8 +70,26 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
-            var language = options.Language.ToDeepgram();
-            var model = options.Language.IsEnglish() ? "nova-3" : "nova-2";
+            var nova3Languages = new HashSet<Language> {
+                Languages.English,
+                Languages.EnglishIN,
+                Languages.EnglishUK,
+                Languages.German,
+                Languages.French,
+                Languages.FrenchCA,
+                Languages.Spanish,
+                Languages.SpanishMX,
+                Languages.SpanishUS,
+                Languages.Portuguese,
+                Languages.PortugueseBR,
+                Languages.Japanese,
+                Languages.Hindi,
+                Languages.Dutch,
+                Languages.Italian,
+                Languages.Russian,
+            };
+            var model = nova3Languages.Contains(options.Language) ? "nova-3" : "nova-2";
+            var language = model == "nova-3" ? "multi" : options.Language.ToDeepgram();
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,
@@ -88,7 +106,7 @@ public partial class DeepgramTranscriber : ITranscriber
             if (!isConnected)
                 throw StandardError.External("Deepgram connection failed");
 
-            await PushAudio(transcriptState, deepgramClient, cancellationToken).ConfigureAwait(false);
+            await PushAudio(transcriptState, deepgramClient, tokenSource.Token).ConfigureAwait(false);
 
             await whenCompleted.ConfigureAwait(false);
 
