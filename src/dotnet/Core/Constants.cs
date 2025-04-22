@@ -301,4 +301,14 @@ public static partial class Constants
         public static readonly TimeSpan InitialCacheInvalidationDelay = TimeSpan.FromMilliseconds(3000);
         public static readonly TimeSpan CacheInvalidationDelay = TimeSpan.FromMilliseconds(250);
     }
+
+    public static class Translation
+    {
+        public const string ServiceKey = nameof(Translation);
+    }
+
+    public static class LanguageDetection
+    {
+        public const string ServiceKey = nameof(LanguageDetection);
+    }
 }
