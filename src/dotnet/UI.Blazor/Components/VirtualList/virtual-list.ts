@@ -1430,7 +1430,6 @@ export class VirtualList {
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
                 result.resolve(undefined);
-                // this.updateViewportThrottled();
             }
         };
         if (useRaf) {
@@ -1448,6 +1447,7 @@ export class VirtualList {
         this.scrollPositionRestoredAt = Date.now();
 
         this.viewport = null;
+        this.updateViewportThrottled();
         // await delayAsync(50);
         // debugLog?.log(`restoreScrollPosition: end`, rafResult);
     }
@@ -1612,6 +1612,7 @@ export class VirtualList {
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
+        this.viewport = null;
         if (orderedItems.length === 0)
             return null;
 
