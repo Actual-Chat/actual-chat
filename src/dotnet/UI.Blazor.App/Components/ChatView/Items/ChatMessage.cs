@@ -13,6 +13,7 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public DateOnly Date { get; init; }
     public ChatMessageFlags Flags { get; init; }
     public ChatMessage? PreviousMessage { get; init; }
+    public ChatMessage? NextMessage { get; set; }
     public Conversation? Conversation { get; init; }
     public bool ShowIndexDocId { get; init; }
     public string IndexDocId { get; init; } = "";

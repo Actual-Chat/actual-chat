@@ -130,6 +130,13 @@ public partial class ChatUI
             tiles.Clear();
         }
 
+        // Fix NextMessage reference for cached tiles
+        if (tiles.Count > 0) {
+            for (int i = 0; i < tiles.Count - 1; i++)
+                tiles[i].Items[^1].NextMessage = tiles[i + 1].Items[0];
+            tiles[^1].Items[^1].NextMessage = null;
+        }
+
         var items = tiles.SelectMany(t => t.Items);
         var groupedItems = GroupAuthorMessages(items);
 
@@ -307,6 +314,8 @@ public partial class ChatUI
                                 ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
                                 PreviousMessage = prevMessage,
                             };
+                            if (prevMessage != null)
+                                prevMessage.NextMessage = welcomeMessage;
                             messages.Add(welcomeMessage);
                             prevMessage = welcomeMessage;
                         }
@@ -315,6 +324,8 @@ public partial class ChatUI
                                 ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock,
                                 PreviousMessage = prevMessage,
                             };
+                            if (prevMessage != null)
+                                prevMessage.NextMessage = welcomeMessage;
                             messages.Add(welcomeMessage);
                             prevMessage = welcomeMessage;
                         }
@@ -328,6 +339,8 @@ public partial class ChatUI
                             PreviousMessage = prevMessage,
                             Conversation = expandedConversation,
                         };
+                        if (prevMessage != null)
+                            prevMessage.NextMessage = newLineMessage;
                         messages.Add(newLineMessage);
                         prevMessage = newLineMessage;
                     }
@@ -339,6 +352,8 @@ public partial class ChatUI
                             Date = date,
                             PreviousMessage = prevMessage,
                         };
+                        if (prevMessage != null)
+                            prevMessage.NextMessage = conversationHeaderMessage;
                         messages.Add(conversationHeaderMessage);
                         prevMessage = conversationHeaderMessage;
                     }
@@ -349,6 +364,8 @@ public partial class ChatUI
                             PreviousMessage = prevMessage,
                             Conversation = expandedConversation,
                         };
+                        if (prevMessage != null)
+                            prevMessage.NextMessage = dateLineMessage;
                         messages.Add(dateLineMessage);
                         prevMessage = dateLineMessage;
                     }
@@ -360,6 +377,8 @@ public partial class ChatUI
                         IndexDocId = indexDocId,
                         Conversation = expandedConversation,
                     };
+                    if (prevMessage != null)
+                        prevMessage.NextMessage = message;
                     messages.Add(message);
                     prevMessage = message;
 
@@ -370,6 +389,7 @@ public partial class ChatUI
                                 Date = date,
                                 PreviousMessage = prevMessage,
                             };
+                            prevMessage.NextMessage = conversationFooterMessage;
                             messages.Add(conversationFooterMessage);
                             prevMessage = conversationFooterMessage;
                         }
@@ -386,6 +406,8 @@ public partial class ChatUI
                 };
                 // Can't skip adding conversation message even if it's the same as previous message
                 // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
+                if (prevMessage != null)
+                    prevMessage.NextMessage = message;
                 messages.Add(message);
                 prevMessage = message;
             }

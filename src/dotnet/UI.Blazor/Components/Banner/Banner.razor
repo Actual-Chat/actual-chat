@@ -9,28 +9,30 @@
 }
 
 <div class="banner @BannerCls @Class @_animator.Class">
-    @if (Icon != null) {
-        @Icon
-    } else {
-        <SeverityIcon Severity="@Severity"/>
-    }
-    <div class="banner-body">
-        @Body
-    </div>
-    @if (Buttons != null || ShowDismissButton) {
-        <div class="banner-buttons">
-            @Buttons
-            @if (ShowDismissButton) {
-                <HeaderButton
-                    Class="close-banner"
-                    Click="OnClose"
-                    Tooltip="Dismiss"
-                    TooltipPosition="FloatingPosition.Top">
-                    <i class="icon-close text-2xl"></i>
-                </HeaderButton>
-            }
+    <div class="c-content">
+        @if (Icon != null) {
+            @Icon
+        } else {
+            <SeverityIcon Severity="@Severity"/>
+        }
+        <div class="banner-body">
+            @Body
         </div>
-    }
+        @if (Buttons != null || ShowDismissButton) {
+            <div class="banner-buttons">
+                @Buttons
+                @if (ShowDismissButton) {
+                    <HeaderButton
+                        Class="close-banner"
+                        Click="OnClose"
+                        Tooltip="Dismiss"
+                        TooltipPosition="FloatingPosition.Top">
+                        <i class="icon-close text-2xl"></i>
+                    </HeaderButton>
+                }
+            </div>
+        }
+    </div>
 </div>
 
 @code {

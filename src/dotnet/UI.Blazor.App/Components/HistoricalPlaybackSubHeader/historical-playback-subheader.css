@@ -1,8 +1,8 @@
 .historical-playback-subheader {
     @apply relative z-10;
     @apply hidden;
-    @apply h-0;
-    @apply py-1 pl-3 pr-4 md:pl-4;
+    @apply h-0 w-full;
+    @apply py-1 pl-1 pr-2 md:pl-4 md:pr-4 ;
     @apply bg-01;
     @apply text-02;
     @apply border-b border-separator;

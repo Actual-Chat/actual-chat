@@ -227,6 +227,7 @@
     --white-50: #FFFFFF80;
     --white-40: #FFFFFF66;
     --white-30: #FFFFFF4D;
+    --white-20: #FFFFFF33;
     --white-10: #FFFFFF1A;
     --white-05: #FFFFFF0D;
     --white-04: #FFFFFF0A;
@@ -261,12 +262,16 @@
     /* Banners */
     --background-banner-success: var(--green-99);
     --text-banner-success: var(--green-40);
+    --border-banner-success: var(--green-90);
     --background-banner-info: var(--blue-99);
-    --text-banner-info: var(--blue-50);
-    --background-banner-warning: var(--orange-95);
-    --text-banner-warning: var(--orange-50);
+    --text-banner-info: var(--blue-30);
+    --border-banner-info: var(--blue-95);
+    --background-banner-warning: var(--orange-99);
+    --text-banner-warning: var(--orange-40);
+    --border-banner-warning: var(--orange-95);
     --background-banner-error: var(--red-99);
-    --text-banner-error: var(--magenta-60);
+    --text-banner-error: var(--magenta-40);
+    --border-banner-error: var(--magenta-95);
 
     /* Toasts */
     --toast-body: var(--gray-20);
@@ -384,9 +389,12 @@
     --mention-own: var(--violet-50-10);
     --mention-own-text: var(--violet-50);
     --mention-list-item-selected: var(--blue-50-10);
-    --replied-message: var(--blue-50-10);
-    --replied-message-hover: var(--blue-50-20);
+    --replied-message: var(--blue-50-30);
+    --replied-message-hover: var(--blue-50-40);
     --replied-message-border: var(--blue-50);
+    --selected-message: var(--blue-50-10);
+    --selected-message-hover: var(--blue-50-20);
+    --selected-message-border: var(--blue-50);
     --context-menu: var(--blue-50-10);
     --context-border: var(--gray-90);
     --selection: var(--blue-50-10);
@@ -556,12 +564,16 @@
     /* Banners */
     --background-banner-success: var(--emerald-20);
     --text-banner-success: var(--emerald-80);
+    --border-banner-success: var(--emerald-30);
     --background-banner-info: var(--blue-20);
-    --text-banner-info: var(--blue-60);
+    --text-banner-info: var(--blue-80);
+    --border-banner-info: var(--blue-40);
     --background-banner-warning: var(--orange-20);
-    --text-banner-warning: var(--orange-90);
+    --text-banner-warning: var(--orange-80);
+    --border-banner-warning: var(--orange-30);
     --background-banner-error: var(--magenta-20);
     --text-banner-error: var(--magenta-80);
+    --border-banner-error: var(--magenta-30);
 
     /* Toasts */
     --toast-body: var(--ash-95);
@@ -680,9 +692,12 @@
     --mention-own: var(--violet-60-20);
     --mention-own-text: var(--violet-80);
     --mention-list-item-selected: var(--ash-99-04);
-    --replied-message: var(--white-05);
-    --replied-message-hover: var(--white-10);
+    --replied-message: var(--white-20);
+    --replied-message-hover: var(--white-30);
     --replied-message-border: var(--blue-60);
+    --selected-message: var(--white-05);
+    --selected-message-hover: var(--white-10);
+    --selected-message-border: var(--blue-60);
     --context-menu: var(--white-05);
     --context-border: var(--gray-05);
     --selection: var(--ash-99-08);
@@ -848,12 +863,16 @@
     /* Banners */
     --background-banner-success: var(--green-99);
     --text-banner-success: var(--green-40);
+    --border-banner-success: var(--green-90);
     --background-banner-info: var(--blue-99);
-    --text-banner-info: var(--blue-50);
-    --background-banner-warning: var(--orange-95);
-    --text-banner-warning: var(--orange-50);
+    --text-banner-info: var(--blue-30);
+    --border-banner-info: var(--blue-95);
+    --background-banner-warning: var(--orange-99);
+    --text-banner-warning: var(--orange-40);
+    --border-banner-warning: var(--orange-95);
     --background-banner-error: var(--red-99);
-    --text-banner-error: var(--magenta-60);
+    --text-banner-error: var(--magenta-40);
+    --border-banner-error: var(--magenta-95);
 
     /* Toasts */
     --toast-body: var(--gray-20);
@@ -971,9 +990,12 @@
     --mention-own: var(--violet-50-10);
     --mention-own-text: var(--violet-50);
     --mention-list-item-selected: var(--blue-50-10);
-    --replied-message: var(--blue-50-10);
-    --replied-message-hover: var(--blue-50-20);
+    --replied-message: var(--blue-50-30);
+    --replied-message-hover: var(--blue-50-40);
     --replied-message-border: var(--blue-50);
+    --selected-message: var(--blue-50-10);
+    --selected-message-hover: var(--blue-50-20);
+    --selected-message-border: var(--blue-50);
     --context-menu: var(--blue-50-10);
     --context-border: var(--gray-90);
     --selection: var(--blue-50-10);

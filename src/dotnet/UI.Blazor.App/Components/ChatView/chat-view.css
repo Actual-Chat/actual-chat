@@ -1,7 +1,7 @@
 .message-wrapper {
     @apply relative;
     @apply flex-y;
-    @apply border-l-2 border-bg-01;
+    @apply border-l-2 border-bg-01 rounded-lg;
     @apply md:select-text;
     @apply translate-z-0;
 }
@@ -125,6 +125,24 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply bg-replied-message-hover;
 }
 
+.message-wrapper.selected-message,
+.message-wrapper.mention.selected-message {
+    @apply border-l-2 border-selected-message-border;
+    @apply rounded-none;
+    @apply bg-selected-message;
+}
+body.hoverable .message-wrapper.selected-message:hover,
+body.hoverable .message-wrapper.mention.selected-message:hover {
+    @apply border-l-2 border-selected-message-border;
+    @apply bg-selected-message-hover;
+}
+.message-wrapper.selected-message.selection-start {
+    @apply rounded-t-lg;
+}
+.message-wrapper.selected-message.selection-end {
+    @apply rounded-b-lg;
+}
+
 .chat-message-timestamp,
 .chat-message-timestamp-on-hover {
     @apply text-04 text-xs;
@@ -205,7 +223,7 @@ body.hoverable .chat-header-title:hover {
 .system-entry {
     @apply self-center;
     @apply w-full;
-    @apply px-6 mt-0.5;
+    @apply px-6 my-0.5;
 }
 .system-entry .chat-message {
     @apply flex-y items-center justify-center;
@@ -555,7 +573,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 }
 
 .hover-menu-wrapper {
-    @apply absolute right-0 z-10;
+    @apply absolute right-0 -top-2 z-10;
     @apply -flex-x;
     @apply h-full w-4;
 }
@@ -573,6 +591,10 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply w-8 h-8;
     @apply rounded-full;
 }
+.message-hover-menu-new i,
+.system-entry .message-hover-menu-new i {
+    @apply text-xl;
+}
 
 .chat-view.virtual-list .c-virtual-container .chat-message-group {
     @apply relative;
@@ -585,8 +607,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply flex-none flex-y;
     @apply w-fit;
     @apply select-none;
-    @apply m-2;
-    @apply ml-3;
+    @apply m-2 mt-1 ml-3;
 }
 
 .chat-view.virtual-list .c-virtual-container .chat-message-group > .c-left > .avatar-badge {

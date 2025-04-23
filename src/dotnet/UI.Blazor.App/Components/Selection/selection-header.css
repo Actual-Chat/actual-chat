@@ -5,11 +5,11 @@
 }
 .selection-header .selection-header-title {
     @apply flex-grow;
-    @apply text-headline-1;
+    @apply text-headline-1 text-01;
 }
 .selection-header .selection-header-buttons {
     @apply flex-x items-center gap-x-1 md:gap-x-2;
-    @apply rounded-xl;
+    @apply rounded-full;
     @apply bg-01;
     outline: 0.25rem solid var(--background-01);
 }
