@@ -1,12 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 @if (MustShow) {
-    <MessageHoverMenuNewContent Entry="@Entry" IsSystem="@IsSystem"/>
+    <MessageHoverMenuNewContent Entry="@Entry" IsSystem="@IsSystem" MessageWithAuthor="@MessageWithAuthor"/>
 }
 
 @code {
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }
+    [Parameter] public bool MessageWithAuthor { get; set; }
     [Parameter] public bool MustShow { get; set; }
 
     public void Show() {

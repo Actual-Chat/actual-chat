@@ -224,7 +224,7 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply hidden;
 }
 .navbar-item .message-counter-badge {
-    @apply absolute right-2.5 bottom-1.5;
+    @apply absolute z-10 right-2.5 bottom-1.5;
     @apply mx-0;
 }
 .navbar-item .navbar-item-ending .message-counter-badge {
