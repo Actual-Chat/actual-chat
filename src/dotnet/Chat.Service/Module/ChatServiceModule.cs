@@ -188,6 +188,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             Timeout = httpClientTimeout ?? TimeSpan.FromSeconds(100),
         };
         services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
+        if (openAIKey.IsNullOrEmpty())
+            openAIKey = Settings.OpenAIApiKey;
+        if (openAIModel.IsNullOrEmpty())
+            openAIModel = Settings.OpenAIChatModel;
 
         // unlimited
         var unlimitedServiceKey = serviceKey + "_Unlimited";
