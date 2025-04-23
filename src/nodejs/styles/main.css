@@ -147,13 +147,16 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply bg-gradient-to-r from-[var(--magenta-50-20)] to-[var(--blue-50-20)];
 }
 .layout-subheader {
-    @apply sticky top-0 z-10;
-    @apply flex-none flex-y items-center gap-1;
+    @apply sticky top-0 z-90;
+    @apply flex-none flex-y items-center;
     @apply w-full;
-    @apply -mt-px p-2 pb-0;
+    @apply px-2;
     @apply overflow-visible;
     @apply bg-transparent;
     @apply transition-height;
+}
+.layout-subheader > div {
+    @apply mt-1;
 }
 
 .layout-body {

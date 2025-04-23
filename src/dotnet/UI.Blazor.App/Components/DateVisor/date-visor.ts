@@ -46,10 +46,7 @@ export class DateVisor {
 
     private onScrollThrottled = throttle(() => this.onScroll(), 250, 'delayHead');
     private onScroll() {
-        if (this.isScrolling) {
-            this.getDateVisorTransform();
-        }
-        if (!this.dateVisor.classList.contains('show')) {
+        if (this.isScrolling && !this.dateVisor.classList.contains('show')) {
             this.dateVisor.classList.add('show');
         }
     }
@@ -58,30 +55,5 @@ export class DateVisor {
     private onScrollStop() {
         this.isScrolling = false;
         this.dateVisor.classList.remove('show');
-    }
-
-    private getDateVisorTransform() {
-        let conversationHeaders = this.chatView.querySelectorAll('.conversation-header');
-        let parentItems = Array.from(conversationHeaders)
-            .map(header => header.closest('.item'))
-            .filter(Boolean);
-
-        let subHeaderBottom = this.subHeader.getBoundingClientRect().bottom;
-
-        let stuckItems = parentItems.filter(item => {
-            let itemTop = item.getBoundingClientRect().top;
-            return Math.abs(itemTop - subHeaderBottom) < 1;
-        });
-
-        if (stuckItems.length > 0) {
-            let tallestItem = stuckItems.reduce((tallest: HTMLElement, current: HTMLElement) => {
-                return current.offsetHeight > tallest.offsetHeight ? current : tallest;
-            }, stuckItems[0]);
-            let header = tallestItem.querySelector('.conversation-header') as HTMLElement;
-            let height = header.offsetHeight;
-            this.dateVisor.style.transform = `translateY(${height + 5}px)`;
-        } else {
-            this.dateVisor.style.transform = '';
-        }
     }
 }

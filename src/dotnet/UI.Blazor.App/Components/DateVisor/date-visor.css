@@ -4,8 +4,11 @@
     @apply bg-transparent;
     @apply duration-500;
     filter: opacity(0);
-    transition-property: display, filter, -webkit-filter, transform, -webkit-transform;
+    transition-property: display, filter, -webkit-filter;
     transition-behavior: allow-discrete;
+}
+.layout-subheader > div.date-visor-wrapper {
+    @apply mt-0;
 }
 .date-visor-wrapper.show {
     @apply flex-x;
@@ -20,12 +23,10 @@
 }
 .date-visor {
     @apply flex items-center;
-    @apply h-6;
-    @apply px-2 mt-1;
-    @apply rounded-full border border-modal;
+    @apply h-4;
+    @apply px-2 -mt-2.5;
+    @apply rounded-full border-none;
     @apply bg-01;
     @apply text-caption-6 text-01;
     @apply drop-shadow-lg;
-    transition-property: transform;
-    transition-duration: 300ms;
 }

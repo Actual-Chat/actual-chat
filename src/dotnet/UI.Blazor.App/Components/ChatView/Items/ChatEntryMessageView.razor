@@ -27,14 +27,16 @@
     var systemClass = isSystem ? "system-entry" : "";
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
-    var marginClass = isBlockStart ? "mt-2" : "";
+    var paddingClass = isBlockStart ? "pt-2" : "";
     var unreadBlockClass = isUnreadByOthersBlockStart ? "unread-block" : "";
     var ownMessageClass = m.IsOwnMessage ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
     var selectedClass = m.IsSelected ? "selected-message" : "";
+    var selectionStartClass = m.IsSelectionStart ? "selection-start" : "";
+    var selectionEndClass = m.IsSelectionEnd ? "selection-end" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
-    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {marginClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
+    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {paddingClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} {selectionStartClass} {selectionEndClass} message-wrapper";
 
     switch (message.ReplacementKind) {
     case ChatMessageReplacementKind.None:
@@ -352,8 +354,12 @@
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
-        var isPreviousSelected = previousMessage != null && selectedChatEntries.Contains(previousMessage.Entry.Id);
-        var isNextSelected = nextMessage != null && selectedChatEntries.Contains(nextMessage.Entry.Id);
+        var isPreviousSelected = previousMessage != null
+                                 && selectedChatEntries.Contains(previousMessage.Entry.Id)
+                                 && previousMessage.ReplacementKind == ChatMessageReplacementKind.None;
+        var isNextSelected = nextMessage != null
+                             && selectedChatEntries.Contains(nextMessage.Entry.Id)
+                             && nextMessage.ReplacementKind == ChatMessageReplacementKind.None;
         var isSelected = selectedChatEntries.Contains(entry.Id);
 
         var isSelectionStart = isSelected && !isPreviousSelected;
@@ -366,6 +372,8 @@
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
             IsSelected = isSelected,
+            IsSelectionStart = isSelectionStart,
+            IsSelectionEnd = isSelectionEnd,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
             ForwardedChatEntryId = forwardedChatEntryId,
@@ -556,6 +564,8 @@
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
         public bool IsSelected { get; init; }
+        public bool IsSelectionStart { get; init; }
+        public bool IsSelectionEnd { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
         public ChatEntryId ForwardedChatEntryId { get; init; }

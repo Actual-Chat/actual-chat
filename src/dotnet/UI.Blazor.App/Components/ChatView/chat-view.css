@@ -1,12 +1,9 @@
 .message-wrapper {
     @apply relative;
     @apply flex-y;
-    @apply border-l-2 border-bg-01;
+    @apply border-l-2 border-bg-01 rounded-lg;
     @apply md:select-text;
     @apply translate-z-0;
-}
-.message-wrapper {
-    @apply rounded-lg;
 }
 body.hoverable .message-wrapper:hover {
     @apply bg-message-hover;
@@ -131,12 +128,19 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
 .message-wrapper.selected-message,
 .message-wrapper.mention.selected-message {
     @apply border-l-2 border-selected-message-border;
+    @apply rounded-none;
     @apply bg-selected-message;
 }
 body.hoverable .message-wrapper.selected-message:hover,
 body.hoverable .message-wrapper.mention.selected-message:hover {
     @apply border-l-2 border-selected-message-border;
     @apply bg-selected-message-hover;
+}
+.message-wrapper.selected-message.selection-start {
+    @apply rounded-t-lg;
+}
+.message-wrapper.selected-message.selection-end {
+    @apply rounded-b-lg;
 }
 
 .chat-message-timestamp,
@@ -219,7 +223,7 @@ body.hoverable .chat-header-title:hover {
 .system-entry {
     @apply self-center;
     @apply w-full;
-    @apply px-6 mt-0.5;
+    @apply px-6 my-0.5;
 }
 .system-entry .chat-message {
     @apply flex-y items-center justify-center;
@@ -603,8 +607,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply flex-none flex-y;
     @apply w-fit;
     @apply select-none;
-    @apply m-2;
-    @apply ml-3;
+    @apply m-2 mt-1 ml-3;
 }
 
 .chat-view.virtual-list .c-virtual-container .chat-message-group > .c-left > .avatar-badge {

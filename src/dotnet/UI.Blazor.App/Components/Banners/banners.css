@@ -51,7 +51,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply pr-3;
 }
 .chat-activity-banner.banner:not(:has(.chat-activity-panel)) {
-    @apply border-0;
+    @apply hidden;
 }
 .chat-activity-banner .author-circle-group {
     @apply pr-0 md:pr-3;
