@@ -5,35 +5,31 @@ namespace ActualChat.Users.UnitTests;
 
 public class SettingsRoundTripSerializationTest
 {
-    [Fact]
-    public async Task ShouldDeserializePreviousVersionCorrectly()
+    [Theory]
+    [MemberData(nameof(GetCases))]
+    public async Task ShouldDeserializePreviousVersion(string name, object expected)
     {
-        foreach (var (name, expected) in GetCases()) {
-            // arrange
-            var bytes = await File.ReadAllBytesAsync($"Data/{GetFileName(expected, name)}");
+        // arrange
+        var bytes = await File.ReadAllBytesAsync($"Data/{GetFileName(expected, name)}");
 
-            // act
-            var data = KvasSerializer.Default.Read(bytes, expected.GetType());
+        // act
+        var data = KvasSerializer.Default.Read(bytes, expected.GetType());
 
-            // assert
-            data.Should().BeEquivalentTo(expected);
-        }
+        // assert
+        data.Should().BeEquivalentTo(expected);
     }
 
-    [Fact]
-    public void ShouldSerializeDeserializeForLatestVersion()
+    [Theory]
+    [MemberData(nameof(GetCases))]
+    public void ShouldSerializeDeserializeForLatestVersion(string name, object expected)
     {
-        foreach (var (name, expected) in GetCases()) {
-            // arrange
+        // act
+        using var buffer = KvasSerializer.Default.Write(expected, expected.GetType());
+        var bytes = buffer.WrittenMemory.ToArray();
+        var deserialized = KvasSerializer.Default.Read(bytes, expected.GetType());
 
-            // act
-            using var buffer = KvasSerializer.Default.Write(expected, expected.GetType());
-            var bytes = buffer.WrittenMemory.ToArray();
-            var deserialized = KvasSerializer.Default.Read(bytes, expected.GetType());
-
-            // assert
-            deserialized.Should().BeEquivalentTo(expected, "test case '{0}'", name);
-        }
+        // assert
+        deserialized.Should().BeEquivalentTo(expected, "test case '{0}'", name);
     }
 
     [Fact(Skip = "Only for manual runs to generate new test data")]
@@ -50,25 +46,28 @@ public class SettingsRoundTripSerializationTest
         if (Directory.Exists(outDir))
             Directory.Delete(outDir, true);
         Directory.CreateDirectory(outDir);
-        foreach (var (name, data) in GetCases()) {
+        foreach (var row in GetCases()) {
+            var name = row[0] as string;
+            var data = row[1]!;
             using var buffer = KvasSerializer.Default.Write(data, data.GetType());
             await File.WriteAllBytesAsync(outDir | GetFileName(data, name), buffer.WrittenMemory.ToArray());
         }
     }
 
+    public static TheoryData<string, object> GetCases()
+    {
+        var theoryData = new TheoryData<string, object>();
+        foreach (var (name, data) in GetUserChatSettingsCases())
+            theoryData.Add(name, data);
+        foreach (var (name, data) in GetUserLanguageSettingsCases())
+            theoryData.Add(name, data);
+        return theoryData;
+    }
+
     private static string GetFileName(object data, string name)
         => $"{data.GetType().Name}.{name}.bin";
 
-    private IEnumerable<(string Name, object Value)> GetCases()
-    {
-        foreach (var x in GetUserChatSettingsCases())
-            yield return x;
-
-        foreach (var x in GetUserLanguageSettingsCases())
-            yield return x;
-    }
-
-    private IEnumerable<(string Name, UserChatSettings Data)> GetUserChatSettingsCases()
+    private static IEnumerable<(string Name, UserChatSettings Data)> GetUserChatSettingsCases()
     {
         yield return ("DefaultInstance", UserChatSettings.Default);
         yield return ("Empty", new ());
@@ -95,7 +94,7 @@ public class SettingsRoundTripSerializationTest
         });
     }
 
-    private IEnumerable<(string Name, UserLanguageSettings Data)> GetUserLanguageSettingsCases()
+    private static IEnumerable<(string Name, UserLanguageSettings Data)> GetUserLanguageSettingsCases()
     {
         yield return ("Empty", new ());
         yield return ("OnlyOrigin", new () {

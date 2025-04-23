@@ -8,17 +8,14 @@ public sealed partial record UserLanguageSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserLanguageSettings);
 
-    // TODO(AY): Serialization(Language)
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember, MemoryPackOrder(0)] [LanguageBackwardCompatibleFormatter(false)]
     [field: AllowNull, MaybeNull]
     public Language Primary {
         get => field ?? Languages.Main;
         init;
     }
-    // TODO(AY): Serialization(Language?)
-    [DataMember, MemoryPackOrder(1)] public Language? Secondary { get; init; }
-    // TODO(AY): Serialization(Language?)
-    [DataMember, MemoryPackOrder(3)] public Language? Tertiary { get; init; }
+    [DataMember, MemoryPackOrder(1)] [LanguageBackwardCompatibleFormatter(true)] public Language? Secondary { get; init; }
+    [DataMember, MemoryPackOrder(3)] [LanguageBackwardCompatibleFormatter(true)] public Language? Tertiary { get; init; }
     [DataMember, MemoryPackOrder(2)] public string Origin { get; init; } = "";
 
     [IgnoreDataMember, MemoryPackIgnore]
