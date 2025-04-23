@@ -24,7 +24,7 @@
 .date-visor {
     @apply flex items-center;
     @apply h-4;
-    @apply px-2 -mt-2.5;
+    @apply px-2 -mt-2;
     @apply rounded-full border-none;
     @apply bg-01;
     @apply text-caption-6 text-01;
