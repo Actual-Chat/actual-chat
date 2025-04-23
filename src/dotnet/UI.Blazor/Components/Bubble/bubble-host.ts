@@ -1,5 +1,5 @@
 import { arrow, computePosition, flip, offset, Placement, shift, autoUpdate } from '@floating-ui/dom';
-import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
+import { Subject, debounceTime, startWith, takeUntil, fromEvent } from 'rxjs';
 import { Log } from 'logging';
 
 interface BubbleModel {
@@ -20,6 +20,8 @@ const { debugLog } = Log.get('BubbleHost');
 export class BubbleHost {
     private readonly mutationObserver: MutationObserver;
     private readonly disposed$: Subject<void> = new Subject<void>();
+
+    private bubbleHost: HTMLElement;
 
     private _bubbles: BubbleModel[] = [];
     private _clearAutoUpdate: () => void;
@@ -63,6 +65,23 @@ export class BubbleHost {
                     'data-side-nav',
                     'data-settings-panel',
                 ],
+            });
+
+        this.bubbleHost = document.querySelector('.ac-bubble-host');
+        const mediaQuery = window.matchMedia('(orientation: portrait)');
+        if (!mediaQuery.matches && !this.bubbleHost.classList.contains('landscape')) {
+            this.bubbleHost.classList.add('landscape');
+        }
+        void fromEvent(mediaQuery, 'change')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: MediaQueryListEvent) => {
+                if (event.matches) {
+                    this.bubbleHost.classList.remove('landscape');
+                } else {
+                    if (!this.bubbleHost.classList.contains('landscape')) {
+                        this.bubbleHost.classList.add('landscape');
+                    }
+                }
             });
     }
 

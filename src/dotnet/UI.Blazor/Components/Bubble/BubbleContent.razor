@@ -2,18 +2,26 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="bubble-content">
-    @if (VideoMP4 != null && BrowserInfo.IsIos) {
-        @VideoMP4
-    } else if (VideoWebM != null) {
-        @VideoWebM
-    }
-    @if (Title != null) {
-        <div class="bubble-title">
-            @Title
+    <div class="c-body">
+        @if (VideoMP4 != null || VideoWebM != null) {
+            <div class="c-video">
+                @if (VideoMP4 != null && BrowserInfo.IsIos) {
+                    @VideoMP4
+                } else if (VideoWebM != null) {
+                    @VideoWebM
+                }
+            </div>
+        }
+        <div class="c-content">
+            @if (Title != null) {
+                <div class="bubble-title">
+                    @Title
+                </div>
+            }
+            <div class="bubble-body">
+                @Body
+            </div>
         </div>
-    }
-    <div class="bubble-body">
-        @Body
     </div>
     <div class="flex-x items-center">
         <div class="bubble-counter flex-1 text-xs">

@@ -1,10 +1,18 @@
 .banner {
-    @apply flex-x gap-x-2 items-center justify-between;
-    @apply w-full h-14;
-    @apply px-4;
-    @apply border-separator border-b;
+    @apply flex-x gap-x-2 items-center justify-center;
+    @apply w-full md:max-w-160 h-14;
+    @apply px-2;
+    @apply rounded-lg border-separator border-2;
     @apply bg-02;
     @apply text-02;
+}
+.banner i {
+    @apply text-xl md:text-2xl;
+}
+.banner .c-content {
+    @apply flex-1 flex-x justify-center items-center gap-x-2;
+    @apply md:max-w-160;
+    @apply md:px-2;
 }
 .banner-body {
     @apply flex-1;
@@ -33,18 +41,22 @@ body.hoverable .banner .btn-h:hover {
 
 .banner-success {
     @apply bg-banner-success;
+    @apply border-banner-success;
     @apply text-banner-success;
 }
 .banner-info {
     @apply bg-banner-info;
+    @apply border-banner-info;
     @apply text-banner-info;
 }
 .banner-warning {
     @apply bg-banner-warning;
+    @apply border-banner-warning;
     @apply text-banner-warning;
 }
 .banner-error {
     @apply bg-banner-error;
+    @apply border-banner-error;
     @apply text-banner-error;
 }
 

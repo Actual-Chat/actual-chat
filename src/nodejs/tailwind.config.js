@@ -151,6 +151,9 @@ module.exports = {
         'replied-message': 'var(--replied-message)',
         'replied-message-hover': 'var(--replied-message-hover)',
         'replied-message-border': 'var(--replied-message-border)',
+        'selected-message': 'var(--selected-message)',
+        'selected-message-hover': 'var(--selected-message-hover)',
+        'selected-message-border': 'var(--selected-message-border)',
         'context-menu': 'var(--context-menu)',
         'context-border': 'var(--context-border)',
         'selection': 'var(--selection)',
@@ -267,6 +270,10 @@ module.exports = {
         'bg-07': 'var(--background-07)',
         'bg-08': 'var(--background-08)',
         'modal': 'var(--modal-border)',
+        'banner-success': 'var(--border-banner-success)',
+        'banner-info': 'var(--border-banner-info)',
+        'banner-warning': 'var(--border-banner-warning)',
+        'banner-error': 'var(--border-banner-error)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -446,7 +453,7 @@ module.exports = {
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
-      'highlight': 'highlight 1.5s ease-in-out forwards',
+      'highlight': 'highlight 750ms ease-in-out 2 forwards',
       'notify-panel-opening': 'notify-panel-opening 150ms ease-in-out',
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
       'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
@@ -1104,12 +1111,10 @@ module.exports = {
       },
       'highlight': {
           '0%': {
-              'background': 'var(--replied-message-hover)',
-              'border-left': '2px solid var(--replied-message-border)',
+            opacity: 1,
           },
-          '99%': {
-              'background': 'transparent',
-              'border-left': '2px solid transparent',
+          '75%': {
+            opacity: 0.5,
           },
       },
       'opacity-0-100-0': {
