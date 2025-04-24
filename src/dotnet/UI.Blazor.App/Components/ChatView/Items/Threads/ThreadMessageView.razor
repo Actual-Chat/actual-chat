@@ -96,8 +96,6 @@
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IChatThreads ChatThreads => Hub.ChatThreads;
-    private IAuthors Authors => Hub.Authors;
-    private IRoles Roles => Hub.Roles;
     private History History => Hub.History;
     private MomentClockSet Clocks => Hub.Clocks();
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
@@ -117,14 +115,8 @@
         if (chat is null)
             return null;
 
-        var ownerName = "Unknown";
-        var ownerAuthorIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownerAuthorIds.Count > 0) {
-            var ownerAuthorId = ownerAuthorIds[0];
-            var ownerAuthor = await Authors.Get(Session, ownerAuthorId.ChatId, ownerAuthorId, cancellationToken).ConfigureAwait(false);
-            if (ownerAuthor is not null)
-                ownerName = ownerAuthor.Avatar.Name;
-        }
+        var threadCreator = await ChatThreads.GetThreadCreator(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownerName = threadCreator?.Name ?? "Unknown";
         var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;

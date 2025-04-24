@@ -17,6 +17,12 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
+    private IRoles Roles => field ??= services.GetRequiredService<IRoles>();
+    [field: AllowNull, MaybeNull]
+    private IRolesBackend RolesBackend => field ??= services.GetRequiredService<IRolesBackend>();
+    [field: AllowNull, MaybeNull]
+    private IAuthors Authors => field ??= services.GetRequiredService<IAuthors>();
+    [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= services.GetRequiredService<IContactsBackend>();
     [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= services.GetRequiredService<ICommander>();
@@ -80,6 +86,31 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     {
         await Chats.Get(session, threadChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await GetThreadStatInternal(threadChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Avatar?> GetThreadCreator(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        if (!chatId.IsThread)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
+        await Chats.Get(session, chatId.GetThreadParent(), cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the parent chat
+
+        var ownerRole = await RolesBackend
+            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+
+        var ownerAuthorIds = await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
+        if (ownerAuthorIds.Count <= 0)
+            return null;
+
+        var ownerAuthorId = ownerAuthorIds[0];
+        var ownerAuthor = await Authors.Get(session, ownerAuthorId.ChatId, ownerAuthorId, cancellationToken).ConfigureAwait(false);
+        return ownerAuthor?.Avatar;
     }
 
     // [ComputeMethod]
@@ -167,12 +198,13 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             // Create thread chat entry.
             {
                 var textEntryId1 = new TextEntryId(chatId, 0, AssumeValid.Option);
+                var textEntryAuthorId = ActualChat.Chat.AuthorsBackend.Remap(textEntry.AuthorId, chatId);
                 var upsertEntryCommand = new ChatsBackend_ChangeEntry(
                     textEntryId1,
                     null,
                     Change.Create(new ChatEntryDiff {
                         BeginsAt = textEntry.BeginsAt,
-                        AuthorId = textEntry.AuthorId,
+                        AuthorId = textEntryAuthorId,
                         Content = textEntry.Content,
                         Attachments = textEntry.Attachments.IsEmpty ? null : textEntry.Attachments,
                     }));

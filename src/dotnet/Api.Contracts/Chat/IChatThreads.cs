@@ -1,3 +1,4 @@
+using ActualChat.Users;
 using MemoryPack;
 
 namespace ActualChat.Chat;
@@ -15,6 +16,9 @@ public interface IChatThreads : IComputeService
 
     [ComputeMethod]
     Task<ThreadStat> GetThreadStat(Session session, ChatId threadChatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<Avatar?> GetThreadCreator(Session session, ChatId threadChatId, CancellationToken cancellationToken);
 
     Task<(string, string)> SuggestThreadTitle(Session session, ChatId parentChatId, ApiArray<TextEntryId> entryIds, CancellationToken cancellationToken);
 

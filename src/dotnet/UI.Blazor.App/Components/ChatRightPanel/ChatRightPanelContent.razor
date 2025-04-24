@@ -24,7 +24,7 @@
                                 <AuthorList ChatId="@Chat.Id"/>
                             </Tab>
                         }
-                        @if (m.ShowMembersTab) {
+                        @if (m.ShowThreads) {
                             <Tab @key="@("threads")" Id="threads" Title="Threads" Order="1">
                                 <ThreadList ChatId="@Chat.Id"/>
                             </Tab>
@@ -53,7 +53,6 @@
     private IChats Chats => Hub.Chats;
     private Features Features => Hub.Features();
     private PanelsUI PanelsUI => Hub.PanelsUI;
-    private ShareUI ShareUI => Hub.ShareUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -80,7 +79,7 @@
         return new () {
             EnableIncompleteUI = enableIncompleteUI,
             ShowMembersTab = showMemberTab,
-            ShowThreads = !chatId.IsThread && chatId.Kind is ChatKind.Group or ChatKind.Place,
+            ShowThreads = chatId.Kind is ChatKind.Group or ChatKind.Place,
             ShowSearchPanel = showSearchPanel && enableIncompleteUI,
         };
     }

@@ -31,7 +31,8 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceChatId PlaceChatId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public GroupChatId GroupChatId { get; } = GroupChatId.None;
+    [field: AllowNull, MaybeNull]
+    public GroupChatId GroupChatId { get => field ?? GroupChatId.None; } = GroupChatId.None;
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

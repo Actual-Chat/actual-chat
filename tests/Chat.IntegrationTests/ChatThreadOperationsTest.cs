@@ -40,9 +40,9 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
             resultChatEntries.AddRange(tile.Entries);
         }
         resultChatEntries.Count.Should().Be(2);
-        resultChatEntries[0].AuthorId.Should().Be(parentChatEntries[0].AuthorId);
+        resultChatEntries[0].AuthorId.LocalId.Should().Be(parentChatEntries[0].AuthorId.LocalId);
         resultChatEntries[0].Content.Should().Be(parentChatEntries[0].Content);
-        resultChatEntries[1].AuthorId.Should().Be(parentChatEntries[2].AuthorId);
+        resultChatEntries[1].AuthorId.LocalId.Should().Be(parentChatEntries[2].AuthorId.LocalId);
         resultChatEntries[1].Content.Should().Be(parentChatEntries[2].Content);
 
         var chatThreads = services.GetRequiredService<IChatThreads>();
@@ -97,9 +97,9 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
             resultChatEntries.AddRange(tile.Entries);
         }
         resultChatEntries.Count.Should().Be(2);
-        resultChatEntries[0].AuthorId.Should().Be(threadChatEntries[0].AuthorId);
+        resultChatEntries[0].AuthorId.LocalId.Should().Be(threadChatEntries[0].AuthorId.LocalId);
         resultChatEntries[0].Content.Should().Be(threadChatEntries[0].Content);
-        resultChatEntries[1].AuthorId.Should().Be(threadChatEntries[1].AuthorId);
+        resultChatEntries[1].AuthorId.LocalId.Should().Be(threadChatEntries[1].AuthorId.LocalId);
         resultChatEntries[1].Content.Should().Be(threadChatEntries[1].Content);
 
         var chatThreads = services.GetRequiredService<IChatThreads>();

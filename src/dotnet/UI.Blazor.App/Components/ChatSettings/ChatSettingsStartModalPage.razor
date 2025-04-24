@@ -221,7 +221,7 @@
 
         var isThread = chat.Id.IsThread;
         if (isThread) {
-            var parentChat = await Chats.Get(Session, chatId.GetThreadParent(), cancellationToken).ConfigureAwait(false);
+            var parentChat = await Chats.Get(Session, chatId.GetOutermostThreadParentOrSelf(), cancellationToken).ConfigureAwait(false);
             return new ComputedModel { Chat = chat, CanRemoveThread = parentChat?.Rules.IsOwner() ?? false };
         }
 

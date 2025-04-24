@@ -41,7 +41,7 @@
         var placeId = PlaceId;
         ApiArray<ChatId> threadIds;
         if (!ChatId.IsNone) {
-            if (chatId.IsThread || chatId.Kind is not (ChatKind.Group or ChatKind.Place))
+            if (chatId.Kind is not (ChatKind.Group or ChatKind.Place))
                 return Model.None;
 
             threadIds = await ChatThreads.ListIdsForChat(Session, chatId, cancellationToken).ConfigureAwait(false);

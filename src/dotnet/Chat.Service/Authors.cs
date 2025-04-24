@@ -15,7 +15,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
     private IContactsBackend? _contactsBackend;
-    private IExternalContactsBackend? _externalContactsBackend;
     private IRoles? _roles;
     private IRolesBackend? _rolesBackend;
 
@@ -28,7 +27,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
     private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
-    private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
     private IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();
     private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
 
@@ -37,7 +35,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        (chatId, authorId) = Remap(chatId, authorId);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return null;
@@ -74,7 +71,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         // the ability to access the chat, otherwise we'll hit the recursion here.
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetByUserId(chatId.GetOutermostThreadParentOrSelf(), account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -82,7 +79,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        (chatId, authorId) = Remap(chatId, authorId);
         var ownAuthor = await GetOwn(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         if (ownAuthor.Id == authorId)
             return ownAuthor;
@@ -100,7 +96,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        (chatId, authorId) = Remap(chatId, authorId);
         // In fact, de-anonymizes the author
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -151,7 +146,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        (chatId, authorId) = Remap(chatId, authorId);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return Presence.Unknown;
@@ -173,7 +167,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        (chatId, authorId) = Remap(chatId, authorId);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return null;

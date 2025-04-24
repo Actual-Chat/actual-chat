@@ -112,17 +112,10 @@ public class Chats(IServiceProvider services) : IChats
         CancellationToken cancellationToken)
     {
         var isThread = chatId.IsThread;
-        chatId = chatId.GetOutermostThreadParentOrSelf();
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (isThread) {
-            var permissions = rules.Permissions
-                ^ (ChatPermissions.Invite
-                | ChatPermissions.Join
-                | ChatPermissions.Leave
-                | ChatPermissions.EditMembers
-                | ChatPermissions.EditRoles
-                | ChatPermissions.SeeMembers);
+            var permissions = rules.Permissions;
             if (permissions.HasFlag(ChatPermissions.Write))
                 permissions |= ChatPermissions.EditProperties;
             rules = rules with {

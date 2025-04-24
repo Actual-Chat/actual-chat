@@ -60,11 +60,8 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (ownAuthor == null)
             return default;
 
-        var rulesTargetChatId = chatId;
-        if (chatId.IsThread)
-            rulesTargetChatId = chatId.GetOutermostThreadParentOrSelf();
         var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
-        var rules = await ChatsBackend.GetRules(rulesTargetChatId, principalId, cancellationToken).ConfigureAwait(false);
+        var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
 
@@ -85,7 +82,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
 
         var authorIds = await Backend.ListAuthorIds(targetChatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
         if (targetChatId != chatId)
-            authorIds = authorIds.Select(c => Remap(c, chatId)).ToApiArray();
+            authorIds = authorIds.Select(c => ActualChat.Chat.AuthorsBackend.Remap(c, chatId)).ToApiArray();
         // Mask anonymous owners
         if (!rules.IsOwner())
             authorIds = await MaskAnonymousAuthors(authorIds, cancellationToken).ConfigureAwait(false);
@@ -151,7 +148,4 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
 
         return authorIds.Except(toExclude).ToApiArray();
     }
-
-    private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
-        => new AuthorId(targetChatId, authorId.LocalId, AssumeValid.Option);
 }

@@ -160,8 +160,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         PrincipalId principalId,
         CancellationToken cancellationToken)
     {
-        chatId.EnsureNonThread();
-
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
@@ -1842,16 +1840,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         else
             return AuthorRules.None(chatId);
 
-        var roles = ApiArray<Role>.Empty;
         var isJoined = author is { HasLeft: false };
-        if (isJoined) {
+        var permissions = (ChatPermissions)0;
+        if (isJoined && chatId.IsThread)
+            permissions = ChatPermissions.Read | ChatPermissions.Write;
+        else if (isJoined) {
             var isGuest = account.IsGuestOrNone;
             var isAnonymous = author is { IsAnonymous: true };
-            roles = await RolesBackend
+            var roles = await RolesBackend
                 .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
                 .ConfigureAwait(false);
+            permissions = roles.ToPermissions();
         }
-        var permissions = roles.ToPermissions();
+
         if (chat.IsPublic) {
             if (chatId != Constants.Chat.AnnouncementsChatId)
                 permissions |= ChatPermissions.Join;
@@ -1915,14 +1916,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return AuthorRules.None(chatId);
 
         var rootChatId = placeChatId.PlaceId.ToRootChatId();
-        PrincipalId rootChatPrincipalId;
-        if (principalId.IsUser(out _))
-            rootChatPrincipalId = principalId;
-        else if (principalId.IsAuthor(out var pAuthorId))
-            rootChatPrincipalId = new PrincipalId(new AuthorId(rootChatId, pAuthorId.LocalId, AssumeValid.Option), AssumeValid.Option);
-        else
-            throw StandardError.Internal("Can't remap principal id for root chat");
-
+        var rootChatPrincipalId = ActualChat.Chat.AuthorsBackend.Remap(principalId, rootChatId);
         var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (!rootChatRules.CanRead())
             return AuthorRules.None(chatId);
