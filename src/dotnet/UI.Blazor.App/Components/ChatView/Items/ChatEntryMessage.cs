@@ -15,7 +15,9 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
         if (other is not ChatEntryMessage otherEntryMessage)
             return false;
 
-        return Entry.VersionEquals(otherEntryMessage.Entry)
+        // Avoid checking the version for entry as we don't want to rerender a virtual list
+        return Entry.Id == otherEntryMessage.Entry.Id
+            && Entry.IsRemoved == otherEntryMessage.Entry.IsRemoved
             && ReplacementKind == other.ReplacementKind
             && Date == other.Date
             && Flags == other.Flags
@@ -24,7 +26,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
     }
 
     public override int GetHashCode()
-        => HashCode.Combine(Entry,
+        => HashCode.Combine(Entry.Id,
             ReplacementKind,
             Date,
             Flags,
