@@ -734,7 +734,7 @@ export class VirtualList {
                     ? this.getLastItemKey()
                     : null;
             if (itemKey) {
-                shouldUseSmoothScroll = true;
+                shouldUseSmoothScroll = itemKey !== this.stickyEdge.itemKey;
                 scrollType = 'sticky-edge';
                 scrollFunc = () => {
                     this.setStickyEdge({ itemKey, edge: this.stickyEdge.edge });
