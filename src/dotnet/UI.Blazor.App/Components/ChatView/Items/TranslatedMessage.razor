@@ -10,6 +10,7 @@
 @code {
     private Model _rendered = Model.None;
     private ChatUIHub Hub => ChatContext.Hub;
+    private ChatUI ChatUI => Hub.ChatUI;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private Features Features => Hub.Features();
     private TranslationUI TranslationUI => Hub.TranslationUI;
@@ -22,12 +23,12 @@
 
     protected override bool ShouldRender()
         => !ReferenceEquals(_rendered, State.Value)
-            && (_rendered.Message.Entry.ContentHash != State.Value.Message.Entry.ContentHash
+            && (_rendered.Entry.ContentHash != State.Value.Entry.ContentHash
                 || _rendered.Markup != State.Value.Markup);
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.
-        var initialData = new Model(Markup, Message);
+        var initialData = new Model(Markup, Message.Entry);
         return new() {
             InitialValue = initialData, // show original text immediately
             Category = GetStateCategory(GetType()),
@@ -37,26 +38,36 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
-        var markup = Markup;
-        var entry = message.Entry;
+        var renderedEntry = _rendered.Entry.Version <= 0 ? message.Entry : _rendered.Entry;
+        var markup = _rendered.Entry.Version <= 0 ? Markup : _rendered.Markup;
+        var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
+        if (entry == null) {
+            Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
+            return _rendered;
+        }
+
+        if (!renderedEntry.VersionEquals(entry)) {
+            markup = MarkupParser.Parse(entry.Content);
+        }
+
         if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-            return new(markup, message);
+            return new(markup, entry);
 
         var isOn = await TranslationUI.IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) ?? false;
         if (!isOn)
-            return new(markup, message);
+            return new(markup, entry);
 
         var needsTranslation = await TranslationUI.NeedsTranslation(entry.Id, cancellationToken).ConfigureAwait(false);
         if (!needsTranslation)
-            return new(markup, message);
+            return new(markup, entry);
 
         var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
-        return new (translation == null ? markup : MarkupParser.Parse(translation.Content), message);
+        return new (translation == null ? markup : MarkupParser.Parse(translation.Content), entry);
     }
 
     // Nested types
 
-    public sealed record Model(Markup Markup, ChatEntryMessage Message) {
-        public static readonly Model None = new(Markup.Empty, new (ChatEntry.Loading));
+    public sealed record Model(Markup Markup, ChatEntry Entry) {
+        public static readonly Model None = new(Markup.Empty, ChatEntry.Loading);
     }
 }
