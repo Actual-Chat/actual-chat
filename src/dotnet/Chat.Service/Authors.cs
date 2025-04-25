@@ -120,7 +120,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [ComputeMethod]
     public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        chatId = chatId.GetOutermostThreadParentOrSelf();
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
@@ -131,7 +130,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [ComputeMethod]
     public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        chatId = chatId.GetOutermostThreadParentOrSelf();
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return default;
@@ -427,18 +425,5 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     {
         if (chat.Id.IsPlaceChat && !chat.Id.PlaceChatId.IsRoot && chat.IsPublic)
             throw StandardError.Constraint("You must manage place public chat membership via place settings.");
-    }
-
-    private (ChatId chatId, AuthorId authorId) Remap(ChatId chatId, AuthorId authorId)
-    {
-        if (!chatId.IsThread)
-            return (chatId, authorId);
-
-        if (authorId.ChatId != chatId)
-            throw StandardError.Constraint("Provided authorId should belong to given chatId.");
-
-        chatId = chatId.GetOutermostThreadParentOrSelf();
-        authorId = new AuthorId(chatId, authorId.LocalId, AssumeValid.Option);
-        return (chatId, authorId);
     }
 }
