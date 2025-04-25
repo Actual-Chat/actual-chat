@@ -159,6 +159,10 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-header-control-panel:empty {
     @apply hidden;
 }
+.chat-header-control-panel .translation-btn,
+body.hoverable .chat-header-control-panel .translation-btn:hover {
+    @apply text-primary;
+}
 
 .message-counter-with-time {
     @apply flex-y items-center gap-y-0.5;

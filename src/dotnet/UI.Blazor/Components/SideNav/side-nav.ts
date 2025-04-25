@@ -39,6 +39,7 @@ export class SideNav extends DisposableBag {
     private readonly contentDiv: HTMLElement;
     private readonly bodyClassWhenOpen: string;
     private _isPulling = false;
+    private pageWithHeaderAndFooter: HTMLElement;
 
     public readonly hasHistoryNavigationGesture: boolean;
     public get side(): SideNavSide { return this.options.side; }
@@ -67,6 +68,7 @@ export class SideNav extends DisposableBag {
         this.contentDiv = element.firstElementChild as HTMLElement;
         this.bodyClassWhenOpen = `side-nav-${this.side == SideNavSide.Left ? 'left' : 'right'}-open`;
         this.hasHistoryNavigationGesture = DeviceInfo.isWebKit && BrowserInfo.hostKind !== 'MauiApp';
+        this.pageWithHeaderAndFooter = element.closest('.page-with-header-and-footer');
         const stateObserver = new MutationObserver(() => this.updateBodyClassList());
         stateObserver.observe(this.element, { attributeFilter: ['data-side-nav'] });
         if (this.side == SideNavSide.Left)
@@ -140,10 +142,30 @@ export class SideNav extends DisposableBag {
 
     /** Call during RAF */
     private updateBodyClassList(): void {
-        if (this.isOpen)
+        const parent = this.pageWithHeaderAndFooter;
+        if (this.isOpen) {
             document.body.classList.add(this.bodyClassWhenOpen);
-        else
+            if (parent) {
+                if (this === SideNav.left && !parent.classList.contains('lp-open')) {
+                    parent.classList.remove('lp-closed');
+                    parent.classList.add('lp-open');
+                } else if (this === SideNav.right && !parent.classList.contains('rp-open')) {
+                    parent.classList.remove('rp-closed');
+                    parent.classList.add('rp-open');
+                }
+            }
+        } else {
             document.body.classList.remove(this.bodyClassWhenOpen);
+            if (parent) {
+                if (this === SideNav.left && !parent.classList.contains('lp-closed')) {
+                    parent.classList.remove('lp-open');
+                    parent.classList.add('lp-closed');
+                } else if (this === SideNav.right && !parent.classList.contains('rp-closed')) {
+                    parent.classList.remove('rp-open');
+                    parent.classList.add('rp-closed');
+                }
+            }
+        }
     }
 }
 

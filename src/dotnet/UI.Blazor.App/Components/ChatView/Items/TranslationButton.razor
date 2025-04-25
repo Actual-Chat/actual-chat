@@ -4,19 +4,25 @@
     var m = State.Value;
     if(!m.IsVisible)
         return;
+
+    var cls = ScreenSize.IsNarrow() ? "translation-btn btn-sm" : "translation-btn";
 }
 
-<div class="translation-btn-wrapper">
-    <ButtonRound Class="translation-btn btn-sm" Click="OnClick">
+<HeaderButton
+    Class="@cls"
+    Tooltip="Translation"
+    TooltipPosition="FloatingPosition.Bottom"
+    Click="OnClick">
         <i class="icon-language text-2xl"></i>
-    </ButtonRound>
-</div>
+</HeaderButton>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Features Features => Hub.Features();
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private ModalUI ModalUI => Hub.ModalUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
 

@@ -1,7 +1,7 @@
 .right-chat-panel {
     @apply relative;
     @apply flex-y;
-    @apply lg:w-90 h-full;
+    @apply w-full h-full;
     @apply border-l border-transparent;
     @apply bg-03;
     @apply overflow-hidden;

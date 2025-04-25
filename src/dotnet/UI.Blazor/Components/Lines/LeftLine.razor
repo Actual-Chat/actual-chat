@@ -1,9 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var cls = CanMove ? "can-move" : "";
+}
 
-<div class="left-line">
-    <div class="@Width">&nbsp;</div>
+<div class="left-line @cls">
+    <div class="c-content @Width">&nbsp;</div>
 </div>
 
 @code {
+    [Parameter] public bool CanMove { get; set; }
     [Parameter] public string Width { get; set; } = "w-0.75";
 }

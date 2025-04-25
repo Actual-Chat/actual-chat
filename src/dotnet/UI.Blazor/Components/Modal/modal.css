@@ -150,19 +150,19 @@ body.device-ios .modal-frame {
     @apply ios-height;
 }
 .modal-overlay .modal-frame {
-    transform: scale(1);
     filter: opacity(1);
+    transform: translateY(0);
     @starting-style {
         filter: opacity(0);
-        transform: scale(0.5);
+        transform: translateY(5rem);
     }
 }
 .modal-overlay.hide .modal-frame {
-    transform: scale(0.5);
     filter: opacity(0);
+    transform: translateY(5rem);
     @starting-style {
         filter: opacity(1);
-        transform: scale(1);
+        transform: translateY(0);
     }
 }
 
@@ -196,7 +196,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-header-interactive {
     @apply ordinary-header;
-    @apply bg-02 border-separator border-b;
+    @apply bg-02;
 }
 .modal-header-interactive .btn-submit {
     @apply mr-2;
@@ -208,6 +208,10 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-header-interactive .modal-title {
     @apply text-title-1 text-02;
+}
+
+.interactive-header-divider {
+    @apply -mt-2 mx-4;
 }
 
 .dialog-body {
