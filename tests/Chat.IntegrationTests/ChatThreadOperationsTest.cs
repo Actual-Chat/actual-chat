@@ -115,6 +115,70 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task RemoveThreadChat()
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session = tester.Session;
+        await tester.SignInAsUniqueBob();
+
+        var services = tester.AppServices;
+        var chats = services.GetRequiredService<IChats>();
+        var commander = tester.Commander;
+        CancellationToken cancellationToken = default;
+
+        var (parentChatId, _) = await tester.CreateChat(false);
+        var parentChat = await chats.Get(session, parentChatId, cancellationToken).Require();
+        var messages = new[] {
+            "Hello!",
+            "How are you?",
+            "I am fine! Thanks.",
+        };
+        var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
+        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToApiArray();
+        var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
+
+        await commander.Run(new Chats_Change(session, threadChat.Id, null, Change.Remove<ChatDiff>()), cancellationToken);
+
+        var parentChat1 = await chats.Get(session, parentChatId, cancellationToken);
+        parentChat1.Should().NotBeNull();
+        var threadChat1 = await chats.Get(session, threadChat.Id, cancellationToken);
+        threadChat1.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RemoveChatWithThread()
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session = tester.Session;
+        await tester.SignInAsUniqueBob();
+
+        var services = tester.AppServices;
+        var chats = services.GetRequiredService<IChats>();
+        var commander = tester.Commander;
+        CancellationToken cancellationToken = default;
+
+        var (parentChatId, _) = await tester.CreateChat(false);
+        var parentChat = await chats.Get(session, parentChatId, cancellationToken).Require();
+        var messages = new[] {
+            "Hello!",
+            "How are you?",
+            "I am fine! Thanks.",
+        };
+        var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
+        var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToApiArray();
+        var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
+
+        await commander.Run(new Chats_Change(session, parentChat.Id, null, Change.Remove<ChatDiff>()), cancellationToken);
+
+        var parentChat1 = await chats.Get(session, parentChatId, cancellationToken);
+        parentChat1.Should().BeNull();
+        var threadChat1 = await chats.Get(session, threadChat.Id, cancellationToken);
+        threadChat1.Should().BeNull();
+    }
+
     private static async Task<Chat> CreateThreadChat(ICommander commander, IChats chats, Session session, ChatId parentChatId,
         string title, ApiArray<TextEntryId> entryIdsForThread, CancellationToken cancellationToken)
     {
