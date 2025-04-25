@@ -7,8 +7,6 @@ namespace ActualChat.Chat;
 public class ChatThreads(IServiceProvider services) : IChatThreads
 {
     [field: AllowNull, MaybeNull]
-    private IChatThreadsBackend Backend => field ??= services.GetRequiredService<IChatThreadsBackend>();
-    [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= services.GetRequiredService<IChatsBackend>();

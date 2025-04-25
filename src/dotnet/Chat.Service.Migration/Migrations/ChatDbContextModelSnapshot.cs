@@ -544,48 +544,6 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("chat_roulettes");
                 });
 
-            modelBuilder.Entity("ActualChat.Chat.Db.DbChatThread", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("ParentChatId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("parent_chat_id")
-                        .UseCollation("C");
-
-                    b.Property<decimal>("ThreadId")
-                        .HasColumnType("numeric(20,0)")
-                        .HasColumnName("thread_id");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("title");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_chat_threads");
-
-                    b.HasIndex("ParentChatId", "ThreadId")
-                        .HasDatabaseName("ix_chat_threads_parent_chat_id_thread_id");
-
-                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("ParentChatId", "ThreadId"), new[] { "Id" });
-
-                    b.ToTable("chat_threads");
-                });
-
             modelBuilder.Entity("ActualChat.Chat.Db.DbConversation", b =>
                 {
                     b.Property<string>("Id")
