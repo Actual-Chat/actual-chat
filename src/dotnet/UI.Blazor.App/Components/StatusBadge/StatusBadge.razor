@@ -34,6 +34,7 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
     private AccountUI AccountUI => Hub.AccountUI;
@@ -54,10 +55,15 @@
         var status = "";
         var badgeClass = "";
         var chat = Chat;
+        var isPublicChat = chat.IsPublic;
+        if (chat.Id.IsThread) {
+            var parentChat = await Chats.Get(Session, chat.Id.GetOutermostThreadParentOrSelf(), cancellationToken).ConfigureAwait(false);
+            isPublicChat = parentChat?.IsPublic ?? isPublicChat;
+        }
         switch (chat.Kind) {
             case ChatKind.Group:
                 badgeClass = ShowOnlyIcon ? "default" : "public";
-                status = chat.IsPublic ? "Public\u00A0chat" : "Private\u00A0chat";
+                status = isPublicChat ? "Public\u00A0chat" : "Private\u00A0chat";
                 if (chat.Id.IsThread)
                     status += "\u00A0thread";
                 return new() {
@@ -71,7 +77,7 @@
                 if (ReferenceEquals(place, null))
                     return Model.Loading;
 
-                status = chat.IsPublic ? "Place\u00A0chat" : "Private\u00A0chat";
+                status = isPublicChat ? "Place\u00A0chat" : "Private\u00A0chat";
                 if (chat.Id.IsThread)
                     status += "\u00A0thread";
                 return new () {
