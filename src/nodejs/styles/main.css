@@ -197,13 +197,6 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply lg:max-w-196;
     @apply md:p-2.5;
 }
-/* Chat View in other screen sizes */
-.page-with-header-and-footer.rp-open .list-view-layout > .layout-header > .c-content {
-
-}
-.page-with-header-and-footer.rp-closed .list-view-layout > .layout-header > .c-content {
-
-}
 
 .list-view-layout .layout-body {
     @apply justify-between;
