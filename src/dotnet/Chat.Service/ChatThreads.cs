@@ -191,6 +191,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
                 var chatChange = Change.Create(new ChatDiff {
                     Title = title,
                     Description = description,
+                    IsPublic = true,
                 });
                 threadChat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
             }

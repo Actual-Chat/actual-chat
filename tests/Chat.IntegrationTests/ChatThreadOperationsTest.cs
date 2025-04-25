@@ -179,6 +179,55 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         threadChat1.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ThreadChatShouldHaveSameReadWritePermissionsAsParent(bool isPublicChat)
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session = tester.Session;
+        await tester.SignInAsUniqueBob();
+
+        var services = tester.AppServices;
+        var chats = services.GetRequiredService<IChats>();
+        var commander = tester.Commander;
+        CancellationToken cancellationToken = default;
+
+        var (parentChatId, _) = await tester.CreateChat(isPublicChat);
+        var parentChat = await chats.Get(session, parentChatId, cancellationToken).Require();
+        var messages = new[] {
+            "Hello!",
+            "How are you?",
+            "I am fine! Thanks.",
+        };
+        var parentChatEntries = await InsertEntries(commander, session, parentChat.Id, messages, cancellationToken);
+        var entryIdsForThread = parentChatEntries.Select(c => c.Id.ToTextEntryId()).ToApiArray();
+        var threadChat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
+
+        await AssertThreadChatHasSameReadWritePermissionsAsParent(
+            tester.AppServices.GetRequiredService<IChats>(),
+            session,
+            parentChat.Id,
+            threadChat.Id,
+            true,
+            true
+        );
+
+        await using var tester2 = appHost.NewBlazorTester(Out);
+        var session2 = tester2.Session;
+        await tester2.SignInAsUniqueAlice();
+
+        await AssertThreadChatHasSameReadWritePermissionsAsParent(
+            tester2.AppServices.GetRequiredService<IChats>(),
+            session2,
+            parentChat.Id,
+            threadChat.Id,
+            isPublicChat,
+            false
+            );
+    }
+
     private static async Task<Chat> CreateThreadChat(ICommander commander, IChats chats, Session session, ChatId parentChatId,
         string title, ApiArray<TextEntryId> entryIdsForThread, CancellationToken cancellationToken)
     {
@@ -197,5 +246,26 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
             parentChatEntries.Add(chatEntry);
         }
         return parentChatEntries;
+    }
+
+    private static async Task AssertThreadChatHasSameReadWritePermissionsAsParent(
+        IChats chats,
+        Session session,
+        ChatId parentChatId,
+        ChatId threadChatId,
+        bool canReadParent,
+        bool canWriteParent)
+    {
+        CancellationToken cancellationToken = default;
+        var parentChat2 = await chats.Get(session, parentChatId, cancellationToken);
+        var canReadParentChat = parentChat2 is not null;
+        canReadParentChat.Should().Be(canReadParent);
+        var canWriteToParentChat = parentChat2 is not null && parentChat2.Rules.Permissions.Has(ChatPermissions.Write);
+        canWriteToParentChat.Should().Be(canWriteParent);
+        var threadChat2 = await chats.Get(session, threadChatId, cancellationToken);
+        var canReadThreadChat = threadChat2 is not null;
+        canReadThreadChat.Should().Be(canReadParentChat);
+        var canWriteToThreadChat = threadChat2 is not null && threadChat2.Rules.Permissions.Has(ChatPermissions.Write);
+        canWriteToThreadChat.Should().Be(canWriteToParentChat);
     }
 }

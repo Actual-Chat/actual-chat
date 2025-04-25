@@ -163,6 +163,21 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
+        if (chatId.IsThread) {
+            var parentChatId = chatId.GetOutermostThreadParentOrSelf();
+            var parentChatPrincipal = ActualChat.Chat.AuthorsBackend.Remap(principalId, parentChatId);
+            var parentChatRules = await GetRules(parentChatId, parentChatPrincipal, cancellationToken).ConfigureAwait(false);
+            if (!parentChatRules.CanRead())
+                return AuthorRules.None(chatId);
+
+            var account = parentChatRules.Account;
+            var threadChatAuthor = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            var threadPermissions = ChatPermissions.Read;
+            if (parentChatRules.CanWrite() && threadChatAuthor is not null)
+                threadPermissions |= ChatPermissions.Write;
+            return new AuthorRules(chatId, threadChatAuthor, account, threadPermissions);
+        }
+
         AuthorRules chatRules;
         if (chatId is { IsPlaceChat: true, PlaceChatId.IsRoot: false })
             chatRules = await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
@@ -1840,19 +1855,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         else
             return AuthorRules.None(chatId);
 
+        var roles = ApiArray<Role>.Empty;
         var isJoined = author is { HasLeft: false };
-        var permissions = (ChatPermissions)0;
-        if (isJoined && chatId.IsThread)
-            permissions = ChatPermissions.Read | ChatPermissions.Write;
-        else if (isJoined) {
+        if (isJoined) {
             var isGuest = account.IsGuestOrNone;
             var isAnonymous = author is { IsAnonymous: true };
-            var roles = await RolesBackend
+            roles = await RolesBackend
                 .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
                 .ConfigureAwait(false);
-            permissions = roles.ToPermissions();
         }
-
+        var permissions = roles.ToPermissions();
         if (chat.IsPublic) {
             if (chatId != Constants.Chat.AnnouncementsChatId)
                 permissions |= ChatPermissions.Join;
