@@ -2,8 +2,8 @@
     @apply relative;
     @apply flex-x items-center justify-start gap-x-2;
     @apply min-h-10;
-    @apply px-4;
-    @apply bg-banner-warning shadow-lg;
+    @apply px-2 md:px-4;
+    @apply rounded-lg border-banner-error border-2;
     @apply animate-opacity-from-0;
 }
 .recording-sub-header.recording-elsewhere {

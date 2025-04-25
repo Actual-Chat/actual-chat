@@ -2,7 +2,9 @@
 @{
     var m = State.Value;
     var chat = Chat;
-    var searchCls = m.IsSearchMode ? "on" : "";
+    var searchCls = ScreenSize.IsNarrow() ? "btn-sm" : "";
+    if (m.IsSearchMode)
+        searchCls += " on";
 }
 
 @if (m.HasSelection) {
@@ -50,7 +52,8 @@
     </div>
     @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel">
-        @if (m.EnableIncompleteUI) {
+            <TranslationButton ChatId="@Chat.Id"/>
+            @if (m.EnableIncompleteUI) {
             <HeaderButton Click="@OnSearchClick" Class="@searchCls">
                 <i class="icon-ai-search"></i>
             </HeaderButton>

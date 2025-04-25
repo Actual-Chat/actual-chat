@@ -564,14 +564,6 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     }
 }
 
-.translation-btn-wrapper {
-    @apply relative z-10;
-}
-.translation-btn-wrapper .translation-btn {
-    @apply absolute bottom-4 left-2.5;
-    @apply text-primary;
-}
-
 .hover-menu-wrapper {
     @apply absolute right-0 -top-5 z-10;
     @apply -flex-x;

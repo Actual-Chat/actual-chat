@@ -10,10 +10,12 @@
 
 <div class="banner @BannerCls @Class @_animator.Class">
     <div class="c-content">
-        @if (Icon != null) {
-            @Icon
-        } else {
-            <SeverityIcon Severity="@Severity"/>
+        @if (!ScreenSize.IsNarrow()) {
+            @if (Icon != null) {
+                @Icon
+            } else {
+                <SeverityIcon Severity="@Severity"/>
+            }
         }
         <div class="banner-body">
             @Body
@@ -40,6 +42,7 @@
     private bool _isDismissed = false;
 
     [CascadingParameter] public BannerDef? BannerDef { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

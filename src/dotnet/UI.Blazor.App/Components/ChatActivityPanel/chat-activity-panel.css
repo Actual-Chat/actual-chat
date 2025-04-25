@@ -22,7 +22,8 @@ body.wide .chat-activity-panel {
     @apply hidden;
 }
 .chat-activity-panel > .c-buttons {
-    @apply flex-none;
+    @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
+    @apply px-1;
 }
 .chat-activity-panel > .c-buttons > .btn {
     @apply px-0;
@@ -44,7 +45,7 @@ body.wide .chat-activity-panel {
     @apply rounded-full;
 }
 .activity-svg {
-    @apply mt-1;
+    @apply md:mt-1;
 }
 .btn.c-glow {
     animation: glow-btn 1s steps(10, start) infinite;
