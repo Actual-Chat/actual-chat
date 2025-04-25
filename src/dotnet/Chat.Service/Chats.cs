@@ -802,13 +802,12 @@ public class Chats(IServiceProvider services) : IChats
             return new ReadPositionsStat(chatId, long.MaxValue, []);
 
         var positions = statBackend.TopReadPositions;
-        var parentChatId = chatId.GetOutermostThreadParentOrSelf();
         var top2AuthorReadPositions = (await positions
                 .Select(async c => {
                     var authorId = AuthorId.None;
                     using (var _ = Computed.BeginIsolation()) {
                         // Do not capture dependency, we just need an author id
-                        var author = await AuthorsBackend.GetByUserId(parentChatId,
+                        var author = await AuthorsBackend.GetByUserId(chatId,
                                 c.UserId,
                                 AuthorsBackend_GetAuthorOption.Full,
                                 cancellationToken)
