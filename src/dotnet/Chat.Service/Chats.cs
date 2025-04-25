@@ -283,7 +283,6 @@ public class Chats(IServiceProvider services) : IChats
                 || chatDiff.TemplatedForUserId.HasValue
                 || chatDiff.Kind.HasValue
                 || chatDiff.IsArchived.HasValue
-                || chatDiff.IsSummarized.HasValue
                 || chatDiff.MediaId.HasValue
                 || chatDiff.SystemTag.HasValue
                 || chatDiff.UserLinkId.HasValue
