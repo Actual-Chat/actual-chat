@@ -729,10 +729,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
                     // After that they can reveal themself if needed.
                     var upsertCommand = new AuthorsBackend_Upsert(
-                        chatId,
-                        default,
-                        ownerId,
-                        null,
+                        chatId, default, ownerId, null,
                         new AuthorDiff {
                             IsAnonymous = chat.AllowAnonymousAuthors
                         });
@@ -746,10 +743,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 }
 
                 if (chat.HasSingleAuthor) {
-                    var createCustomRoleCmd = new RolesBackend_Change(chatId,
-                        default,
-                        null,
-                        new () {
+                    var createCustomRoleCmd = new RolesBackend_Change(chatId, default, null, new () {
                             Create = new RoleDiff {
                                 Name = "SingleAuthor",
                                 SystemRole = SystemRole.None,
@@ -762,10 +756,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     await Commander.Call(createCustomRoleCmd, cancellationToken).ConfigureAwait(false);
                 }
                 else {
-                    var createOwnerRoleCmd = new RolesBackend_Change(chatId,
-                        default,
-                        null,
-                        new () {
+                    var createOwnerRoleCmd = new RolesBackend_Change(chatId, default, null, new () {
                             Create = new RoleDiff {
                                 SystemRole = SystemRole.Owner,
                                 Permissions = ChatPermissions.Owner,
@@ -777,10 +768,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     await Commander.Call(createOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
 
                     if (!chatId.IsThread) {
-                        var createAnyoneRoleCmd = new RolesBackend_Change(chatId,
-                            default,
-                            null,
-                            new () {
+                        var createAnyoneRoleCmd = new RolesBackend_Change(chatId, default, null, new () {
                                 Create = new RoleDiff() {
                                     SystemRole = SystemRole.Anyone,
                                     Permissions =
@@ -796,10 +784,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
                 if (chat.IsAiSearchChat()) {
                     var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
-                        chat.Id,
-                        default,
-                        Constants.User.Sherlock.UserId,
-                        null,
+                        chat.Id, default, Constants.User.Sherlock.UserId, null,
                         new AuthorDiff()
                     );
                     _ = await Commander.Call(upsertMlBotAuthorCommand, cancellationToken).ConfigureAwait(false);
