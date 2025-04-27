@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Contacts
 @inherits ComputedStateComponent<PlaceMenuButton.Model>
 @{
     var m = State.Value;
@@ -47,7 +46,6 @@
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
-    private IContacts Contacts => Hub.Contacts;
     private IPlaces Places => Hub.Places;
     private ModalUI ModalUI => Hub.ModalUI;
 
@@ -66,7 +64,9 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var place = Place;
+        var place1 = Place;
+        var place = await Places.Get(Session, place1.Id, cancellationToken).ConfigureAwait(false);
+        place ??= place1;
         int? memberCount = null;
         if (place.Rules.CanSeeMembers()) {
             var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
