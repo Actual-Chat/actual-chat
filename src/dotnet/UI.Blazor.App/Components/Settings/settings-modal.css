@@ -1,4 +1,7 @@
-﻿.settings-tab .app-settings .tile-item {
+﻿.settings-modal.modal-frame {
+    @apply min-h-full;
+}
+.settings-tab .app-settings .tile-item {
     @apply h-auto;
 }
 .settings-tab .app-settings .tile-item-body {

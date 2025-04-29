@@ -1,6 +1,3 @@
-.add-member-modal.modal-frame {
-    @apply md:min-w-90 md:max-w-90 md:h-160 md:max-h-160;
-}
 .add-member-modal-content .dialog-body {
     @apply flex-y gap-y-2;
 }

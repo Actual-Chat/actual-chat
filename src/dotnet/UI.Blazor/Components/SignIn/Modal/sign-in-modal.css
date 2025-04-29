@@ -1,6 +1,3 @@
-.sign-in-modal.modal-frame {
-    @apply md:w-90 md:max-w-90 md:h-164 md:max-h-164;
-}
 .sign-in-modal-header {
     @apply text-headline-7 text-01;
 }

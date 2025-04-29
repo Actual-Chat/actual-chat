@@ -25,6 +25,7 @@ export class ChatMessageEditor {
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
     private readonly input: HTMLDivElement;
+    private readonly postPanelHeightObserver: ResizeObserver;
     private readonly attachmentListObserver: MutationObserver;
     private readonly sideNavs: NodeListOf<Element>;
     private readonly sideNavObserver: MutationObserver;
@@ -60,6 +61,9 @@ export class ChatMessageEditor {
             .subscribe(this.updateLayout);
 
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
+
+        this.postPanelHeightObserver = new ResizeObserver(this.updatePostPanelBorderRadius);
+        this.postPanelHeightObserver.observe(this.postPanelDiv);
 
         this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
         this.attachmentListObserver.observe(this.editorDiv, {
@@ -118,6 +122,19 @@ export class ChatMessageEditor {
         });
 
     }
+
+    private updatePostPanelBorderRadius = (entries) => {
+        let clsLst = this.postPanelDiv.classList;
+        entries.forEach(entry => {
+            let height = entry.contentRect.height;
+            if (height > 90) {
+                if (!clsLst.contains('sharp-corners'))
+                    clsLst.add('sharp-corners');
+            } else {
+                clsLst.remove('sharp-corners');
+            }
+        });
+    };
 
     private updateAttachmentListState = (mutationList, observer) => {
         mutationList.forEach(m => {

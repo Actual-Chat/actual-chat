@@ -1,7 +1,4 @@
-﻿body.wide .author-modal {
-    @apply w-82;
-}
-.author-modal .form-block {
+﻿.author-modal .form-block {
     @apply py-0;
 }
 .author-modal .modal-header {
