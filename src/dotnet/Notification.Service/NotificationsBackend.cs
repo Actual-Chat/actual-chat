@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
@@ -23,6 +24,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
@@ -61,24 +63,18 @@ public class NotificationsBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        var notificationModes = await userIds
-            .Select(async userId => {
-                var kvas = ServerKvasBackend.GetUserClient(userId);
-                var userChatSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-                return (UserId: userId, userChatSettings.NotificationMode);
-            })
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-
-        var subscriberIds = notificationModes
-            .Where(kv => kv.NotificationMode != ChatNotificationMode.Muted)
-            .Select(kv => kv.UserId)
-            .ToList();
-        return subscriberIds;
+        if (chatId.IsThread) {
+            var threadParent = chatId.GetThreadParent();
+            var subscriberIds = await ListSubscribedUserIds(threadParent, cancellationToken).ConfigureAwait(false);
+            subscriberIds = await FilterByFollowThreadStatus(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
+            subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
+            return subscriberIds;
+        }
+        else {
+            var subscriberIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
+            subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
+            return subscriberIds;
+        }
     }
 
     // [ComputeMethod]
@@ -637,5 +633,52 @@ public class NotificationsBackend(IServiceProvider services)
         await EnqueueMessageRelatedNotifications(
                 chatId, lastEntryId, author, content, NotificationKind.GetAttention, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async Task<UserId[]> FilterByNotificationMode(IReadOnlyList<UserId> userIds, ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (userIds.Count == 0)
+            return Array.Empty<UserId>();
+
+        var notificationModes = await userIds
+            .Select(async userId => {
+                var kvas = ServerKvasBackend.GetUserClient(userId);
+                var userChatSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+                return (UserId: userId, userChatSettings.NotificationMode);
+            })
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+
+        var subscriberIds = notificationModes
+            .Where(kv => kv.NotificationMode != ChatNotificationMode.Muted)
+            .Select(kv => kv.UserId)
+            .ToArray();
+        return subscriberIds;
+    }
+
+    private async Task<UserId[]> FilterByFollowThreadStatus(IReadOnlyList<UserId> userIds, ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        if (userIds.Count == 0)
+            return Array.Empty<UserId>();
+
+        var subscriberIdWithStatus = await userIds
+            .Select<UserId, Task<(UserId, bool)>>(async subscriberId  => {
+                var contactId = new ContactId(subscriberId, chatId, ParseOrNone.Option);
+                if (contactId.IsNone)
+                    return (subscriberId, false);
+
+                var threadContact = await ContactsBackend
+                    .GetThreadContact(subscriberId, contactId, cancellationToken)
+                    .ConfigureAwait(false);
+                var isFollowingThread = threadContact is not null;
+                return (subscriberId, isFollowingThread);
+            })
+            .Collect(ApiConstants.Concurrency.Low, cancellationToken)
+            .ConfigureAwait(false);
+        return subscriberIdWithStatus
+            .Where(c => c.Item2)
+            .Select(c => c.Item1)
+            .ToArray();
     }
 }
