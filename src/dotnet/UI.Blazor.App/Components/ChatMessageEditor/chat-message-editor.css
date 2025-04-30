@@ -25,13 +25,18 @@ body.narrow .chat-message-editor > .c-content {
     @apply flex-auto flex-x justify-between items-center md:gap-x-2;
     @apply min-h-12;
     @apply py-1 md:py-0 px-2;
-    @apply border-bg-01 md:rounded-3xl outline-none;
+    @apply border-bg-01 rounded-3xl outline-none;
     @apply bg-post-panel md:bg-input;
     @apply overflow-hidden;
     @apply break-all;
+    transition: border-radius 0.3s ease;
+}
+.post-panel.sharp-corners {
+    @apply rounded-xl;
 }
 body.narrow .post-panel {
     @apply py-3;
+    @apply rounded-none;
 }
 
 body.narrow .text-mode .post-panel,

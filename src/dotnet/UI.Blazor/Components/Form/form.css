@@ -275,7 +275,7 @@
     @apply overflow-hidden;
 }
 .form-block.with-contact-list > div:not(.contact-selector-badges) {
-    @apply px-4;
+    @apply px-2;
 }
 .form-block.with-contact-list > .contact-selector-list,
 .form-block.with-contact-list > .c-contact-list {

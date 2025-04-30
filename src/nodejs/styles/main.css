@@ -194,8 +194,9 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .list-view-layout > .layout-header > .c-content {
     @apply flex-1;
-    @apply lg:max-w-196;
+    @apply lg:max-w-192;
     @apply md:p-2.5;
+    @apply overflow-hidden;
 }
 
 .list-view-layout .layout-body {
@@ -316,7 +317,7 @@ body.narrow .layout-header > .c-content.selection-header {
 
 .page-with-header-and-footer .layout-body-wrapper > .c-container {
     @apply relative flex-1 -flex-y;
-    @apply h-full lg:max-w-196;
+    @apply h-full lg:max-w-192;
     @apply overflow-hidden;
 }
 

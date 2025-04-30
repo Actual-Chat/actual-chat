@@ -84,14 +84,12 @@ body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
     @apply overflow-x-auto custom-scrollbar-hide;
 }
 .contact-selector-place-picker .tab-panel-tabs {
+    @apply max-h-none;
     @apply mb-0 pb-0;
 }
 .contact-selector-place-picker .tab-panel-tabs .btn-group {
     @apply justify-start;
-}
-.contact-selector-place-picker .tab-panel-tabs .btn-group:first-child,
-.contact-selector-place-picker .tab-panel-tabs .btn-group:last-child {
-    @apply mx-2;
+    @apply mx-2 mt-1;
 }
 
 .contact-selector-place-picker .tab-panel-tabs .btn-group-container {
