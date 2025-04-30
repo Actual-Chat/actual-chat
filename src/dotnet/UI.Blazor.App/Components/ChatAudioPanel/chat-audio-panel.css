@@ -122,7 +122,8 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
         1px 0 0 0 var(--recorder-on-bottom),
         0 1px 0 0 var(--recorder-on-bottom);
 }
-.narrow-panel .recorder-wrapper::before {
+body.narrow .narrow-panel .recorder-wrapper::before,
+body.narrow .text-mode .recorder-wrapper::before {
     @apply hidden;
 }
 .chat-audio-panel .recorder-wrapper.record-on::before,

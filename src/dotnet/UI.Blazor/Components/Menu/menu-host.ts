@@ -43,6 +43,8 @@ export class MenuHost implements Disposable {
     private readonly hoverMenuDelayMs = 50;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
+    private readonly menuHost: HTMLElement;
+    private hostObserver: MutationObserver;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -50,6 +52,23 @@ export class MenuHost implements Disposable {
 
     constructor(private readonly blazorRef: DotNet.DotNetObject) {
         debugLog?.log('constructor');
+        this.menuHost = document.querySelector('.ac-menu-host');
+
+        this.hostObserver = new MutationObserver(() => {
+            const hasChildren = this.menuHost.children.length > 0;
+            if (hasChildren) {
+                if (!this.menuHost.classList.contains('has-menu')) {
+                    this.menuHost.classList.add('has-menu');
+                }
+            } else {
+                this.menuHost.classList.remove('has-menu');
+            }
+        });
+        this.hostObserver.observe(this.menuHost, {
+            childList: true,
+            subtree: false,
+        });
+
         merge(
             DocumentEvents.active.click$,
             DocumentEvents.active.contextmenu$,
