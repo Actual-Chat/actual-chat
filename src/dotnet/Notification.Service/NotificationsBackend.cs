@@ -24,6 +24,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
@@ -466,6 +467,38 @@ public class NotificationsBackend(IServiceProvider services)
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(
                 entry.ChatId, entry.Id, reactionAuthor, text, NotificationKind.Reaction, similarityKey, userIds, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    [EventHandler]
+    public virtual async Task OnChatChangedEventEvent(
+        ChatChangedEvent eventCommand,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var (chat, _, changeKind) = eventCommand;
+        if (!(changeKind is ChangeKind.Create && chat.Id.IsThread))
+            return;
+
+        // New thread has been created.
+        var parentChatId = chat.Id.GetThreadParent();
+        var userIds = await ListSubscribedUserIds(parentChatId, cancellationToken).ConfigureAwait(false);
+        var similarityKey = parentChatId;
+        var creator = await ChatThreadsBackend.GetThreadCreator(chat.Id, cancellationToken).ConfigureAwait(false);
+        if (creator is null)
+            return;
+
+        var author = await AuthorsBackend
+            .GetByUserId(parentChatId, creator.UserId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is null)
+            return;
+
+        var text = $"Thread '{chat.Title}' has been created";
+        await EnqueueMessageRelatedNotifications(
+                parentChatId, null, author, text, NotificationKind.NewThread, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 

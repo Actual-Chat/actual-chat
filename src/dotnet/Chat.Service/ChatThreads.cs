@@ -7,6 +7,8 @@ namespace ActualChat.Chat;
 public class ChatThreads(IServiceProvider services) : IChatThreads
 {
     [field: AllowNull, MaybeNull]
+    private IChatThreadsBackend Backend => field ??= services.GetRequiredService<IChatThreadsBackend>();
+    [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= services.GetRequiredService<IChatsBackend>();
@@ -15,11 +17,9 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
-    private IRoles Roles => field ??= services.GetRequiredService<IRoles>();
-    [field: AllowNull, MaybeNull]
     private IRolesBackend RolesBackend => field ??= services.GetRequiredService<IRolesBackend>();
     [field: AllowNull, MaybeNull]
-    private IAuthors Authors => field ??= services.GetRequiredService<IAuthors>();
+    private IAuthorsBackend AuthorsBackend => field ??= services.GetRequiredService<IAuthorsBackend>();
     [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= services.GetRequiredService<IContactsBackend>();
     [field: AllowNull, MaybeNull]
@@ -96,18 +96,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         await Chats.Get(session, chatId.GetThreadParent(), cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the parent chat
-
-        var ownerRole = await RolesBackend
-            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-
-        var ownerAuthorIds = await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
-        if (ownerAuthorIds.Length <= 0)
-            return null;
-
-        var ownerAuthorId = ownerAuthorIds[0];
-        var ownerAuthor = await Authors.Get(session, ownerAuthorId.ChatId, ownerAuthorId, cancellationToken).ConfigureAwait(false);
+        var ownerAuthor = await Backend.GetThreadCreator(chatId, cancellationToken).ConfigureAwait(false);
         return ownerAuthor?.Avatar;
     }
 
