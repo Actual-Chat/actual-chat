@@ -45,6 +45,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
+    Task OnChatChangedEventEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
     Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken);
 }
 

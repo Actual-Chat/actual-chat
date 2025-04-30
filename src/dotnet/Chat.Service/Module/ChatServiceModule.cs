@@ -71,6 +71,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Chat threads
         rpcHost.AddApiOrLocal<IChatThreads, ChatThreads>();
+        rpcHost.AddBackend<IChatThreadsBackend, ChatThreadsBackend>();
 
         // IBackendChatMarkupHub
         services.AddSingleton(c =>
