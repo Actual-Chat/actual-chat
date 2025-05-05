@@ -15,7 +15,7 @@ body.narrow .chat-audio-panel {
     @apply overflow-visible;
     left: calc(50% - 2.75rem);
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel,
+body.narrow .chat-message-editor.with-related-panel .chat-audio-panel,
 body.narrow .text-mode .chat-audio-panel,
 body.narrow .narrow-panel .chat-audio-panel {
     @apply bottom-2;
@@ -266,58 +266,58 @@ body.narrow .narrow-panel .chat-audio-panel .btn.btn-round svg {
 body.narrow .base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
     @apply min-w-20 max-w-20 min-h-20 max-h-20;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-button,
+body.narrow .chat-message-editor.with-related-panel .chat-audio-panel .recorder-button,
 body.narrow .text-mode .chat-audio-panel .recorder-button,
 body.narrow .to-thin .chat-audio-panel .recorder-button {
     @apply bottom-2.5;
     @apply min-w-8 min-h-8 max-w-8 max-h-8;
     @apply border-none;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper,
+body.narrow .chat-message-editor.with-related-panel .chat-audio-panel .recorder-wrapper,
 body.narrow .text-mode .chat-audio-panel .recorder-wrapper,
 body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
     @apply flex justify-center;
     @apply h-8 w-8;
     transition: all 0ms;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper,
+body.narrow .chat-message-editor.with-related-panel .chat-audio-panel .recorder-wrapper,
 body.narrow .text-mode .chat-audio-panel .recorder-wrapper,
 body.narrow .to-thin .chat-audio-panel .recorder-wrapper {
     @apply border-none;
     @apply shadow-none;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper .btn.btn-round,
+body.narrow .chat-message-editor.with-related-panel .chat-audio-panel .recorder-wrapper .btn.btn-round,
 body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round,
 body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round {
     @apply min-w-8 max-w-8 min-h-8 max-h-8;
     @apply bg-transparent;
     background: transparent;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content,
+body.narrow .chat-message-editor.with-related-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content,
 body.narrow .text-mode .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content,
 body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
     @apply min-w-8 max-w-8 min-h-8 max-h-8;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon,
+body.narrow .chat-message-editor.with-related-panel .rec-icon,
 body.narrow .text-mode .rec-icon,
 body.narrow .to-thin .rec-icon {
     @apply w-8 h-8;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.off i.left,
+body.narrow .chat-message-editor.with-related-panel .rec-icon.off i.left,
 body.narrow .text-mode .rec-icon.off i.left,
 body.narrow .to-thin .rec-icon.off i.left,
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.off i.right,
+body.narrow .chat-message-editor.with-related-panel .rec-icon.off i.right,
 body.narrow .text-mode .rec-icon.off i.right,
 body.narrow .to-thin .rec-icon.off i.right {
     @apply text-1.5xl text-mobile-landscape-audio-panel-button-text;
     @apply opacity-100;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.off i.right,
+body.narrow .chat-message-editor.with-related-panel .rec-icon.off i.right,
 body.narrow .text-mode .rec-icon.off i.right,
 body.narrow .to-thin .rec-icon.off i.right {
     @apply always-white;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-on,
+body.narrow .chat-message-editor.with-related-panel .rec-icon.text-mode-on,
 body.narrow .text-mode .rec-icon.text-mode-on,
 body.narrow .to-thin .rec-icon.text-mode-on {
     @apply text-2xl text-danger;
@@ -582,8 +582,8 @@ body.narrow .rec-icon,
 body.narrow .rec-icon i {
     @apply text-3.5xl;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon,
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon i,
+body.narrow .chat-message-editor.with-related-panel .rec-icon,
+body.narrow .chat-message-editor.with-related-panel .rec-icon i,
 body.narrow .text-mode .rec-icon,
 body.narrow .text-mode .rec-icon i,
 body.narrow .narrow-panel .rec-icon,
@@ -640,13 +640,13 @@ body.narrow .narrow-panel .rec-icon i {
 body.wide .rec-icon.text-mode-on {
     @apply hidden;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-on,
+body.narrow .chat-message-editor.with-related-panel .rec-icon.text-mode-on,
 body.narrow .text-mode .rec-icon.text-mode-on,
 body.narrow .to-thin .rec-icon.text-mode-on {
     @apply flex;
     @apply pt-0.5;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .rec-icon.text-mode-off,
+body.narrow .chat-message-editor.with-related-panel .rec-icon.text-mode-off,
 body.narrow .text-mode .rec-icon.text-mode-off,
 body.narrow .to-thin .rec-icon.text-mode-off {
     @apply hidden;
@@ -664,7 +664,7 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .rec-icon.text-m
 body.narrow .audio-panel-wrapper {
     @apply items-end gap-x-1;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .audio-panel-wrapper,
+body.narrow .chat-message-editor.with-related-panel .audio-panel-wrapper,
 body.narrow .chat-message-editor.text-mode .audio-panel-wrapper,
 body.narrow .chat-message-editor.narrow-panel .audio-panel-wrapper {
     @apply gap-x-2;

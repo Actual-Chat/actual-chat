@@ -26,7 +26,7 @@ export class ChatMessageEditor {
     private readonly postPanelDiv: HTMLDivElement;
     private readonly input: HTMLDivElement;
     private readonly postPanelHeightObserver: ResizeObserver;
-    private readonly attachmentListObserver: MutationObserver;
+    private readonly editorChildrenObserver: MutationObserver;
     private readonly sideNavs: NodeListOf<Element>;
     private readonly sideNavObserver: MutationObserver;
     private markupEditor: MarkupEditor;
@@ -65,10 +65,11 @@ export class ChatMessageEditor {
         this.postPanelHeightObserver = new ResizeObserver(this.updatePostPanelBorderRadius);
         this.postPanelHeightObserver.observe(this.postPanelDiv);
 
-        this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
-        this.attachmentListObserver.observe(this.editorDiv, {
+        this.editorChildrenObserver = new MutationObserver(this.updateEditorState);
+        this.editorChildrenObserver.observe(this.editorDiv, {
             attributes: true,
             childList: true,
+            subtree: true,
         });
 
         this.sideNavObserver = new MutationObserver(this.updateEditorFocus);
@@ -95,7 +96,7 @@ export class ChatMessageEditor {
         if (this.attachmentListElement != null) {
             this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
         }
-        this.attachmentListObserver.disconnect();
+        this.editorChildrenObserver.disconnect();
         this.sideNavs.forEach(_ => {
             this.sideNavObserver.disconnect();
         });
@@ -136,7 +137,7 @@ export class ChatMessageEditor {
         });
     };
 
-    private updateAttachmentListState = (mutationList, observer) => {
+    private updateEditorState = (mutationList, observer) => {
         mutationList.forEach(m => {
             m.addedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
@@ -148,6 +149,10 @@ export class ChatMessageEditor {
                     fromEvent(this.attachmentListElement, 'wheel')
                         .pipe(takeUntil(this.disposed$))
                         .subscribe((event: WheelEvent) => this.onHorizontalScroll(event));
+                } else if (element.className == 'related-chat-entry-panel') {
+                    if (!this.editorDiv.classList.contains('with-related-panel')) {
+                        this.editorDiv.classList.add('with-related-panel');
+                    }
                 }
             });
             m.removedNodes.forEach(element => {
@@ -156,6 +161,8 @@ export class ChatMessageEditor {
                     if (this.attachmentListElement != null) {
                         this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
                     }
+                } else if (element.className == 'related-chat-entry-panel') {
+                    this.editorDiv.classList.remove('with-related-panel');
                 }
             });
         })
