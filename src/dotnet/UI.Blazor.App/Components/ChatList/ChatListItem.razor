@@ -36,7 +36,7 @@
                         <span>@chat.Title</span>
                         <span class="c-incut"></span>
                         @if (lastTextEntry != null && !showEnding) {
-                            <LastEntryTime LastEntry="@lastTextEntry"/>
+                            @Hub.MarkupHelpers.LastEntryTime(lastTextEntry.BeginsAt)
                         }
                 </span>
                 @if (lastTextEntry != null) {

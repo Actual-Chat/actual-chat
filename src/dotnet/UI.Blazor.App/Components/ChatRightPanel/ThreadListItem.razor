@@ -15,7 +15,7 @@
                 @Chat.Title
             </span>
             @if (lastTextEntry != null) {
-                <LastEntryTime LastEntry="@lastTextEntry"/>
+                @Hub.MarkupHelpers.LastEntryTime(lastTextEntry.BeginsAt)
             }
         </div>
         <div class="c-bottom">

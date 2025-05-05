@@ -17,7 +17,7 @@
 
 <div class="message-counter-with-time">
     @if (!HideLastEntryTime) {
-        <LastEntryTime LastEntry="@LastEntry"/>
+        @Hub.MarkupHelpers.LastEntryTime(LastEntry?.BeginsAt)
     }
     @if (Value != 0 || HasMentions) {
         <Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>
@@ -33,7 +33,6 @@
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private MomentClockSet Clocks => Hub.Clocks();
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     [Parameter, EditorRequired] public Trimmed<int> Value { get; set; }
     [Parameter] public ChatEntry? LastEntry { get; set; }
