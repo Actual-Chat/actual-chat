@@ -22,8 +22,8 @@ public class ChatThreadsBackend(IServiceProvider services) : IChatThreadsBackend
         if (ownerAuthorIds.Length <= 0)
             return null;
 
-        var ownerAuthorId = ActualChat.Chat.AuthorsBackend.Remap(ownerAuthorIds[0], chatId);
-        var ownerAuthor = await AuthorsBackend.Get(chatId, ownerAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var ownerAuthorId = ownerAuthorIds[0];
+        var ownerAuthor = await AuthorsBackend.Get(ownerAuthorId.ChatId, ownerAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         return ownerAuthor;
     }
 }

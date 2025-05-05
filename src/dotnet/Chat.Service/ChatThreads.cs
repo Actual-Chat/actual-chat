@@ -87,7 +87,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     }
 
     // [ComputeMethod]
-    public virtual async Task<Avatar?> GetThreadCreator(
+    public virtual async Task<Author?> GetThreadCreator(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -96,8 +96,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         await Chats.Get(session, chatId.GetThreadParent(), cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the parent chat
-        var ownerAuthor = await Backend.GetThreadCreator(chatId, cancellationToken).ConfigureAwait(false);
-        return ownerAuthor?.Avatar;
+        return await Backend.GetThreadCreator(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

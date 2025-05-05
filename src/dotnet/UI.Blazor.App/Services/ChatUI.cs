@@ -36,6 +36,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private AccountUI AccountUI => Hub.AccountUI;
     private IContacts Contacts => Hub.Contacts;
     private IChats Chats => Hub.Chats;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
     private IConversations Conversations => Hub.Conversations;
     private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
@@ -137,9 +138,22 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
 
             var lastTextEntryText = "";
+            Chat.Chat? lastThreadChat = null;
+            Author? lastThreadCreator = null;
             if (news.LastTextEntry is { } lastTextEntry) {
                 if (lastTextEntry.IsStreaming)
                     lastTextEntryText = Constants.Messages.RecordingSkeleton;
+                else if (lastTextEntry.IsThreadStartEntry) {
+                    var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);
+                    var threadChatTask = Chats.Get(Session, threadChatId, cancellationToken);
+                    var threadCreatorTask = ChatThreads.GetThreadCreator(Session, threadChatId, cancellationToken);
+                    var threadChat = await threadChatTask.ConfigureAwait(false);
+                    var threadCreator = await threadCreatorTask.ConfigureAwait(false);
+                    lastThreadChat = threadChat;
+                    lastThreadCreator = threadCreator;
+                    if (lastThreadChat is not null)
+                        lastTextEntryText = $"Thread '{lastThreadChat.Title}'";
+                }
                 else {
                     var chatMarkupHub = ChatMarkupHubFactory[chatId];
                     var markup = await chatMarkupHub
@@ -153,6 +167,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                 News = news,
                 UserSettings = userSettings,
                 LastMention = lastMention,
+                LastThread = lastThreadChat,
+                LastThreadCreator = lastThreadCreator,
                 ReadEntryLid = readEntryLid,
                 UnreadCount = unreadCount,
                 HasUnreadMentions = hasUnreadMentions,
