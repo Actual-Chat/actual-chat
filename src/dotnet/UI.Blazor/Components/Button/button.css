@@ -16,7 +16,7 @@ body.device-ios * {
 .touch-capable .button-touch-target {
     display: block;
 }
-.touch-capable .btn-h:focus .button-touch-target {
+.touch-capable .btn-h:active .button-touch-target {
     @apply bg-hover;
     transform: scale(1.2);
 }
