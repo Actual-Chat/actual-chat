@@ -101,6 +101,8 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public TranslationUI TranslationUI => field ??= Services.GetRequiredService<TranslationUI>();
     [field: AllowNull, MaybeNull]
     public LinkPreviewUI LinkPreviewUI => field ??= Services.GetRequiredService<LinkPreviewUI>();
+    [field: AllowNull, MaybeNull]
+    public MarkupHelpers MarkupHelpers => field ??= new MarkupHelpers(this);
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
