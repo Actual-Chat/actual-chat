@@ -106,7 +106,7 @@
             return null;
 
         var threadCreator = await ChatThreads.GetThreadCreator(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var ownerName = threadCreator?.Name ?? "Unknown";
+        var ownerName = threadCreator?.Avatar.Name ?? "Unknown";
         var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;

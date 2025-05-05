@@ -490,15 +490,9 @@ public class NotificationsBackend(IServiceProvider services)
         if (creator is null)
             return;
 
-        var author = await AuthorsBackend
-            .GetByUserId(parentChatId, creator.UserId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
-            .ConfigureAwait(false);
-        if (author is null)
-            return;
-
         var text = $"Thread '{chat.Title}' has been created";
         await EnqueueMessageRelatedNotifications(
-                parentChatId, null, author, text, NotificationKind.NewThread, similarityKey, userIds, cancellationToken)
+                parentChatId, null, creator, text, NotificationKind.NewThread, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 

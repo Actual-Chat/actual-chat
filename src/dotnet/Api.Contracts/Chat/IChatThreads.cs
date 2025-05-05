@@ -1,4 +1,3 @@
-using ActualChat.Users;
 using MemoryPack;
 
 namespace ActualChat.Chat;
@@ -18,7 +17,8 @@ public interface IChatThreads : IComputeService
     Task<ThreadStat> GetThreadStat(Session session, ChatId threadChatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<Avatar?> GetThreadCreator(Session session, ChatId threadChatId, CancellationToken cancellationToken);
+    // Returns author in parent chat who created the thread.
+    Task<Author?> GetThreadCreator(Session session, ChatId threadChatId, CancellationToken cancellationToken);
 
     Task<(string, string)> SuggestThreadTitle(Session session, ChatId parentChatId, TextEntryId[] entryIds, CancellationToken cancellationToken);
 
