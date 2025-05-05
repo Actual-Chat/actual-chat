@@ -127,9 +127,10 @@
         await JS.InvokeVoidAsync(JSInitMethod);
     }
 
-    public override ValueTask DisposeAsync() {
+    public override async ValueTask DisposeAsync() {
         _animator.Dispose();
-        return base.DisposeAsync();
+        await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.RecorderToggle.dispose");
+        await base.DisposeAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()

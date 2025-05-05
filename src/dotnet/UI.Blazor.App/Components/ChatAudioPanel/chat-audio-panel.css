@@ -692,7 +692,7 @@ body.narrow .volume-settings-btn.btn.btn-round > .btn-content {
 body.narrow .volume-settings-btn.btn.btn-round > .btn-content i {
     @apply text-2xl text-mobile-landscape-audio-panel-button-text;
 }
-body.narrow .chat-audio-panel:has(.record-on) .volume-settings-btn.btn.btn-round > .btn-content i {
+body.narrow .chat-audio-panel.has-record-on .volume-settings-btn.btn.btn-round > .btn-content i {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -724,12 +724,12 @@ body.narrow .volume-settings-btn.text::before {
     @apply bg-mobile-landscape-audio-panel-button-text;
     margin: -2px;
 }
-body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text > .c-text,
-body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
+body.narrow .chat-audio-panel.has-record-on-btn .volume-settings-btn.text > .c-text,
+body.narrow .chat-audio-panel.has-record-on-btn:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
     background-image: linear-gradient(to right, #FF3880, 10%, white);
 }
-body.narrow .chat-audio-panel:has(.record-on-btn) .volume-settings-btn.text::before,
-body.narrow .chat-audio-panel:has(.record-on-btn):not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
+body.narrow .chat-audio-panel.has-record-on-btn .volume-settings-btn.text::before,
+body.narrow .chat-audio-panel.has-record-on-btn:not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
     background-image: linear-gradient(to right, #FF3880, 25%, var(--mobile-landscape-audio-panel-button-text));
 }
 body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
