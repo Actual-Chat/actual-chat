@@ -465,10 +465,11 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply w-5 h-5;
     @apply -ml-1;
 }
-body.hoverable .notify-mentioned-members:has(.not-mentioned) {
+body.hoverable .notify-mentioned-members.not-notified {
     @apply w-7;
+    @apply cursor-pointer;
 }
-body.hoverable .notify-mentioned-members:has(.not-mentioned):hover {
+body.hoverable .notify-mentioned-members.not-notified:hover {
     @apply w-30;
     transition: width 150ms;
 }
