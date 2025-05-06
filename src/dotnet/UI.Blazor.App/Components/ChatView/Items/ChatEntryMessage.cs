@@ -18,6 +18,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
         // Avoid checking the version for entry as we don't want to rerender a virtual list
         return Entry.Id == otherEntryMessage.Entry.Id
             && Entry.IsRemoved == otherEntryMessage.Entry.IsRemoved
+            && Entry.HasReactions == otherEntryMessage.Entry.HasReactions
             && ReplacementKind == other.ReplacementKind
             && Date == other.Date
             && Flags == other.Flags
