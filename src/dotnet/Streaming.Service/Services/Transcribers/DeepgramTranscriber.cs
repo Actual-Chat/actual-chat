@@ -88,7 +88,7 @@ public partial class DeepgramTranscriber : ITranscriber
             if (!isConnected)
                 throw StandardError.External("Deepgram connection failed");
 
-            await PushAudio(transcriptState, deepgramClient, cancellationToken).ConfigureAwait(false);
+            await PushAudio(transcriptState, deepgramClient, tokenSource.Token).ConfigureAwait(false);
 
             await whenCompleted.ConfigureAwait(false);
 
