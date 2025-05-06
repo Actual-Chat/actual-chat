@@ -1278,7 +1278,7 @@ export class VirtualList {
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
                     }
 
-                    if (offset > 0) {
+                    if (offset > -endAnchorSize) {
                         // scroll position does not allow to show the last item
                         scrollTopOffset = -offset;
 
