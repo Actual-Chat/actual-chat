@@ -54,11 +54,9 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
         var state = ExtractorState;
         var chatId = ChatId;
         var entries = batch.Select(c => new TextEntry(c)).ToList();
-        var extractResult = await EntryGroupExtractor.ExtractGroups(state, entries, cancellationToken).ConfigureAwait(false);
-        ExtractorState = extractResult.State;
+        var (extractorState, groups, replySequences) = EntryGroupExtractor.ExtractGroups(state, entries);
+        ExtractorState = extractorState;
 
-        var groups = extractResult.Groups;
-        var replySequences = extractResult.ReplySequences;
         foreach (var replySequence in replySequences) {
             var firstEntry = replySequence.Entries[0];
             if (firstEntry.RepliedEntryLid is not { } entryLid)
@@ -80,13 +78,14 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
             await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
         }
 
+        var isTailReached = batch.Count < BatchSize;
         if (groups.Count == 0)
-            // TODO(AK): verify this logic
-            return new(false, true, previousLastLid, false);
+            return new (false, isTailReached, ExtractorState.MaxLid, false);
 
         foreach (var group in groups) {
             if (group.WordCount < Settings.MinConversationWords)
                 continue;
+
             if (group.Entries.Count < Settings.MinConversationEntries)
                 continue;
 
@@ -117,8 +116,7 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
             await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
         }
 
-        // TODO(AK): verify this logic
-        return new(false, true, entries[^1].LocalId, true);
+        return new(false, isTailReached, entries[^1].LocalId, true);
     }
 
     private async Task<IReadOnlyList<ChatEntry>> GetEntries(

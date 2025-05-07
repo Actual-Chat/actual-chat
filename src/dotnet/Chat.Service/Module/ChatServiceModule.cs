@@ -108,7 +108,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIApiKey, Settings.OpenAIChatModel);
+            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIChatModel, Settings.OpenAIApiKey);
             services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>();
         }

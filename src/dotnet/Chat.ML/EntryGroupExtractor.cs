@@ -8,17 +8,22 @@ public record ReplySequence(IReadOnlyList<TextEntry> Entries);
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ExtractorState(
-    [property: DataMember, MemoryPackOrder(0)] EntryGroupBuilder? CurrentGroup,
-    [property: DataMember, MemoryPackOrder(1)] EntryGroupBuilder? CurrentChunk);
+    [property: DataMember, MemoryPackOrder(0)]
+    EntryGroupBuilder? CurrentGroup,
+    [property: DataMember, MemoryPackOrder(1)]
+    EntryGroupBuilder? CurrentChunk)
+{
+    [MemoryPackIgnore]
+    public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
+}
 
 public record ExtractResult(ExtractorState State, IReadOnlyList<EntryGroup> Groups, IReadOnlyList<ReplySequence> ReplySequences);
 
 public interface IEntryGroupExtractor
 {
-    Task<ExtractResult> ExtractGroups(
+    ExtractResult ExtractGroups(
         ExtractorState? state,
-        IReadOnlyCollection<TextEntry> entries,
-        CancellationToken cancellationToken);
+        IReadOnlyCollection<TextEntry> entries);
 }
 
 public enum EntryGroupLimit
@@ -39,25 +44,29 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
     private IEmbeddingsCalculator EmbeddingsCalculator { get; } = embeddingsCalculator;
     private ILogger Log { get; } = log;
 
-    public async Task<ExtractResult> ExtractGroups(
+    public ExtractResult ExtractGroups(
         ExtractorState? state,
-        IReadOnlyCollection<TextEntry> entries,
-        CancellationToken cancellationToken)
+        IReadOnlyCollection<TextEntry> entries)
     {
         state ??= new ExtractorState(null, null);
         if (entries.Count == 0)
-            return new ExtractResult(state, Array.Empty<EntryGroup>(), Array.Empty<ReplySequence>());
+            return new ExtractResult(state, [], []);
 
         var groups = new List<EntryGroup>();
         var replySequences = new List<ReplySequence>();
         var replyBuilder = new EntryGroupBuilder();
         var groupBuilder = state.CurrentGroup ?? new EntryGroupBuilder();
         var chunkBuilder = state.CurrentChunk ?? new EntryGroupBuilder();
-
-        foreach (var entry in entries) {
+        var lastEntryLid = chunkBuilder.Entries.Count > 0
+            ? chunkBuilder.MaxLid
+            : groupBuilder.Entries.Count > 0
+                ? groupBuilder.MaxLid
+                : 0;
+        foreach (var entry in entries.SkipWhile(e => e.LocalId <= lastEntryLid)) {
             if (string.IsNullOrWhiteSpace(entry.Content))
                 continue;
 
+            // Handle replies
             if (entry.RepliedEntryLid is { } repliedEntryLocalId)
                 if (repliedEntryLocalId < chunkBuilder.MinLid) {
                     // The replied entry is from a previous group
@@ -70,7 +79,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
                 }
             if (replyBuilder.Entries.Count is > 0 and <= 3) {
                 var pauseAfterReply = replyBuilder.GetPauseBetween(entry);
-                if (pauseAfterReply < 30)
+                if (pauseAfterReply < MinPauseBetweenSpeechEntries)
                     replyBuilder.Add(entry);
                 else {
                     // The pause after the reply is too long
@@ -84,17 +93,11 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
                 replyBuilder = new EntryGroupBuilder();
             }
 
-            if (chunkBuilder.Entries.Count > 1) {
-                // Complete the group if the pause between entries is too long
-                var currentPause = chunkBuilder.GetPauseBetween(entry);
-                var minPause = entry.IsTranscript ? MinPauseBetweenSpeechEntries : MinPauseBetweenTextEntries;
-                if ((currentPause > minPause && currentPause > chunkBuilder.AveragePauseBetweenEntries * 10) || currentPause > MaxPauseBetweenEntries) {
-                    groupBuilder.AddRange(chunkBuilder.Entries);
-                    groups.Add(groupBuilder.Build());
-                    chunkBuilder = new EntryGroupBuilder();
-                    groupBuilder = new EntryGroupBuilder();
-                }
-            }
+            // Complete the group if the pause between entries is too long
+            if (chunkBuilder.Entries.Count > 0)
+                CompleteGroupOnPause(chunkBuilder, entry);
+            else if (groupBuilder.Entries.Count > 0)
+                CompleteGroupOnPause(groupBuilder, entry);
 
             chunkBuilder.Add(entry);
             if (chunkBuilder.WordCount >= ChunkWordCount) {
@@ -113,6 +116,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
                     chunkBuilder = new EntryGroupBuilder();
                 }
             }
+
             // ReSharper disable once InvertIf
             if (groupBuilder.WordCount >= groupWordCount) {
                 // Complete the group
@@ -126,6 +130,21 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
             ? new ExtractorState(groupBuilder, chunkBuilder)
             : new ExtractorState(null, null);
         return new ExtractResult(resultState, groups, replySequences);
+
+        void CompleteGroupOnPause(EntryGroupBuilder groupBuilder1, TextEntry entry)
+        {
+            var currentPause = groupBuilder1.GetPauseBetween(entry);
+            var minPause = entry.IsTranscript ? MinPauseBetweenSpeechEntries : MinPauseBetweenTextEntries;
+            var significantlyLargerThanAverage = chunkBuilder.AveragePauseBetweenEntries * 10;
+            if ((currentPause < minPause || currentPause < significantlyLargerThanAverage) && currentPause < MaxPauseBetweenEntries)
+                return;
+
+            // Complete the chunk if the pause between entries is too long
+            groupBuilder.AddRange(chunkBuilder.Entries);
+            groups.Add(groupBuilder.Build());
+            chunkBuilder = new EntryGroupBuilder();
+            groupBuilder = new EntryGroupBuilder();
+        }
     }
 
     private async Task<double[]> CalculateEmbeddings(EntryGroupBuilder groupBuilder, CancellationToken cancellationToken)
