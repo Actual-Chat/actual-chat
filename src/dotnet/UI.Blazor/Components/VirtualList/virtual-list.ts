@@ -1217,14 +1217,7 @@ export class VirtualList {
                 totalSizeDiff = totalSize - oldTotalSize;
 
                 if (this.defaultEdge === VirtualListEdge.End) {
-                    if (scrollMetadata?.shouldUseSmoothScroll && scrollMetadata?.scrollType === 'last-item') {
-                        // Find previous item end to make smooth scroll possible with fallback to the latest one
-                        const lastItem = orderedItems[orderedItems.length - 1];
-                        offset = -endAnchorSize;
-                        scrollTopOffset = -lastItem?.size ?? 0;
-                    }
-                    else
-                        offset = end;
+                    offset = end;
 
                     if (interactivePivot) {
                         let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
