@@ -13,7 +13,7 @@
     private IJSRuntime JS => Hub.JSRuntime();
     private SelectionUI SelectionUI => Hub.SelectionUI;
 
-    [Parameter, EditorRequired] public string Selected { get; set; } = ChatEntryId.None;
+    [Parameter, EditorRequired] public string Selected { get; set; } = "";
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SelectionHost))]
     public SelectionHost() { }

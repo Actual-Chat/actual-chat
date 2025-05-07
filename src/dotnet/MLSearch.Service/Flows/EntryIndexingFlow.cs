@@ -58,7 +58,7 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
             .ToList();
         var removed = batch
             .Where(x => x is { IsRemoved: true, IsSystemEntry: false })
-            .Select(x => (TextEntryId)x.Id)
+            .Select(x => x.Id.ToTextEntryId())
             .ToList();
         await IndexedDocuments.SaveEntries(updated, removed, cancellationToken).ConfigureAwait(false);
     }

@@ -17,12 +17,11 @@
 <PlaceInfo PlaceId="@m.SelectedPlaceId"/>
 
 @code {
-    private PlaceId _selectedPlaceId = PlaceId.None;
+    private PlaceId? _selectedPlaceId;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private Session Session => Hub.Session();
-    private IPlaces Places => Hub.Places;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -41,7 +40,7 @@
             .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
             .ConfigureAwait(false);
         var places = maybePlaces.SkipNullItems().ToList();
-        if (_selectedPlaceId == PlaceId.None && places.Count > 0)
+        if (_selectedPlaceId is null && places.Count > 0)
             _selectedPlaceId = places[0].Id;
         return new() {
             Places = places,
@@ -50,8 +49,6 @@
     }
 
     private void OnPlaceClick(PlaceId placeId) {
-        if (placeId == PlaceId.None)
-            return;
         _selectedPlaceId = placeId;
         State.Recompute();
     }
@@ -60,6 +57,6 @@
 
     public sealed record Model {
         public List<Place> Places { get; init; } = [];
-        public PlaceId SelectedPlaceId { get; init; }
+        public PlaceId? SelectedPlaceId { get; init; }
     }
 }

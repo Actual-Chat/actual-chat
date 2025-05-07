@@ -18,7 +18,7 @@
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private ModalUI ModalUI => Hub.ModalUI;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -34,15 +34,15 @@
             return Model.None;
 
         var isOn = await TranslationUI.IsOn(chatId, cancellationToken).ConfigureAwait(false);
-        return new(isOn == true, chatId);
+        return new(isOn == true);
     }
 
     private void OnClick()
-        => ModalUI.Show(new TranslationSettingsModal.Model(State.Value.ChatId));
+        => ModalUI.Show(new TranslationSettingsModal.Model(ChatId));
 
     // Nested types
 
-    public sealed record Model(bool IsVisible, ChatId ChatId) {
-        public static readonly Model None = new(false, ChatId.None);
+    public sealed record Model(bool IsVisible) {
+        public static readonly Model None = new(false);
     }
 }

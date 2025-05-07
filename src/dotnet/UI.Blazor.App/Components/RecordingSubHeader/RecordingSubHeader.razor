@@ -78,7 +78,7 @@
     private async Task<Chat?> GetRecordingElsewhereChat(CancellationToken cancellationToken)
     {
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
-        if (recordingChatId.IsNone)
+        if (recordingChatId is null)
             return null;
 
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);

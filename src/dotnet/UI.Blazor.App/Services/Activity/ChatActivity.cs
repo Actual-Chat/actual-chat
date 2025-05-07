@@ -11,6 +11,9 @@ public class ChatActivity : ScopedServiceBase<ChatUIHub>, IAsyncDisposable
 
     public async Task<IChatStreamingActivity> GetStreamingActivity(ChatId chatId, CancellationToken cancellationToken)
     {
+        if (chatId is null)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
         var lease = await _activityPool.Rent(chatId, cancellationToken).ConfigureAwait(false); // Ok here
         return new ChatStreamingActivityReplica(lease);
     }
@@ -20,9 +23,6 @@ public class ChatActivity : ScopedServiceBase<ChatUIHub>, IAsyncDisposable
 
     private Task<ChatStreamingActivity> NewChatStreamingActivity(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         var chatStreamingActivity = Services.GetRequiredService<ChatStreamingActivity>();
         chatStreamingActivity.ChatId = chatId;
         chatStreamingActivity.Start();

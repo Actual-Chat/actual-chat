@@ -220,7 +220,7 @@
             }).ToArray(),
         };
         var chatEntry = await Services.UICommander().Call(cmd).ConfigureAwait(false);
-        var textEntryId = new TextEntryId(chatEntry.ChatId, chatEntry.LocalId, AssumeValid.Option);
+        var textEntryId = TextEntryId.New(chatEntry.ChatId, chatEntry.LocalId);
         // Add pseudo attachments to evaluate file type later
         chatEntry = chatEntry with {
             Attachments = media

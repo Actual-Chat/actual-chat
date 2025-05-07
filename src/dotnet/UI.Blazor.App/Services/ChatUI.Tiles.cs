@@ -38,7 +38,7 @@ public partial class ChatUI
             LastExpandedConversations = expandedConversations;
             if (changedExpand.Count > 0) {
                 // Adjust data query to load tiles around expanded conversation entries
-                var conversationId = changedExpand.FirstOrDefault();
+                var conversationId = changedExpand[0];
                 var conversation = await Conversations.Get(Session, conversationId, cancellationToken)
                     .ConfigureAwait(false);
                 var isExpanded = expandedConversations.Contains(conversationId);
@@ -67,7 +67,7 @@ public partial class ChatUI
                     lastReadEntryLid = long.MaxValue;
                 var tile = await GetTile(
                         chatId,
-                        chat.Rules.Author?.Id ?? AuthorId.None,
+                        chat.Rules.Author?.Id,
                         idTile.Range,
                         showConversations,
                         expandedConversations,
@@ -198,7 +198,7 @@ public partial class ChatUI
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     protected virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
-        AuthorId currentAuthorId,
+        AuthorId? currentAuthorId,
         Range<long> idRange,
         bool showConversations,
         IImmutableSet<ConversationId> expandedConversations,
@@ -283,9 +283,9 @@ public partial class ChatUI
                 // Ignore matched conversation
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
-                var isForward = !entry.ForwardedAuthorId.IsNone;
-                var isPrevForward = prevEntry is { ForwardedAuthorId.IsNone: false };
-                var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId.ChatId != entry.ForwardedAuthorId.ChatId;
+                var isForward = entry.ForwardedAuthorId is not null;
+                var isPrevForward = prevEntry is not null && prevEntry.ForwardedAuthorId is not null;
+                var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId?.ChatId != entry.ForwardedAuthorId?.ChatId;
                 var isForwardFromOtherAuthor = prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId;
                 var isForwardBlockStart = (isBlockStart && isForward)
                     || (isForward && (!isPrevForward || isForwardFromOtherChat));
@@ -610,7 +610,7 @@ public partial class ChatUI
     private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
     {
         var account = AccountUI.OwnAccount.Value;
-        if (!account.IsAdmin || chatId.IsNone)
+        if (!account.IsAdmin)
             return false;
 
         var chatIdListToShowIndexDocId = await Hub.AccountSettings()

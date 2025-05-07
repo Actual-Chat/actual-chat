@@ -98,7 +98,7 @@
         var lastState = State.Value;
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId } || chatId.IsNone)
+        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
             return Model.NotPlaying;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -120,7 +120,7 @@
             var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
                 var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
-                authorSids.Add(authorId);
+                authorSids.Add(authorId.Value);
             }
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken).ConfigureAwait(false);
             if (actualPlaybackState == null)
@@ -198,20 +198,20 @@
 
     public sealed record Model
     {
-        public static readonly Model NotPlaying = new();
+        public static readonly Model NotPlaying = new() { ChatId = null! };
 
         public DateTime? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
         public HistoricalChatPlayer? ChatPlayer { get; init; }
         public string ChatTitle { get; init; } = "";
-        public ChatId ChatId { get; init; }
+        public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
         public List<string> AuthorSids { get; init; } = [];
     }
 
     private class RewindController
     {
-        private Timer _rewindTimer;
+        private readonly Timer _rewindTimer;
         private ChatId _chatId;
         private DateTime _rewindFrom;
         private TimeSpan _rewindSpan;

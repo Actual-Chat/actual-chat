@@ -6,7 +6,7 @@
     if (m.AccountFull == AccountFull.Loading)
         return;
 
-    if (m.AccountFull.IsGuestOrNone) {
+    if (m.AccountFull.IsGuest) {
         Modal.Close(true);
         return;
     }

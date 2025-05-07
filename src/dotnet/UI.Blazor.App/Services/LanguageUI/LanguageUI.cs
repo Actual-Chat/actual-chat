@@ -35,9 +35,11 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
     }
 
     [ComputeMethod]
-    public virtual async Task<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<Language> GetChatLanguage(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        var userChatSettings = chatId is not null
+                ? await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false)
+                : UserChatSettings.Default;
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
 
@@ -80,7 +82,7 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
         var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return languages
-            .Select(Language.TryParse)
+            .Select(s => Language.TryParse(s, true))
             .SkipNullItems()
             .Distinct()
             .ToList();

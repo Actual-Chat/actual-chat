@@ -36,7 +36,7 @@
             }
 
             var mentionIndexCls = "mention-" + i;
-            <AuthorBadgeTemplate AuthorSid="@authorId">
+            <AuthorBadgeTemplate AuthorSid="@authorId.Value">
                 <div class="mention-markup mention-markup-valid @mentionIndexCls">
                     <div class="truncate">
                         @context.Author.Avatar.Name
@@ -84,7 +84,7 @@
             return new Model(true, false); // We can skip checking hasRead status, because we will show badge anyway.
         var everybodyHasRead = true;
         foreach (var authorId in AuthorIds) {
-            var mentionId = new MentionId(authorId, AssumeValid.Option);
+            var mentionId = MentionId.NewAuthor(authorId);
             var hasRead = await Chats.IsEntryReadByMentionedUser(Session, textEntryId, mentionId, cancellationToken).ConfigureAwait(false);
             if (!hasRead)
                 everybodyHasRead = false;
@@ -104,7 +104,7 @@
         });
 
     private void NotifyAuthorsInternal()
-        => _ = UICommander.Call(new Notifications_NotifyMentionedMembers(Session, ChatEntry.Id.ToTextEntryId()));
+        => _ = UICommander.Call(new Notifications_NotifyMentionedMembers(Session, (TextEntryId)ChatEntry.Id));
 
     // Nested types
     public record Model(bool HasNotified, bool EverybodyHasRead) {

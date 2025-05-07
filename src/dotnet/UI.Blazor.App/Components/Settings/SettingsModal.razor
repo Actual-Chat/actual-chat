@@ -7,10 +7,10 @@
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    var isGuestOrNone = account.IsGuestOrNone;
-    var showMyAccount = !isGuestOrNone;
-    var showNotifications = !isGuestOrNone && _enableIncompleteUI;
-    var showLogout = !isGuestOrNone;
+    var isGuest = account.IsGuest;
+    var showMyAccount = !isGuest;
+    var showNotifications = !isGuest && _enableIncompleteUI;
+    var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
 }
 

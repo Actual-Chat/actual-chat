@@ -46,11 +46,12 @@
         if (!isOn)
             return new(markup, message);
 
-        var needsTranslation = await TranslationUI.NeedsTranslation(entry.Id, cancellationToken).ConfigureAwait(false);
+        var textEntryId = entry.Id.ToTextEntryId();
+        var needsTranslation = await TranslationUI.NeedsTranslation(textEntryId, cancellationToken).ConfigureAwait(false);
         if (!needsTranslation)
             return new(markup, message);
 
-        var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(textEntryId, cancellationToken).ConfigureAwait(false);
         return new (translation == null ? markup : MarkupParser.Parse(translation.Content), message);
     }
 

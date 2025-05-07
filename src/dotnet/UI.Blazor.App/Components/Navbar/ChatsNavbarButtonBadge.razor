@@ -14,7 +14,7 @@
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

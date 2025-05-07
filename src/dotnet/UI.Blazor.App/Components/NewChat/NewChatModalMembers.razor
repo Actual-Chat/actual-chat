@@ -36,7 +36,7 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public EventCallback<bool> Skipped { get; set; }
     [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }

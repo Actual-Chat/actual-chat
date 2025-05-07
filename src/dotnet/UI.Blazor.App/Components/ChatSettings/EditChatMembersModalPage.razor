@@ -25,12 +25,12 @@
         var statusText = FormatStatusText(isOwner, isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
         var showMenu = !(isOwn || isOwner);
-        var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId).ToString() : null;
+        var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId.Value).ToString() : null;
         <li data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <AuthorBadge
                 @key="@authorId"
-                AuthorSid="@authorId"
+                AuthorSid="@authorId.Value"
                 ShowPresence="true"
                 StatusText="@statusText" />
             @if (dataMenuAttr != null) {
@@ -52,7 +52,7 @@
 
 @code {
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private ChatId ChatId { get; set; }
+    private ChatId ChatId { get; set; } = null!;
 
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IRoles Roles { get; init; } = null!;
@@ -62,7 +62,7 @@
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
-        if (ChatId.IsPeerChat(out _))
+        if (ChatId is PeerChatId)
             throw StandardError.NotSupported("Peer chat id should not be provided.");
         Context.Class = "edit-members";
         Context.Buttons = [DialogButtonInfo.BackButton];
@@ -115,7 +115,7 @@
             MemberCount = allAuthorIds.Length,
             AuthorIds = authors.Select(c => c.Item1).ToArray(),
             OwnerIds = ownerIds,
-            OwnAuthorId = ownAuthor!.Id,
+            OwnAuthorId = ownAuthor?.Id,
         };
 
         int Compare((AuthorId, string) info1, (AuthorId, string) info2)
@@ -142,11 +142,11 @@
         public int MemberCount { get; init; }
         public AuthorId[] AuthorIds { get; init; } = [];
         public AuthorId[] OwnerIds { get; init; } = [];
-        public AuthorId OwnAuthorId { get; init; }
+        public AuthorId? OwnAuthorId { get; init; }
 
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
-            => OwnAuthorId.Equals(authorId);
+            => OwnAuthorId is not null && OwnAuthorId.Equals(authorId);
     }
 }

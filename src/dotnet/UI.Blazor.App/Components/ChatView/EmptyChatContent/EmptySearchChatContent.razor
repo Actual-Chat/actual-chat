@@ -13,7 +13,7 @@
         @if (m.PeerAccount is { } peerAccount) {
             <div class="c-truncated-text">
                 <span>Say "Hi" to</span>
-                <AccountName UserSid="@peerAccount.Id"/>
+                <AccountName UserSid="@peerAccount.Id.Value"/>
                 <span>!</span>
             </div>
         } else {
@@ -39,12 +39,12 @@
         if (!isEmpty || chat.HasSingleAuthor)
             return null;
 
-        if (!chatId.IsPeerChat(out var peerChatId))
+        if (chatId is not PeerChatId peerChatId)
             return Model.NoPeerAccount;
 
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var peerAccountId = peerChatId.AnotherUserIdOrDefault(account.Id);
-        if (peerAccountId.IsNone)
+        var peerAccountId = peerChatId.AnotherUserIdOrNull(account.Id);
+        if (peerAccountId is null)
             return Model.NoPeerAccount;
 
         var peerAccount = await Accounts.Get(Session, peerAccountId, cancellationToken).ConfigureAwait(false);

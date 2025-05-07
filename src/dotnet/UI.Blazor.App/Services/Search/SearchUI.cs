@@ -11,14 +11,14 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     private static readonly SearchScope[] Scopes = [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages ];
     private Cached _cached = Cached.None;
     private readonly MutableState<string> _text;
-    private readonly MutableState<PlaceId> _placeId;
+    private readonly MutableState<PlaceId?> _placeId;
     private readonly MutableState<bool> _isSearchModeOn;
     private readonly MutableState<bool> _isShowRecentOn;
     private readonly MutableState<bool> _isResultsNavigationOn;
     private readonly ComputedState<FoundItem?> _selectedItem;
 
     public IMutableState<string> Text => _text;
-    public IMutableState<PlaceId> PlaceId => _placeId;
+    public IMutableState<PlaceId?> PlaceId => _placeId;
     public IState<bool> IsSearchModeOn => _isSearchModeOn;
     public IState<bool> IsShowRecentOn => _isShowRecentOn;
     public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
@@ -38,7 +38,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     {
         var stateFactory = uiHub.StateFactory();
         _text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
-        _placeId = stateFactory.NewMutable(ActualChat.PlaceId.None, StateCategories.Get(GetType(), nameof(_placeId)));
+        _placeId = stateFactory.NewMutable((PlaceId?)null, StateCategories.Get(GetType(), nameof(_placeId)));
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         _isShowRecentOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsShowRecentOn)));
         _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
@@ -83,7 +83,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
             return;
 
         Text.Value = "";
-        PlaceId.Value = ActualChat.PlaceId.None;
+        PlaceId.Value = null;
         _ = UIEventHub.Publish(new SearchClearedEvent());
     }
 
@@ -104,11 +104,10 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     public async Task LaunchAISearch()
     {
-        var chatIdOpt = await CreateSearchChat().ConfigureAwait(true); // Continue on Blazor Context
-        if (!chatIdOpt.HasValue)
+        var searchChatId = await CreateSearchChat().ConfigureAwait(true); // Continue on Blazor Context
+        if (searchChatId is null)
             return;
 
-        var searchChatId = chatIdOpt.Value;
         NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
             PanelsUI.HidePanels();
@@ -158,7 +157,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         if (!e.IsUserAction)
             return;
 
-        PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : ActualChat.PlaceId.None;
+        PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : null;
     }
 
     // Nested types
@@ -194,14 +193,14 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         }
     }
 
-    protected sealed record Criteria(string Text, PlaceId PlaceId, ImmutableHashSet<SearchScope> ExtendedLimits)
+    protected sealed record Criteria(string Text, PlaceId? PlaceId, ImmutableHashSet<SearchScope> ExtendedLimits)
     {
-        public static readonly Criteria None = new ("", PlaceId.None, []);
+        public static readonly Criteria None = new ("", null, []);
 
         public ContactSearchQuery ToContactQuery(SubgroupKey key)
             => new () {
                 Criteria = Text,
-                PlaceId = PlaceId == PlaceId.None ? null : PlaceId, // search in places if None
+                PlaceId = PlaceId,
                 Scope = key.Scope,
                 Limit = ExtendedLimits.Contains(key.Scope)
                     ? Constants.Search.ExtendedPageSize
@@ -212,7 +211,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         public EntrySearchQuery ToEntryQuery(SubgroupKey key)
             => new () {
                 Criteria = Text,
-                PlaceId = PlaceId == PlaceId.None ? null : PlaceId, // search in places if None
+                PlaceId = PlaceId,
                 Limit = ExtendedLimits.Contains(key.Scope)
                     ? Constants.Search.ExtendedPageSize
                     : Constants.Search.DefaultPageSize,

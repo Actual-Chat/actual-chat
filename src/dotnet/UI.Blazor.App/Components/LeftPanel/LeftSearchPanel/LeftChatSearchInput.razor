@@ -47,7 +47,7 @@
 </div>
 
 @code {
-    TextInput? _inputRef = null;
+    TextInput? _inputRef;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
@@ -82,7 +82,7 @@
         if (!openPanel)
             Cancel();
         SearchUI.ShowRecent(openPanel);
-        SearchUI.PlaceId.Value = Place?.Id ?? PlaceId.None;
+        SearchUI.PlaceId.Value = Place?.Id;
         StateHasChanged();
     }
 
@@ -90,7 +90,7 @@
         => _inputRef?.Focus();
 
     private void OnSearchInputTextChanged(string text) {
-        SearchUI.PlaceId.Value = Place?.Id ?? PlaceId.None;
+        SearchUI.PlaceId.Value = Place?.Id;
         SearchUI.Text.Value = text;
     }
 

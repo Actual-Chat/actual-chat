@@ -45,7 +45,7 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

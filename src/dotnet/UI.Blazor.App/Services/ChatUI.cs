@@ -372,10 +372,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return hasChanged;
     }
 
-    public void HighlightEntry(TextEntryId entryId, bool navigate, bool updateUI = true)
+    public void HighlightEntry(TextEntryId? entryId, bool navigate, bool updateUI = true)
     {
-        if (navigate)
+        if (navigate) {
+            if (entryId is null)
+                throw StandardError.Constraint("Not null entry should be specified for navigate request.");
             _ = UIEventHub.Publish(new NavigateToChatEntryEvent(entryId, true));
+        }
         else lock (Lock) {
             if (_highlightedEntryId.Value == entryId)
                 return;
@@ -452,8 +455,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         }
     }
 
-    private async Task SelectNavbarGroup(ChatId chatId)
+    private async Task SelectNavbarGroup(ChatId? chatId)
     {
+        if (chatId is null) {
+            NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
+            return;
+        }
+
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
             return;
 
@@ -463,7 +471,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         var placeId = (chatId as PlaceChatId)?.PlaceId;
         var isChatPlaceSelected = placeId is not null
             && isPlaceSelected
-            && navbarSelectedPlaceId.Equals(placeId);
+            && Equals(navbarSelectedPlaceId, placeId);
         if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
             var navbarSettings = await NavbarSettings.Use().ConfigureAwait(false);
             if (navbarSettings.PinnedChats.Contains(chatId)) {
@@ -490,7 +498,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
             if (chatListSettings.Filter == ChatListFilter.People || chatListSettings.Filter == ChatListFilter.None) {
                 var chats = await ChatListUI.ListMembersOnly(selectedPlaceId, default).ConfigureAwait(false);
                 if (chats.ContainsKey(chatId))
-                    return; // Keep selected group
+                    return; // Keep a selected group
             }
         }
 
@@ -505,7 +513,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private async ValueTask<ChatId?> FixSelectedChatId(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         chatId = await FixChatId(chatId, cancellationToken).ConfigureAwait(false);
-        return chatId is null ? Constants.Chat.AnnouncementsChatId : chatId;
+        return chatId ?? Constants.Chat.AnnouncementsChatId;
     }
 
     // Not compute method!
@@ -597,7 +605,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                     placeId, lastSelectedChatId);
 
                 SelectChatInternal(lastSelectedChatId);
-                if (Hub.PanelsUI.IsWide()) {
+                if (lastSelectedChatId is not null && Hub.PanelsUI.IsWide()) {
                     // Do not navigate on a narrow screen to prevent hiding panels
                     // Navigate to selected chat only after delay to make ChatLists update smoother.
                     await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher

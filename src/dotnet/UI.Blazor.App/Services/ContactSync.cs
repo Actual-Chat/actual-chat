@@ -39,7 +39,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
             return;
 
         var cAccount = await AccountUI.OwnAccount.Computed
-            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .When(x => !x.IsGuest, cancellationToken)
             .ConfigureAwait(false);
         var account = cAccount.Value;
         var abortCts = cancellationToken.CreateLinkedTokenSource();
@@ -47,7 +47,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
         Task whenSynced;
         try {
             whenSynced = Sync(account, abortToken);
-            var whenSignedOut = cAccount.When(x => x.IsGuestOrNone || x.Id != account.Id, abortToken);
+            var whenSignedOut = cAccount.When(x => x.IsGuest || x.Id != account.Id, abortToken);
             await Task.WhenAny(whenSynced, whenSignedOut).ConfigureAwait(false);
         }
         finally {

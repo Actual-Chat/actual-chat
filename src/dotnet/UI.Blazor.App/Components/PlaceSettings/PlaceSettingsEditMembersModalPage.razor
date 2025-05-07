@@ -26,12 +26,12 @@
         var statusText = FormatStatusText(isOwner, isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
         var showMenu = !(isOwn || isOwner);
-        var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId).ToString() : null;
+        var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId.Value).ToString() : null;
         <li data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <AuthorBadge
                 @key="@authorId"
-                AuthorSid="@authorId"
+                AuthorSid="@authorId.Value"
                 ShowPresence="true"
                 StatusText="@statusText" />
             @if (dataMenuAttr != null) {
@@ -51,7 +51,7 @@
 
 @code {
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private PlaceId PlaceId { get; set; }
+    private PlaceId PlaceId { get; set; } = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
@@ -137,11 +137,11 @@
         public int MemberCount { get; init; }
         public AuthorId[] AuthorIds { get; init; } = [];
         public AuthorId[] OwnerIds { get; init; } = [];
-        public AuthorId OwnAuthorId { get; init; }
+        public AuthorId? OwnAuthorId { get; init; }
 
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
-            => OwnAuthorId.Equals(authorId);
+            => OwnAuthorId is not null && Equals(OwnAuthorId, authorId);
     }
 }

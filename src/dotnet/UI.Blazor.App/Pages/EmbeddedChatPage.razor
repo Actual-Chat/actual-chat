@@ -5,8 +5,8 @@
     var m = Rendered = State.Value;
     var chat = m.Chat;
     var account = m.OwnAccount;
-    var chatId = chat.Id.IsNone ? ChatId : chat.Id;
-    var chatKey = chatId.Value;
+    var chatId = chat?.Id ?? ChatId;
+    var chatKey = chatId?.Value ?? "";
     // Log.LogDebug("Rendered for #{ChatId}", chatId);
 }
 
@@ -22,7 +22,7 @@
                         IsRightNavigateButtonVisible="@false" />
                 </div>
                 <div class="layout-subheader">
-                    @if (!chatId.IsNone) {
+                    @if (chatId is not null) {
                         <Banners @key="@chatKey" Chat="@chat"/>
                     }
                 </div>
@@ -41,8 +41,10 @@
                                 <NoChatSelected/>
                             } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
                                 <ChatNotFound ShowSignIn="@(!account.IsActive())"/>
-                            } else {
+                            } else if (chatId is not null) {
                                 <ChatView @key="@chatKey" ChatId="@chatId"/>
+                            } else {
+                                // chatId should never be null.
                             }
                         </div>
                     </div>
@@ -78,7 +80,7 @@
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         try {
             var chat = SpecialChat.NoChatSelected;
-            if (!chatId.IsNone) {
+            if (chatId is not null) {
                 chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
                 chat ??= SpecialChat.Unavailable;
             }
@@ -89,7 +91,7 @@
 
             // Create new chat based on a template and redirect to the new clone
             {
-                var command = new Chats_GetOrCreateFromTemplate(Session, chatId);
+                var command = new Chats_GetOrCreateFromTemplate(Session, chat.Id);
                 var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None).ConfigureAwait(false);
                 if (createChatError != null)
                     throw StandardError.Unavailable("Unable to create new chat from template");

@@ -13,7 +13,7 @@
         <div class="c-item"
              @key="@item.Account.Id.Value"
              @onclick="@(_ => OnItemClick(item))">
-            <AccountCircle UserSid="@item.Account.Id" ShowPresence="true"/>
+            <AccountCircle UserSid="@item.Account.Id.Value" ShowPresence="true"/>
             <div class="avatar-name">
                 <SearchMatchHighlighter Match="@GetMatch(item.Account.Avatar.Name)"/>
             </div>
@@ -55,7 +55,7 @@
                 <div class="c-remove">
                     <i class="icon-close c-close"></i>
                 </div>
-                <AccountCircle UserSid="@userId" Size="@SquareSize.Size5"/>
+                <AccountCircle UserSid="@userId.Value" Size="@SquareSize.Size5"/>
                 <div class="c-name">
                     @account.Avatar.Name
                 </div>

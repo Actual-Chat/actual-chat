@@ -28,7 +28,7 @@ internal class ChatContentMapper(
         // -- Chat Entries
         var chatEntries = ImmutableArray.CreateBuilder<ChatSliceEntry>(entryCount);
         chatEntries.AddRange(
-            sourceEntries.Entries.Select(e => new ChatSliceEntry((TextEntryId)e.Id, e.LocalId, e.Version)));
+            sourceEntries.Entries.Select(e => new ChatSliceEntry(e.Id.ToTextEntryId(), e.LocalId, e.Version)));
 
         // -- Replies
         const int replyToEstimatedCount = 1;
@@ -55,7 +55,7 @@ internal class ChatContentMapper(
         principalSet.Clear();
         var reactionEntryIds = sourceEntries.Entries
             .Where(e => e.HasReactions)
-            .Select(e => (TextEntryId)e.Id);
+            .Select(e => e.Id.ToTextEntryId());
         foreach (var reactionEntryId in reactionEntryIds) {
             var reactionSummary = await reactionsBackend.List(reactionEntryId, cancellationToken).ConfigureAwait(false);
             principalSet.AddRange(reactionSummary.SelectMany(s => s.FirstAuthorIds));

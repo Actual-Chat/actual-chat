@@ -1,7 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<IReadOnlyList<ChatInfo>>
 @using ActualChat.Search
-@using ActualChat.Contacts
 
 <CascadingValue IsFixed="true" Value="@this">
     @ChildContent
@@ -10,16 +9,15 @@
 @code {
     private MutableState<IReadOnlyDictionary<ChatId, ChatInfo>> _allChats = null!;
     private MutableState<ImmutableHashSet<ChatId>> _selectedChatIds = null!;
-    private PlaceId _placeId = PlaceId.None;
+    private PlaceId? _placeId;
 
-    [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [Parameter] public ChatListOrder Order { get; set; } = ChatListOrder.ByOwnUpdateTime;
     [Parameter] public ChatListPreOrder ChatListPreOrder { get; set; } = ChatListPreOrder.ChatList;
     [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
     [Parameter] public bool UseCanWriteFilter { get; set; } = true;
-    [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; } = null;
+    [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; }
     [Parameter] public SearchPhrase SearchPhrase { get; set; } = SearchPhrase.None;
     [Parameter] public EventCallback Changed { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
@@ -44,7 +42,7 @@
     public void Clear()
         => _selectedChatIds.Set(static x => x.Value.Clear());
 
-    public void SelectPlace(PlaceId placeId) {
+    public void SelectPlace(PlaceId? placeId) {
         _placeId = placeId;
         _ = State.Recompute();
     }

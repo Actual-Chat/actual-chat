@@ -8,7 +8,7 @@
 }
 
 <pre @ref="_preRef" class="@cls" title="@title"
-    data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, "", Markup.Code))">
+    data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, "", Markup.Code))">
     <code>@Markup.Code</code>
 </pre>
 

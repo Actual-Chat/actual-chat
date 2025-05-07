@@ -7,7 +7,7 @@
 
     <div class="c-top">
         <AuthorCircle
-            AuthorSid="@Author.Id"
+            AuthorSid="@Author.Id.Value"
             Size="SquareSize.SizeFull"
             IsBlurred="@true"
             IsSquare="@true" />
@@ -15,11 +15,11 @@
 
     <div class="c-center">
         <AuthorCircle
-            AuthorSid="@Author.Id"
+            AuthorSid="@Author.Id.Value"
             Size="SquareSize.Size16">
             <BadgeContent>
                 @if (!Author.IsAnonymous) {
-                    <AuthorPresenceIndicator AuthorSid="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>
+                    <AuthorPresenceIndicator AuthorSid="@Author.Id.Value" ShowRecording="true"></AuthorPresenceIndicator>
                 }
             </BadgeContent>
         </AuthorCircle>
@@ -50,7 +50,7 @@
 
     <div class="c-bottom">
         <div class="c-title">
-            <AuthorName AuthorSid="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
+            <AuthorName AuthorSid="@Author.Id.Value" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
         @if (!_peerOwnName.IsNullOrEmpty()) {
             <span class="c-public">

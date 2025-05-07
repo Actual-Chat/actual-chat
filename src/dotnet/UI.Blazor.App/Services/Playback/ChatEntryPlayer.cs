@@ -145,7 +145,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
                 return;
 
             var ownAuthor = await Hub.Authors.GetOwn(Hub.Session(), audioEntry.ChatId, cancellationToken).ConfigureAwait(false);
-            if (audioEntry.AuthorId != (ownAuthor?.Id ?? AuthorId.None))
+            // TODO(DF): review change
+            if (ownAuthor is null || audioEntry.AuthorId != ownAuthor.Id)
                 _ = AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);

@@ -19,7 +19,6 @@
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
     private SearchUI SearchUI => Hub.SearchUI;
 
     private NavbarUI NavbarUI => Hub.NavbarUI;
@@ -47,18 +46,18 @@
         var session = Session;
         var searchPlaceId = await SearchUI.PlaceId.Use(cancellationToken).ConfigureAwait(false);
         var isSearchOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
-        if (isSearchOn && searchPlaceId.IsNone)
+        if (isSearchOn && searchPlaceId is null)
             return new Model(null, false);
 
         var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
             ? selectedPlaceId
             : NavbarUI.IsPinnedChatSelected(out var pinnedChatId)
-                ? pinnedChatId.PlaceId
-                : PlaceId.None;
+                ? (pinnedChatId as PlaceChatId)?.PlaceId
+                : null;
         if (Constants.Place.ChatRouletteId.Equals(placeId))
             return new Model(null, true);
 
-        var place = placeId.IsNone
+        var place = placeId is null
             ? null
             : await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
         return new Model(place, false);

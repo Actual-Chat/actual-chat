@@ -37,7 +37,7 @@
 }
 
 @code {
-    private PlaceId _placeId;
+    private PlaceId _placeId = null!;
     private bool _isOwner;
     private bool _canLeave;
     private bool _canInvite;
@@ -53,7 +53,7 @@
         if (Arguments is not [ var placeSid ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-        _placeId = new PlaceId(placeSid);
+        _placeId = PlaceId.Parse(placeSid);
         var session = Session;
         var place = await Places.Get(session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;

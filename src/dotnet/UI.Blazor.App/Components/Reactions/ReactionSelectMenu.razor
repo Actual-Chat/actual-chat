@@ -17,7 +17,7 @@
         if (Arguments is not [ var sEntryId ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-        var entryId = new TextEntryId(sEntryId);
-        _entry = await Chats.GetEntry(Session, entryId);
+        var entryId = TextEntryId.ParseNullable(sEntryId) ;
+        _entry = entryId is not null ? await Chats.GetEntry(Session, entryId) : null;
     }
 }

@@ -15,7 +15,7 @@
 
     private Task OnCopyChatClick(ChatId chatId) {
         return CopyChatToPlaceUI.CopyChat(Hub,
-            ChatId.Parse(chatId),
+            chatId,
             ModalModel.PlaceId,
             StateHasChanged,
             (_) => {

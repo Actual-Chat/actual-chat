@@ -71,7 +71,7 @@ public partial class ChatUI
             .When(x => x is not null, cancellationToken)
             .ConfigureAwait(false);
 
-        var link = Links.Chat(cFixedSelectedChatId.Value);
+        var link = Links.Chat(cFixedSelectedChatId.Value!);
         _ = AutoNavigationUI.DispatchNavigateTo(link, AutoNavigationReason.FixedChatId);
     }
 
@@ -102,15 +102,13 @@ public partial class ChatUI
     {
         CancellationTokenSource? cts = null;
         try {
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             var changes = HighlightedEntryId.Computed.ChangesUntyped(FixedDelayer.Get(0.1), cancellationToken);
             await foreach (var c in changes.ConfigureAwait(false)) {
-                var cHighlightedEntryId = (Computed<ChatEntryId>)c;
-                if (cHighlightedEntryId.Value.IsNone)
-                    continue;
-
+                var cHighlightedEntryId = (Computed<TextEntryId?>)c;
                 cts.CancelAndDisposeSilently();
                 var highlightedEntryId = cHighlightedEntryId.Value;
-                if (highlightedEntryId.IsNone)
+                if (highlightedEntryId is null)
                     continue; // Nothing to reset
 
                 cts = cancellationToken.CreateLinkedTokenSource();
@@ -118,7 +116,7 @@ public partial class ChatUI
                 _ = BackgroundTask.Run(async () => {
                     await Task.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
                     if (HighlightedEntryId.Value == highlightedEntryId)
-                        HighlightEntry(ChatEntryId.None, false);
+                        HighlightEntry(null, false);
                 }, CancellationToken.None);
             }
         }
@@ -163,9 +161,10 @@ public partial class ChatUI
             var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
             var isPlaceSelected = NavbarUI.IsPlaceSelected(out var selectedPlaceId);
             var isPeerChat = selectedChatId.Kind == ChatKind.Peer;
-            var isChatPlaceSelected = selectedChatId.IsPlaceChat
+            var selectedAsPlaceChatId = selectedChatId as PlaceChatId;
+            var isChatPlaceSelected = selectedAsPlaceChatId is not null
                 && isPlaceSelected
-                && selectedPlaceId.Equals(selectedChatId.PlaceId);
+                && Equals(selectedPlaceId, selectedAsPlaceChatId.PlaceId);
             if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
                 var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
                 if (navbarSettings.PinnedChats.Contains(selectedChatId)) {
@@ -177,10 +176,10 @@ public partial class ChatUI
                 }
             }
 
-            if (!selectedChatId.IsPlaceChat)
+            if (selectedAsPlaceChatId is null)
                 return;
 
-            var place = await Hub.Places.Get(Session, selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            var place = await Hub.Places.Get(Session, selectedAsPlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place == null)
                 return;
 

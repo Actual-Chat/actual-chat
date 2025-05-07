@@ -25,9 +25,6 @@
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
-    private UICommander UICommander => Hub.UICommander();
-    private ModalUI ModalUI => Hub.ModalUI;
-    private ToastUI ToastUI => Hub.ToastUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
@@ -41,9 +38,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var hasChat = !chat.Id.IsNone;
-
-        if (!hasChat || !chat.Id.IsPlaceChat || !chat.Rules.IsOwner())
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (chat.Id is null || chat.Kind != ChatKind.Place || !chat.Rules.IsOwner())
             return Model.Hidden;
 
         var copiedChat = await Chats.GetChatCopyState(Session, chat.Id, cancellationToken).ConfigureAwait(false);
@@ -62,7 +58,7 @@
     private Task OnUpdateClick(ChatCopyState copiedChat)
         => CopyChatToPlaceUI.CopyChat(Hub,
             copiedChat.SourceChatId,
-            copiedChat.Id.PlaceChatId.Require().PlaceId,
+            (copiedChat.Id as PlaceChatId).Require().PlaceId,
             () => {
                 _isCopying = true;
                 StateHasChanged();

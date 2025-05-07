@@ -30,8 +30,6 @@
     private IRoles Roles => Hub.Roles;
     private IAuthors Authors => Hub.Authors;
     private AccountSettings AccountSettings => Hub.AccountSettings();
-    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
     private ModalUI ModalUI => Hub.ModalUI;
     private MomentClockSet Clocks => Hub.Clocks();
     [field: AllowNull, MaybeNull]
@@ -41,7 +39,7 @@
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;
-        var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.RootChatId :  chatId;
+        var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? ((PlaceChatId)Chat.Id).PlaceId.RootChatId :  chatId;
         var key = $"AddChatMembersBanner_DismissedAt_{dismissChatId.Value}";
         _dismissedAt = StateFactory.NewKvasSynced<Moment>(new(AccountSettings, key));
     }

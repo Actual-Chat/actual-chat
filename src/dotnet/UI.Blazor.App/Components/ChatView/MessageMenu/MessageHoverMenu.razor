@@ -18,7 +18,7 @@
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _isSystem = bool.Parse(sIsSystem);
-        var entryId = new TextEntryId(sEntryId);
+        var entryId = TextEntryId.Parse(sEntryId);
         var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
         _message = entry != null
             ? new ChatEntryMessage(entry)

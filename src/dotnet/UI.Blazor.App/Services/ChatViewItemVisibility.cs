@@ -6,17 +6,17 @@ public sealed record ChatViewItemVisibility(
     IReadOnlySet<long> VisibleEntryLids,
     bool IsEndAnchorVisible)
 {
-    public static readonly ChatViewItemVisibility Empty = new(ChatId.None, ImmutableHashSet<long>.Empty, false);
+    public static readonly ChatViewItemVisibility Empty = new(null!, ImmutableHashSet<long>.Empty, false);
 
     // EntryLid = Entry's LocalId
     public long MinEntryLid { get; } = VisibleEntryLids.Count == 0 ? -1 : VisibleEntryLids.Min();
     public long MaxEntryLid { get; } = VisibleEntryLids.Count == 0 ? -1 : VisibleEntryLids.Max();
     public bool IsEmpty => VisibleEntryLids.Count == 0;
-    public IEnumerable<ChatEntryId> VisibleEntryIds => VisibleEntryLids.Select(lid => new ChatEntryId(ChatId, ChatEntryKind.Text, lid, AssumeValid.Option));
+    public IEnumerable<TextEntryId> VisibleEntryIds => VisibleEntryLids.Select(lid => TextEntryId.New(ChatId, lid));
 
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
-            new ChatId(source.ListIdentity),
+            ChatId.Parse(source.ListIdentity),
             source.VisibleKeys
                 .Select(k => k.Split('-')[0])
                 .Select(k =>NumberExt.TryParseLong(k, out var lid) ? lid : 0)

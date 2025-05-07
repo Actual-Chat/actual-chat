@@ -166,9 +166,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     private ChatPlayer GetOrCreate(ChatId chatId, ChatPlayerKind playerKind)
     {
         StopToken.ThrowIfCancellationRequested();
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         ChatPlayer newPlayer;
         lock (Lock) {
             var player = _players.GetValueOrDefault((chatId, playerKind));
@@ -188,9 +185,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private async Task Close(ChatId chatId, ChatPlayerKind playerKind)
     {
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         ChatPlayer? player;
         lock (Lock) {
             player = _players.GetValueOrDefault((chatId, playerKind));
@@ -205,8 +199,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private Task<Task> ResumeRealtimePlayback(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNone)
-            return Task.FromResult(Task.CompletedTask);
         var player = GetOrCreate(chatId, ChatPlayerKind.Realtime);
         var whenPlaying = player.WhenPlaying;
         return whenPlaying is { IsCompleted: false }
@@ -225,8 +217,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private Task<Task> StartHistoricalPlayback(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
     {
-        if (chatId.IsNone)
-            return Task.FromResult(Task.CompletedTask);
         var player = GetOrCreate(chatId, ChatPlayerKind.Historical);
         return player.Start(startAt, cancellationToken);
     }

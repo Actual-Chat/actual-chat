@@ -27,7 +27,7 @@
                         <div class="c-second-line">
                             <div class="c-last-message">
                                 <AuthorName
-                                    AuthorSid="@m.Entry.AuthorId"
+                                    AuthorSid="@m.Entry.AuthorId.Value"
                                     ShowDetailsOnClick="false"
                                     ShowAsYou="true"/>
                                 <span class="c-colon">:</span>
@@ -56,7 +56,6 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private IAuthors Authors => Hub.Authors;
-    private AccountUI AccountUI => Hub.AccountUI;
     private Session Session => Hub.Session();
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
@@ -81,18 +80,18 @@
         if (chatState == null)
             return Model.None;
 
-        if (!chatId.IsPeerChat(out var peerChatId))
+        if (chatId is not PeerChatId peerChatId)
             return Model.None;
 
         var chat = chatState.Chat;
-        var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account.Id);
+        var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account!.Id);
         var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
 
         if (anotherAuthor == null)
             return Model.None;
 
         var entry = chatState.Info.LastTextEntry;
-        if (entry is { Id.IsNone: false, IsSystemEntry: false })
+        if (entry is not null && !entry.IsSystemEntry)
             lastTextEntry = entry;
         var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
 

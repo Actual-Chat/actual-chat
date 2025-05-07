@@ -17,10 +17,10 @@
              @onmouseover="@(_ => Selection = mention)"
              @onclick="@(_ => Manager.SelectMention(mention))">
             <div class="c-content">
-                @if (mention.MentionId.Kind == PrincipalKind.Author) {
+                @if (mention.MentionId.PrincipalId is AuthorId authorId) {
                     <AuthorCircle
-                        @key="@mention.MentionId.AuthorId"
-                        AuthorSid="@mention.MentionId.AuthorId"
+                        @key="@authorId"
+                        AuthorSid="@authorId.Value"
                         Size="SquareSize.Size7"/>
                 } else {
                     var pictureUrl = UrlMapper.PicturePreview128Url(mention.Picture);

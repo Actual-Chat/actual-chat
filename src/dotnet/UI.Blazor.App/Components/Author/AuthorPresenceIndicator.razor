@@ -6,13 +6,13 @@
 @PresenceFragments.PresenceIndicator(presence)
 
 @code {
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IAuthors Authors { get; init; } = null!;
-    [Inject] protected ChatActivity ChatActivity { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
 
-    protected AuthorId AuthorId { get; private set; }
-    protected ChatId ChatId => AuthorId.ChatId;
-    protected IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private AuthorId? AuthorId { get; set; }
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
     [Parameter] public bool ShowRecording { get; set; }
@@ -24,19 +24,19 @@
     }
 
     protected override void OnInitialized()
-        // Set AuthorId here in order to have actual AuthorId value in GetStateOptions.
-        => AuthorId = new AuthorId(AuthorSid);
+        // Set AuthorId here to have actual AuthorId value in GetStateOptions.
+        => AuthorId = AuthorId.ParseNullable(AuthorSid);
 
     protected override void OnParametersSet()
     {
-        AuthorId = new AuthorId(AuthorSid);
+        AuthorId = AuthorId.ParseNullable(AuthorSid);
         ChatRecordingActivity?.Dispose();
         ChatRecordingActivity = null;
     }
 
     protected override async Task OnParametersSetAsync() {
-        if (ShowRecording && !ChatId.IsNone)
-            ChatRecordingActivity = await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None);
+        if (ShowRecording && AuthorId is not null)
+            ChatRecordingActivity = await ChatActivity.GetStreamingActivity(AuthorId.ChatId, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
@@ -49,12 +49,12 @@
 
     protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
         var authorId = AuthorId;
+        if (authorId is null)
+            return Presence.Offline;
+
         var chatId = authorId.ChatId;
         var showRecording = ShowRecording;
         var chatRecordingActivity = ChatRecordingActivity;
-
-        if (authorId.IsNone)
-            return Presence.Offline;
 
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (showRecording && chatRecordingActivity != null) {

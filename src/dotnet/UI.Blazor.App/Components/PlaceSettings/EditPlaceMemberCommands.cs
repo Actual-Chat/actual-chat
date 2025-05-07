@@ -8,9 +8,9 @@ public static class EditPlaceMemberCommands
     public static async Task<EditPlaceMemberModel?> ComputeState(ChatUIHub hub, AuthorId authorId, CancellationToken cancellationToken)
     {
         var chatId = authorId.ChatId;
-        if (!chatId.PlaceChatId.IsRoot)
+        if (chatId is not PlaceChatId placeChatId || !placeChatId.IsRoot)
             throw new ArgumentOutOfRangeException(nameof(authorId), "AuthorId should belong to place root chat");
-        var placeId = chatId.PlaceChatId.PlaceId;
+        var placeId = placeChatId.PlaceId;
         var session = hub.Session();
         var author = await hub.Places.Get(session, placeId, authorId, cancellationToken);
         if (author == null || author.HasLeft)

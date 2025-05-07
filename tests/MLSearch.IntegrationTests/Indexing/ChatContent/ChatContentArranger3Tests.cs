@@ -48,7 +48,7 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
             var outDocuments = new Dictionary<SourceEntries, ChatSlice>();
             await foreach (var entrySet in result) {
                 var chatSliceMetadata = new ChatSliceMetadata {
-                    ChatEntries = [..entrySet.Entries.Select(c => new ChatSliceEntry((TextEntryId)c.Id, c.LocalId, c.Version))]
+                    ChatEntries = [..entrySet.Entries.Select(c => new ChatSliceEntry(c.Id.ToTextEntryId(), c.LocalId, c.Version))]
                 };
                 var text = await chatDialogFormatter.EntriesToText(entrySet.Entries);
                 outDocuments.Add(entrySet, new ChatSlice(chatSliceMetadata, text));

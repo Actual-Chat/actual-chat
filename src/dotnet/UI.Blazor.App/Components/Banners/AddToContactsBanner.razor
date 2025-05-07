@@ -37,7 +37,7 @@
         var chatId = Chat.Id;
 
         var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return new(!ownAccount.IsGuestOrNone, contact);
+        return new(!ownAccount.IsGuest, contact);
     }
 
     private async Task OnAddClick() {

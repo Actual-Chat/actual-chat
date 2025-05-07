@@ -46,7 +46,7 @@ internal static class ChatContentTestHelpers
             .Returns<SourceEntries, CancellationToken>((entries, _) => {
                 var metadata = new ChatSliceMetadata(
                     [authorId],
-                    [.. entries.Entries.Select(e => new ChatSliceEntry((TextEntryId)e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
+                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id.ToTextEntryId(), e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
                     [], [], [], [],
                     "en-US",
                     DateTime.Now

@@ -20,7 +20,7 @@
     private string? _link;
     private string? _code;
     private bool _isSystem;
-    private TextEntryId _entryId;
+    private TextEntryId _entryId = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private IChats Chats => Hub.Chats;
@@ -32,7 +32,7 @@
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _isSystem = bool.Parse(sIsSystem);
-        _entryId = new TextEntryId(sEntryId);
+        _entryId = TextEntryId.Parse(sEntryId);
         _link = link.NullIfEmpty();
         _code = code.NullIfEmpty();
     }

@@ -6,16 +6,16 @@ public sealed class PlaceChatListSettings
 {
     private readonly IMutableState<ChatListSettings> _state;
 
-    public PlaceId PlaceId { get; }
+    public PlaceId? PlaceId { get; }
     public Task WhenReady { get; }
 
-    public PlaceChatListSettings(PlaceId placeId, UIHub hub, bool useStoredState)
+    public PlaceChatListSettings(PlaceId? placeId, UIHub hub, bool useStoredState)
     {
         PlaceId = placeId;
         if (useStoredState) {
             var state = hub.StateFactory()
                 .NewKvasStored<ChatListSettings>(
-                    new (hub.LocalSettings(), ChatListSettings.GetKvasKey(placeId)) {
+                    new (hub.LocalSettings(), ChatListSettings.GetKvasKey(placeId?.Value ?? "")) {
                         InitialValue = new (),
                         Category = StateCategories.Get(GetType(), nameof(_state)),
                     });

@@ -19,7 +19,7 @@
             <div class="c-author">
                 <AuthorName
                     ShowDetailsOnClick="false"
-                    AuthorSid="@Entry.AuthorId"
+                    AuthorSid="@Entry.AuthorId.Value"
                     Class="@authorNameCls"/>
             </div>
             <div class="c-text">@_text</div>
@@ -48,5 +48,5 @@
     }
 
     private void OnQuoteClick()
-        => ChatUI.HighlightEntry(Entry.Id, navigate: true);
+        => ChatUI.HighlightEntry(Entry.Id.ToTextEntryId(), navigate: true);
 }

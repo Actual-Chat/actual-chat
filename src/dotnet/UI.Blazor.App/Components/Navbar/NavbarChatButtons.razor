@@ -1,4 +1,3 @@
-@using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<NavbarChatButtons.Model>
 @implements ISortableListBackend
@@ -18,7 +17,7 @@
             { "data-chat-id", chatInfo.Id },
         };
         if (!Hub.BrowserInfo.IsTouchCapable) {
-            attributes.Add("data-menu", MenuRef.New<ChatMenu>(chatInfo.Id, ChatListKind.All.Format()).ToString());
+            attributes.Add("data-menu", MenuRef.New<ChatMenu>(chatInfo.Id.Value, ChatListKind.All.Format()).ToString());
             attributes.Add("data-menu-placement", FloatingPosition.Right.ToPositionString());
         }
         <NavbarGroupSelectionButton
@@ -83,7 +82,7 @@
 
     [JSInvokable]
     public void OnOrderChanged(string[] ids)
-        => Hub.ChatUI.SetNavbarPinnedChats(ids.Select(c => (ChatId)c).ToArray());
+        => Hub.ChatUI.SetNavbarPinnedChats(ids.Select(ChatId.Parse).ToArray());
 
     // Nested types
 

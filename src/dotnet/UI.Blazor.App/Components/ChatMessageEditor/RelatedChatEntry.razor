@@ -16,7 +16,7 @@
             </div>
             <div class="c-center">
                 <div class="c-author">
-                    <AuthorName AuthorSid="@entry.AuthorId" Class="@authorNameCls"/>
+                    <AuthorName AuthorSid="@entry.AuthorId.Value" Class="@authorNameCls"/>
                     <span class="@colorCls @fontCls avatar-name">:&nbsp</span>
                 </div>
                 <div class="quote-text">@_text</div>
@@ -46,11 +46,8 @@
     private string _text = null!;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
-    private IAuthors Authors => Hub.Authors;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private UIEventHub UIEventHub => Hub.UIEventHub();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
@@ -67,7 +64,7 @@
     }
 
     private void OnQuoteClick()
-        => ChatUI.HighlightEntry(Entry.Id, navigate: true);
+        => ChatUI.HighlightEntry(Entry.Id.ToTextEntryId(), navigate: true);
 
     private void OnCancelClick()
         => UIEventHub.Publish<CancelChatMessageEditEvent>();

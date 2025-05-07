@@ -35,7 +35,7 @@
 
     protected override async Task OnParametersSetAsync() {
         _account = await AccountUI.OwnAccount.Use();
-        if (_account.IsGuestOrNone || !_account.IsActive()) {
+        if (_account.IsGuest || !_account.IsActive()) {
             _signInFromHomeRequested = true;
             _ = AccountUI.RequestSignInFromHomePage("to use this chat invite", History.LocalUrl);
             return;
@@ -67,7 +67,7 @@
             }
             if (place != null) {
                 var welcomeChatId = await Places.GetWelcomeChatId(Session, place.Id, default);
-                if (welcomeChatId.IsNone) {
+                if (welcomeChatId is null) {
                     _ = History.NavigateTo(Links.Chats, true);
                     return;
                 }

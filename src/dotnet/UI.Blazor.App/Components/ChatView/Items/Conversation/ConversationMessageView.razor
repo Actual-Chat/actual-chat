@@ -56,7 +56,7 @@
             return;
 
         var conversation = Message.Conversation!;
-        var chatEntryId = new ChatEntryId(conversation.Id.ChatId, ChatEntryKind.Text, conversation.Id.StartEntryLid, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
         _descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);

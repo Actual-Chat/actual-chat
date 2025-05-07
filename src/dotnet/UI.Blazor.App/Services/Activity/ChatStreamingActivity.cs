@@ -25,11 +25,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     public static readonly TimeSpan ExtraActivityDuration = TimeSpan.FromMilliseconds(250);
 
     private readonly MutableState<Moment?> _lastTranscribedAt;
-    private ChatEntryReader? _textEntryReader;
-    private ChatEntryReader? _audioEntryReader;
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;
-    private MomentClock? _serverClock;
-    private ILogger? _log;
 
     public ChatActivity Owner { get; }
     public ChatId ChatId { get; internal set; }
@@ -37,21 +33,26 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
 
     private ChatUIHub Hub { get; }
-    private MomentClock ServerClock => _serverClock ??= Hub.Clocks().ServerClock;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
-
+    private Session Session => Hub.Session();
+    [field: AllowNull, MaybeNull]
+    private MomentClock ServerClock => field ??= Hub.Clocks().ServerClock;
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
     public ChatEntryReader TextEntryReader
-        => _textEntryReader ??= Hub.Chats.NewEntryReader(Hub.Session(), ChatId, ChatEntryKind.Text);
+        => field ??= Hub.Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Text);
+    [field: AllowNull, MaybeNull]
     public ChatEntryReader AudioEntryReader
-        => _audioEntryReader ??= Hub.Chats.NewEntryReader(Hub.Session(), ChatId, ChatEntryKind.Audio);
+        => field ??= Hub.Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
 
     public ChatStreamingActivity(ChatActivity owner)
     {
         Owner = owner;
         Hub = owner.Hub;
-         _lastTranscribedAt = Hub.StateFactory().NewMutable(
-             (Moment?)Moment.MinValue,
-             StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
+        ChatId = SpecialChat.Loading.Id;
+        _lastTranscribedAt = Hub.StateFactory()
+            .NewMutable((Moment?)Moment.MinValue,
+                StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
     }
 
     // [ComputeMethod]
@@ -69,12 +70,10 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     // Protected & private methods
 
     protected override async Task OnRun(CancellationToken cancellationToken)
-    {
-        await Task.WhenAll(
+        => await Task.WhenAll(
             PushStreamingEntries(ChatEntryKind.Audio, cancellationToken),
             PushStreamingEntries(ChatEntryKind.Text, cancellationToken)
-            ).ConfigureAwait(false);
-    }
+        ).ConfigureAwait(false);
 
     [ProxyIgnore]
     protected override Task OnStop()
@@ -91,7 +90,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
         using var syncScope = RemoteComputedSynchronizer.Default.Activate();
 
         var idRange = await Hub.Chats
-            .GetIdRange(Hub.Session(), ChatId, entryKind, cancellationToken)
+            .GetIdRange(Session, ChatId, entryKind, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await entryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
@@ -100,7 +99,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
 
         var entries = entryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (entry.EndsAt < startAt || !entry.IsStreaming || entry.AuthorId.IsNone)
+            if (entry.EndsAt < startAt || !entry.IsStreaming || ChatEntry.Loading.AuthorId.Equals(entry.AuthorId))
                 continue;
 
             AddEntry(entry);
@@ -113,6 +112,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
                         e => e is not { IsStreaming: true },
                         commonTokenSource.Token
                     ).ConfigureAwait(false);
+                    // ReSharper disable once PossiblyMistakenUseOfCancellationToken
                     await Task.Delay(ExtraActivityDuration, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e) {

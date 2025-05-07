@@ -43,7 +43,7 @@
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private UIEventHub UIEventHub => Hub.UIEventHub();
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<(IReadOnlyList<Language>?, Language)>.Options GetStateOptions()

@@ -39,7 +39,6 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
-    private Features Features => Hub.Features();
     private IContacts Contacts => Hub.Contacts;
     private ChatUI ChatUI => Hub.ChatUI;
 
@@ -66,12 +65,12 @@
 
     private void OnSelectedTabIdChanged(string? tabId) {
         if (tabId.IsNullOrEmpty())
-            SelectPlace(PlaceId.None);
+            SelectPlace(null);
         else if (PlaceId.TryParse(tabId, out var placeId))
             SelectPlace(placeId);
     }
 
-    private void SelectPlace(PlaceId placeId)
+    private void SelectPlace(PlaceId? placeId)
         => Selector.SelectPlace(placeId);
 
     // Nested types

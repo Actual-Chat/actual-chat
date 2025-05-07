@@ -122,4 +122,12 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
         result = Cache.AddOrGet(s, result);
         return true;
     }
+
+    public TextEntryId ToTextEntryId()
+    {
+        if (this is not TextEntryId textEntryId)
+            throw StandardError.Constraint($"Invalid entry kind: '{Kind}'");
+
+        return textEntryId;
+    }
 }

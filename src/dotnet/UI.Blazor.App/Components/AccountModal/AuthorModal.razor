@@ -175,8 +175,6 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var authorId = AuthorId;
         var chatId = ChatId;
-        if (authorId.IsNone)
-            return ComputedModel.None;
 
         var session = Session;
         var author = await Authors.Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
@@ -188,8 +186,8 @@
         var account = await Authors.GetAccount(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
         Contact? peerChatContact = null;
-        if (!peerChatId.IsNone)
-            peerChatContact = await Contacts.GetForChat(session, peerChatId.ToChatId(), cancellationToken).ConfigureAwait(false);
+        if (peerChatId is not null)
+            peerChatContact = await Contacts.GetForChat(session, peerChatId, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
         var onlyAnonymousChatAllowed = chat is { Kind: ChatKind.Peer };
@@ -279,8 +277,8 @@
         public Author Author { get; init; } = null!;
         public Account? Account { get; init; }
         public bool IsOwnAuthor { get; init; }
-        public PeerChatId PeerChatId { get; init; }
-        public bool CanStartPeerChat => !PeerChatId.IsNone;
+        public PeerChatId? PeerChatId { get; init; }
+        public bool CanStartPeerChat => PeerChatId is not null;
         public Contact? PeerChatContact { get; init; }
         public bool OnlyAnonymousChatAllowed { get; init; }
         public EditChatMemberModel? EditMemberModel { get; init; }

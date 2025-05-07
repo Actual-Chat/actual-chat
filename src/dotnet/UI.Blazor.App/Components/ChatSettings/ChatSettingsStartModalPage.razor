@@ -143,7 +143,7 @@
     private DialogButtonInfo _submitButtonInfo = null!;
     private AvatarKind _avatarKind;
     private string? _avatarKey;
-    private PlaceId _placeId;
+    private PlaceId? _placeId;
     private bool _isPlaceWelcomeChat;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -158,12 +158,12 @@
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private ChatId ChatId { get; set; }
+    private ChatId ChatId { get; set; } = null!;
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
         Context.Title = "Chat settings";
-        if (ChatId.IsPeerChat(out _))
+        if (ChatId is PeerChatId)
             throw StandardError.NotSupported("Peer chat is not supported.");
 
         _avatarKind = AvatarKind.Marble;
@@ -185,8 +185,8 @@
             Picture = chat.Picture?.ToPicture(),
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
-        _placeId = chat.Id.PlaceChatId.PlaceId;
-        if (!_placeId.IsNone)
+        _placeId = (chat.Id as PlaceChatId)?.PlaceId;
+        if (_placeId is not null)
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
         Context.PageDataBag.Set(formBagKey, _form);
     }
@@ -208,8 +208,8 @@
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
         var isPublic = chat.IsPublic;
-        _placeId = chat.Id.PlaceChatId.PlaceId;
-        var isPlace = !_placeId.IsNone;
+        _placeId = (chat.Id as PlaceChatId)?.PlaceId;
+        var isPlace = _placeId is not null;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken);
         return new() {
             Chat = chat,

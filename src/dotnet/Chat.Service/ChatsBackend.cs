@@ -1067,7 +1067,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (change.IsCreate(out var create) && create.Attachments is { Length: > 0 } attachments) {
             var textEntryAttachments = attachments
                 .Select((x, i) => new TextEntryAttachment {
-                    EntryId = (TextEntryId)chatEntryId,
+                    EntryId = chatEntryId.ToTextEntryId(),
                     Index = i,
                     MediaId = x.MediaId,
                     ThumbnailMediaId = x.ThumbnailMediaId,

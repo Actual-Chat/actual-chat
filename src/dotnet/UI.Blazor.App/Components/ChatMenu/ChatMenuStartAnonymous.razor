@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase
-@if (_peerChatId.IsNone) {
+@if (_peerUserId is null) {
     return;
 }
 
@@ -11,17 +11,17 @@
 </MenuEntry>
 
 @code {
-    private PeerChatId _peerChatId;
+    private UserId? _peerUserId;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
-    protected override void OnParametersSet()
-        => ChatState.Id.IsPeerChat(out _peerChatId);
-
-    private void OnStartChatClick() {
-        var otherUserId = _peerChatId.AnotherUserIdOrDefault(Hub.AccountUI.OwnAccount.Value.Id);
-        _ = Hub.AuthorUI.StartAnonymousPeerChat(otherUserId);
+    protected override void OnParametersSet() {
+        var peerChatId = ChatState.Id as PeerChatId;
+        _peerUserId = peerChatId?.AnotherUserIdOrNull(Hub.AccountUI.OwnAccount.Value.Id);
     }
+
+    private void OnStartChatClick()
+        => _ = Hub.AuthorUI.StartAnonymousPeerChat(_peerUserId!);
 }

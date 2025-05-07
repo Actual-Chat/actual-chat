@@ -6,7 +6,7 @@
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    if (!account.IsGuestOrNone) {
+    if (!account.IsGuest) {
         <NavbarButton
             Class="settings-btn"
             ButtonClass="account-btn"

@@ -27,7 +27,7 @@
 </VirtualList>
 
 @code {
-    private VirtualList<ChatListItemModel>? _virtualListRef = null;
+    private VirtualList<ChatListItemModel>? _virtualListRef;
     private int _skeletonCount;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
@@ -38,7 +38,7 @@
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
     [Parameter, EditorRequired] public bool UsePlaceChatListSettings { get; set; } = true;
 
     protected override void OnInitialized() {

@@ -32,7 +32,7 @@
         <i class="icon-message-ellipse text-2xl font-medium"></i>
     </ChildContent>
     <BadgeContent>
-        <ChatsNavbarButtonBadge PlaceId="@PlaceId.None" />
+        <ChatsNavbarButtonBadge PlaceId="@null" />
     </BadgeContent>
 </NavbarGroupSelectionButton>
 
@@ -78,12 +78,6 @@
         }
         return new(ownAccount, isChatRouletteEnabled);
     }
-
-    private Task OnCreateChatClick()
-        => ModalUI.Show(new NewChatModal.Model(PlaceId.None));
-
-    private void OnReloadUIClick()
-        => Services.GetRequiredService<ReloadUI>().Reload();
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
         if (NavbarUI.IsPinnedChatSelected(out _))

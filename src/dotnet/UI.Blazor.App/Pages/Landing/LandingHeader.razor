@@ -39,7 +39,7 @@
             </div>
         </div>
         <div class="c-right">
-            @if (account.IsGuestOrNone) {
+            @if (account.IsGuest) {
                 <ButtonRound Class="signin-button btn-sm" Click="@(SignIn)">
                     <i class="icon-log-in text-xl"></i>
                 </ButtonRound>
@@ -115,7 +115,7 @@
                 </div>
             </div>
             <div class="c-btn-group">
-                @if (account.IsGuestOrNone) {
+                @if (account.IsGuest) {
                     <button class="signin-button-group items-center lg-icon" @onclick="@SignIn">
                         <span class="font-medium">Sign in</span>
                         <i class="icon-monitor text-2xl font-thin"></i>

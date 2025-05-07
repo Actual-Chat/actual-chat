@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase
 @{
-    var showFilters = PlaceId.IsNone || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
+    var showFilters = PlaceId is null || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
     RenderFragment RenderTab(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
         var title = filter.Title;
@@ -41,7 +41,7 @@
                 </ChildContent>
             </TabPanel>
         }
-        <ChatList @key="@PlaceId.Value" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
+        <ChatList @key="@(PlaceId?.Value ?? "")" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
     </div>
     <div class="c-active-chats">
         <ActiveChats/>
@@ -55,7 +55,7 @@
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
 
     protected override async Task OnParametersSetAsync() {
         if (PlaceId == _placeChatListSettings?.PlaceId)

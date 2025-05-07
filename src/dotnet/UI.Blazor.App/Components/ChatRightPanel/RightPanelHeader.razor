@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<RightPanelHeader.Model>
 @{
     var m = State.Value;
-    var authorRules = m.AuthorRules;
+    var canEditProperties = m.CanEditProperties;
     var shareModal = m.ShareModel;
 }
 
@@ -27,7 +27,7 @@
     <div class="c-center">
         <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false"/>
         <div class="c-buttons">
-            @if (authorRules.CanEditProperties()) {
+            @if (canEditProperties) {
                 <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
@@ -69,7 +69,6 @@
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private ModalUI ModalUI => Hub.ModalUI;
     private ShareUI ShareUI => Hub.ShareUI;
-    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -82,16 +81,16 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
-        if (chatId.IsNone)
+        var chatId = (ChatId?)Chat.Id;
+        if (chatId is null)
             return Model.Loading;
 
         var authorRules = await Chats.GetRules(Session, chatId, default).ConfigureAwait(false);
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         Contact? peerContact = null;
-        if (chatId.IsPeerChat(out _))
+        if (chatId is PeerChatId)
             peerContact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(authorRules, shareModel, peerContact);
+        return new Model(authorRules.CanEditProperties(), shareModel, peerContact);
     }
 
     private void OnHideRightPanelClick()
@@ -111,7 +110,7 @@
 
     // Nested types
 
-    public sealed record Model(AuthorRules AuthorRules, ShareModalModel? ShareModel, Contact? PeerContact) {
-        public static readonly Model Loading = new (AuthorRules.None(ChatId.None), null, null);
+    public sealed record Model(bool CanEditProperties, ShareModalModel? ShareModel, Contact? PeerContact) {
+        public static readonly Model Loading = new (false, null, null);
     }
 }

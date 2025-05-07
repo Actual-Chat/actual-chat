@@ -69,7 +69,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat? Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 

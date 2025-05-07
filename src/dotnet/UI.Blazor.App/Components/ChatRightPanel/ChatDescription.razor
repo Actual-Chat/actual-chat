@@ -49,7 +49,6 @@
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private IRoulette Roulette => Hub.Roulette;
-    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
     private AccountUI AccountUI => Hub.AccountUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
@@ -63,8 +62,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isPeerChat = Chat.Id.IsPeerChat(out var peerChatId);
-        if (isPeerChat)
+        if (Chat.Id is PeerChatId peerChatId)
             return await GetPeerChatModel(peerChatId, cancellationToken);
 
         var isChatRoulette = Chat.IsChatRoulette();
@@ -79,8 +77,8 @@
     private async Task<Model> GetPeerChatModel(PeerChatId peerChatId, CancellationToken cancellationToken) {
         var chat = Chat;
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var peerAccountId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
-        if (peerAccountId.IsNone)
+        var peerAccountId = peerChatId.AnotherUserIdOrNull(ownAccount.Id);
+        if (peerAccountId is null)
             return Model.Loading;
 
         var ownUserId = ownAccount.Id;

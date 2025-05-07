@@ -46,7 +46,6 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
-    private IAuthors Authors => Hub.Authors;
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
@@ -62,8 +61,8 @@
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var foundItem = FoundItem;
-        var placeId = foundItem.ChatId.PlaceChatId.PlaceId;
-        if (placeId.IsNone)
+        var placeId = (foundItem.ChatId as PlaceChatId)?.PlaceId;
+        if (placeId is null)
             return Model.None;
 
         var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);

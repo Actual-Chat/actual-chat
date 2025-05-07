@@ -37,7 +37,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var authorId = Author.Id;
         var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
-        if (peerChatId == PeerChatId.None)
+        if (peerChatId is null)
             return new ();
 
         var contact = await Contacts.GetForChat(Session, peerChatId, cancellationToken).ConfigureAwait(false);

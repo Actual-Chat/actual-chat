@@ -187,11 +187,11 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                         }
 
                         Log.LogInformation("RegisterDeviceTask. Retrieved device token");
-                        var isGuest = Hub.AccountUI.OwnAccount.Value.IsGuestOrNone;
+                        var isGuest = Hub.AccountUI.OwnAccount.Value.IsGuest;
                         if (isGuest) {
                             Log.LogInformation("RegisterDeviceTask. Awaiting user is signed in");
                             await Hub.AccountUI.OwnAccount.Computed
-                                .When(acc => !acc.IsGuestOrNone, cts.Token)
+                                .When(acc => !acc.IsGuest, cts.Token)
                                 .ConfigureAwait(false);
                         }
 

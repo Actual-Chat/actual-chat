@@ -10,7 +10,7 @@
     StartHandleEscape();
 }
 
-<SelectionHost Selected="@m.Selection.First()" />
+<SelectionHost Selected="@m.Selection.First().Value" />
 
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">

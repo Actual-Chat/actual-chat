@@ -56,11 +56,9 @@
 
         var sourceChatId = ChatId.Parse(_form.ChatId);
         var placeId = PlaceId.Parse(_form.PlaceId);
-        var localChatId = sourceChatId.IsPlaceChat ? sourceChatId.PlaceChatId.LocalChatId : sourceChatId.Id;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
-        var newChatId = (ChatId)placeChatId;
-
-        return CopyChatToPlaceUI.PublishCopiedChat(Hub, newChatId, sourceChatId);
+        var localChatId = sourceChatId is PlaceChatId placeChatId1 ? placeChatId1.LocalChatId : sourceChatId.Value;
+        var newPlaceChatId = PlaceChatId.Parse(PlaceChatId.Format(placeId, localChatId));
+        return CopyChatToPlaceUI.PublishCopiedChat(Hub, newPlaceChatId, sourceChatId);
     }
 
     private bool EnsureFormIsValid()

@@ -48,12 +48,14 @@ public static class CopyChatToPlaceUI
     {
         var session = hub.Session();
         var newChat = await hub.Chats.Get(session, newChatId, default).Require();
-        var place = await hub.Places.Get(session, newChatId.PlaceChatId.Require().PlaceId, default).Require();
+        var placeChatId = newChat.Id as PlaceChatId;
+        placeChatId.Require();
+        var place = await hub.Places.Get(session, placeChatId.PlaceId, default).Require();
         var message = $"You are about to publish copied chat '{newChat.Title}' from place '{place.Title}'. Do you want to proceed?";
         await hub.ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = PublishInternal()), cancellationToken);
 
         async Task PublishInternal() {
-            var command = new Chat_PublishCopiedChat(session, newChat.Id, sourceChatId);
+            var command = new Chat_PublishCopiedChat(session, placeChatId, sourceChatId);
             var (_, error) = await hub.UICommander().Run(command, cancellationToken).ConfigureAwait(true);
             if (error != null)
                 return;

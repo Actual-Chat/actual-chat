@@ -95,9 +95,7 @@
 
 @code {
     [Inject] private UIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private AccountUI AccountUI => Hub.AccountUI;
-    private IAvatars Avatars => Hub.Avatars;
     private ShareUI ShareUI => Hub.ShareUI;
     private ModalUI ModalUI => Hub.ModalUI;
     private UrlMapper UrlMapper => Hub.UrlMapper();

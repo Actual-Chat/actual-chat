@@ -159,7 +159,7 @@
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private PlaceId PlaceId { get; set; }
+    private PlaceId PlaceId { get; set; } = null!;
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();

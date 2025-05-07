@@ -17,7 +17,7 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()

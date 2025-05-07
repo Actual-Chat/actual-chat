@@ -69,7 +69,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
 
         using var sb = ZString.CreateStringBuilder();
-        var currentAuthor = AuthorId.None;
+        AuthorId? currentAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId).ConfigureAwait(false);
             if (chatEntry == null || chatEntry.Content.IsNullOrEmpty())
@@ -79,10 +79,10 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
                 .GetMarkup(chatEntry, MarkupConsumer.MessageView, default)
                 .ConfigureAwait(false);
 
-            if (showAuthor && currentAuthor != chatEntry.AuthorId) {
+            if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
                 if (sb.Length > 0)
                     sb.AppendLine();
-                currentAuthor = chatEntry.AuthorId;
+                currentAuthorId = chatEntry.AuthorId;
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, default).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
                 var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);

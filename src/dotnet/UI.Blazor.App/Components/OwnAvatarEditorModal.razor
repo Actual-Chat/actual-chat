@@ -59,7 +59,7 @@
                     </div>
                 </button>
 
-                @if (!ModalModel.ChatId.IsNone) {
+                @if (ModalModel.ChatId is not null) {
                     <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">
                         <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
                                     Label="Used in this chat (otherwise the default one is used)"/>
@@ -104,7 +104,7 @@
         var account = await Accounts.GetOwn(Session, default);
         var isDefault = ModalModel.AvatarId == account.Avatar.Id;
         var isActive = false;
-        if (!ModalModel.ChatId.IsNone) {
+        if (ModalModel.ChatId is not null) {
             var author = await Authors.GetOwn(Session, ModalModel.ChatId, default);
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
@@ -140,7 +140,7 @@
         if (!avatar.IsAnonymous) {
             if (_form is { IsDefault: true, Base.IsDefault: false })
                 await SetDefaultAvatar(_form.IsDefault ? avatarId : default);
-            if (!chatId.IsNone && _form is { IsActive: true, Base.IsActive: false })
+            if (chatId is not null && _form is { IsActive: true, Base.IsActive: false })
                 await SetActiveAvatar(_form.IsActive ? avatarId : default);
         }
 
@@ -160,13 +160,16 @@
         await UICommander.Run(command);
     }
 
-    private async Task SetActiveAvatar(Symbol avatarId)
-    {
-        var author = await Authors.GetOwn(Session, ModalModel.ChatId, default);
+    private async Task SetActiveAvatar(Symbol avatarId) {
+        var chatId = ModalModel.ChatId;
+        if (chatId is null)
+            return;
+
+        var author = await Authors.GetOwn(Session, chatId, default);
         if (author == null)
             return;
 
-        var command = new Authors_SetAvatar(Session, ModalModel.ChatId, avatarId);
+        var command = new Authors_SetAvatar(Session, chatId, avatarId);
         await UICommander.Run(command);
     }
 
@@ -207,5 +210,5 @@
 
     // Nested types
 
-    public sealed record Model(Symbol AvatarId, ChatId ChatId, string Title);
+    public sealed record Model(Symbol AvatarId, ChatId? ChatId, string Title);
 }

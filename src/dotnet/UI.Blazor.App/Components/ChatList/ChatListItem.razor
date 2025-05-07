@@ -25,7 +25,7 @@
     ReplaceOnPrefix="/chat/"
     IsSelected="@(m.IsSelected && listKind != ChatListKind.Active)"
     Class="@navbarItemCls"
-    data-menu="@(MenuRef.New<ChatMenu>(chat.Id, listKind.Format()).ToString())"
+    data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
     @attributes="@attributes">
     <ChildContent>
@@ -44,7 +44,7 @@
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="c-name">
                                 <AuthorName
-                                    AuthorSid="@lastTextEntry.AuthorId"
+                                    AuthorSid="@lastTextEntry.AuthorId.Value"
                                     ShowDetailsOnClick="false"
                                     ShowAsYou="true"/>
                             </span>
@@ -95,7 +95,7 @@
             @if (hasMenu) {
                 <div
                     class="menu"
-                    data-menu="@(MenuRef.New<ChatMenu>(chat.Id, listKind.Format()).ToString())"
+                    data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
                     data-menu-trigger="@MenuTrigger.Primary"
                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
@@ -124,7 +124,7 @@
 
     private ILogger? _log;
     private Model? _renderedModel;
-    private ChatEntryId _hasBeenReadEntryId;
+    private ChatEntryId? _hasBeenReadEntryId;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -181,7 +181,7 @@
         var isLastItemInBlock = IsLastItemInBlock;
         var isFirstItem = IsFirstItem;
         var ownAuthor = chat.Rules.Author;
-        var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
+        var ownAuthorId = ownAuthor?.Id;
         DebugLog?.LogDebug("-> ComputeState: {ListKind} #{ChatTitle}", listKind, chatTitle);
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null) {
@@ -192,7 +192,7 @@
         var lastEntry = chatState.Info.LastTextEntry;
         var isUnreadByOthers = false;
         if (lastEntry != null)
-            isUnreadByOthers = await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
+            isUnreadByOthers = ownAuthorId is not null && await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
         return new() {
             ListKind = listKind,
             Chat = chatState.Chat,
@@ -214,7 +214,7 @@
         if (_hasBeenReadEntryId == entry.Id)
             return false;
 
-        var isOwnMessage = !ownAuthorId.IsNone && ownAuthorId == entry.AuthorId;
+        var isOwnMessage = ownAuthorId == entry.AuthorId;
         if (!isOwnMessage)
             return false;
 

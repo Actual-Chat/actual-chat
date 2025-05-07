@@ -1,5 +1,4 @@
 @using ActualChat.Media
-@using ActualChat.Contacts
 @inherits ComputedStateComponent<PlaceInfo.Model>
 @{
     var m = State.Value;
@@ -128,17 +127,11 @@
 @code {
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
-    private UICommander UICommander => Hub.UICommander();
-    private IAvatars Avatars => Hub.Avatars;
-    private IContacts Contacts => Hub.Contacts;
     private IPlaces Places => Hub.Places;
-    private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private Features Features => Hub.Features();
-    private ChatListUI ChatListUI => Hub.ChatListUI;
 
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -149,6 +142,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
+        if (placeId is null)
+            return Model.None;
+
         var place = await Places.Get(Session, placeId, default).ConfigureAwait(false);
         if (place is null)
             return Model.None;
@@ -162,7 +158,7 @@
             Place = place,
             AuthorIds = allAuthorIds,
             OwnerIds = ownerIds,
-            OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
+            OwnAuthorId = ownAuthor?.Id,
             MemberCount = allAuthorIds.Length,
             EnableIncompleteUI = enableIncompleteUI,
             IsPlaceMember = isPlaceMember,
@@ -171,7 +167,7 @@
     }
 
     private void OnJoinPlace()
-        => _ = ChatUI.JoinPlace(PlaceId);
+        => _ = ChatUI.JoinPlace(PlaceId!);
 
     // Nested types
 
@@ -183,7 +179,7 @@
         public int MemberCount { get; init; }
         public AuthorId[] AuthorIds { get; init; } = [];
         public AuthorId[] OwnerIds { get; init; } = [];
-        public AuthorId OwnAuthorId { get; init; }
+        public AuthorId? OwnAuthorId { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsPlaceMember { get; init; }
         public bool CanJoinPlace { get; init; }
@@ -191,6 +187,6 @@
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
-            => !OwnAuthorId.IsNone && OwnAuthorId.Equals(authorId);
+            => OwnAuthorId is not null && OwnAuthorId.Equals(authorId);
     }
 }

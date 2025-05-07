@@ -12,7 +12,7 @@
     var url = m.LocalUrl;
     var cls = entry is not null ? " local-link-chat-entry" : " local-link-chat";
     var linkText = chat.Title;
-    if (place is { Id.IsNone: false })
+    if (place?.Id is not null)
         linkText += $", {place.Title}";
     var maxCount = entry != null
         ? entry.Attachments.Length > 3 ? 3 : entry.Attachments.Length
@@ -25,7 +25,7 @@
             <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
         } else {
             <AuthorCircle
-                AuthorSid="@entry.AuthorId"
+                AuthorSid="@entry.AuthorId.Value"
                 Size="SquareSize.Size9"/>
         }
     </div>
@@ -34,7 +34,7 @@
             <div class="c-top">
                 @if (author != null) {
                     <div class="c-author-header">
-                        <AuthorName AuthorSid="@author.Id" Class="chat-message-author-name"/>
+                        <AuthorName AuthorSid="@author.Id.Value" Class="chat-message-author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     </div>
                 }

@@ -4,7 +4,16 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
 {
+    private static (AuthorId AuthorId, string Name)[] Authors { get; }
     public static readonly TestMentionSearchProvider Instance = new();
+
+    static TestMentionSearchProvider()
+    {
+        var chatId = GroupChatId.New();
+        Authors = Names
+            .Select((name, i) => (AuthorId.New(chatId, i), name))
+            .ToArray();
+    }
 
     public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {
@@ -13,7 +22,7 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
             .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
             .OrderByDescending(@t => t.searchMatch.Rank)
             .ThenBy(x => x.author.Name, StringComparer.Ordinal)
-            .Select(x => new MentionSearchResult(new MentionId(x.author.AuthorId, AssumeValid.Option), x.searchMatch, new (null, null, DefaultUserPicture.GetAvatarKey(x.author.AuthorId))))
+            .Select(x => new MentionSearchResult(MentionId.NewAuthor(x.author.AuthorId), x.searchMatch, new (null, null, DefaultUserPicture.GetAvatarKey(x.author.AuthorId.Value))))
             .Take(limit)
             .ToArray();
         return Task.FromResult(mentions);
@@ -424,8 +433,4 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
         "Ziro the Hutt",
         "Zuckuss",
     };
-
-    private static (AuthorId AuthorId, string Name)[] Authors { get; } = Names
-        .Select((name, i) => (new AuthorId(GroupChatId.New(), i, AssumeValid.Option), name))
-        .ToArray();
 }

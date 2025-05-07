@@ -10,12 +10,12 @@
     <div class="chat-message group">
         <div class="c-author-badge">
             <ChatMessageAuthorCircle
-                AuthorSid="@_botId"
+                AuthorSid="@_botId.Value"
                 Click="@_onClickCallback"/>
         </div>
         <div class="c-content">
             <div class="c-author-header">
-                <AuthorName AuthorSid="@_botId" Class="chat-message-author-name"/>
+                <AuthorName AuthorSid="@_botId.Value" Class="chat-message-author-name"/>
                 <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@Clocks.SystemClock.Now"/>
             </div>
 
@@ -32,8 +32,8 @@
 
 @code {
     private EventCallback<AuthorId> _onClickCallback;
-    private AuthorId _botId;
-    private ChatId _chatId;
+    private AuthorId _botId = null!;
+    private ChatId _chatId = null!;
 
     // Shortcuts
     [Inject] private ChatUIHub Hub { get; set; } = null!;

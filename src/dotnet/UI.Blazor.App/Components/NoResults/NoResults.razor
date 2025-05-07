@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<Place?>
 @{
     var place = State.Value;
-    var isPlace = place is { Id.IsNone: false };
+    var isPlace = place?.Id is not null;
 }
 
 <div class="no-results-container">
@@ -46,7 +46,7 @@
 
     protected override async Task<Place?> ComputeState(CancellationToken cancellationToken) {
         NavbarUI.IsPlaceSelected(out var placeId);
-        if (placeId.IsNone)
+        if (placeId is null)
             return null;
 
         var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);

@@ -62,7 +62,8 @@
     private UICommander UICommander => Hub.UICommander();
     private AccountUI AccountUI => Hub.AccountUI;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    // TODO(DF): review usages
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

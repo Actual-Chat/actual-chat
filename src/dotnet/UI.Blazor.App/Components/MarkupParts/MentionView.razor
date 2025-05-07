@@ -13,8 +13,11 @@
             : "Has not read";
 }
 
-<AuthorBadgeTemplate AuthorSid="@_authorId">
-    @if (context.Author.Id.IsNone) {
+<AuthorBadgeTemplate AuthorSid="@(_authorId?.Value ?? "")">
+    @{
+        var authorId = (AuthorId?)context.Author.Id;
+    }
+    @if (authorId is null) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
@@ -23,7 +26,7 @@
         class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "") @cls cursor-pointer"
         data-tooltip="@tooltip"
         data-tooltip-position="@FloatingPosition.Top.ToPositionString()"
-        @onclick="@(_ => AuthorUI.Show(_authorId))">
+        @onclick="@(_ => AuthorUI.Show(authorId))">
         <div class="truncate">
             @context.Author.Avatar.Name
         </div>
@@ -31,7 +34,7 @@
 </AuthorBadgeTemplate>
 
 @code {
-    private AuthorId _authorId;
+    private AuthorId? _authorId;
     private bool? _hasRead;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -40,7 +43,7 @@
     private AuthorUI AuthorUI => Hub.AuthorUI;
 
     protected override void OnParametersSet()
-        => Markup.Id.IsAuthor(out _authorId);
+        => _authorId = Markup.Id.PrincipalId as AuthorId;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

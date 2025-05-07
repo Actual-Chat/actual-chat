@@ -32,7 +32,7 @@
                             @if (ReferenceEquals(m.Author, m.OwnAuthor)) {
                                 <span class="c-name">
                                     <AuthorName
-                                        AuthorSid="@m.Entry.AuthorId"
+                                        AuthorSid="@m.Entry.AuthorId.Value"
                                         ShowDetailsOnClick="false"
                                         ShowAsYou="true"/>
                                     <span class="c-colon">:</span>
@@ -47,7 +47,7 @@
                         <div class="c-second-line">
                             <span class="c-name">
                                 <AuthorName
-                                    AuthorSid="@m.Entry.AuthorId"
+                                    AuthorSid="@m.Entry.AuthorId.Value"
                                     ShowDetailsOnClick="false"
                                     ShowAsYou="true"/>
                             </span>
@@ -65,7 +65,7 @@
                             <div class="c-third-line place-chat">
                                 <span class="c-name">
                                     <AuthorName
-                                        AuthorSid="@m.Entry.AuthorId"
+                                        AuthorSid="@m.Entry.AuthorId.Value"
                                         ShowDetailsOnClick="false"
                                         ShowAsYou="true"/>
                                 </span>
@@ -79,7 +79,7 @@
                             <div class="c-second-line">
                                 <span class="c-name">
                                     <AuthorName
-                                        AuthorSid="@m.Entry.AuthorId"
+                                        AuthorSid="@m.Entry.AuthorId.Value"
                                         ShowDetailsOnClick="false"
                                         ShowAsYou="true"/>
                                 </span>
@@ -100,7 +100,6 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private IAuthors Authors => Hub.Authors;
-    private AccountUI AccountUI => Hub.AccountUI;
     private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
 
@@ -123,14 +122,14 @@
         var foundItem = FoundItem;
         var chatId = foundItem.ChatId;
         var messageMatch = foundItem.MessageSearchMatch;
-        var entryId = foundItem.EntryId;
+        var entryId = foundItem.EntryId!;
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
-        var placeId = chatId.PlaceChatId.PlaceId;
-        if (!placeId.IsNone)
+        var placeId = (chatId as PlaceChatId)?.PlaceId;
+        if (placeId is not null)
             place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
 
         var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
@@ -148,7 +147,7 @@
             Author = entryAuthorFull,
             OwnAuthor = ownAuthorFull,
             Place = place,
-            Link = Links.Chat(chatId, entry?.LocalId),
+            Link = Links.Chat(chatId, entry?.LocalId ?? 0),
             Item = foundItem,
             IsSelected = selectedFoundItem == foundItem,
         };

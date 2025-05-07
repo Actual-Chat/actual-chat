@@ -132,7 +132,7 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     {
         var chatId = await Roulette.GetOrCreateChat(Session, ownProfileId, peerProfileId, cancellationToken)
             .ConfigureAwait(true); // Continue on the Blazor context.
-        if (chatId.IsNone) {
+        if (chatId is null) {
             UICommander.ShowError(new Exception("Can't start Roulette chat."));
             return;
         }

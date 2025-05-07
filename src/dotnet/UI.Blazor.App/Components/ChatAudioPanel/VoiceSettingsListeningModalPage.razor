@@ -30,7 +30,7 @@
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private ChatId ChatId { get; set; }
+    private ChatId ChatId { get; set; } = null!;
 
     private AccountSettings AccountSettings => Hub.AccountSettings();
 

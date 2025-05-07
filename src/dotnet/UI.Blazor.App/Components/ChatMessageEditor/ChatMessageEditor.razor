@@ -2,8 +2,6 @@
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Events
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.Contacts
-@using ActualChat.Hosting
 @using ActualChat.Kvas
 @using ActualLab.Locking
 @using ActualChat.Pooling
@@ -80,8 +78,6 @@
 </div>
 
 @code {
-    private bool _enableIncompleteUI;
-
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatMessageEditor.create";
 
     private static object MentionListManagerKey { get; } = new();
@@ -95,29 +91,21 @@
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
-    private SharedResourcePool<Symbol, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; } = null!;
-    private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
+    private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; }
+    private SentAttachmentsStorage? AttachmentsStorage { get; set; }
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
-    private IChats Chats => Hub.Chats;
-    private IAuthors Authors => Hub.Authors;
-    private IContacts Contacts => Hub.Contacts;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private TuneUI TuneUI => Hub.TuneUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private UICommander UICommander => Hub.UICommander();
-    private MomentClockSet Clocks => Hub.Clocks();
-    private HostInfo HostInfo => Hub.HostInfo();
     private IJSRuntime JS => Hub.JSRuntime();
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    private Features Features => Hub.Features();
-    private bool IsAdmin => Hub.AccountUI.OwnAccount.Value.IsAdmin;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -135,12 +123,9 @@
         ReadPositionStateLease = null!;
     }
 
-    protected override async Task OnInitializedAsync() =>
-        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
-
     protected override async Task OnParametersSetAsync() {
         var chatId = Chat.Id;
-        var oldChatId = ChatMarkupHub?.ChatId ?? default; // ChatMarkupHub == null on the very first call
+        var oldChatId = ((IChatMarkupHub?)ChatMarkupHub)?.ChatId ?? default; // ChatMarkupHub == null on the very first call
         if (oldChatId == chatId)
             return;
 
@@ -196,16 +181,16 @@
         var clearMarkupTask = MarkupEditorRef.Clear();
         try {
             var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
-            var relatedChatEntryId = relatedChatEntry?.Id ?? default;
+            var relatedChatEntryId = relatedChatEntry?.Id;
             await ChatEditorUI.HideRelatedEntry(false);
 
             Chats_UpsertTextEntry cmd;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
-                if (relatedChatEntryId.IsNone)
+                if (relatedChatEntryId is null)
                     throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
                 cmd = new Chats_UpsertTextEntry(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
             } else {
-                var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
+                var repliedEntryLid = relatedChatEntryId?.LocalId;
                 cmd = new Chats_UpsertTextEntry(Session, Chat.Id, null, text) {
                     RepliedEntryLid = repliedEntryLid,
                     EntryAttachments = attachmentListSnapshot.Attachments,
@@ -255,7 +240,7 @@
     // Event handlers
 
     private Task OnOpenPrevious()
-        => ChatEditorUI.EditLast(ChatUI.SelectedChatId.Value);
+        => ChatEditorUI.EditLast(Chat.Id);
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {

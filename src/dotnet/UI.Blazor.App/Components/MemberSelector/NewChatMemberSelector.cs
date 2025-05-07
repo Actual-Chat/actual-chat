@@ -8,12 +8,12 @@ internal class NewChatMemberSelector(ChatUIHub hub, ChatId chatId) : IMemberSele
     private Session Session { get; } = hub.Session();
 
     public CandidateListKind CandidateListKind
-        => chatId.IsPlaceChat ? CandidateListKind.PlaceMembers : CandidateListKind.Contacts;
+        => chatId is PlaceChatId ? CandidateListKind.PlaceMembers : CandidateListKind.Contacts;
 
     public async Task<UserId[]> ListCandidateUserIds(CancellationToken cancellationToken)
     {
-        if (chatId.IsPlaceChat) {
-            var userIds = await hub.Places.ListUserIds(Session, chatId.PlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        if (chatId is PlaceChatId placeChatId) {
+            var userIds = await hub.Places.ListUserIds(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             return userIds;
         }
 

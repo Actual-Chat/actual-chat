@@ -32,10 +32,9 @@
     private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
     private Moment CpuNow => Hub.Clocks().CpuClock.Now;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
@@ -60,7 +59,7 @@
         var chatId = ChatId;
         var oldState = State;
 
-        if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
+        if (!await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return Model.None;
 
         var lastEntryId = await GetLastTextEntryLid(cancellationToken).ConfigureAwait(false);

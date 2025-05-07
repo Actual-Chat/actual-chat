@@ -37,16 +37,16 @@
 </FormBlock>
 
 @code {
-    private ChatVoiceSettings? _chatVoiceSettings;
-
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
-    private ChatVoiceSettings ChatVoiceSettings => _chatVoiceSettings ??= new(Hub.Services, Hub.AccountSettings());
+
+    [field: AllowNull, MaybeNull]
+    private ChatVoiceSettings ChatVoiceSettings => field ??= new(Hub.Services, Hub.AccountSettings());
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private ChatId ChatId { get; set; }
+    private ChatId ChatId { get; set; } = null!;
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();

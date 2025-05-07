@@ -72,8 +72,8 @@
             return Model.None;
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
-        var placeId = chatId.PlaceChatId.PlaceId;
-        if (!placeId.IsNone)
+        var placeId = (chatId as PlaceChatId)?.PlaceId;
+        if (placeId is not null)
             place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
         var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
 

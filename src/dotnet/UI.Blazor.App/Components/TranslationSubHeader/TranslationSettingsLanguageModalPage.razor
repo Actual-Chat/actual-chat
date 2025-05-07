@@ -49,10 +49,9 @@
         Context.Close();
     }
 
-
     // Nested types
 
     public sealed record Model(IReadOnlyList<Language> Languages, Language Selected, ChatId ChatId) {
-        public static readonly Model None = new([], null!, ChatId.None);
+        public static readonly Model None = new([], null!, null!);
     }
 }

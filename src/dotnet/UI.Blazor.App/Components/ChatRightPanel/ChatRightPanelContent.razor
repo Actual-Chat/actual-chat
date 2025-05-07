@@ -48,7 +48,6 @@
     private IChats Chats => Hub.Chats;
     private Features Features => Hub.Features();
     private PanelsUI PanelsUI => Hub.PanelsUI;
-    private ShareUI ShareUI => Hub.ShareUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -63,8 +62,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var chatId = chat.Id;
-        if (chatId.IsNone)
+        var chatId = (ChatId?)chat.Id;
+        if (chatId is null)
             return Model.Loading;
 
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);

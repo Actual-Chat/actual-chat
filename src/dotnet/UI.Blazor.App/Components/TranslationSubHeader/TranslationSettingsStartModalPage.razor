@@ -59,7 +59,7 @@
 
     // Nested types
 
-    public sealed record Model(Language TargetLanguage, ChatId? ChatId) {
-        public static readonly Model None = new(null!, null);
+    public sealed record Model(Language TargetLanguage, ChatId ChatId) {
+        public static readonly Model None = new(null!, null!);
     }
 }

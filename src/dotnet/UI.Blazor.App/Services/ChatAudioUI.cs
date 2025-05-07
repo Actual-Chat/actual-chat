@@ -116,7 +116,11 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
 
     [ComputeMethod] // Synced
     public virtual Task<ChatId?> GetRecordingChatId()
-        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId)!;
+    {
+        var activeChats = ActiveChatsUI.ActiveChats.Value;
+        var recordingChatId = activeChats.Length > 0 ? activeChats[0].ChatId : null;
+        return Task.FromResult(recordingChatId);
+    }
 
     public ValueTask SetRecordingChatId(ChatId? chatId, bool isPushToTalk = false)
         => ActiveChatsUI.UpdateActiveChats(activeChats => {

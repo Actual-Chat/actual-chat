@@ -1,4 +1,3 @@
-using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -54,8 +53,8 @@ public partial class ChatAudioUI
         await foreach (var c in changes.ConfigureAwait(false)) {
             var cActiveContacts = (Computed<ActiveChat[]>)c;
             var activeChats = cActiveContacts.Value;
-            var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-            var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
+            var newRecordingChat = activeChats.FirstOrDefault(x => x.IsRecording);
+            var newListeningChats = activeChats.Where(x => x.IsListening).ToHashSet();
 
             DebugLog?.LogDebug("InvalidateActiveChatDependencies: *");
             var added = newListeningChats.Except(oldListeningChats);
@@ -350,9 +349,9 @@ public partial class ChatAudioUI
             }
         }
 
-        async Task WhenRecordingChatIdBecomes(Func<ChatId, bool> predicate, CancellationToken ct) {
+        async Task WhenRecordingChatIdBecomes(Func<ChatId?, bool> predicate, CancellationToken ct) {
             var cRecordingChatId = await Computed
-                .Capture(GetRecordingChatId, cancellationToken)
+                .Capture(GetRecordingChatId, ct)
                 .ConfigureAwait(false);
             await foreach (var (recordingChatId, _) in cRecordingChatId.Changes(ct).ConfigureAwait(false))
                 if (predicate.Invoke(recordingChatId))

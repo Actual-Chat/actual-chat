@@ -6,7 +6,7 @@
         // TODO: loading view
         return;
 
-    var isPlace = Place is { Id.IsNone: false };
+    var isPlace = Place?.Id is not null;
     var listCls = isPlace ? "place" : "";
 }
 
@@ -35,7 +35,6 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
-    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     [Parameter] public Place? Place { get; set; }
 

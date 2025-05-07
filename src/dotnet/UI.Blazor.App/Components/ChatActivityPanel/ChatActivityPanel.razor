@@ -51,7 +51,13 @@
     private ChatUI ChatUI => Hub.ChatUI;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
-    private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
+    private ChatId? RecordingChatId {
+        get {
+            var activeChats = ActiveChatsUI.ActiveChats.Value;
+            return activeChats.Length > 0 ? activeChats[0].ChatId : null;
+        }
+    }
+
     private bool IsRecordingHere => Chat?.Id is not null && RecordingChatId == Chat.Id;
     private bool IsUpdating => Chat?.Id is not null && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };

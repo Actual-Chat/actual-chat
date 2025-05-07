@@ -16,10 +16,10 @@ case ChatKind.Group or ChatKind.Place:
         AvatarKind="@AvatarKind.Marble"
         AvatarKey="@chat.Id.Value"/>
     break;
-case ChatKind.Peer when !_peerChatUserId.IsNone:
+case ChatKind.Peer when _peerChatUserId is not null:
     <AccountCircle
         ShowPresence="@ShowPresence"
-        UserSid="@_peerChatUserId"
+        UserSid="@_peerChatUserId.Value"
         Size="@Size"
         IsBlurred="@IsBlurred"/>
     break;
@@ -32,10 +32,9 @@ default:
 }
 
 @code {
-    private UserId _peerChatUserId;
+    private UserId? _peerChatUserId;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private AccountUI AccountUI => Hub.AccountUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -48,11 +47,11 @@ default:
     protected override void OnParametersSet()
         => _peerChatUserId = GetPeerChatUserId();
 
-    private UserId GetPeerChatUserId() {
-        if (!Chat.Id.IsPeerChat(out var peerChatId))
-            return default;
+    private UserId? GetPeerChatUserId() {
+        if (Chat.Id is not PeerChatId peerChatId)
+            return null;
 
         var account = AccountUI.OwnAccount.Value;
-        return peerChatId.AnotherUserIdOrDefault(account.Id);
+        return peerChatId.AnotherUserIdOrNull(account.Id);
     }
 }

@@ -12,7 +12,7 @@
     }
 
     <li class="message-reactions-add"
-        data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id))"
+        data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id.Value))"
         data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.Right.ToPositionString())">
         <AddReactionIcon Class="message-reactions-add-icon"/>
@@ -22,10 +22,7 @@
 @code {
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
-    private IAuthors Authors => Hub.Authors;
     private IReactions Reactions => Hub.Reactions;
-    private TuneUI TuneUI => Hub.TuneUI;
-    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
@@ -38,7 +35,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!Entry.Id.IsTextEntry(out var textEntryId))
+        if (Entry.Id is not TextEntryId textEntryId)
             return Model.None;
 
         var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken).ConfigureAwait(false);
@@ -47,14 +44,6 @@
 
         var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken).ConfigureAwait(false);
         return new(true, summaries, ownReaction);
-    }
-
-    private Task ToggleReaction(Symbol emojiId) {
-        _ = TuneUI.Play(Tune.React);
-        return UICommander.Run(new Reactions_React(Session, new Reaction {
-            EntryId = Entry.Id.ToTextEntryId(),
-            EmojiId = emojiId,
-        }));
     }
 
     // Nested types

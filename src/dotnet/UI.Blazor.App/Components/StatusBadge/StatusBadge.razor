@@ -65,7 +65,7 @@
                 };
             case ChatKind.Place:
                 badgeClass = ShowOnlyIcon ? "default" : "public";
-                var placeId = Chat.Id.PlaceChatId.PlaceId;
+                var placeId = ((PlaceChatId)Chat.Id).PlaceId;
                 var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
                 if (ReferenceEquals(place, null))
                     return Model.Loading;
@@ -79,11 +79,11 @@
             default:
                 var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
                 var chatId = Chat.Id;
-                if (!chatId.IsPeerChat(out var peerChatId))
+                if (!(chatId is PeerChatId peerChatId))
                     return Model.Loading;
 
-                var peerAccountId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
-                if (peerAccountId.IsNone)
+                var peerAccountId = peerChatId.AnotherUserIdOrNull(ownAccount.Id);
+                if (peerAccountId is null)
                     return Model.Loading;
 
                 var ownUserId = ownAccount.Id;
@@ -113,7 +113,7 @@
                 return new() {
                     Status = status,
                     BadgeClass = badgeClass,
-                    AuthorSid = anotherAuthorId,
+                    AuthorSid = anotherAuthorId.Value,
                 };
         }
     }

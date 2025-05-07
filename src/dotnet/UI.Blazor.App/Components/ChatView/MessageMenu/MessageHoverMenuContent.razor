@@ -22,7 +22,7 @@
     }
     <ButtonRound
         Class="btn-xs btn-transparent"
-        data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, IsSystem.ToString(), "", "").ToString())"
+        data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id.Value, IsSystem.ToString(), "", "").ToString())"
         data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.LeftStart.ToPositionString())">
         <i class="icon-more-vertical text-xl text-icon-01"></i>
@@ -35,7 +35,6 @@
     private IChats Chats => Hub.Chats;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private UICommander UICommander => Hub.UICommander();
-    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }
@@ -61,6 +60,7 @@
 
     private Task OnReactionClick() {
         return UICommander.Run(new Reactions_React(Session, new Reaction {
+            AuthorId = null!,
             EntryId = Message.Entry.Id.ToTextEntryId(),
             EmojiId = Emoji.ThumbsUp,
         }));

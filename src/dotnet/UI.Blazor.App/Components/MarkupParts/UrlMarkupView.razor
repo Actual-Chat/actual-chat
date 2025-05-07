@@ -8,7 +8,7 @@
     return;
 
 <a class="@cls" href="@_hrefUrl" target="_blank"
-   data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, url, ""))">
+   data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, url, ""))">
     @url
 </a>
 
