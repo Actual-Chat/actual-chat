@@ -30,7 +30,7 @@ public static class UserExt
             throw StandardError.Constraint("Phone identity already set for this user.");
 
         return user.WithIdentity(ToPhoneIdentity(phone))
-            .WithIdentity(ToHashedPhoneIdentity(phone.Hash()))
+            .WithIdentity(ToHashedPhoneIdentity(phone.Hash))
             .WithClaim(ClaimTypes.MobilePhone, phone.Value);
     }
 

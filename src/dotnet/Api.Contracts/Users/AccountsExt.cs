@@ -33,7 +33,7 @@ public static class AccountsExt
             // User updates its own profile
             if (ownAccount.Phone != updatedAccount.Phone) {
                 var verifiedPhoneHash = ownAccount.User.GetPhoneHash();
-                if (!verifiedPhoneHash.IsNullOrEmpty() && !OrdinalEquals(updatedAccount.Phone?.Hash(), verifiedPhoneHash))
+                if (!verifiedPhoneHash.IsNullOrEmpty() && !OrdinalEquals(updatedAccount.Phone?.Hash, verifiedPhoneHash))
                     throw StandardError.Unauthorized("You can't change your phone number after it's verified.");
                 if (updatedAccount.Phone?.IsNormalized() == false)
                     throw StandardError.Constraint<Phone>("Incorrect phone number format.");

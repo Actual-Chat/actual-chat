@@ -28,6 +28,10 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
     public string Code { get; }
     [IgnoreDataMember]
     public string Number { get; }
+    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    public string Hash => field ??= ContactLinkExt.Hash(Value);
+    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    public string E164Value => field ??= $"+{Code}{Number}";
 
     // Factories and constructors
 
@@ -138,10 +142,4 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
                 sb.Append(c);
         return sb.ToString();
     }
-
-    public string Hash()
-        => ContactLinkExt.Hash(Value);
-
-    public string ToE164()
-        => $"+{Code}{Number}";
 }

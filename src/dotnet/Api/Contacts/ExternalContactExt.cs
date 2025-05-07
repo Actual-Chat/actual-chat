@@ -5,10 +5,10 @@ namespace ActualChat.Contacts;
 public static class ExternalContactExt
 {
     public static ExternalContactFull WithoutPhone(this ExternalContactFull externalContact, Phone phone)
-        => externalContact with { PhoneHashes = externalContact.PhoneHashes.Without(phone.Hash()) };
+        => externalContact with { PhoneHashes = externalContact.PhoneHashes.Without(phone.Hash) };
 
     public static ExternalContactFull WithPhone(this ExternalContactFull externalContact, Phone phone)
-        => externalContact with { PhoneHashes = externalContact.PhoneHashes.With(phone.Hash()) };
+        => externalContact with { PhoneHashes = externalContact.PhoneHashes.With(phone.Hash) };
 
     public static ExternalContactFull WithoutEmail(this ExternalContactFull externalContact, string email)
         => externalContact with { EmailHashes = externalContact.EmailHashes.Without(ContactLinkExt.Hash(email)) };

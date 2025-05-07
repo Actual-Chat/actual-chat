@@ -67,7 +67,7 @@ public static partial class LocalUrlExt
             return false;
 
         chatId = ChatId.TryParse(match.Groups["chatId"].Value);
-        if (chatId == null)
+        if (chatId is null)
             return false;
 
         parameters = match.Groups["parameters"].Value;

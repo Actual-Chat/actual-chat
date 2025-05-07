@@ -40,7 +40,7 @@ public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContac
             var externalContactId = ExternalContactId.New(userDeviceId, $"contact{contactIndex}");
             var phoneHashes = Enumerable.Range(1, options.PhoneCount)
                 .Select(GeneratePhone)
-                .Select(x => x.Hash())
+                .Select(x => x.Hash)
                 .ToApiSet();
             var emailHashes = Enumerable.Range(1, options.EmailCount)
                 .Select(i => GenerateEmail(contactIndex, i))
