@@ -19,6 +19,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
         return Entry.Id == otherEntryMessage.Entry.Id
             && Entry.IsRemoved == otherEntryMessage.Entry.IsRemoved
             && Entry.HasReactions == otherEntryMessage.Entry.HasReactions
+            && Entry.IsStreaming == otherEntryMessage.Entry.IsStreaming
             && ReplacementKind == other.ReplacementKind
             && Date == other.Date
             && Flags == other.Flags
