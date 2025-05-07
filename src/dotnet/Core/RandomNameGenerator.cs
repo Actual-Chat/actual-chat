@@ -76,7 +76,7 @@ public sealed record RandomNameGenerator
 
     public static readonly RandomNameGenerator Default = new();
 
-    public char WordDelimiter { get; init; } = ' ';
+    public string WordDelimiter { get; init; } = " ";
 
     public string Generate() => Generate(Random.Shared.Next());
     public string Generate(string seed) => Generate(seed.GetXxHash3());
@@ -84,10 +84,7 @@ public sealed record RandomNameGenerator
     {
         var prefixIndex = IntArithmetics.Default.Mod(seed, Prefixes.Length);
         var suffixIndex = IntArithmetics.Default.Mod(seed * 1019, Suffixes.Length);
-        var name = ZString.Concat(
-            Prefixes[prefixIndex],
-            WordDelimiter,
-            Suffixes[suffixIndex]);
+        var name = string.Concat(Prefixes[prefixIndex], WordDelimiter, Suffixes[suffixIndex]);
         return name;
     }
 }

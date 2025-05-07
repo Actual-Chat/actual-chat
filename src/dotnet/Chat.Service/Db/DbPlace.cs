@@ -21,7 +21,8 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Description { get; set; } = "";
     public string MediaId { get; set; } = "";
     public string BackgroundMediaId { get; set; } = "";
-    public string UserLinkId { get; set; } = "";
+    [Column("UserLinkId")] // TODO(AY): Rename to AliasId
+    public string AliasId { get; set; } = "";
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
@@ -39,7 +40,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsPublic = IsPublic,
             MediaId = ActualChat.MediaId.ParseNullable(MediaId),
             BackgroundMediaId = ActualChat.MediaId.ParseNullable(BackgroundMediaId),
-            UserLinkId = ActualChat.UserLinkId.ParseNullable(UserLinkId),
+            AliasId = ActualChat.AliasId.ParseNullable(AliasId),
         };
 
     public void UpdateFrom(Place model)
@@ -56,6 +57,6 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPublic = model.IsPublic;
         MediaId = model.MediaId?.Value ?? "";
         BackgroundMediaId = model.BackgroundMediaId?.Value ?? "";
-        UserLinkId = model.UserLinkId?.NormalizedValue ?? "";
+        AliasId = model.AliasId?.NormalizedValue ?? "";
     }
 }

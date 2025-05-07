@@ -412,14 +412,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<PlaceChatId?> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken)
+    public virtual async Task<PlaceChatId?> GetPlaceChatIdByAlias(PlaceId placeId, AliasId aliasId, CancellationToken cancellationToken)
     {
-        var placeChatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
-        foreach (var placeChatId in placeChatIds) {
-            var placeChat = await Get(placeChatId, cancellationToken).ConfigureAwait(false);
-            // TODO(AY): CHECK POST-MERGE
-            if (placeChat is not null && placeChat.UserLinkId == userLinkId)
-                return placeChatId;
+        var chatIds = await ListPlaceChatIds(placeId, cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in chatIds) {
+            var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is not null && chat.AliasId == aliasId)
+                return chatId;
         }
         return null;
     }
@@ -681,7 +680,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            await UpdateUserLink(oldChat, chat).ConfigureAwait(false);
+            await UpdateAlias(oldChat, chat).ConfigureAwait(false);
 
             if (chatId is PeerChatId peerChatId) {
                 // Peer chat
@@ -775,7 +774,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            await UpdateUserLink(oldChat, chat).ConfigureAwait(false);
+            await UpdateAlias(oldChat, chat).ConfigureAwait(false);
         }
         else if (change.IsRemove()) {
             chatId.Require();
@@ -846,7 +845,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             dbContext.Remove(dbChat);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            await RemoveUserLink(dbChat.ToModel()).ConfigureAwait(false);
+            await RemoveAlias(dbChat.ToModel()).ConfigureAwait(false);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -885,41 +884,41 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return newChat;
         }
 
-        async Task UpdateUserLink(Chat? oldChat1, Chat chat1)
+        async Task UpdateAlias(Chat? oldChat1, Chat chat1)
         {
             if (chat1.Id.Kind == ChatKind.Peer) {
-                if (chat1.UserLinkId != null)
-                    throw StandardError.NotSupported("User links are not allowed for place chats.");
+                if (chat1.AliasId != null)
+                    throw StandardError.NotSupported("Custom links are not allowed for place chats.");
                 return;
             }
 
-            var oldUserLinkId = oldChat1?.UserLinkId;
-            var userLinkId = chat1.IsPublic ? chat1.UserLinkId : null;
+            var oldAliasId = oldChat1?.AliasId;
+            var aliasId = chat1.IsPublic ? chat1.AliasId : null;
 
             if (chat1.Id.Kind == ChatKind.Group)
                 await Commander
-                    .UpdateUserLink(oldUserLinkId, userLinkId, UserLinkKind.Chat, chat1.Id.Value, cancellationToken)
+                    .UpdateAlias(oldAliasId, aliasId, AliasKind.Chat, chat1.Id.Value, cancellationToken)
                     .ConfigureAwait(false);
             else if (chat1.Id is PlaceChatId placeChatId1) {
-                // Validate user link is not used by another place chat.
-                if (userLinkId is not null && userLinkId != oldUserLinkId) {
-                    var placeChatId = await GetPlaceChatIdByUserLink(placeChatId1.PlaceId, userLinkId, cancellationToken)
+                // Validate that alias isn't used by some other place chat
+                if (aliasId is not null && aliasId != oldAliasId) {
+                    var placeChatId = await GetPlaceChatIdByAlias(placeChatId1.PlaceId, aliasId, cancellationToken)
                         .ConfigureAwait(false);
                     if (placeChatId is not null && placeChatId != chat1.Id)
-                        throw StandardError.Constraint($"User link id '{userLinkId}' already used for another chat on the same place.");
+                        throw StandardError.Constraint($"Custom link '{aliasId.Value}' is already used for another chat in the same Place.");
                 }
             }
         }
 
-        async Task RemoveUserLink(Chat oldChat1)
+        async Task RemoveAlias(Chat oldChat1)
         {
-            var oldUserLinkId = oldChat1.UserLinkId;
-            if (oldUserLinkId is null)
+            var oldAliasId = oldChat1.AliasId;
+            if (oldAliasId is null)
                 return;
 
             if (oldChat1.Id.Kind == ChatKind.Group)
                 await Commander
-                    .UpdateUserLink(oldUserLinkId, null, UserLinkKind.Chat, "", cancellationToken)
+                    .UpdateAlias(oldAliasId, null, AliasKind.Chat, "", cancellationToken)
                     .ConfigureAwait(false);
         }
     }

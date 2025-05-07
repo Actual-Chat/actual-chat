@@ -31,7 +31,7 @@ public class LanguageDetectionSerializer(IServiceProvider services)
             var resultMap = response.Languages
                 .ToDictionary(
                     x => x.Id,
-                    x => x.Languages.Select(Language.TryParse).SkipNullItems().Distinct().ToArray()
+                    x => x.Languages.Select(v => Language.TryParse(v)).SkipNullItems().Distinct().ToArray()
                 );
             return [..Enumerable.Range(1, expectedCount).Select(i => resultMap.GetValueOrDefault(i, []))];
         }

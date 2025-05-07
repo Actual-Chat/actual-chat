@@ -104,7 +104,7 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
     // Parsing
 
     public static string Format(Symbol typeId, string arguments)
-        => typeId.IsEmpty ? "" : ZString.Concat(typeId.Value, ':', arguments);
+        => typeId.IsEmpty ? "" : string.Concat(typeId.Value, ":", arguments);
 
     public static FlowId Parse(string? s)
         => TryParse(s, out var result) ? result : throw Errors.Format<FlowId>(s);

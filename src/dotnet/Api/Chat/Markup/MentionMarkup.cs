@@ -1,4 +1,3 @@
-using Cysharp.Text;
 using MemoryPack;
 
 namespace ActualChat.Chat;
@@ -24,8 +23,8 @@ public sealed partial record MentionMarkup(
     public override string Format()
         => Name.IsNullOrEmpty()
             ? "@" + Id
-            : ZString.Concat('@', QuotedName, Id);
+            : string.Concat("@", QuotedName, Id);
 
     public static string Quote(string name)
-        => ZString.Concat('`', name.OrdinalReplace("`", "``"), '`');
+        => string.Concat("`", name.OrdinalReplace("`", "``"), "`");
 }

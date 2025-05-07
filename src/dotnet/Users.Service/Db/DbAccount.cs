@@ -25,7 +25,8 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
     public string TimeZone { get; set; } = "";
-    public string UserLinkId { get; set; } = "";
+    [Column("UserLinkId")] // TODO(AY): Rename to AliasId
+    public string AliasId { get; set; } = "";
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
@@ -47,7 +48,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
-            UserLinkId = UserLinkId.IsNullOrEmpty() ? null : ActualChat.UserLinkId.Parse(UserLinkId),
+            AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
         };
     }
 
@@ -74,7 +75,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;
         TimeZone = model.TimeZone;
-        UserLinkId = model.UserLinkId?.NormalizedValue ?? "";
+        AliasId = model.AliasId?.NormalizedValue ?? "";
         if (!model.Username.IsNullOrEmpty())
             UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }
@@ -87,8 +88,8 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 .HasFilter("username_normalized is not null")
                 .IsUnique();
             builder.HasIndex(a => new { a.Id, a.TimeZone });
-            builder.HasIndex(a => new { a.UserLinkId })
-                .HasFilter("user_link_id <> ''")
+            builder.HasIndex(a => new { a.AliasId })
+                .HasFilter("user_link_id <> ''") // TODO(AY): Rename to alias_id
                 .IsUnique();
         }
     }

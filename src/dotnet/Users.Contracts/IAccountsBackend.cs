@@ -10,7 +10,7 @@ public interface IAccountsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<UserId?> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken);
+    Task<UserId?> GetIdByAlias(AliasId aliasId, CancellationToken cancellationToken);
 
     // Non-compute methods
 

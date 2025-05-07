@@ -219,8 +219,8 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         context.Operation.Items.Set(hashesItemKey, overallAffectedHashes.ToList());
         if (updatedItemHashes.Count > 0) {
             var ownerId = command.Changes[0].Id.UserDeviceId.OwnerId;
-            foreach (var hashedUserLink in updatedItemHashes)
-                context.Operation.AddEvent(new ExternalContactNameMayHaveChangedEvent(ownerId, hashedUserLink));
+            foreach (var itemHash in updatedItemHashes)
+                context.Operation.AddEvent(new ExternalContactNameMayHaveChangedEvent(ownerId, itemHash));
         }
 
         return result.ToArray();

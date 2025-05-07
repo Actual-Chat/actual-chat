@@ -67,8 +67,8 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Notification
         fusion.AddClient<INotifications>();
 
-        // UserLinks
-        fusion.AddClient<IUserLinks>();
+        // Aliases
+        fusion.AddClient<IAliases>();
 
         // Chat Roulette
         fusion.AddClient<IRoulette>();

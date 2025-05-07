@@ -46,12 +46,16 @@ public sealed partial record AccountFull(
     [DataMember, MemoryPackOrder(14)] public bool IsEmailVerified { get; init; }
     [DataMember, MemoryPackOrder(15)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(16)] public string TimeZone { get; init; } = "";
-    [DataMember, MemoryPackOrder(17)] public UserLinkId? UserLinkId { get; init; }
+    [DataMember, MemoryPackOrder(17)] public AliasId? AliasId { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     [Obsolete("2024.11: Allows legacy clients to get FullName.")]
     public string FullName => (LastName.IsNullOrEmpty() ? Name : $"{Name} {LastName}").Trim();
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [field: AllowNull, MaybeNull]
+    public AliasInfo<UserId> AliasInfo => field ??= new(Id, AliasId);
 
     // This record relies on referential equality
     public bool Equals(AccountFull? other) => ReferenceEquals(this, other);

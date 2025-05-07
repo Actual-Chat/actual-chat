@@ -59,36 +59,36 @@
 
     @if (_form.IsPublic) {
         <FormBlock Class="with-input-radio first last">
-            <TileItem Class="field-chat-user-link-id unhovered">
+            <TileItem Class="field-chat-alias-id unhovered">
                 <Icon>
                     <i class="icon-link-2"></i>
                 </Icon>
                 <Content>
-                    <FormSection For="() => _form.ActualUserLinkId"
-                                 InputId="@_form.UserLinkIdFormId"
-                                 Label="User link"
+                    <FormSection For="() => _form.ActualAliasId"
+                                 InputId="@_form.AliasIdFormId"
+                                 Label="Custom link"
                                  IsLabelInsideInput="true">
                         <ValidationMessage>
-                            <UserLinkValidationMessage
-                                For="@(() => _form.ActualUserLinkId)"
-                                Kind="@UserLinkValidationMessage.UserLinkKind.PlaceLink"
-                                CurrentUserLinkId="@_form.CurrentUserLinkId"
-                                GetUserLinkIdFunc="@(() => _form.ActualUserLinkId)" />
+                            <AliasValidationMessage
+                                For="@(() => _form.ActualAliasId)"
+                                Scope="@AliasValidationMessage.AliasScope.Place"
+                                CurrentAliasId="@_form.CurrentAliasId"
+                                AliasIdReader="@(() => _form.ActualAliasId)" />
                         </ValidationMessage>
                         <ChildContent>
                             <TextBox
-                                Id="@_form.UserLinkIdFormId"
+                                Id="@_form.AliasIdFormId"
                                 Prefix="chat/@@"
-                                @bind-Value="@_form.UserLinkId"
-                                InputRefCreated="@_setUserLinkCopySource"/>
+                                @bind-Value="@_form.AliasId"
+                                InputRefCreated="@_aliasTextBoxRefSetter"/>
                         </ChildContent>
                     </FormSection>
-                    @if (!_userLinkTextBoxRef.Id.IsNullOrEmpty()) {
+                    @if (!_aliasTextBoxRef.Id.IsNullOrEmpty()) {
                         <CopyToClipboard
                             ButtonClass="btn-transparent"
                             Text=""
-                            CopyTextSourceRef="@_userLinkTextBoxRef"
-                            CopyTextFormatString="@_copyUserLinkFormatString" />
+                            CopyTextSourceRef="@_aliasTextBoxRef"
+                            CopyTextFormatString="@_copyAliasFormatString" />
                     }
                 </Content>
             </TileItem>
@@ -118,9 +118,9 @@
     private EditContext? _editContext;
     private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
-    private ElementReference _userLinkTextBoxRef;
-    private string _copyUserLinkFormatString = "";
-    private Action<ElementReference> _setUserLinkCopySource = null!;
+    private ElementReference _aliasTextBoxRef;
+    private string _copyAliasFormatString = "";
+    private Action<ElementReference> _aliasTextBoxRefSetter = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
@@ -141,26 +141,26 @@
         Context.Title = "Edit place settings";
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
-        _setUserLinkCopySource = c => {
-            _userLinkTextBoxRef = c;
+        _aliasTextBoxRefSetter = c => {
+            _aliasTextBoxRef = c;
             StateHasChanged();
         };
-        _copyUserLinkFormatString = UrlMapper.ToAbsolute(Links.ChatUserLinkPrefix) + "{0}";
+        _copyAliasFormatString = UrlMapper.ToAbsolute(Links.ChatAliasPrefix) + "{0}";
     }
 
     protected override async Task OnInitializedAsync() {
         var place = await Places.Get(Session, PlaceId, CancellationToken.None).Require();
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = place.IsPublic,
-            UserLinkId = place.UserLinkId?.Value ?? "",
-            CurrentUserLinkId = place.UserLinkId?.Value ?? "",
+            AliasId = place.AliasId?.Value ?? "",
+            CurrentAliasId = place.AliasId?.Value ?? "",
         };
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
-            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.UserLinkId))
+            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.AliasId))
                 || OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.IsPublic)))
             {
-                _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualUserLinkId)));
+                _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualAliasId)));
             }
         };
         Context.Class = "edit-chat-type";
@@ -212,7 +212,9 @@
         var place = await Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             IsPublic = _form!.IsPublic,
-            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNull(_form.UserLinkId) : null,
+            AliasId = _form!.IsPublic
+                ? AliasId.ParseNullable(_form.AliasId)
+                : null,
         };
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
@@ -234,22 +236,22 @@
     // Nested types
 
     public sealed class FormModel {
-        public string UserLinkId { get; set; } = "";
+        public string AliasId { get; set; } = "";
         public bool IsPublic { get; set; }
 
-        public string CurrentUserLinkId { get; set; } = "";
-        [UserLinkId]
-        public string ActualUserLinkId => IsPublic ? UserLinkId : "";
+        public string CurrentAliasId { get; set; } = "";
+        [AliasId]
+        public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }
-        public string UserLinkIdFormId { get; }
+        public string AliasIdFormId { get; }
         public string IsPublicFormId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
-            UserLinkIdFormId = $"{FormId}-user-link-id";
+            AliasIdFormId = $"{FormId}-alias-id";
             IsPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = IsPublicFormId + "-true";
             IsPublicFalseFormId = IsPublicFormId + "-false";

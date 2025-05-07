@@ -18,7 +18,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
     private ElementReference _recordsRef;
     private int _recordNumber;
 
-    private ChatId ChatId { get; } = new("the-actual-one");
+    private ChatId ChatId { get; } = ChatId.Parse("the-actual-one");
     private bool DebugMode { get; } = true;
     private bool IsRecording { get; set; }
 
@@ -54,7 +54,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
                     StateHasChanged();
                 }
             });
-            await _jsRef.InvokeVoidAsync("startRecording", ChatId, ChatEntryId.None);
+            await _jsRef.InvokeVoidAsync("startRecording", ChatId, null);
             IsRecording = true;
         }
         else {

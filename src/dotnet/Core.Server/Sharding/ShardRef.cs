@@ -40,7 +40,7 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
 
     public string Format()
         => IsValid
-            ? ZString.Concat(Scheme.Id.Value, "-S", GetShardIndex().Format())
+            ? string.Concat(Scheme.Id.Value, "-S", GetShardIndex().Format())
             : Scheme.Id.Value;
 
     // Helpers

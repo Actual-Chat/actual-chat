@@ -64,4 +64,9 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     public override int GetHashCode() => Value.GetOrdinalHashCode();
     public static bool operator ==(LocalUrl left, LocalUrl right) => left.Equals(right);
     public static bool operator !=(LocalUrl left, LocalUrl right) => !left.Equals(right);
+
+    // Handy operators
+
+    public static LocalUrl operator +(LocalUrl left, string right)
+        => new(left.Value + right);
 }

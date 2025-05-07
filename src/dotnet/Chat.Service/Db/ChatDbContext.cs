@@ -21,7 +21,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbChatCopyState> ChatCopyStates { get; protected set; } = null!;
     public DbSet<DbPlace> Places { get; protected set; } = null!;
     public DbSet<DbReadPositionsStat> ReadPositionsStats { get; protected set; } = null!;
-    public DbSet<DbUserLink> UserLinks { get; protected set; } = null!;
+    public DbSet<DbAlias> Aliases { get; protected set; } = null!;
     public DbSet<DbChatRoulette> ChatRoulettes { get; protected set; } = null!;
     public DbSet<DbConversation> Conversations { get; protected set; } = null!;
 
@@ -97,8 +97,8 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         readPositionsStat.Property(e => e.Top1UserId).UseCollation("C");
         readPositionsStat.Property(e => e.Top2UserId).UseCollation("C");
 
-        var userLink = model.Entity<DbUserLink>();
-        userLink.Property(e => e.Id).UseCollation("C");
+        var alias = model.Entity<DbAlias>();
+        alias.Property(e => e.Id).UseCollation("C");
 
         var chatRoulette = model.Entity<DbChatRoulette>();
         chatRoulette.Property(e => e.Id).UseCollation("C");

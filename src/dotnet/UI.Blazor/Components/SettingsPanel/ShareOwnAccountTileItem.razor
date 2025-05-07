@@ -41,7 +41,7 @@
 
     private void OnShareClick(AccountFull account, string name) {
         var shareUI = Services.GetRequiredService<ShareUI>();
-        var request = new ShareRequest($"{name} on Actual Chat", LinksExt.User(account));
+        var request = new ShareRequest($"{name} on Actual Chat", Links.User(account.AliasInfo));
         shareUI.Share(ShareKind.Contact, "Share your contact", name, request);
     }
 }

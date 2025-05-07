@@ -78,7 +78,7 @@
     protected IPlaces Places => Hub.Places;
     protected IAccounts Accounts => Hub.Accounts;
     protected IAvatars Avatars => Hub.Avatars;
-    protected IUserLinks UserLinks => Hub.UserLinks;
+    protected IAliases Aliases => Hub.Aliases;
     protected ChatUI ChatUI => Hub.ChatUI;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     protected AccountUI AccountUI => Hub.AccountUI;
@@ -105,7 +105,7 @@
             return;
         }
 
-        if (pageRoute.StartsWith(Links.UserLinkPrefix))
+        if (pageRoute.StartsWith(Links.AliasPrefix))
             return;
 
         RouteState = PageRouteState.ChatSid;
@@ -119,19 +119,19 @@
         if (RouteState != PageRouteState.Resolving)
             return;
 
-        var result = await HandleUserLink(pageRoute, default).ConfigureAwait(false);
+        var result = await HandleAlias(pageRoute, default).ConfigureAwait(false);
         if (ReferenceEquals(result, PageRoute.Redirect)) {
             RouteState = PageRouteState.Redirect;
             return;
         }
 
-        if (ReferenceEquals(result, PageRoute.UnknownUserLink)) {
-            RouteState = PageRouteState.UnknownUserLink;
+        if (ReferenceEquals(result, PageRoute.UnknownAlias)) {
+            RouteState = PageRouteState.UnknownAlias;
             return;
         }
 
         RouteState = PageRouteState.ChatSid;
-        await SelectChat(result.ChatId is null ? null : result.ChatId);
+        await SelectChat(result.ChatId);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -153,7 +153,7 @@
         if (pageRouteState is PageRouteState.Redirect or PageRouteState.Resolving)
             return Model.Loading;
 
-        if (pageRouteState == PageRouteState.UnknownUserLink)
+        if (pageRouteState == PageRouteState.UnknownAlias)
             return Model.Unavailable(false);
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -296,7 +296,7 @@
                 chatId = chat.Id;
             else {
                 chatId = null;
-                RouteState = PageRouteState.UnknownUserLink;
+                RouteState = PageRouteState.UnknownAlias;
             }
         }
         if (chatId is null) {
@@ -312,7 +312,7 @@
         ChatUI.SelectChatOnNavigation(chatId);
     }
 
-    private async Task<PageRoute> HandleUserLink(string? pageRoute, CancellationToken cancellationToken) {
+    private async Task<PageRoute> HandleAlias(string? pageRoute, CancellationToken cancellationToken) {
         if (pageRoute.IsNullOrEmpty())
             return PageRoute.Empty;
 
@@ -322,52 +322,54 @@
 
         ChatId targetChatId;
         if (parts.Length == 1) {
-            // Chat user link
-            var sChatUserLink = parts[0];
-            if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
-                return PageRoute.UnknownUserLink;
+            // ChatId or alias
+            var chatAliasSid = parts[0];
+            if (!AliasId.TryParse(chatAliasSid, out var chatAliasId))
+                return PageRoute.UnknownAlias;
 
-            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(chatUserLinkId, cancellationToken);
-            if (userLinkRef.IsNone || userLinkRef.Kind != UserLinkKind.Chat)
-                return PageRoute.UnknownUserLink;
+            var aliasTarget = await Hub.Aliases.GetTarget(chatAliasId, cancellationToken);
+            if (aliasTarget is null || aliasTarget.Kind != AliasKind.Chat)
+                return PageRoute.UnknownAlias;
 
-            if (!ChatId.TryParse(userLinkRef.TargetId, out var chatId))
+            if (!ChatId.TryParse(aliasTarget.TargetId, out var chatId))
                 return PageRoute.InvalidRoute;
 
             targetChatId = chatId;
         } else {
-            // If the page route consists of 2 parts, the first one should always be a place user link id
-            var sPlaceUserLink = parts[0];
-            if (!UserLinkId.TryParse(sPlaceUserLink, out var placeUserLinkId))
-                return PageRoute.UnknownUserLink;
+            // If the page route consists of 2 parts, the first one should always be a PlaceId alias
+            var placeAliasSid = parts[0];
+            if (!AliasId.TryParse(placeAliasSid, out var placeAliasId))
+                return PageRoute.UnknownAlias;
 
-            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(placeUserLinkId, cancellationToken);
-            if (userLinkRef.IsNone || userLinkRef.Kind != UserLinkKind.Place)
-                return PageRoute.UnknownUserLink;
+            var aliasTarget = await Hub.Aliases.GetTarget(placeAliasId, cancellationToken);
+            if (aliasTarget is null || aliasTarget.Kind != AliasKind.Place)
+                return PageRoute.UnknownAlias;
 
-            if (!PlaceId.TryParse(userLinkRef.TargetId, out var placeId))
+            if (!PlaceId.TryParse(aliasTarget.TargetId, out var placeId))
                 return PageRoute.InvalidRoute;
 
-            var chatIdPart = parts[1];
-            if (chatIdPart.IsNullOrEmpty())
+            var chatSidPart = parts[1];
+            if (chatSidPart.IsNullOrEmpty())
                 return PageRoute.InvalidRoute;
 
-            ChatId? placeChatId;
-            if (!chatIdPart.StartsWith("@")) {
-                if (!ChatId.TryParse(chatIdPart, out var localChatId) || localChatId.Kind != ChatKind.Group)
+            PlaceChatId? placeChatId;
+            if (!chatSidPart.StartsWith("@")) {
+                if (!PlaceChatId.TryParse(chatSidPart, out var localChatId) || localChatId.Kind != ChatKind.Group)
                     return PageRoute.InvalidRoute;
-
                 if (!PlaceChatId.TryParse(PlaceChatId.Format(placeId, localChatId.Value), out var placeChatId1))
                     return PageRoute.InvalidRoute;
+
                 placeChatId = placeChatId1;
             } else {
-                var sChatUserLink = chatIdPart[1..];
-                if (!UserLinkId.TryParse(sChatUserLink, out var chatUserLinkId))
-                    return PageRoute.UnknownUserLink;
+                var chatAliasSid = chatSidPart[1..];
+                if (!AliasId.TryParse(chatAliasSid, out var chatAliasId))
+                    return PageRoute.UnknownAlias;
 
-                placeChatId = await Hub.UserLinks.GetPlaceChatIdByUserLink(placeId, chatUserLinkId.ToLower(), cancellationToken).ConfigureAwait(false);
+                placeChatId = await Hub.Aliases
+                    .GetPlaceChatIdByAlias(placeId, chatAliasId, cancellationToken)
+                    .ConfigureAwait(false);
                 if (placeChatId is null)
-                    return PageRoute.UnknownUserLink;
+                    return PageRoute.UnknownAlias;
             }
             targetChatId = placeChatId;
         }
@@ -405,12 +407,12 @@
         public Place? Place { get; init; }
     }
 
-    public enum PageRouteState { Resolving, ChatSid, UnknownUserLink, Redirect }
+    public enum PageRouteState { Resolving, ChatSid, UnknownAlias, Redirect }
 
     public record PageRoute(ChatId? ChatId) {
         public static readonly PageRoute Empty = new((ChatId?)null);
         public static readonly PageRoute InvalidRoute = new ((ChatId?)null);
-        public static readonly PageRoute UnknownUserLink = new ((ChatId?)null);
+        public static readonly PageRoute UnknownAlias = new ((ChatId?)null);
         public static readonly PageRoute Redirect = new ((ChatId?)null);
     }
 }

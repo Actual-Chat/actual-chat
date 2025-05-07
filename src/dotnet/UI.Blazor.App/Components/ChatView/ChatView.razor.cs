@@ -19,7 +19,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
 
     private Task _updateReadStateTask = null!;
-    private SharedResourcePool<Symbol, SyncedState<ReadPosition>>.Lease _readPositionLease = null!;
+    private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? _readPositionLease;
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<Navigation?> _nextNavigation = null!;
@@ -77,7 +77,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _shownReadEntryLid = StateFactory.NewMutable(
                 0L,
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
-            _readPositionLease = await ChatUI.LeaseReadPositionState(ChatId, DisposeToken);
+            _readPositionLease = ChatId is not null
+                ? await ChatUI.LeaseReadPositionState(ChatId, DisposeToken)
+                : null;
             _shownReadEntryLid.Value = _readPositionLease.Resource.Value.EntryLid;
             _whenInitializedSource.TrySetResult();
             _updateReadStateTask = AsyncChain.From(UpdateReadState)
@@ -221,7 +223,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private async Task UpdateReadState(CancellationToken cancellationToken)
     {
         var chatId = ChatId;
-        if (chatId.IsNone)
+        if (chatId is null)
             return;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -230,12 +232,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var authorId = author?.Id ?? AuthorId.None;
+        var authorId = author?.Id;
         var chatIdRange = await Chats
             .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
 
-        // Getting very last chat entry
+        // Getting the very last chat entry
         var chatNews = await Chats.GetNews(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatIdGap = new Range<long>(chatNews.TextEntryIdRange.End, chatIdRange.End);
         var lastEntry = await entryReader.ReadReverse(chatIdGap, cancellationToken)
@@ -281,7 +283,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         CancellationToken cancellationToken)
     {
         var chatId = ChatId;
-        if (chatId.IsNone)
+        if (chatId is null)
             return VirtualListData<ChatMessage>.None;
 
         var startedAt = CpuTimestamp.Now;
@@ -406,7 +408,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 // TODO(AK): Implement highlighting of conversations
                 ChatUI.HighlightEntry(
-                    TextEntryId.New(chatId, navChatMessage.Id, AssumeValid.Option),
+                    TextEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
         if (items.Count != 0) {
@@ -578,7 +580,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void UpdateGroupChatUsageList()
     {
         var chatId = ChatId;
-        if (chatId.IsNone || chatId.Kind == ChatKind.Peer)
+        if (chatId is null || chatId.Kind == ChatKind.Peer)
             return;
 
         _ = BackgroundTask.Run(async () => {

@@ -22,7 +22,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public IMentions Mentions => field ??= Services.GetRequiredService<IMentions>();
     [field: AllowNull, MaybeNull]
-    public IUserLinks UserLinks => field ??= Services.GetRequiredService<IUserLinks>();
+    public IAliases Aliases => field ??= Services.GetRequiredService<IAliases>();
     [field: AllowNull, MaybeNull]
     public IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     [field: AllowNull, MaybeNull]

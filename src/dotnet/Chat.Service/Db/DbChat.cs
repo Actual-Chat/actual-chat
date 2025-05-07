@@ -23,7 +23,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Obsolete("2023.03: Use MediaId instead.")]
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
-    public string UserLinkId { get; set; } = "";
+    [Column("UserLinkId")] // TODO(AY): Rename to AliasId
+    public string AliasId { get; set; } = "";
 
     // Template info for embedded chats
     public bool IsTemplate { get; set; }
@@ -64,7 +65,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 ? Symbol.Empty
                 : new Symbol(SystemTag),
             MediaId = ActualChat.MediaId.ParseNullable(MediaId),
-            UserLinkId = ActualChat.UserLinkId.ParseNullable(UserLinkId),
+            AliasId = ActualChat.AliasId.ParseNullable(AliasId),
             IsSummarized = IsSummarized,
         };
 
@@ -92,7 +93,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Kind = model.Kind;
         MediaId = model.MediaId?.Value ?? "";
         IsPlaceRootChat = model.Id is PlaceChatId { IsRoot: true };
-        UserLinkId = model.UserLinkId?.NormalizedValue ?? "";
+        AliasId = model.AliasId?.NormalizedValue ?? "";
         IsSummarized = model.IsSummarized;
     }
 }

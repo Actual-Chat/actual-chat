@@ -39,7 +39,7 @@ public class TranslationUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), I
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> NeedsTranslation(ChatEntryId entryId, CancellationToken cancellationToken = default)
+    public virtual async Task<bool> NeedsTranslation(TextEntryId entryId, CancellationToken cancellationToken = default)
     {
         var session = Session;
         var entryLanguage = await Translations.GetLanguage(session, entryId, cancellationToken).ConfigureAwait(false);
@@ -51,10 +51,10 @@ public class TranslationUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), I
     }
 
     [ComputeMethod]
-    public virtual async Task<Translation?> Get(ChatEntryId entryId, CancellationToken cancellationToken = default){
+    public virtual async Task<Translation?> Get(TextEntryId entryId, CancellationToken cancellationToken = default){
         var session = Session;
         var targetLanguage = await GetTargetLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-        return await Translations.Get(session, new TranslationId(entryId, targetLanguage, AssumeValid.Option), cancellationToken).ConfigureAwait(false);
+        return await Translations.Get(session, TranslationId.New(entryId, targetLanguage), cancellationToken).ConfigureAwait(false);
     }
 
     public Task SetIsOn(ChatId chatId, bool? value, CancellationToken cancellationToken = default)

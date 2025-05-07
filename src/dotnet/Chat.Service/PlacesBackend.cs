@@ -118,9 +118,9 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         place = dbPlace.Require().ToModel();
 
         if (!change.IsRemove())
-            await UpdateUserLink(oldPlace, place).ConfigureAwait(false);
+            await UpdateAlias(oldPlace, place).ConfigureAwait(false);
         else
-            await RemoveUserLink(oldPlace!).ConfigureAwait(false);
+            await RemoveAlias(oldPlace!).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         context.Operation.Items.KeylessSet(place);
@@ -176,20 +176,24 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             }
         }
 
-        async Task UpdateUserLink(Place? oldPlace1, Place place1)
+        async Task UpdateAlias(Place? oldPlace1, Place place1)
         {
-            var oldUserLinkId = oldPlace1?.UserLinkId;
-            var userLinkId = place1.IsPublic ? place1.UserLinkId : null;
-            await Commander.UpdateUserLink(oldUserLinkId, userLinkId, UserLinkKind.Place, place1.Id.Value, cancellationToken).ConfigureAwait(false);
+            var oldAliasId = oldPlace1?.AliasId;
+            var aliasId = place1.IsPublic ? place1.AliasId : null;
+            await Commander
+                .UpdateAlias(oldAliasId, aliasId, AliasKind.Place, place1.Id.Value, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        async Task RemoveUserLink(Place oldPlace1)
+        async Task RemoveAlias(Place oldPlace1)
         {
-            var oldUserLinkId = oldPlace1.UserLinkId;
-            if (oldUserLinkId is null)
+            var oldAliasId = oldPlace1.AliasId;
+            if (oldAliasId is null)
                 return;
 
-            await Commander.UpdateUserLink(oldUserLinkId, null, UserLinkKind.Place, "", cancellationToken).ConfigureAwait(false);
+            await Commander
+                .UpdateAlias(oldAliasId, null, AliasKind.Place, "", cancellationToken)
+                .ConfigureAwait(false);
         }
 
         static ChatDiff ToChatDiff(Place place)

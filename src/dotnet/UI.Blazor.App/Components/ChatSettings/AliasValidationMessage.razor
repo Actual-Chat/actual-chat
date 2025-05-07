@@ -10,7 +10,7 @@
         validationCls = "invalid";
         message = messages.First();
     } else {
-        var hint = ToHint(_userLinkIsAvailable);
+        var hint = ToHint(_aliasIsAvailable);
         if (hint != null) {
             validationCls = hint.Class;
             message = hint.Message;
@@ -24,20 +24,20 @@
     private EditContext? _previousEditContext;
     private Expression<Func<string>>? _previousFieldAccessor;
     private FieldIdentifier _fieldIdentifier;
-    private bool? _userLinkIsAvailable;
+    private bool? _aliasIsAvailable;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
 
     [Parameter, EditorRequired] public Expression<Func<string>>? For { get; set; }
-    [Parameter, EditorRequired] public UserLinkKind Kind { get; set; } = null!;
-    [Parameter] public string CurrentUserLinkId { get; set; } = "";
-    [Parameter, EditorRequired] public Func<string> GetUserLinkIdFunc { get; set; } = null!;
+    [Parameter, EditorRequired] public AliasScope Scope { get; set; } = null!;
+    [Parameter] public string CurrentAliasId { get; set; } = "";
+    [Parameter, EditorRequired] public Func<string> AliasIdReader { get; set; } = null!;
 
-    public UserLinkValidationMessage() {
+    public AliasValidationMessage() {
         _validationStateChangedHandler = (sender, eventArgs) => {
-            _ = CheckUserLinkAvailability();
+            _ = CheckAliasAvailability();
             StateHasChanged();
         };
     }
@@ -74,50 +74,46 @@
         }
     }
 
-    private async Task CheckUserLinkAvailability()
+    private async Task CheckAliasAvailability()
     {
-        _userLinkIsAvailable = null;
+        _aliasIsAvailable = null;
 
-        var actualUserLinkId = GetUserLinkIdFunc();
-        var sUserLinkId = actualUserLinkId;
-        if (sUserLinkId.IsNullOrEmpty())
+        var aliasSid = AliasIdReader();
+        if (aliasSid.IsNullOrEmpty() || OrdinalEquals(aliasSid, CurrentAliasId))
             return;
 
-        if (OrdinalEquals(sUserLinkId, CurrentUserLinkId))
+        if (!AliasId.TryParse(aliasSid, out var aliasId))
             return;
 
-        if (!UserLinkId.TryParse(sUserLinkId, out var userLinkId))
-            return;
-
-        if (ReferenceEquals(Kind, UserLinkKind.AccountLink)) {
-            var userId = await Hub.UserLinks.GetUserIdByUserLink(userLinkId).ConfigureAwait(true);
-            _userLinkIsAvailable = userId.IsNone;
-        } else if (Kind.PlaceId.IsNone) {
-            var userLinkRef = await Hub.UserLinks.GetUserLinkRef(userLinkId).ConfigureAwait(true);
-            _userLinkIsAvailable = userLinkRef.IsNone;
+        if (ReferenceEquals(Scope, AliasScope.Account)) {
+            var userId = await Hub.Aliases.GetUserIdByAlias(aliasId).ConfigureAwait(true);
+            _aliasIsAvailable = userId is null;
+        } else if (Scope.PlaceId is null) {
+            var aliasTarget = await Hub.Aliases.GetTarget(aliasId).ConfigureAwait(true);
+            _aliasIsAvailable = aliasTarget is null;
         } else {
-            var placeChatId = await Hub.UserLinks.GetPlaceChatIdByUserLink(Kind.PlaceId, userLinkId).ConfigureAwait(true);
-            _userLinkIsAvailable = placeChatId.IsNone;
+            var placeChatId = await Hub.Aliases.GetPlaceChatIdByAlias(Scope.PlaceId, aliasId).ConfigureAwait(true);
+            _aliasIsAvailable = placeChatId is null;
         }
 
         StateHasChanged();
     }
 
-    private static FormSectionHint? ToHint(bool? userLinkIsAvailableHint)
+    private static FormSectionHint? ToHint(bool? aliasIsAvailableHint)
     {
-        if (!userLinkIsAvailableHint.HasValue)
+        if (!aliasIsAvailableHint.HasValue)
             return null;
 
-        return userLinkIsAvailableHint.Value
+        return aliasIsAvailableHint.Value
             ? new FormSectionHint("This link is available.", "success")
             : new FormSectionHint("This link is already in use.", "invalid");
     }
 
     private record FormSectionHint(string Message, string Class = "");
 
-    public record UserLinkKind(PlaceId PlaceId) {
-        public static readonly UserLinkKind AccountLink = new (PlaceId.None);
-        public static readonly UserLinkKind PlaceLink = new (PlaceId.None);
-        public static UserLinkKind ChatLink(PlaceId placeId) => new (placeId);
+    public record AliasScope(PlaceId? PlaceId = null) {
+        public static readonly AliasScope Account = new();
+        public static readonly AliasScope Place = new();
+        public static AliasScope Chat(PlaceId? placeId) => new(placeId);
     }
 }

@@ -1,6 +1,5 @@
 @using ActualChat.Invite
 @using ActualChat.UI.Blazor.Services
-@using Cysharp.Text
 @using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
 
@@ -96,7 +95,9 @@
                         return; // We should be able to get chat's place. Return if it's not like that.
                 }
 
-                var targetTitle = place is null ? chat.Title : ZString.Concat(place.Title, "/", chat.Title);
+                var targetTitle = place is null
+                    ? chat.Title
+                    : string.Concat(place.Title, "/", chat.Title);
                 var title = "Share private chat join link";
                 var text = $"\"{targetTitle}\" on Actual Chat";
                 var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);

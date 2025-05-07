@@ -6,7 +6,7 @@
     private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
     private History History => Hub.History;
-    private IUserLinks UserLinks => Hub.UserLinks;
+    private IAliases Aliases => Hub.Aliases;
 
     [Parameter] public string? PageRoute { get; set; }
 
@@ -37,12 +37,12 @@
         if (pageRoute.IsNullOrEmpty())
             return null;
 
-        if (!pageRoute.StartsWith(Links.UserLinkPrefix))
+        if (!pageRoute.StartsWith(Links.AliasPrefix))
             return UserId.TryParse(pageRoute);
 
-        if (!UserLinkId.TryParse(pageRoute.Substring(1), out var userLinkId))
+        if (!AliasId.TryParse(pageRoute.Substring(1), out var aliasId))
             return null;
 
-        return await UserLinks.GetUserIdByUserLink(userLinkId, cancellationToken).ConfigureAwait(false);
+        return await Aliases.GetUserIdByAlias(aliasId, cancellationToken).ConfigureAwait(false);
     }
 }

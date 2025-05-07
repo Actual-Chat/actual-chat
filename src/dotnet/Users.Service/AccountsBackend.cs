@@ -83,14 +83,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserId?> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken)
+    public virtual async Task<UserId?> GetIdByAlias(AliasId aliasId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var sUserLinkId = userLinkId.NormalizedValue;
+        var aliasSid = aliasId.NormalizedValue;
         var accountId = await dbContext.Accounts
-            .Where(x => x.UserLinkId == sUserLinkId)
+            .Where(x => x.AliasId == aliasSid)
             .Select(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -150,10 +150,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = Get(account.Id, default);
-            var invUserLinkIds = context.Operation.Items.KeylessGet<List<UserLinkId>>();
-            if (invUserLinkIds is not null)
-                foreach (var invUserLinkId in invUserLinkIds)
-                    _ = GetIdByUserLink(invUserLinkId, default);
+            var invAliasIds = context.Operation.Items.KeylessGet<List<AliasId>>();
+            if (invAliasIds is not null)
+                foreach (var invAliasId in invAliasIds)
+                    _ = GetIdByAlias(invAliasId, default);
             return;
         }
 
@@ -185,10 +185,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             context.Operation.AddEvent(e);
         }
 
-        var oldUserLink = existing?.UserLinkId;
-        var newUserLink = account.UserLinkId;
-        if (oldUserLink != newUserLink)
-            context.Operation.Items.KeylessSet(new[] { oldUserLink, newUserLink }.SkipNullItems());
+        var oldAliasId = existing?.AliasId;
+        var newAliasId = account.AliasId;
+        if (oldAliasId != newAliasId)
+            context.Operation.Items.KeylessSet(new[] { oldAliasId, newAliasId }.SkipNullItems());
     }
 
     // [CommandHandler]

@@ -41,7 +41,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         Key = key;
         FullKey = backend.GetFullKey(key);
         Value = value;
-        StoredValue = ZString.Concat(id, ' ', value);
+        StoredValue = string.Concat(id, " ", value);
         Options = options;
         CreatedAt = Clock.Now;
     }

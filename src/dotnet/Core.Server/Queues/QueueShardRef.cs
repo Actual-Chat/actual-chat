@@ -44,7 +44,7 @@ public readonly struct QueueShardRef : ICanBeNone<QueueShardRef>, IEquatable<Que
 
     public string Format()
         => IsValid
-            ? ZString.Concat(QueueRef.Format(), "-S", GetShardIndex().Format())
+            ? string.Concat(QueueRef.Format(), "-S", GetShardIndex().Format())
             : QueueRef.Format();
 
     // Helpers

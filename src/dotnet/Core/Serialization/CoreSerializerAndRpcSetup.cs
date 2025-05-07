@@ -41,7 +41,7 @@ public static class CoreSerializerAndRpcSetup
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ExternalContactId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<NotificationId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserDeviceId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserLinkId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<AliasId>());
         // Everything else
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Phone>());
     }

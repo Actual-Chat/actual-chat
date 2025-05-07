@@ -4,29 +4,62 @@ public static class Links
 {
     public const string ChatEntryLidQueryParameterName = "n";
     public const string Separator = "/";
-    public const string UserLinkPrefix = "@";
+    public const string AliasPrefix = "@";
+    public const string ChatAliasPrefix = "/chat/@";
+    public const string UserAliasPrefix = "/u/@";
 
     public static readonly LocalUrl Home = default;
     public static readonly LocalUrl Docs = "/docs";
     public static readonly LocalUrl NotFound = "/404";
     public static readonly LocalUrl Chats = "/chat";
-    public static readonly LocalUrl ChatUserLinkPrefix = "/chat/@";
-    public static readonly LocalUrl AccountUserLinkPrefix = "/u/@";
     public static readonly LocalUrl Logs = "/test/logs";
 
     public static LocalUrl Chat(TextEntryId? textEntryId)
         => textEntryId == null
             ? "/chat"
-            : $"/chat/{textEntryId.ChatId.Value}"  + TextEntryQuery(textEntryId.LocalId);
+            : $"/chat/{textEntryId.ChatId.Value}{TextEntryQuery(textEntryId.LocalId)}";
 
-    public static LocalUrl Chat(ChatId chatId, long? textEntryId = null)
-        => textEntryId is { } vTextEntryLid and > 0
-            ? $"/chat/{chatId.Value}" + TextEntryQuery(vTextEntryLid)
-            : $"/chat/{chatId.Value}";
+    public static LocalUrl Chat(ChatId chatId, long textEntryId = 0)
+        => $"/chat/{chatId.Value}{TextEntryQuery(textEntryId)}";
 
-    public static LocalUrl EmbeddedChat(ChatId chatId, long? textEntryLid = null)
-        => textEntryLid is { } vTextEntryLid and > 0
-            ? $"/embedded/{chatId.Value}" + TextEntryQuery(vTextEntryLid)
+    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, long textEntryId = 0)
+    {
+        var chatId = aliasInfo.Id;
+        if (chatId is PlaceChatId)
+            throw new ArgumentOutOfRangeException(nameof(aliasInfo), "Place chat requires place alias info.");
+
+        return aliasInfo.AliasId is { } aliasId
+            ? $"/chat/@{aliasId.Value}{TextEntryQuery(textEntryId)}"
+            : Chat(chatId, textEntryId);
+    }
+
+    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, AliasInfo<PlaceId>? placeAliasInfo, long textEntryId = 0)
+    {
+        var chatId = aliasInfo.Id;
+        if (chatId is not PlaceChatId placeChatId)
+            return placeAliasInfo is null
+                ? Chat(aliasInfo, textEntryId)
+                : throw new ArgumentOutOfRangeException(nameof(placeAliasInfo),
+                    "Chat doesn't belong to a place, but place alias info is provided.");
+
+        ArgumentNullException.ThrowIfNull(placeAliasInfo,
+            "Chat belongs to a place, but no place alias info is provided.");
+        if (placeAliasInfo.Id != placeChatId.PlaceId)
+            throw new ArgumentOutOfRangeException(nameof(placeAliasInfo),
+                "Chat belongs to a place that differs from place alias info.");
+
+        if (placeAliasInfo.AliasId is null) // Should we allow chat aliases for places w/o an alias?
+            return Chat(chatId, textEntryId);
+
+        var fullAlias = aliasInfo.AliasId is not { } aliasId
+            ? string.Concat(placeAliasInfo.AliasId.Value, Separator, placeChatId.LocalChatId)
+            : string.Concat(placeAliasInfo.AliasId.Value, Separator, AliasPrefix, aliasId.Value);
+        return $"/chat/@{fullAlias}" + TextEntryQuery(textEntryId);
+    }
+
+    public static LocalUrl EmbeddedChat(ChatId chatId, long textEntryLid = 0)
+        => textEntryLid > 0
+            ? $"/embedded/{chatId.Value}" + TextEntryQuery(textEntryLid)
             : $"/embedded/{chatId.Value}";
 
     public static LocalUrl PlaceInfo(PlaceId placeId)
@@ -34,6 +67,11 @@ public static class Links
 
     public static LocalUrl User(UserId userId)
         => $"/u/{userId.Value.UrlEncode()}";
+
+    public static LocalUrl User(AliasInfo<UserId> aliasInfo)
+        => aliasInfo.AliasId is { } userAliasId
+            ? $"/u/@{userAliasId.Value.UrlEncode()}"
+            : User(aliasInfo.Id);
 
     public static LocalUrl Invite(string format, string inviteId)
         => string.Format(CultureInfo.InvariantCulture, format, inviteId.UrlEncode());
@@ -49,7 +87,9 @@ public static class Links
     }
 
     private static string TextEntryQuery(long textEntryLid)
-        => $"?{ChatEntryLidQueryParameterName}={textEntryLid.Format()}";
+        => textEntryLid == 0
+            ? ""
+            : $"?{ChatEntryLidQueryParameterName}={textEntryLid.Format()}";
 
     public static class Apps
     {

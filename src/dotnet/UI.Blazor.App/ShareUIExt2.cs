@@ -27,7 +27,7 @@ public static class ShareUIExt2
         var accountUI = shareUI.Hub.AccountUI;
         await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         var ownAccount = accountUI.OwnAccount.Value;
-        if (ownAccount.IsGuestOrNone)
+        if (ownAccount.IsGuestOrNull())
             return null;
 
         var name = ownAccount.Avatar.Name;
@@ -35,14 +35,14 @@ public static class ShareUIExt2
         var text = $"{name} on Actual Chat";
         return new ShareModalModel(
             ShareKind.Contact, title, name,
-            new(text, LinksExt.User(ownAccount)),
+            new(text, Links.User(ownAccount.AliasInfo)),
             null);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
         this ShareUI shareUI, UserId userId, CancellationToken cancellationToken = default)
     {
-        if (userId.IsGuestOrNone)
+        if (userId.IsGuestOrNull())
             return null;
 
         var hub = shareUI.Hub;

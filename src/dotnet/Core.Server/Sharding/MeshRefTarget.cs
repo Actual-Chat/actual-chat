@@ -47,7 +47,7 @@ public readonly record struct MeshRefTarget
         var target = NodeRef.Id.Value.NullIfEmpty() ?? "n/a";
         var offlineSuffix = ShardRef.IsNone ? State.FormatSuffix() : "";
         var localSuffix = IsLocal ? "-local" : "";
-        return ZString.Concat("@", source, target, offlineSuffix, localSuffix);
+        return string.Concat("@", source, target, offlineSuffix, localSuffix);
     }
 
     // Structural equality, IsLocal isn't used

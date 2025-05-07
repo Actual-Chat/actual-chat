@@ -39,7 +39,7 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
     [DataMember, MemoryPackOrder(16)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(17)] public UserLinkId? UserLinkId { get; init; }
+    [DataMember, MemoryPackOrder(17)] public AliasId? AliasId { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool? IsSummarized { get; init; }
 
     // Populated only on front-end
@@ -50,6 +50,10 @@ public sealed partial record Chat(
     public ChatKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [field: AllowNull, MaybeNull]
+    public AliasInfo<ChatId> AliasInfo => field ??= new(Id, AliasId);
 
     public bool CanInvite()
         // Technically it should be:
@@ -82,6 +86,6 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember, MemoryPackOrder(11)] public PlaceId? PlaceId { get; init; }
     [DataMember, MemoryPackOrder(12)] public bool? IsArchived { get; init; }
     [DataMember, MemoryPackOrder(13)] public string? Description { get; init; }
-    [DataMember, MemoryPackOrder(14)] public UserLinkId? UserLinkId { get; init; }
+    [DataMember, MemoryPackOrder(14)] public AliasId? AliasId { get; init; }
     [DataMember, MemoryPackOrder(15)] public Option<bool?> IsSummarized { get; init; }
 }

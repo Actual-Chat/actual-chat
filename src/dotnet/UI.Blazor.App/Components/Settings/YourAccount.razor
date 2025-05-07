@@ -25,13 +25,13 @@
         </Caption>
     </TileItem>
 
-    @if (account.UserLinkId is { } userLinkId) {
+    @if (account.AliasId is { } aliasId) {
         <TileItem>
             <Icon>
                 <i class="icon-link-2 text-xl"></i>
             </Icon>
             <Content>
-                @("@" + userLinkId.Value)
+                @("@" + aliasId.Value)
             </Content>
             <Caption>
                 User link
@@ -39,7 +39,7 @@
             <Right>
                 <CopyToClipboard
                     ButtonClass="btn-xs btn-transparent tile-hidden-btn"
-                    Text="@(UrlMapper.ToAbsolute(Links.AccountUserLinkPrefix + account.UserLinkId.Value))"/>
+                    Text="@(UrlMapper.ToAbsolute(Links.User(account.AliasInfo)))"/>
             </Right>
         </TileItem>
     }

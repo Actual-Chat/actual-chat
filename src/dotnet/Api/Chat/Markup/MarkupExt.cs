@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
@@ -18,7 +17,7 @@ public static partial class MarkupExt
         if (maxLength is not { } vMaxLength || text.Length <= vMaxLength)
             return text;
 
-        text = ZString.Concat(text[..vMaxLength], "…");
+        text = string.Concat(text.AsSpan(0, vMaxLength), "…");
         return text;
     }
 

@@ -92,7 +92,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<ReadPositionsStatBackend?> GetReadPositionsStat(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<PlaceChatId?> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken);
+    Task<PlaceChatId?> GetPlaceChatIdByAlias(PlaceId placeId, AliasId aliasId, CancellationToken cancellationToken);
 
     // Commands
 

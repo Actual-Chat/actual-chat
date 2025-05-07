@@ -9,17 +9,18 @@ namespace ActualChat;
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 #pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
+// TODO(AY): Rename to AliasId
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
-[JsonConverter(typeof(StringIdentifierJsonConverter<UserLinkId>))]
-[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<UserLinkId>))]
-[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<UserLinkId>))]
-[TypeConverter(typeof(StringIdentifierTypeConverter<UserLinkId>))]
+[JsonConverter(typeof(StringIdentifierJsonConverter<AliasId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<AliasId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<AliasId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<AliasId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class UserLinkId : StringIdentifier, IStringIdentifier<UserLinkId>
+public sealed partial class AliasId : StringIdentifier, IStringIdentifier<AliasId>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= StaticLog.For<UserLinkId>();
-    private static readonly ILruCache<string, UserLinkId> Cache = CreateCache<UserLinkId>(256);
+    private static ILogger Log => _log ??= StaticLog.For<AliasId>();
+    private static readonly ILruCache<string, AliasId> Cache = CreateCache<AliasId>(256);
 
     public static readonly Alphabet Alphabet = Alphabet.AlphaNumeric.Symbols + "_-";
 
@@ -28,40 +29,40 @@ public sealed partial class UserLinkId : StringIdentifier, IStringIdentifier<Use
 
     // Factories and constructors
 
-    private UserLinkId(string value) : base(value)
+    private AliasId(string value) : base(value)
     { }
 
     // Equality
 
-    public bool Equals(UserLinkId? other)
+    public bool Equals(AliasId? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
             && string.Equals(Value, other.Value, StringComparison.Ordinal);
     public override bool Equals(object? obj)
-        => obj is UserLinkId other && Equals(other);
+        => obj is AliasId other && Equals(other);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator ==(UserLinkId? left, UserLinkId? right)
+    public static bool operator ==(AliasId? left, AliasId? right)
         => left?.Equals(right) ?? right is null;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator !=(UserLinkId? left, UserLinkId? right)
+    public static bool operator !=(AliasId? left, AliasId? right)
         => !(left?.Equals(right) ?? right is null);
 
     // Format & Parse
 
-    public static UserLinkId Parse(string s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<UserLinkId>(s);
+    public static AliasId Parse(string s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<AliasId>(s);
 
-    public static UserLinkId? ParseNullable(string? s)
+    public static AliasId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static UserLinkId? TryParse(string? s, bool allowNull = false)
+    public static AliasId? TryParse(string? s, bool allowNull = false)
         => allowNull && s.IsNullOrEmpty() ? null
             : !TryParse(s, out var result) ? null
             : result;
 
-    public static bool TryParse(string? s, [NotNullWhen(true)] out UserLinkId? result)
+    public static bool TryParse(string? s, [NotNullWhen(true)] out AliasId? result)
     {
         result = null;
         if (s.IsNullOrEmpty())
@@ -75,7 +76,7 @@ public sealed partial class UserLinkId : StringIdentifier, IStringIdentifier<Use
         if (s.Length < 5 || !Alphabet.IsMatch(s))
             return false;
 
-        result = new UserLinkId(s);
+        result = new AliasId(s);
         result = Cache.AddOrGet(s, result);
         return true;
     }

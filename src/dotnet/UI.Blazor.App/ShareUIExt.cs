@@ -1,5 +1,6 @@
 using ActualChat.Invite;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.App;
@@ -17,40 +18,39 @@ public static class ShareUIExt
     public static async ValueTask<ShareModalModel?> GetModel(
         this ShareUI shareUI, ChatId chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId.IsNone)
-            return null;
-
         var hub = shareUI.Hub;
         var session = hub.Session();
         var chats = hub.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat?.HasSingleAuthor != false)
+        if (chat is null || chat.HasSingleAuthor)
             return null;
 
-        if (chat.Id.IsPeerChat(out var peerChatId)) {
+        if (chatId is PeerChatId peerChatId) {
             var accountUI = hub.GetRequiredService<AccountUI>();
             await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
             var ownAccount = accountUI.OwnAccount.Value;
-            if (ownAccount.IsGuestOrNone)
+            if (ownAccount.IsGuestOrNull())
                 return null;
 
-            var otherUserId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
-            return otherUserId.IsNone ? null
+            var otherUserId = peerChatId.AnotherUserIdOrNull(ownAccount.Id);
+            return otherUserId is null ? null
                 : await shareUI.GetModel(otherUserId, cancellationToken).ConfigureAwait(false);
         }
 
         Place? place = null;
-        if (!chatId.PlaceChatId.IsNone) {
+        if (chatId is PlaceChatId placeChatId) {
             var places = hub.GetRequiredService<IPlaces>();
-            place = await places.Get(session, chatId.PlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            place = await places.Get(session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place is null)
                 return null; // We should be able to get chat's place. Return null if it's not like that.
         }
 
-        var targetTitle = place is null ? chat.Title : ZString.Concat(place.Title, "/", chat.Title);
+        var targetTitle = place is null
+            ? chat.Title
+            : string.Concat(place.Title, "/", chat.Title);
         var text = $"\"{targetTitle}\" on Actual Chat";
         if ((place is null || place.IsPublic) && chat.IsPublic) {
-            var localUrl = LinkForChat(chat, place);
+            var localUrl = Links.Chat(chat.AliasInfo, place?.AliasInfo);
             return new ShareModalModel(
                 ShareKind.Chat,
                 "Share chat",
@@ -74,29 +74,6 @@ public static class ShareUIExt
             shareModalSelectorPrefs);
     }
 
-    private static LocalUrl LinkForChat(Chat.Chat chat, Place? place)
-    {
-        if (chat.Id.IsPlaceChat) {
-            if (place is null || place.Id != chat.Id.PlaceId)
-                throw new ArgumentOutOfRangeException(nameof(place));
-        }
-        else if (place is not null)
-            throw new ArgumentOutOfRangeException(nameof(place));
-
-        if (place is null)
-            return chat.UserLinkId is null ? Links.Chat(chat.Id) : Links.ChatUserLinkPrefix + chat.UserLinkId;
-
-        if (place.UserLinkId is null)
-            return Links.Chat(chat.Id);
-
-        return Links.ChatUserLinkPrefix
-            + place.UserLinkId
-            + Links.Separator
-            + (chat.UserLinkId is null
-                ? chat.Id.PlaceChatId.LocalChatId
-                : Links.UserLinkPrefix + chat.UserLinkId);
-    }
-
     public static async ValueTask<ShareModalModel?> GetModel(
         this ShareUI shareUI, PlaceId placeId, CancellationToken cancellationToken = default)
     {
@@ -111,7 +88,7 @@ public static class ShareUIExt
         if (place.IsPublic) {
             var welcomeChatId = await places.GetWelcomeChatId(session, placeId, cancellationToken).ConfigureAwait(false);
             // NOTE(DF): Direct navigation to place does not work well so far. Let's share place via welcome chat link.
-            if (welcomeChatId.IsNone)
+            if (welcomeChatId is null)
                 return null;
 
             return new ShareModalModel(

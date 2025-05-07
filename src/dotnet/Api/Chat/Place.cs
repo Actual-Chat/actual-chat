@@ -19,12 +19,16 @@ public sealed partial record Place(
     [DataMember, MemoryPackOrder(5)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(6)] public MediaId? BackgroundMediaId { get; init; }
     [DataMember, MemoryPackOrder(7)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(14)] public UserLinkId? UserLinkId { get; init; }
+    [DataMember, MemoryPackOrder(14)] public AliasId? AliasId { get; init; }
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public PlaceRules Rules { get; init; } = null!;
     [DataMember, MemoryPackOrder(12)] public Media.Media? Picture { get; init; }
     [DataMember, MemoryPackOrder(13)] public Media.Media? Background { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [field: AllowNull, MaybeNull]
+    public AliasInfo<PlaceId> AliasInfo => field ??= new(Id, AliasId);
 
     // This record relies on referential equality
     public bool Equals(Place? other) => ReferenceEquals(this, other);
@@ -39,5 +43,5 @@ public sealed partial record PlaceDiff : RecordDiff
     [DataMember, MemoryPackOrder(8)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(9)] public MediaId? BackgroundMediaId { get; init; }
     [DataMember, MemoryPackOrder(10)] public string? Description { get; init; }
-    [DataMember, MemoryPackOrder(11)] public UserLinkId? UserLinkId { get; init; }
+    [DataMember, MemoryPackOrder(11)] public AliasId? AliasId { get; init; }
 }

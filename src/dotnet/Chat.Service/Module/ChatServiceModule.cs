@@ -52,9 +52,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IReactions, Reactions>();
         rpcHost.AddBackend<IReactionsBackend, ReactionsBackend>();
 
-        // UserLinks
-        rpcHost.AddApiOrLocal<IUserLinks, UserLinks>();
-        rpcHost.AddBackend<IUserLinksBackend, UserLinksBackend>();
+        // Aliases
+        rpcHost.AddApiOrLocal<IAliases, Aliases>();
+        rpcHost.AddBackend<IAliasBackend, AliasBackend>();
 
         // Chat Roulette
         rpcHost.AddApiOrLocal<IRoulette, Roulette>();
@@ -166,10 +166,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             // DbReadPositionsStat
             db.AddEntityResolver<string, DbReadPositionsStat>();
 
-            // DbUserLink
-            db.AddEntityResolver<string, DbUserLink>();
+            // DbAlias
+            db.AddEntityResolver<string, DbAlias>();
 
-            // DbUserLink
+            // DbChatRoulette
             db.AddEntityResolver<string, DbChatRoulette>();
 
             // DbConversation
