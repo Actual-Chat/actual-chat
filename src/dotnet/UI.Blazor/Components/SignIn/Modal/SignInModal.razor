@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<AccountFull>
 @implements IModalView<SignInModal.Model>
 @{
-    if (!State.Value.IsGuestOrNone)
+    if (!State.Value.IsGuestOrNull())
         Modal.Close(true);
 }
 

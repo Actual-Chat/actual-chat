@@ -6,10 +6,10 @@ public static class TranslationOperations
 {
     public static Task<Translation?> GetTranslation(
         this IWebTester tester,
-        ChatEntryId entryId,
+        TextEntryId entryId,
         Language language,
         CancellationToken cancellationToken = default)
-        => tester.GetTranslation(new TranslationId(entryId, language, AssumeValid.Option), cancellationToken);
+        => tester.GetTranslation(TranslationId.New(entryId, language), cancellationToken);
 
     public static Task<Translation?> GetTranslation(
         this IWebTester tester,

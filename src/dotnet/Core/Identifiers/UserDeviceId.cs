@@ -24,20 +24,17 @@ public sealed partial class UserDeviceId : StringIdentifier, IStringIdentifier<U
     public const char Delimiter = ':';
 
     [IgnoreDataMember]
-    public UserId2 OwnerId { get; }
+    public UserId OwnerId { get; }
     [IgnoreDataMember]
     public string DeviceId { get; }
 
     // Factories and constructors
 
-    public static UserDeviceId New(UserId2 ownerId, string deviceId)
+    public static UserDeviceId New(UserId ownerId, string deviceId)
         => new(Format(ownerId, deviceId), ownerId, deviceId);
 
-    // TODO: remove when id refactoring is complete
-    public static UserDeviceId New(UserId ownerId, string deviceId)
-        => New(UserId2.Parse(ownerId), deviceId);
-
-    private UserDeviceId(string value, UserId2 ownerId, string deviceId) : base(value)
+    private UserDeviceId(string value, UserId ownerId, string deviceId)
+        : base(value)
     {
         OwnerId = ownerId;
         DeviceId = deviceId;
@@ -62,17 +59,19 @@ public sealed partial class UserDeviceId : StringIdentifier, IStringIdentifier<U
 
     // Format & Parse
 
-    public static string Format(UserId2 ownerId, string deviceId)
+    public static string Format(UserId ownerId, string deviceId)
         => $"{ownerId}{Delimiter}{deviceId}";
 
     public static UserDeviceId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserDeviceId>(s);
 
-    public static UserDeviceId? ParseOrNull(string? s)
+    public static UserDeviceId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static UserDeviceId? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static UserDeviceId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out UserDeviceId? result)
     {
@@ -89,14 +88,11 @@ public sealed partial class UserDeviceId : StringIdentifier, IStringIdentifier<U
         if (parts.Length != 2)
             return false;
 
-        if (!UserId2.TryParse(parts[0], out var ownerId))
+        if (!UserId.TryParse(parts[0], out var ownerId))
             return false;
 
         result = new UserDeviceId(s, ownerId, parts[1]);
         result = Cache.AddOrGet(s, result);
         return true;
     }
-
-    public static string Prefix(UserId ownerId)
-        => $"{ownerId}{Delimiter}";
 }

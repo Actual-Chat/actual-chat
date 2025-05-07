@@ -8,8 +8,6 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _modifiedAt;
-
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string AuthorId { get; set; } = "";
@@ -17,8 +15,8 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string EmojiId { get; set; } = "";
 
     public DateTime ModifiedAt {
-        get => _modifiedAt.DefaultKind(DateTimeKind.Utc);
-        set => _modifiedAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public static string ComposeId(TextEntryId entryId, AuthorId authorId)
@@ -31,8 +29,8 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new () {
             Id = Id,
             Version = Version,
-            AuthorId = new AuthorId(AuthorId),
-            EntryId = new TextEntryId(EntryId),
+            AuthorId = ActualChat.AuthorId.Parse(AuthorId),
+            EntryId = TextEntryId.Parse(EntryId),
             EmojiId = EmojiId,
             ModifiedAt = ModifiedAt,
         };
@@ -45,8 +43,8 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         Id = id;
         Version = model.Version;
-        AuthorId = model.AuthorId;
-        EntryId = model.EntryId;
+        AuthorId = model.AuthorId.Value;
+        EntryId = model.EntryId.Value;
         EmojiId = model.EmojiId;
         ModifiedAt = model.ModifiedAt;
     }

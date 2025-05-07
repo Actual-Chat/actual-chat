@@ -58,7 +58,7 @@
 
         await chatView.WhenInitialized.ConfigureAwait(false);
         var itemVisibility = await chatView.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, itemVisibility.MinEntryLid, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, itemVisibility.MinEntryLid, AssumeValid.Option);
         var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
         if (chatEntry == null)
             return "";

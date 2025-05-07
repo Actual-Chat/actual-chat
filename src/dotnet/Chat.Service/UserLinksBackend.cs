@@ -41,10 +41,10 @@ public class UserLinksBackend(IServiceProvider services) : DbServiceBase<ChatDbC
             // Checks
 
             if (!userLink.Id.Equals(id))
-                throw StandardError.Constraint($"UserLink.Id should match command.UserLinkId.");
+                throw StandardError.Constraint("UserLink.Id should match command.UserLinkId.");
 
             if (userLink.TargetId.IsNullOrEmpty())
-                throw StandardError.Constraint($"UserLink.TargetId should not be empty.");
+                throw StandardError.Constraint("UserLink.TargetId should not be empty.");
 
             userLink = userLink with {
                 Id = id,

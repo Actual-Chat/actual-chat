@@ -28,7 +28,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public DbTranslation(Translation model) => UpdateFrom(model);
 
     public Translation ToModel()
-        => new(new TranslationId(Id), Version) {
+        => new(TranslationId.Parse(Id), Version) {
             Content = Content,
             SourceContentHash = new HashString(SourceContentHash),
             CreatedAt = CreatedAt,
@@ -37,9 +37,9 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
 
     public void UpdateFrom(Translation model)
     {
-        this.RequireSameOrEmptyId(model.Id);
+        this.RequireSameOrEmptyId(model.Id.Value);
 
-        Id = model.Id;
+        Id = model.Id.Value;
         Version = model.Version;
         Content = model.Content;
         SourceContentHash = model.SourceContentHash;

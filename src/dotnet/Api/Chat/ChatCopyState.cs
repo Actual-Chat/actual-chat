@@ -10,11 +10,11 @@ public partial record ChatCopyState(
     )
     : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2)] public ChatId SourceChatId { get; init; }
+    [DataMember, MemoryPackOrder(2)] public ChatId SourceChatId { get; init; } = null!;
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }
 
     [DataMember, MemoryPackOrder(4)] public Moment LastCopyingAt { get; init; }
-    [DataMember, MemoryPackOrder(5)] public long LastEntryId { get; init; }
+    [DataMember, MemoryPackOrder(5)] public long LastProcessedEntryId { get; init; }
     [DataMember, MemoryPackOrder(6)] public string LastCorrelationId { get; init; } = "";
     [DataMember, MemoryPackOrder(7)] public bool IsCopiedSuccessfully { get; init; }
 
@@ -26,7 +26,7 @@ public partial record ChatCopyState(
 public sealed partial record ChatCopyStateDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public Option<ChatId> SourceChatId { get; init; }
-    [DataMember, MemoryPackOrder(1)] public long? LastEntryId { get; init; }
+    [DataMember, MemoryPackOrder(1)] public long? LastProcessedEntryId { get; init; }
     [DataMember, MemoryPackOrder(2)] public string? LastCorrelationId { get; init; }
     [DataMember, MemoryPackOrder(3)] public bool? IsCopiedSuccessfully { get; init; }
     [DataMember, MemoryPackOrder(4)] public bool? IsPublished { get; init; }

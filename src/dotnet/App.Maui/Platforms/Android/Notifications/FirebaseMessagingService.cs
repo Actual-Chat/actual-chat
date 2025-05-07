@@ -69,7 +69,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
         var data = new NotificationData(message.MessageId ?? "", dataRaw);
 
-        if (data.NotificationKind == NotificationKind.GetAttention
+        if (data.NotificationKind == NotificationKind.Attention
             && ShowGetAttentionNotification(data, message.SentTime))
             return;
 

@@ -83,7 +83,7 @@ public class Notifications(IServiceProvider services) : INotifications
     {
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account.IsGuestOrNone) {
+        if (account.IsGuestOrNull()) {
             Log.LogWarning("Skipping RegisterDevice for guest or none user." +
                 " DeviceId: '{DeviceId}', DeviceType: '{DeviceType}', SessionHash: '{SessionHash}', UserId: '{UserId}'" ,
                 deviceId, deviceType, session.Hash, account.Id);
@@ -115,30 +115,26 @@ public class Notifications(IServiceProvider services) : INotifications
         var (session, chatId) = command;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         var author = chat.Rules.Author.Require();
+        var account = chat.Rules.Account.Require();
         chat.Rules.Require(ChatPermissions.Write);
-        var account = chat.Rules.Account;
 
-        var isPublicAccessible = chat.IsPublic;
-        if (isPublicAccessible && chatId.IsPlaceChat) {
-            var place = await Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
-            if (place is { IsPublic: false })
-                isPublicAccessible = false;
+        var isPublic = chat.IsPublic;
+        if (isPublic && chatId is PlaceChatId placeChatId) {
+            var place = await Places.Get(session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            isPublic &= place.Require().IsPublic;
         }
-        if (isPublicAccessible)
+        if (isPublic)
             throw StandardError.Constraint("Notify members is not allowed in public accessible chats.");
 
-
-        if (!chatId.IsPeerChat(out _)) {
+        if (chatId.Kind != ChatKind.Peer) {
             var authorIds = await Authors.ListAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
             // Always disabled for middle and large groups.
             if (authorIds.Length > 10)
                 throw StandardError.Unavailable("Alert everyone is unavailable in chats with more than 10 people.");
         }
 
-        var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-        var changeEntry = new ChatsBackend_ChangeEntry(
-            entryId,
-            null,
+        var entryId = TextEntryId.New(author.ChatId, 0);
+        var changeEntry = new ChatsBackend_ChangeEntry(entryId, null,
             Change.Create(new ChatEntryDiff {
                 AuthorId = GetWalleId(author.ChatId),
                 SystemEntry = (SystemEntry)new NotifyMembersOption(author.Id, author.ToString()),
@@ -150,7 +146,7 @@ public class Notifications(IServiceProvider services) : INotifications
         await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
 
         static AuthorId GetWalleId(ChatId chatId)
-            => new(chatId, Constants.User.Walle.AuthorLocalId, AssumeValid.Option);
+            => AuthorId.New(chatId, Constants.User.Walle.AuthorLocalId);
     }
 
     // [CommandHandler]
@@ -191,10 +187,10 @@ public class Notifications(IServiceProvider services) : INotifications
         {
             var mentionedAuthorIds = mentionIds
                 .Where(c => c.Kind == PrincipalKind.Author)
-                .Select(c => c.AuthorId)
+                .Select(c => (AuthorId)c.PrincipalId)
                 .ToList();
             var mentionedAuthors = await mentionedAuthorIds
-                .Select(id => AuthorsBackend.Get(chatId, id, AuthorsBackend_GetAuthorOption.Full, cancellationToken))
+                .Select(id => AuthorsBackend.Get(chatId, id, RequestedAuthorKind.Full, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
             return mentionedAuthors
@@ -211,5 +207,5 @@ public class Notifications(IServiceProvider services) : INotifications
         => StandardError.Unauthorized("You can access only your own notifications.");
 
     private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMembers(UserId accountId, TextEntryId textEntryId)
-        => new (accountId, ExplicitNotificationKind.NotifyMentionedMembers, textEntryId.ToString());
+        => ExplicitNotificationId.New(accountId, ExplicitNotificationKind.NotifyMentionedMembers, textEntryId.Value);
 }

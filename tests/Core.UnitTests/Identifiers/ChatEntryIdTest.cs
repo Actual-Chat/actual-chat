@@ -1,8 +1,8 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class ChatEntryIdTest(ITestOutputHelper @out) : SymbolIdentifierTestBase<ChatEntryId>(@out)
+public class ChatEntryIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<ChatEntryId>(@out)
 {
-    public override Symbol[] ValidIdentifiers => [
+    public override string[] ValidIdentifiers => [
         "thisIsChatId:0:0",
         "thisIsChatId:1:0",
         "thisIsChatId:2:0",
@@ -11,7 +11,7 @@ public class ChatEntryIdTest(ITestOutputHelper @out) : SymbolIdentifierTestBase<
         "p-admin1-admin2:1:100",
         "p-admin1-admin2:2:1000",
     ];
-    public override Symbol[] InvalidIdentifiers => [
+    public override string[] InvalidIdentifiers => [
         "x:0:0",
         "thisIsChatId",
         "thisIsChatId:",

@@ -53,9 +53,6 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)
     {
-        if (chatId.IsNone)
-            return Task.FromResult(ChatAudioState.None);
-
         var activeChats = ActiveChatsUI.ActiveChats.Value;
         activeChats.TryGetValue(chatId, out var activeChat);
         var isListening = activeChat.IsListening;
@@ -83,9 +80,6 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
 
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
-        if (chatId.IsNone)
-            return default;
-
         var now = CpuNow;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
             if (activeChats.TryGetValue(chatId, out var chat)) {
@@ -121,17 +115,17 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
         });
 
     [ComputeMethod] // Synced
-    public virtual Task<ChatId> GetRecordingChatId()
-        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId);
+    public virtual Task<ChatId?> GetRecordingChatId()
+        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId)!;
 
-    public ValueTask SetRecordingChatId(ChatId chatId, bool isPushToTalk = false)
+    public ValueTask SetRecordingChatId(ChatId? chatId, bool isPushToTalk = false)
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
                 var oldRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
                 if (oldRecordingChat.ChatId == chatId)
                     return activeChats;
 
                 var now = CpuNow;
-                if (chatId.IsNone) {
+                if (chatId is null) {
                     // End recording
                     if (!oldRecordingChat.IsNone) {
                         activeChats = activeChats.WithOrReplace(oldRecordingChat with {

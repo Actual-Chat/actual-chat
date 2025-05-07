@@ -21,7 +21,7 @@ var chats = services.GetRequiredService<IChats>();
 var authors = services.GetRequiredService<IAuthors>();
 
 var session = new Session(GetArgument("s", "session", "your Session ID"));
-var chatId = new ChatId(GetArgument("c", "chatId", "Chat ID to watch"));
+var chatId = ChatId.Parse(GetArgument("c", "chatId", "Chat ID to watch"));
 
 var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
 if (chat == null)

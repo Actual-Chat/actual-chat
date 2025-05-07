@@ -1,4 +1,5 @@
 using ActualChat.Logging;
+using ActualChat.Users;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -152,7 +153,9 @@ public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, I
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var cAccount = await AccountUI.OwnAccount.Computed.When(x => !x.IsGuestOrNone, cancellationToken).ConfigureAwait(false);
+        var cAccount = await AccountUI.OwnAccount.Computed
+            .When(x => !x.IsGuestOrNull(), cancellationToken)
+            .ConfigureAwait(false);
         if (!cAccount.Value.IsAdmin)
             return;
 

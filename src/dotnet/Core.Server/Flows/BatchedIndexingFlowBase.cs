@@ -7,7 +7,7 @@ namespace ActualChat.Flows;
 
 public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<IndexingFlowCursor<TId>>
     where TItem : class, IHasId<TId>, IHasVersion<long>
-    where TId : ISymbolIdentifier
+    where TId : StringIdentifier
 {
     [IgnoreDataMember, MemoryPackIgnore]
     protected virtual int BatchSize => 100;
@@ -80,4 +80,3 @@ public abstract class BatchedIndexingFlowBase<TItem, TId> : IndexingFlowBase<Ind
         } while (totalCount < Quota);
     }
 }
-

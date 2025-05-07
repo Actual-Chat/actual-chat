@@ -17,10 +17,33 @@ public static class CoreSerializerAndRpcSetup
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Language>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<StreamId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MediaId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Phone>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserLinkId>());
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserDeviceId>());
+        // Principal identifiers + RoleId
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PrincipalId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<AuthorId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<RoleId>());
+        // Chat identifiers
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ChatId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PeerChatId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<GroupChatId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PlaceChatId>());
+        // Chat entry identifiers
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ChatEntryId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TextEntryId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<AudioEntryId>());
+        // Other chat-related
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PlaceId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MentionId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ConversationId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TranslationId>());
+        // Other user-related
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ContactId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ExternalContactId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<NotificationId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserDeviceId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserLinkId>());
+        // Everything else
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Phone>());
     }
 
     public static void Configure(bool isServer)

@@ -7,9 +7,8 @@ namespace ActualChat.Chat;
 
 public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRolesBackend
 {
-    private IChatsBackend? _chatsBackend;
-
-    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbRole> DbRoleResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbRole>>();
     private IDbShardLocalIdGenerator<DbRole, string> DbRoleIdGenerator { get; }
@@ -22,7 +21,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (roleId.ChatId != chatId)
             return null;
 
-        var dbRole = await DbRoleResolver.Get(DbShard.Single, roleId, cancellationToken).ConfigureAwait(false);
+        var dbRole = await DbRoleResolver.Get(DbShard.Single, roleId.Value, cancellationToken).ConfigureAwait(false);
         return dbRole?.ToModel();
     }
 
@@ -42,9 +41,9 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         var dbRoles = await dbContext.Roles
             .Where(r =>
-                r.ChatId == chatId
+                r.ChatId == chatId.Value
                 && (r.SystemRole == SystemRole.None || r.SystemRole == SystemRole.Owner)
-                && dbContext.AuthorRoles.Any(ar => ar.DbAuthorId == authorId && ar.DbRoleId == r.Id))
+                && dbContext.AuthorRoles.Any(ar => ar.DbAuthorId == authorId.Value && ar.DbRoleId == r.Id))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var roles = dbRoles
@@ -79,7 +78,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbRoles = await dbContext.Roles
-            .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
+            .Where(r => r.ChatId == chatId.Value && r.SystemRole != SystemRole.None)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var roles = dbRoles.Select(r => r.ToModel()).ToArray();
@@ -100,11 +99,11 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbAuthorIds = await dbContext.AuthorRoles
-            .Where(ar => ar.DbRoleId == roleId)
+            .Where(ar => ar.DbRoleId == roleId.Value)
             .Select(ar => ar.DbAuthorId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var authorIds = dbAuthorIds.Select(id => new AuthorId(id)).ToArray();
+        var authorIds = dbAuthorIds.Select(AuthorId.Parse).ToArray();
         return authorIds;
     }
 
@@ -129,16 +128,16 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Fetching chat: if it doesn't exist, this command can't proceed anyway
-        var dbChat = await dbContext.Chats.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
+        var dbChat = await dbContext.Chats.Get(chatId.Value, cancellationToken).Require().ConfigureAwait(false);
 
         Role? role;
         DbRole? dbRole;
         if (change.IsCreate(out var update)) {
-            roleId.RequireNone();
+            roleId.RequireNull();
             var localId = await DbRoleIdGenerator
-                .Next(dbContext, chatId, cancellationToken)
+                .Next(dbContext, chatId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            roleId = new RoleId(chatId, localId, AssumeValid.Option);
+            roleId = RoleId.New(chatId, localId);
             role = new Role(roleId) {
                 Version = VersionGenerator.NextVersion(),
             };
@@ -156,7 +155,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         else {
             roleId.Require("Command.RoleId");
             dbRole = await dbContext.Roles.ForUpdate()
-                .FirstOrDefaultAsync(r => r.ChatId == chatId && r.Id == roleId, cancellationToken)
+                .FirstOrDefaultAsync(r => r.ChatId == chatId.Value && r.Id == roleId.Value, cancellationToken)
                 .ConfigureAwait(false);
             dbRole = dbRole.RequireVersion(expectedVersion);
             role = dbRole.ToModel();
@@ -176,7 +175,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     throw StandardError.Constraint("This system role cannot be removed.");
 
                 var dbAuthorRoles = await dbContext.AuthorRoles.ForUpdate()
-                    .Where(ar => ar.DbRoleId == roleId)
+                    .Where(ar => ar.DbRoleId == roleId.Value)
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 dbContext.RemoveRange(dbAuthorRoles);
@@ -190,11 +189,11 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 throw StandardError.Constraint("This system role uses automatic membership rules.");
 
             var existingAuthorIds = (await dbContext.AuthorRoles
-                .Where(ar => ar.DbRoleId == roleId)
+                .Where(ar => ar.DbRoleId == roleId.Value)
                 .Select(ar => ar.DbAuthorId)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false)
-                ).Select(x => new AuthorId(x))
+                ).Select(AuthorId.Parse)
                 .ToHashSet();
 
             // Adding items
@@ -211,8 +210,8 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
             foreach (var authorId in addedAuthorIds)
                 dbContext.AuthorRoles.Add(new() {
-                    DbRoleId = roleId,
-                    DbAuthorId = authorId,
+                    DbRoleId = roleId.Value,
+                    DbAuthorId = authorId.Value,
                 });
             // Removing items
             var removedAuthorIds = update.AuthorIds.RemovedItems
@@ -222,12 +221,12 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             if (removedAuthorIds.Count != 0) {
 #pragma warning disable MA0002
                 var dbAuthorRoles = await dbContext.AuthorRoles
-                    .Where(ar => ar.DbRoleId == roleId && removedAuthorIds.Contains(ar.DbAuthorId))
+                    .Where(ar => ar.DbRoleId == roleId.Value && removedAuthorIds.Contains(ar.DbAuthorId))
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 if (role!.SystemRole == SystemRole.Owner) {
                     var remainingOwnerCount = await dbContext.Authors
-                        .Where(a => a.ChatId == chatId && a.UserId != null && !a.HasLeft
+                        .Where(a => a.ChatId == chatId.Value && a.UserId != null && !a.HasLeft
                             && !removedAuthorIds.Contains(a.Id))
                         .CountAsync(cancellationToken)
                         .ConfigureAwait(false);

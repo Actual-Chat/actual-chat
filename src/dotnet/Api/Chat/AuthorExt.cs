@@ -19,7 +19,7 @@ public static class AuthorExt
     public static AuthorFull RequireValid(this AuthorFull? author, UserId userId)
     {
         author.Require();
-        if (!author.ChatId.IsPeerChat(out var peerChatId)) {
+        if (author.ChatId is not PeerChatId peerChatId) {
             ValidateUserId();
             return author;
         }
@@ -34,9 +34,8 @@ public static class AuthorExt
         ValidateUserId();
         return author;
 
-        void ValidateUserId()
-        {
-            if (!userId.IsNone && author.UserId != userId)
+        void ValidateUserId() {
+            if (userId is not null && author.UserId != userId)
                 throw StandardError.Constraint($"Author should have userId = '{userId}' but found '{author}'.");
         }
     }

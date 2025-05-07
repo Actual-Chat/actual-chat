@@ -7,7 +7,7 @@ public static class ChatListExt
     public static IEnumerable<ChatInfo> FilterBySearchPhrase(
         this IEnumerable<ChatInfo> chats,
         SearchPhrase searchPhrase,
-        ChatId selectedChatId = default)
+        ChatId? selectedChatId = null)
     {
         if (!searchPhrase.IsEmpty)
             chats =  chats
@@ -20,7 +20,7 @@ public static class ChatListExt
     public static IEnumerable<ChatInfo> FilterAndOrderBySearchPhrase(
         this IEnumerable<ChatInfo> chats,
         SearchPhrase searchPhrase,
-        ChatId selectedChatId = default)
+        ChatId? selectedChatId = null)
     {
         if (!searchPhrase.IsEmpty)
             chats =  chats
@@ -38,8 +38,8 @@ public static class ChatListExt
 
     public static IEnumerable<(ChatInfo ChatInfo, double Rank)> FilterBySearchMatchRank(
         this IEnumerable<(ChatInfo ChatInfo, double Rank)> rankedChats,
-        ChatId selectedChatId = default)
-        => selectedChatId.IsNone
+        ChatId? selectedChatId = null)
+        => selectedChatId is null
             ? rankedChats.Where(x => x.Rank > 0)
             : rankedChats.Where(x => x.ChatInfo.Id == selectedChatId || x.Rank > 0);
 

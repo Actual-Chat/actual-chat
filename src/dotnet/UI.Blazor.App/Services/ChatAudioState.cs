@@ -8,7 +8,7 @@ public readonly record struct ChatAudioState(
     bool IsRecording = false
     ) : ICanBeNone<ChatAudioState>
 {
-    public static ChatAudioState None { get; } = default;
+    public static ChatAudioState None => default;
 
-    public bool IsNone => ChatId.IsNone;
+    public bool IsNone => ChatId is null;
 }

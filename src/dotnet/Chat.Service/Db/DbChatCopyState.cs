@@ -42,11 +42,11 @@ public class DbChatCopyState : IHasId<string>, IHasVersion<long>, IRequirementTa
     }
 
     public ChatCopyState ToModel()
-        => new (new ChatId(Id), Version) {
+        => new (ChatId.Parse(Id), Version) {
             CreatedAt = CreatedAt,
-            SourceChatId = new ChatId(SourceChatId),
+            SourceChatId = ChatId.Parse(SourceChatId),
             LastCopyingAt = LastCopyingAt,
-            LastEntryId = LastEntryId,
+            LastProcessedEntryId = LastEntryId,
             LastCorrelationId = LastCorrelationId,
             IsCopiedSuccessfully = IsCopiedSuccessfully,
             PublishedAt = PublishedAt,
@@ -56,15 +56,15 @@ public class DbChatCopyState : IHasId<string>, IHasVersion<long>, IRequirementTa
     public void UpdateFrom(ChatCopyState model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
         CreatedAt = model.CreatedAt;
-        SourceChatId = model.SourceChatId;
+        SourceChatId = model.SourceChatId.Value;
         LastCopyingAt = model.LastCopyingAt;
-        LastEntryId = model.LastEntryId;
+        LastEntryId = model.LastProcessedEntryId;
         LastCorrelationId = model.LastCorrelationId;
         IsCopiedSuccessfully = model.IsCopiedSuccessfully;
         PublishedAt = model.PublishedAt;

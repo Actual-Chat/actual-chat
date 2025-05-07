@@ -28,7 +28,7 @@ public partial class PlaceIndexingFlow : BatchedIndexingFlowBase<Place, PlaceId>
         CancellationToken cancellationToken)
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        cursor ??= new (PlaceId.None, 0);
+        cursor ??= new (null, 0);
         var batch = await PlacesBackend.ListChanged(
                 cursor.LastUpdatedVersion,
                 maxVersion,

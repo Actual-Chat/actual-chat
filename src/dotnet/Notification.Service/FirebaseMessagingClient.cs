@@ -26,30 +26,30 @@ public class FirebaseMessagingClient(
         var content = notification.Content;
         var iconUrl = notification.IconUrl;
         var chatId = notification.ChatId;
-        var chatEntryId = ChatEntryId.None;
+        var entryId = (TextEntryId?)null;
         long lastEntryLocalId = 0;
         if (notification.ChatEntryNotification != null)
-            chatEntryId = notification.ChatEntryNotification.EntryId;
+            entryId = notification.ChatEntryNotification.EntryId;
         else if (notification.GetAttentionNotification != null)
             lastEntryLocalId = notification.GetAttentionNotification.LastEntryLocalId;
 
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
         var isDev = UrlMapper.IsDevActualChat;
 
-        var isChatRelated = !chatId.IsNone;
-        var isTextEntryRelated = chatEntryId is { IsNone: false, Kind: ChatEntryKind.Text };
-        var tag = isTextEntryRelated
-            ? chatEntryId.ChatId.Value
-            : isChatRelated ? chatId.Value : "topic";
-        var link = isTextEntryRelated
-            ? UrlMapper.ToAbsolute(Links.Chat(chatId, chatEntryId.LocalId))
-            : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId)) : "";
+        var isChatRelated = chatId is not null;
+        var isEntryRelated = entryId is not null;
+        var tag = isEntryRelated ? entryId!.ChatId.Value
+            : isChatRelated ? chatId!.Value
+            : "topic";
+        var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(entryId))
+            : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
+            : "";
 
         var data = new Dictionary<string, string>(StringComparer.Ordinal) {
-            { Constants.Notification.MessageDataKeys.NotificationId, notificationId },
+            { Constants.Notification.MessageDataKeys.NotificationId, notificationId.Value },
             { Constants.Notification.MessageDataKeys.Tag, tag },
-            { Constants.Notification.MessageDataKeys.ChatId, chatId },
-            { Constants.Notification.MessageDataKeys.ChatEntryId, chatEntryId },
+            { Constants.Notification.MessageDataKeys.ChatId, chatId?.Value ?? "" },
+            { Constants.Notification.MessageDataKeys.ChatEntryId, entryId?.Value ?? "" },
             { Constants.Notification.MessageDataKeys.Icon, absoluteIconUrl },
             { Constants.Notification.MessageDataKeys.Kind, kind.ToString() },
             { Constants.Notification.MessageDataKeys.Link, link },

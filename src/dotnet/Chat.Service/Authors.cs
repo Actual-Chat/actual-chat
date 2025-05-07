@@ -41,21 +41,20 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat == null)
             return null;
 
-        var authorFull = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var authorFull = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (authorFull is null)
             return null;
 
+        var userId = authorFull.UserId;
         var author = authorFull.ToAuthor();
-        var peerUserId = authorFull.UserId;
+        if (userId.IsGuestOrNull())
+            return author;
+
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account.Id == peerUserId)
-            return author;
+        if (account.Id == userId)
+            return author; // It's own author
 
-        var peerChatId = new PeerChatId(account.Id, peerUserId, ParseOrNone.Option);
-        if (peerChatId.IsNone || peerChatId.AnotherUserIdOrDefault(account.Id).IsGuestOrNone)
-            return author;
-
-        var contactId = new ContactId(account.Id, peerChatId);
+        var contactId = ContactId.NewUser(account.Id, userId);
         var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
         var peerRename = contact.PeerRename;
         if (!peerRename.IsNullOrEmpty() && !OrdinalEquals(peerRename, author.Avatar.Name)) {
@@ -73,7 +72,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         // the ability to access the chat, otherwise we'll hit the recursion here.
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetByUserId(chatId, account.Id, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -85,12 +84,11 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (ownAuthor.Id == authorId)
             return ownAuthor;
 
-        var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
-        var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        var rules = await ChatsBackend.GetRules(chatId, ownAuthor.Id, cancellationToken).ConfigureAwait(false);
         if (!rules.Has(ChatPermissions.EditRoles))
             return null;
 
-        return await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        return await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -106,7 +104,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat.IsChatRoulette())
             return null; // NOTE(DF): Do not reveal account id. Do not allow starting peer chat.
 
-        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var author = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
 
@@ -150,11 +148,11 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat == null)
             return Presence.Unknown;
 
-        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var author = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return Presence.Offline;
 
-        if (author.IsAnonymous || author.UserId.IsNone)
+        if (author.IsAnonymous)
             return Presence.Unknown; // Important: we shouldn't report anonymous author presence
 
         return await UserPresences.Get(author.UserId, cancellationToken).ConfigureAwait(false);
@@ -171,11 +169,11 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat == null)
             return null;
 
-        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var author = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
 
-        if (author.IsAnonymous || author.UserId.IsNone)
+        if (author.IsAnonymous)
             return null; // Important: we shouldn't report anonymous author presence
 
         return await UserPresences.GetLastCheckIn(author.UserId, cancellationToken).ConfigureAwait(false);
@@ -203,7 +201,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         chat.Require();
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
 
-        if (account.IsGuestOrNone) {
+        if (account.IsGuestOrNull()) {
             if (!chat.AllowGuestAuthors)
                 throw StandardError.Constraint("The chat does not allow to join with guest account.");
             if (joinAnonymously == false)
@@ -218,7 +216,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         }
 
         var upsertCommand = new AuthorsBackend_Upsert(
-            chatId, author?.Id ?? default, account.Id, null,
+            chatId, author?.Id ?? null, account.Id, null,
             new AuthorDiff() {
                 IsAnonymous = joinAnonymously,
                 HasLeft = false,
@@ -253,13 +251,13 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
 
         if (chat.Rules.IsOwner()) {
             var ownerIds = await Roles.ListOwnerIds(session, chatId, default).ConfigureAwait(false);
-            var hasAnotherOwner = ownerIds.Any(c => c.Id != author.Id);
+            var hasAnotherOwner = ownerIds.Any(c => c.Id != author.Id.Value);
             if (!hasAnotherOwner)
                 throw StandardError.Constraint("You can't leave this chat because you are its only owner. Please add another chat owner first.");
         }
 
         var upsertCommand = new AuthorsBackend_Upsert(
-            chatId, author.Id, default, author.Version,
+            chatId, author.Id, null, author.Version,
             new AuthorDiff() { HasLeft = true });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -275,7 +273,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         foreach (var userId in userIds) {
             // TODO(DF): to think if we can switch here to AuthorsBackend_GetAuthorOption.Full?
             // Can we use AuthorsBackendExt.EnsureJoined as before?
-            var author = await Backend.GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
+            var author = await Backend.GetByUserId(chatId, userId, RequestedAuthorKind.Default, cancellationToken).ConfigureAwait(false);
             if (author != null) {
                 if (author.HasLeft)
                     await RestoreAuthorMembership(author, cancellationToken).ConfigureAwait(false);
@@ -286,7 +284,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
                 var authorDiff = new AuthorDiff {
                     IsAnonymous = joinAnonymously.GetValueOrDefault(chat.AllowAnonymousAuthors)
                 };
-                var upsertAuthorCommand = new AuthorsBackend_Upsert(chatId, default, userId, null, authorDiff);
+                var upsertAuthorCommand = new AuthorsBackend_Upsert(chatId, null, userId, null, authorDiff);
                 var commander = Backend.GetCommander();
                 await commander.Call(upsertAuthorCommand, true, cancellationToken).ConfigureAwait(false);
             }
@@ -302,11 +300,11 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         chat.Rules.Require(ChatPermissions.EditMembers);
         ValidatePlaceMembershipRules(chat);
 
-        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
+        var author = await Backend.Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
             return;
 
-        if (chat.Rules.Account.Id == author.UserId)
+        if (chat.Rules.Account.Require().Id == author.UserId)
             throw StandardError.Constraint("You can't remove yourself from chat members.");
 
         var ownerIds = await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -318,7 +316,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             throw StandardError.Constraint("You can't remove an AI search bot from chat members.");
 
         var upsertCommand = new AuthorsBackend_Upsert(
-            chatId, author.Id, default, author.Version,
+            chatId, author.Id, null, author.Version,
             new AuthorDiff() { HasLeft = true });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -346,7 +344,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat.IsChatRoulette())
             throw StandardError.Constraint("You can't set avatar in chat roulette.");
 
-        var targetChat = chatId.IsPlaceChat ? chatId.PlaceId.ToRootChatId() : chatId;
+        var targetChat = chatId is PlaceChatId placeChatId
+            ? placeChatId.RootChatId
+            : chatId;
 
         var author = await GetOwn(session, targetChat, cancellationToken).ConfigureAwait(false);
         if (author == null || author.AvatarId == command.AvatarId)
@@ -358,12 +358,12 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (author.IsAnonymous) {
             var avatar = await Avatars.GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
             if (!avatar.IsAnonymous)
-                // Revealing anonymous author
+                // Revealing the anonymous author
                 authorDiff = authorDiff with { IsAnonymous = false };
         }
 
         var upsertCommand = new AuthorsBackend_Upsert(
-            targetChat, author.Id, default, author.Version,
+            targetChat, author.Id, null, author.Version,
             authorDiff);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -377,11 +377,11 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         chat.Rules.Require(ChatPermissions.Owner);
         ValidatePlaceMembershipRules(chat);
 
-        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
+        var author = await Backend.Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
             throw StandardError.Constraint("The selected author has already left the chat.");
 
-        if (chat.Rules.Account.Id == author.UserId)
+        if (chat.Rules.Account.Require().Id == author.UserId)
             return;
 
         var ownerRole = await RolesBackend
@@ -407,17 +407,14 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private async Task RestoreAuthorMembership(Author author, CancellationToken cancellationToken)
     {
         var upsertCommand = new AuthorsBackend_Upsert(
-            author.ChatId,
-            author.Id,
-            default,
-            author.Version,
+            author.ChatId, author.Id, null, author.Version,
             new AuthorDiff() { HasLeft = false });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private static void ValidatePlaceMembershipRules(Chat chat)
     {
-        if (chat.Id.IsPlaceChat && !chat.Id.PlaceChatId.IsRoot && chat.IsPublic)
+        if (chat is { Id: PlaceChatId { IsRoot: false }, IsPublic: true })
             throw StandardError.Constraint("You must manage place public chat membership via place settings.");
     }
 }

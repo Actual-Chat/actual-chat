@@ -30,7 +30,7 @@ public partial class ChatUI
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
-        var oldChatId = ChatId.None;
+        var oldChatId = (ChatId?)null;
         var changes = SelectedChatId.Computed.ChangesUntyped(cancellationToken);
         await foreach (var c in changes.ConfigureAwait(false)) {
             var cSelectedContactId = (Computed<ChatId>)c;
@@ -40,7 +40,8 @@ public partial class ChatUI
 
             DebugLog?.LogDebug("InvalidateSelectedChatDependencies: *");
             using (Invalidation.Begin()) {
-                _ = IsSelected(oldChatId);
+                if (oldChatId is not null)
+                    _ = IsSelected(oldChatId);
                 _ = IsSelected(newChatId);
             }
 
@@ -53,12 +54,12 @@ public partial class ChatUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<ChatId> GetFixedSelectedChatId(CancellationToken cancellationToken)
+    protected virtual async Task<ChatId?> GetFixedSelectedChatId(CancellationToken cancellationToken)
     {
         var chatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var fixedChatId = await FixChatId(chatId, cancellationToken).ConfigureAwait(false);
         var wasFixed = fixedChatId != chatId;
-        return wasFixed ? fixedChatId : default;
+        return wasFixed ? fixedChatId : null;
     }
 
     private async Task NavigateToFixedSelectedChat(CancellationToken cancellationToken)
@@ -67,7 +68,7 @@ public partial class ChatUI
             .Capture(() => GetFixedSelectedChatId(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         cFixedSelectedChatId = await cFixedSelectedChatId
-            .When(x => !x.IsNone, cancellationToken)
+            .When(x => x is not null, cancellationToken)
             .ConfigureAwait(false);
 
         var link = Links.Chat(cFixedSelectedChatId.Value);
@@ -136,16 +137,15 @@ public partial class ChatUI
     private async Task SynchronizeSelectedChatIds()
     {
         await _selectedChatIds.WhenRead.ConfigureAwait(false);
-        lock(_lock) {
-            var value = _selectedChatIds.Value;
-            if (_pendingSelectedChatIdChanges != null) {
+        lock (Lock) {
+            var selectedChatIds = _selectedChatIds.Value;
+            if (_pendingSelectedChatIds is { Count: > 0 }) {
                 // Selected chat ids are not loaded yet.
-                foreach (var chatId in _pendingSelectedChatIdChanges)
-                    value = SetItem(value, chatId);
+                foreach (var chatId in _pendingSelectedChatIds)
+                    selectedChatIds = selectedChatIds.SetItem((chatId as PlaceChatId)?.PlaceId.Value ?? "", chatId);
+                _selectedChatIds.Value = selectedChatIds;
             }
-            _pendingSelectedChatIdChanges = null;
-            if (!Equals(_selectedChatIds.Value, value))
-                _selectedChatIds.Value = value;
+            _pendingSelectedChatIds = null;
         }
     }
 
@@ -153,7 +153,7 @@ public partial class ChatUI
     {
         try {
             var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            if (selectedChatId.IsNone)
+            if (selectedChatId is null)
                 return;
 
             var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);

@@ -1,107 +1,88 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<NotificationId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<NotificationId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<NotificationId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<NotificationId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<NotificationId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<NotificationId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<NotificationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct NotificationId : ISymbolIdentifier<NotificationId>
+public sealed partial class NotificationId : StringIdentifier, IStringIdentifier<NotificationId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<NotificationId>();
+    private static readonly ILruCache<string, NotificationId> Cache = CreateCache<NotificationId>(64, 256);
 
-    public static NotificationId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public UserId UserId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public NotificationKind Kind { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol SimilarityKey { get; }
+    [IgnoreDataMember]
+    public string SimilarityKey { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public NotificationId(Symbol id)
-        => this = Parse(id);
-    public NotificationId(UserId userId, NotificationKind kind, Symbol similarityKey)
-        => this = Parse(Format(userId, kind, similarityKey));
-    public NotificationId(UserId userId, NotificationKind kind, Symbol similarityKey, ParseOrNone _)
-        => this = ParseOrNone(Format(userId, kind, similarityKey));
-    public NotificationId(string id)
-        => this = Parse(id);
-    public NotificationId(string id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    public static NotificationId New(UserId userId, NotificationKind kind, string similarityKey)
+        => new(Format(userId, kind, similarityKey), userId, kind, similarityKey);
 
-    public NotificationId(Symbol id, UserId userId, NotificationKind kind, Symbol similarityKey, AssumeValid _)
+    private NotificationId(string value, UserId userId, NotificationKind kind, string similarityKey) : base(value)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
         UserId = userId;
         Kind = kind;
         SimilarityKey = similarityKey;
     }
-
-    public NotificationId(UserId userId, NotificationKind kind, Symbol similarityKey, AssumeValid _)
-    {
-        if (userId.IsNone) {
-            this = None;
-            return;
-        }
-        Id = Format(userId, kind, similarityKey);
-        UserId = userId;
-        Kind = kind;
-        SimilarityKey = similarityKey;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(NotificationId source) => source.Id;
-    public static implicit operator string(NotificationId source) => source.Id.Value;
 
     // Equality
 
-    public bool Equals(NotificationId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is NotificationId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(NotificationId left, NotificationId right) => left.Equals(right);
-    public static bool operator !=(NotificationId left, NotificationId right) => !left.Equals(right);
+    public bool Equals(NotificationId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is NotificationId other && Equals(other);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(NotificationId? left, NotificationId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(NotificationId? left, NotificationId? right)
+        => !(left?.Equals(right) ?? right is null);
 
     // Parsing
 
     private static string Format(UserId userId, NotificationKind kind, Symbol similarityKey)
-        => userId.IsNone ? "" : $"{userId} {kind.Format()}:{similarityKey.Value}";
+        => $"{userId} {kind.Format()}:{similarityKey.Value}";
 
     public static NotificationId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<NotificationId>(s);
-    public static NotificationId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<NotificationId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out NotificationId result)
+    public static NotificationId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static NotificationId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out NotificationId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
 
         var userIdLength = s.OrdinalIndexOf(" ");
         if (userIdLength < 0)
@@ -117,11 +98,13 @@ public readonly partial struct NotificationId : ISymbolIdentifier<NotificationId
         var sKind = s.AsSpan(kindStart, kindLength - kindStart);
         if (!NumberExt.TryParsePositiveInt(sKind, out var kind))
             return false;
+
         if (kind is < 1 or >= (int)NotificationKind.Invalid)
             return false;
 
         var similarityKey = (Symbol)s[(kindLength + 1)..];
-        result = new NotificationId(s, userId, (NotificationKind)kind, similarityKey, AssumeValid.Option);
+        result = new NotificationId(s, userId, (NotificationKind)kind, similarityKey);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 }

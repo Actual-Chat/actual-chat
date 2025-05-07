@@ -6,25 +6,25 @@ namespace ActualChat.Users;
 public sealed partial record AccountFull(
     [property: DataMember, MemoryPackOrder(4)] User User,
     long Version = 0
-    ) : Account(new UserId(User.Id, AssumeValid.Option), Version)
+    ) : Account(UserId.Parse(User.Id), Version)
 {
     public static new readonly AccountFull None = new(User.NewGuest(), 0) { Avatar = Avatar.None };
     public static new readonly AccountFull Loading = new(User.NewGuest(), -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     public static new readonly Requirement<AccountFull> MustExist = Requirement.New(
-        (AccountFull? a) => a is { IsNone: false },
+        (AccountFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Account>()));
     public static new readonly Requirement<AccountFull> MustNotBeGuest = Requirement.New(
-        (AccountFull? a) => a?.IsGuestOrNone == false,
+        (AccountFull? a) => a?.Id is not null && !a.Id.IsGuest,
         new(() => StandardError.Account.Guest()));
     public static readonly Requirement<AccountFull> MustBeAdmin = MustExist & Requirement.New(
         (AccountFull? a) => a?.IsAdmin ?? false,
         new(() => StandardError.Account.NonAdmin()));
     public static readonly Requirement<AccountFull> MustNotBeSuspended = MustExist & Requirement.New(
-        (AccountFull? a) => a != null && (a.Status != AccountStatus.Suspended || a.IsAdmin),
+        (AccountFull? a) => a is not null && (a.Status != AccountStatus.Suspended || a.IsAdmin),
         new(() => StandardError.Account.Suspended()));
     public static readonly Requirement<AccountFull> MustBeActive = MustNotBeGuest & Requirement.New(
-        (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin),
+        (AccountFull? a) => a is not null && (a.Status == AccountStatus.Active || a.IsAdmin),
         new(() => StandardError.Account.Inactive()));
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]

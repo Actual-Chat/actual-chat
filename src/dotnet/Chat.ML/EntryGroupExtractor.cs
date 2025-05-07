@@ -46,7 +46,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
     {
         state ??= new ExtractorState(null, null);
         if (entries.Count == 0)
-            return new ExtractResult(state, Array.Empty<EntryGroup>(), Array.Empty<ReplySequence>());
+            return new ExtractResult(state, [], []);
 
         var groups = new List<EntryGroup>();
         var replySequences = new List<ReplySequence>();

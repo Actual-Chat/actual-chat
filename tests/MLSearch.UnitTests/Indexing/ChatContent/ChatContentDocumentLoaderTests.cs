@@ -69,8 +69,8 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
         var cursor = new ChatContentCursor(0, 0);
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 101, AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var chatEntryId = TextEntryId.New(chatId, 101);
         _ = await documentLoader.LoadTailAsync(chatId, cursor, 5);
         _ = await documentLoader.LoadByEntryIdsAsync([chatEntryId]);
         Assert.True(isIdFieldNameExpected);
@@ -93,7 +93,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
             });
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var cursor = new ChatContentCursor(0, lastLocalId);
         var ctSource = new CancellationTokenSource();
         var results = await documentLoader.LoadTailAsync(chatId, cursor, tailSetSize, ctSource.Token);
@@ -104,7 +104,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
                 && x.Filters
                     .Where(f => f is EqualityFilter<string>)
                     .Cast<EqualityFilter<string>>()
-                    .Where(f => f.Value.Equals(chatId, StringComparison.Ordinal))
+                    .Where(f => f.Value.Equals(chatId.Value, StringComparison.Ordinal))
                     .Single() != null
                 && x.Filters
                     .Where(f => f is Int64RangeFilter)
@@ -128,7 +128,7 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
         var cursor = new ChatContentCursor(0, 0);
-        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(ChatId.None, cursor, 5));
+        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(null!, cursor, 5));
     }
 
     [Fact]
@@ -145,8 +145,8 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
         var ctSource = new CancellationTokenSource();
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 101, AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var chatEntryId = TextEntryId.New(chatId, 101);
         var results = await documentLoader.LoadByEntryIdsAsync([chatEntryId], ctSource.Token);
         Assert.Equal(resultDocuments.Select(rankedDoc => rankedDoc.Document), results);
 
@@ -167,8 +167,8 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
 
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 101, AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var chatEntryId = TextEntryId.New(chatId, 101);
         await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadByEntryIdsAsync([chatEntryId]));
     }
 

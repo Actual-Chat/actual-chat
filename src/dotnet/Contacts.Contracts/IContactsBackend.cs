@@ -12,12 +12,9 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     public Task<ContactId[]> ListIdsForGroupContactSearch(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ContactId[]> ListPeerContactIds(
-        UserId userId,
-        PlaceId placeId,
-        CancellationToken cancellationToken);
+    public Task<ContactId[]> ListPeerContactIds(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ContactId[]> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
+    Task<ContactId[]> ListIds(UserId ownerId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<PlaceId[]> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
 
@@ -125,11 +122,11 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_PublishCopiedChat(
-    [property: DataMember, MemoryPackOrder(0)] ChatId NewChatId
+    [property: DataMember, MemoryPackOrder(0)] PlaceChatId ChatId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => NewChatId;
+    public ChatId ShardKey => ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

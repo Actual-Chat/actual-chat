@@ -47,8 +47,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         string secondaryLanguage = "")
     {
         // arrange
-        var primary = Language.ParseOrNull(primaryLanguage);
-        var secondary = Language.ParseOrNull(secondaryLanguage);
+        var primary = Language.ParseNullable(primaryLanguage);
+        var secondary = Language.ParseNullable(secondaryLanguage);
         var languageSettings = await LanguageUI.Settings.Use(CancellationToken.None);
         LanguageUI.UpdateSettings(languageSettings with {
             Primary = primary!,

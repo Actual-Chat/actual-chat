@@ -12,14 +12,14 @@
 
     protected override async Task OnParametersSetAsync() {
         var userId = await GetUserIdFromPageRoute(PageRoute, default);
-        if (userId.IsGuestOrNone) {
+        if (userId.IsGuestOrNull()) {
             _ = History.NavigateTo(Links.NotFound);
             return;
         }
 
         var ownAccount = await Accounts.GetOwn(Session, default);
         var account = await Accounts.Get(Session, userId, default);
-        if (account == null || account.IsGuestOrNone) {
+        if (account == null || account.IsGuestOrNull()) {
             _ = History.NavigateTo(Links.NotFound);
             return;
         }
@@ -29,19 +29,19 @@
             return;
         }
 
-        var chatId = new PeerChatId(ownAccount.Id, account.Id);
+        var chatId = PeerChatId.New(ownAccount.Id, account.Id);
         _ = History.NavigateTo(Links.Chat(chatId));
     }
 
-    private async Task<UserId> GetUserIdFromPageRoute(string? pageRoute, CancellationToken cancellationToken) {
+    private async Task<UserId?> GetUserIdFromPageRoute(string? pageRoute, CancellationToken cancellationToken) {
         if (pageRoute.IsNullOrEmpty())
-            return UserId.None;
+            return null;
 
         if (!pageRoute.StartsWith(Links.UserLinkPrefix))
-            return UserId.ParseOrNone(pageRoute);
+            return UserId.TryParse(pageRoute);
 
         if (!UserLinkId.TryParse(pageRoute.Substring(1), out var userLinkId))
-            return UserId.None;
+            return null;
 
         return await UserLinks.GetUserIdByUserLink(userLinkId, cancellationToken).ConfigureAwait(false);
     }

@@ -18,8 +18,8 @@ public sealed class DbSessionInfoConverter : DbSessionInfoConverter<UsersDbConte
             // Intended: GuestId type was changed, so it might throw an error
         }
 
-        var guestId = guestIdOption?.GuestId ?? default;
-        if (!guestId.IsGuest) {
+        var guestId = guestIdOption?.GuestId;
+        if (guestId?.IsGuest != true) {
             guestId = UserId.NewGuest();
             guestIdOption = new GuestIdOption(guestId);
             target.Options = target.Options.Set(guestIdOption);

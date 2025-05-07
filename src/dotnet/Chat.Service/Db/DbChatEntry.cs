@@ -80,13 +80,13 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         var attachmentsArray = attachments == null
             ? []
             : attachments.OrderBy(x => x.Index).ToArray();
-        var chatId = new ChatId(ChatId);
-        var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
+        var chatId = ActualChat.ChatId.Parse(ChatId);
+        var id = ChatEntryId.New(chatId, Kind, LocalId);
         var linkPreviewIds = GetLinkPreviewIds();
         linkPreviews ??= [];
         return new (id, Version) {
             IsRemoved = IsRemoved,
-            AuthorId = new AuthorId(AuthorId),
+            AuthorId = ActualChat.AuthorId.Parse(AuthorId),
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
             EndsAt = EndsAt.ToMoment(),
@@ -100,9 +100,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             VideoEntryLid = VideoEntryId,
             RepliedEntryLid = RepliedChatEntryId,
             ForwardedChatTitle = ForwardedChatTitle,
-            ForwardedAuthorId = new AuthorId(ForwardedAuthorId),
+            ForwardedAuthorId = ActualChat.AuthorId.ParseNullable(ForwardedAuthorId),
             ForwardedAuthorName = ForwardedAuthorName,
-            ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
+            ForwardedChatEntryId = ChatEntryId.ParseNullable(ForwardedChatEntryId),
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt.ToMoment(),
             Attachments = attachmentsArray,
  #pragma warning disable CS0618 // Type or member is obsolete
@@ -130,17 +130,17 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(ChatEntry model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
-        ChatId = model.ChatId;
+        Id = id.Value;
+        ChatId = model.ChatId.Value;
         Kind = model.Kind;
         LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
 
-        AuthorId = model.AuthorId;
+        AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;
         ClientSideBeginsAt = model.ClientSideBeginsAt;
         EndsAt = model.EndsAt;
@@ -152,9 +152,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         VideoEntryId = model.VideoEntryLid;
         RepliedChatEntryId = model.RepliedEntryLid;
         ForwardedChatTitle = model.ForwardedChatTitle;
-        ForwardedAuthorId = model.ForwardedAuthorId;
+        ForwardedAuthorId = model.ForwardedAuthorId?.Value;
         ForwardedAuthorName = model.ForwardedAuthorName;
-        ForwardedChatEntryId = model.ForwardedChatEntryId;
+        ForwardedChatEntryId = model.ForwardedChatEntryId?.Value;
         ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         ContentHash = model.SystemEntry != null ? HashString.None : model.Content.Hash().Blake3().ToBlake3Base64HashString();

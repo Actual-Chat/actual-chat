@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization.Metadata;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
-using ActualChat.Search;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer;
@@ -22,12 +21,12 @@ internal static class ChatsTypeInfoModifier
             var joinProperty = typeInfo.CreateJsonPropertyInfo(typeof(JoinField), ChatInfoToChatSliceRelation.Name);
             joinProperty.Get = o => {
                 var chatSlice = (ChatSlice)o;
-                return JoinField.Link<ChatSlice>((string)chatSlice.Metadata.ChatId);
+                return JoinField.Link<ChatSlice>(chatSlice.Metadata.ChatId?.Value);
             };
             var routingProperty = typeInfo.CreateJsonPropertyInfo(typeof(string), "_routing");
             routingProperty.Get = o => {
                 var chatSlice = (ChatSlice)o;
-                return (string)chatSlice.Metadata.ChatId;
+                return chatSlice.Metadata.ChatId?.Value;
             };
 
             typeInfo.Properties.AddRange([joinProperty, routingProperty]);

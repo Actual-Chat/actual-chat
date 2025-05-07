@@ -73,7 +73,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.Translations.LockShared(id, cancellationToken).ConfigureAwait(false);
-        var dbTranslation = await dbContext.Translations.GetAsNoTracking(id, cancellationToken).ConfigureAwait(false);
+        var dbTranslation = await dbContext.Translations.GetAsNoTracking(id.Value, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
 
         if (change.IsCreate(out var translation)) {
@@ -82,7 +82,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
             await dbContext.Translations.Lock(id, cancellationToken).ConfigureAwait(false);
             dbTranslation = new DbTranslation(translation) {
-                Id = id,
+                Id = id.Value,
                 CreatedAt = now,
                 ModifiedAt = now,
                 Version = VersionGenerator.NextVersion(),
@@ -152,7 +152,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (entry is null)
             return (null, null);
 
-        var dbTranslation = await EntityResolver.Get(id, cancellationToken).ConfigureAwait(false);
+        var dbTranslation = await EntityResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         var translation = dbTranslation?.ToModel();
         return (entry, translation);
     }

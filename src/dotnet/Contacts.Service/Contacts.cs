@@ -7,11 +7,10 @@ namespace ActualChat.Contacts;
 
 public class Contacts(IServiceProvider services) : IContacts
 {
-    private IPlaces? _places;
-
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
+    [field: AllowNull, MaybeNull]
+    private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
     private IContactsBackend Backend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
 
@@ -35,10 +34,10 @@ public class Contacts(IServiceProvider services) : IContacts
     public virtual async Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var contactId = new ContactId(ownAccount.Id, chatId, ParseOrNone.Option);
-        if (contactId.IsNone)
-            return null; // A peer chat that belongs to other users, etc.
+        if (chatId is PeerChatId peerChatId && !peerChatId.HasUser(ownAccount.Id))
+            return null;
 
+        var contactId = ContactId.NewAny(ownAccount.Id, chatId);
         var contact = await Backend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
         var chat = await Chats.Get(session, contact.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -52,7 +51,7 @@ public class Contacts(IServiceProvider services) : IContacts
     public virtual Task<ContactId[]> ListIds(
         Session session,
         CancellationToken cancellationToken)
-        => ListIds(session, PlaceId.None, cancellationToken);
+        => ListIds(session, null, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<PlaceId[]> ListPlaceIds(
@@ -67,20 +66,21 @@ public class Contacts(IServiceProvider services) : IContacts
     // [ComputeMethod]
     public virtual async Task<ContactId[]> ListIds(
         Session session,
-        PlaceId placeId,
+        PlaceId? placeId,
         CancellationToken cancellationToken)
     {
         var isChatRoulette = placeId == Constants.Place.ChatRouletteId;
-        if (!placeId.IsNone && !isChatRoulette) {
+        if (placeId is not null && !isChatRoulette) {
             var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
             if (place?.Rules.CanRead() != true)
                 return [];
         }
+
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var accountId = account.Id;
         var contactIds = await Backend.ListIds(accountId, placeId, cancellationToken).ConfigureAwait(false);
         // Add peer contacts for place members
-        if (!placeId.IsNone && !isChatRoulette) {
+        if (placeId is not null && !isChatRoulette) {
             var peerContacts = await GetPeerContacts(accountId, cancellationToken).ConfigureAwait(false);
             var memberUserIds = await Places.ListUserIds(session, placeId, cancellationToken).ConfigureAwait(false);
             var memberContactIds = new ApiSet<ContactId>();
@@ -132,10 +132,10 @@ public class Contacts(IServiceProvider services) : IContacts
     [ComputeMethod]
     protected virtual async Task<Dictionary<UserId, ContactId>> GetPeerContacts(UserId accountId, CancellationToken cancellationToken)
     {
-        var chatContactIds = await Backend.ListIds(accountId, PlaceId.None, cancellationToken).ConfigureAwait(false);
+        var chatContactIds = await Backend.ListIds(accountId, null, cancellationToken).ConfigureAwait(false);
         return chatContactIds
-            .Where(c => !c.ChatId.PeerChatId.IsNone)
-            .Select(c => (Contact: c, UserId: c.ChatId.PeerChatId.UserIds.OtherThan(accountId)))
+            .Where(c => c.Kind == ContactKind.User)
+            .Select(c => (Contact: c, UserId: ((PeerChatId)c.ChatId).UserIds.OtherThan(accountId)))
             .ToDictionary(c => c.UserId, c => c.Contact);
     }
 

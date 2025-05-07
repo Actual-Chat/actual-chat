@@ -97,7 +97,7 @@ public class Roulette(IServiceProvider services) : IRoulette
         if (chatRoulette is null)
             return null;
 
-        var ownUserId = chat.Rules.Account.Id;
+        var ownUserId = chat.Rules.Account.Require().Id;
         var ownProfileId = chatRoulette.UserId1 == ownUserId ? chatRoulette.ProfileId1 : chatRoulette.ProfileId2;
         var peerProfileId = chatRoulette.UserId1 == ownUserId ? chatRoulette.ProfileId2 : chatRoulette.ProfileId1;
         return new ChatRouletteProfilesInternal(chatRoulette, ownProfileId, peerProfileId);
@@ -108,7 +108,7 @@ public class Roulette(IServiceProvider services) : IRoulette
         Symbol OwnProfileId,
         Symbol PeerProfileId);
 
-    public virtual async Task<ChatId> GetOrCreateChat(
+    public virtual async Task<ChatId?> GetOrCreateChat(
         Session session,
         Symbol ownProfileId,
         Symbol peerProfileId,
@@ -117,11 +117,11 @@ public class Roulette(IServiceProvider services) : IRoulette
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var ownProfile = await RouletteProfilesBackend.GetProfile(ownProfileId, cancellationToken).ConfigureAwait(false);
         if (ownProfile is null || ownProfile.UserId != account.Id)
-            return ChatId.None;
+            return null;
 
         var peerProfile = await RouletteProfilesBackend.GetProfile(peerProfileId, cancellationToken).ConfigureAwait(false);
         if (peerProfile is null || peerProfile.UserId == account.Id)
-            return ChatId.None;
+            return null;
 
         var chatRouletteId = new ChatRouletteId(ownProfileId, peerProfileId);
         var chatRoulette = await Backend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
@@ -133,11 +133,11 @@ public class Roulette(IServiceProvider services) : IRoulette
             MediaId = ChatRoulette.MediaId,
             SystemTag = Constants.Chat.SystemTags.ChatRoulette
         });
-        var chatCommand = new ChatsBackend_Change(ChatId.None, null, chatChange, account.Id);
+        var chatCommand = new ChatsBackend_Change(null, null, chatChange, account.Id);
         var chat = await Commander.Call(chatCommand, cancellationToken).ConfigureAwait(false);
 
-        var ownAuthor = await AuthorsBackend.GetByUserId(chat.Id, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
-        var changeOwnAvatarCommand = new AuthorsBackend_Upsert(chat.Id, ownAuthor.Id, UserId.None, null, new AuthorDiff { AvatarId = ownProfileId });
+        var ownAuthor = await AuthorsBackend.GetByUserId(chat.Id, account.Id, RequestedAuthorKind.Full, cancellationToken).Require().ConfigureAwait(false);
+        var changeOwnAvatarCommand = new AuthorsBackend_Upsert(chat.Id, ownAuthor.Id, null, null, new AuthorDiff { AvatarId = ownProfileId });
         await Commander.Call(changeOwnAvatarCommand, cancellationToken).ConfigureAwait(false);
 
         var addPeerUserCommand = new AuthorsBackend_Upsert(chat.Id, default, peerProfile.UserId, null, new AuthorDiff { AvatarId = peerProfileId });
@@ -200,17 +200,17 @@ public class Roulette(IServiceProvider services) : IRoulette
 
         chat.Rules.Require(ChatPermissions.Leave);
         var chatRoulette = profiles.ChatRoulette;
-        var ownUserId = chat.Rules.Account.Id;
+        var ownUserId = chat.Rules.Account.Require().Id;
         if (chatRoulette.UserId1 != ownUserId && chatRoulette.UserId2 != ownUserId)
             throw StandardError.Constraint("Only chat roulette member can decline it.");
 
-        if (chatRoulette.CompletedBy.IsNone) {
+        if (chatRoulette.CompletedBy is null) {
             var diff = new ChatRouletteFullDiff {
                 CompletedBy = ownUserId,
                 CompleteReason = CompleteChatRouletteReason.Leave
             };
             var chatRouletteCommand = new RouletteBackend_ChangeChatRoulette(chatRoulette.Id, chatRoulette.Version, Change.Update(diff));
-            chatRoulette = await Commander.Call(chatRouletteCommand, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(chatRouletteCommand, cancellationToken).ConfigureAwait(false);
         }
 
         // NOTE(DF): All chat roulette members are the owners, and we don't check if there are other owners.

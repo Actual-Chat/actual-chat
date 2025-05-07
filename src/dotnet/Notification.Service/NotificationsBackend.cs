@@ -43,14 +43,14 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationId notificationId,
         CancellationToken cancellationToken)
     {
-        var dbNotification = await DbNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        var dbNotification = await DbNotificationResolver.Get(notificationId.Value, cancellationToken).ConfigureAwait(false);
         return dbNotification?.ToModel();
     }
 
     // [ComputeMethod]
     public virtual async Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken)
     {
-        var dbNotification = await DbExplicitNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        var dbNotification = await DbExplicitNotificationResolver.Get(notificationId.Value, cancellationToken).ConfigureAwait(false);
         return dbNotification?.ToModel();
     }
 
@@ -93,9 +93,9 @@ public class NotificationsBackend(IServiceProvider services)
 
         return (
             from n in dbContext.Notifications
-            where n.UserId == userId && n.SentAt >= minSentAt.ToDateTimeClamped()
+            where n.UserId == userId.Value && n.SentAt >= minSentAt.ToDateTimeClamped()
             orderby n.SentAt descending, n.Version descending, n.Id
-            select new NotificationId(n.Id)
+            select NotificationId.Parse(n.Id)
             ).ToList();
     }
 
@@ -260,7 +260,7 @@ public class NotificationsBackend(IServiceProvider services)
             var device = context.Operation.Items.KeylessGet<DbDevice>();
             var isNew = context.Operation.Items.KeylessGet(false);
             if (isNew && device != null)
-                _ = ListDevices(new UserId(device.UserId), default);
+                _ = ListDevices(UserId.Parse(device.UserId), default);
             return;
         }
 
@@ -278,7 +278,7 @@ public class NotificationsBackend(IServiceProvider services)
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
-                UserId = userId,
+                UserId = userId.Value,
                 SessionHash = sessionHash,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
@@ -296,7 +296,7 @@ public class NotificationsBackend(IServiceProvider services)
                 dbDevice.SessionHash = sessionHash;
             if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
                 if (existingUserId.IsGuest) {
-                    dbDevice.UserId = userId;
+                    dbDevice.UserId = userId.Value;
                     DebugLog?.LogInformation("Guest UserId for Device '{DeviceId}' has been updated: '{OldUserId}'->'{NewUserId}'",
                         existingUserId, existingUserId, userId);
                 }
@@ -335,7 +335,7 @@ public class NotificationsBackend(IServiceProvider services)
                 continue;
 
             dbContext.Devices.Remove(dbDevice);
-            affectedUserIds.Add(new UserId(dbDevice.UserId));
+            affectedUserIds.Add(UserId.Parse(dbDevice.UserId));
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -354,11 +354,11 @@ public class NotificationsBackend(IServiceProvider services)
         await using var __ = dbContext.ConfigureAwait(false);
 
         var removedDeviceCount = await dbContext.Devices
-            .Where(a => a.UserId == userId)
+            .Where(a => a.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
         await dbContext.Notifications
-            .Where(a => a.UserId == userId)
+            .Where(a => a.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -404,12 +404,15 @@ public class NotificationsBackend(IServiceProvider services)
         var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
+        if (entry.Id is not TextEntryId entryId)
+            return;
 
+        var chatId = entry.ChatId;
         if (entry.AudioEntryLid.HasValue) { // Maybe has transcription
             if (changeKind != ChangeKind.Update)
                 return;
 
-            // When transcribed message is being finalized, it's updated to IsStreaming = false.
+            // When the transcribed message is being finalized, it's updated to IsStreaming = false.
             // At this moment we can notify chat users.
             var isFinalized = oldEntry is { IsStreaming: true } && !entry.IsStreaming;
             if (!isFinalized)
@@ -427,7 +430,6 @@ public class NotificationsBackend(IServiceProvider services)
             .Require().ConfigureAwait(false);
         var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken)
             .ConfigureAwait(false);
-        var chatId = entry.ChatId;
         var key = chatId.Id.Value;
         if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
             using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
@@ -436,15 +438,16 @@ public class NotificationsBackend(IServiceProvider services)
             cacheEntry.AbsoluteExpirationRelativeToNow = Constants.Notification.ThrottleIntervals.Message;
         }
         else if (mentionIds.Count == 0) {
-            // throttle low priority notifications
+            // Throttle low-priority notifications
             DebugLog?.LogInformation("Throttle low priority notifications. EntryId={EntryId}", entry.Id);
             return;
         }
 
         var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var similarityKey = entry.ChatId;
+        var similarityKey = entry.ChatId.Value;
         await EnqueueMessageRelatedNotifications(
-                entry.ChatId, entry.Id, author, text, NotificationKind.Message, similarityKey, userIds, cancellationToken)
+            entry.ChatId, entryId, author, text, NotificationKind.Message,
+            similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -457,9 +460,11 @@ public class NotificationsBackend(IServiceProvider services)
         var (reaction, entry, author, reactionAuthor, changeKind) = eventCommand;
         if (changeKind == ChangeKind.Remove)
             return;
-        if (author.UserId.IsNone) // No notifs to anonymous users
+        if (author.UserId.IsGuest) // No notifs for guests
             return;
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
+            return;
+        if (entry.Id is not TextEntryId entryId)
             return;
 
         var (text, _) = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
@@ -467,9 +472,10 @@ public class NotificationsBackend(IServiceProvider services)
             text = $"\"{text}\"";
         text = $"{reaction.EmojiId} to {text}";
         var userIds = new[] { author.UserId };
-        var similarityKey = entry.ChatId;
+        var similarityKey = entry.ChatId.Value;
         await EnqueueMessageRelatedNotifications(
-                entry.ChatId, entry.Id, reactionAuthor, text, NotificationKind.Reaction, similarityKey, userIds, cancellationToken)
+            entry.ChatId, entryId, reactionAuthor, text, NotificationKind.Reaction,
+            similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -517,28 +523,28 @@ public class NotificationsBackend(IServiceProvider services)
 
     private async ValueTask EnqueueMessageRelatedNotifications(
         ChatId chatId,
-        ChatEntryId? entryId,
+        TextEntryId? entryId,
         AuthorFull changeAuthor,
         string content,
         NotificationKind kind,
-        Symbol similarityKey,
+        string similarityKey,
         IReadOnlyList<UserId> userIds,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("-> EnqueueMessageRelatedNotifications. ChatId={ChatId}, EntryId={EntryId}, Kind={Kind}, UserIds#={UserIdCount}",
             chatId, entryId, kind, userIds.Count);
 
-        if (entryId.HasValue && entryId.Value.ChatId != chatId)
+        if (entryId is not null && entryId.ChatId != chatId)
             throw new ArgumentOutOfRangeException(nameof(entryId), "entry.ChatId should match given chatId");
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         var title = GetTitle(chat, changeAuthor);
         var iconUrl = GetIconUrl(chat, changeAuthor);
         var now = Clocks.CoarseSystemClock.Now;
-        var otherUserIds = changeAuthor.UserId.IsNone ? userIds : userIds.Where(uid => uid != changeAuthor.UserId);
+        var otherUserIds = userIds.Where(userId => userId != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
-            var checkPresence = kind != NotificationKind.GetAttention;
+            var checkPresence = kind != NotificationKind.Attention;
             if (checkPresence) {
                 var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
                 // Do not send notifications to users who are online
@@ -549,20 +555,20 @@ public class NotificationsBackend(IServiceProvider services)
                     continue;
                 }
             }
-            var notificationId = new NotificationId(otherUserId, kind, similarityKey);
+            var notificationId = NotificationId.New(otherUserId, kind, similarityKey);
             var notification = new Notification(notificationId) {
                 Title = title,
                 Content = content,
                 IconUrl = iconUrl,
                 SentAt = now,
             };
-            if (kind == NotificationKind.GetAttention)
+            if (kind == NotificationKind.Attention)
                 notification = notification with {
                     GetAttentionNotification = new (chatId, changeAuthor.Id, entryId?.LocalId ?? 0),
                 };
-            else if (entryId.HasValue)
+            else if (entryId is not null)
                 notification = notification with {
-                    ChatEntryNotification = new ChatEntryNotificationOption(entryId.Value, changeAuthor.Id),
+                    ChatEntryNotification = new ChatEntryNotificationOption(entryId, changeAuthor.Id),
                 };
             else
                 notification = notification with {
@@ -614,7 +620,7 @@ public class NotificationsBackend(IServiceProvider services)
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbDevices = await dbContext.Devices
-            .Where(d => d.UserId == userId)
+            .Where(d => d.UserId == userId.Value)
             .WhereIf(d => d.SessionHash == sessionHash.Value, !sessionHash.IsEmpty)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -627,16 +633,17 @@ public class NotificationsBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var author = await AuthorsBackend
-            .GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .GetByUserId(chatId, userId, RequestedAuthorKind.Full, cancellationToken)
             .Require()
             .ConfigureAwait(false);
 
         var now = Clocks.CoarseSystemClock.Now;
         var similarityKey = now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
         var content = $"{author.Avatar.Name} asks for attention";
-        var lastEntryId = (ChatEntryId)new TextEntryId(chatId, textEntryLid, AssumeValid.Option);
+        var lastEntryId = TextEntryId.New(chatId, textEntryLid);
         await EnqueueMessageRelatedNotifications(
-                chatId, lastEntryId, author, content, NotificationKind.GetAttention, similarityKey, userIds, cancellationToken)
+            chatId, lastEntryId, author, content, NotificationKind.Attention,
+            similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 }

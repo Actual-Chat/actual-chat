@@ -15,17 +15,17 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<AudioEntryId>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<AudioEntryId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class AudioEntryId : ChatEntryId2, IStringIdentifier<AudioEntryId>
+public sealed partial class AudioEntryId : ChatEntryId, IStringIdentifier<AudioEntryId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<AudioEntryId>();
 
     // Factories and constructors
 
-    public static AudioEntryId New(ChatId2 chatId, long localId)
+    public static AudioEntryId New(ChatId chatId, long localId)
         => new(Format(chatId, ChatEntryKind.Text, localId), chatId, localId);
 
-    internal AudioEntryId(string value, ChatId2 chatId, long localId)
+    internal AudioEntryId(string value, ChatId chatId, long localId)
         : base(value, chatId, ChatEntryKind.Text, localId)
     { }
 
@@ -51,15 +51,17 @@ public sealed partial class AudioEntryId : ChatEntryId2, IStringIdentifier<Audio
     public static new AudioEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AudioEntryId>(s);
 
-    public static new AudioEntryId? ParseOrNull(string? s)
+    public static new AudioEntryId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static new AudioEntryId? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static new AudioEntryId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out AudioEntryId? result)
     {
-        if (!ChatEntryId2.TryParse(s, out var chatEntryId)) {
+        if (!ChatEntryId.TryParse(s, out var chatEntryId)) {
             result = null;
             return false;
         }

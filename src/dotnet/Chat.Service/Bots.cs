@@ -8,11 +8,10 @@ public static class Bots
         => authorId.LocalId < 0;
 
     public static AuthorId GetWalleId(ChatId chatId)
-        => new(chatId, Constants.User.Walle.AuthorLocalId, AssumeValid.Option);
+        => AuthorId.New(chatId, Constants.User.Walle.AuthorLocalId);
 
     public static AuthorFull GetWalle(ChatId chatId)
-        => new (GetWalleId(chatId)) {
-            UserId = Constants.User.Walle.UserId,
+        => new (Constants.User.Walle.UserId, GetWalleId(chatId)) {
             Avatar = new AvatarFull(Constants.User.Walle.UserId) {
                 Name = Constants.User.Walle.Name,
                 PictureUrl = Constants.User.Walle.Picture,

@@ -106,7 +106,7 @@ public class Invites(IServiceProvider services) : IInvites
         var (session, invite) = command;
         var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
-        invite = command.Invite with { CreatedBy = account.Id };
+        invite = command.Invite with { CreatedBy = account.Id.Value };
         var generateCommand = new InvitesBackend_Generate(invite);
         return await Commander.Call(generateCommand, true, cancellationToken).ConfigureAwait(false);
     }

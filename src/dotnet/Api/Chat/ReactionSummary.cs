@@ -8,11 +8,11 @@ public partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequ
 {
     [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; } = "";
     [DataMember, MemoryPackOrder(1)] public long Version { get; init; }
-    [DataMember, MemoryPackOrder(2)] public TextEntryId EntryId { get; init; }
+    [DataMember, MemoryPackOrder(2)] public required TextEntryId EntryId { get; init; }
     [DataMember, MemoryPackOrder(3)] public Symbol EmojiId { get; init; }
     [DataMember, MemoryPackOrder(4)] public long Count { get; init; }
 
-    // Set on reads
+    // Set on read; ImmutableList is justified here, see Add/RemoveAuthor
     [DataMember, MemoryPackOrder(5)]
     public ImmutableList<AuthorId> FirstAuthorIds { get; init; } = ImmutableList<AuthorId>.Empty;
 

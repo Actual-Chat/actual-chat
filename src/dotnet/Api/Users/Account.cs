@@ -13,10 +13,10 @@ public partial record Account(
     public static Account Loading => AccountFull.Loading;
 
     public static readonly Requirement<Account> MustExist = Requirement.New(
-        (Account? a) => a is { IsNone: false },
+        (Account? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Account>()));
     public static readonly Requirement<Account> MustNotBeGuest = Requirement.New(
-        (Account? a) => a?.IsGuestOrNone == false,
+        (Account? a) => a?.Id is not null && !a.Id.IsGuest,
         new(() => StandardError.Account.Guest()));
 
     [DataMember, MemoryPackOrder(2)] public AccountStatus Status { get; init; }
@@ -24,11 +24,7 @@ public partial record Account(
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsNone;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsGuest => Id.IsGuest;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsGuestOrNone => Id.IsGuestOrNone;
 
     // This record relies on referential equality
     public virtual bool Equals(Account? other) => ReferenceEquals(this, other);

@@ -19,21 +19,21 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.Null(emptyMetadata.Language);
         Assert.Equal(default, emptyMetadata.ContentTimestamp);
 
-        Assert.Equal(ChatId.None, emptyMetadata.ChatId);
-        Assert.Equal(PlaceId.None, emptyMetadata.PlaceId);
+        Assert.Null(emptyMetadata.ChatId);
+        Assert.Null(emptyMetadata.PlaceId);
     }
 
     [Fact]
     public void ValuesCanBeReadAfterInitialization()
     {
-        var authors = ImmutableArray.Create(new PrincipalId(UserId.New(), AssumeValid.Option));
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
-        var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var authors = ImmutableArray.Create<PrincipalId>(UserId.New());
+        var chatId = GroupChatId.New();
+        var chatEntryId1 = TextEntryId.New(chatId, 1);
+        var chatEntryId2 = TextEntryId.New(chatId, 2);
         var chatEntries = ImmutableArray.Create<ChatSliceEntry>(new (chatEntryId1, 1, 1), new (chatEntryId2, 2, 1));
         var (startOffset, endOffset) = (0, 100);
-        var replyToEntries = ImmutableArray.Create(new ChatEntryId(chatId, ChatEntryKind.Text, 100, AssumeValid.Option));
-        var activeUser = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var replyToEntries = ImmutableArray.Create(TextEntryId.New(chatId, 100));
+        var activeUser = (PrincipalId)UserId.New();
         var mentions = ImmutableArray.Create(activeUser);
         var reactions = ImmutableArray.Create(activeUser);
         var attachments = ImmutableArray.Create(
@@ -64,31 +64,27 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void ChatIdAndPlaceIdCanBeReadProperly()
     {
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var chatEntryId = TextEntryId.New(chatId, 1);
         var metadata = CreateMetadata(chatEntryId);
         Assert.Equal(chatId, metadata.ChatId);
-        Assert.Equal(PlaceId.None, metadata.PlaceId);
+        Assert.Null(metadata.PlaceId);
 
-        var placeId = new PlaceId(Generate.Option);
-        var placeRootChatId = PlaceChatId.Root(placeId);
-        var chatId1 = ChatId.Place(placeRootChatId);
-        var placeRootChatEntryId = new ChatEntryId(chatId1, ChatEntryKind.Text, 1, AssumeValid.Option);
-        var rootPlaceChatMetadata = CreateMetadata(placeRootChatEntryId);
-        Assert.Equal(placeRootChatId.Id, chatId1);
-        Assert.Equal(chatId1, rootPlaceChatMetadata.ChatId);
-        Assert.Equal(placeId, rootPlaceChatMetadata.PlaceId);
+        var placeId = PlaceId.New();
+        var rootChatId = placeId.RootChatId;
+        var rootChatEntryId = TextEntryId.New(rootChatId, 1);
+        var rootChatMetadata = CreateMetadata(rootChatEntryId);
+        Assert.Equal(rootChatId, rootChatMetadata.ChatId);
+        Assert.Equal(placeId, rootChatMetadata.PlaceId);
 
-        var placeChatId = new PlaceChatId(placeId, Generate.Option);
-        var chatId2 = ChatId.Place(placeChatId);
-        var placeChatEntryId = new ChatEntryId(chatId2, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var placeChatId = PlaceChatId.New(placeId);
+        var placeChatEntryId = TextEntryId.New(rootChatId, 1);
         var placeChatMetadata = CreateMetadata(placeChatEntryId);
-        Assert.Equal(placeChatId.Id, chatId2);
-        Assert.Equal(chatId2, placeChatMetadata.ChatId);
+        Assert.Equal(placeChatId, placeChatMetadata.ChatId);
         Assert.Equal(placeId, placeChatMetadata.PlaceId);
 
-        static ChatSliceMetadata CreateMetadata(ChatEntryId chatEntryId) => new (
-            [PrincipalId.None],
+        static ChatSliceMetadata CreateMetadata(TextEntryId chatEntryId) => new (
+            [null!],
             [new (chatEntryId, 1, 1)], null, null,
             [], [], [], [],
             "en-US",

@@ -559,7 +559,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var authorId = chatEntry1.AuthorId;
 
         var authorsBackend = tester2.AppServices.GetRequiredService<IAuthorsBackend>();
-        var explicitAuthor = await authorsBackend.Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Raw, default);
+        var explicitAuthor = await authorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Default, default);
         explicitAuthor.Should().NotBeNull();
     }
 

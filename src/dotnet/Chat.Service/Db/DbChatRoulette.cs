@@ -13,8 +13,6 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _completedAt;
-
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = null!;
@@ -26,8 +24,8 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
     public string CompletedByUserId { get; set; } = null!;
     public CompleteChatRouletteReason CompleteReason { get; set; } = CompleteChatRouletteReason.None;
     public DateTime CompletedAt {
-        get => _completedAt.DefaultKind(DateTimeKind.Utc);
-        set => _completedAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DbChatRoulette() { }
@@ -36,30 +34,29 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
     public void UpdateFrom(ChatRouletteFull model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
-        ChatId = model.ChatId;
+        ChatId = model.ChatId.Value;
         ProfileId1 = model.ProfileId1;
         ProfileId2 = model.ProfileId2;
-        UserId1 = model.UserId1;
-        UserId2 = model.UserId2;
-        InitiatedByUserId = model.InitiatedBy;
-
-        CompletedByUserId = model.CompletedBy;
+        UserId1 = model.UserId1.Value;
+        UserId2 = model.UserId2.Value;
+        InitiatedByUserId = model.InitiatedBy.Value;
+        CompletedByUserId = model.CompletedBy?.Value ?? "";
         CompleteReason = model.CompleteReason;
         CompletedAt = model.CompletedAt;
     }
 
     public ChatRouletteFull ToModel()
         => new (new ChatRouletteId(Id), Version) {
-            ChatId = new ChatId(ChatId),
-            UserId1 = new UserId(UserId1),
-            UserId2 = new UserId(UserId2),
-            InitiatedBy = new UserId(InitiatedByUserId),
-            CompletedBy = new UserId(CompletedByUserId),
+            ChatId = ActualChat.ChatId.Parse(ChatId),
+            UserId1 = UserId.Parse(UserId1),
+            UserId2 = UserId.Parse(UserId2),
+            InitiatedBy = UserId.Parse(InitiatedByUserId),
+            CompletedBy = UserId.ParseNullable(CompletedByUserId),
             CompleteReason = CompleteReason,
             CompletedAt = CompletedAt,
         };

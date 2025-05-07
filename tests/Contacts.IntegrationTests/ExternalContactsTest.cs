@@ -410,7 +410,9 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     private async Task<List<ContactId>> ListContactIds(Session session, CancellationToken cancellationToken = default)
     {
         var ids = await _contacts.ListIds(session, PlaceId.None, cancellationToken);
-        return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
+        return ids
+            .Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId.Value))
+            .ToList();
     }
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)

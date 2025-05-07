@@ -55,18 +55,18 @@ public partial class AccountUI
         return isChanged;
     }
 
-    private void ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
+    private void ProcessOwnAccountChange(AccountFull? account, AccountFull? oldAccount)
     {
         Changed?.Invoke(account);
-        if (account.IsGuestOrNone) {
+        if (account.IsGuestOrNull()) {
             // We're signed out now
-            if (!oldAccount.IsGuestOrNone)
+            if (!oldAccount.IsGuestOrNull())
                 ReloadUI.Reload(true, true); // And were signed in -> it's a sign-out
             return;
         }
 
         // We're signed in now
-        if (!oldAccount.IsGuestOrNone) {
+        if (!oldAccount.IsGuestOrNull()) {
             // And were signed in -> it's an account change
             ReloadUI.Reload(true, true);
             return;

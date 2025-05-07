@@ -9,10 +9,10 @@ internal static class RouletteExt
         IAuthorsBackend authorsBackend,
         CancellationToken cancellationToken)
     {
-        var authorId1 = new AuthorId(chatId, 1, AssumeValid.Option);
-        var authorId2 = new AuthorId(chatId, 2, AssumeValid.Option);
-        var author1 = await authorsBackend.Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
-        var author2 = await authorsBackend.Get(chatId, authorId2, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var authorId1 = AuthorId.New(chatId, 1);
+        var authorId2 = AuthorId.New(chatId, 2);
+        var author1 = await authorsBackend.Get(chatId, authorId1, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+        var author2 = await authorsBackend.Get(chatId, authorId2, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (author1 is null || author2 is null)
             return ChatRouletteId.None;
 

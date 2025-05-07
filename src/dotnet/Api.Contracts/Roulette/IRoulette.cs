@@ -9,7 +9,7 @@ public interface IRoulette : IComputeService
     [ComputeMethod]
     Task<ChatRouletteProfiles?> GetProfiles(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ChatId> GetOrCreateChat(Session session, Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken);
+    Task<ChatId?> GetOrCreateChat(Session session, Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> EnableChatRouletteUI(Session session, CancellationToken cancellationToken);
 

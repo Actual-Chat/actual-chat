@@ -9,7 +9,7 @@
     @if (ReferenceEquals(chat, SpecialChat.Loading)) {
         // Render skeletons until State is computed
         <chat-view-footer-skeleton/>
-    } else if (chat.Id.IsNone) {
+    } else if (chat?.Id is null) {
         <ReadOnlyChatFooter FooterText="" />
     } else {
         @if (m.CanPost) {
@@ -30,9 +30,9 @@
                         <div class="inline-flex">
                             <SignInButton ButtonClass="w-full"/>
                         </div>
-                        @if (!m.OtherUserId.IsNone) {
+                        @if (m.OtherUserId is { } otherUserId) {
                             <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
-                            <AccountName UserSid="@m.OtherUserId.Id"/>
+                            <AccountName UserSid="@otherUserId.Value"/>
                         } else if (m.CanJoinWithGuestAccount) {
                             <span class="inline-flex mx-2 items-center">or</span>
                             <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
@@ -55,28 +55,30 @@
     private UICommander UICommander => Hub.UICommander();
     private ChatUI ChatUI => Hub.ChatUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; } = null!;
     [Parameter, EditorRequired] public ChatPage.FooterModel Model { get; set; } = null!;
 
     private async Task OnJoin() {
+        var chatId = Chat?.Id;
+        if (chatId is null)
+            return;
+
         var avatarSelectionRequired = Model.HasMultipleAvatars || Model.CanJoinAnonymously;
         if (!avatarSelectionRequired) {
-            var command = new Authors_Join(Session, Chat.Id);
+            var command = new Authors_Join(Session, chatId);
             await UICommander.Run(command);
             return;
         }
 
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, Model.CanJoinAnonymously, JoinWithAvatar));
+        await ModalUI.Show(new AvatarSelectModal.Model(null, Model.CanJoinAnonymously, JoinWithAvatar));
+        return;
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new Authors_Join(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            var command = new Authors_Join(Session, chatId, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
             await UICommander.Run(command);
         }
     }
 
     private void OnJoinPlace(Place place)
         => _ = ChatUI.JoinPlace(place.Id);
-
-    private Task SignIn()
-        => ModalUI.Show(new SignInModal.Model());
 }

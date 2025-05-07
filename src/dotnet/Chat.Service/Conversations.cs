@@ -11,8 +11,7 @@ public class Conversations(IServiceProvider services) : IConversations
     // [Computed]
     public virtual async Task<Conversation?> Get(Session session, ConversationId conversationId, CancellationToken cancellationToken)
     {
-        if (conversationId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(conversationId));
+        ArgumentNullException.ThrowIfNull(conversationId);
 
         var rules = await Chats.GetRules(session, conversationId.ChatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanRead())

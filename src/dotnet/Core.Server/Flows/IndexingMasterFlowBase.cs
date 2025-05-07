@@ -6,7 +6,7 @@ public abstract class IndexingMasterFlowBase<TIndexingFlow, TItem, TId>
     : BatchedIndexingFlowBase<TItem, TId>
     where TIndexingFlow : Flow
     where TItem : class, IHasId<TId>, IHasVersion<long>
-    where TId : ISymbolIdentifier
+    where TId : StringIdentifier
 {
     protected override async Task ProcessBatch(IReadOnlyList<TItem> batch, CancellationToken cancellationToken)
     {
@@ -23,7 +23,7 @@ public abstract class IndexingMasterFlowBase<TIndexingFlow, TItem, TId>
         bool hasProcessedAnyItems,
         CancellationToken cancellationToken)
     {
-        // stop indexing until version is bumped
+        // Pause indexing until the version is bumped
         FlowSetVersion = CurrentFlowSetVersion;
         return Task.FromResult(IndexingFlowTransitionKind.Suspend);
     }

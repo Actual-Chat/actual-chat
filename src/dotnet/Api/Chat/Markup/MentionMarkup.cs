@@ -19,7 +19,7 @@ public sealed partial record MentionMarkup(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string NameOrNotAvailable => Name.NullIfEmpty() ?? NotAvailableName;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string NameOrId => Name.NullIfEmpty() ?? Id;
+    public string NameOrId => Name.NullIfEmpty() ?? Id.Value;
 
     public override string Format()
         => Name.IsNullOrEmpty()

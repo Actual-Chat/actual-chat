@@ -8,8 +8,8 @@ namespace ActualChat.Chat;
 public sealed partial record Mention : IHasId<Symbol>, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; }
-    [DataMember, MemoryPackOrder(1)] public ChatEntryId EntryId { get; init; }
-    [DataMember, MemoryPackOrder(2)] public MentionId MentionId { get; init; }
+    [DataMember, MemoryPackOrder(1)] public required ChatEntryId EntryId { get; init; }
+    [DataMember, MemoryPackOrder(2)] public required MentionId MentionId { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ChatId => EntryId.ChatId;

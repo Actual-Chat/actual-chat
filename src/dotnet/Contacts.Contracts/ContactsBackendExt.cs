@@ -6,5 +6,5 @@ public static class ContactsBackendExt
         this IContactsBackend contactsBackend,
         UserId userId,
         CancellationToken cancellationToken)
-        => contactsBackend.ListPeerContactIds(userId, PlaceId.None, cancellationToken);
+        => contactsBackend.ListPeerContactIds(userId, null, cancellationToken);
 }

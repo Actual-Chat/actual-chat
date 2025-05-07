@@ -122,7 +122,7 @@ public class InvitesBackend(IServiceProvider services)
 
         switch (invite.Details.Option) {
         case UserInviteOption: {
-            if (account.IsGuestOrNone)
+            if (account.IsGuestOrNull())
                 throw StandardError.Unauthorized("Please sign in and open this link again to use this invite.");
             if (account.Status == AccountStatus.Suspended)
                 throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
@@ -136,12 +136,12 @@ public class InvitesBackend(IServiceProvider services)
         }
         case ChatInviteOption chatInviteOption: {
             var chatId = chatInviteOption.ChatId;
-            if (chatId.IsPlaceChat && !chatId.IsPlaceRootChat) {
+            if (chatId is PlaceChatId { IsRoot: false } placeChatId) {
                 var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-                var placeId = chatId.PlaceId;
-                var placeRootChatId = placeId.ToRootChatId();
-                var principalId = new PrincipalId(account.Id, AssumeValid.Option);
-                var placeRules = await ChatsBackend.GetRules(placeRootChatId, principalId, cancellationToken).ConfigureAwait(false);
+                var placeId = placeChatId.PlaceId;
+                var placeRules = await ChatsBackend
+                    .GetRules(placeId.RootChatId, account.Id, cancellationToken)
+                    .ConfigureAwait(false);
                 if (chat is { IsPublic: true })
                     await OnUseForPlace(placeId).ConfigureAwait(false); // Activate read permission to the place.
                 else if (placeRules.IsMember())
@@ -167,7 +167,7 @@ public class InvitesBackend(IServiceProvider services)
         return invite;
 
         Task OnUseForPlace(PlaceId placeId)
-            => OnUseForChat(placeId.ToRootChatId());
+            => OnUseForChat(placeId.RootChatId);
 
         async Task OnUseForChat(ChatId chatId)
         {

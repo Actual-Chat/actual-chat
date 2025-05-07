@@ -1,100 +1,87 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<AuthorId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<AuthorId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<AuthorId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<AuthorId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<AuthorId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<AuthorId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<AuthorId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct AuthorId : ISymbolIdentifier<AuthorId>
+public sealed partial class AuthorId : PrincipalId, IStringIdentifier<AuthorId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<AuthorId>();
+    private static readonly ILruCache<string, AuthorId> Cache = CreateCache<AuthorId>(512);
 
-    public static AuthorId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public ChatId ChatId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public long LocalId { get; }
+    [IgnoreDataMember]
+    public override string ShardKey => ChatId.Value;
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public AuthorId(Symbol id)
-        => this = Parse(id);
-    public AuthorId(string? id)
-        => this = Parse(id);
-    public AuthorId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    public static AuthorId New(ChatId chatId, long localId)
+        => new(Format(chatId, localId), chatId, localId);
 
-    public AuthorId(Symbol id, ChatId chatId, long localId, AssumeValid _)
+    private AuthorId(string value, ChatId chatId, long localId) : base(value, PrincipalKind.Author)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
         ChatId = chatId;
         LocalId = localId;
     }
-
-    public AuthorId(ChatId chatId, long localId, AssumeValid _)
-    {
-        if (chatId.IsNone) {
-            this = None;
-            return;
-        }
-        Id = Format(chatId, localId);
-        ChatId = chatId;
-        LocalId = localId;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(AuthorId source) => source.Id;
-    public static implicit operator string(AuthorId source) => source.Id.Value;
-    public static explicit operator AuthorId(string source) => new (source);
 
     // Equality
 
-    public bool Equals(AuthorId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is AuthorId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(AuthorId left, AuthorId right) => left.Equals(right);
-    public static bool operator !=(AuthorId left, AuthorId right) => !left.Equals(right);
+    public bool Equals(AuthorId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is AuthorId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(AuthorId? left, AuthorId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(AuthorId? left, AuthorId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
 
     public static string Format(ChatId chatId, long localId)
-        => chatId.IsNone ? "" : $"{chatId.Value}:{localId.Format()}";
+        => $"{chatId.Value}:{localId.Format()}";
 
-    public static AuthorId Parse(string? s)
+    public static new AuthorId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId>(s);
-    public static AuthorId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<AuthorId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out AuthorId result)
+    public static new AuthorId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static new AuthorId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out AuthorId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
 
         var chatIdLength = s.OrdinalIndexOf(":");
         if (chatIdLength == -1)
@@ -107,7 +94,8 @@ public readonly partial struct AuthorId : ISymbolIdentifier<AuthorId>
         if (!NumberExt.TryParseLong(tail, out var localId))
             return false;
 
-        result = new AuthorId(s, chatId, localId, AssumeValid.Option);
+        result = new AuthorId(s, chatId, localId);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 }

@@ -32,21 +32,20 @@ internal class ChatBotConversationTrigger(
         if (eventCommand.Entry.IsSystemEntry)
             return; // Skip system messages
 
-        // The chat must either have a correct tag
+        // The chat must either have a correct tag, or...
         if (!chat.IsAiSearchChat()) {
-            // Or it must be 1-on-1 chat with the bot with the setting set to allow that.
+            // It must be a chat with a bot + the settings allowing that
             var allowPeerBotChat = options.CurrentValue.AllowPeerBotChat;
             if (!allowPeerBotChat)
-                // Ensure settings
                 return;
-            if (!chat.Id.IsPeerChat(out var peerChatId))
-                // Ensure it's 1-on-1 chat
+
+            // Otherwise, it must be a peer chat with a bot
+            if (chat.Id is not PeerChatId peerChatId)
                 return;
             if (!peerChatId.HasUser(Constants.User.Sherlock.UserId))
-                // Ensure it's a chat with the bot.
                 return;
         }
-        // Something has changed in the chat with an ml bot.
+        // Something has changed in the chat with a bot
         var e = new MLSearch_TriggerContinueConversationWithBot(eventCommand.Entry.ChatId);
         await queues.Enqueue(e, cancellationToken).ConfigureAwait(false);
     }

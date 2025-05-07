@@ -25,7 +25,6 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
     private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
 
-    private ILogger? _log;
     private BubbleModel? _bubble;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
@@ -35,7 +34,9 @@
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    private ILogger Log => _log ??= CircuitContext.Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= CircuitContext.Services.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
     public BubbleHost() { }
@@ -116,7 +117,7 @@
         }
     }
 
-    private async void OnOwnAccountChanged(AccountFull account) {
+    private async void OnOwnAccountChanged(AccountFull? account) {
         try {
             _bubble = null;
             await BubbleUI.WhenReadyToShowBubbles();

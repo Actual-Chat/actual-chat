@@ -41,7 +41,7 @@
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;
-        var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.ToRootChatId() :  chatId;
+        var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.RootChatId :  chatId;
         var key = $"AddChatMembersBanner_DismissedAt_{dismissChatId.Value}";
         _dismissedAt = StateFactory.NewKvasSynced<Moment>(new(AccountSettings, key));
     }

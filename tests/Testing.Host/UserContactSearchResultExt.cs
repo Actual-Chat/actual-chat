@@ -24,6 +24,6 @@ public static class UserContactSearchResultExt
         UserId otherUserId,
         string title,
         Range<int>[]? searchMatchPartRanges = null)
-        => new (new ContactId(ownerId, new PeerChatId(ownerId, otherUserId).ToChatId()),
+        => new (ContactId.NewUser(ownerId, otherUserId),
             searchMatchPartRanges.BuildSearchMatch(title));
 }

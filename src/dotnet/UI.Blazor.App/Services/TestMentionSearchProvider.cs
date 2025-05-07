@@ -426,6 +426,6 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
     };
 
     private static (AuthorId AuthorId, string Name)[] Authors { get; } = Names
-        .Select((name, i) => (new AuthorId(new ChatId(Generate.Option), i, AssumeValid.Option), name))
+        .Select((name, i) => (new AuthorId(GroupChatId.New(), i, AssumeValid.Option), name))
         .ToArray();
 }

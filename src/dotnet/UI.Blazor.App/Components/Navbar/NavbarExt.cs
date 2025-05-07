@@ -10,33 +10,33 @@ public static class NavbarExt
     public static string GetNavbarGroupId(this PlaceId placeId)
         => PlacePrefix + placeId.Value;
 
-    public static bool IsGroupSelected(this NavbarUI navbarUI, string group)
-        => navbarUI.SelectedGroupId.Equals(group, StringComparison.Ordinal);
+    public static string GetNavbarGroupId(this ChatId pinnedChatId)
+        => PinnedChatPrefix + pinnedChatId.Value;
 
-    public static bool IsPlaceSelected(this NavbarUI navbarUI, out PlaceId placeId)
+    public static bool IsGroupSelected(this NavbarUI navbarUI, string groupId)
+        => navbarUI.SelectedGroupId.Equals(groupId, StringComparison.Ordinal);
+
+    public static bool IsPlaceSelected(this NavbarUI navbarUI, [NotNullWhen(true)] out PlaceId? placeId)
     {
-        placeId = PlaceId.None;
+        placeId = null;
         var groupId = navbarUI.SelectedGroupId;
         if (!groupId.OrdinalStartsWith(PlacePrefix))
             return false;
 
         var sPlaceId = groupId.Substring(PlacePrefix.Length);
-        placeId = new PlaceId(sPlaceId, AssumeValid.Option);
-        return true;
+        placeId = PlaceId.TryParse(sPlaceId);
+        return placeId is not null;
     }
 
-    public static string GetNavbarGroupId(this ChatId pinnedChatId)
-        => PinnedChatPrefix + pinnedChatId.Value;
-
-    public static bool IsPinnedChatSelected(this NavbarUI navbarUI, out ChatId chatId)
+    public static bool IsPinnedChatSelected(this NavbarUI navbarUI, [NotNullWhen(true)] out ChatId? chatId)
     {
-        chatId = ChatId.None;
+        chatId = null;
         var groupId = navbarUI.SelectedGroupId;
         if (!groupId.OrdinalStartsWith(PinnedChatPrefix))
             return false;
 
         var sChatId = groupId.Substring(PinnedChatPrefix.Length);
-        chatId = ChatId.ParseOrNone(sChatId);
-        return !chatId.IsNone;
+        chatId = ChatId.TryParse(sChatId);
+        return chatId is not null;
     }
 }

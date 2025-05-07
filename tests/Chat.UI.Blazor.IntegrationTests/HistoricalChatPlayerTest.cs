@@ -3,11 +3,11 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Testing.Host;
 using Microsoft.EntityFrameworkCore;
 
-namespace ActualChat.UI.Blazor.App.IntegrationTests;
+namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(ChatUICollection))]
-public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+public class HistoricalChatPlayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
     [Fact(Timeout = 60_000)]
     public async Task RewindBackTest()
@@ -27,9 +27,9 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
         var dbContext = await dbContextFactory.CreateDbContextAsync();
         await using (var _ = dbContext.ConfigureAwait(false)) {
             var dbChat = AddChat(dbContext, yesterday, account.Id);
-            chatId = new ChatId(dbChat.Id);
+            chatId = ChatId.Parse(dbChat.Id);
             var dbAuthor = AddAuthor(dbContext, chatId, account.Id);
-            var authorId = new AuthorId(dbAuthor.Id);
+            var authorId = AuthorId.Parse(dbAuthor.Id);
             long localId = 1;
             AddAudioEntry(dbContext, chatId, authorId, ref localId, entry1BeginsAt, TimeSpan.FromSeconds(20));
             AddAudioEntry(dbContext, chatId, authorId, ref localId, entry2BeginsAt, TimeSpan.FromSeconds(60));
@@ -37,11 +37,11 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
         }
 
         var player = services.CreateInstance<HistoricalChatPlayer>(chatId);
-        // Rewind back along same audio entry
+        // Rewind back along the same audio entry
         var newMoment = await player.GetRewindMoment(entry2BeginsAt.AddSeconds(30), TimeSpan.FromSeconds(-15), default);
         newMoment.Should().Be(entry2BeginsAt.AddSeconds(15).ToMoment());
 
-        // Rewind back to previous entry with big gap
+        // Rewind back to previous entry with a big gap
         newMoment = await player.GetRewindMoment(entry2BeginsAt.AddSeconds(10), TimeSpan.FromSeconds(-15), default);
         newMoment.Should().Be(yesterday.AddSeconds(15).ToMoment());
 
@@ -53,12 +53,12 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
     private static DbAuthor AddAuthor(ChatDbContext dbContext,  ChatId chatId, UserId userId)
     {
         var dbAuthor = new DbAuthor {
-            Id = new AuthorId(chatId, 1, AssumeValid.Option),
-            ChatId = chatId,
+            Id = AuthorId.New(chatId, 1).Value,
+            ChatId = chatId.Value,
             LocalId = 1,
             Version = 1,
             IsAnonymous = false,
-            UserId = userId,
+            UserId = userId.Value,
         };
         dbContext.Authors.Add(dbAuthor);
         return dbAuthor;
@@ -66,9 +66,9 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
 
     private static DbChat AddChat(ChatDbContext dbContext, DateTime createdAt, UserId ownerUserId)
     {
-        var chatId = new ChatId("testchat");
+        var chatId = ChatId.Parse("testChat");
         var dbChat = new DbChat {
-            Id = chatId,
+            Id = chatId.Value,
             Version = 1,
             Title = "Test chat",
             CreatedAt = createdAt,
@@ -86,11 +86,11 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
         DateTime beginsAt,
         TimeSpan duration)
     {
-        var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
+        var id = AudioEntryId.New(chatId, localId);
         var audioEntry = new DbChatEntry {
-            Id = id,
-            ChatId = id.ChatId,
-            AuthorId = authorId,
+            Id = id.Value,
+            ChatId = id.ChatId.Value,
+            AuthorId = authorId.Value,
             Kind = id.Kind,
             LocalId = id.LocalId,
             Version = 1,

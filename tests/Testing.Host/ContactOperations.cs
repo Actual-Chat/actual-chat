@@ -16,7 +16,7 @@ public static class ContactOperations
         Account owner,
         Account other)
     {
-        var id = new ContactId(owner.Id, new PeerChatId(owner.Id, other.Id));
+        var id = ContactId.NewUser(owner.Id, other.Id);
         var cmd = new Contacts_Change(tester.Session, id, null, Change.Create(new Contact(id)));
         return tester.Commander.Call(cmd).Require();
     }

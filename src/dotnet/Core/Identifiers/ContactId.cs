@@ -1,106 +1,114 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<ContactId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ContactId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<ContactId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<ContactId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ContactId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ContactId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<ContactId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct ContactId : ISymbolIdentifier<ContactId>
+public sealed partial class ContactId : StringIdentifier, IStringIdentifier<ContactId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ContactId>();
+    private static readonly ILruCache<string, ContactId> Cache = CreateCache<ContactId>(512);
 
-    public static ContactId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public UserId OwnerId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public ChatId ChatId { get; }
+    [IgnoreDataMember]
+    public ContactKind Kind { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public ContactId(Symbol id)
-        => this = Parse(id);
-    public ContactId(UserId ownerId, ChatId chatId)
-        => this = Parse(Format(ownerId, chatId));
-    public ContactId(UserId ownerId, ChatId chatId, ParseOrNone _)
-        => this = ParseOrNone(Format(ownerId, chatId));
-    public ContactId(string id)
-        => this = Parse(id);
-    public ContactId(string id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    public static ContactId NewAny(UserId ownerId, ChatId chatId)
+        => chatId is PeerChatId peerChatId
+            ? NewUser(ownerId, peerChatId.AnotherUserId(ownerId)) // Ensures we create only valid ContactIds in this case
+            : new ContactId(Format(ownerId, chatId), ownerId, chatId);
 
-    public ContactId(Symbol id, UserId ownerId, ChatId chatId, AssumeValid _)
+    public static ContactId NewUser(UserId ownerId, UserId otherUserId)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
-        OwnerId = ownerId;
-        ChatId = chatId;
+        var chatId = PeerChatId.New(ownerId, otherUserId);
+        return new ContactId(Format(ownerId, chatId), ownerId, chatId);
     }
 
-    public ContactId(UserId ownerId, ChatId chatId, AssumeValid _)
+    // There are two types of Chat contacts: Group chats & Place chats
+    public static ContactId NewChat(UserId ownerId, GroupChatId chatId)
+        => new(Format(ownerId, chatId), ownerId, chatId);
+    public static ContactId NewChat(UserId ownerId, PlaceChatId chatId)
+        => new(Format(ownerId, chatId), ownerId, chatId);
+
+    // Place contact is a contact referencing place's root chat
+    public static ContactId NewPlace(UserId ownerId, PlaceId placeId)
     {
-        if (ownerId.IsNone || chatId.IsNone) {
-            this = None;
-            return;
-        }
-        Id = Format(ownerId, chatId);
-        OwnerId = ownerId;
-        ChatId = chatId;
+        var chatId = placeId.RootChatId;
+        return new(Format(ownerId, chatId), ownerId, chatId);
     }
 
-    public static ContactId Peer(UserId ownerId, UserId otherUserId)
-        => new (ownerId, new PeerChatId(ownerId, otherUserId));
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(ContactId source) => source.Id;
-    public static implicit operator string(ContactId source) => source.Id.Value;
+    private ContactId(string value, UserId ownerId, ChatId chatId)
+        : base(value)
+    {
+        OwnerId = ownerId;
+        ChatId = chatId;
+        Kind = chatId.Kind switch {
+            ChatKind.Peer => ContactKind.User,
+            ChatKind.Place => ((PlaceChatId)chatId).IsRoot ? ContactKind.Place : ContactKind.Chat,
+            _ => ContactKind.Chat,
+        };
+    }
 
     // Equality
 
-    public bool Equals(ContactId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is ContactId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(ContactId left, ContactId right) => left.Equals(right);
-    public static bool operator !=(ContactId left, ContactId right) => !left.Equals(right);
+    public bool Equals(ContactId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is ContactId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(ContactId? left, ContactId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(ContactId? left, ContactId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
 
     public static string Format(UserId ownerId, ChatId chatId)
-        => ownerId.IsNone || chatId.IsNone ? "" : $"{ownerId} {chatId}";
+        => $"{ownerId.Value} {chatId.Value}";
 
     public static ContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>(s);
-    public static ContactId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<ContactId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out ContactId result)
+    public static ContactId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static ContactId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out ContactId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
 
         var ownerIdLength = s.OrdinalIndexOf(' ');
         if (ownerIdLength <= 0)
@@ -110,16 +118,19 @@ public readonly partial struct ContactId : ISymbolIdentifier<ContactId>
             return false;
         if (!ChatId.TryParse(s[(ownerIdLength + 1)..], out var chatId))
             return false;
-        if (chatId.IsPeerChat(out var peerChatId) && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
+        if (chatId is PeerChatId peerChatId && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
             return false;
 
-        result = new ContactId(s, ownerId, chatId, AssumeValid.Option);
+        result = new ContactId(s, ownerId, chatId);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 }
 
-public static class ContactIdExt
+public static class ContactId2Ext
 {
-    public static UserId GetOtherUserId(this ContactId id)
-        => !id.ChatId.IsPeerChat(out var peerChatId) ? UserId.None : peerChatId.AnotherUserIdOrDefault(id.OwnerId);
+    public static UserId? GetOtherUserId(this ContactId id)
+        => id.ChatId is PeerChatId peerChatId
+            ? peerChatId.AnotherUserIdOrNull(id.OwnerId)
+            : null;
 }

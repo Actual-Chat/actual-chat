@@ -8,6 +8,6 @@ public enum NotificationKind
     Invitation,
     Mention,
     Reaction,
-    GetAttention,
+    Attention,
     Invalid, // Must be the very last entry here - it is used in NotificationId parsing logic
 }

@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -112,7 +113,7 @@ public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
             var accountUI = Hub.AccountUI;
             await accountUI.WhenLoaded.WaitAsync(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
             var ownAccount = accountUI.OwnAccount.Value;
-            return ownAccount.IsGuestOrNone
+            return ownAccount.IsGuestOrNull()
                 ? currentUrl
                 : Links.Chats; // You're signed in - so we redirect you to /chats/
         }

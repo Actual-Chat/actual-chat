@@ -44,7 +44,7 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
 
     public static ChatMessage Welcome(ChatId chatId, bool isBot)
     {
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0L, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 0L, AssumeValid.Option);
         var chatEntry = new ChatEntry(chatEntryId);
         return isBot
             ? new ChatEntryMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock }

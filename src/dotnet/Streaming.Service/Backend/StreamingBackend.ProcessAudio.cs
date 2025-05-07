@@ -191,7 +191,7 @@ public partial class StreamingBackend
             beginsAt,
             audioEntryTask,
             transcriptStreamId,
-            audioSegment.Record.RepliedChatEntryId,
+            audioSegment.Record.RepliedEntryId,
             transcripts.Replay(cancellationToken));
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
     }
@@ -206,9 +206,9 @@ public partial class StreamingBackend
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 
         var chatId = audioSegment.Record.ChatId;
-        var entryId = new ChatEntryId(chatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
+        var audioEntryId = AudioEntryId.New(chatId, 0);
         var command = new ChatsBackend_ChangeEntry(
-            entryId,
+            audioEntryId,
             null,
             Change.Create(new ChatEntryDiff {
                 AuthorId = audioSegment.Author.Id,
@@ -249,7 +249,7 @@ public partial class StreamingBackend
         Moment beginsAt,
         Task<ChatEntry>? audioEntryTask,
         StreamId transcriptStreamId,
-        ChatEntryId repliedChatEntryId,
+        TextEntryId? repliedEntryId,
         IAsyncEnumerable<Transcript> transcripts)
     {
         Transcript? lastTranscript = null;
@@ -267,12 +267,12 @@ public partial class StreamingBackend
                 audioEntry = audioEntryTask != null
                     ? await audioEntryTask.ConfigureAwait(false)
                     : null;
-                var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-                var repliedEntryLid = repliedChatEntryId.IsNone
+                var textEntryId = TextEntryId.New(chatId, 0);
+                var repliedEntryLid = repliedEntryId == null
                     ? (long?)null
-                    : repliedChatEntryId.LocalId;
+                    : repliedEntryId.LocalId;
                 var command = new ChatsBackend_ChangeEntry(
-                    entryId,
+                    textEntryId,
                     null,
                     Change.Create(new ChatEntryDiff {
                         AuthorId = authorId,

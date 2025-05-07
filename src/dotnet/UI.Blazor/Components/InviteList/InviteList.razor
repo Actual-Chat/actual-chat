@@ -89,9 +89,9 @@
                     return;
 
                 Place? place = null;
-                if (!chatId.PlaceChatId.IsNone) {
+                if (chatId is PlaceChatId placeChatId) {
                     var places = Hub.GetRequiredService<IPlaces>();
-                    place = await places.Get(Session, chatId.PlaceChatId.PlaceId, default).ConfigureAwait(false);
+                    place = await places.Get(Session, placeChatId.PlaceId, default).ConfigureAwait(false);
                     if (place is null)
                         return; // We should be able to get chat's place. Return if it's not like that.
                 }

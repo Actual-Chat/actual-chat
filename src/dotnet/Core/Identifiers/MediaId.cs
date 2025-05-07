@@ -47,9 +47,6 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
     public static MediaId New(string scope, string localId)
         => new (Format(scope, localId), scope, localId);
 
-    public static MediaId New(string value, string scope, string localId, AssumeValid _)
-        => new(value, scope, localId);
-
     private MediaId(string value, string scope, string localId) : base(value)
     {
         Scope = scope;
@@ -86,11 +83,13 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
     public static MediaId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MediaId>(s);
 
-    public static MediaId? ParseOrNull(string? s)
+    public static MediaId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static MediaId? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static MediaId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out MediaId? result)
     {

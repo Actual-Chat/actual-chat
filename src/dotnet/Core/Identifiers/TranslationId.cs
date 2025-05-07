@@ -1,119 +1,101 @@
 using System.ComponentModel;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
 using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<TranslationId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<TranslationId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<TranslationId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<TranslationId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<TranslationId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<TranslationId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<TranslationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct TranslationId : ISymbolIdentifier<TranslationId>
+public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<TranslationId>
 {
-    private const string Delimiter = ":";
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= StaticLog.For<TranslationId>();
+    private static readonly ILruCache<string, TranslationId> Cache = CreateCache<TranslationId>(128);
 
-    [field: AllowNull, MaybeNull]
-    private static ILogger Log => field ??= StaticLog.For<ChatId>();
+    public const char Delimiter = ':';
 
-    public static TranslationId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId ChatEntryId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
+    public TextEntryId ChatEntryId { get; }
+    [IgnoreDataMember]
     public Language Language { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public TranslationId(Symbol id)
-        => this = Parse(id);
-    public TranslationId(string? id)
-        => this = Parse(id);
-    public TranslationId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    public static TranslationId New(TextEntryId chatEntryId, Language language)
+        => new(Format(chatEntryId, language), chatEntryId, language);
 
-    private TranslationId(Symbol id, ChatEntryId chatEntryId, Language language, AssumeValid _)
+    private TranslationId(string value, TextEntryId chatEntryId, Language language) : base(value)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
         ChatEntryId = chatEntryId;
         Language = language;
     }
-
-    public TranslationId(ChatEntryId chatEntryId, Language language, AssumeValid _)
-    {
-        if (chatEntryId.IsNone) {
-            this = None;
-            return;
-        }
-        Id = Format(chatEntryId, language);
-        ChatEntryId = chatEntryId;
-        Language = language;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(TranslationId source) => source.Id;
-    public static implicit operator string(TranslationId source) => source.Id.Value;
-    public static explicit operator TranslationId(string source) => new(source);
 
     // Equality
 
-    public bool Equals(TranslationId other) => Id == other.Id;
-    public override bool Equals(object? obj) => obj is TranslationId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(TranslationId left, TranslationId right) => left.Equals(right);
-    public static bool operator !=(TranslationId left, TranslationId right) => !left.Equals(right);
+    public bool Equals(TranslationId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is TranslationId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(TranslationId? left, TranslationId? right)
+        => left?.Equals(right) ?? right is null;
 
-    private static string Format(ChatEntryId chatEntryId, Language language)
-        => chatEntryId.IsNone ? "" : $"{chatEntryId}{Delimiter}{language.Id}";
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(TranslationId? left, TranslationId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
+
+    public static string Format(TextEntryId chatEntryId, Language language)
+        => $"{chatEntryId.Value}{Delimiter}{language.Value}";
 
     public static TranslationId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TranslationId>(s);
-    public static TranslationId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<TranslationId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out TranslationId result)
+    public static TranslationId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static TranslationId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out TranslationId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
-
-        if (s.Length < 6)
             return false;
 
-        var entryIdLength = s.OrdinalLastIndexOf(Delimiter);
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
+
+        var entryIdLength = s.LastIndexOf(Delimiter);
         if (entryIdLength < 0)
             return false;
 
-        if (!ChatEntryId.TryParse(s[..entryIdLength], out var entryId))
+        if (!TextEntryId.TryParse(s[..entryIdLength], out var entryId))
             return false;
 
         var languageStart = entryIdLength + 1;
         if (!Language.TryParse(s[languageStart..], out var language))
             return false;
 
-        result = new TranslationId(s, entryId, language, AssumeValid.Option);
+        result = new TranslationId(s, entryId, language);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
-
 }

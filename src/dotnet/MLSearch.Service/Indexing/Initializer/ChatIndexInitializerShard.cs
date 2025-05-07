@@ -20,7 +20,6 @@ internal sealed class ChatIndexInitializerShard(
     ILogger<ChatIndexInitializerShard> log
 ) : IChatIndexInitializerShard
 {
-    public const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
     private const string ClassName = nameof(ChatIndexInitializerShard);
     private const string PostActivityName = $"{nameof(PostAsync)}({nameof(MLSearch_TriggerChatIndexingCompletion)})@{ClassName}";
     private const string OnScheduleJobActivityName = $"{nameof(OnScheduleJob)}({nameof(MLSearch_TriggerChatIndexingCompletion)})@{ClassName}";
@@ -28,8 +27,11 @@ internal sealed class ChatIndexInitializerShard(
     private const string OnUpdateCursorActivityName = $"{nameof(OnUpdateCursor)}@{ClassName}";
     private static readonly ActivitySource ActivitySource = MLSearchInstruments.ActivitySource;
 
+    public const string CursorKey = $"{nameof(ChatIndexInitializer)}.{nameof(Cursor)}";
+
     // # Helper types
     public record Cursor(long LastVersion);
+
     public class SharedState(Cursor cursor, int maxConcurrency)
     {
         private long _maxVersion = cursor.LastVersion;
@@ -41,12 +43,16 @@ internal sealed class ChatIndexInitializerShard(
         public SemaphoreSlim Semaphore { get; } = new(maxConcurrency, maxConcurrency);
         public ConcurrentDictionary<ChatId, (long, Moment)> ScheduledJobs { get; } = new();
     }
+
     public record ChatInfo(ChatId ChatId, long Version)
     {
-        public ChatInfo((ChatId ChatId, long Version) info): this(info.ChatId, info.Version)
+        public ChatInfo((ChatId ChatId, long Version) info)
+            : this(info.ChatId, info.Version)
         { }
     }
+
     public record RetrySettings(int AttemptCount, RetryDelaySeq RetryDelaySeq, TransiencyResolver TransiencyResolver);
+
     public static class UpdateCursorStages
     {
         public const string NoUpdates = "NoUpdates";
@@ -61,8 +67,10 @@ internal sealed class ChatIndexInitializerShard(
         MomentClock clock,
         ILogger log,
         CancellationToken cancellationToken);
+
     public delegate void CompleteJobHandler(
         MLSearch_TriggerChatIndexingCompletion evt, SharedState state);
+
     public delegate ValueTask UpdateCursorHandler(
         Moment moment, SharedState state, TimeSpan stallJobTimeout,
         ICursorStates<Cursor> cursorStates,
@@ -72,9 +80,10 @@ internal sealed class ChatIndexInitializerShard(
 
     // # Fields
     private object _lock = new();
-    private Channel<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)>? _events;
+
+    [field: AllowNull, MaybeNull]
     private Channel<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)> Events => LazyInitializer.EnsureInitialized(
-        ref _events,
+        ref field,
         ref _lock,
         () => Channel.CreateBounded<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)>(
             new BoundedChannelOptions(InputBufferCapacity) {
@@ -142,7 +151,7 @@ internal sealed class ChatIndexInitializerShard(
     // ## Schedule jobs
     private async ValueTask ScheduleJobForChatAsync(ChatInfo chatInfo, SharedState state, CancellationToken cancellationToken)
     {
-        using var _ = ActivitySource.StartActivity(OnScheduleJobActivityName, ActivityKind.Internal);
+        using var _ = ActivitySource.StartActivity(OnScheduleJobActivityName);
 
         await OnScheduleJob(chatInfo, state, ScheduleJobRetrySettings, queues, clock, log, cancellationToken).ConfigureAwait(false);
     }
@@ -234,7 +243,7 @@ internal sealed class ChatIndexInitializerShard(
 
     private async ValueTask UpdateCursorAsync(Moment updateMoment, SharedState state, CancellationToken cancellationToken)
     {
-        using var _ = ActivitySource.StartActivity(OnUpdateCursorActivityName, ActivityKind.Internal);
+        using var _ = ActivitySource.StartActivity(OnUpdateCursorActivityName);
 
         await OnUpdateCursor(updateMoment, state, StallJobTimeout, cursorStates, log, cancellationToken: cancellationToken).ConfigureAwait(false);
     }

@@ -33,7 +33,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (author is null or { HasLeft: true })
             return [];
 
-        var isGuest = account.IsGuestOrNone;
+        var isGuest = account.IsGuest;
         var isAnonymous = author is { IsAnonymous: true };
         return await Backend
             .List(chatId, author.Id, isGuest, isAnonymous, cancellationToken)
@@ -60,19 +60,18 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (ownAuthor == null)
             return [];
 
-        var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
-        var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        var rules = await ChatsBackend.GetRules(chatId, ownAuthor.Id, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
             return [];
 
         var targetChatId = chatId;
-        if (targetChatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
+        if (targetChatId is PlaceChatId { IsRoot: false } placeChatId) {
             var chat = await ChatsBackend.Get(targetChatId, cancellationToken).ConfigureAwait(false);
             if (chat == null)
                 return []; // Chat should be not null here, but do check for safety.
 
             if (chat.IsPublic)
-                targetChatId = chatId.PlaceChatId.PlaceId.ToRootChatId(); // For public place chats take owner list from root place chat.
+                targetChatId = placeChatId.PlaceId.RootChatId; // For public place chats take owner list from root place chat.
         }
 
         var ownerRole = await Backend
@@ -137,7 +136,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     {
         List<AuthorId>? toExclude = null;
         foreach (var authorId in authorIds) {
-            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Default, cancellationToken).ConfigureAwait(false);
             if (author != null && author.IsAnonymous) {
                 toExclude ??= new List<AuthorId>();
                 toExclude.Add(authorId);
@@ -150,5 +149,5 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     }
 
     private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
-        => new(targetChatId, authorId.LocalId, AssumeValid.Option);
+        => AuthorId.New(targetChatId, authorId.LocalId);
 }

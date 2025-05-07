@@ -17,7 +17,7 @@ public class Search(ISearchBackend backend, IAccounts accounts, IPlaces places, 
             return ContactSearchResultPage.Empty;
 
         if (query.MustFilterByPlace) {
-            var place = await places.Get(session, query.PlaceId.Value, cancellationToken).ConfigureAwait(false);
+            var place = await places.Get(session, query.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place is null)
                 return ContactSearchResultPage.Empty;
         }
@@ -35,11 +35,11 @@ public class Search(ISearchBackend backend, IAccounts accounts, IPlaces places, 
         if (!ownAccount.IsActive())
             return EntrySearchResultPage.Empty;
 
-        if (!query.ChatId.IsNone) {
-            var chat = await chats.Get(session, query.ChatId, cancellationToken).ConfigureAwait(false);
+        if (query.ChatId is { } chatId) {
+            var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat is null)
                 return EntrySearchResultPage.Empty;
-        } else if (query.PlaceId is { IsNone: false } placeId) {
+        } else if (query.PlaceId is { } placeId) {
             var place = await places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
             if (place is null)
                 return EntrySearchResultPage.Empty;

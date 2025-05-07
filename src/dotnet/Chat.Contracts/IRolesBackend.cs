@@ -26,7 +26,7 @@ public interface IRolesBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record RolesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] RoleId RoleId,
+    [property: DataMember, MemoryPackOrder(1)] RoleId? RoleId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<RoleDiff> Change
 ) : ICommand<Role>, IBackendCommand, IHasShardKey<ChatId>

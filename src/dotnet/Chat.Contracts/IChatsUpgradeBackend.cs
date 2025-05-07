@@ -47,10 +47,10 @@ public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => default;
+    public ChatId? ShardKey => null;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

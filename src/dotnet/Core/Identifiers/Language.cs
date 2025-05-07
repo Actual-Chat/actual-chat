@@ -57,11 +57,13 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     public static Language Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Language>(s);
 
-    public static Language? ParseOrNull(string? s)
+    public static Language? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static Language? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static Language? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Language? result)
     {

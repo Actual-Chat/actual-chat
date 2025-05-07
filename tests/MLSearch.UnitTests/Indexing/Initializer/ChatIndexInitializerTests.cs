@@ -67,7 +67,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver, shard, coordinator, logger);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
-                new MLSearch_TriggerChatIndexingCompletion(ChatId.None), CancellationToken.None));
+                new MLSearch_TriggerChatIndexingCompletion(null!), CancellationToken.None));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         _ = initializer.OnRun(InactiveShardIndex2, CancellationToken.None);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
-                new MLSearch_TriggerChatIndexingCompletion(ChatId.None), CancellationToken.None));
+                new MLSearch_TriggerChatIndexingCompletion(null!), CancellationToken.None));
     }
 
     [Theory]
@@ -118,7 +118,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             _ = initializer.OnRun(shardId, CancellationToken.None);
         }
 
-        var completionEvt = new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option));
+        var completionEvt = new MLSearch_TriggerChatIndexingCompletion(GroupChatId.New());
         var cancellationToken = new CancellationTokenSource().Token;
 
         await initializer.PostAsync(completionEvt, cancellationToken);

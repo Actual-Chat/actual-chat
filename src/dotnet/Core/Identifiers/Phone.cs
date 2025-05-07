@@ -80,11 +80,13 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
     public static Phone Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Phone>(s);
 
-    public static Phone? ParseOrNull(string? s)
+    public static Phone? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static Phone? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static Phone? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Phone? result)
     {

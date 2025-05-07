@@ -12,10 +12,10 @@ public readonly partial record struct ActiveChat(
     [property: DataMember, MemoryPackOrder(4)] Moment ListeningRecency = default // CPU time
     ) : ICanBeNone<ActiveChat>
 {
-    public static ActiveChat None { get; } = default;
+    public static ActiveChat None => default;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => ChatId.IsNone;
+    public bool IsNone => ChatId is null;
 
     public bool IsSameAs(ActiveChat other)
         => ChatId == other.ChatId
@@ -27,9 +27,7 @@ public readonly partial record struct ActiveChat(
     public static implicit operator ActiveChat(ChatId chatId)
         => new(chatId);
 
-    // Equality must rely on Id only
-    public bool Equals(ActiveChat other)
-        => ChatId.Equals(other.ChatId);
-    public override int GetHashCode()
-        => ChatId.GetHashCode();
+    // Equality is based solely on ChatId property
+    public bool Equals(ActiveChat other) => Equals(ChatId, other.ChatId);
+    public override int GetHashCode() => ChatId?.GetHashCode() ?? 0;
 }

@@ -20,10 +20,7 @@
         await using var _ = blazorRenderer.ConfigureAwait(false);
         var mjml = await blazorRenderer.RenderComponent(ComponentType).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
-        var mjmlOptions = new MjmlOptions {
-            Minify = true,
-            Beautify = false,
-        };
+        var mjmlOptions = new MjmlOptions { Beautify = false };
         var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
         _html = renderResult.Html;
     }

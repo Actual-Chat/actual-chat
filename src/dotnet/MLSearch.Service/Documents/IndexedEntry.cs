@@ -4,7 +4,7 @@ namespace ActualChat.MLSearch.Documents;
 
 public sealed record IndexedEntry : IHasId<TextEntryId>, IHasRoutingKey<TextEntryId>
 {
-    public TextEntryId Id { get; init; }
+    public required TextEntryId Id { get; init; }
     public string Content { get; init; } = "";
     public Moment At { get; init; }
     public JoinField EntryToChat => JoinField.Link<IndexedEntry, IndexedChat>(new (ChatId));
@@ -12,6 +12,6 @@ public sealed record IndexedEntry : IHasId<TextEntryId>, IHasRoutingKey<TextEntr
     // Computed
     public ChatId ChatId => Id.ChatId;
 
-    public static string GetRoutingKey(TextEntryId id)
-        => id.ChatId;
+    public static string? GetRoutingKey(TextEntryId? id)
+        => id?.ChatId.Value;
 }

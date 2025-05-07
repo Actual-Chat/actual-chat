@@ -43,7 +43,7 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var rnd = new Random();
         var authorIds = Enumerable.Range(0, 50)
-            .Select(i => new AuthorId(new ChatId("chatid"), i, AssumeValid.Option))
+            .Select(i => AuthorId.New(ChatId.Parse("chatid"), i))
             .ToArray();
         var engine = DiffEngine.Default;
         for (var count = 2; count < 20; count++) {

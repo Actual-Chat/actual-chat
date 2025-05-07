@@ -1,5 +1,3 @@
-
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.MLSearch.Documents;
 
@@ -39,12 +37,10 @@ internal sealed class ChatFilterBuilder(IContactsBackend contacts)
 
     internal ValueTask IncludePublic(PlaceId? placeId, CancellationToken _)
     {
-        if (placeId.HasValue) {
-            ChatFilter.PlaceIds.Add(placeId.Value);
-        }
-        else {
+        if (placeId is not null)
+            ChatFilter.PlaceIds.Add(placeId);
+        else
             ChatFilter.IncludePublic = true;
-        }
         return ValueTask.CompletedTask;
     }
 

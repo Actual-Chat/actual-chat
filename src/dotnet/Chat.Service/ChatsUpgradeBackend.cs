@@ -57,7 +57,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChat = await dbContext.Chats
-            .SingleOrDefaultAsync(c => c.Id == chatId, cancellationToken)
+            .SingleOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken)
             .ConfigureAwait(false);
         if (dbChat == null)
             return;
@@ -66,7 +66,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             chatId, dbChat.Title, dbChat.Kind);
 
         var chat = dbChat.ToModel();
-        if (chat.Id.IsPeerChat(out var peerChatId)) {
+        if (chat.Id is PeerChatId peerChatId) {
             // Peer chat
             await peerChatId.UserIds
                 .ToArray()
@@ -79,7 +79,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
             // Removing duplicate system roles
             var systemDbRoles = await dbContext.Roles
-                .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
+                .Where(r => r.ChatId == chatId.Value && r.SystemRole != SystemRole.None)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
             foreach (var group in systemDbRoles.GroupBy(r => r.SystemRole)) {
@@ -92,7 +92,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
             // Reload system roles
             systemDbRoles = await dbContext.Roles
-                .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
+                .Where(r => r.ChatId == chatId.Value && r.SystemRole != SystemRole.None)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 

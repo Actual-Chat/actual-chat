@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch;
 public interface IMLSearch : IComputeService
 {
     [ComputeMethod]
-    Task<string> GetIndexDocIdByEntryId(Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
+    Task<string> GetIndexDocIdByEntryId(Session session, ChatEntryId entryId, CancellationToken cancellationToken);
 
     // Commands
 

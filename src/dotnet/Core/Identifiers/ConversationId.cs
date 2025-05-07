@@ -1,101 +1,94 @@
 using System.ComponentModel;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
 using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 #pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<ConversationId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ConversationId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<ConversationId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<ConversationId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ConversationId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ConversationId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<ConversationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct ConversationId : ISymbolIdentifier<ConversationId>
+public sealed partial class ConversationId : StringIdentifier, IStringIdentifier<ConversationId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ConversationId>();
+    private static readonly ILruCache<string, ConversationId> Cache = CreateCache<ConversationId>(128);
 
-    public static ConversationId None => default;
+    public const char Delimiter = ':';
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public ChatId ChatId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public long StartEntryLid { get; }
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public ConversationId(Symbol id)
-        => this = Parse(id);
-    public ConversationId(string? id)
-        => this = Parse(id);
-    public ConversationId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-
-    public ConversationId(Symbol id, ChatId chatId, long startEntryLid, AssumeValid _)
+    public static ConversationId New(ChatId chatId, long startEntryLid)
     {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
+        if (startEntryLid < 0)
+            throw new ArgumentOutOfRangeException(nameof(startEntryLid));
+
+        return new(Format(chatId, startEntryLid), chatId, startEntryLid);
+    }
+
+    private ConversationId(string value, ChatId chatId, long startEntryLid) : base(value)
+    {
         ChatId = chatId;
         StartEntryLid = startEntryLid;
     }
-
-    public ConversationId(ChatId chatId, long startEntryLid, AssumeValid _)
-    {
-        if (chatId.IsNone || startEntryLid < 0) {
-            this = None;
-            return;
-        }
-        Id = Format(chatId, startEntryLid);
-        ChatId = chatId;
-        StartEntryLid = startEntryLid;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(ConversationId source) => source.Id;
-    public static implicit operator string(ConversationId source) => source.Id.Value;
 
     // Equality
 
-    public bool Equals(ConversationId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is ConversationId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(ConversationId left, ConversationId right) => left.Equals(right);
-    public static bool operator !=(ConversationId left, ConversationId right) => !left.Equals(right);
+    public bool Equals(ConversationId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is ConversationId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(ConversationId? left, ConversationId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(ConversationId? left, ConversationId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
 
     public static string Format(ChatId chatId, long startEntryLid)
-        => chatId.IsNone ? "" : $"{chatId}:{startEntryLid.Format()}";
+        => $"{chatId.Value}{Delimiter}{startEntryLid.Format()}";
 
     public static ConversationId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ConversationId>(s);
-    public static ConversationId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<ConversationId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out ConversationId result)
+    public static ConversationId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static ConversationId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out ConversationId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
 
-        var chatIdLength = s.OrdinalIndexOf(":");
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
+
+        var chatIdLength = s.OrdinalIndexOf(Delimiter);
         if (chatIdLength < 0)
             return false;
 
@@ -106,7 +99,8 @@ public readonly partial struct ConversationId : ISymbolIdentifier<ConversationId
         if (!NumberExt.TryParsePositiveLong(sStartEntryLid, out var startEntryLid))
             return false;
 
-        result = new ConversationId(s, chatId, startEntryLid, AssumeValid.Option);
+        result = new ConversationId(s, chatId, startEntryLid);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
 }

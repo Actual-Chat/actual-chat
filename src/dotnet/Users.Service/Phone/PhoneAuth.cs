@@ -11,20 +11,18 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
 
-    private IAuthBackend? _authBackend;
-    private IAccounts? _accounts;
-    private IDbEntityConverter<DbUser, User>? _userConverter;
-
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private HostInfo HostInfo { get; } = services.HostInfo();
     private ITextMessageSender TextMessage { get; } = services.GetRequiredService<ITextMessageSender>();
     private TotpCodes Totps { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-
-    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
-    private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
-    private IDbEntityConverter<DbUser, User> UserConverter => _userConverter ??= Services.DbEntityConverter<DbUser, User>();
+    [field: AllowNull, MaybeNull]
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
+    [field: AllowNull, MaybeNull]
+    private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
 
     // [ComputeMethod]
     // TODO: move to Features_EnablePhoneAuth
@@ -79,8 +77,8 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation.Items.KeylessGet<UserId>();
-            if (!userId.IsNone)
-                _ = AuthBackend.GetUser(DbShard.Single, userId, cancellationToken);
+            if (userId is not null)
+                _ = AuthBackend.GetUser(DbShard.Single, userId.Value, cancellationToken);
             return default;
         }
 
@@ -100,7 +98,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await DbUsers.Get(dbContext, account.Id, true, cancellationToken).ConfigureAwait(false);
+        var dbUser = await DbUsers.Get(dbContext, account.Id.Value, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return default; // Should never happen, but if it somehow does, there is no extra to do in this case
 

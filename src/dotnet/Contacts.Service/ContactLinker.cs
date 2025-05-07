@@ -59,7 +59,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         }
     }
 
-    private Task<UserId> FindUserId(DbExternalContactLink link, CancellationToken cancellationToken)
+    private Task<UserId?> FindUserId(DbExternalContactLink link, CancellationToken cancellationToken)
     {
         var phoneHash = link.ToPhoneHash();
         if (!phoneHash.IsNullOrEmpty())
@@ -70,20 +70,19 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
             return AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken);
 
         Log.LogError("Unknown external contact link type: {ExternalContactLink}", link.Value);
-        return Task.FromResult(UserId.None);
+        return Task.FromResult((UserId?)null);
     }
 
     private async Task EnsureContactExists(
         UserId ownerId,
-        UserId userId,
+        UserId? userId,
         ExternalContactId externalContactId,
         CancellationToken cancellationToken)
     {
-        if (userId.IsNone || ownerId == userId)
+        if (userId is null || ownerId == userId)
             return;
 
-        var peerChatId = new PeerChatId(ownerId, userId);
-        var contactId = new ContactId(ownerId, peerChatId);
+        var contactId = ContactId.NewUser(ownerId, userId);
         // check existing contact since command always performs db request
         var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
         if (!contact.IsStored()) {

@@ -1,121 +1,75 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<PrincipalId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<PrincipalId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<PrincipalId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<PrincipalId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<PrincipalId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<PrincipalId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<PrincipalId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct PrincipalId : ISymbolIdentifier<PrincipalId>
+public partial class PrincipalId : StringIdentifier, IStringIdentifier<PrincipalId>, IHasShardKey<string>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PrincipalId>();
 
-    public static PrincipalId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public PrincipalKind Kind { get; }
-    private AuthorId AuthorId { get; }
-    private UserId UserId { get; }
+    [IgnoreDataMember]
+    public virtual string ShardKey => Value;
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public PrincipalId(Symbol id)
-        => this = Parse(id);
-    public PrincipalId(string? id)
-        => this = Parse(id);
-    public PrincipalId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-
-    public PrincipalId(AuthorId authorId, AssumeValid _)
-    {
-        if (authorId.IsNone) {
-            this = None;
-            return;
-        }
-        Id = authorId.Id;
-        Kind = PrincipalKind.Author;
-        AuthorId = authorId;
-        UserId = default;
-    }
-
-    public PrincipalId(UserId userId, AssumeValid _)
-    {
-        if (userId.IsNone) {
-            this = None;
-            return;
-        }
-        Id = userId.Id;
-        Kind = PrincipalKind.User;
-        AuthorId = default;
-        UserId = userId;
-    }
-
-    public bool IsAuthor(out AuthorId authorId)
-    {
-        authorId = AuthorId;
-        return Kind == PrincipalKind.Author;
-    }
-
-    public bool IsUser(out UserId userId)
-    {
-        userId = UserId;
-        return Kind == PrincipalKind.User;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(PrincipalId source) => source.Id;
-    public static implicit operator string(PrincipalId source) => source.Id.Value;
+    protected PrincipalId(string value, PrincipalKind kind) : base(value)
+        => Kind = kind;
 
     // Equality
 
-    public bool Equals(PrincipalId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is PrincipalId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(PrincipalId left, PrincipalId right) => left.Equals(right);
-    public static bool operator !=(PrincipalId left, PrincipalId right) => !left.Equals(right);
+    public bool Equals(PrincipalId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is PrincipalId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(PrincipalId? left, PrincipalId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(PrincipalId? left, PrincipalId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
 
     public static PrincipalId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PrincipalId>(s);
-    public static PrincipalId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<PrincipalId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out PrincipalId result)
+    public static PrincipalId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static PrincipalId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out PrincipalId? result)
     {
-        if (s.IsNullOrEmpty()) {
-            result = default;
-            return true; // None
-        }
-
         if (AuthorId.TryParse(s, out var authorId)) {
-            result = new PrincipalId(authorId, AssumeValid.Option);
+            result = authorId;
             return true;
         }
         if (UserId.TryParse(s, out var userId)) {
-            result = new PrincipalId(userId, AssumeValid.Option);
+            result = userId;
             return true;
         }
-        result = default;
+
+        result = null;
         return false;
     }
 }

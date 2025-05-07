@@ -44,7 +44,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(userId, ct);
+            var flow = await flows.Get<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
             flow!.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
@@ -71,7 +71,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(userId, ct);
+            var flow = await flows.Get<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
             flow!.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
@@ -113,7 +113,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(userId, ct);
+            var flow = await flows.Get<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
             flow!.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));

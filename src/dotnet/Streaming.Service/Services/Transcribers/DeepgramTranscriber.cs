@@ -89,7 +89,9 @@ public partial class DeepgramTranscriber : ITranscriber
                 Languages.Russian,
             };
             var model = nova3Languages.Contains(options.Language) ? "nova-3" : "nova-2";
-            var language = model == "nova-3" ? "multi" : options.Language.ToDeepgram();
+            var language = OrdinalEquals(model, "nova-3")
+                ? "multi"
+                : options.Language.ToDeepgram();
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,

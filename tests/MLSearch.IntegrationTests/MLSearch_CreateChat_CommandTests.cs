@@ -25,8 +25,8 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         var chat1 = await commander.Call(command1, default);
         var chat2 = await commander.Call(command2, default);
         // Assert
-        Assert.False(chat1.Id.IsNone);
-        Assert.False(chat2.Id.IsNone);
+        Assert.NotNull(chat1.Id);
+        Assert.NotNull(chat2.Id);
         Assert.NotEqual(chat1.Id, chat2.Id);
         (await chats.Get(chat1.Id, default)).Should().NotBeNull();
         (await chats.Get(chat2.Id, default)).Should().NotBeNull();
@@ -49,7 +49,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         var chat = await commander.Call(command, default);
 
         // Assert
-        Assert.False(chat.Id.IsNone);
+        Assert.NotNull(chat.Id);
         var chatUsers = await authors.ListUserIds(chat.Id, default);
         Assert.True(chatUsers.Length == 2);
         Assert.Contains(someUserAccount.Id, chatUsers);
@@ -92,7 +92,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
 
         // Act
         var chat = await commander.Call(command, default);
-        var botAuthor = await authors.GetByUserId(chat.Id, Constants.User.Sherlock.UserId, AuthorsBackend_GetAuthorOption.Full, default);
+        var botAuthor = await authors.GetByUserId(chat.Id, Constants.User.Sherlock.UserId, RequestedAuthorKind.Full, default);
         botAuthor.Should().NotBeNull();
         var result = await commander.Run(new Authors_Exclude(session, botAuthor!.Id));
         // Assert

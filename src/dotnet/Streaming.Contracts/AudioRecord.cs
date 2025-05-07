@@ -8,7 +8,7 @@ public sealed partial record AudioRecord(
     [property: DataMember, MemoryPackOrder(1)] Session Session,
     [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(3)] double ClientStartOffset,
-    [property: DataMember, MemoryPackOrder(4)] ChatEntryId RepliedChatEntryId
+    [property: DataMember, MemoryPackOrder(4)] TextEntryId? RepliedEntryId
     ) : IHasId<StreamId>, IHasNodeRef
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

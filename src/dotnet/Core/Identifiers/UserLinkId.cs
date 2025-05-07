@@ -26,7 +26,6 @@ public sealed partial class UserLinkId : StringIdentifier, IStringIdentifier<Use
     [IgnoreDataMember] [field: AllowNull, MaybeNull]
     public string NormalizedValue => field ??= Value.ToLowerInvariant();
 
-
     // Factories and constructors
 
     private UserLinkId(string value) : base(value)
@@ -54,11 +53,13 @@ public sealed partial class UserLinkId : StringIdentifier, IStringIdentifier<Use
     public static UserLinkId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserLinkId>(s);
 
-    public static UserLinkId? ParseOrNull(string? s)
+    public static UserLinkId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static UserLinkId? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static UserLinkId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out UserLinkId? result)
     {

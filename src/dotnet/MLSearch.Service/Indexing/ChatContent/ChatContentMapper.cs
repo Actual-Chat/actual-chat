@@ -21,23 +21,24 @@ internal class ChatContentMapper(
         var principalSet = new HashSet<PrincipalId>(entryCount);
 
         // -- Authors
-        principalSet.AddRange(sourceEntries.Entries.Select(e => new PrincipalId(e.AuthorId.Id)));
+        principalSet.AddRange(sourceEntries.Entries.Select(e => e.AuthorId));
         var authors = ImmutableArray.CreateBuilder<PrincipalId>(principalSet.Count);
         authors.AddRange(principalSet);
 
         // -- Chat Entries
         var chatEntries = ImmutableArray.CreateBuilder<ChatSliceEntry>(entryCount);
-        chatEntries.AddRange(sourceEntries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version)));
+        chatEntries.AddRange(
+            sourceEntries.Entries.Select(e => new ChatSliceEntry((TextEntryId)e.Id, e.LocalId, e.Version)));
 
         // -- Replies
         const int replyToEstimatedCount = 1;
-        var uniqueReplyToEntries = new HashSet<ChatEntryId>(replyToEstimatedCount);
+        var uniqueReplyToEntries = new HashSet<TextEntryId>(replyToEstimatedCount);
         uniqueReplyToEntries.AddRange(sourceEntries.Entries
             .Where(e => e.RepliedEntryLid.HasValue)
-            .Select(e => new ChatEntryId(e.ChatId, ChatEntryKind.Text, e.RepliedEntryLid.GetValueOrDefault(), AssumeValid.Option)));
+            .Select(e => TextEntryId.New(e.ChatId, e.RepliedEntryLid.GetValueOrDefault())));
         // TODO: We may want to build some summary for the entries we are replying to
         // We may use that summary while building document content later
-        var replyToEntries = ImmutableArray.CreateBuilder<ChatEntryId>(uniqueReplyToEntries.Count);
+        var replyToEntries = ImmutableArray.CreateBuilder<TextEntryId>(uniqueReplyToEntries.Count);
         replyToEntries.AddRange(uniqueReplyToEntries);
 
         // -- Mentions
@@ -52,9 +53,12 @@ internal class ChatContentMapper(
 
         // -- Reactions
         principalSet.Clear();
-        foreach (var entryId in sourceEntries.Entries.Where(e => e.HasReactions).Select(e => e.Id.ToTextEntryId())) {
-            var reactionSummary = await reactionsBackend.List(entryId, cancellationToken).ConfigureAwait(false);
-            principalSet.AddRange(reactionSummary.SelectMany(s => s.FirstAuthorIds).Select(author => new PrincipalId(author.Id)));
+        var reactionEntryIds = sourceEntries.Entries
+            .Where(e => e.HasReactions)
+            .Select(e => (TextEntryId)e.Id);
+        foreach (var reactionEntryId in reactionEntryIds) {
+            var reactionSummary = await reactionsBackend.List(reactionEntryId, cancellationToken).ConfigureAwait(false);
+            principalSet.AddRange(reactionSummary.SelectMany(s => s.FirstAuthorIds));
         }
         var reactions = ImmutableArray.CreateBuilder<PrincipalId>(principalSet.Count);
         reactions.AddRange(principalSet);

@@ -20,7 +20,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
     public string MetadataJson { get; set; } = "";
 
     public Media ToModel()
-        => new (MediaId.New(Id, Scope, LocalId, AssumeValid.Option)) {
+        => new (MediaId.Parse(Id)) {
             ContentId = ContentId,
             Metadata = MetadataSerializer.Read(MetadataJson),
         };

@@ -52,7 +52,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     {
         AddHtml("<span", ref state);
         AddAttribute("class", MentionClass, false, ref state);
-        AddAttribute("data-id", markup.Id, true, ref state);
+        AddAttribute("data-id", markup.Id.Value, true, ref state);
         AddHtml(">@", ref state);
         AddText(markup.NameOrNotAvailable, ref state);
         AddHtml("</span>", ref state);

@@ -34,11 +34,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
     {
-        if (userId.IsNone)
-            return null;
+        ArgumentNullException.ThrowIfNull(userId);
 
         // We _must_ have a dependency on AuthBackend.GetUser here
-        var user = await AuthBackend.GetUser(DbShard.Single, userId, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(DbShard.Single, userId.Value, cancellationToken).ConfigureAwait(false);
         AccountFull? account;
         if (user == null) {
             account = GetGuestAccount(userId);
@@ -46,7 +45,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 return null;
         }
         else {
-            var dbAccount = await DbAccountResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+            var dbAccount = await DbAccountResolver.Get(userId.Value, cancellationToken).ConfigureAwait(false);
             account = dbAccount?.ToModel(user);
             if (account == null)
                 return null;
@@ -71,7 +70,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserId> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken)
+    public virtual async Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -80,11 +79,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbUserIdentity = await dbContext.UserIdentities
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
-        return new UserId(dbUserIdentity?.DbUserId);
+        return UserId.ParseNullable(dbUserIdentity?.DbUserId);
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserId> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken)
+    public virtual async Task<UserId?> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -95,33 +94,33 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .Select(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        return UserId.ParseOrNone(accountId);
+        return UserId.ParseNullable(accountId);
     }
 
     // Not a [ComputeMethod]!
     public async Task<UserId[]> ListChanged(
         long minVersion,
         long maxVersion,
-        UserId lastId,
+        UserId? lastId,
         int limit,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var accountsQuery = lastId.IsNone
+        var accountsQuery = lastId is null
             ? dbContext.Accounts.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
             : dbContext.Accounts.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
                 || (x.Version == minVersion && string.Compare(x.Id, lastId.Value) > 0));
 
         var dbAccounts = await accountsQuery
-            .Where(x => !Constants.User.SSystemUserIds.Contains(x.Id))
+            .Where(x => !Constants.User.SystemUserIdValues.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbAccounts.Select(x => new UserId(x.Id)).ToArray();
+        return dbAccounts.Select(x => UserId.Parse(x.Id)).ToArray();
     }
 
     public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)
@@ -135,8 +134,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var id = new UserId(dbAccount?.Id);
-        if (id.IsNone)
+        var id = UserId.ParseNullable(dbAccount?.Id);
+        if (id is null)
             return null;
 
         return await Get(id, cancellationToken).ConfigureAwait(false);
@@ -161,9 +160,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var sid = account.Id;
+        var accountIdValue = account.Id.Value;
         var dbAccount = await dbContext.Accounts.ForUpdate()
-            .FirstOrDefaultAsync(a => a.Id == sid, cancellationToken)
+            .FirstOrDefaultAsync(a => a.Id == accountIdValue, cancellationToken)
             .ConfigureAwait(false);
         dbAccount = dbAccount.RequireVersion(expectedVersion);
         var existing = await Get(account.Id, cancellationToken).ConfigureAwait(false);
@@ -182,7 +181,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         if (mustStartDigestFlow) {
             Log.LogInformation("Digest flow reset for: {AccountId}", account.Id);
-            var e = new FlowResetEvent(FlowRegistry.NewId<DigestFlow>(account.Id), "Account change");
+            var e = new FlowResetEvent(FlowRegistry.NewId<DigestFlow>(account.Id.Value), "Account change");
             context.Operation.AddEvent(e);
         }
 
@@ -212,27 +211,27 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var __ = dbContext.ConfigureAwait(false);
 
         await dbContext.UserPresences
-            .Where(a => a.UserId == userId)
+            .Where(a => a.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
         await dbContext.Avatars
-            .Where(a => a.UserId == userId)
+            .Where(a => a.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
         await dbContext.UserIdentities
-            .Where(a => a.DbUserId == userId)
+            .Where(a => a.DbUserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
         await dbContext.Users
-            .Where(a => a.Id == userId)
+            .Where(a => a.Id == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
         await dbContext.Accounts
-            .Where(a => a.Id == userId)
+            .Where(a => a.Id == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -241,7 +240,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             new AccountChangedEvent(existingAccount, existingAccount, ChangeKind.Remove));
 
         // authors
-        var removeAuthorsCommand = new AuthorsBackend_Remove(ChatId.None, AuthorId.None, userId);
+        var removeAuthorsCommand = new AuthorsBackend_Remove(null, null, userId);
         await Commander.Call(removeAuthorsCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -287,8 +286,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (!userId.IsGuest)
             return null;
 
-        var name = RandomNameGenerator.Default.Generate(userId);
-        var user = new User(userId, name);
+        var name = RandomNameGenerator.Default.Generate(userId.Value);
+        var user = new User(userId.Value, name);
         var account = new AccountFull(user);
         return account;
     }
@@ -296,7 +295,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private static AvatarFull GetFallbackAvatar(AccountFull account)
         => new(account.Id) {
             Name = account.Name,
-            AvatarKey = DefaultUserPicture.GetAvatarKey(account.Id),
+            AvatarKey = DefaultUserPicture.GetAvatarKey(account.Id.Value),
             Bio = "",
         };
 }

@@ -16,9 +16,6 @@ public static class ChatsExt
         ChatEntryId entryId,
         CancellationToken cancellationToken = default)
     {
-        if (entryId.IsNone)
-            return null;
-
         try {
             var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
             var tile = await chats.GetTile(session,

@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Numerics;
 using ActualChat.Hosting;
 
@@ -26,9 +27,8 @@ public static partial class Constants
 
     public static class Place
     {
-        public static readonly PlaceId ChatRouletteId = new ("chat-roulette", AssumeValid.Option); // Pseudo Place
-        public static readonly IReadOnlySet<Symbol> SystemPlaceIds =
-            new HashSet<Symbol>(new [] { ChatRouletteId.Id });
+        public static readonly PlaceId ChatRouletteId = PlaceId.Parse("chat-roulette"); // Pseudo Place
+        public static readonly IReadOnlySet<Symbol> SystemPlaceIds = new HashSet<Symbol>([ChatRouletteId.Id]);
     }
 
     public static class Contact
@@ -41,12 +41,12 @@ public static partial class Constants
 
     public static class Chat
     {
-        public static readonly ChatId DefaultChatId = ChatId.Group("the-actual-one");
-        public static readonly ChatId AnnouncementsChatId = ChatId.Group("announcements");
-        public static readonly ChatId FeedbackTemplateChatId = ChatId.Group("feedback-template");
-        public static readonly IReadOnlySet<Symbol> SystemChatIds =
-            new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id });
-        public static readonly string[] SystemChatSids = SystemChatIds.Select(x => x.Value).ToArray();
+        public static readonly GroupChatId DefaultChatId = GroupChatId.Parse("the-actual-one");
+        public static readonly GroupChatId AnnouncementsChatId = GroupChatId.Parse("announcements");
+        public static readonly GroupChatId FeedbackTemplateChatId = GroupChatId.Parse("feedback-template");
+        public static readonly HashSet<string> SystemChatIds = new(
+            [DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id],
+            StringComparer.Ordinal);
 
         public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;
         public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;
@@ -74,8 +74,9 @@ public static partial class Constants
             public static readonly Symbol Bot = "ml-bot";
             public static readonly Symbol ChatRoulette = "chat-roulette";
             public static class Rules {
-                private static readonly Symbol[] AllowMultiplePerUser = [SystemTags.Bot, SystemTags.Welcome, SystemTags.ChatRoulette];
-                public static bool MustBeUniquePerUser(Symbol systemTag) => !AllowMultiplePerUser.Any(e => e == systemTag);
+                private static readonly Symbol[] AllowMultiplePerUser = [Bot, Welcome, ChatRoulette];
+                public static bool MustBeUniquePerUser(Symbol systemTag)
+                    => AllowMultiplePerUser.All(e => e != systemTag);
             }
         }
     }
@@ -84,14 +85,14 @@ public static partial class Constants
     {
         public static class Admin
         {
-            public static readonly UserId UserId = new("actual-admin", AssumeValid.Option);
+            public static readonly UserId UserId = UserId.Parse("actual-admin");
             public static readonly string Name =  "Actual Chat Admin";
             public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12333323132";
         }
 
         public static class Walle
         {
-            public static readonly UserId UserId = new("walle", AssumeValid.Option);
+            public static readonly UserId UserId = UserId.Parse("walle");
             public static readonly long AuthorLocalId = -1;
             public static readonly string Name =  "Wall-E";
             public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12";
@@ -99,17 +100,17 @@ public static partial class Constants
 
         public static class Sherlock
         {
-            public static readonly UserId UserId = new("sherlock", AssumeValid.Option);
+            public static readonly UserId UserId = UserId.Parse("sherlock");
             public static readonly long AuthorLocalId = -2;
             public static readonly string Name =  "AI Search Bot";
             public static readonly MediaId MediaId = MediaId.Parse("system-icons:sherlock");
 
             public static AuthorId GetSherlockAuthorId(ChatId chatId)
-                => new(chatId, AuthorLocalId, AssumeValid.Option);
+                => AuthorId.New(chatId, AuthorLocalId);
         }
 
         public static readonly IReadOnlyList<UserId> SystemUserIds = [Admin.UserId, Walle.UserId, Sherlock.UserId];
-        public static readonly IReadOnlyList<string> SSystemUserIds = SystemUserIds.Select(x => x.Value).ToArray();
+        public static readonly IReadOnlyList<string> SystemUserIdValues = SystemUserIds.Select(x => x.Value).ToArray();
         public static readonly int TestBotCount = 30;
     }
 

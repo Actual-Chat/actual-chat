@@ -17,7 +17,8 @@ internal sealed class ChatBotWorker(
     {
         var chatId = job.Id;
 
-        var cursor = await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false) ?? new (0, 0);
+        var cursor = await cursorStates.LoadAsync(chatId.Value, cancellationToken).ConfigureAwait(false);
+        cursor ??= new(0, 0);
         var nextCursor = cursor;
 
         var updatedEntries = new List<ChatEntry>();
@@ -35,7 +36,7 @@ internal sealed class ChatBotWorker(
         }
 
         await sink.ExecuteAsync(updatedEntries, deletedEntries, cancellationToken).ConfigureAwait(false);
-        await cursorStates.SaveAsync(chatId, nextCursor, cancellationToken).ConfigureAwait(false);
+        await cursorStates.SaveAsync(chatId.Value, nextCursor, cancellationToken).ConfigureAwait(false);
     }
 
     private IAsyncEnumerable<ChatEntry> GetUpdatedEntriesAsync(

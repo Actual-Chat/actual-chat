@@ -16,10 +16,10 @@ public class BackendChatMentionResolver : IChatMentionResolver
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        if (!mention.Id.IsAuthor(out var authorId) || authorId.IsNone)
+        if (mention.Id.PrincipalId is not AuthorId authorId)
             return null;
 
-        return await AuthorsBackend.Get(ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        return await AuthorsBackend.Get(ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
     }
 
     ValueTask<string?> IMentionResolver<string>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)

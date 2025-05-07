@@ -116,10 +116,10 @@ public partial class MarkupParser : IMarkupParser
 
     // Mentions
     private static Parser<char, Markup> MentionParserFactory(string name = "") =>
-        from sid in Id
-        let id = new MentionId(sid, ParseOrNone.Option)
-        where !id.IsNone
-        select (Markup)new MentionMarkup(id, name);
+        from id in Id
+        let mentionId = MentionId.TryParse(id)
+        where mentionId != null
+        select (Markup)new MentionMarkup(mentionId, name);
     private static readonly Parser<char, Markup> NamedMention =
         // @`User Name`userId
         AtToken.Then(QuotedName).Then(MentionParserFactory).Debug("@`name`");

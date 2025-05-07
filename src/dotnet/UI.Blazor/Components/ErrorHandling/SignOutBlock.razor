@@ -7,7 +7,7 @@
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    if (account.IsGuestOrNone) {
+    if (account.IsGuestOrNull()) {
         <SignInBlock/>
         return;
     }

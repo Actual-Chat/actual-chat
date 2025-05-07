@@ -17,14 +17,18 @@ public class UserLinks(IServiceProvider services) : IUserLinks
         return new UserLinkRef(userLink.Kind, userLink.TargetId);
     }
 
-    public virtual Task<PlaceChatId> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken = default)
+    public virtual Task<PlaceChatId?> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken = default)
     {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
+        ArgumentNullException.ThrowIfNull(placeId);
+        ArgumentNullException.ThrowIfNull(userLinkId);
 
         return ChatsBackend.GetPlaceChatIdByUserLink(placeId, userLinkId, cancellationToken);
     }
 
-    public virtual Task<UserId> GetUserIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken = default)
-        => AccountsBackend.GetIdByUserLink(userLinkId, cancellationToken);
+    public virtual Task<UserId?> GetUserIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(userLinkId);
+
+        return AccountsBackend.GetIdByUserLink(userLinkId, cancellationToken);
+    }
 }

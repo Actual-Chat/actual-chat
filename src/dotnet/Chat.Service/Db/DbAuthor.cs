@@ -15,21 +15,20 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = null!;
     public long LocalId { get; set; }
 
     public bool IsAnonymous { get; set; }
-    public string? UserId { get; set; }
+    public string? UserId { get; set; } // TODO(AY): make non-nullable
     public string? AvatarId { get; set; }
     public bool HasLeft { get; set; }
     public bool IsPlaceAuthor { get; set; }
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
     public List<DbAuthorRole> Roles { get; } = new();
 
@@ -38,12 +37,13 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public AuthorFull ToModel()
     {
-        var result = new AuthorFull(new AuthorId(Id), Version) {
+        var userId = ActualChat.UserId.Parse(UserId!);
+        var authorId = AuthorId.Parse(Id);
+        var result = new AuthorFull(userId, authorId, Version) {
             IsAnonymous = IsAnonymous,
-            UserId = new UserId(UserId ?? Symbol.Empty, AssumeValid.Option),
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
-            RoleIds = Roles.ToArrayOfKnownLength(Roles.Count, x => (Symbol)x.DbRoleId).SortInPlace(),
+            RoleIds = Roles.ToArrayOfKnownLength(Roles.Count, x => RoleId.Parse(x.DbRoleId)).SortInPlace(),
             CreatedAt = CreatedAt,
             IsPlaceAuthor = IsPlaceAuthor,
         };
@@ -53,18 +53,18 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(AuthorFull model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
-        ChatId = id.ChatId;
+        ChatId = id.ChatId.Value;
         LocalId = id.LocalId;
         IsAnonymous = model.IsAnonymous;
-        UserId = model.UserId.Value.NullIfEmpty();
+        UserId = model.UserId!.Value;
         AvatarId = model.AvatarId.NullIfEmpty();
         HasLeft = model.HasLeft;
-        IsPlaceAuthor = model.ChatId.IsPlaceRootChat;
+        IsPlaceAuthor = model.ChatId is PlaceChatId { IsRoot: true };
         CreatedAt = model.CreatedAt.ToDateTimeClamped();
     }
 

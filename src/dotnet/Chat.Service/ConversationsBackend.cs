@@ -22,10 +22,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken)
     {
-        if (conversationId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(conversationId));
+        ArgumentNullException.ThrowIfNull(conversationId);
 
-        var dbChat = await DbChatResolver.Get(conversationId, cancellationToken).ConfigureAwait(false);
+        var dbChat = await DbChatResolver.Get(conversationId.Value, cancellationToken).ConfigureAwait(false);
         var chat = dbChat?.ToModel();
         return chat;
     }
@@ -40,15 +39,13 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var __ = dbContext.ConfigureAwait(false);
 
         var sConversationIds = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId && c.StartEntryLid <= idTileRange.End && c.EndEntryLid >= idTileRange.Start)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid <= idTileRange.End && c.EndEntryLid >= idTileRange.Start)
             .Select(c => c.Id)
             .OrderBy(c => c)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return sConversationIds
-            .Select(s => new ConversationId(s, ParseOrNone.Option))
-            .ToArray();
+        return sConversationIds.Select(ConversationId.Parse).ToArray();
     }
 
     // Commands
@@ -76,7 +73,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         await dbContext.Conversations.Lock(conversationId, cancellationToken).ConfigureAwait(false);
 
         var dbConversation = await dbContext.Conversations
-            .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
+            .FirstOrDefaultAsync(c => c.Id == conversationId.Value, cancellationToken)
             .ConfigureAwait(false);
         var oldConversation = dbConversation?.ToModel();
         Conversation conversation;
@@ -88,7 +85,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var startEntryLid = conversationId.StartEntryLid;
             var endEntryLid = change.Create.Value.EndEntryLid;
             var sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
                 .Select(c => c.Id)
                 .OrderBy(c => c)
                 .ToHashSetAsync(cancellationToken)
@@ -120,12 +117,12 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var startEntryLid = conversationId.StartEntryLid;
             var endEntryLid = change.Update.Value.EndEntryLid;
             var sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
                 .Select(c => c.Id)
                 .OrderBy(c => c)
                 .ToHashSetAsync(cancellationToken)
                 .ConfigureAwait(false);
-            sConversationIds.Remove(conversationId);
+            sConversationIds.Remove(conversationId.Value);
             await dbContext.Conversations
                 .Where(c => sConversationIds.Contains(c.Id))
                 .ExecuteDeleteAsync(cancellationToken)
@@ -182,7 +179,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var startEntryLid = entryIdRanges[0].Start;
         var endEntryLid = entryIdRanges[^1].End - 1;
-        var conversationId = new ConversationId(chatId, startEntryLid, AssumeValid.Option);
+        var conversationId = ConversationId.New(chatId, startEntryLid);
         var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         var expectedVersion = existingConversation?.Version;
         var entries = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
@@ -236,7 +233,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return null!; // No invalidation there as we call other commands
+            return null!; // This handler makes changes only via nested commands
 
         var (chatId, entryLid, replyIdRange) = command;
         var delay = command.DelayUntil - Clocks.SystemClock.Now;

@@ -9,7 +9,7 @@ public partial class ChatIndexInitializerShardTests
     [Fact]
     public void HandleCompletionEventMethodIncrementsEventCounter()
     {
-        var evt = new MLSearch_TriggerChatIndexingCompletion(ChatId.None);
+        var evt = new MLSearch_TriggerChatIndexingCompletion(null!);
         var state = new ChatIndexInitializerShard.SharedState(_fakeCursor, 1);
 
         var expected = state.EventCount + 1;
@@ -20,8 +20,8 @@ public partial class ChatIndexInitializerShardTests
     [Fact]
     public void HandleCompletionEventMethodRemovesJobInfoFromState()
     {
-        var chatId1 = new ChatId(Generate.Option);
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId1 = GroupChatId.New();
+        var chatId2 = GroupChatId.New();
         var state = new ChatIndexInitializerShard.SharedState(_fakeCursor, 2);
 
         // Emulate two running jobs
@@ -40,8 +40,8 @@ public partial class ChatIndexInitializerShardTests
     [Fact]
     public void HandleCompletionEventMethodReleasesSemaphoreSlotIfJobPresent()
     {
-        var chatId1 = new ChatId(Generate.Option);
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId1 = GroupChatId.New();
+        var chatId2 = GroupChatId.New();
         var state = new ChatIndexInitializerShard.SharedState(_fakeCursor, 5);
 
         // Emulate two running jobs
@@ -67,7 +67,7 @@ public partial class ChatIndexInitializerShardTests
         long[] versions = [100, 300, 200, 500, 400];
         var state = new ChatIndexInitializerShard.SharedState(_fakeCursor, 5);
         foreach (var version in versions) {
-            var chatId = new ChatId(Generate.Option);
+            var chatId = GroupChatId.New();
             state.ScheduledJobs[chatId] = (version, Moment.MinValue);
             state.Semaphore.Wait();
         }

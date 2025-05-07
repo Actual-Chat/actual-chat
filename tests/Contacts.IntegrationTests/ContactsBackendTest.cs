@@ -129,7 +129,8 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         var contactIds = scope == SearchScope.People
             ? await _contactsBackend.ListPeerContactIds(account.Id, cancellationToken)
             : await _contactsBackend.ListIdsForGroupContactSearch(account.Id, null, cancellationToken);
-        var chats = await contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId))
+        var chats = await contactIds
+            .Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId.Value))
             .OrderBy(x => x.Id)
             .Select(x => x.ChatId)
             .Select(id => _tester.Chats.Get(_tester.Session, id, cancellationToken))

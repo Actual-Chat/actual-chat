@@ -69,12 +69,9 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     public async Task StartRecording(
         ChatId chatId,
-        ChatEntryId repliedChatEntryId,
+        ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
     {
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         var audioInitializer = Hub.GetRequiredService<AudioInitializer>();
         await audioInitializer.WhenInitialized.ConfigureAwait(false);
@@ -87,7 +84,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             if (state.IsRecording)
                 return; // Already started
         }
-        else if (!state.ChatId.IsNone)
+        else if (state.ChatId is not null)
             await StopRecordingUnsafe();
 
         var sessionToken = "";
@@ -114,7 +111,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         catch (Exception e) when (e is not AudioRecorderException) {
             if (e is OperationCanceledException)
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                DebugLog?.LogDebug($"{StartRecording} is cancelled");
+                DebugLog?.LogDebug($"{nameof(StartRecording)} is cancelled");
             else
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 Log.LogError(e,$"{nameof(StartRecording)} failed");
@@ -164,9 +161,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive)
     {
         var state = State.Value;
-        if (state.ChatId.IsNone) {
+        if (state.ChatId is null) {
             if (isRecording)
-                throw StandardError.Internal("Something is off: OnRecordingStateChange() is called with active microphone, but ChatId.IsNone == true.");
+                throw StandardError.Internal(
+                    "Something is off: OnRecordingStateChange() is called with active microphone, but ChatId.IsNone == true.");
 
             isVoiceActive = false;
         }
@@ -211,7 +209,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private async Task<bool> StopRecordingUnsafe()
     {
         var chatId = State.Value.ChatId;
-        if (chatId.IsNone || _jsRef == null!)
+        if (chatId is null || _jsRef == null!)
             return true; // Nothing to do
 
         // This method should reliably stop the recording, so we don't use normal cancellation here

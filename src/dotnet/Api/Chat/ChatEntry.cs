@@ -15,13 +15,13 @@ public sealed partial record ChatEntry(
     ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
-    public static readonly ChatEntry Loading = new(default, -1); // Should differ by Id & Version from None
+    public static readonly ChatEntry Loading = new(null!, -1); // Should differ by Id & Version from None
 
     public static readonly Requirement<ChatEntry> MustExist = Requirement.New(
-        (ChatEntry? c) => c is { Id.IsNone: false },
+        (ChatEntry? c) => c?.Id is not null,
         new(() => StandardError.NotFound<ChatEntry>()));
     public static readonly Requirement<ChatEntry> MustNotBeRemoved = Requirement.New(
-        (ChatEntry? c) => c is { Id.IsNone: false, IsRemoved: false },
+        (ChatEntry? c) => c?.Id is not null && !c.IsRemoved,
         new(() => StandardError.NotFound<ChatEntry>()));
 
     public static ChatEntry Removed(ChatEntryId id)
@@ -74,7 +74,7 @@ public sealed partial record ChatEntry(
     #endregion
 
     [DataMember(Order = 10), MemoryPackOrder(10)] public bool IsRemoved { get; init; }
-    [DataMember(Order = 11), MemoryPackOrder(11)] public AuthorId AuthorId { get; init; }
+    [DataMember(Order = 11), MemoryPackOrder(11)] public AuthorId AuthorId { get; init; } = null!;
     [DataMember(Order = 12), MemoryPackOrder(12)] public Moment BeginsAt { get; init; }
     [DataMember(Order = 13), MemoryPackIgnore] public Moment? ClientSideBeginsAt { get; init; }
     [DataMember(Order = 14), MemoryPackIgnore] public Moment? EndsAt { get; init; }
@@ -88,8 +88,8 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 21), MemoryPackIgnore] public long? VideoEntryLid { get; init; }
     [DataMember(Order = 22), MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
     [DataMember(Order = 23), MemoryPackIgnore] public long? RepliedEntryLid { get; init; }
-    [DataMember(Order = 24), MemoryPackOrder(24)] public ChatEntryId ForwardedChatEntryId { get; init; }
-    [DataMember(Order = 25), MemoryPackOrder(25)] public AuthorId ForwardedAuthorId { get; init; }
+    [DataMember(Order = 24), MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
+    [DataMember(Order = 25), MemoryPackOrder(25)] public AuthorId? ForwardedAuthorId { get; init; }
     [DataMember(Order = 26), MemoryPackIgnore] public Moment? ForwardedChatEntryBeginsAt { get; init; }
     [DataMember(Order = 27), MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember(Order = 28), MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
@@ -128,7 +128,7 @@ public sealed partial record ChatEntry(
     public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasMediaEntry;
 
     [MemoryPackConstructor]
-    public ChatEntry() : this(ChatEntryId.None) { }
+    public ChatEntry() : this(null!) { }
 
     // This record relies on referential equality
     public bool Equals(ChatEntry? other) => ReferenceEquals(this, other);

@@ -45,17 +45,17 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public Chat ToModel()
-        => new(new ChatId(Id), Version) {
+        => new(ChatId.Parse(Id), Version) {
             Title = Title,
             Description = Description,
             CreatedAt = CreatedAt,
             IsTemplate = IsTemplate,
             TemplateId = TemplateId.IsNullOrEmpty()
                 ? null
-                :new ChatId(TemplateId),
+                : ChatId.Parse(TemplateId),
             TemplatedForUserId = TemplatedForUserId.IsNullOrEmpty()
                 ? null
-                : new UserId(TemplatedForUserId),
+                : UserId.Parse(TemplatedForUserId),
             IsPublic = IsPublic,
             IsArchived = IsArchived,
             AllowGuestAuthors = AllowGuestAuthors,
@@ -63,25 +63,25 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             SystemTag = SystemTag.IsNullOrEmpty()
                 ? Symbol.Empty
                 : new Symbol(SystemTag),
-            MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
-            UserLinkId = UserLinkId.IsNullOrEmpty() ? null : ActualChat.UserLinkId.Parse(UserLinkId),
+            MediaId = ActualChat.MediaId.ParseNullable(MediaId),
+            UserLinkId = ActualChat.UserLinkId.ParseNullable(UserLinkId),
             IsSummarized = IsSummarized,
         };
 
     public void UpdateFrom(Chat model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
         Title = model.Title;
         Description = model.Description;
         CreatedAt = model.CreatedAt;
         IsTemplate = model.IsTemplate;
-        TemplateId = model.TemplateId;
-        TemplatedForUserId = model.TemplatedForUserId;
+        TemplateId = model.TemplateId?.Value;
+        TemplatedForUserId = model.TemplatedForUserId?.Value;
         IsPublic = model.IsPublic;
         IsArchived = model.IsArchived;
         AllowGuestAuthors = model.AllowGuestAuthors;
@@ -91,7 +91,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             : model.SystemTag.Value;
         Kind = model.Kind;
         MediaId = model.MediaId?.Value ?? "";
-        IsPlaceRootChat = model.Id.IsPlaceRootChat;
+        IsPlaceRootChat = model.Id is PlaceChatId { IsRoot: true };
         UserLinkId = model.UserLinkId?.NormalizedValue ?? "";
         IsSummarized = model.IsSummarized;
     }

@@ -180,7 +180,7 @@
             Description = place.Description,
             Picture = place.Picture?.ToPicture(),
             Background = place.Background?.ToPicture(),
-            ImageUploadUrl = $"/api/chat-media/{place.Id.ToRootChatId()}/upload",
+            ImageUploadUrl = $"/api/chat-media/{place.Id.RootChatId}/upload",
         };
         Context.PageDataBag.Set(formBagKey, _form);
     }

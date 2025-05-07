@@ -100,5 +100,5 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         => Enumerable.Range(1, lastBatchSize).Select(NewItem).ToList();
 
     private SimpleItem NewItem(int i = -1)
-        => new (new ChatId(Generate.Option), $"Entry {_lid++} {(i >= 0 ? i : null)}", Tester.VersionGenerator.NextVersion());
+        => new (GroupChatId.New(), $"Entry {_lid++} {(i >= 0 ? i : null)}", Tester.VersionGenerator.NextVersion());
 }

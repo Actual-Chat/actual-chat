@@ -46,8 +46,8 @@ public sealed partial record SearchBackend_Refresh(
     [property: DataMember, MemoryPackOrder(1)] bool RefreshGroups = false,
     [property: DataMember, MemoryPackOrder(2)] bool RefreshPlaces = false,
     [property: DataMember, MemoryPackOrder(3)] bool RefreshEntries = false
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId> // Review
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?> // Review
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => default;
+    public ChatId? ShardKey => null;
 }

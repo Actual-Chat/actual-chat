@@ -32,14 +32,12 @@ public abstract record SystemEntryOption : IRequirementTarget
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record MembersChangedOption : SystemEntryOption
 {
-    [DataMember, MemoryPackOrder(0)] public AuthorId AuthorId { get; init; }
+    [DataMember, MemoryPackOrder(0)] public AuthorId? AuthorId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public bool HasLeft { get; init; }
 
-    public MembersChangedOption() { }
-
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public MembersChangedOption(AuthorId authorId, string authorName, bool hasLeft)
+    public MembersChangedOption(AuthorId? authorId, string authorName, bool hasLeft)
     {
         AuthorId = authorId;
         AuthorName = authorName;
@@ -48,12 +46,13 @@ public sealed partial record MembersChangedOption : SystemEntryOption
 
     public override Markup ToMarkup()
     {
-        var authorMentionId = new MentionId(AuthorId, AssumeValid.Option);
         var authorName = AuthorName.NullIfEmpty() ?? "Someone";
         var verb = HasLeft ? "left" : "joined";
-        return new MarkupSeq(
-            new MentionMarkup(authorMentionId, authorName),
-            new PlainTextMarkup($" has {verb} the chat."));
+        return AuthorId is null
+            ? new PlainTextMarkup($"{authorName} has {verb} the chat.")
+            : new MarkupSeq(
+                new MentionMarkup(MentionId.NewAuthor(AuthorId), authorName),
+                new PlainTextMarkup($" has {verb} the chat."));
     }
 }
 
@@ -62,8 +61,6 @@ public sealed partial record NotifyMembersOption : SystemEntryOption
 {
     [DataMember, MemoryPackOrder(0)] public AuthorId AuthorId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
-
-    public NotifyMembersOption() { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public NotifyMembersOption(AuthorId authorId, string authorName)
@@ -74,7 +71,7 @@ public sealed partial record NotifyMembersOption : SystemEntryOption
 
     public override Markup ToMarkup()
     {
-        var authorMentionId = new MentionId(AuthorId, AssumeValid.Option);
+        var authorMentionId = MentionId.NewAuthor(AuthorId);
         var authorName = AuthorName.NullIfEmpty() ?? "Someone";
         return new MarkupSeq(
             new MentionMarkup(authorMentionId, authorName),

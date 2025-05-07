@@ -1,7 +1,8 @@
-namespace ActualChat.Contacts;
+namespace ActualChat;
 
 public enum ContactKind
 {
     User = 0,
     Chat,
+    Place,
 }

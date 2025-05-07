@@ -12,9 +12,9 @@ public class ChatMarkupHubExtTest
     {
         // arrange
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Content = "some text",
@@ -39,9 +39,9 @@ public class ChatMarkupHubExtTest
     {
         // arrange
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment).ToArray(),
@@ -66,9 +66,9 @@ public class ChatMarkupHubExtTest
     {
         // arrange
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment).ToArray(),

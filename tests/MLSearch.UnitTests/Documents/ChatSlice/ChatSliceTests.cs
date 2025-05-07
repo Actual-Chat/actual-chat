@@ -14,17 +14,17 @@ public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
     [Fact]
     public void ChatSliceIdDependsOnFirstChatEntryAndStartOffset()
     {
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
-        var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var chatEntryId1 = TextEntryId.New(chatId, 1);
+        var chatEntryId2 = TextEntryId.New(chatId, 2);
         var metadata = CreateMetadata(chatEntryId1, chatEntryId2, 33, 111);
         var document = new MLSearch.Documents.ChatSlice(metadata, string.Empty);
         var id = document.Id;
-        Assert.StartsWith(chatEntryId1, id, StringComparison.Ordinal);
+        Assert.StartsWith(chatEntryId1.Value, id, StringComparison.Ordinal);
         Assert.EndsWith("33", id, StringComparison.Ordinal);
 
-        static ChatSliceMetadata CreateMetadata(ChatEntryId chatEntryId1, ChatEntryId chatEntryId2, int startOffset, int endOffset) => new (
-            [PrincipalId.None],
+        static ChatSliceMetadata CreateMetadata(TextEntryId chatEntryId1, TextEntryId chatEntryId2, int startOffset, int endOffset) => new (
+            [null!],
             [new (chatEntryId1, 1, 1), new (chatEntryId2, 2, 1)], startOffset, endOffset,
             [], [], [], [],
             "en-US",

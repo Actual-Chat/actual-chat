@@ -15,10 +15,8 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
     // [ComputeMethod]
     public virtual async Task<Place?> Get(PlaceId placeId, CancellationToken cancellationToken)
     {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
-
-        var dbPlace = await DbPlaceResolver.Get(placeId, cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(placeId);
+        var dbPlace = await DbPlaceResolver.Get(placeId.Value, cancellationToken).ConfigureAwait(false);
         var place = dbPlace?.ToModel();
         if (place == null)
             return null;
@@ -39,14 +37,14 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
     public async Task<Place[]> ListChanged(
         long minVersion,
         long maxVersion,
-        PlaceId lastId,
+        PlaceId? lastId,
         int limit,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var placesQuery = lastId.IsNone
+        var placesQuery = lastId is null
             ? dbContext.Places.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
             : dbContext.Places.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
                 || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
@@ -80,19 +78,20 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbPlace = placeId.IsNone ? null :
-            await dbContext.Places.ForUpdate()
+        var dbPlace = placeId is null
+            ? null
+            : await dbContext.Places.ForUpdate()
                 // ReSharper disable once AccessToModifiedClosure
-                .FirstOrDefaultAsync(c => c.Id == placeId, cancellationToken)
+                .FirstOrDefaultAsync(c => c.Id == placeId.Value, cancellationToken)
                 .ConfigureAwait(false);
         var oldPlace = dbPlace?.ToModel();
         Place place;
         if (change.IsCreate(out var update)) {
             oldPlace.RequireNull();
-            placeId.RequireNone();
+            placeId.RequireNull();
             ownerId.Require();
 
-            placeId = new PlaceId(Generate.Option);
+            placeId = PlaceId.New();
             place = new Place(placeId) {
                 CreatedAt = Clocks.SystemClock.Now,
             };
@@ -128,7 +127,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
 
         long? chatExpectedVersion;
         Change<ChatDiff> chatChange;
-        var rootChatId = place.Id.ToRootChatId();
+        var rootChatId = place.Id.RootChatId;
         var rootChat = await ChatsBackend.Get(rootChatId, cancellationToken).ConfigureAwait(false);
         if (change.Kind == ChangeKind.Create) {
             rootChat.RequireNull();
@@ -181,7 +180,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         {
             var oldUserLinkId = oldPlace1?.UserLinkId;
             var userLinkId = place1.IsPublic ? place1.UserLinkId : null;
-            await Commander.UpdateUserLink(oldUserLinkId, userLinkId, UserLinkKind.Place, place1.Id, cancellationToken).ConfigureAwait(false);
+            await Commander.UpdateUserLink(oldUserLinkId, userLinkId, UserLinkKind.Place, place1.Id.Value, cancellationToken).ConfigureAwait(false);
         }
 
         async Task RemoveUserLink(Place oldPlace1)
@@ -190,7 +189,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             if (oldUserLinkId is null)
                 return;
 
-            await Commander.UpdateUserLink(oldUserLinkId, null, UserLinkKind.Place, PlaceId.None, cancellationToken).ConfigureAwait(false);
+            await Commander.UpdateUserLink(oldUserLinkId, null, UserLinkKind.Place, "", cancellationToken).ConfigureAwait(false);
         }
 
         static ChatDiff ToChatDiff(Place place)

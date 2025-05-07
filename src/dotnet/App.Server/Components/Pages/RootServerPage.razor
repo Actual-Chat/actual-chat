@@ -362,7 +362,7 @@
         }
 
         if (HttpContext.AcceptsInteractiveRouting() && _closeFlow == null) {
-            var useServerPrerendered = _account.IsGuestOrNone && (_url.IsHome() || _url.IsDocsOrDocsRoot());
+            var useServerPrerendered = _account.IsGuestOrNull() && (_url.IsHome() || _url.IsDocsOrDocsRoot());
             _renderMode = useServerPrerendered
                 ? RenderModeDef.ByKey["sp"]
                 : RenderModeEndpoint.GetRenderMode(HttpContext);

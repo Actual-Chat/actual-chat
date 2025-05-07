@@ -14,11 +14,11 @@ public sealed partial record Conversation(
 {
     public static readonly VersionEqualityComparer<Conversation, ConversationId> VersionEqualityComparer = new();
     public static readonly Requirement<Conversation> MustExist = Requirement.New(
-        (Conversation? c) => c is { Id.IsNone: false },
+        (Conversation? c) => c?.Id is not null,
         new(() => StandardError.NotFound<Conversation>()));
 
-    public static readonly Conversation None = new(ConversationId.None);
-    public static readonly Conversation Loading = new(default, -1); // Should differ by Id & Version from None
+    public static readonly Conversation None = new(null!);
+    public static readonly Conversation Loading = new(null!, -1); // Should differ by Id & Version from None
 
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string Description { get; init; } = "";
@@ -28,10 +28,7 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(6)] public Moment StartsAt { get; init; }
     [DataMember, MemoryPackOrder(7)] public Moment EndsAt { get; init; }
     [DataMember, MemoryPackOrder(8)] public int MessageCount { get; init; }
-
-    [DataMember, MemoryPackOrder(9)] public AuthorId[] AuthorIds { get; init; } = [];
-
-
+    [DataMember, MemoryPackOrder(9)] public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
 
     // This record relies on referential equality
     public bool Equals(Conversation? other) => ReferenceEquals(this, other);
@@ -50,7 +47,7 @@ public sealed partial record ConversationDiff() : RecordDiff
     [DataMember, MemoryPackOrder(4)] public Moment? StartsAt { get; init; }
     [DataMember, MemoryPackOrder(5)] public Moment? EndsAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public int? MessageCount { get; init; }
-    [DataMember, MemoryPackOrder(7)] public AuthorId[]? AuthorIds { get; init; }
+    [DataMember, MemoryPackOrder(7)] public IReadOnlyList<AuthorId>? AuthorIds { get; init; }
 
     public ConversationDiff(Conversation conversation) : this()
     {

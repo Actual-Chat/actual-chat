@@ -1,90 +1,89 @@
-﻿using System.ComponentModel;
-using MemoryPack;
-using ActualLab.Generators;
+using System.ComponentModel;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using ActualLab.Generators;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<PlaceId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<PlaceId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<PlaceId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<PlaceId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<PlaceId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<PlaceId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<PlaceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
+public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PlaceId>();
-    private static RandomStringGenerator IdGenerator => ChatId.IdGenerator;
+    private static readonly ILruCache<string, PlaceId> Cache = CreateCache<PlaceId>(32);
 
-    public static PlaceId None => default;
+    public static readonly RandomStringGenerator IdGenerator = ChatId.IdGenerator;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
+    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    public PlaceChatId RootChatId => field ??= PlaceChatId.Parse(PlaceChatId.Format(this, Value));
 
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
+    // Factories and constructors
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public PlaceId(Symbol id)
-        => this = Parse(id);
-    public PlaceId(string? id)
-        => this = Parse(id);
-    public PlaceId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-    public PlaceId(Generate _)
-        => this = new PlaceId(IdGenerator.Next(), AssumeValid.Option);
+    public static PlaceId New()
+        => new(IdGenerator.Next());
 
-    public PlaceId(Symbol id, AssumeValid _)
-        => Id = id;
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(PlaceId source) => source.Id;
-    public static implicit operator string(PlaceId source) => source.Id.Value;
-    public static explicit operator PlaceId(string source) => new (source);
+    private PlaceId(string value) : base(value)
+    { }
 
     // Equality
 
-    public bool Equals(PlaceId other) => Id == other.Id;
-    public override bool Equals(object? obj) => obj is PlaceId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(PlaceId left, PlaceId right) => left.Equals(right);
-    public static bool operator !=(PlaceId left, PlaceId right) => !left.Equals(right);
+    public bool Equals(PlaceId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is PlaceId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(PlaceId? left, PlaceId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(PlaceId? left, PlaceId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
 
     public static PlaceId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PlaceId>(s);
-    public static PlaceId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<PlaceId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out PlaceId result)
+    public static PlaceId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static PlaceId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out PlaceId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
 
-        if (s.Length < 10)
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
+
+        if (s.Length is < 10 or > 64)
             return false;
 
         if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Place.SystemPlaceIds.Contains(s)))
             return false;
 
-        result = new PlaceId(s, AssumeValid.Option);
+        result = new PlaceId(s);
+        result = Cache.AddOrGet(s, result);
         return true;
     }
-}
-
-public static class PlaceIdExt
-{
-    public static ChatId ToRootChatId(this PlaceId placeId)
-        => placeId.IsNone ? ChatId.None : PlaceChatId.Root(placeId);
 }

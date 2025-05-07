@@ -30,7 +30,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     public ReactionSummary ToModel()
         => new () {
             Id = Id,
-            EntryId = new TextEntryId(EntryId),
+            EntryId = TextEntryId.Parse(EntryId),
             EmojiId = EmojiId,
             Count = Count,
             Version = Version,
@@ -44,7 +44,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
         model.RequireSomeVersion();
 
         Id = id;
-        EntryId = model.EntryId;
+        EntryId = model.EntryId.Value;
         EmojiId = model.EmojiId;
         Version = model.Version;
         Count = model.Count;

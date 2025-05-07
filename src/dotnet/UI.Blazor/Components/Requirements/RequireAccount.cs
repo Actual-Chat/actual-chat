@@ -13,7 +13,7 @@ public class RequireAccount : RequirementComponent
     public override string ToString()
         => $"{GetType().GetName()}(MustBeActive = {MustBeActive}, MustBeAdmin = {MustBeAdmin})";
 
-    public override async Task<Unit> Require(CancellationToken cancellationToken)
+    public override async Task Require(CancellationToken cancellationToken)
     {
         // Caching all used properties to use ConfigureAwait(false) here
         var mustBeActive = MustBeActive;
@@ -21,10 +21,9 @@ public class RequireAccount : RequirementComponent
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         if (mustBeAdmin) {
             account.Require(AccountFull.MustBeAdmin);
-            return default; // No extra checks are needed in this case
+            return; // No extra checks are needed in this case
         }
         if (mustBeActive)
             account.Require(AccountFull.MustBeActive);
-        return default;
     }
 }

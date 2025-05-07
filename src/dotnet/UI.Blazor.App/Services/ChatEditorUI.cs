@@ -81,9 +81,6 @@ public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService
 
     public async Task EditLast(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId.IsNone)
-            return;
-
         var author = await Authors.GetOwn(Session, chatId, CancellationToken.None).ConfigureAwait(false);
         if (author == null)
             return;
@@ -99,7 +96,7 @@ public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService
                     x => x.AuthorId == author.Id && x is {
                         HasMediaEntry: false,
                         IsStreaming: false,
-                        ForwardedChatEntryId.IsNone: true,
+                        ForwardedChatEntryId: null,
                     },
                     1000, // Max. 1000 entries to scan upwards
                     CancellationToken.None)
@@ -113,9 +110,6 @@ public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService
 
     public async Task RestoreRelatedEntry(ChatId chatId)
     {
-        if (chatId.IsNone)
-            return;
-
         var relatedEntry = await LocalSettings.GetDraftRelatedEntry(chatId).ConfigureAwait(false);
         lock (_lock)
             _relatedChatEntry.Value = relatedEntry;

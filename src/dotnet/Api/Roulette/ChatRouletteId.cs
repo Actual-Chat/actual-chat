@@ -13,6 +13,7 @@ namespace ActualChat.Roulette;
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatRouletteId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
+// TODO(AY): Migrate to StringIdentifier
 public readonly partial struct ChatRouletteId : ISymbolIdentifier<ChatRouletteId>
 {
     private static readonly Comparer<Symbol> ProfileIdComparer = Comparer<Symbol>.Default;

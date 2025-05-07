@@ -20,24 +20,22 @@ public class InfiniteChatSequence(
     public async IAsyncEnumerable<(ChatId, long)> LoadAsync(
         long minVersion, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var (lastChatId, lastVersion) = (ChatId.None, minVersion);
+        var (lastChatId, lastVersion) = ((ChatId?)null, minVersion);
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
 
             Chat.Chat[] batch;
             try {
-                batch = await chats
-                    .ListChanged(new ChangedChatsQuery {
-                            MinVersion = lastVersion,
-                            LastId = lastChatId,
-                            Limit = BatchSize,
-                        },
-                        cancellationToken)
-                    .ConfigureAwait(false);
+                var query = new ChangedChatsQuery {
+                    LastId = lastChatId,
+                    Limit = BatchSize,
+                    MinVersion = lastVersion,
+                };
+                batch = await chats.ListChanged(query, cancellationToken).ConfigureAwait(false);
             }
             catch(Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 log.LogError(e,
-                    "Failed to load a batch of chats of length {Len} in the version range from {MinVersion} to infinity.",
+                    "Failed to load a batch of chats of length {Len} in the version range from {MinVersion} to infinity",
                     BatchSize, minVersion);
                 await clock.Delay(RetryInterval, cancellationToken).ConfigureAwait(false);
                 continue;

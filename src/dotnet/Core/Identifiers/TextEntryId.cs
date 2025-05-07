@@ -1,118 +1,73 @@
 using System.ComponentModel;
-using MemoryPack;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<TextEntryId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<TextEntryId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<TextEntryId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<TextEntryId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<TextEntryId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<TextEntryId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<TextEntryId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct TextEntryId : ISymbolIdentifier<TextEntryId>
+public sealed partial class TextEntryId : ChatEntryId, IStringIdentifier<TextEntryId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<TextEntryId>();
 
-    public static TextEntryId None => default;
+    // Factories and constructors
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TextEntryId New(ChatId chatId, long localId)
+        => new(Format(chatId, ChatEntryKind.Text, localId), chatId, localId);
 
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ChatId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public long LocalId { get; }
-
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public TextEntryId(Symbol id)
-        => this = Parse(id);
-    public TextEntryId(string? id)
-        => this = Parse(id);
-    public TextEntryId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-
-    public TextEntryId(Symbol id, ChatId chatId, long localId, AssumeValid _)
-    {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
-        ChatId = chatId;
-        LocalId = localId;
-    }
-
-    public TextEntryId(ChatId chatId, long localId, AssumeValid _)
-    {
-        if (chatId.IsNone || localId < 0) {
-            this = None;
-            return;
-        }
-        Id = Format(chatId, localId);
-        ChatId = chatId;
-        LocalId = localId;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(TextEntryId source) => source.Id;
-    public static implicit operator string(TextEntryId source) => source.Id.Value;
-    public static implicit operator ChatEntryId(TextEntryId source)
-        => new(source.Id, source.ChatId, ChatEntryKind.Text, source.LocalId, AssumeValid.Option);
+    internal TextEntryId(string value, ChatId chatId, long localId)
+        : base(value, chatId, ChatEntryKind.Text, localId)
+    { }
 
     // Equality
 
-    public bool Equals(TextEntryId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is TextEntryId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(TextEntryId left, TextEntryId right) => left.Equals(right);
-    public static bool operator !=(TextEntryId left, TextEntryId right) => !left.Equals(right);
+    public bool Equals(TextEntryId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is TextEntryId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(TextEntryId? left, TextEntryId? right)
+        => left?.Equals(right) ?? right is null;
 
-    private static string Format(ChatId chatId, long localId)
-        => chatId.IsNone ? "" : $"{chatId}:0:{localId.Format()}";
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(TextEntryId? left, TextEntryId? right)
+        => !(left?.Equals(right) ?? right is null);
 
-    public static TextEntryId Parse(string? s)
+    // Format & Parse
+
+    public static new TextEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TextEntryId>(s);
-    public static TextEntryId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<TextEntryId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out TextEntryId result)
+    public static new TextEntryId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static new TextEntryId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out TextEntryId? result)
     {
-        result = default;
-        if (s.IsNullOrEmpty())
-            return true; // None
-
-        var chatIdLength = s.OrdinalIndexOf(":");
-        if (chatIdLength < 0)
+        if (!ChatEntryId.TryParse(s, out var chatEntryId)) {
+            result = null;
             return false;
-        if (!ChatId.TryParse(s[..chatIdLength], out var chatId))
-            return false;
+        }
 
-        var kindStart = chatIdLength + 1;
-        var kindLength = s.OrdinalIndexOf(":", kindStart);
-        if (kindLength != kindStart + 1 || s[kindStart] != '0') // "0" = ChatEntryKind.Text.Format()
-            return false;
-
-        var sLocalId = s.AsSpan(kindLength + 1);
-        if (!NumberExt.TryParsePositiveLong(sLocalId, out var localId))
-            return false;
-
-        result = new TextEntryId(s, chatId, localId, AssumeValid.Option);
-        return true;
+        result = chatEntryId as TextEntryId;
+        return result is not null;
     }
 }

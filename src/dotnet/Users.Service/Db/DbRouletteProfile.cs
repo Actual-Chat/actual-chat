@@ -26,15 +26,14 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
     public ProfilePreferencesFull ToModel()
     {
         var country = CountryCode.IsNullOrEmpty() ? Country.NotSpecified : new Country(CountryCode);
-        Language[] languages =
-            Languages.IsNullOrEmpty()
-                ? []
-                : [..Languages.Split(',').Select(Language.Parse)];
-        Interest[] interests =
-            Interests.IsNullOrEmpty()
-                ? []
-                : [..Interests.Split(',').Select(i => new Interest(i))];
-        return new ProfilePreferencesFull(new UserId(UserId), Id, Version) {
+        var languages = Languages.IsNullOrEmpty()
+            ? Array.Empty<Language>()
+            : [..Languages.Split(',').Select(Language.Parse)];
+        var interests = Interests.IsNullOrEmpty()
+            ? Array.Empty<Interest>()
+            : [..Interests.Split(',').Select(i => new Interest(i))];
+        var userId = ActualChat.UserId.Parse(UserId);
+        return new ProfilePreferencesFull(userId, Id, Version) {
             Preferences = new Preferences {
                 Country = country,
                 Gender = Gender,
@@ -52,18 +51,16 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
 
         Id = id;
         Version = model.Version;
-        if (UserId.IsNullOrEmpty()) {
-            model.UserId.Require(nameof(ProfilePreferencesFull.UserId));
-            UserId = model.UserId;
-        }
-        else if (!model.UserId.IsNone && !Equals(UserId, model.UserId.Value))
-                throw StandardError.Constraint("UserId can't be changed.");
+        if (UserId.IsNullOrEmpty())
+            UserId = model.UserId.Value;
+        else if (!OrdinalEquals(UserId, model.UserId.Value))
+            throw StandardError.Constraint("UserId can't be changed.");
 
         var preferences = model.Preferences;
         CountryCode = preferences.Country.Code;
         Gender = preferences.Gender;
-        Languages = string.Join(",", preferences.Languages.Select(c => c.Id.Value));
-        Interests = string.Join(",", Sort(preferences.Interests).Select(c => c.Code));
+        Languages = preferences.Languages.Select(c => c.Id.Value).ToDelimitedString(",");
+        Interests = Sort(preferences.Interests).Select(c => c.Code).ToDelimitedString(",");
     }
 
     private IEnumerable<Interest> Sort(IEnumerable<Interest> interests)

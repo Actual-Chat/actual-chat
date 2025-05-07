@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<Banners.ComputedModel>
 @{
     var m = State.Value;
-    var hasChat = !Chat.Id.IsNone;
+    var hasChat = Chat?.Id is not null;
 }
 
 <ReconnectBanner/>

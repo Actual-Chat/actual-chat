@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<GroupChatId>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<GroupChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class GroupChatId : ChatId2, IStringIdentifier<GroupChatId>
+public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<GroupChatId>();
@@ -53,15 +53,17 @@ public sealed partial class GroupChatId : ChatId2, IStringIdentifier<GroupChatId
     public static new GroupChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<GroupChatId>(s);
 
-    public static new GroupChatId? ParseOrNull(string? s)
+    public static new GroupChatId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static new GroupChatId? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static new GroupChatId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out GroupChatId? result)
     {
-        if (!ChatId2.TryParse(s, out var chatId)) {
+        if (!ChatId.TryParse(s, out var chatId)) {
             result = null;
             return false;
         }

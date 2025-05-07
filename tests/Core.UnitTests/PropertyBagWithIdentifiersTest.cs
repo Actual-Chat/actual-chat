@@ -7,14 +7,14 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
     {
         var p = new PropertyBag();
         var userId = UserId.New();
-        var peerChatId = new PeerChatId(userId, UserId.New());
-        var chatId = new ChatId(Generate.Option);
-        var placeId = new PlaceId(Generate.Option);
-        var authorId = new AuthorId(chatId, 100, AssumeValid.Option);
+        var groupChatId = GroupChatId.New();
+        var peerChatId = PeerChatId.New(userId, UserId.New());
+        var placeId = PlaceId.New();
+        var authorId = AuthorId.New(groupChatId, 100);
         p = p.KeylessSet("X");
         p = p.KeylessSet(userId);
         p = p.KeylessSet(peerChatId);
-        p = p.KeylessSet(chatId);
+        p = p.KeylessSet(groupChatId);
         p = p.KeylessSet(placeId);
         p = p.KeylessSet(authorId);
 
@@ -28,7 +28,7 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         x.Should().Be("X");
         userId1.Should().Be(userId);
         peerChatId1.Should().Be(peerChatId);
-        chatId1.Should().Be(chatId);
+        chatId1.Should().Be(groupChatId);
         placeId1.Should().Be(placeId);
         authorId1.Should().Be(authorId);
     }
@@ -38,14 +38,14 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
     {
         var p = new MutablePropertyBag();
         var userId = UserId.New();
-        var peerChatId = new PeerChatId(userId, UserId.New());
-        var chatId = new ChatId(Generate.Option);
-        var placeId = new PlaceId(Generate.Option);
-        var authorId = new AuthorId(chatId, 100, AssumeValid.Option);
+        var groupChatId = GroupChatId.New();
+        var peerChatId = PeerChatId.New(userId, UserId.New());
+        var placeId = PlaceId.New();
+        var authorId = AuthorId.New(groupChatId, 100);
         p.KeylessSet("X");
         p.KeylessSet(userId);
         p.KeylessSet(peerChatId);
-        p.KeylessSet(chatId);
+        p.KeylessSet(groupChatId);
         p.KeylessSet(placeId);
         p.KeylessSet(authorId);
 
@@ -59,7 +59,7 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         x.Should().Be("X");
         userId1.Should().Be(userId);
         peerChatId1.Should().Be(peerChatId);
-        chatId1.Should().Be(chatId);
+        chatId1.Should().Be(groupChatId);
         placeId1.Should().Be(placeId);
         authorId1.Should().Be(authorId);
     }

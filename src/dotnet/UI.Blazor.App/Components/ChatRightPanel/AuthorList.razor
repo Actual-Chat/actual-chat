@@ -112,7 +112,7 @@
             }
         } else if (!PlaceId.IsNone) {
             var placeId = PlaceId;
-            chatId = placeId.ToRootChatId();
+            chatId = placeId.RootChatId;
             var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
             if (place == null)
                 return Model.None;

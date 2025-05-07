@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<bool>
 
 @{
-    var showSkeletonsOnly = Chat.Id.IsNone;
+    var showSkeletonsOnly = Chat?.Id is null;
     var isOpen = State.LastNonErrorValue;
     // Log.LogDebug("RightPanel IsOpen={IsOpen}", isOpen);
 }

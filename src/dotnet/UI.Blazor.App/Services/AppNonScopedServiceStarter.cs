@@ -70,10 +70,10 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
         // because we don't know selected place yet.
         var localSettings = Services.LocalSettings();
-        var selectedChatIdOption = await localSettings.TryGet<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
-        var selectedPlaceId = PlaceId.None;
-        if (selectedChatIdOption.IsSome(out var selectedChatId))
-            selectedPlaceId = selectedChatId.PlaceId;
+        var selectedChatIdOpt = await localSettings.TryGet<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
+        var selectedPlaceId = (PlaceId?)null;
+        if (selectedChatIdOpt.IsSome(out var selectedChatId))
+            selectedPlaceId = (selectedChatId as PlaceChatId)?.PlaceId;
         Tracer.Point($"-- {nameof(PreloadContactListData)}.{nameof(PlaceId)}: '{selectedPlaceId}'");
         var contacts = Services.GetRequiredService<IContacts>();
         var contactIds = await contacts.ListIds(session, selectedPlaceId, cancellationToken).ConfigureAwait(false);
@@ -99,8 +99,8 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 #pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
         var chatId = Constants.Chat.AnnouncementsChatId;
         var userId = Constants.User.Walle.UserId;
-        var authorId = new AuthorId(chatId, 1L, AssumeValid.Option);
-        var account = new AccountFull(new User(userId, "User"), 1);
+        var authorId = AuthorId.New(chatId, 1L);
+        var account = new AccountFull(new User(userId.Value, "User"), 1);
         Warmup(new Chat.Chat(chatId) { Rules = new AuthorRules(chatId, new AuthorFull(userId, authorId), account) });
         Warmup(new UserLanguageSettings() {
             Primary = Languages.English,

@@ -7,7 +7,7 @@ internal static class UserLinksBackendExt
         UserLinkId? oldUserLinkId,
         UserLinkId? userLinkId,
         UserLinkKind kind,
-        ISymbolIdentifier identifier,
+        string targetId,
         CancellationToken cancellationToken)
     {
         if (oldUserLinkId == userLinkId)
@@ -21,7 +21,7 @@ internal static class UserLinksBackendExt
         if (userLinkId is not null) {
             var createCommand = new UserLinksBackend_Change(userLinkId, null, Change.Create(new UserLink(userLinkId) {
                 Kind = kind,
-                TargetId = identifier.Value,
+                TargetId = targetId,
             }));
             await commander.Call(createCommand, false, cancellationToken).ConfigureAwait(false);
         }

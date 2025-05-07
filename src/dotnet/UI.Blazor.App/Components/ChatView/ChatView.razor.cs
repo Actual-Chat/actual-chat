@@ -51,7 +51,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public Task WhenInitialized => _whenInitializedSource.Task;
 
     [Parameter] [EditorRequired]
-    public ChatId ChatId { get; set; } = ChatId.None;
+    public ChatId? ChatId { get; set; }
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
@@ -144,7 +144,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public override string ToString()
     {
         var chatId = ChatId;
-        return chatId.IsNone ? "ChatView" : $"ChatView #{chatId}";
+        return chatId is null
+            ? "ChatView"
+            : $"ChatView #{chatId}";
     }
 
     // Event handlers
@@ -404,7 +406,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 // TODO(AK): Implement highlighting of conversations
                 ChatUI.HighlightEntry(
-                    new ChatEntryId(chatId, ChatEntryKind.Text, navChatMessage.Id, AssumeValid.Option),
+                    TextEntryId.New(chatId, navChatMessage.Id, AssumeValid.Option),
                     false);
         }
         if (items.Count != 0) {

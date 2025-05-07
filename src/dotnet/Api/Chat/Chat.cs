@@ -14,7 +14,7 @@ public sealed partial record Chat(
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Chat> MustExist = Requirement.New(
-        (Chat? c) => c is { Id.IsNone: false },
+        (Chat? c) => c?.Id is not null,
         new(() => StandardError.NotFound<Chat>()));
 
     public static readonly Requirement<Chat> MustBeTemplate = MustExist
@@ -24,7 +24,7 @@ public sealed partial record Chat(
 
     public static readonly Requirement<Chat> MustBePlaceRoot = MustExist
         & Requirement.New<Chat>(
-            c => c is { Id: { IsPlaceChat: true, PlaceChatId.IsRoot: true } },
+            c => c?.Id is PlaceChatId { IsRoot: true },
             new(() => StandardError.Constraint<Chat>("Place root chat is expected.")));
 
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
@@ -56,10 +56,10 @@ public sealed partial record Chat(
         // => Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _) &&;
         // But since we can't manage other roles than Owner yet,
         // we let only Owners to invite people to chat.
-        => Rules.IsOwner() && Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _);
+        => Rules.IsOwner() && Rules.CanInvite() && !HasSingleAuthor && Id is not PeerChatId;
 
     public bool IsPublicPlaceChat()
-        => Kind == ChatKind.Place && !Id.PlaceChatId.IsRoot && IsPublic;
+        => IsPublic && Id is PlaceChatId { IsRoot: false };
 
     // This record relies on referential equality
     public bool Equals(Chat? other) => ReferenceEquals(this, other);

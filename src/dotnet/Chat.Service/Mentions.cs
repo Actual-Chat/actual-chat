@@ -18,6 +18,6 @@ public class Mentions(IServiceProvider services) : DbServiceBase<ChatDbContext>(
         if (author == null)
             return null;
 
-        return await Backend.GetLast(chatId, new MentionId(author.Id, AssumeValid.Option), cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLast(chatId, MentionId.NewAuthor(author.Id), cancellationToken).ConfigureAwait(false);
     }
 }

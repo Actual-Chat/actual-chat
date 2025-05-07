@@ -14,19 +14,19 @@ public static class Links
     public static readonly LocalUrl AccountUserLinkPrefix = "/u/@";
     public static readonly LocalUrl Logs = "/test/logs";
 
-    public static LocalUrl Chat(ChatEntryId entryId)
-        => entryId.IsNone
+    public static LocalUrl Chat(TextEntryId? textEntryId)
+        => textEntryId == null
             ? "/chat"
-            : $"/chat/{entryId.ChatId.Value}"  + ChatEntryQuery(entryId.LocalId);
+            : $"/chat/{textEntryId.ChatId.Value}"  + TextEntryQuery(textEntryId.LocalId);
 
-    public static LocalUrl Chat(ChatId chatId, long? entryId = null)
-        => entryId is { } vEntryId and > 0
-            ? $"/chat/{chatId.Value}" + ChatEntryQuery(vEntryId)
+    public static LocalUrl Chat(ChatId chatId, long? textEntryId = null)
+        => textEntryId is { } vTextEntryLid and > 0
+            ? $"/chat/{chatId.Value}" + TextEntryQuery(vTextEntryLid)
             : $"/chat/{chatId.Value}";
 
-    public static LocalUrl EmbeddedChat(ChatId chatId, long? entryId = null)
-        => entryId is { } vEntryId and > 0
-            ? $"/embedded/{chatId.Value}" + ChatEntryQuery(vEntryId)
+    public static LocalUrl EmbeddedChat(ChatId chatId, long? textEntryLid = null)
+        => textEntryLid is { } vTextEntryLid and > 0
+            ? $"/embedded/{chatId.Value}" + TextEntryQuery(vTextEntryLid)
             : $"/embedded/{chatId.Value}";
 
     public static LocalUrl PlaceInfo(PlaceId placeId)
@@ -48,8 +48,8 @@ public static class Links
         return url;
     }
 
-    private static string ChatEntryQuery(long entryLid)
-        => $"?{ChatEntryLidQueryParameterName}={entryLid.Format()}";
+    private static string TextEntryQuery(long textEntryLid)
+        => $"?{ChatEntryLidQueryParameterName}={textEntryLid.Format()}";
 
     public static class Apps
     {

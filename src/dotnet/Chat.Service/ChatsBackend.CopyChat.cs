@@ -11,9 +11,10 @@ public partial class ChatsBackend
         CancellationToken cancellationToken)
     {
         var (chatId, placeId, correlationId) = command;
-        var localChatId = chatId.IsPlaceChat ? chatId.PlaceChatId.LocalChatId : chatId.Id;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
-        var newChatId = (ChatId)placeChatId;
+        var localChatId = chatId is PlaceChatId placeChatId
+            ? placeChatId.LocalChatId
+            : chatId.Id.Value;
+        var newChatId = PlaceChatId.Parse(PlaceChatId.Format(placeId, localChatId));
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
@@ -22,7 +23,7 @@ public partial class ChatsBackend
                 Log.LogInformation("OnCopyChat({CorrelationId}): InvLastEntrySid is {EntrySid}", correlationId, invLastEntrySid);
                 InvalidateTiles(newChatId,
                     ChatEntryKind.Text,
-                    new ChatEntryId(invLastEntrySid).LocalId,
+                    ChatEntryId.Parse(invLastEntrySid).LocalId,
                     ChangeKind.Create);
                 _ = GetIdRange(newChatId, ChatEntryKind.Text, true, default);
                 _ = GetIdRange(newChatId, ChatEntryKind.Text, false, default);
@@ -94,7 +95,7 @@ public partial class ChatsBackend
                 .ConfigureAwait(false);
 
             maxAuthorLocalId = dbContext.Authors.Where(c => c.ChatId == chatSid).Max(c => c.LocalId);
-            rolesMap = migratedRoles.Select(c => (c.OriginalRole.Id, c.NewId)).ToArray();
+            rolesMap = migratedRoles.Select(c => (c.OldRole.Id, c.NewRole.Id)).ToArray();
             hasChanges |= hasChanges1;
         }
         {
@@ -121,7 +122,7 @@ public partial class ChatsBackend
 
         var proceed = true;
         var hasErrors = false;
-        var lastProcessedEntryId = ChatEntryId.None;
+        var lastProcessedEntryId = (ChatEntryId?)null;
         if (!textEntryRange.IsEmpty) {
             var startEntryId = textEntryRange.Start;
             var copyContext = new CopyChatEntriesContext(chatId, newChatId, correlationId, migratedAuthors);
@@ -139,8 +140,8 @@ public partial class ChatsBackend
                         proceed = false;
                     else {
                         hasChanges = true;
-                        startEntryId = result.LastEntryId.LocalId + 1;
-                        lastProcessedEntryId = result.LastEntryId;
+                        startEntryId = (result.LastProcessedEntryId?.LocalId ?? 0) + 1;
+                        lastProcessedEntryId = result.LastProcessedEntryId;
                     }
                 }
                 catch (Exception e) {
@@ -158,12 +159,12 @@ public partial class ChatsBackend
                         Change.Update(new ChatCopyStateDiff {
                             IsCopiedSuccessfully = !hasErrors,
                             LastCorrelationId = correlationId,
-                            LastEntryId = !lastProcessedEntryId.IsNone ? 0L : lastProcessedEntryId.LocalId
+                            LastProcessedEntryId = lastProcessedEntryId?.LocalId ?? 0L,
                         })),
                     cancellationToken)
                 .ConfigureAwait(false);
         }
-        if (!lastProcessedEntryId.IsNone) {
+        if (lastProcessedEntryId is not null) {
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             dbContext.Database.SetCommandTimeout(commandTimeout);
             await using var __ = dbContext.ConfigureAwait(false);
@@ -174,7 +175,7 @@ public partial class ChatsBackend
 
         Log.LogInformation(
             "<- OnCopyChat({CorrelationId})", correlationId);
-        return new ChatBackend_CopyChatResult(hasChanges, hasErrors, !lastProcessedEntryId.IsNone ? 0L : lastProcessedEntryId.LocalId);
+        return new ChatBackend_CopyChatResult(hasChanges, hasErrors, lastProcessedEntryId?.LocalId ?? 0L);
     }
 
     private async Task<Chat> CreateOrUpdateChat(string correlationId, ChatDbContext dbContext, ChatId newChatId, Chat chat, CancellationToken cancellationToken)
@@ -184,10 +185,10 @@ public partial class ChatsBackend
             .Where(c => c.Id == chatSid)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        // Make chat private, so only owner who executed copying can see the chat.
-        // Publishing copied chat command will set actual value of IsPublic property later.
+        // Make chat private, so only the owner who executed copying can see the chat.
+        // Publishing a copied chat command will set the actual value of IsPublic property later.
         var newChatMediaId = chat.MediaId != null
-            ? MediaId.New(newChatId, chat.MediaId.LocalId)
+            ? MediaId.New(newChatId.Value, chat.MediaId.LocalId)
             : null;
         var copyMedia = newChatMediaId != null && (dbChat == null || !OrdinalEquals(newChatMediaId.Value, dbChat.MediaId));
         if (copyMedia)
@@ -234,7 +235,7 @@ public partial class ChatsBackend
 
         foreach (var dbRole in dbRoles) {
             var originalRole = dbRole.ToModel();
-            var newRoleId = new RoleId(RoleId.Format(newChat.Id, dbRole.LocalId));
+            var newRoleId = RoleId.Parse(RoleId.Format(newChat.Id, dbRole.LocalId));
             var newRoleSid = newRoleId.Value;
             var existentNewRole = await dbContext.Roles
                 .Where(c => c.Id == newRoleSid)
@@ -285,7 +286,7 @@ public partial class ChatsBackend
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var newDbAuthorPerUserId = newDbAuthors
+        var newDbAuthorByUserId = newDbAuthors
             .Where(c => !c.UserId.IsNullOrEmpty())
             .ToDictionary(c => c.UserId!, StringComparer.Ordinal);
 
@@ -293,8 +294,7 @@ public partial class ChatsBackend
 
         foreach (var dbAuthor in dbAuthors) {
             var originalAuthor = dbAuthor.ToModel();
-            var userId = originalAuthor.UserId;
-            if (userId.IsNone)
+            if (originalAuthor.UserId is not { } userId)
                 throw StandardError.Internal(
                     $"Can't proceed with the migration: found an author with no associated user. AuthorId is '{dbAuthor.Id}'.");
 
@@ -309,14 +309,14 @@ public partial class ChatsBackend
                         "Anonymous author will be registered as removed. Original author is {OriginalAuthor}",
                         originalAuthor);
                 migratedAuthors.RegisterRemoved(originalAuthor);
-                continue; // Skip anonymous author if there were no messages from them.
+                continue; // Skip the anonymous author if there were no messages from them.
             }
 
-            if (!newDbAuthorPerUserId.TryGetValue(userId, out var newDbAuthor))
+            if (!newDbAuthorByUserId.TryGetValue(userId.Value, out var newDbAuthor))
                 throw StandardError.Internal(
                     $"Can't proceed with the migration: No migrated author found for user with id '{userId}'.");
 
-            migratedAuthors.RegisterMigrated(originalAuthor, new AuthorId(newDbAuthor.Id));
+            migratedAuthors.RegisterMigrated(originalAuthor, AuthorId.Parse(newDbAuthor.Id));
         }
 
         return migratedAuthors;
@@ -329,7 +329,7 @@ public partial class ChatsBackend
         CancellationToken cancellationToken)
     {
         if (entryIdRange.IsEmpty)
-            return new CopyChatEntriesResult(0, ChatEntryId.None, new Range<long>());
+            return new CopyChatEntriesResult(0, null, new Range<long>());
 
         Log.LogInformation(
             "-> CopyChatEntries({CorrelationId}), entry Id range is [{Start},{End})",
@@ -403,7 +403,7 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
 
         if (entries.Count == 0)
-            return new CopyChatEntriesResult(0, ChatEntryId.None, new Range<long>());
+            return new CopyChatEntriesResult(0, null, new Range<long>());
 
         var lastFetchedEntry = entries[^1];
 
@@ -425,7 +425,7 @@ public partial class ChatsBackend
         else
             chatEntryWithMentionIds = new List<long>();
 
-        DbChatEntry? lastProcessedEntry = null;
+        DbChatEntry? dbLastProcessedEntry = null;
 
         ICollection<long>? entryToSkipLocalIds = null;
         if (entryKind == ChatEntryKind.Audio) {
@@ -443,31 +443,38 @@ public partial class ChatsBackend
             if (entryToSkipLocalIds != null && entryToSkipLocalIds.Contains(dbChatEntry.LocalId))
                 continue;
 
-            var skip = false;
-            var newEntryId = new ChatEntryId(newChatId, entryKind, dbChatEntry.LocalId, AssumeValid.Option);
-            dbChatEntry.Id = newEntryId;
-            dbChatEntry.ChatId = newChatId;
+            if (entryKind == ChatEntryKind.Text && dbChatEntry.AudioEntryId.HasValue) {
+                var audioEntryId = dbChatEntry.AudioEntryId.Value;
+                if (audioEntryId < minRelatedAudioEntryId)
+                    minRelatedAudioEntryId = audioEntryId;
+                if (audioEntryId > maxRelatedAudioEntryId)
+                    maxRelatedAudioEntryId = audioEntryId;
+            }
+
+            var newEntryId = ChatEntryId.New(newChatId, entryKind, dbChatEntry.LocalId);
+            dbChatEntry.Id = newEntryId.Value;
+            dbChatEntry.ChatId = newChatId.Value;
 
             var authorSid = dbChatEntry.AuthorId;
-            var authorId = new AuthorId(authorSid);
+            var authorId = AuthorId.Parse(authorSid);
             AuthorId newAuthorId;
             if (authorId.LocalId > 0) {
-                var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorSid);
-                if (migratedAuthor.IsRemoved) {
-                    skip = true;
+                var migratedAuthor = migratedAuthors.RequireMigratedAuthor(authorSid);
+                if (migratedAuthor.NewAuthorId is null) {
                     Log.LogWarning(
                         "OnCopyChat({CorrelationId}): skipping chat entry {ChatEntryId}: the author {AuthorSid} is marked as removed",
                         correlationId, dbChatEntry.Id, authorId);
+                    continue;
                 }
-                newAuthorId = migratedAuthor.NewId;
+                newAuthorId = migratedAuthor.NewAuthorId;
             }
-            else if (authorId.LocalId == Constants.User.Walle.AuthorLocalId
-                     || authorId.LocalId == Constants.User.Sherlock.AuthorLocalId)
-                newAuthorId = new AuthorId(newChatId, authorId.LocalId, AssumeValid.Option);
+            else if (authorId.LocalId == Constants.User.Walle.AuthorLocalId ||
+                     authorId.LocalId == Constants.User.Sherlock.AuthorLocalId)
+                newAuthorId = AuthorId.New(newChatId, authorId.LocalId);
             else
                 throw StandardError.Internal($"Unexpected author's local ID: {authorId.LocalId}.");
 
-            dbChatEntry.AuthorId = newAuthorId;
+            dbChatEntry.AuthorId = newAuthorId.Value;
 
             if (dbChatEntry.Kind == ChatEntryKind.Text
                 && chatEntryWithMentionIds.Contains(dbChatEntry.LocalId)) {
@@ -481,44 +488,30 @@ public partial class ChatsBackend
             if (dbChatEntry.IsSystemEntry) {
                 var chatEntry = dbChatEntry.ToModel();
                 var membersChangedOption = chatEntry.SystemEntry?.MembersChanged;
-                if (membersChangedOption != null) {
-                    var changeAuthorId = membersChangedOption.AuthorId;
-                    if (!string.IsNullOrEmpty(changeAuthorId)) {
-                        var isRemoved = migratedAuthors.IsRemoved(changeAuthorId);
-                        if (isRemoved) {
-                            // It's a system chat entry for removed author. So let's remove entry as well.
-                            skip = true;
-                        }
-                        else {
-                            var changeNewAuthorId = migratedAuthors.GetNewAuthorId(changeAuthorId);
-                            var newMembersChangedOption = new MembersChangedOption(changeNewAuthorId,
-                                membersChangedOption.AuthorName,
-                                membersChangedOption.HasLeft);
-                            chatEntry = chatEntry with { SystemEntry = newMembersChangedOption };
-                            dbChatEntry.UpdateFrom(chatEntry);
-                            mentionUpdatesInSystemEntries++;
-                        }
-                    }
+                var changeAuthorId = membersChangedOption?.AuthorId;
+                if (changeAuthorId != null) {
+                    var isRemoved = migratedAuthors.IsRemoved(changeAuthorId.Value);
+                    if (isRemoved)
+                        continue;
+
+                    var changeNewAuthorId = migratedAuthors.GetNewAuthorId(changeAuthorId);
+                    var newMembersChangedOption = new MembersChangedOption(
+                        changeNewAuthorId,
+                        membersChangedOption!.AuthorName,
+                        membersChangedOption.HasLeft);
+                    chatEntry = chatEntry with { SystemEntry = newMembersChangedOption };
+                    dbChatEntry.UpdateFrom(chatEntry);
+                    mentionUpdatesInSystemEntries++;
                 }
             }
 
-            if (entryKind == ChatEntryKind.Text && dbChatEntry.AudioEntryId.HasValue) {
-                var audioEntryId = dbChatEntry.AudioEntryId.Value;
-                if (audioEntryId < minRelatedAudioEntryId)
-                    minRelatedAudioEntryId = audioEntryId;
-                if (audioEntryId > maxRelatedAudioEntryId)
-                    maxRelatedAudioEntryId = audioEntryId;
-            }
+            dbContext.ChatEntries.Add(dbChatEntry);
+            dbLastProcessedEntry = dbChatEntry;
 
-            if (!skip) {
-                dbContext.ChatEntries.Add(dbChatEntry);
-                lastProcessedEntry = dbChatEntry;
-
-                if (dbChatEntry.HasAttachments)
-                    attachmentIds.Add(dbChatEntry.LocalId);
-                if (dbChatEntry.HasReactions)
-                    reactionIds.Add(dbChatEntry.LocalId);
-            }
+            if (dbChatEntry.HasAttachments)
+                attachmentIds.Add(dbChatEntry.LocalId);
+            if (dbChatEntry.HasReactions)
+                reactionIds.Add(dbChatEntry.LocalId);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -547,11 +540,11 @@ public partial class ChatsBackend
                 "OnCopyChat({CorrelationId}): updated MembersChangedOption inside system chat entries, {Count} records affected",
                 correlationId, mentionUpdatesInSystemEntries);
 
-        var lastEntryId = lastProcessedEntry != null ? ChatEntryId.Parse(lastProcessedEntry.Id) : ChatEntryId.None;
+        var lastProcessedEntryId = ChatEntryId.ParseNullable(dbLastProcessedEntry?.Id);
         var audioRange = minRelatedAudioEntryId <= maxRelatedAudioEntryId
             ? new Range<long>(minRelatedAudioEntryId, maxRelatedAudioEntryId + 1)
             : new Range<long>();
-        return new CopyChatEntriesResult(entries.Count, lastEntryId, audioRange);
+        return new CopyChatEntriesResult(entries.Count, lastProcessedEntryId, audioRange);
     }
 
         // Что делать с форвардами, когда мы копируем записи?
@@ -588,14 +581,13 @@ public partial class ChatsBackend
         var markup = MarkupParser.Parse(content);
         var mentionIds = mentionExtractor.GetMentionIds(markup);
         foreach (var mentionId in mentionIds) {
-            if (!mentionId.IsAuthor(out var authorId))
+            if (mentionId.PrincipalId is not AuthorId authorId)
                 continue;
-
             if (authorId.ChatId != chatId)
                 continue;
 
             var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
-            var newMentionId = new MentionId(newAuthorId, AssumeValid.Option);
+            var newMentionId = MentionId.NewAuthor(newAuthorId);
             content = content.Replace(mentionId.Id.Value, newMentionId.Id.Value, StringComparison.Ordinal);
         }
         return content;
@@ -643,8 +635,8 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
 
         foreach (var dbAttachment in attachments) {
-            var entryId = new TextEntryId(dbAttachment.EntryId);
-            var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
+            var entryId = TextEntryId.Parse(dbAttachment.EntryId);
+            var newEntryId = TextEntryId.New(newChatId, entryId.LocalId);
             dbAttachment.Id = DbTextEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
             dbAttachment.EntryId = newEntryId.Value;
             dbAttachment.MediaId = RemapMedia(dbAttachment.MediaId);
@@ -664,9 +656,9 @@ public partial class ChatsBackend
 
         string RemapMedia(string mediaSid)
         {
-            var mediaId = MediaId.ParseOrNull(mediaSid);
+            var mediaId = MediaId.ParseNullable(mediaSid);
             return mediaId != null && CanRemapMedia(mediaId)
-                ? MediaId.New(newChatId, mediaId.LocalId).Value
+                ? MediaId.New(newChatId.Value, mediaId.LocalId).Value
                 : "";
         }
     }
@@ -680,7 +672,7 @@ public partial class ChatsBackend
         MigratedAuthors migratedAuthors,
         CancellationToken cancellationToken)
     {
-        var chatId = new ChatId(chatSid);
+        var chatId = ChatId.Parse(chatSid);
         var reactionIdPrefix = chatSid + ":0:";
         var ids = reactionIds.Select(c => reactionIdPrefix + c + ":").ToList();
 
@@ -695,17 +687,17 @@ public partial class ChatsBackend
 
         foreach (var dbReaction in reactions) {
             var authorSid = dbReaction.AuthorId;
-            var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorSid);
-            if (migratedAuthor.IsRemoved) {
+            var migratedAuthor = migratedAuthors.RequireMigratedAuthor(authorSid);
+            if (migratedAuthor.NewAuthorId is null) {
                 Log.LogWarning("OnCopyChat({CorrelationId}): skipping reaction {ReactionId} because the author {AuthorSid} is marked as removed",
                      correlationId, dbReaction.Id, authorSid);
                 continue;
             }
-            var newAuthorId = migratedAuthor.NewId;
+            var newAuthorId = migratedAuthor.NewAuthorId;
             dbReaction.AuthorId = newAuthorId.Value;
 
-            var entryId = new TextEntryId(dbReaction.EntryId);
-            var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
+            var entryId = TextEntryId.Parse(dbReaction.EntryId);
+            var newEntryId = TextEntryId.New(newChatId, entryId.LocalId);
             dbReaction.EntryId = newEntryId.Value;
             dbReaction.Id = DbReaction.ComposeId(newEntryId, newAuthorId);
 
@@ -726,8 +718,8 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
 
         foreach (var dbSummary in reactionSummaries) {
-            var entryId = new TextEntryId(dbSummary.EntryId);
-            var newEntryId = new TextEntryId(newChatId, entryId.LocalId, AssumeValid.Option);
+            var entryId = TextEntryId.Parse(dbSummary.EntryId);
+            var newEntryId = TextEntryId.New(newChatId, entryId.LocalId);
             dbSummary.EntryId = newEntryId.Value;
             dbSummary.Id = DbReactionSummary.ComposeId(newEntryId, dbSummary.EmojiId);
 
@@ -746,14 +738,14 @@ public partial class ChatsBackend
                         correlationId, entryId, authorId);
                     continue;
                 }
-                var migratedAuthor = migratedAuthors.DemandMigratedAuthor(authorId);
-                if (migratedAuthor.IsRemoved) {
+                var migratedAuthor = migratedAuthors.RequireMigratedAuthor(authorId.Value);
+                if (migratedAuthor.NewAuthorId is null) {
                     Log.LogWarning(
                         "OnCopyChat({CorrelationId}): excluding author for reaction summary {ReactionSummaryId}: author {AuthorSid} is marked as removed",
                         correlationId, dbSummary.Id, authorId);
                     continue;
                 }
-                var newAuthorId = migratedAuthor.NewId;
+                var newAuthorId = migratedAuthor.NewAuthorId;
                 newAuthorIds = newAuthorIds.Add(newAuthorId);
             }
             if (isCorrupted)
@@ -791,7 +783,7 @@ public partial class ChatsBackend
         var maxLocalId = range.End - 1;
         var minLocalId = range.Start;
         var newChatSid = newChatId.Value;
-        var chatId = new ChatId(chatSid);
+        var chatId = ChatId.Parse(chatSid);
 
         var mentions = await dbContext.Mentions
             .Where(c => c.ChatId == chatSid)
@@ -817,39 +809,40 @@ public partial class ChatsBackend
                 }
                 authorSid = FixMentionAuthorSid(mention, authorSid);
                 if (tempAuthorId.ChatId == chatId) {
-                    var migratedAuthor = migratedAuthors.FindMigratedAuthor(authorSid);
+                    var migratedAuthor = migratedAuthors.GetMigratedAuthor(authorSid);
                     if (migratedAuthor == null) {
                         Log.LogWarning(
                             "OnCopyChat({CorrelationId}): skipping mention {MentionId}: copied author not found",
                             correlationId, mention.Id);
                         continue;
                     }
-                    if (migratedAuthor.IsRemoved) {
+                    if (migratedAuthor.NewAuthorId is null) {
                         Log.LogWarning(
                             "OnCopyChat({CorrelationId}): skipping mention {MentionId}: copied author is marked as removed",
                             correlationId, mention.Id);
                         continue;
                     }
-                    var newAuthorId = migratedAuthor.NewId;
-                    mentionId = new MentionId(newAuthorId, AssumeValid.Option);
+                    var newAuthorId = migratedAuthor.NewAuthorId;
+                    mentionId = MentionId.NewAuthor(newAuthorId);
                 }
                 else {
-                    mentionId = new MentionId(new AuthorId(authorSid), AssumeValid.Option);
+                    mentionId = MentionId.NewAuthor(AuthorId.Parse(authorSid));
                     Log.LogWarning(
                         "OnCopyChat({CorrelationId}): another author's mention with Id {MentionId} is found",
                         correlationId, mention.Id);
                 }
             }
             else {
-                if (!MentionId.TryParse(mentionSid, out mentionId)) {
+                if (!MentionId.TryParse(mentionSid, out var parsedMentionId)) {
                     Log.LogWarning(
                         "OnCopyChat({CorrelationId}): skipping mention {MentionId}: invalid MentionId",
                         correlationId, mention.Id);
                     continue;
                 }
+                mentionId = parsedMentionId;
             }
-            mention.MentionId = mentionId;
-            mention.Id = DbMention.ComposeId(new ChatEntryId(newChatId, ChatEntryKind.Text, mention.EntryId, AssumeValid.Option), mentionId);
+            mention.MentionId = mentionId.Value;
+            mention.Id = DbMention.ComposeId(TextEntryId.New(newChatId, mention.EntryId), mentionId);
             dbContext.Mentions.Add(mention);
             entryIdsCollector.Add(mention.EntryId);
         }
@@ -873,7 +866,7 @@ public partial class ChatsBackend
                 var authorLocalSid = parts[^1];
                 if (ChatId.TryParse(authorChatSid, out var authorChatId)
                     && long.TryParse(authorLocalSid, CultureInfo.InvariantCulture, out var authorLocalId)) {
-                    var authorId = new AuthorId(authorChatId, authorLocalId, AssumeValid.Option);
+                    var authorId = AuthorId.New(authorChatId, authorLocalId);
                     authorSid = authorId.Value;
                     hasFixedMentionId = true;
                 }
@@ -887,10 +880,9 @@ public partial class ChatsBackend
         }
     }
 
-    private record MigratedRole(Role OriginalRole, Role NewRole)
-    {
-        public RoleId NewId => NewRole.Id;
-    }
+    // Nested types
+
+    private record MigratedRole(Role OldRole, Role NewRole);
 
     internal class MigratedAuthors
     {
@@ -907,31 +899,27 @@ public partial class ChatsBackend
 
         public AuthorId GetNewAuthorId(string authorSid)
         {
-            var migratedAuthor = DemandMigratedAuthor(authorSid);
-            if (migratedAuthor.IsRemoved)
-                throw StandardError.Constraint($"Copied author for Id {authorSid} is marked as removed");
-            return migratedAuthor.NewId;
+            var migratedAuthor = RequireMigratedAuthor(authorSid);
+            return migratedAuthor.NewAuthorId
+                ?? throw StandardError.Constraint($"Copied author for Id {authorSid} is marked as removed");
         }
 
         public bool IsRemoved(string authorSid)
-            => DemandMigratedAuthor(authorSid).IsRemoved;
+            => RequireMigratedAuthor(authorSid).NewAuthorId is not null;
 
-        public MigratedAuthor DemandMigratedAuthor(string authorSid)
+        public MigratedAuthor RequireMigratedAuthor(string authorSid)
         {
-            var migratedAuthor = FindMigratedAuthor(authorSid);
+            var migratedAuthor = GetMigratedAuthor(authorSid);
             if (migratedAuthor == null)
                 throw StandardError.Constraint($"Copied author for Id {authorSid} is not found");
+
             return migratedAuthor;
         }
 
-        public MigratedAuthor? FindMigratedAuthor(string authorSid)
-            => _migratedAuthors.FirstOrDefault(c => OrdinalEquals(c.OriginalAuthor.Id.Value, authorSid));
+        public MigratedAuthor? GetMigratedAuthor(string authorSid)
+            => _migratedAuthors.FirstOrDefault(c => OrdinalEquals(c.OldAuthorId.Id.Value, authorSid));
 
-        public record MigratedAuthor(AuthorId OriginalAuthor, AuthorId? NewAuthorId)
-        {
-            public AuthorId NewId => NewAuthorId ?? AuthorId.None;
-            public bool IsRemoved => NewAuthorId == null;
-        }
+        public sealed record MigratedAuthor(AuthorId OldAuthorId, AuthorId? NewAuthorId);
     }
 
     private sealed record CopyChatEntriesContext(
@@ -940,5 +928,8 @@ public partial class ChatsBackend
         string CorrelationId,
         MigratedAuthors MigratedAuthors);
 
-    public sealed record CopyChatEntriesResult(long ProcessedChatEntryCount, ChatEntryId LastEntryId, Range<long> AudioEntryId);
+    public sealed record CopyChatEntriesResult(
+        long ProcessedChatEntryCount,
+        ChatEntryId? LastProcessedEntryId,
+        Range<long> AudioEntryId);
 }

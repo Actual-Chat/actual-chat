@@ -9,12 +9,12 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
     private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
 
-    protected UserId UserId { get; private set; }
+    protected UserId? UserId { get; private set; }
 
     [Parameter, EditorRequired] public string UserSid { get; set; } = "";
 
     protected override void OnParametersSet()
-        => UserId = new UserId(UserSid);
+        => UserId = UserId.Parse(UserSid);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -25,7 +25,7 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userId = UserId;
-        if (userId.IsNone)
+        if (userId is null)
             return Model.None;
 
         var account = await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);

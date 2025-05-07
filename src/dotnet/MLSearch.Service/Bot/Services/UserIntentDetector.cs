@@ -54,7 +54,8 @@ internal class UserIntentDetector(Kernel kernel): IUserIntentDetector
             Kernel = kernel,
         };
 
-        var response = await agent.InvokeAsync([message], cancellationToken: cancellationToken)
+        var response = await agent
+            .InvokeAsync([message], cancellationToken: cancellationToken)
             .FirstAsync(cancellationToken)
             .ConfigureAwait(false);
 

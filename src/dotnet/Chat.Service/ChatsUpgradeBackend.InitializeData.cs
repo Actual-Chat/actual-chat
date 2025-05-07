@@ -25,7 +25,7 @@ public partial class ChatsUpgradeBackend
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        var creatorId = admin.Id;
+        var creatorId = (UserId?)admin.Id;
 
         var userIdByEmail = new Dictionary<string, UserId>(StringComparer.OrdinalIgnoreCase);
         foreach (var userId in userIds) {
@@ -52,13 +52,13 @@ public partial class ChatsUpgradeBackend
             }
         }
 
-        if (creatorId.IsNone) {
+        if (creatorId is null) {
             if (userIdByEmail.TryGetValue(Constants.Team.Member1Email, out var temp))
                 creatorId = temp;
             else if (userIdByEmail.Count > 0)
                 creatorId = userIdByEmail.First().Value;
         }
-        if (creatorId.IsNone)
+        if (creatorId is null)
             throw StandardError.Constraint("Creator user not found.");
 
         var changeCommand = new ChatsBackend_Change(chatId,
@@ -212,17 +212,17 @@ public partial class ChatsUpgradeBackend
                 var localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                     .ConfigureAwait(false);
-                var id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
+                var id = TextEntryId.New(chatId, localId);
                 var entry = new DbChatEntry {
-                    Id = id,
-                    ChatId = chatId,
+                    Id = id.Value,
+                    ChatId = chatId.Value,
                     Kind = ChatEntryKind.Text,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
                     EndsAt = lastEndsAt,
                     Content = $"{localId}: {content ?? GetRandomSentence(rnd, 30)}",
-                    AuthorId = author.Id,
+                    AuthorId = author.Id.Value,
                 };
                 dbContext.Add(entry);
             }
@@ -240,30 +240,30 @@ public partial class ChatsUpgradeBackend
                 var localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
                     .ConfigureAwait(false);
-                var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
+                var id = (ChatEntryId)AudioEntryId.New(chatId, localId);
                 var timeMap = ConvertOldTextToTimeMap(
                     "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
                 var audioEntry = new DbChatEntry {
-                    Id = id,
-                    ChatId = chatId,
-                    Kind = ChatEntryKind.Audio,
+                    Id = id.Value,
+                    ChatId = chatId.Value,
+                    Kind = id.Kind,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
                     EndsAt = lastEndsAt,
                     Content = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
-                    AuthorId = author.Id,
+                    AuthorId = author.Id.Value,
                 };
                 dbContext.Add(audioEntry);
 
                 localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                     .ConfigureAwait(false);
-                id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
+                id = TextEntryId.New(chatId, localId);
                 var textEntry = new DbChatEntry {
-                    Id = id,
-                    ChatId = chatId,
-                    Kind = ChatEntryKind.Text,
+                    Id = id.Value,
+                    ChatId = chatId.Value,
+                    Kind = id.Kind,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
@@ -273,7 +273,7 @@ public partial class ChatsUpgradeBackend
                         + "открыв мне чудо на Земле",
                     TimeMap = timeMap,
                     AudioEntryId = audioEntry.LocalId,
-                    AuthorId = author.Id,
+                    AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);
             }
@@ -293,28 +293,28 @@ public partial class ChatsUpgradeBackend
                 var localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
                     .ConfigureAwait(false);
-                var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
+                var id = (ChatEntryId)AudioEntryId.New(chatId, localId);
                 var audioEntry = new DbChatEntry {
-                    Id = id,
-                    ChatId = chatId,
-                    Kind = ChatEntryKind.Audio,
+                    Id = id.Value,
+                    ChatId = chatId.Value,
+                    Kind = id.Kind,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
                     EndsAt = lastEndsAt,
                     Content = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
-                    AuthorId = author.Id,
+                    AuthorId = author.Id.Value,
                 };
                 dbContext.Add(audioEntry);
 
                 localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                     .ConfigureAwait(false);
-                id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
+                id = TextEntryId.New(chatId, localId);
                 var textEntry = new DbChatEntry {
-                    Id = id,
-                    ChatId = chatId,
-                    Kind = ChatEntryKind.Text,
+                    Id = id.Value,
+                    ChatId = chatId.Value,
+                    Kind = id.Kind,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
@@ -324,7 +324,7 @@ public partial class ChatsUpgradeBackend
                         + "шаг и холоду лютому слишком просто сладить с тобой",
                     TimeMap = timeMap,
                     AudioEntryId = audioEntry.LocalId,
-                    AuthorId = author.Id,
+                    AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);
             }
@@ -373,7 +373,7 @@ public partial class ChatsUpgradeBackend
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        var creatorId = UserId.None;
+        var creatorId = (UserId?)null;
 
         var userIdByEmail = new Dictionary<string, UserId>(StringComparer.OrdinalIgnoreCase);
         foreach (var userId in userIds) {
@@ -396,18 +396,13 @@ public partial class ChatsUpgradeBackend
             }
         }
 
-        if (creatorId.IsNone) {
+        if (creatorId is null) {
             if (userIdByEmail.TryGetValue(Constants.Team.Member1Email, out var temp))
                 creatorId = temp;
             else if (userIdByEmail.Count > 0)
                 creatorId = userIdByEmail.First().Value;
         }
-        if (creatorId.IsNone) {
-            if (admin.Id.IsNone)
-                throw StandardError.Constraint("Creator user not found");
-
-            creatorId = admin.Id;
-        }
+        creatorId ??= admin.Id ?? throw StandardError.Constraint("Creator user not found");
 
         var changeCommand = new ChatsBackend_Change(chatId,
             null,

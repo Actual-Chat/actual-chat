@@ -105,8 +105,8 @@
     private IJSRuntime JS => Hub.JSRuntime();
 
     private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
-    private bool IsRecordingHere => !Chat.Id.IsNone && RecordingChatId == Chat.Id;
-    private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsRecordingHere => Chat?.Id is not null && RecordingChatId == Chat.Id;
+    private bool IsUpdating => Chat?.Id is not null && State.Value.Chat.Id != Chat.Id;
     private bool IsPushToTalk { get; set; } = false;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

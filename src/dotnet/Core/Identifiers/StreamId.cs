@@ -71,11 +71,13 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
     public static StreamId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<StreamId>(s);
 
-    public static StreamId? ParseOrNull(string? s)
+    public static StreamId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static StreamId? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static StreamId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out StreamId? result)
     {

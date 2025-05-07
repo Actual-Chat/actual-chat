@@ -16,6 +16,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
+    // TODO(AY): Make UserId non-nullable
     public string? UserId { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
@@ -28,14 +29,17 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbAvatar(AvatarFull model) => UpdateFrom(model);
 
     public AvatarFull ToModel()
-        => new(new UserId(UserId), Id, Version) {
+    {
+        var userId = ActualChat.UserId.Parse(UserId!);
+        return new (userId, Id, Version) {
             Name = Name,
-            MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
+            MediaId = ActualChat.MediaId.ParseNullable(MediaId),
             Bio = Bio,
             PictureUrl = Picture,
             AvatarKey = AvatarKey,
             IsAnonymous = IsAnonymous,
         };
+    }
 
     public void UpdateFrom(AvatarFull model)
     {
@@ -44,9 +48,10 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         model.RequireSomeVersion();
         var isNew = Id.IsNullOrEmpty();
 
-        if (UserId.IsNullOrEmpty())
-            UserId = model.UserId.Value.NullIfEmpty();
-        else if (model.UserId != (Symbol)UserId)
+        var modelUserId = model.UserId.Value;
+        if (UserId == null)
+            UserId = modelUserId;
+        else if (!OrdinalEquals(modelUserId, UserId))
             throw StandardError.Constraint("Can't change Avatar.UserId.");
 
         Id = id;

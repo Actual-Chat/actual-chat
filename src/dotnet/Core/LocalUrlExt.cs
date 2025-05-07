@@ -26,46 +26,53 @@ public static partial class LocalUrlExt
     public static bool IsChat(this LocalUrl url)
         => url.Value.OrdinalStartsWith("/chat/");
 
-    public static bool IsChat(this LocalUrl url, out ChatId chatId)
+    public static bool IsChat(this LocalUrl url, [NotNullWhen(true)] out ChatId? chatId)
         => url.IsChat(out chatId, out _, out _);
-    public static bool IsChat(this LocalUrl url, out ChatId chatId, out long entryLid)
+
+    public static bool IsChat(this LocalUrl url, [NotNullWhen(true)] out ChatId? chatId, out long textEntryLid)
     {
-        entryLid = 0;
+        textEntryLid = 0;
         if (!url.IsChat(out chatId, out var parameters, out _))
             return false;
 
-        _ = TryParseEntryLidFromQuery(parameters, out entryLid);
+        _ = TryParseTextEntryLidFromQuery(parameters, out textEntryLid);
         return true;
     }
 
-    public static bool IsChatCompat(this LocalUrl url, out ChatId chatId, out long entryLid)
+    public static bool IsChatCompat(this LocalUrl url, [NotNullWhen(true)] out ChatId? chatId, out long textEntryLid)
     {
         // Checks if it's a link to chat entry in old and new formats
-        entryLid = 0;
+        textEntryLid = 0;
         if (!url.IsChat(out chatId, out var parameters, out var hash))
             return false;
 
-        _ = TryParseEntryLidFromQuery(parameters, out entryLid);
-        if (entryLid == 0 && !hash.IsNullOrEmpty())
-            _ = NumberExt.TryParsePositiveLong(hash, out entryLid);
+        _ = TryParseTextEntryLidFromQuery(parameters, out textEntryLid);
+        if (textEntryLid == 0 && !hash.IsNullOrEmpty())
+            _ = NumberExt.TryParsePositiveLong(hash, out textEntryLid);
         return true;
     }
 
-    public static bool IsChat(this LocalUrl url, out ChatId chatId, out string hash)
+    public static bool IsChat(
+        this LocalUrl url, [NotNullWhen(true)] out ChatId? chatId, out string hash)
         => url.IsChat(out chatId, out _, out hash);
-    public static bool IsChat(this LocalUrl url, out ChatId chatId, out string parameters, out string hash)
+
+    public static bool IsChat(
+        this LocalUrl url, [NotNullWhen(true)] out ChatId? chatId, out string parameters, out string hash)
     {
-        chatId = default;
+        chatId = null;
         parameters = "";
         hash = "";
         var match = IsChatRegex.Match(url);
         if (!match.Success)
             return false;
 
-        chatId = ChatId.ParseOrNone(match.Groups["chatId"].Value);
+        chatId = ChatId.TryParse(match.Groups["chatId"].Value);
+        if (chatId == null)
+            return false;
+
         parameters = match.Groups["parameters"].Value;
         hash = match.Groups["hash"].Value;
-        return !chatId.IsNone;
+        return true;
     }
 
     public static bool IsUser(this LocalUrl url)
@@ -77,9 +84,9 @@ public static partial class LocalUrlExt
     public static bool IsPrivateChatInvite(this LocalUrl url)
         => url.Value.OrdinalStartsWith("/join/");
 
-    private static bool TryParseEntryLidFromQuery(string parameters, out long entryLid)
+    private static bool TryParseTextEntryLidFromQuery(string parameters, out long textEntryLid)
     {
-        entryLid = 0;
+        textEntryLid = 0;
         if (parameters.IsNullOrEmpty())
             return false;
 
@@ -88,6 +95,6 @@ public static partial class LocalUrlExt
         if (sEntryId.IsNullOrEmpty())
             return false;
 
-        return NumberExt.TryParsePositiveLong(sEntryId, out entryLid);
+        return NumberExt.TryParsePositiveLong(sEntryId, out textEntryLid);
     }
 }

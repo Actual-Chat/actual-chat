@@ -20,7 +20,7 @@
     private UICommander UICommander => Hub.UICommander();
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
-    private bool IsLoading => !Chat.Id.IsNone;
+    private bool IsLoading => Chat?.Id is not null;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
     [Parameter] public string Label { get; set; } = "Mute notifications";

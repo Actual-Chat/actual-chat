@@ -11,8 +11,6 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-
     public DbPlace() { }
     public DbPlace(Place model) => UpdateFrom(model);
 
@@ -29,28 +27,28 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsPublic { get; set; }
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public Place ToModel()
-        => new(new PlaceId(Id), Version) {
+        => new(PlaceId.Parse(Id), Version) {
             Title = Title,
             Description = Description,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
-            MediaId = ActualChat.MediaId.ParseOrNull(MediaId),
-            BackgroundMediaId = ActualChat.MediaId.ParseOrNull(BackgroundMediaId),
-            UserLinkId = UserLinkId.IsNullOrEmpty() ? null : ActualChat.UserLinkId.Parse(UserLinkId),
+            MediaId = ActualChat.MediaId.ParseNullable(MediaId),
+            BackgroundMediaId = ActualChat.MediaId.ParseNullable(BackgroundMediaId),
+            UserLinkId = ActualChat.UserLinkId.ParseNullable(UserLinkId),
         };
 
     public void UpdateFrom(Place model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
         Title = model.Title;
         Description = model.Description;

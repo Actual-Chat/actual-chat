@@ -18,5 +18,5 @@ public partial record ExplicitNotification(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ExplicitNotificationKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol SimilarityKey => Id.SimilarityKey;
+    public string SimilarityKey => Id.SimilarityKey;
 }

@@ -34,7 +34,7 @@ public partial record Notification(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public NotificationKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol SimilarityKey => Id.SimilarityKey;
+    public string SimilarityKey => Id.SimilarityKey;
 
     // Union options
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -59,21 +59,22 @@ public partial record Notification(
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsActive => HandledAt == null;
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ChatId =>
+    public ChatId? ChatId =>
         ChatEntryNotification?.EntryId.ChatId
         ?? GetAttentionNotification?.ChatId
-        ?? ChatNotification?.ChatId
-        ?? default;
+        ?? ChatNotification?.ChatId;
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId EntryId =>
+    public ChatEntryId? EntryId =>
         ChatEntryNotification?.EntryId
         ?? default;
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public AuthorId AuthorId =>
+    public AuthorId? AuthorId =>
         ChatEntryNotification?.AuthorId
-        ?? GetAttentionNotification?.CallerId
-        ?? default;
+        ?? GetAttentionNotification?.CallerId;
 
     public Notification WithSimilar(Notification similar)
     {
@@ -97,7 +98,7 @@ public partial record ChatNotificationOption(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChatEntryNotificationOption(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId,
+    [property: DataMember, MemoryPackOrder(0)] TextEntryId EntryId,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
     ) : NotificationOption;
 

@@ -44,7 +44,7 @@
     private IAuthors Authors => Hub.Authors;
     private IJSRuntime JS => Hub.JSRuntime();
 
-    private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsUpdating => Chat?.Id is not null && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;

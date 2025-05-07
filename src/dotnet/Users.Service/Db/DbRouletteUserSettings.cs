@@ -7,6 +7,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users.Db;
 
+// TODO(AY): Rename to UserRouletteSettings
 [Table("RouletteUserSettings")]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbRouletteUserSettings : IHasId<string>, IHasVersion<long>, IRequirementTarget
@@ -20,19 +21,18 @@ public class DbRouletteUserSettings : IHasId<string>, IHasVersion<long>, IRequir
     public DbRouletteUserSettings(RouletteUserSettings model) => UpdateFrom(model);
 
     public RouletteUserSettings ToModel()
-        => new (new UserId(Id), Version) {
+        => new (UserId.Parse(Id), Version) {
             IsEnabled = IsEnabled
         };
 
     public void UpdateFrom(RouletteUserSettings model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
-
         IsEnabled = model.IsEnabled;
     }
 

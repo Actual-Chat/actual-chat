@@ -11,7 +11,8 @@ public partial record ContactSearchQuery
     [DataMember, MemoryPackOrder(7)] public bool Own { get; init; }
     [DataMember, MemoryPackOrder(4)] public int Skip { get; init; }
     [DataMember, MemoryPackOrder(5)] public int Limit { get; init; } = Constants.Search.DefaultPageSize;
+
     [IgnoreDataMember, MemoryPackIgnore]
     [MemberNotNullWhen(true, nameof(PlaceId))]
-    public bool MustFilterByPlace => PlaceId != null && PlaceId != ActualChat.PlaceId.None;
+    public bool MustFilterByPlace => PlaceId is not null;
 }

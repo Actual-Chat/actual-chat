@@ -7,6 +7,7 @@ public sealed partial record UserChatSettings
 {
     public static readonly UserChatSettings Default = new();
 
+    public static string GetKvasKey(ChatId chatId) => $"@UserChatSettings({chatId.Value})";
     public static string GetKvasKey(string chatId) => $"@UserChatSettings({chatId})";
 
     // `isNullable = false` is intentional to keep backward compatibility with v1.26 format when Language was non-nullable

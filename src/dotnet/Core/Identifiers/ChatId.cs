@@ -1,146 +1,140 @@
 using System.ComponentModel;
-using MemoryPack;
-using ActualLab.Generators;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using ActualLab.Generators;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ChatId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatId>))]
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<ChatId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ChatId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ChatId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<ChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
+public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasShardKey<string>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatId>();
-    internal static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+    private static readonly ILruCache<string, ChatId> Cache = CreateCache<ChatId>(512);
 
-    public static ChatId None => default;
+    public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public PeerChatId PeerChatId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public PlaceChatId PlaceChatId { get; }
-
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatKind Kind => !PlaceChatId.IsNone
-        ? ChatKind.Place
-        : PeerChatId.IsNone
-            ? ChatKind.Group
-            : ChatKind.Peer;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsPlaceChat => !PlaceChatId.IsNone;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsPlaceRootChat => IsPlaceChat && PlaceChatId.IsRoot;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public PlaceId PlaceId => PlaceChatId.PlaceId;
+    [IgnoreDataMember]
+    public ChatKind Kind { get; }
+    [IgnoreDataMember]
+    public virtual string ShardKey => Value;
 
     // Factories and constructors
 
-    public static ChatId Group(Symbol chatId)
-        => new(chatId, default, default, AssumeValid.Option);
-    public static ChatId Peer(PeerChatId peerChatId)
-        => new(peerChatId.Id, peerChatId, default, AssumeValid.Option);
-    public static ChatId Place(PlaceChatId placeChatId)
-        => new(placeChatId.Id, default, placeChatId, AssumeValid.Option);
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public ChatId(Symbol id)
-        => this = Parse(id);
-    public ChatId(string? id)
-        => this = Parse(id);
-    public ChatId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
-    public ChatId(Generate _)
-        => this = new ChatId(IdGenerator.Next());
-
-    private ChatId(Symbol id, PeerChatId peerChatId, PlaceChatId placeChatId, AssumeValid _)
-    {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
-        PeerChatId = peerChatId;
-        PlaceChatId = placeChatId;
-    }
-
-    // Helpers
-
-    public bool IsPeerChat(out PeerChatId peerChatId)
-    {
-        peerChatId = PeerChatId;
-        return !peerChatId.IsNone;
-    }
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(ChatId source) => source.Id;
-    public static implicit operator string(ChatId source) => source.Id.Value;
-    public static implicit operator ChatId(PeerChatId source) => new(source.Id, source, PlaceChatId.None, AssumeValid.Option);
-    public static implicit operator ChatId(PlaceChatId source) => new(source.Id, PeerChatId.None, source, AssumeValid.Option);
-    public static explicit operator ChatId(string source) => new(source);
+    protected ChatId(string value, ChatKind kind) : base(value)
+        => Kind = kind;
 
     // Equality
 
-    public bool Equals(ChatId other) => Id == other.Id;
-    public override bool Equals(object? obj) => obj is ChatId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(ChatId left, ChatId right) => left.Equals(right);
-    public static bool operator !=(ChatId left, ChatId right) => !left.Equals(right);
+    public bool Equals(ChatId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is ChatId other && Equals(other);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(ChatId? left, ChatId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(ChatId? left, ChatId? right)
+        => !(left?.Equals(right) ?? right is null);
 
     // Parsing
 
     public static ChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>(s);
-    public static ChatId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : StandardError.Format<ChatId>(s).LogWarning(Log, None);
 
-    public static bool TryParse(string? s, out ChatId result)
+    public static ChatId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static ChatId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out ChatId? result)
     {
-        result = default;
+        result = null;
         if (s.IsNullOrEmpty())
-            return true; // None
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
 
         if (s.Length < 6)
             return false;
 
         if (s.OrdinalStartsWith(PeerChatId.IdPrefix)) {
-            // Peer chat ID
-            if (!PeerChatId.TryParse(s, out var peerChatId))
-                return false;
-
-            result = new ChatId(peerChatId.Id, peerChatId, PlaceChatId.None, AssumeValid.Option);
+            result = TryParsePeerChatId(s);
+            return result != null;
         }
-        else if (s.OrdinalStartsWith(PlaceChatId.IdPrefix)) {
-            // Place chat ID
-            if (!PlaceChatId.TryParse(s, out var placeChatId))
-                return false;
-
-            result = new ChatId(placeChatId.Id, PeerChatId.None, placeChatId, AssumeValid.Option);
+        if (s.OrdinalStartsWith(PlaceChatId.IdPrefix)) {
+            result = TryParsePlaceChatId(s);
+            return result != null;
         }
-        else {
-            if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
-                return false;
+        result = TryParseGroupChatId(s);
+        if (result == null)
+            return false;
 
-            // Group chat ID
-            result = new ChatId(s, PeerChatId.None, PlaceChatId.None, AssumeValid.Option);
-        }
+        result = Cache.AddOrGet(s, result);
         return true;
+    }
+
+    // Private methods
+
+    private static PeerChatId? TryParsePeerChatId(string s)
+    {
+        var tail = s.AsSpan(2);
+        var userId1Length = tail.IndexOf('-');
+        if (userId1Length < 0)
+            return null;
+
+        if (!UserId.TryParse(tail[..userId1Length].ToString(), out var userId1))
+            return null;
+        if (!UserId.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2))
+            return null;
+        if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
+            return null; // Wrong sort order or they are the same
+
+        return new PeerChatId(s, userId1, userId2);
+    }
+
+    private static PlaceChatId? TryParsePlaceChatId(string s)
+    {
+        var tail = s.AsSpan(2);
+        var placeIdLength = tail.IndexOf('-');
+        if (placeIdLength < 0)
+            return null;
+
+        if (!PlaceId.TryParse(tail[..placeIdLength].ToString(), out var placeId))
+            return null;
+        if (!TryParse(tail[(placeIdLength + 1)..].ToString(), out var localChatId))
+            return null;
+        if (localChatId.Kind != ChatKind.Group)
+            return null; // Both PlaceId and local ChatId must be there
+
+        return new PlaceChatId(s, placeId, localChatId.Value);
+    }
+
+    private static GroupChatId? TryParseGroupChatId(string s)
+    {
+        if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
+            return null;
+
+        return new GroupChatId(s);
     }
 }

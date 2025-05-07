@@ -32,7 +32,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     public IState<Moment> LastChangedAt => _lastChangedAt;
     public IState<SignInRequest?> ActiveSignInRequest => _activeSignInRequest;
     public Moment StartedAt { get; }
-    public event Action<AccountFull>? Changed;
+    public event Action<AccountFull?>? Changed;
 
     public AccountUI(UIHub hub) : base(hub)
     {
@@ -85,7 +85,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
                         var historyItem = await History.State.Use(ct).ConfigureAwait(false);
                         var url = new LocalUrl(historyItem.Url);
                         var signInRequest = await _activeSignInRequest.Use(ct).ConfigureAwait(false);
-                        var isSignedIn = !account.IsGuestOrNone;
+                        var isSignedIn = !account.IsGuestOrNull();
                         var mustComplete = isSignedIn || signInRequest != mySignInRequest || !url.IsHome();
                         return mustComplete;
                     })
@@ -97,7 +97,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
             // Intended
         }
         TryResetSignInRequest(mySignInRequest);
-        return !OwnAccount.Value.IsGuestOrNone;
+        return OwnAccount.Value is { IsGuest: false };
     }
 
     // IClientAuth wrapping methods
@@ -204,13 +204,13 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
             try {
                 var modalRef = await hub.ModalUI.Show(new SignInModal.Model(reason)).ConfigureAwait(true);
                 await modalRef.WhenClosed.ConfigureAwait(true);
-                if (hub.AccountUI.OwnAccount.Value.IsGuestOrNone)
+                if (hub.AccountUI.OwnAccount.Value.IsGuestOrNull())
                     return;
 
                 if (redirectUrl != null && hub.History.LocalUrl.IsHome()) {
-                    // We must await this call to delay ResetSignInRequest call,
+                    // We must await this call to delay the ResetSignInRequest call,
                     // otherwise ProcessOwnAccountChange logic may trigger
-                    // default redirect on sign-in before this one happens.
+                    // the default redirect on sign-in before this one happens.
                     await hub.History.NavigateTo(redirectUrl, true).ConfigureAwait(true);
                 }
             }

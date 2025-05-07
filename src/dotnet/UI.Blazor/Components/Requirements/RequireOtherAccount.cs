@@ -13,11 +13,10 @@ public class RequireOtherAccount : RequirementComponent
     public override string ToString()
         => $"{GetType().GetName()}(UserSid = {UserSid})";
 
-    public override async Task<Unit> Require(CancellationToken cancellationToken)
+    public override async Task Require(CancellationToken cancellationToken)
     {
-        var userId = new UserId(UserSid);
+        var userId = UserId.Parse(UserSid);
         var account = await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);
         account.Require(MustNotBeGuest ? Account.MustNotBeGuest : Account.MustExist);
-        return default;
     }
 }

@@ -8,7 +8,7 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
         var requester = new Requester(this);
         var nodeA = new NodeRef(Generate.Option);
         var nodeB = new NodeRef(Generate.Option);
-        var placeId = new PlaceId(Generate.Option);
+        var placeId = PlaceId.New();
 
         var r0 = MeshRefResolvers.Get<MeshRefResolversTest>(requester);
         r0.Invoke(this).Should().Be(MeshRef.Shard(GetHashCode()));

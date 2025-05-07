@@ -32,7 +32,7 @@ public class ReactionsBackend(IServiceProvider services)
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbReactionSummaries = await dbContext.ReactionSummaries
-            .Where(x => x.EntryId == entryId && x.Count > 0)
+            .Where(x => x.EntryId == entryId.Value && x.Count > 0)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbReactionSummaries.Select(x => x.ToModel()).ToArray();
@@ -55,8 +55,8 @@ public class ReactionsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         var emoji = Emoji.Get(reaction.EmojiId).Require();
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
-        var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
-        var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
+        var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken).Require().ConfigureAwait(false);
+        var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).Require().ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -147,7 +147,7 @@ public class ReactionsBackend(IServiceProvider services)
         async Task UpdateHasReactions()
         {
             var hasReactions = await dbContext.ReactionSummaries
-                .AnyAsync(x => x.EntryId == entryId && x.Count > 0, cancellationToken)
+                .AnyAsync(x => x.EntryId == entryId.Value && x.Count > 0, cancellationToken)
                 .ConfigureAwait(false);
             entry = entry with { HasReactions = hasReactions }; // intended, as it is used in event
             var changeEntryCommand = new ChatsBackend_ChangeEntry(

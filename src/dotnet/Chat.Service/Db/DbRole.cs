@@ -57,7 +57,7 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (SystemRole is SystemRole.Owner)
             permissions = ChatPermissions.Owner;
 
-        return new (new RoleId(Id), Version) {
+        return new (RoleId.Parse(Id), Version) {
             SystemRole = SystemRole,
             Name = Name,
             Picture = Picture,
@@ -68,11 +68,11 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(Role model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
-        ChatId = id.ChatId;
+        Id = id.Value;
+        ChatId = id.ChatId.Value;
         LocalId = id.LocalId;
         Version = model.Version;
         SystemRole = model.SystemRole;

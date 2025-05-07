@@ -29,14 +29,14 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
         => $"{entryId}{IdSeparator}{index}";
 
     public static string IdPrefix(TextEntryId entryId)
-        => entryId + IdSeparator;
+        => entryId.Value + IdSeparator;
 
     public TextEntryAttachment ToModel()
         => new (Id, Version) {
-            EntryId = new TextEntryId(EntryId),
+            EntryId = TextEntryId.Parse(EntryId),
             Index = Index,
             MediaId = ActualChat.MediaId.Parse(MediaId),
-            ThumbnailMediaId = ActualChat.MediaId.ParseOrNull(ThumbnailMediaId),
+            ThumbnailMediaId = ActualChat.MediaId.ParseNullable(ThumbnailMediaId),
         };
 
     public void UpdateFrom(TextEntryAttachment model)
@@ -47,7 +47,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
 
         Id = id;
         Version = model.Version;
-        EntryId = model.EntryId;
+        EntryId = model.EntryId.Value;
         Index = model.Index;
         MediaId = model.MediaId.Value;
         ThumbnailMediaId = model.ThumbnailMediaId?.Value ?? "";

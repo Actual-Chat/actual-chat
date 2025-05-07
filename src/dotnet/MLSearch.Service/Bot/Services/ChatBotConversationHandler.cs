@@ -138,7 +138,7 @@ internal class ChatBotConversationHandler(
         var lastAuthorId = updatedEntries[updatedEntries.Count-1].AuthorId;
 
         var author = await authors
-            .Get(chatId, lastAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+            .Get(chatId, lastAuthorId, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
         var userId = author!.UserId;
 
@@ -170,7 +170,7 @@ internal class ChatBotConversationHandler(
 
         async Task PostResponse(ChatMessageContent message)
         {
-            var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
+            var textEntryId = TextEntryId.New(chatId, 0);
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 textEntryId,
                 null,

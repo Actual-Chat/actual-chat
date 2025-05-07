@@ -13,7 +13,7 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
         await using var tester = appHost.NewBlazorTester(Out);
         var account = await tester.SignInAsBob();
 
-        var notificationId = new NotificationId(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId);
+        var notificationId = NotificationId.New(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId.Value);
         var notification = new Notification(notificationId) {
             Title = "Notify",
             Content = "Hello",
@@ -40,7 +40,7 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
         await using var tester = appHost.NewBlazorTester(Out);
         var account = await tester.SignInAsBob();
 
-        var notificationId = new NotificationId(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId);
+        var notificationId = NotificationId.New(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId.Value);
         var notification = new Notification(notificationId) {
             Title = "Notify",
             Content = "Hello",

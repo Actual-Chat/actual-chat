@@ -8,20 +8,19 @@ public class RequireChat : RequirementComponent
     [Inject] protected IChats Chats { get; init; } = null!;
     [Inject] protected ILogger<RequireChat> Log { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
 
     public override string ToString()
-        => $"{GetType().GetName()}(ChatId = {ChatId})";
+        => $"{GetType().GetName()}(ChatId = {ChatSid})";
 
-    public override async Task<Unit> Require(CancellationToken cancellationToken)
+    public override async Task Require(CancellationToken cancellationToken)
     {
-        if (!ChatId.TryParse(ChatId, out var chatId)) {
+        if (!ChatId.TryParse(ChatSid, out var chatId)) {
             Log.LogWarning("Invalid ChatId");
             throw StandardError.Format<ChatId>();
         }
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        return default;
     }
 }

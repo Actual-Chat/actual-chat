@@ -1,116 +1,102 @@
-﻿using System.ComponentModel;
-using MemoryPack;
+using System.ComponentModel;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
+using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<MentionId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<MentionId>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<MentionId>))]
+// TODO(AY): Rename to MentionRef
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<MentionId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<MentionId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<MentionId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<MentionId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[StructLayout(LayoutKind.Auto)]
-public readonly partial struct MentionId : ISymbolIdentifier<MentionId>
+public sealed partial class MentionId : StringIdentifier, IStringIdentifier<MentionId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<MentionId>();
+    private static readonly ILruCache<string, MentionId> Cache = CreateCache<MentionId>(256);
 
-    public static MentionId None => default;
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Symbol Id { get; }
-
-    // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public PrincipalId PrincipalId { get; }
-
-    // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public PrincipalKind Kind => PrincipalId.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public AuthorId AuthorId => PrincipalId.IsAuthor(out var authorId) ? authorId : AuthorId.None;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public UserId UserId => PrincipalId.IsUser(out var userId) ? userId : UserId.None;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public MentionId(Symbol id)
-        => this = Parse(id);
-    public MentionId(string? id)
-        => this = Parse(id);
-    public MentionId(string? id, ParseOrNone _)
-        => this = ParseOrNone(id);
+    // Factories and constructors
 
-    public MentionId(AuthorId authorId, AssumeValid _) : this(new PrincipalId(authorId, _), _)
-    { }
+    public static MentionId NewAuthor(AuthorId authorId)
+        => new(Format("a", authorId.Value), authorId);
 
-    public MentionId(UserId userId, AssumeValid _) : this(new PrincipalId(userId, _), _)
-    { }
+    public static MentionId NewUser(UserId userId)
+        => new(Format("u", userId.Value), userId);
 
-    public MentionId(PrincipalId principalId, AssumeValid _)
-    {
-        if (principalId.IsNone) {
-            this = None;
-            return;
-        }
-        Id = principalId.Kind switch {
-            PrincipalKind.Author => $"a:{principalId}",
-            PrincipalKind.User => $"u:{principalId}",
-            _ => throw new ArgumentOutOfRangeException($"{nameof(principalId)}.{nameof(principalId.Kind)}", principalId.Kind, null),
-        };
-        PrincipalId = principalId;
-    }
-
-    public bool IsAuthor(out AuthorId authorId)
-        => PrincipalId.IsAuthor(out authorId);
-
-    public bool IsUser(out UserId userId)
-        => PrincipalId.IsUser(out userId);
-
-    // Conversion
-
-    public override string ToString() => Value;
-    public static implicit operator Symbol(MentionId source) => source.Id;
-    public static implicit operator string(MentionId source) => source.Id.Value;
+    private MentionId(string value, PrincipalId principalId) : base(value)
+        => PrincipalId = principalId;
 
     // Equality
 
-    public bool Equals(MentionId other) => Id.Equals(other.Id);
-    public override bool Equals(object? obj) => obj is MentionId other && Equals(other);
-    public override int GetHashCode() => Id.GetHashCode();
-    public static bool operator ==(MentionId left, MentionId right) => left.Equals(right);
-    public static bool operator !=(MentionId left, MentionId right) => !left.Equals(right);
+    public bool Equals(MentionId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is MentionId other && Equals(other);
 
-    // Parsing
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(MentionId? left, MentionId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(MentionId? left, MentionId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
+
+    private static string Format(string prefix, string id)
+        => $"{prefix}:{id}";
 
     public static MentionId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MentionId>(s);
-    public static MentionId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : None;
 
-    public static bool TryParse(string? s, out MentionId result)
+    public static MentionId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static MentionId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out MentionId? result)
     {
-        if (s.IsNullOrEmpty() || s.Length < 2) {
-            result = default;
-            return true; // None
+        result = null;
+        if (s.IsNullOrEmpty() || s.Length < 2)
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
         }
 
-        switch (s[..2]) {
-            case "a:" when AuthorId.TryParse(s[2..], out var authorId):
-                result = new MentionId(authorId, AssumeValid.Option);
-                return true;
-            case "u:" when UserId.TryParse(s[2..], out var userId):
-                result = new MentionId(userId, AssumeValid.Option);
-                return true;
-            default:
-                result = default;
+        if (s.OrdinalStartsWith("a:")) {
+            if (!AuthorId.TryParse(s[2..], out var authorId))
                 return false;
+            result = NewAuthor(authorId);
         }
+        else if (s.OrdinalStartsWith("u:")) {
+            if (!UserId.TryParse(s[2..], out var userId))
+                return false;
+            result = NewUser(userId);
+        }
+        else {
+            return false;
+        }
+
+        result = Cache.AddOrGet(s, result);
+        return true;
     }
 }

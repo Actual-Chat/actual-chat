@@ -6,12 +6,12 @@ internal class MLSearchBackend(IChatContentDocumentLoader documentLoader) : IMLS
 {
     private IChatContentDocumentLoader DocumentLoader { get; } = documentLoader;
 
-    public virtual async Task<string> GetIndexDocIdByEntryId(ChatEntryId chatEntryId, CancellationToken cancellationToken)
+    public virtual async Task<string> GetIndexDocIdByEntryId(ChatEntryId? entryId, CancellationToken cancellationToken)
     {
-        if (chatEntryId.IsNone || chatEntryId.Kind != ChatEntryKind.Text)
+        if (entryId is not TextEntryId textEntryId)
             return "";
 
-        var slices = await DocumentLoader.LoadByEntryIdsAsync(new[] { chatEntryId }, cancellationToken).ConfigureAwait(false);
+        var slices = await DocumentLoader.LoadByEntryIdsAsync([textEntryId], cancellationToken).ConfigureAwait(false);
         if (slices.Count == 0) {
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(20)); // Chat entry will be indexed later.
             return "";

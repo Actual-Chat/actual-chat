@@ -64,11 +64,13 @@ public sealed partial class ExternalContactId : StringIdentifier, IStringIdentif
     public static ExternalContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ExternalContactId>(s);
 
-    public static ExternalContactId? ParseOrNull(string? s)
+    public static ExternalContactId? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static ExternalContactId? TryParse(string? s)
-        => TryParse(s, out var result) ? result : null;
+    public static ExternalContactId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out ExternalContactId? result)
     {
@@ -96,7 +98,7 @@ public sealed partial class ExternalContactId : StringIdentifier, IStringIdentif
 
     // Helpers
 
-    public static string GetFormatPrefix(UserId2 ownerId)
+    public static string GetFormatPrefix(UserId ownerId)
         => $"{ownerId.Value}{UserDeviceId.Delimiter}";
     public static string GetFormatPrefix(UserDeviceId userDeviceId)
         => $"{userDeviceId.Value}{Delimiter}";

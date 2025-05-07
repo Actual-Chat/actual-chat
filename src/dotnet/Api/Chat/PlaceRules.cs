@@ -5,13 +5,13 @@ namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record PlaceRules(
-    [property: DataMember, MemoryPackOrder(0)] Symbol PlaceId,
+    [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(1)] AuthorFull? Author,
-    [property: DataMember, MemoryPackOrder(2)] AccountFull Account,
+    [property: DataMember, MemoryPackOrder(2)] AccountFull? Account,
     [property: DataMember, MemoryPackOrder(3)] PlacePermissions Permissions = default
-) : IRequirementTarget
+    ) : IRequirementTarget
 {
-    public static PlaceRules None(PlaceId placeId) => new(placeId, AuthorFull.None, AccountFull.None);
+    public static PlaceRules None(PlaceId placeId) => new(placeId, null, null);
 
     public bool CanRead() => Permissions.Has(PlacePermissions.Read);
     public bool CanWrite() => Permissions.Has(PlacePermissions.Write);

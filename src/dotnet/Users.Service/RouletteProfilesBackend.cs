@@ -35,10 +35,11 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
 
     public virtual async Task<RouletteUserSettings?> GetUserSettings(UserId userId, CancellationToken cancellationToken)
     {
-        if (userId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(userId));
+        ArgumentNullException.ThrowIfNull(userId);
 
-        var dbRouletteUserSettings = await RouletteUserSettingsResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        var dbRouletteUserSettings = await RouletteUserSettingsResolver
+            .Get(userId.Value, cancellationToken)
+            .ConfigureAwait(false);
         return dbRouletteUserSettings?.ToModel();
     }
 
@@ -119,9 +120,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        RouletteUserSettings? userSettings = null;
+        RouletteUserSettings? userSettings;
         if (change.IsCreate(out var update)) {
-            if (!update.Id.IsNone && !update.Id.Equals(id))
+            if (update.Id is not null && !update.Id.Equals(id))
                 throw StandardError.Constraint("Change settings id should be empty or match command id.");
 
             userSettings = new RouletteUserSettings(id) {
@@ -134,7 +135,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         }
         else {
             var dbUserSettings = await dbContext.RouletteUserSettings
-                .Get(id, cancellationToken)
+                .Get(id.Value, cancellationToken)
                 .ConfigureAwait(false);
             var oldUserSettings = dbUserSettings?.ToModel();
 
@@ -232,9 +233,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var dbPrefs = new DbRouletteCompletion {
             Id = id,
             Version = VersionGenerator.NextVersion(),
-            OwnerUserId = command.OwnerUserId,
+            OwnerUserId = command.OwnerUserId.Value,
             OwnerProfileId = command.OwnerProfileId,
-            PeerUserId = command.PeerUserId,
+            PeerUserId = command.PeerUserId.Value,
             PeerProfileId = command.PeerProfileId,
             IsInitiatedByOwner = command.IsInitiatedByOwner,
             CompletedAt = command.CompletedAt,

@@ -17,7 +17,7 @@
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = Chat.Id.IsNone ? null
+        ChatRecordingActivity = Chat?.Id is null ? null
             : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }

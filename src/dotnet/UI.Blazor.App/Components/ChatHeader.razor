@@ -2,6 +2,7 @@
 @{
     var m = State.Value;
     var chat = Chat;
+    var chatId = chat?.Id;
     var searchCls = m.IsSearchMode ? "on" : "";
 }
 
@@ -28,27 +29,27 @@
                     <div class="c-title">
                         @chat.Title
                     </div>
-                    @if (ScreenSize.IsNarrow() && !chat.Id.IsPeerChat(out _)) {
+                    @if (ScreenSize.IsNarrow() && chat.Kind != ChatKind.Peer) {
                         <StatusBadge Chat="@chat" ShowOnlyIcon="true"/>
                     }
                 </div>
                 <div class="c-info">
-                    @if (chat.Rules.CanJoin()) {
-                        @if (!chat.Id.IsPeerChat(out _)) {
-                            <ChatMemberCounter ChatId="@Chat.Id"/>
+                    @if (chat.Kind != ChatKind.Peer) {
+                        @if (chatId is not null && chat.Rules.CanJoin()) {
+                            <ChatMemberCounter ChatId="@chatId"/>
                         }
                     }
-                    @if (chat.Id.IsPeerChat(out _)) {
+                    else { // chat.Kind == ChatKind.Peer
                         <StatusBadge Chat="@chat" IsColorful="@false"/>
                     }
                 </div>
             </div>
             @if (!ScreenSize.IsNarrow()) {
-                <ChatActivityPanel Chat="@Chat"/>
+                <ChatActivityPanel Chat="@chat"/>
             }
         }
     </div>
-    @if (!chat.Id.IsNone) {
+    @if (chatId is not null) {
         <div class="chat-header-control-panel">
         @if (m.EnableIncompleteUI) {
             <HeaderButton Click="@OnSearchClick" Class="@searchCls">
@@ -58,7 +59,7 @@
         @if (IsRightNavigateButtonVisible) {
             <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
         }
-    </div>
+        </div>
     }
 </div>
 
@@ -68,7 +69,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; } = null!;
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 

@@ -54,7 +54,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(AccountFull model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
         var name = model.Name;
@@ -62,7 +62,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (!model.LastName.IsNullOrEmpty())
             name = $"{name} {model.LastName}";
 #pragma warning restore CS0618 // Type or member is obsolete
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
         Status = model.Status;
         Phone = model.Phone?.Value ?? "";

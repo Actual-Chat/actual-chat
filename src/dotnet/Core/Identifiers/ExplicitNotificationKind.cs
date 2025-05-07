@@ -1,5 +1,6 @@
-namespace ActualChat.Notification;
+namespace ActualChat;
 
+#pragma warning disable CS0659, CS0660, CS0661
 public enum ExplicitNotificationKind
 {
     None = 0,

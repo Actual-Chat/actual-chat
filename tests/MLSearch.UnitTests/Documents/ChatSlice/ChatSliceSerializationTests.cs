@@ -59,14 +59,14 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
 
     private static ChatSliceMetadata CreateMetadata()
     {
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
-        var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var principalId = (PrincipalId)UserId.New();
+        var chatId = GroupChatId.New();
+        var chatEntryId1 = TextEntryId.New(chatId, 1);
+        var chatEntryId2 = TextEntryId.New(chatId, 2);
         var chatEntries = ImmutableArray.Create<ChatSliceEntry>(new (chatEntryId1, 1, 1), new (chatEntryId2, 2, 1));
         var (startOffset, endOffset) = (0, 100);
-        var replyToEntries = ImmutableArray.Create(new ChatEntryId(chatId, ChatEntryKind.Text, 100, AssumeValid.Option));
-        var activeUser = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var replyToEntries = ImmutableArray.Create(TextEntryId.New(chatId, 100));
+        var activeUser = (PrincipalId)UserId.New();
         var mentions = ImmutableArray.Create(activeUser);
         var reactions = ImmutableArray.Create(activeUser);
         var attachments = ImmutableArray.Create(
@@ -77,7 +77,7 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         var timestamp = DateTime.Now;
 
         return new ChatSliceMetadata(
-            [authorId], chatEntries, startOffset, endOffset,
+            [principalId], chatEntries, startOffset, endOffset,
             replyToEntries, mentions, reactions, attachments,
             lang, timestamp
         );

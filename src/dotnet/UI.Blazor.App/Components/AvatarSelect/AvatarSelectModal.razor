@@ -6,7 +6,9 @@
     var m = State.Value;
     var mode = ModalModel is RevealModel
         ? Mode.Reveal
-        : ModalModel.ChatId.IsNone ? Mode.Join : Mode.Change;
+        : ModalModel.ChatId is null
+            ? Mode.Join
+            : Mode.Change;
     var title = mode switch {
         Mode.Join =>  "Choose your avatar",
         Mode.Reveal => "Reveal yourself",
@@ -121,7 +123,7 @@
         return new (existingAvatars, selectedAvatarId, anonymous);
 
         async Task<Symbol> GetSelectedAvatarId(CancellationToken cancellationToken1) {
-            if (chatId.IsNone) {
+            if (chatId is null) {
                 var account = await Accounts.GetOwn(Session, cancellationToken1).ConfigureAwait(false);
                 return account.Avatar.Id;
             }
@@ -176,7 +178,7 @@
 
     private enum Mode { Join, Change, Reveal }
 
-    public record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
+    public record Model(ChatId? ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
     public record RevealModel(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected) : Model(ChatId, false, OnAvatarSelected);
 
     public sealed record ViewModel(AvatarFull[] Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {

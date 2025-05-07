@@ -45,8 +45,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     }
 
     public ValueTask RemoveActiveChat(ChatId chatId)
-        => chatId.IsNone ? default
-            : UpdateActiveChats(c => c.Without(chatId).ToArray());
+        => UpdateActiveChats(c => c.Without(chatId).ToArray());
 
     private async ValueTask<ActiveChat[]> FixStoredActiveChats(
         ActiveChat[] activeChats,

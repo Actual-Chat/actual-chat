@@ -40,7 +40,7 @@ public class ExternalContactGenerator(int seed = 100)
     public UserDeviceId NewUserDeviceId()
     {
         var deviceId = _random.Next().ToInvariantString("000000");
-        return UserDeviceId.New(UserId2.New(), deviceId);
+        return UserDeviceId.New(UserId.New(), deviceId);
     }
 
     public ExternalContactId NewId(UserDeviceId? id = null)

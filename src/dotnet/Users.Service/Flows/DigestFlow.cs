@@ -11,7 +11,7 @@ namespace ActualChat.Users.Flows;
 public partial class DigestFlow : PeriodicFlow
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    private UserId UserId { get; set; }
+    private UserId UserId { get; set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore]
     private TimeZoneInfo TimeZoneInfo { get; set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore]
@@ -28,7 +28,7 @@ public partial class DigestFlow : PeriodicFlow
         var userId = UserId.Parse(Id.Arguments);
         var accounts = Host.Services.GetRequiredService<IAccountsBackend>();
         var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account?.IsGuestOrNone != false)
+        if (account?.IsGuestOrNull() != false)
             return "No account";
         if (account.TimeZone.IsNullOrEmpty())
             return "Account has no time zone";

@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase
 @{
-    if (Chat.Id.IsNone)
+    if (Chat?.Id is null)
         return;
 
     var cls = $"recording-in-chat {(IsRecording ? "on" : "off")} {Class}";

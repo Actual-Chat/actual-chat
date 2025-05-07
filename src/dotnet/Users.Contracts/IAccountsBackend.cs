@@ -8,16 +8,16 @@ public interface IAccountsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<UserId> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
+    Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<UserId> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken);
+    Task<UserId?> GetIdByUserLink(UserLinkId userLinkId, CancellationToken cancellationToken);
 
     // Non-compute methods
 
     Task<UserId[]> ListChanged(
         long minVersion,
         long maxVersion,
-        UserId lastId,
+        UserId? lastId,
         int limit,
         CancellationToken cancellationToken);
 
