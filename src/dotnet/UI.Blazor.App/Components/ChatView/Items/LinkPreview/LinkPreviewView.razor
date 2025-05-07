@@ -11,6 +11,7 @@
     var uri = m.Uri;
     var imageUrl = GetImageUrl(preview.PreviewMedia);
     var compactCls = preview.PreviewMedia != null ? "" : "compact";
+    var hasThumbnailCls = preview.PreviewMedia != null ? "" : "without-thumbnail";
 }
 
 @if (m.LocalLink is { CanRender:true }) {
@@ -18,7 +19,7 @@
 } else {
     var isLocal = m.LocalLink is { };
     var target = isLocal ? "_self" : "_blank";
-    <a class="link-preview unfocusable @compactCls" href="@uri" target="@target">
+    <a class="link-preview unfocusable @hasThumbnailCls @compactCls" href="@uri" target="@target">
         @RenderMedia()
         <div class="c-info">
             @RenderInfo()

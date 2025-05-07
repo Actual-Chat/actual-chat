@@ -15,12 +15,6 @@ body.wide .chat-activity-panel {
 .chat-activity-panel > .author-circle-group {
     @apply flex-1 justify-start gap-x-1;
 }
-.chat-activity-panel .c-incut {
-    @apply flex-1;
-}
-.chat-activity-panel:has(.author-circle-group, .silence-text) .c-incut {
-    @apply hidden;
-}
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
     @apply px-1;
@@ -50,6 +44,18 @@ body.wide .chat-activity-panel {
 .btn.c-glow {
     animation: glow-btn 1s steps(10, start) infinite;
     animation-direction: alternate;
+}
+
+.chat-activity-subheader:empty {
+    @apply hidden;
+}
+.layout-subheader > div.chat-activity-subheader {
+    @apply w-screen;
+    @apply px-2 -mx-2;
+    @apply border-b border-separator;
+}
+.chat-activity-subheader .chat-activity-panel {
+    @apply h-12;
 }
 
 @keyframes glow-btn {

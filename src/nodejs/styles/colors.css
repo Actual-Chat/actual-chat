@@ -275,6 +275,9 @@
     --background-banner-error: var(--red-99);
     --text-banner-error: var(--magenta-40);
     --border-banner-error: var(--magenta-95);
+    --background-historical-playback: var(--ash-99);
+    --text-historical-playback: var(--text-02);
+    --border-historical-playback: var(--ash-95);
 
     /* Toasts */
     --toast-body: var(--gray-20);
@@ -582,6 +585,9 @@
     --background-banner-error: var(--magenta-20);
     --text-banner-error: var(--magenta-80);
     --border-banner-error: var(--magenta-30);
+    --background-historical-playback: var(--ash-30);
+    --text-historical-playback: var(--text-02);
+    --border-historical-playback: var(--ash-40);
 
     /* Toasts */
     --toast-body: var(--ash-95);
@@ -886,6 +892,9 @@
     --background-banner-error: var(--red-99);
     --text-banner-error: var(--magenta-40);
     --border-banner-error: var(--magenta-95);
+    --background-historical-playback: var(--ash-99);
+    --text-historical-playback: var(--text-02);
+    --border-historical-playback: var(--ash-95);
 
     /* Toasts */
     --toast-body: var(--gray-20);

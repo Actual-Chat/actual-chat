@@ -9,8 +9,10 @@ export class RecorderToggle {
 
         const buttons = [...document.querySelectorAll<HTMLButtonElement>('div.recorder-wrapper > button')];
         buttons.forEach(btn => {
-            btn.addEventListener('click', () => recordingAudioContextSource.initContextInteractively());
-            btn.addEventListener('click', () => audioContextSource.initContextInteractively());
+            btn.addEventListener('click', () => {
+                recordingAudioContextSource.initContextInteractively();
+                audioContextSource.initContextInteractively();
+            });
         });
 
         this.isInitialized = true;

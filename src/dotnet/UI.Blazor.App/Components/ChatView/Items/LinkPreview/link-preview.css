@@ -14,7 +14,7 @@ body.narrow .link-preview.local-link {
     @apply flex-x;
     @apply h-full;
 }
-.link-preview:not(:has(.c-thumbnail)) {
+.link-preview.without-thumbnail {
     @apply h-20 md:h-20;
 }
 .link-preview.compact {
