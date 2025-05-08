@@ -27,6 +27,8 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     [IgnoreDataMember]
     public ChatKind Kind { get; }
     [IgnoreDataMember]
+    public bool IsSystem => Constants.Chat.SystemChatIds.Contains(this);
+    [IgnoreDataMember]
     public virtual string ShardKey => Value;
 
     // Factories and constructors
@@ -132,9 +134,9 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
     private static GroupChatId? TryParseGroupChatId(string s)
     {
-        if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIdValues.Contains(s)))
-            return null;
+        if (Alphabet.AlphaNumeric.IsMatch(s) || OrdinalEquals(s, "the-actual-one") || OrdinalEquals(s, "feedback-template"))
+            return new GroupChatId(s);
 
-        return new GroupChatId(s);
+        return null;
     }
 }

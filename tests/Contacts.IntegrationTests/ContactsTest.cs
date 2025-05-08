@@ -161,6 +161,6 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     private async Task<List<ContactId>> ListIds(PlaceId? placeId, CancellationToken cancellationToken = default)
     {
         var contactIds = await _contacts.ListIds(_tester.Session, placeId, cancellationToken);
-        return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
+        return contactIds.Where(x => !x.ChatId.IsSystem).ToList();
     }
 }

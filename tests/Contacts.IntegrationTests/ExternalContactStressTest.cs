@@ -149,7 +149,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         var ids = await _contacts.ListIds(_tester.Session, null, CancellationToken.None);
         return ids
-            .Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId))
+            .Where(x => x.ChatId is { Kind: ChatKind.Peer })
             .ToList();
     }
 
