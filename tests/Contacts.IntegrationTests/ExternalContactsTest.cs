@@ -411,7 +411,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     {
         var ids = await _contacts.ListIds(session, null, cancellationToken);
         return ids
-            .Where(x => x.ChatId is { Kind: ChatKind.Peer })
+            .Where(x => x.ChatId.Kind == ChatKind.Peer)
             .ToList();
     }
 
