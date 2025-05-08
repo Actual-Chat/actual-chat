@@ -152,13 +152,15 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var commander = tester.Commander;
 
         var chatTitle = "test chat 2";
-        var chat = await commander.Call(new ChatsBackend_Change(ChatId.None, default,  new() {
-            Create = new ChatDiff() {
-                Title = chatTitle,
-                Kind = ChatKind.Group,
-                IsPublic = isPublicChat,
-            },
-        }, account.Id));
+        var chat = await commander.Call(new ChatsBackend_Change(
+            null, null,
+            new() {
+                Create = new ChatDiff() {
+                    Title = chatTitle,
+                    Kind = ChatKind.Group,
+                    IsPublic = isPublicChat,
+                },
+            }, account.Id));
         chat.Require();
         await Task.Delay(100); // Let's wait invalidations to hit the client
         chat = await chatsBackend.Get(chat.Id, default).Require();
@@ -183,7 +185,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         chat.Should().NotBeNull();
 
-        var rules = await chatsBackend.GetRules(chat.Id, new PrincipalId(account.Id, AssumeValid.Option), default);
+        var rules = await chatsBackend.GetRules(chat.Id, account.Id, default);
         rules.CanRead().Should().BeTrue();
         rules.CanWrite().Should().BeTrue();
         rules.CanJoin().Should().BeTrue();
@@ -219,7 +221,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         // pre-assert wait
         await services.Queues().WhenProcessing();
         await ComputedTest.When(async ct => {
-            var chats = (await (await contacts.ListIds(session, PlaceId.None, ct))
+            var chats = (await (await contacts.ListIds(session, null, ct))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
                 .Collect(ct))
                 .SkipNullItems()
@@ -233,7 +235,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
             await using var dbContext = await dbHub.CreateDbContext();
             var dbChat = await dbContext.Chats
                 .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-                .Where(x => x.a.UserId == account.Id && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value)
+                .Where(x => x.a.UserId == account.Id.Value && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value)
                 .Select(x => x.c)
                 .FirstOrDefaultAsync();
             dbChat.Should().NotBeNull();
@@ -242,7 +244,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
             chat.Should().NotBeNull();
             chat.Title.Should().Be("Notes");
             chat.IsPublic.Should().Be(false);
-            var rules = await chatsBackend.GetRules(chat.Id, new PrincipalId(account.Id, AssumeValid.Option), default);
+            var rules = await chatsBackend.GetRules(chat.Id, account.Id, default);
             rules.CanRead().Should().BeTrue();
             rules.CanWrite().Should().BeTrue();
             rules.CanJoin().Should().BeFalse();
@@ -485,7 +487,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var (chatId, _) = await ownerTester.CreateChat(true);
         await ComputedTest.When(services, async ct => {
-            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
         });
@@ -499,7 +501,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.Should().BeNull();
 
         await ComputedTest.When(services, async ct => {
-            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);
         });
@@ -517,7 +519,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var (chatId, inviteId) = await ownerTester.CreateChat(true);
         await ComputedTest.When(services, async ct => {
-            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
         });
@@ -528,7 +530,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var author2 = await otherTester.JoinChat(chatId, inviteId);
         await ComputedTest.When(services, async ct => {
-            var contactIds = await contacts.ListIds(session2, PlaceId.None, ct);
+            var contactIds = await contacts.ListIds(session2, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
         });
@@ -547,9 +549,9 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.Rules.CanRead().Should().BeTrue();
         chat.Rules.CanWrite().Should().BeFalse();
 
-        // But even the owner should not see in it contacts
+        // But even the owner should not see in its contacts
         await ComputedTest.When(services, async ct => {
-            var contactIds = await contacts.ListIds(session, PlaceId.None, ct);
+            var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);
         });
@@ -559,7 +561,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.Should().BeNull();
 
         await ComputedTest.When(services, async ct => {
-            var contactIds = await contacts.ListIds(session2, PlaceId.None, ct);
+            var contactIds = await contacts.ListIds(session2, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);
         });

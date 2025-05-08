@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<ActualChat.Users.AccountFull>
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, AccountFull.Loading) || account.IsGuestOrNull())
+    if (account.IsGuestOrNull())
         return;
 }
 

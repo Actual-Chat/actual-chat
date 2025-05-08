@@ -8,9 +8,6 @@ public sealed partial record AccountFull(
     long Version = 0
     ) : Account(UserId.Parse(User.Id), Version)
 {
-    public static new readonly AccountFull None = new(User.NewGuest(), 0) { Avatar = Avatar.None };
-    public static new readonly AccountFull Loading = new(User.NewGuest(), -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
-
     public static new readonly Requirement<AccountFull> MustExist = Requirement.New(
         (AccountFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Account>()));

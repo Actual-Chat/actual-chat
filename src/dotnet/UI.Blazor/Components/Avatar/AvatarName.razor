@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits FusionComponentBase
 @{
@@ -6,7 +7,7 @@
     var flexClass = ShowAsYou || name.Length < 10 ? "non-shrinkable" : "shrinkable";
 }
 
-@if (ReferenceEquals(Avatar, Avatar.Loading)) {
+@if (ReferenceEquals(Avatar, SpecialAvatar.Loading)) {
     // See avatar-name-spacing class - any width mentioned below has to be listed there
     var tailwindSpacing = new [] { 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40 };
     var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];

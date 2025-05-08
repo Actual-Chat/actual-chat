@@ -74,19 +74,16 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         Moment PlaybackNow() => minPlayAt + PlaybackDuration();
     }
 
-    public Task<Moment?> GetRewindMoment(Moment playingAt, TimeSpan shift, CancellationToken cancellationToken)
-    {
-        if (shift == TimeSpan.Zero)
-            return Task.FromResult<Moment?>(playingAt);
-        if (shift < TimeSpan.Zero)
-            return GetRewindMomentInPast(playingAt, shift.Negate(), cancellationToken);
+    public Task<Moment?> GetRewindMoment(Moment playingAt, TimeSpan offset, CancellationToken cancellationToken)
+        => offset < TimeSpan.Zero
+            ? GetRewindMomentInPast(playingAt, offset.Negate(), cancellationToken)
+            : GetRewindMomentInFuture(playingAt, offset, cancellationToken);
 
-        return GetRewindMomentInFuture(playingAt, shift, cancellationToken);
-    }
-
-    private async Task<Moment?> GetRewindMomentInFuture(Moment playingAt, TimeSpan shift, CancellationToken cancellationToken)
+    private async Task<Moment?> GetRewindMomentInFuture(Moment playingAt, TimeSpan offset, CancellationToken cancellationToken)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(shift, TimeSpan.Zero, nameof(shift));
+        ArgumentOutOfRangeException.ThrowIfLessThan(offset, TimeSpan.Zero);
+        if (offset == TimeSpan.Zero)
+            return playingAt;
 
         var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
@@ -101,8 +98,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
         idRange = (startEntry.LocalId, idRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
-        var remainedShift = shift;
-        var lastShiftPosition = playingAt;
+        var remainingOffset = offset;
+        var lastPlayingAt = playingAt;
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (entry.IsStreaming) // Streaming entry
                 continue;
@@ -111,22 +108,24 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 // so we need to skip a few entries.
                 continue;
 
-            var entryBeginsAt = Moment.Max(entry.BeginsAt, lastShiftPosition);
+            var entryBeginsAt = Moment.Max(entry.BeginsAt, lastPlayingAt);
             var entryEndsAt = entry.GetEndsAt() + MaxEntryDuration;
 
-            var expectedRewindPosition = entryBeginsAt + remainedShift;
+            var expectedRewindPosition = entryBeginsAt + remainingOffset;
             if (expectedRewindPosition <= entryEndsAt)
                 return expectedRewindPosition;
             var shiftDuration = entryEndsAt - entryBeginsAt;
-            remainedShift -= shiftDuration;
-            lastShiftPosition = entryEndsAt;
+            remainingOffset -= shiftDuration;
+            lastPlayingAt = entryEndsAt;
         }
-        return lastShiftPosition; // return max position that we reached
+        return lastPlayingAt; // return max position that we reached
     }
 
-    private async Task<Moment?> GetRewindMomentInPast(Moment playingAt, TimeSpan shift, CancellationToken cancellationToken)
+    private async Task<Moment?> GetRewindMomentInPast(Moment playingAt, TimeSpan offset, CancellationToken cancellationToken)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(shift, TimeSpan.Zero, nameof(shift));
+        ArgumentOutOfRangeException.ThrowIfLessThan(offset, TimeSpan.Zero);
+        if (offset == TimeSpan.Zero)
+            return playingAt;
 
         var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
@@ -159,34 +158,34 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
         idRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).MoveEnd(1);
         var reverseEntries = audioEntryReader.ReadReverse(idRange, cancellationToken);
-        var remainedShift = shift;
-        var lastShiftPosition = playingAt;
+        var remainingOffset = offset;
+        var lastPlayingAt = playingAt;
         await foreach (var entry in reverseEntries.ConfigureAwait(false)) {
             if (!entry.StreamId.IsNullOrEmpty()) // Streaming entry
                 continue;
             if (entry.BeginsAt >= playingAt)
-                // We're normally should not enter here due to way how last entry is looked up.
+                // We normally should not enter here due to way how last entry is looked up.
                 continue;
 
             var entryBeginsAt = entry.BeginsAt;
             var entryEndsAt = entry.EndsAt is { } endsAt
-                ? Moment.Min(endsAt, lastShiftPosition)
-                : lastShiftPosition;
+                ? Moment.Min(endsAt, lastPlayingAt)
+                : lastPlayingAt;
 
-            var expectedRewindPosition = entryEndsAt - remainedShift;
+            var expectedRewindPosition = entryEndsAt - remainingOffset;
             if (expectedRewindPosition >= entryBeginsAt)
                 return expectedRewindPosition;
             var shiftDuration = entryEndsAt - entryBeginsAt;
-            remainedShift -= shiftDuration;
-            lastShiftPosition = entryBeginsAt;
+            remainingOffset -= shiftDuration;
+            lastPlayingAt = entryBeginsAt;
         }
-        return lastShiftPosition; // return min position that we reached
+        return lastPlayingAt; // return min position that we reached
     }
 
     private async Task EnqueueDelay(TimeSpan delay, CancellationToken cancellationToken)
     {
         // Waits for enqueue delay.
-        // If pause or sleep is activated during enqueue delay,
+        // If pause or sleep is activated during the enqueue delay, the
         // enqueue delay is extended by the duration of the pause.
         while (true) {
             delay = delay.Positive();

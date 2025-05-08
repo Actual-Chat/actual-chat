@@ -9,7 +9,7 @@
 
 <div class="avatar-circle @avatarClass">
     <div class="c-content">
-        @if (ReferenceEquals(Avatar, Avatar.Loading)) {
+        @if (ReferenceEquals(Avatar, SpecialAvatar.Loading)) {
             <div class="c-skeleton @_class"></div>
         } else if (!_pictureUrl.IsNullOrEmpty()){
             <image-skeleton

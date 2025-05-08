@@ -109,7 +109,7 @@
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
-        _form.Picture = (avatar ?? Avatar.None).Picture;
+        _form.Picture = (avatar ?? SpecialAvatar.None).Picture;
 
         _form.Name = avatar?.Name ?? "";
         _form.Bio = avatar?.Bio ?? "";

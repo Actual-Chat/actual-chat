@@ -132,7 +132,7 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
     private static GroupChatId? TryParseGroupChatId(string s)
     {
-        if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
+        if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIdValues.Contains(s)))
             return null;
 
         return new GroupChatId(s);

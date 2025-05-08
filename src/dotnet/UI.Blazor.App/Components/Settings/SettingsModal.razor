@@ -4,7 +4,7 @@
 @{
     var m = State.Value;
     var account = m.AccountFull;
-    if (ReferenceEquals(account, AccountFull.Loading))
+    if (ReferenceEquals(account, SpecialAccount.Loading))
         return;
 
     var isGuest = account.IsGuest;

@@ -346,7 +346,7 @@
         Task<AccountFull> accountTask;
         if (_isNewSession) {
             HttpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
-            accountTask = Task.FromResult(AccountFull.None);
+            accountTask = Task.FromResult(SpecialAccount.None);
         } else
             accountTask = Accounts.GetOwn(_session, cancellationToken);
 

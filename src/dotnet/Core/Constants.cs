@@ -43,9 +43,8 @@ public static partial class Constants
         public static readonly GroupChatId DefaultChatId = GroupChatId.Parse("the-actual-one");
         public static readonly GroupChatId AnnouncementsChatId = GroupChatId.Parse("announcements");
         public static readonly GroupChatId FeedbackTemplateChatId = GroupChatId.Parse("feedback-template");
-        public static readonly HashSet<string> SystemChatIds = new(
-            [DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id],
-            StringComparer.Ordinal);
+        public static readonly HashSet<ChatId> SystemChatIds = [DefaultChatId, AnnouncementsChatId, FeedbackTemplateChatId];
+        public static readonly HashSet<string> SystemChatIdValues = SystemChatIds.Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
 
         public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;
         public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;

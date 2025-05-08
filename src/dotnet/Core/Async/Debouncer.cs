@@ -1,8 +1,8 @@
-namespace ActualChat.IO;
+namespace ActualChat;
 
 #pragma warning disable CA1001 // Type 'Debouncer' owns disposable field(s) '_cts' but is not disposable
 
-public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> action)
+public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> action, ILogger? log = null)
 {
     private CancellationTokenSource? _cts;
     private Task? _task;
@@ -81,20 +81,9 @@ public static class Debouncer
     public static Debouncer<T> New<T>(TimeSpan interval, Func<T, Task> action)
         => new (MomentClockSet.Default.CpuClock, interval, action);
 
-    public static CancellableDebouncer<T> New<T>(
-        MomentClock clock,
-        ILogger log,
-        TimeSpan interval,
-        Func<T, CancellationToken, Task> taskFactory)
-        => new (clock, log, interval, taskFactory);
+    public static CancellingDebouncer<T> New<T>(MomentClock clock, TimeSpan interval, Func<T, CancellationToken, Task> taskFactory)
+        => new (clock, interval, taskFactory);
 
-    public static CancellableDebouncer<T> New<T>(
-        TimeSpan interval,
-        Func<T, CancellationToken, Task> taskFactory)
-        => new (MomentClockSet.Default.CpuClock, StaticLog.For<CancellableDebouncer<T>>(), interval, taskFactory);
-
-    public static CancellableDebouncer New(
-        TimeSpan interval,
-        Func<CancellationToken, Task> taskFactory)
-        => new (interval, taskFactory);
+    public static CancellingDebouncer<T> New<T>(TimeSpan interval, Func<T, CancellationToken, Task> taskFactory)
+        => new (MomentClockSet.Default.CpuClock, interval, taskFactory);
 }

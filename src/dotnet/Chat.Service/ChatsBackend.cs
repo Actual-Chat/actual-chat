@@ -634,7 +634,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chatKind == ChatKind.Group) {
                 if (chatId is null)
                     chatId = GroupChatId.New();
-                else if (!Constants.Chat.SystemChatIds.Contains(chatId.Value))
+                else if (!Constants.Chat.SystemChatIds.Contains(chatId))
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
             }
             else if (chatKind == ChatKind.Place) {

@@ -387,10 +387,10 @@
         bool CanSendJoinPlaceRequest,
         bool EnableIncompleteUI
     ) {
-        public static Model Loading { get; } = new(SpecialChat.Loading, AccountFull.Loading, FooterModel.None, false, false);
+        public static Model Loading { get; } = new(SpecialChat.Loading, SpecialAccount.Loading, FooterModel.None, false, false);
 
         public static Model Unavailable(bool canSendJoinPlaceRequest)
-            => new(SpecialChat.Unavailable, AccountFull.None, new (), canSendJoinPlaceRequest, false);
+            => new(SpecialChat.Unavailable, SpecialAccount.None, new(), canSendJoinPlaceRequest, false);
     }
 
     public sealed record FooterModel {

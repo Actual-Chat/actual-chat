@@ -118,5 +118,5 @@
 
     public record Model(bool IsVisible, ChatRouletteInfo? ChatRouletteInfo = null);
 
-    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile OwnProfile);
+    public sealed record ChatRouletteInfo(Profile? PeerProfile, Profile? OwnProfile);
 }

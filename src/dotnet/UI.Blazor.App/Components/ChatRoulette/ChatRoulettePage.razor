@@ -66,9 +66,9 @@
     // Nested types
 
     public record Model {
-        public static readonly Model Loading = new () { SelectedProfile = Profile.Loading };
+        public static readonly Model Loading = new () { SelectedProfile = SpecialProfile.Loading };
 
         public bool IsRightPanelVisible { get; init; }
-        public Profile SelectedProfile { get; init; } = Profile.None;
+        public Profile SelectedProfile { get; init; } = SpecialProfile.None;
     }
 }

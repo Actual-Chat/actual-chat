@@ -106,7 +106,7 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
             var kvas = ServerKvas.GetClient(session);
             await ActualChat.Users.Avatars.UpdateAvatarList(kvas, avatarsChange.Change, avatar.Id).ConfigureAwait(false);
 
-            return Profile.Create(avatar.ToAvatar(), preferences);
+            return Profile.New(avatar.ToAvatar(), preferences);
         }
         else {
             var avatar = await Avatars.GetOwn(session, profileId, cancellationToken).ConfigureAwait(false);
@@ -125,7 +125,7 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
                 : new RouletteProfilesBackend_ChangePrefs(profileId, null, Change.Create(preferencesFull));
             preferencesFull = await Commander.Call(prefsChange, cancellationToken).ConfigureAwait(false);
 
-            return Profile.Create(avatar, preferencesFull.ToProfilePreferences());
+            return Profile.New(avatar, preferencesFull.ToProfilePreferences());
         }
     }
 

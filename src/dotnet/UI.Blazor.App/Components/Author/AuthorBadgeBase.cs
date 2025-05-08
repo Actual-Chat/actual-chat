@@ -72,7 +72,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         Author Author,
         bool IsOwn = false)
     {
-        public static readonly Model None = new(Author.None);
-        public static readonly Model Loading = new(Author.Loading); // Should differ by ref. from None
+        public static readonly Model None = new(SpecialAuthor.None);
+        public static readonly Model Loading = new(SpecialAuthor.Loading);
     }
 }

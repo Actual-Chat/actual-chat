@@ -26,7 +26,7 @@ public class AuthorListingTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var places = await CreatePlaces(placeCount, accounts);
 
         // act
-        var lastChangedId = AuthorId.None;
+        var lastId = (AuthorId?)null;
         var allRetrieved = new List<AuthorFull>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellationToken = cts.Token;
@@ -34,7 +34,7 @@ public class AuthorListingTest(ChatCollection.AppHostFixture fixture, ITestOutpu
             var retrieved = await AuthorsBackend.ListChanged(new ChangedAuthorsQuery {
                     MinVersion = minVersion,
                     MaxVersion = long.MaxValue,
-                    LastId = lastChangedId,
+                    LastId = lastId,
                     IsPlaceAuthor = true,
                     Limit = batchSize,
                 },
@@ -43,14 +43,14 @@ public class AuthorListingTest(ChatCollection.AppHostFixture fixture, ITestOutpu
                 break;
 
             minVersion = retrieved[^1].Version;
-            lastChangedId = retrieved[^1].Id;
+            lastId = retrieved[^1].Id;
             allRetrieved.AddRange(retrieved);
         }
 
         // assert
         allRetrieved.Should().OnlyContain(x => x.IsPlaceAuthor);
         allRetrieved.Select(x => x.UserId).Should().Contain(accounts.Select(x => x.Id));
-        allRetrieved.Select(x => x.ChatId.PlaceId).Should().Contain(places.Select(x => x.Id));
+        allRetrieved.Select(x => ((PlaceChatId)x.ChatId).PlaceId).Should().Contain(places.Select(x => x.Id));
     }
 
     private Task<Place[]> CreatePlaces(int placeCount, AccountFull[] members)

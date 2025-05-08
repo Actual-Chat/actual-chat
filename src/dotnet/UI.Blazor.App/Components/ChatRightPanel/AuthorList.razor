@@ -135,11 +135,11 @@
                 var presence = await presenceTask.ConfigureAwait(false);
                 var author = await authorTask.ConfigureAwait(false);
                 if (author == null || author.HasLeft)
-                    return (authorId: null, isAnonymous: false, presence: Presence.Unknown, authorName: "");
+                    return (null, false, Presence.Unknown, "");
 
                 var isAnonymous = author.IsAnonymous;
                 var authorName = author.Avatar.Name;
-                return (authorId, isAnonymous, presence, authorName);
+                return ((AuthorId?)authorId, isAnonymous, presence, authorName);
             })
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);

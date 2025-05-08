@@ -82,7 +82,7 @@
     public record Model {
         public static readonly Model Loading = new ();
 
-        public Profile Profile { get; init; } = Profile.None;
+        public Profile Profile { get; init; } = SpecialProfile.None;
         public SearchState SearchState { get; init; } = SearchState.None;
         public Preferences SearchCriteria { get; init; } = Preferences.Empty;
         public IReadOnlyList<ChatCandidate> ChatCandidates { get; init; } = [];

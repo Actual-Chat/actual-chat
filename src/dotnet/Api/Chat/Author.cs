@@ -10,9 +10,6 @@ public partial record Author(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ): IHasId<AuthorId>, IHasVersion<long>, IRequirementTarget
 {
-    public static readonly Author None = new() { Avatar = Avatar.None };
-    public static readonly Author Loading = new(null!, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
-
     public static readonly Requirement<Author> MustExist = Requirement.New(
         (Author? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Author>()));

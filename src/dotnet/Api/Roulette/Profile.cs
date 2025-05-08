@@ -10,17 +10,13 @@ namespace ActualChat.Roulette;
 public partial record Profile([property: DataMember, MemoryPackOrder(0)] Symbol Id)
     : IHasId<Symbol>, IRequirementTarget
 {
-    public static readonly Profile None = Create(Avatar.None, ProfilePreferences.None);
-
-    public static readonly Profile Loading = Create(Avatar.Loading, ProfilePreferences.None); // Should differ by ref. From None
-
     [DataMember, MemoryPackOrder(1)] public Avatar Avatar { get; init; } = null!;
     [DataMember, MemoryPackOrder(3)] public ProfilePreferences Preferences { get; init; } = null!;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
 
-    public static Profile Create(Avatar avatar, ProfilePreferences? profilePreferences)
+    public static Profile New(Avatar avatar, ProfilePreferences? profilePreferences)
     {
         if (profilePreferences is not null &&  profilePreferences.Id != avatar.Id)
             throw new ArgumentOutOfRangeException(nameof(profilePreferences));

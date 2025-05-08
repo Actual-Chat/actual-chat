@@ -16,7 +16,7 @@ public class ChatEntryOperationsTest(ChatCollection.AppHostFixture fixture, ITes
         // arrange
         var alice = await Tester.SignInAsUniqueAlice();
         var bob = await Tester.SignInAsUniqueBob();
-        var chatId = new PeerChatId(alice.Id, bob.Id);
+        var chatId = PeerChatId.New(alice.Id, bob.Id);
         var textEntry = await Tester.CreateTextEntry(chatId, "Hello");
         await Tester.SignInAsBobAdmin();
 

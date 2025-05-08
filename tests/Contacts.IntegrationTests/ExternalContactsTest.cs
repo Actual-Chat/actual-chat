@@ -409,9 +409,9 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private async Task<List<ContactId>> ListContactIds(Session session, CancellationToken cancellationToken = default)
     {
-        var ids = await _contacts.ListIds(session, PlaceId.None, cancellationToken);
+        var ids = await _contacts.ListIds(session, null, cancellationToken);
         return ids
-            .Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId.Value))
+            .Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId))
             .ToList();
     }
 
@@ -425,7 +425,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => new (Guid.NewGuid().ToString());
 
     private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)
-        => ContactId.Peer(owner.Id, friendAccount.Id);
+        => ContactId.NewUser(owner.Id, friendAccount.Id);
 
     private static EquivalencyOptions<ExternalContactFull> Including(EquivalencyOptions<ExternalContactFull> o)
         => o.Including(x => x.Id).Including(x => x.Hash);

@@ -24,7 +24,9 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
         var auth = services.GetRequiredService<IAuth>();
         var sessionInfo = await auth.GetSessionInfo(session);
         sessionInfo.Should().NotBeNull();
-        sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
+        var guestId = sessionInfo.GetGuestId();
+        guestId.Should().NotBeNull();
+        guestId.IsGuest.Should().BeTrue();
     }
 
     [Fact]
@@ -42,7 +44,9 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
             await commander.Call(new AuthBackend_SetupSession(session), cancellationToken);
             var sessionInfo = await auth.GetSessionInfo(session, cancellationToken);
             sessionInfo.Should().NotBeNull();
-            sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
+            var guestId = sessionInfo.GetGuestId();
+            guestId.Should().NotBeNull();
+            guestId.IsGuest.Should().BeTrue();
         });
     }
 }

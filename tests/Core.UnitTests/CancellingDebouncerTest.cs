@@ -2,7 +2,7 @@ using ActualChat.IO;
 
 namespace ActualChat.Core.UnitTests;
 
-public class CancellableDebouncerTest
+public class CancellingDebouncerTest
 {
     [Fact]
     public async Task ShouldRunOnlyOnce()
@@ -10,14 +10,14 @@ public class CancellableDebouncerTest
         // arrange
         var count = 0;
         var interval = TimeSpan.FromMilliseconds(1);
-        await using var sut = Debouncer.New(interval,
-            _ => {
+        await using var sut = Debouncer.New<Unit>(interval,
+            (_, _) => {
                 Interlocked.Increment(ref count);
                 return Task.CompletedTask;
             });
 
         // act
-        sut.Enqueue();
+        sut.Enqueue(default);
 
         // assert
         await TestExt.When(async () => {

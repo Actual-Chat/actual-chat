@@ -13,7 +13,7 @@
 @code {
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 
     protected override ComputedState<ChatAudioState>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

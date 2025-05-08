@@ -9,9 +9,6 @@ public partial record Account(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
 ) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
-    public static Account None => AccountFull.None;
-    public static Account Loading => AccountFull.Loading;
-
     public static readonly Requirement<Account> MustExist = Requirement.New(
         (Account? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Account>()));

@@ -16,10 +16,10 @@ partial class RouletteUI
         var selectedProfile = await SelectedProfile.Use(cancellationToken).ConfigureAwait(false);
         var selectedProfileId = selectedProfile.Id;
         if (selectedProfileId.IsEmpty)
-            return (Symbol.Empty, Profile.None);
+            return (Symbol.Empty, SpecialProfile.None);
 
         var profile = await RouletteProfiles.GetOwnProfile(Session, selectedProfileId, cancellationToken).ConfigureAwait(false);
-        return (selectedProfileId, profile ?? Profile.None);
+        return (selectedProfileId, profile ?? SpecialProfile.None);
     }
 
     private async Task SyncSelectedProfile(CancellationToken cancellationToken)

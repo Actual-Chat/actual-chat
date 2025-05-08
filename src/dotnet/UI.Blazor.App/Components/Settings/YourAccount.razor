@@ -2,7 +2,7 @@
 @{
     var account = State.Value;
     var readablePhone = account.Phone?.ToReadable() ?? "";
-    if (ReferenceEquals(account, AccountFull.Loading))
+    if (ReferenceEquals(account, SpecialAccount.Loading))
         return;
 }
 

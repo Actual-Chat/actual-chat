@@ -73,7 +73,7 @@
 </div>
 
 @code {
-    private RewindController? _rewindController;
+    private RewindDelayer? _rewindController;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
@@ -169,28 +169,29 @@
     private void OnBackward()
         => Rewind(TimeSpan.FromSeconds(-15));
 
-    private void Rewind(TimeSpan shift) {
-        _rewindController ??= new RewindController(OnRewindRequested);
+    private void Rewind(TimeSpan offset) {
         var m = State.Value;
-        var moment = m.PlayingAt;
-        if (!moment.HasValue || m.ChatPlayer == null)
+        if (m.ChatPlayer is null || m.PlayingAt is not { } playingAt)
             return;
-        _rewindController.Rewind(m.ChatId, moment.Value, shift);
+
+        _rewindController ??= new RewindDelayer(OnRewindRequested);
+        _rewindController.Rewind(m.ChatId, playingAt, offset);
     }
 
-    private void OnRewindRequested(ChatId chatId, DateTime momentFrom, TimeSpan shift) {
+    private void OnRewindRequested(ChatId chatId, Moment origin, TimeSpan offset) {
         _ = InvokeAsync(() => {
             var m = State.Value;
             if (m.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
-                _ = PlayAt(m.ChatPlayer, momentFrom, shift);
+                _ = PlayAt(m.ChatPlayer, origin, offset);
         });
     }
 
-    private async Task PlayAt(HistoricalChatPlayer chatPlayer, DateTime from, TimeSpan shift, CancellationToken cancellationToken = default)
+    private async Task PlayAt(HistoricalChatPlayer chatPlayer, Moment origin, TimeSpan offset, CancellationToken cancellationToken = default)
     {
-        var newMoment = await chatPlayer.GetRewindMoment(from, shift, cancellationToken);
+        var newMoment = await chatPlayer.GetRewindMoment(origin, offset, cancellationToken);
         if (!newMoment.HasValue)
             return;
+
         ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);
     }
 
@@ -200,7 +201,7 @@
     {
         public static readonly Model NotPlaying = new() { ChatId = null! };
 
-        public DateTime? PlayingAt { get; init; }
+        public Moment? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
         public HistoricalChatPlayer? ChatPlayer { get; init; }
         public string ChatTitle { get; init; } = "";
@@ -209,31 +210,37 @@
         public List<string> AuthorSids { get; init; } = [];
     }
 
-    private class RewindController
+    private sealed class RewindDelayer
     {
-        private readonly Timer _rewindTimer;
-        private ChatId _chatId;
-        private DateTime _rewindFrom;
-        private TimeSpan _rewindSpan;
+        private readonly Timer _delayTimer;
+        private ChatId? _chatId;
+        private Moment _origin;
+        private TimeSpan _offset;
 
-        public RewindController(Action<ChatId, DateTime, TimeSpan> onRewindRequested)
+        public RewindDelayer(Action<ChatId, Moment, TimeSpan> rewinder)
         {
-            _rewindTimer = new Timer(300) { AutoReset = false };
-            _rewindTimer.Elapsed += (s,e) => onRewindRequested(_chatId, _rewindFrom, _rewindSpan);
+            _delayTimer = new Timer(300) { AutoReset = false };
+            _delayTimer.Elapsed += (_, _) => {
+                if (_chatId is { } chatId)
+                    rewinder.Invoke(chatId, _origin, _offset);
+            };
         }
 
-        public void Rewind(ChatId chatId, DateTime moment, TimeSpan shift)
+        public void Rewind(ChatId chatId, Moment origin, TimeSpan delta)
         {
-            if (!_rewindTimer.Enabled) {
+            if (_chatId != chatId) {
+                _delayTimer.Stop();
                 _chatId = chatId;
-                _rewindFrom = moment;
-                _rewindSpan = shift;
-                _rewindTimer.Start();
+            }
+
+            if (!_delayTimer.Enabled) {
+                _origin = origin;
+                _offset = delta;
+                _delayTimer.Start();
             } else {
-                _rewindTimer.Stop();
-                _rewindSpan += shift;
-                if (_chatId == chatId)
-                    _rewindTimer.Start();
+                _delayTimer.Stop();
+                _offset += delta;
+                _delayTimer.Start();
             }
         }
     }

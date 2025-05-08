@@ -271,8 +271,8 @@
     // Nested types
 
     public sealed record ComputedModel {
-        public static readonly ComputedModel None = new() { Author = Author.None };
-        public static readonly ComputedModel Loading = new() { Author = Author.Loading }; // Should differ by ref. from None
+        public static readonly ComputedModel None = new() { Author = SpecialAuthor.None };
+        public static readonly ComputedModel Loading = new() { Author = SpecialAuthor.Loading };
 
         public Author Author { get; init; } = null!;
         public Account? Account { get; init; }

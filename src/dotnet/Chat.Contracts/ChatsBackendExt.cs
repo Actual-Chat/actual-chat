@@ -141,7 +141,7 @@ public static class ChatsBackendExt
     public static async IAsyncEnumerable<Chat[]> Batch(
         this IChatsBackend chatsBackend,
         Moment minCreatedAt,
-        ChatId lastChatId,
+        ChatId? lastChatId,
         int batchSize,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -163,13 +163,13 @@ public static class ChatsBackendExt
         this IChatsBackend chatsBackend,
         long minVersion,
         long maxVersion,
-        ChatId lastId,
+        ChatId? lastChatId,
         int batchSize,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
             var query = new ChangedChatsQuery {
-                LastId = lastId,
+                LastId = lastChatId,
                 Limit = batchSize,
                 MinVersion = minVersion,
                 MaxVersion = maxVersion,
@@ -183,7 +183,7 @@ public static class ChatsBackendExt
             yield return chats;
 
             var last = chats[^1];
-            lastId = last.Id;
+            lastChatId = last.Id;
             minVersion = last.Version;
         }
     }

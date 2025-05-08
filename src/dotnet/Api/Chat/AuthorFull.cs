@@ -14,9 +14,6 @@ public sealed partial record AuthorFull(
         (AuthorFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Author>()));
 
-    public static new readonly AuthorFull None = new() { Avatar = Avatar.None };
-    public static new readonly AuthorFull Loading = new(null!, null!, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
-
     [DataMember, MemoryPackOrder(7)]  public IReadOnlyList<RoleId> RoleIds { get; init; } = [];
     [DataMember, MemoryPackOrder(10)] public bool IsPlaceAuthor { get; set; }
     [DataMember, MemoryPackOrder(9)]  public Moment CreatedAt { get; init; }

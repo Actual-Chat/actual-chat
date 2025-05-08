@@ -42,7 +42,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
         _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.HostKind.IsServer() ? 0.5 : 2);
         var ownAccountComputed = Computed.GetExisting(() => Accounts.GetOwn(Session, default));
         var ownAccount = ownAccountComputed?.IsConsistent() == true &&  ownAccountComputed.HasValue ? ownAccountComputed.Value : null;
-        var initialOwnAccount = ownAccount ?? AccountFull.Loading;
+        var initialOwnAccount = ownAccount ?? SpecialAccount.Loading;
 
         var type = GetType();
         _ownAccount = StateFactory.NewMutable<AccountFull>(new () {
@@ -57,7 +57,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
             InitialValue = null,
             Category = StateCategories.Get(type, nameof(ActiveSignInRequest)),
         });
-        if (!ReferenceEquals(initialOwnAccount, AccountFull.Loading))
+        if (!ReferenceEquals(initialOwnAccount, SpecialAccount.Loading))
             _whenLoadedSource.TrySetResult();
     }
 

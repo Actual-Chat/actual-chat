@@ -122,14 +122,16 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         var contactIds = await ListContactIds(account, userMap.Count - 1);
         var connectedUsers = contactIds.ConvertAll(GetUser).OrderBy(x => x.Name);
-        var otherUsers = userMap.Values.Where(x => x.Id != account.Id).OrderBy(x => x.Name);
+        var otherUsers = userMap.Values.Where(x => x.Id != account.Id.Value).OrderBy(x => x.Name);
         connectedUsers.Should().BeEquivalentTo(otherUsers);
         return;
 
-        User GetUser(ContactId x)
-            => userMap[x.ChatId.IsPeerChat(out var peerChatId)
+        User GetUser(ContactId x) {
+            var userId = x.ChatId is PeerChatId peerChatId
                 ? peerChatId.UserIds.OtherThan(account.Id)
-                : throw new Exception("Peer chat contact was expected")];
+                : throw new Exception("Peer chat contact was expected");
+            return userMap[userId];
+        }
     }
 
     private async Task<List<ContactId>> ListContactIds(AccountFull account, int expectedCount)
@@ -145,9 +147,9 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
     private async Task<List<ContactId>> ListContactIds()
     {
-        var ids = await _contacts.ListIds(_tester.Session, PlaceId.None, CancellationToken.None);
+        var ids = await _contacts.ListIds(_tester.Session, null, CancellationToken.None);
         return ids
-            .Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId.Value))
+            .Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId))
             .ToList();
     }
 

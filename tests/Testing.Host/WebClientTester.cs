@@ -90,7 +90,9 @@ public class WebClientTester : IWebClientTester
         Out = @out;
         Session = Session.New();
         var sessionInfo = Commander.Call(new AuthBackend_SetupSession(Session)).Result;
-        sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
+        var guestId = sessionInfo.GetGuestId();
+        guestId.Should().NotBeNull();
+        guestId.IsGuest.Should().BeTrue();
         _clientServicesLazy = new Lazy<IServiceProvider>(() => CreateClientServices(@out, configureClientServices));
     }
 

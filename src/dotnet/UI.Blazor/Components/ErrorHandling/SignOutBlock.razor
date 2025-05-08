@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, AccountFull.Loading))
+    if (ReferenceEquals(account, SpecialAccount.Loading))
         return;
 
     if (account.IsGuestOrNull()) {

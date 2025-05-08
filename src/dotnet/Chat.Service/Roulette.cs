@@ -51,7 +51,7 @@ public class Roulette(IServiceProvider services) : IRoulette
             if (!presence.HasFlag(Presence.Online))
                 continue;
 
-            result.Add(new ChatCandidate(Profile.Create(avatar, profilePref)));
+            result.Add(new ChatCandidate(Profile.New(avatar, profilePref)));
             if (result.Count >= 3)
                 break;
         }
@@ -72,8 +72,8 @@ public class Roulette(IServiceProvider services) : IRoulette
         var ownProfile = await RouletteProfilesBackend.GetProfile(profilesInternal.OwnProfileId, cancellationToken).ConfigureAwait(false);
         var peerProfile = await RouletteProfilesBackend.GetProfile(profilesInternal.PeerProfileId, cancellationToken).ConfigureAwait(false);
         return new ChatRouletteProfiles(profilesInternal.ChatRoulette.ToChatRoulette()) {
-            OwnProfile = ownProfile ?? Profile.None,
-            PeerProfile = peerProfile ?? Profile.None,
+            OwnProfile = ownProfile,
+            PeerProfile = peerProfile,
         };
     }
 

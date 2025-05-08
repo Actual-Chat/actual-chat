@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<Account>
 @{
     var account = State.Value;
-    if (account == AccountFull.Loading)
+    if (ReferenceEquals(account, SpecialAccount.Loading))
         return;
 }
 

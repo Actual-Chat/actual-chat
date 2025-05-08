@@ -21,7 +21,7 @@ public class LocalIdGeneratorTest(ChatCollection.AppHostFixture fixture, ITestOu
 
         idGenerator1.Should().NotBeSameAs(idGenerator2);
 
-        var shardRef = new DbChatEntryShardRef(new ChatId("p-9B7NAR-Cdis8n"), ChatEntryKind.Audio);
+        var shardRef = new DbChatEntryShardRef(ChatId.Parse("p-9B7NAR-Cdis8n"), ChatEntryKind.Audio);
         var resultTasks = new List<Task<long>>();
         for (int i = 0; i < 200; i++) {
             var next1Task = BackgroundTask.Run(async () => {

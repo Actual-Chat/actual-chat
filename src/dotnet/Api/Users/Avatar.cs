@@ -13,8 +13,6 @@ public partial record Avatar(
     ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     public const string GuestName = "Guest";
-    public static Avatar None { get; } = new(Symbol.Empty, 0);
-    public static readonly Avatar Loading = new(Symbol.Empty, -1); // Should differ by ref. from None
 
     public static readonly Requirement<Avatar> MustExist = Requirement.New(
         (Avatar? a) => a is { Id.IsEmpty : false },

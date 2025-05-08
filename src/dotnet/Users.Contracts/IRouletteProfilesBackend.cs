@@ -41,7 +41,7 @@ public record ProfileFull(
     : Profile(Id)
 {
     public Profile ToProfile()
-        => Create(Avatar, Preferences);
+        => New(Avatar, Preferences);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

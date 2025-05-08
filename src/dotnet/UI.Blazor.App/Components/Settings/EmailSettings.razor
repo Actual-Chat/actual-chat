@@ -83,7 +83,7 @@
     private TimeZoneFormModel _timeZoneFormModel = null!;
     private EmailFormModel _emailFormModel = null!;
     private IReadOnlyCollection<TimeZone> _timeZones = [];
-    private AccountFull _account = AccountFull.Loading;
+    private AccountFull _account = SpecialAccount.Loading;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private ITimeZones TimeZones { get; init; } = null!;

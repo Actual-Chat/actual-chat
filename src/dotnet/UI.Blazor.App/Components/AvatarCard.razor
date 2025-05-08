@@ -1,6 +1,4 @@
-﻿@using ActualChat.Chat
-@using ActualChat.Media
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 
 <Pic
     Class="@Class"
@@ -9,7 +7,7 @@
     Size="@Size"/>
 
 @code {
-    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = AvatarFull.None;
+    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = SpecialAvatar.None;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public string Class { get; set; } = "";
 }

@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<OnboardingModal.ViewModel>
 @{
     var m = State.Value;
-    if (m.AccountFull == AccountFull.Loading)
+    if (ReferenceEquals(m.AccountFull, SpecialAccount.Loading))
         return;
 
     if (m.AccountFull.IsGuest) {
@@ -157,7 +157,7 @@
 
 
     public sealed record ViewModel {
-        public static readonly ViewModel None = new() { AccountFull = AccountFull.Loading };
+        public static readonly ViewModel None = new() { AccountFull = SpecialAccount.Loading };
 
         public AccountFull AccountFull { get; init; } = null!;
         public bool IsDataCollectionConfigured { get; init; }

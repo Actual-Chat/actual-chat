@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Components;
@@ -37,7 +38,7 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
     // Nested types
 
     public sealed record Model(Account Account) {
-        public static readonly Model None = new(Account.None);
-        public static readonly Model Loading = new(Account.Loading); // Should differ by ref. from None
+        public static readonly Model None = new(SpecialAccount.None);
+        public static readonly Model Loading = new(SpecialAccount.Loading);
     }
 }

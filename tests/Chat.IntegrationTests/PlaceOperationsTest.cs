@@ -23,7 +23,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var services = tester.AppServices;
         var places = services.GetRequiredService<IPlaces>();
-        var place = await places.Get(session, new PlaceId("UnknownPlaceId"), default);
+        var place = await places.Get(session, PlaceId.Parse("UnknownPlaceId"), default);
         place.Should().BeNull();
     }
 
@@ -101,7 +101,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         chat.Title.Should().Be(ChatTitle);
         chat.IsPublic.Should().Be(isPublicChat);
         chat.Kind.Should().Be(ChatKind.Place);
-        chat.Id.PlaceId.Should().Be(place.Id);
+        ((PlaceChatId)chat.Id).PlaceId.Should().Be(place.Id);
 
         var contacts = services.GetRequiredService<IContacts>();
         await Task.Delay(100); // Let's wait events are processed
@@ -145,7 +145,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         {
             var welcomeChatId = await places.GetWelcomeChatId(anotherSession, place.Id, default);
-            welcomeChatId.Should().Be(isPublicPlace ? welcomeChat.Id : ChatId.None);
+            welcomeChatId.Should().Be(isPublicPlace ? welcomeChat.Id : null);
         }
 
         if (!isPublicPlace) {

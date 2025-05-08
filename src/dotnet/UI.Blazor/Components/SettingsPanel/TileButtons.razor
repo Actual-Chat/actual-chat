@@ -41,7 +41,7 @@
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
 
-    [Parameter] public AvatarFull Avatar { get; set; } = AvatarFull.None;
+    [Parameter] public AvatarFull Avatar { get; set; } = SpecialAvatar.None;
     [Parameter] public EventCallback EditClick { get; set; }
     [Parameter] public EventCallback SetDefaultClick { get; set; }
     [Parameter] public EventCallback CloseClick { get; set; }
