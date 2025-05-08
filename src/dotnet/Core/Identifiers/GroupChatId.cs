@@ -28,7 +28,7 @@ public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>
         return new(localChatId);
     }
 
-    internal GroupChatId(string value) : base(value, ChatKind.Place)
+    internal GroupChatId(string value) : base(value, ChatKind.Group)
     { }
 
     // Equality

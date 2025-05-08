@@ -26,7 +26,7 @@ public sealed partial class AudioEntryId : ChatEntryId, IStringIdentifier<AudioE
         => new(Format(chatId, ChatEntryKind.Text, localId), chatId, localId);
 
     internal AudioEntryId(string value, ChatId chatId, long localId)
-        : base(value, chatId, ChatEntryKind.Text, localId)
+        : base(value, chatId, ChatEntryKind.Audio, localId)
     { }
 
     // Equality
