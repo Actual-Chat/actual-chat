@@ -20,7 +20,6 @@ public class ChatAttentionService
     private const int MaxNotificationCount = 4;
 
     private static readonly Lock ClassSyncObject = new ();
-    private static ChatAttentionService? _instance;
     public static readonly string AlarmActionPrefix = Context.PackageName + ".ChatAttention.";
     private static readonly string AlarmAction = AlarmActionPrefix + "Alarm";
     private static readonly string SnoozeAction = AlarmActionPrefix + "Snooze";
@@ -29,26 +28,27 @@ public class ChatAttentionService
     private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
 
     private readonly Lock _syncObject = new();
-    private AlarmManager? _alarmManager;
     private Option<State?> _cachedState = Option<State?>.None;
     private bool _isInitialized;
 
     private static Context Context => Platform.AppContext;
     private static DateTime UtcNow => DateTime.UtcNow;
 
-    private AlarmManager AlarmManager => _alarmManager ??= (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
+    [field: AllowNull, MaybeNull]
+    private AlarmManager AlarmManager => field ??= (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
 
+    [field: AllowNull, MaybeNull]
     public static ChatAttentionService Instance {
         get {
             lock (ClassSyncObject) {
-                if (_instance == null) {
-                     _instance = new ChatAttentionService();
+                if (field == null) {
+                     field = new ChatAttentionService();
                      ChatUI.OnReadPositionUpdated += tuple => {
                          var (chatId, entryLid) = tuple;
-                         _instance.Clear(chatId.Value, entryLid);
+                         field.Clear(chatId.Value, entryLid);
                      };
                 }
-                return _instance;
+                return field;
             }
         }
     }
