@@ -23,7 +23,7 @@ public sealed partial class AudioEntryId : ChatEntryId, IStringIdentifier<AudioE
     // Factories and constructors
 
     public static AudioEntryId New(ChatId chatId, long localId)
-        => new(Format(chatId, ChatEntryKind.Text, localId), chatId, localId);
+        => new(Format(chatId, ChatEntryKind.Audio, localId), chatId, localId);
 
     internal AudioEntryId(string value, ChatId chatId, long localId)
         : base(value, chatId, ChatEntryKind.Audio, localId)
