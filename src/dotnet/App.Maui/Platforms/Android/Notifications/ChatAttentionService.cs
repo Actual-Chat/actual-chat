@@ -5,8 +5,8 @@ using AndroidX.Core.App;
 
 namespace ActualChat.App.Maui;
 
-public record ChatAttentionRequest(
-    Symbol ChatId,
+public sealed record ChatAttentionRequest(
+    ChatId ChatId,
     long ChatPosition,
     DateTime CreatedOnUtc,
     string Title,
@@ -241,15 +241,12 @@ public class ChatAttentionService
             notificationManager.Notify(NotificationTag, id, notification);
     }
 
-    private static PendingIntent? CreateViewChatAction(string? link, string? sChatId)
+    private static PendingIntent? CreateViewChatAction(string? link, ChatId? chatId)
     {
-        if (!ChatId.TryParse(sChatId, out var chatId))
-            chatId = ChatId.None;
-
         string? sUri = null;
         if (!link.IsNullOrEmpty())
             sUri = link;
-        else if (!chatId.IsNone)
+        else if (chatId is not null)
             sUri = Links.Chat(chatId);
 
         var intent = NotificationHelper.CreateViewIntent(Context, sUri);
@@ -341,7 +338,7 @@ public class ChatAttentionService
 
         public bool HasRequest() => Requests.Length > 0;
 
-        public ChatAttentionRequest? GetRequest(Symbol chatId)
-            => Requests.FirstOrDefault(r => r.ChatId.Equals(chatId));
+        public ChatAttentionRequest? GetRequest(ChatId chatId)
+            => Requests.FirstOrDefault(r => r.ChatId == chatId);
     }
 }
