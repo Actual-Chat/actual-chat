@@ -128,7 +128,7 @@ public sealed partial record ChatEntry(
     public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasMediaEntry;
 
     [MemoryPackConstructor]
-    public ChatEntry() : this(null!) { }
+    public ChatEntry() : this((ChatEntryId)null!) { }
 
     // This record relies on referential equality
     public bool Equals(ChatEntry? other) => ReferenceEquals(this, other);

@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
 using MemoryPack;
@@ -30,7 +30,7 @@ public sealed partial class PlaceChatId : ChatId, IStringIdentifier<PlaceChatId>
     public bool IsRoot { get; }
     [IgnoreDataMember]
     [field: AllowNull, MaybeNull]
-    public PlaceChatId RootChatId => field ??= IsRoot ? this : Parse(PlaceId.Value);
+    public PlaceChatId RootChatId => field ??= IsRoot ? this : Parse(Format(PlaceId, PlaceId.Value));
 
     // Factories and constructors
 

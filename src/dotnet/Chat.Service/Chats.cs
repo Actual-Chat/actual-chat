@@ -29,7 +29,9 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.Kind == ChatKind.Peer) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            var contactId = ContactId.NewAny(account.Id, chatId);
+            ContactId.TryParse(ContactId.Format(account.Id, chatId), out var contactId);
+            if (contactId is null)
+                return null;
 
             var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
             var peerAccount = contact.Account;

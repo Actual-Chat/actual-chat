@@ -73,8 +73,15 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var author = await authors.GetOwn(session, chat.Id, default);
         author.Should().NotBeNull();
-        author!.UserId.Should().Be(account.Id);
+        author.UserId.Should().Be(account.Id);
         author.Avatar.Should().NotBeNull();
+
+        var contacts = services.GetRequiredService<IContacts>();
+        await ComputedTest.When(services, async ct => {
+            var contactIds = await contacts.ListIds(session, null, ct);
+            var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+            chatIds.Should().Contain(chat.Id);
+        });
     }
 
     [Theory]

@@ -629,7 +629,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (change.IsCreate(out var update)) {
             oldChat.RequireNull();
             var placeId = update.PlaceId;
-            var chatKind = update.Kind ?? chatId?.Kind ?? ChatKind.Place;
+            var chatKind = update.Kind ?? (chatId is null && placeId is not null ? ChatKind.Place : chatId?.Kind ?? ChatKind.Group);
 
             if (chatKind == ChatKind.Group) {
                 if (chatId is null)
@@ -646,7 +646,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     else
                         chatId = PlaceChatId.New(placeId);
                 }
-                else
+                else if (!(chatId is PlaceChatId placeChatId && placeChatId.IsRoot))
                     throw new ArgumentOutOfRangeException(nameof(command),
                         "Change.ChatId must be null for new place chats.");
                 update.ValidateForPlaceChat();

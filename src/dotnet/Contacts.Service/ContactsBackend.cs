@@ -240,6 +240,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         change.RequireValid();
         var oldContactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
+        if (!chatId.IsSystem) {
+
+        }
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -635,6 +639,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var userId = author.UserId;
         if (chatId.Kind == ChatKind.Peer && author.HasLeft) // Users can't leave peer chats
             return;
+
+        if (!chatId.IsSystem) {
+
+        }
 
         if (chatId is PlaceChatId { IsRoot: true } placeChatId) {
             var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(placeChatId.PlaceId, userId, author.HasLeft);
