@@ -92,8 +92,8 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         await TestListIdsForSearch(null, true, groups.NonPlaceJoined(), people.Friends());
 
         // found everywhere
-        await TestListIdsForSearch(null, false, groups.PrivateJoined(), people.Friends());
-        await TestListIdsForSearch(null, true, groups.Joined(), people.Friends());
+        await TestListIdsForSearch(Option.None<PlaceId?>(), false, groups.PrivateJoined(), people.Friends());
+        await TestListIdsForSearch(Option.None<PlaceId?>(), true, groups.Joined(), people.Friends());
 
         // place-bound results
         foreach (var (placeKey, place) in places) {
@@ -103,13 +103,13 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         return;
 
-        async Task TestListIdsForSearch(PlaceId? placeId, bool includePublic, IEnumerable<Chat.Chat> expectedGroups, IEnumerable<AccountFull> expectedUsers)
+        async Task TestListIdsForSearch(Option<PlaceId?> placeIdOpt, bool includePublic, IEnumerable<Chat.Chat> expectedGroups, IEnumerable<AccountFull> expectedUsers)
         {
             // arrange
             var expected = ExpectedIds(expectedGroups, expectedUsers);
 
             // act
-            var contactIds = await ListIdsForSearch(placeId, includePublic, expected.Count);
+            var contactIds = await ListIdsForSearch(placeIdOpt, includePublic, expected.Count);
 
             // assert
             contactIds.Order().Should().Equal(expected);
@@ -128,7 +128,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         var account = await _accounts.GetOwn(_tester.Session, cancellationToken);
         var contactIds = scope == SearchScope.People
             ? await _contactsBackend.ListPeerContactIds(account.Id, cancellationToken)
-            : await _contactsBackend.ListIdsForGroupContactSearch(account.Id, null, cancellationToken);
+            : await _contactsBackend.ListIdsForGroupContactSearch(account.Id, Option.None<PlaceId?>(), cancellationToken);
         var chats = await contactIds
             .Where(x => !x.ChatId.IsSystem)
             .OrderBy(x => x.Id)
@@ -138,7 +138,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         return chats.SkipNullItems().ToList();
     }
 
-    private async Task<List<ContactId>> ListIdsForSearch(PlaceId? placeId, bool includePublic, int expectedCount)
+    private async Task<List<ContactId>> ListIdsForSearch(Option<PlaceId?> placeId, bool includePublic, int expectedCount)
     {
         var account = await _accounts.GetOwn(_tester.Session, CancellationToken.None);
         return await ComputedTest.When(async ct => {
