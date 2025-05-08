@@ -79,7 +79,7 @@ public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceI
         if (s.Length is < 10 or > 64)
             return false;
 
-        if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Place.SystemPlaceIds.Contains(s)))
+        if (!(Alphabet.AlphaNumeric.IsMatch(s) || OrdinalEquals(s, "chat-roulette")))
             return false;
 
         result = new PlaceId(s);

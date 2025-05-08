@@ -28,6 +28,7 @@ public static partial class Constants
     {
         public static readonly PlaceId ChatRouletteId = PlaceId.Parse("chat-roulette"); // Pseudo Place
         public static readonly IReadOnlySet<Symbol> SystemPlaceIds = new HashSet<Symbol>([ChatRouletteId.Id]);
+        public static readonly HashSet<string> SystemPlaceIdValues = SystemPlaceIds.Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
     }
 
     public static class Contact
