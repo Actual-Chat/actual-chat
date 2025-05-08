@@ -334,24 +334,28 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId) = command;
-        var nonNullCount = (authorId is null ? 1 : 0) + (chatId is null ? 1 : 0) + (userId is null ? 1 : 0);
+        var nonNullCount = (authorId is not null ? 1 : 0) + (chatId is not null ? 1 : 0) + (userId is not null ? 1 : 0);
         if (nonNullCount != 1)
             throw new ArgumentOutOfRangeException(nameof(command),
                 "Only one of the following properties must be non-null: AuthorId, UserId, or ChatId.");
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            if (chatId is null) // TODO(AY -> DF): check the way this case is handled
-                return;
-
             var invAuthors = context.Operation.Items.KeylessGet<AuthorFull[]>();
+            var invChatIds = new HashSet<ChatId>();
+            if (chatId is not null)
+                invChatIds.Add(chatId);
             if (invAuthors is not null) {
                 foreach (var invAuthor in invAuthors) {
-                    _ = GetInternal(chatId, invAuthor.Id, default);
-                    _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
-                    _ = ListAuthorIdsInternal(chatId, default);
-                    _ = ListUserIdsInternal(chatId, default);
+                    var invChatId = invAuthor.ChatId;
+                    invChatIds.Add(invChatId);
+                    _ = GetInternal(invChatId, invAuthor.Id, default);
+                    _ = GetByUserIdInternal(invChatId, invAuthor.UserId, default);
                 }
+            }
+            foreach (var invChatId in invChatIds) {
+                _ = ListAuthorIdsInternal(invChatId, default);
+                _ = ListUserIdsInternal(invChatId, default);
             }
             return;
         }

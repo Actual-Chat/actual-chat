@@ -259,10 +259,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 : null;
 
             // Checks
-            if (userId.IsGuestOrNull())
-                throw StandardError.Constraint("You can't chat with unauthenticated user.");
             if (ownerId.IsGuest && userId != null)
                 throw StandardError.Constraint("You must sign-in to chat with another user.");
+            if (userId?.IsGuest == true)
+                throw StandardError.Constraint("You can't chat with unauthenticated user.");
 
             contact = contact with {
                 Id = id,
