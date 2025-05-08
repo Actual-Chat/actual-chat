@@ -15,6 +15,7 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         p = p.KeylessSet(userId);
         p = p.KeylessSet(peerChatId);
         p = p.KeylessSet(groupChatId);
+        p = p.KeylessSet((ChatId)groupChatId);
         p = p.KeylessSet(placeId);
         p = p.KeylessSet(authorId);
 
@@ -22,12 +23,14 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         var x = p.KeylessGet<string>("");
         var userId1 = p1.KeylessGet<UserId>();
         var peerChatId1 = p1.KeylessGet<PeerChatId>();
+        var groupChatId1 = p1.KeylessGet<GroupChatId>();
         var chatId1 = p1.KeylessGet<ChatId>();
         var placeId1 = p1.KeylessGet<PlaceId>();
         var authorId1 = p1.KeylessGet<AuthorId>();
         x.Should().Be("X");
         userId1.Should().Be(userId);
         peerChatId1.Should().Be(peerChatId);
+        groupChatId1.Should().Be(groupChatId);
         chatId1.Should().Be(groupChatId);
         placeId1.Should().Be(placeId);
         authorId1.Should().Be(authorId);
@@ -46,6 +49,7 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         p.KeylessSet(userId);
         p.KeylessSet(peerChatId);
         p.KeylessSet(groupChatId);
+        p.KeylessSet((ChatId)groupChatId);
         p.KeylessSet(placeId);
         p.KeylessSet(authorId);
 
@@ -53,12 +57,14 @@ public class PropertyBagWithIdentifiersTest(ITestOutputHelper @out) : TestBase(@
         var x = p.KeylessGet<string>("");
         var userId1 = p1.KeylessGet<UserId>();
         var peerChatId1 = p1.KeylessGet<PeerChatId>();
+        var groupChatId1 = p1.KeylessGet<GroupChatId>();
         var chatId1 = p1.KeylessGet<ChatId>();
         var placeId1 = p1.KeylessGet<PlaceId>();
         var authorId1 = p1.KeylessGet<AuthorId>();
         x.Should().Be("X");
         userId1.Should().Be(userId);
         peerChatId1.Should().Be(peerChatId);
+        groupChatId1.Should().Be(groupChatId);
         chatId1.Should().Be(groupChatId);
         placeId1.Should().Be(placeId);
         authorId1.Should().Be(authorId);
