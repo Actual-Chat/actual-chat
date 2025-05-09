@@ -88,7 +88,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
     private async Task<bool> ShouldBeShown(CancellationToken cancellationToken)
     {
         // Wait for sign-in
-        await AccountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await AccountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         await AccountUI.OwnAccount.Computed
             .When(x => !x.IsGuest, cancellationToken)
             .ConfigureAwait(false);

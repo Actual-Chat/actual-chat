@@ -5,7 +5,7 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     where TFrame : MediaFrame
 {
     protected AsyncMemoizer<TFrame> MemoizedFrames { get; }
-    protected TaskCompletionSource<TimeSpan> DurationTaskSource { get; }
+    protected AsyncTaskMethodBuilder<TimeSpan> DurationTaskSource { get; }
     protected ILogger Log { get; }
 
     public bool IsCancelled => DurationTask.IsCanceled;
@@ -29,7 +29,7 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     {
         CreatedAt = createdAt;
         Format = format;
-        DurationTaskSource = TaskCompletionSourceExt.New<TimeSpan>();
+        DurationTaskSource = AsyncTaskMethodBuilderExt.New<TimeSpan>();
         MemoizedFrames = new AsyncMemoizer<TFrame>(IterateThrough(frameStream, cancellationToken), cancellationToken);
         Log = log;
     }

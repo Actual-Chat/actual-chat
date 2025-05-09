@@ -4,7 +4,7 @@ namespace ActualChat.Streaming.Services;
 
 public class StreamStore<TItem> : ProcessorBase
 {
-    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, TaskCompletionSource<AsyncMemoizer<TItem>?>>> _streams = new ();
+    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>>> _streams = new();
 
     public TimeSpan ExpirationDelay { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan ShareWaitDelay { get; init; } = TimeSpan.FromSeconds(2);
@@ -90,11 +90,11 @@ public class StreamStore<TItem> : ProcessorBase
 
     // Protected methods
 
-    protected ExpiringEntry<Symbol, TaskCompletionSource<AsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
+    protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
     {
         var entry = _streams.GetOrAdd(streamId.LocalId,
             static (key, self) => {
-                var memoizerSource = TaskCompletionSourceExt.New<AsyncMemoizer<TItem>?>();
+                var memoizerSource = AsyncTaskMethodBuilderExt.New<AsyncMemoizer<TItem>?>();
                 var disposeTokenSource = self.StopToken.CreateLinkedTokenSource();
                 var entry = ExpiringEntry
                     .New(self._streams, key, memoizerSource, disposeTokenSource)

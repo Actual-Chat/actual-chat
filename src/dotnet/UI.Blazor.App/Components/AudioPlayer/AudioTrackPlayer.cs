@@ -14,8 +14,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private readonly string _id;
-    private Dispatcher? _dispatcher;
-    private IMediaMetadataUI? _mediaMetadataUI;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private Task? _whenPlayerCreated;
@@ -23,8 +21,10 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
-    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-    private IMediaMetadataUI MediaMetadataUI => _mediaMetadataUI ??= Services.GetRequiredService<IMediaMetadataUI>();
+    [field: AllowNull, MaybeNull]
+    private Dispatcher Dispatcher => field ??= Services.GetRequiredService<Dispatcher>();
+    [field: AllowNull, MaybeNull]
+    private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
     public AudioTrackPlayer(

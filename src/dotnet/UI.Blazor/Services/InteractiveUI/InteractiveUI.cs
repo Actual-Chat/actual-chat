@@ -72,7 +72,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
                 activeDemand = new ActiveDemandModel(
                     ImmutableList.Create(operation),
                     modalRefTask,
-                    TaskCompletionSourceExt.New());
+                    AsyncTaskMethodBuilderExt.New());
                 _activeDemand.Value = activeDemand;
             }
             else {
@@ -121,7 +121,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
     public sealed record ActiveDemandModel(
         ImmutableList<string> Operations,
         Task<ModalRef> WhenModalRef,
-        TaskCompletionSource WhenConfirmedSource)
+        AsyncTaskMethodBuilder WhenConfirmedSource)
     {
         public Task WhenConfirmed => WhenConfirmedSource.Task;
     }

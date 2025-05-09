@@ -51,7 +51,7 @@ public partial class AccountUI
         var isChanged = !ReferenceEquals(oldAccount, account);
         if (isChanged)
             _ownAccount.Value = account;
-        _whenLoadedSource.TrySetResult();
+        _whenReadySource.TrySetResult();
         return isChanged;
     }
 

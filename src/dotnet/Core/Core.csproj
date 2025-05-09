@@ -21,4 +21,8 @@
     <PackageReference Include="Ulid" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Maybe\" />
+  </ItemGroup>
+
 </Project>

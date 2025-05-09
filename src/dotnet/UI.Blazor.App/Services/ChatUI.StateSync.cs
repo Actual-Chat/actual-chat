@@ -127,7 +127,7 @@ public partial class ChatUI
 
     private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
     {
-        await WhenLoaded.ConfigureAwait(false);
+        await WhenReady.ConfigureAwait(false);
         _ = RestoreSelectedNavbarGroup(cancellationToken);
         _ = SynchronizeSelectedChatIds();
     }

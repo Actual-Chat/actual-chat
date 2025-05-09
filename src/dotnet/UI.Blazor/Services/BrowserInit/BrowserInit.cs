@@ -8,7 +8,7 @@ public class BrowserInit(IServiceProvider services)
     private static readonly string JSInitFirebaseMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.initFirebase";
     private static readonly string JSIsFirebaseConfiguredMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.isFirebaseConfigured";
 
-    private readonly TaskCompletionSource _whenInitializedSource = new();
+    private readonly AsyncTaskMethodBuilder _whenInitializedSource = AsyncTaskMethodBuilderExt.New();
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 

@@ -7,7 +7,7 @@ public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, Play
 
 public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILogger log) : ProcessorBase
 {
-    private readonly TaskCompletionSource _whenCompletedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenCompletedSource = AsyncTaskMethodBuilderExt.New();
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
     private readonly Lock _stateUpdateLock = new();

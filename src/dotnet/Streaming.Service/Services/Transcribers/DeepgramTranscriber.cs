@@ -53,7 +53,7 @@ public partial class DeepgramTranscriber : ITranscriber
         CancellationToken cancellationToken = default)
     {
         var transcriptState = new DeepgramTranscribeState(audioSource, output);
-        var whenCompletedSource = TaskCompletionSourceExt.New();
+        var whenCompletedSource = AsyncTaskMethodBuilderExt.New();
         Exception? error = null;
         try {
             using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -180,7 +180,7 @@ public partial class DeepgramTranscriber : ITranscriber
 
     private void ProcessResponse(
         DeepgramTranscribeState state,
-        TaskCompletionSource whenCompletedSource,
+        AsyncTaskMethodBuilder whenCompletedSource,
         ResultResponse result,
         TranscriptionOptions options)
     {

@@ -11,9 +11,9 @@ public sealed class OpenAudioSegment(
     Language[] languages,
     ILogger log)
 {
-    private readonly TaskCompletionSource<Moment?> _recordedAtSource = TaskCompletionSourceExt.New<Moment?>();
-    private readonly TaskCompletionSource<TimeSpan> _audibleDurationSource = TaskCompletionSourceExt.New<TimeSpan>();
-    private readonly TaskCompletionSource<ClosedAudioSegment> _closedSegmentSource = TaskCompletionSourceExt.New<ClosedAudioSegment>();
+    private readonly AsyncTaskMethodBuilder<Moment?> _recordedAtSource = AsyncTaskMethodBuilderExt.New<Moment?>();
+    private readonly AsyncTaskMethodBuilder<TimeSpan> _audibleDurationSource = AsyncTaskMethodBuilderExt.New<TimeSpan>();
+    private readonly AsyncTaskMethodBuilder<ClosedAudioSegment> _closedSegmentSource = AsyncTaskMethodBuilderExt.New<ClosedAudioSegment>();
 
     public int Index { get; } = index;
     public StreamId StreamId { get; } = GetStreamId(record, index);

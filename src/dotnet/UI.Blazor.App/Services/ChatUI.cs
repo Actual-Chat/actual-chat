@@ -23,7 +23,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
     private readonly SyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId? _searchEnabledChatId;
-    private readonly TaskCompletionSource _whenActivePlaceRestored = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenActivePlaceRestored = AsyncTaskMethodBuilderExt.New();
     private List<ChatId>? _pendingSelectedChatIds = new();
 
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
@@ -60,7 +60,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     public IState<TextEntryId?> HighlightedEntryId => _highlightedEntryId;
     public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
-    public Task WhenLoaded => _selectedChatId.WhenRead;
+    public Task WhenReady => _selectedChatId.WhenRead;
     public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
     public IMutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 

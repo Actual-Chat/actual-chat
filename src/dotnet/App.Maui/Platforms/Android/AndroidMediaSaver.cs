@@ -137,7 +137,7 @@ public class AndroidMediaSaver(IServiceProvider services)
             var activity = MainActivity.Current.Require();
             var writeStoragePermission = activity.CheckSelfPermission(Manifest.Permission.WriteExternalStorage);
             if (writeStoragePermission != Permission.Granted) {
-                var completionSource = new TaskCompletionSource<bool>();
+                var completionSource = AsyncTaskMethodBuilderExt.New<bool>();
                 activity.RequestPermission(Manifest.Permission.WriteExternalStorage, hasGranted1 => completionSource.TrySetResult(hasGranted1));
                 var hasGranted = await completionSource.Task.ConfigureAwait(false);
                 if (!hasGranted) {

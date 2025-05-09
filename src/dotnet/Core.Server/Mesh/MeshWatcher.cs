@@ -37,7 +37,7 @@ public sealed class MeshWatcher : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var whenLockedSource = new TaskCompletionSource();
+        var whenLockedSource = AsyncTaskMethodBuilderExt.New();
         var whenLocked = whenLockedSource.Task;
         _ = Task.Run(() => Announce(whenLockedSource, cancellationToken), CancellationToken.None);
 
@@ -141,7 +141,7 @@ public sealed class MeshWatcher : WorkerBase
         }
     }
 
-    private async Task Announce(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
+    private async Task Announce(AsyncTaskMethodBuilder whenLockedSource, CancellationToken cancellationToken)
     {
         var key = OwnNode.ToString();
         Log.LogInformation("-> Announce: {MeshNode}", key);
@@ -153,7 +153,7 @@ public sealed class MeshWatcher : WorkerBase
                     var holder = await NodeLocks.Lock(key, "", cancellationToken).ConfigureAwait(false);
                     await using var _ = holder.ConfigureAwait(false);
                     holderStopToken = holder.StopToken;
-                    whenLockedTcs.TrySetResult();
+                    whenLockedSource.TrySetResult();
                     Log.LogInformation("[+] {MeshNode}", key);
 
                     using var linkedTokenSource = cancellationToken.LinkWith(holderStopToken);

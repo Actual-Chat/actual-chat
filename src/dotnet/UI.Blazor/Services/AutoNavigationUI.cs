@@ -111,7 +111,7 @@ public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
         // You're at "/" or "/chat" URL
         try {
             var accountUI = Hub.AccountUI;
-            await accountUI.WhenLoaded.WaitAsync(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
+            await accountUI.WhenReady.WaitAsync(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
             var ownAccount = accountUI.OwnAccount.Value;
             return ownAccount.IsGuestOrNull()
                 ? currentUrl

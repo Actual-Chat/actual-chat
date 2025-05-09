@@ -12,7 +12,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
 {
     private static bool DebugMode => Constants.DebugMode.QueueProcessor;
 
-    private readonly TaskCompletionSource _whenStarted = new();
+    private readonly AsyncTaskMethodBuilder _whenStarted = AsyncTaskMethodBuilderExt.New();
     private long _lastCommandCompletedAt;
 
     protected ICommander Commander { get; }

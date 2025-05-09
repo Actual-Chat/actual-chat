@@ -4,7 +4,7 @@ namespace ActualChat.Flows.Infrastructure;
 
 public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 {
-    protected readonly TaskCompletionSource WhenReadySource = new();
+    protected readonly AsyncTaskMethodBuilder WhenReadySource = AsyncTaskMethodBuilderExt.New();
     protected Channel<QueueEntry> Queue { get; init; }
     protected ChannelReader<QueueEntry> Reader { get; init; }
     protected ChannelWriter<QueueEntry> Writer { get; init; }
@@ -165,6 +165,6 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
         public static QueueEntry None => default;
 
         public bool IsNone => Event == null;
-        public TaskCompletionSource<long> ResultSource { get; init; } = new ();
+        public AsyncTaskMethodBuilder<long> ResultSource { get; } = AsyncTaskMethodBuilderExt.New<long>();
     }
 }

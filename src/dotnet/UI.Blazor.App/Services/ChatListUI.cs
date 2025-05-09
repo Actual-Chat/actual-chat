@@ -104,7 +104,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListActive(CancellationToken cancellationToken = default)
     {
-        await ActiveChatsUI.WhenLoaded.ConfigureAwait(true); // No need for .ConfigureAwait(false) here
+        await ActiveChatsUI.WhenReady.ConfigureAwait(true); // No need for .ConfigureAwait(false) here
 
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats

@@ -16,7 +16,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public static readonly TimeSpan SlowUpdateDelay = TimeSpan.FromMilliseconds(100);
 
     private readonly CancellationTokenSource _disposeTokenSource;
-    private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenInitializedSource = AsyncTaskMethodBuilderExt.New();
 
     // ReSharper disable once NotAccessedField.Local
     private Task _updateReadStateTask = null!;

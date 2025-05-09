@@ -16,9 +16,9 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.MarkupEditor.create";
 
-    private TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
+    private readonly Action<MentionSearchResult> _onMentionSelected;
     private MentionListManager? _lastMentionListManager;
-    private Action<MentionSearchResult> _onMentionSelected;
 
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<IMarkupEditorBackend> BlazorRef { get; set; } = null!;

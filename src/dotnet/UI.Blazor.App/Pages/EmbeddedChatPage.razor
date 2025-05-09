@@ -72,7 +72,7 @@
         //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
         // };
 
-        await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await ChatUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 

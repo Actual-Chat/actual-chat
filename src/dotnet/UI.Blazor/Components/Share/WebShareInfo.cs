@@ -6,7 +6,7 @@ public sealed class WebShareInfo : IDisposable, IWebShareInfoBackend
 {
     private static readonly string JSInitWebShareInfoMethod = $"{BlazorUICoreModule.ImportName}.Share.init";
 
-    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private readonly DotNetObjectReference<IWebShareInfoBackend>? _backendRef;
     private bool _canShareText;
     private bool _canShareLink;

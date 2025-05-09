@@ -16,7 +16,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     private Moment CpuNow => Clocks.CpuClock.Now;
 
     public IMutableState<ActiveChat[]> ActiveChats => _activeChats;
-    public Task WhenLoaded => _activeChats.WhenRead;
+    public Task WhenReady => _activeChats.WhenRead;
 
     public ActiveChatsUI(ChatUIHub hub) : base(hub)
         => _activeChats = StateFactory.NewKvasStored<ActiveChat[]>(

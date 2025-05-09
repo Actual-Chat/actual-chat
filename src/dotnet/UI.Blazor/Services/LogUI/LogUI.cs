@@ -10,8 +10,8 @@ public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, I
     private static readonly string OwnLogCategory = $"{typeof(LogUI).Namespace}.{nameof(LogUI)}";
     private static readonly TileStack<long> IdTileStack = Constants.TileStacks.Long5To80;
     private readonly Lock _lock = new();
+    private readonly AsyncTaskMethodBuilder _whenReady = AsyncTaskMethodBuilderExt.New();
     private RingBuffer<LogEntry> _events = new(10_000);
-    private readonly TaskCompletionSource _whenReady = new();
     private long _entryIdGenerator = 1;
     private MutableState<bool>? _isEnabled;
 

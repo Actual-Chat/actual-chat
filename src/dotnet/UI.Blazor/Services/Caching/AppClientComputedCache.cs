@@ -45,7 +45,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
 
         try {
             var cacheValue = await Get(key, cancellationToken).ConfigureAwait(false);
-            if (cacheValue.IsNone)
+            if (cacheValue is null)
                 return null;
 
             var resultList = methodDef.ResultListType.Factory.Invoke();
@@ -59,14 +59,14 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
         }
     }
 
-    public async ValueTask<RpcCacheValue> Get(RpcCacheKey key, CancellationToken cancellationToken = default)
+    public async ValueTask<RpcCacheValue?> Get(RpcCacheKey key, CancellationToken cancellationToken = default)
     {
         if (!WhenInitialized.IsCompleted)
-            return default;
+            return null;
 
         var bytes = await Get(key.ToString(), cancellationToken).ConfigureAwait(false);
         var cacheValue = FromBytes(bytes);
-        DebugLog?.LogDebug("Get({Key}) -> {Result}", key, cacheValue.IsNone ? "miss" : "hit");
+        DebugLog?.LogDebug("Get({Key}) -> {Result}", key, cacheValue is null ? "miss" : "hit");
         return cacheValue;
     }
 
@@ -103,9 +103,9 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
 
     // Protected methods
 
-    protected static byte[]? ToBytes(RpcCacheValue cacheValue)
+    protected static byte[]? ToBytes(RpcCacheValue? cacheValue)
     {
-        if (cacheValue.IsNone)
+        if (cacheValue is null)
             return null;
 
         var hash = cacheValue.Hash;
@@ -121,19 +121,19 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
         return result;
     }
 
-    protected RpcCacheValue FromBytes(byte[]? bytes)
+    protected RpcCacheValue? FromBytes(byte[]? bytes)
     {
-        if (bytes == null || bytes.Length < 1)
-            return default;
+        if (bytes is null || bytes.Length < 1)
+            return null;
 
         var byteHashLength = bytes[0] << 1;
         if (byteHashLength == 0) // Empty hash
             return new RpcCacheValue(bytes.AsMemory(1), "");
 
         if (byteHashLength != 48) {
-            // Current hash length is 24 characters
+            // The current hash length is 24 characters
             DebugLog?.LogWarning("Invalid hash length: {HashLength}", byteHashLength >> 1);
-            return default;
+            return null;
         }
 
         var span = bytes.AsSpan(1);

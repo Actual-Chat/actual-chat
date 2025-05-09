@@ -35,9 +35,8 @@
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private RouletteUI RouletteUI => Hub.RouletteUI;
 
-    protected override void OnInitialized() {
-        _whenRenewed = RouletteUI.ReviewState();
-    }
+    protected override void OnInitialized()
+        => _whenRenewed = RouletteUI.ReviewState();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

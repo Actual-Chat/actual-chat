@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INotifyInitialized
 {
-    private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private readonly MutableState<AccountFull> _ownAccount;
     private readonly MutableState<Moment> _lastChangedAt;
     private readonly MutableState<SignInRequest?> _activeSignInRequest;
@@ -27,7 +27,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private Dispatcher Dispatcher => Hub.Dispatcher;
     private MomentClock CpuClock { get; }
 
-    public Task WhenLoaded => _whenLoadedSource.Task;
+    public Task WhenReady => _whenReadySource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
     public IState<Moment> LastChangedAt => _lastChangedAt;
     public IState<SignInRequest?> ActiveSignInRequest => _activeSignInRequest;
@@ -58,7 +58,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
             Category = StateCategories.Get(type, nameof(ActiveSignInRequest)),
         });
         if (!ReferenceEquals(initialOwnAccount, SpecialAccount.Loading))
-            _whenLoadedSource.TrySetResult();
+            _whenReadySource.TrySetResult();
     }
 
     void INotifyInitialized.Initialized()

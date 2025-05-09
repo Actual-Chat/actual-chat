@@ -7,7 +7,7 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
 {
     private static long _lastId;
-    private readonly TaskCompletionSource _whenClosedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenClosedSource = AsyncTaskMethodBuilderExt.New();
     private ModalStepRefImpl? _modalStepRef;
 
     public Symbol Id { get; }

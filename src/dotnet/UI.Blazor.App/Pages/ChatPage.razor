@@ -156,7 +156,7 @@
         if (pageRouteState == PageRouteState.UnknownAlias)
             return Model.Unavailable(false);
 
-        await ChatUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await ChatUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         ChatId = chatId;
@@ -183,8 +183,8 @@
         }
 
         try {
-            if (!AccountUI.WhenLoaded.IsCompleted)
-                await AccountUI.WhenLoaded.WaitAsync(LoadTimeout, cancellationToken).ConfigureAwait(false);
+            if (!AccountUI.WhenReady.IsCompleted)
+                await AccountUI.WhenReady.WaitAsync(LoadTimeout, cancellationToken).ConfigureAwait(false);
             var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
             var chat = SpecialChat.NoChatSelected;
             if (chatId is not null) {
@@ -300,7 +300,7 @@
             }
         }
         if (chatId is null) {
-            await ChatUI.WhenLoaded;
+            await ChatUI.WhenReady;
             chatId = ChatUI.SelectedChatId.Value;
             // If the selected place is there, but chat Id isn't, then apparently the place has no chats,
             // and we want to display a blank chat screen. Do not show Announcements chat.

@@ -84,8 +84,8 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AttachmentList.create";
 
-    private readonly object _lock = new();
-    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private readonly Lock _lock = new();
+    private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
     private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
     private ElementReference FilePickerRef { get; set; }

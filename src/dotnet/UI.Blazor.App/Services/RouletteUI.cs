@@ -8,7 +8,7 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 {
     public static readonly IReadOnlyList<Country> CountryOptions = [Country.NotSpecified, ..Countries.All];
 
-    private readonly TaskCompletionSource _whenLoaded;
+    private readonly AsyncTaskMethodBuilder _whenReadySource;
     private readonly MutableState<Profile> _selectedProfile;
     private readonly MutableState<Search?> _activeSearch;
     private readonly MutableState<Preferences> _searchCriteria;
@@ -18,17 +18,16 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private History History => Hub.History;
     private UICommander UICommander => Hub.UICommander();
 
-    public Task WhenLoaded => _whenLoaded.Task;
+    public Task WhenReady => _whenReadySource.Task;
     public IState<Profile> SelectedProfile => _selectedProfile;
     public IState<Preferences> SearchCriteria => _searchCriteria;
     public IState<Search?> ActiveSearch => _activeSearch;
 
     //private SearchRequest? _searchRequest;
 
-    public RouletteUI(ChatUIHub hub):base(hub)
+    public RouletteUI(ChatUIHub hub) : base(hub)
     {
-        //Hub = hub;
-        _whenLoaded = new TaskCompletionSource();
+        _whenReadySource = AsyncTaskMethodBuilderExt.New();
         _selectedProfile = hub.StateFactory().NewMutable(SpecialProfile.None);
         _selectedProfile.Updated += (_, _) => {
             var profileId = _selectedProfile.Value.Id;
@@ -125,7 +124,7 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             }
         }
         _ = UpdateSearchResult();
-        _whenLoaded.TrySetResult();
+        _whenReadySource.TrySetResult();
     }
 
     public virtual async Task StartChat(Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken = default)

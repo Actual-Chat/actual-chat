@@ -3,17 +3,17 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost>
+public sealed class BubbleUI : ScopedServiceBase<UIHub>
 {
-    private readonly Acceptor<BubbleHost> _hostAcceptor = new(true);
     private readonly SyncedState<UserBubbleSettings> _settings;
 
     private AccountUI AccountUI => Hub.AccountUI;
-    Acceptor<BubbleHost> IHasAcceptor<BubbleHost>.Acceptor => _hostAcceptor;
 
     public IState<UserBubbleSettings> Settings => _settings;
-    public Task WhenReady => _hostAcceptor.WhenAccepted();
-    public BubbleHost Host => _hostAcceptor.Value;
+    public TaskCompletionSource<BubbleHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<BubbleHost>();
+    public Task WhenReady => HostAcceptor.Task;
+    [field: AllowNull, MaybeNull]
+    public BubbleHost Host => field ??= HostAcceptor.Task.RequireResult();
 
     public BubbleUI(UIHub hub) : base(hub)
     {
@@ -29,7 +29,7 @@ public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost
     public async Task WhenReadyToShowBubbles()
     {
         // Wait for sign-in
-        await AccountUI.WhenLoaded.ConfigureAwait(false);
+        await AccountUI.WhenReady.ConfigureAwait(false);
         await Clocks.Timeout(2)
             .ApplyTo(ct => AccountUI.OwnAccount.Computed.When(x => !x.IsGuestOrNull(), ct))
             .SilentAwait(false);

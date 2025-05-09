@@ -40,7 +40,7 @@
     private bool _readyToRender;
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
-    private readonly TaskCompletionSource _whenFirstRendered = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenFirstRendered = AsyncTaskMethodBuilderExt.New();
 
     [Inject] protected INavigationInterception NavigationInterception { get; init; } = null!;
     [Inject] protected UIHub UIHub { get; init; } = null!;

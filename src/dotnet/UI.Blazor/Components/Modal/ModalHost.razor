@@ -44,7 +44,7 @@
     protected override void OnInitialized()
     {
         History.Register(new OwnHistoryState(this, ImmutableSortedSet<Symbol>.Empty));
-        ((IHasAcceptor<ModalHost>)ModalUI).Acceptor.Accept(this);
+        ModalUI.HostAcceptor.TrySetResult(this);
     }
 
     protected override void OnAfterRender(bool firstRender)

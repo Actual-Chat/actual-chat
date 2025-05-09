@@ -13,7 +13,7 @@ public partial class History : ScopedServiceBase<UIHub>, IDisposable
     public const int MaxItemCount = 200;
 
     private DotNetObjectReference<History>? _blazorRef;
-    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private readonly MutableState<HistoryItem> _state;
 
     private new ILogger? DebugLog { get; }

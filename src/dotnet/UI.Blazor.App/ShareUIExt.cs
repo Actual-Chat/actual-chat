@@ -27,7 +27,7 @@ public static class ShareUIExt
 
         if (chatId is PeerChatId peerChatId) {
             var accountUI = hub.GetRequiredService<AccountUI>();
-            await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await accountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             var ownAccount = accountUI.OwnAccount.Value;
             if (ownAccount.IsGuestOrNull())
                 return null;

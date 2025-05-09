@@ -16,7 +16,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         $"{BlazorUIAppModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
 
     private readonly MutableState<bool?> _permissionState;
-    private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenPermissionStateReady = AsyncTaskMethodBuilderExt.New();
     private volatile Task<string?>? _registerDeviceTask;
 
     [field: AllowNull, MaybeNull]
@@ -171,7 +171,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
             _registerDeviceTask = Task.Run(async () => {
                 // Wait for sign-in
                 Log.LogInformation("-> RegisterDeviceTask has started. Waiting for loading account...");
-                await Hub.AccountUI.WhenLoaded.ConfigureAwait(false);
+                await Hub.AccountUI.WhenReady.ConfigureAwait(false);
                 for (int i = 0; i < MaxRetryCount; i++) {
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                     using var cts = parentToken.LinkWith(timeoutCts.Token);

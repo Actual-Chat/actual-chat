@@ -18,11 +18,11 @@ public sealed partial class AudioInitializer(UIHub hub)
 
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
-    private AppActivity? _appActivity;
-    private IJSRuntime? _js;
 
-    private IJSRuntime JS => _js ??= Services.JSRuntime();
-    private AppActivity AppActivity => _appActivity ??= Services.GetRequiredService<AppActivity>();
+    [field: AllowNull, MaybeNull]
+    private IJSRuntime JS => field ??= Services.JSRuntime();
+    [field: AllowNull, MaybeNull]
+    private AppActivity AppActivity => field ??= Services.GetRequiredService<AppActivity>();
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 

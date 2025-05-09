@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Components;
 
 public abstract class ComputedMenuBase<TState> : ComputedStateComponent<TState>, IMenu
 {
-    private readonly TaskCompletionSource _whenClosedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenClosedSource = AsyncTaskMethodBuilderExt.New();
 
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string[] Arguments { get; set; } = [];

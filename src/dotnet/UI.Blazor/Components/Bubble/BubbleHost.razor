@@ -42,7 +42,7 @@
     public BubbleHost() { }
 
     protected override void OnInitialized() {
-        ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
+        BubbleUI.HostAcceptor.TrySetResult(this);
         AccountUI.Changed += OnOwnAccountChanged;
     }
 

@@ -25,7 +25,7 @@ public static class ShareUIExt2
         this ShareUI shareUI, CancellationToken cancellationToken = default)
     {
         var accountUI = shareUI.Hub.AccountUI;
-        await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await accountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var ownAccount = accountUI.OwnAccount.Value;
         if (ownAccount.IsGuestOrNull())
             return null;
@@ -47,7 +47,7 @@ public static class ShareUIExt2
 
         var hub = shareUI.Hub;
         var accountUI = hub.GetRequiredService<AccountUI>();
-        await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await accountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var ownAccount = accountUI.OwnAccount.Value;
         if (userId == ownAccount.Id)
             return await shareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);

@@ -4,21 +4,21 @@ using ActualChat.UI.Blazor.Module;
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
-/// Keeps splash screen / splash UI open in WASM & MAUI.
+/// Keeps the splash screen / splash UI open in WASM & MAUI.
 /// </summary>
 public class LoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
     // ReSharper disable once InconsistentNaming
-    private static readonly TaskCompletionSource _whenAppRenderedSource = new();
+    private static readonly AsyncTaskMethodBuilder _whenAppRenderedSource = AsyncTaskMethodBuilderExt.New();
 
     public static TimeSpan AppCreationTime { get; private set; }
     public static TimeSpan AppBuildTime { get; private set; }
     public static Task WhenAppRendered => _whenAppRenderedSource.Task;
 
-    private readonly TaskCompletionSource _whenLoadedSource = new();
-    private readonly TaskCompletionSource _whenRenderedSource = new();
-    private readonly TaskCompletionSource _whenChatListLoadedSource = new();
+    private readonly AsyncTaskMethodBuilder _whenLoadedSource = AsyncTaskMethodBuilderExt.New();
+    private readonly AsyncTaskMethodBuilder _whenRenderedSource = AsyncTaskMethodBuilderExt.New();
+    private readonly AsyncTaskMethodBuilder _whenChatListLoadedSource = AsyncTaskMethodBuilderExt.New();
     private volatile int _isWebSplashRemoved;
 
     private IServiceProvider Services { get; }

@@ -39,8 +39,8 @@ public class IosMediaSaver(UIHub uiHub) : IMediaSaver
 
     private Task Save(string tempFilePath, PHAssetResourceType type)
     {
-        var tcs = new TaskCompletionSource();
-        var nsUrl = NSUrl.FromFilename(tempFilePath);
+        var completedSource = AsyncTaskMethodBuilderExt.New();
+        // var nsUrl = NSUrl.FromFilename(tempFilePath);
         PHPhotoLibrary.SharedPhotoLibrary.PerformChanges(
             () => {
                 switch (type) {
@@ -59,13 +59,13 @@ public class IosMediaSaver(UIHub uiHub) : IMediaSaver
             (success, error) => {
                 File.Delete(tempFilePath);
                 if (success)
-                    tcs.SetResult();
+                    completedSource.SetResult();
                 else {
                     Log.LogError(new NSErrorException(error), "Could not save media to photo library: {Error}", error);
-                    tcs.SetException(StandardError.External("Could not save media to library."));
+                    completedSource.SetException(StandardError.External("Could not save media to library."));
                 }
             });
-        return tcs.Task;
+        return completedSource.Task;
     }
 
     private async Task<(string tempFilePath, PHAssetResourceType)> DownloadToTempFile(string url, string contentType)

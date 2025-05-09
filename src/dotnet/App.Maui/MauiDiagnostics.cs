@@ -164,7 +164,7 @@ public static class MauiDiagnostics
         if (!MauiSettings.IsDevApp) {
             var scopedServices = await WhenBlazorAppServicesReady().ConfigureAwait(false);
             var accountUI = scopedServices.GetRequiredService<AccountUI>();
-            await accountUI.WhenLoaded.ConfigureAwait(false);
+            await accountUI.WhenReady.ConfigureAwait(false);
             var ownAccount = await accountUI.OwnAccount.Use().ConfigureAwait(false);
             if (!ownAccount.IsAdmin)
                 return;

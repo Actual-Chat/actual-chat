@@ -9,7 +9,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
 {
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<NextBeepState?> _nextBeep;
-    private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
 
     private IChats Chats => Hub.Chats;
     private ChatActivity ChatActivity => Hub.ChatActivity;
@@ -65,7 +65,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
     {
-        await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
+        await Hub.ChatUI.WhenReady.ConfigureAwait(false);
 
         var listeningSettings = await AccountSettings
             .GetUserListeningSettings(cancellationToken)
