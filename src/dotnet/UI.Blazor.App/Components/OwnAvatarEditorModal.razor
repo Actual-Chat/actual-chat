@@ -109,7 +109,7 @@
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
-        _form.Picture = (avatar ?? SpecialAvatar.None).Picture;
+        _form.Picture = avatar?.Picture;
 
         _form.Name = avatar?.Name ?? "";
         _form.Bio = avatar?.Bio ?? "";
@@ -191,7 +191,9 @@
         => _form.IsDefault = !_form.IsDefault;
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
-    public sealed class FormModel : FormModel<FormModel> {
+    public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
+        : FormModel<FormModel>("avatar-editor", componentIdGenerator)
+    {
         [Required, MinLength(1)] public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
         public string Bio { get; set; } = "";
@@ -202,10 +204,6 @@
         public string IsActiveFieldId { get; set; } = "";
         public string Title { get; set; } = "";
         public Picture? Picture { get; set; }
-
-        public FormModel(ComponentIdGenerator? componentIdGenerator)
-            : base("avatar-editor", componentIdGenerator) {
-        }
     }
 
     // Nested types

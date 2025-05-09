@@ -3,8 +3,8 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
-[ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Mention : IHasId<Symbol>, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; }
@@ -13,4 +13,8 @@ public sealed partial record Mention : IHasId<Symbol>, IRequirementTarget
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ChatId => EntryId.ChatId;
+
+    // This record relies on referential equality
+    public bool Equals(Mention? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

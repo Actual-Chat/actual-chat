@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<AccountFull?>
 @{
     var account = State.Value;
 }
@@ -6,7 +6,7 @@
 <div @ref="Ref" class="landing theme-light" xmlns="http://www.w3.org/1999/html">
     <LandingLeftMenu @ref="LandingLeftMenuRef" />
 
-    <LandingHeader Click="@OnMenuHandleClick"/>
+    <LandingHeader Account="@account" Click="@OnMenuHandleClick"/>
 
     <LandingPage Class="page-1">
         <LandingPage1

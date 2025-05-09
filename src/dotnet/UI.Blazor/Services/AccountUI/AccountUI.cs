@@ -24,7 +24,6 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private ReloadUI ReloadUI => Hub.ReloadUI;
     private History History => Hub.History;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
     private MomentClock CpuClock { get; }
 
     public Task WhenReady => _whenReadySource.Task;
@@ -41,12 +40,13 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
 
         _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.HostKind.IsServer() ? 0.5 : 2);
         var ownAccountComputed = Computed.GetExisting(() => Accounts.GetOwn(Session, default));
-        var ownAccount = ownAccountComputed?.IsConsistent() == true &&  ownAccountComputed.HasValue ? ownAccountComputed.Value : null;
-        var initialOwnAccount = ownAccount ?? SpecialAccount.Loading;
+        var ownAccount = ownAccountComputed?.IsConsistent() == true && ownAccountComputed.HasValue
+            ? ownAccountComputed.Value
+            : null;
 
         var type = GetType();
         _ownAccount = StateFactory.NewMutable<AccountFull>(new () {
-            InitialValue = initialOwnAccount,
+            InitialValue = ownAccount!,
             Category = StateCategories.Get(type, nameof(OwnAccount)),
         });
         _lastChangedAt = StateFactory.NewMutable<Moment>(new () {
@@ -57,8 +57,8 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
             InitialValue = null,
             Category = StateCategories.Get(type, nameof(ActiveSignInRequest)),
         });
-        if (!ReferenceEquals(initialOwnAccount, SpecialAccount.Loading))
-            _whenReadySource.TrySetResult();
+        if (ownAccount is not null)
+            MarkReady();
     }
 
     void INotifyInitialized.Initialized()

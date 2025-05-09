@@ -58,7 +58,8 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
             // We give it 5 seconds to complete, otherwise it won't be shown
             using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             try {
-                shouldBeShown = await ShouldBeShown(cts.Token).ConfigureAwait(true);
+                shouldBeShown = await ShouldBeShown(cts.Token)
+                    .ConfigureAwait(true); // true is required here!
             }
             catch (OperationCanceledException) { }
             finally {
@@ -69,7 +70,9 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
             if (!shouldBeShown)
                 return false;
 
-            _lastModalRef = await ModalUI.Show(new OnboardingModal.Model(), CancellationToken.None).ConfigureAwait(false);
+            _lastModalRef = await ModalUI
+                .Show(new OnboardingModal.Model(), CancellationToken.None)
+                .ConfigureAwait(false); // Ok (pre-exit)
             return true;
         }
         finally {

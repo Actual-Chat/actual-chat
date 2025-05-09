@@ -1,55 +1,56 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@inherits ComputedRenderStateComponent<FoundUserListItem.Model>
+@inherits ComputedRenderStateComponent<FoundUserListItem.Model?>
 @{
     var m = State.Value;
-    if (m == Model.None)
+    if (m is null) {
+        <ChatListItemSkeleton />
+        return;
+    }
+    if (m.ChatState is null)
         return;
 
     var chatState = m.ChatState;
+    var chat = chatState.Chat;
 }
 
-@if (m == Model.Loading) {
-    <ChatListItemSkeleton />
-} else {
-    <NavbarItem Class="found-result contact" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
-        <div class="c-content">
-            <div class="c-container">
-                <ChatIcon Chat="@chatState.Chat"/>
-                <div class="c-description">
-                    <div class="c-first-line">
-                        <span class="c-title">
-                            <SearchMatchHighlighter Match="@m.TitleMatch"/>
-                        </span>
-                    </div>
-                    @if (m.Entry != null) {
-                        <div class="c-second-line">
-                            <div class="c-last-message">
-                                <AuthorName
-                                    AuthorSid="@m.Entry.AuthorId.Value"
-                                    ShowDetailsOnClick="false"
-                                    ShowAsYou="true"/>
-                                <span class="c-colon">:</span>
-                                @if (m.Entry.IsStreaming) {
-                                    <chat-activity-svg size="4" isActive="true"/>
-                                } else {
-                                    <span class="c-text">
-                                        @m.ChatState.Info.LastTextEntryText
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                    } else {
-                        <div class="c-second-line bio">
-                            @m.Author?.Avatar.Bio
-                        </div>
-                    }
+<NavbarItem Class="found-result contact" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+    <div class="c-content">
+        <div class="c-container">
+            <ChatIcon Chat="@chat"/>
+            <div class="c-description">
+                <div class="c-first-line">
+                    <span class="c-title">
+                        <SearchMatchHighlighter Match="@m.TitleMatch"/>
+                    </span>
                 </div>
+                @if (m.Entry != null) {
+                    <div class="c-second-line">
+                        <div class="c-last-message">
+                            <AuthorName
+                                AuthorSid="@m.Entry.AuthorId.Value"
+                                ShowDetailsOnClick="false"
+                                ShowAsYou="true"/>
+                            <span class="c-colon">:</span>
+                            @if (m.Entry.IsStreaming) {
+                                <chat-activity-svg size="4" isActive="true"/>
+                            } else {
+                                <span class="c-text">
+                                    @m.ChatState.Info.LastTextEntryText
+                                </span>
+                            }
+                        </div>
+                    </div>
+                } else {
+                    <div class="c-second-line bio">
+                        @m.Author?.Avatar.Bio
+                    </div>
+                }
             </div>
         </div>
-    </NavbarItem>
-}
+    </div>
+</NavbarItem>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -60,14 +61,7 @@
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
@@ -77,16 +71,12 @@
         var titleMatch = foundItem.ContactSearchMatch;
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (chatState == null)
-            return Model.None;
-
-        if (chatId is not PeerChatId peerChatId)
+        if (chatState is null || chatId is not PeerChatId peerChatId)
             return Model.None;
 
         var chat = chatState.Chat;
         var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account!.Id);
         var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken).ConfigureAwait(false);
-
         if (anotherAuthor == null)
             return Model.None;
 
@@ -109,15 +99,18 @@
     // Nested types
 
     public sealed record Model {
-        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
-        public static readonly Model None = new() { ChatState = ChatState.None };
+        public static readonly Model None = new();
 
-        public ChatState ChatState { get; init; } = ChatState.None;
+        public ChatState? ChatState { get; init; }
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
         public ChatEntry? Entry { get; init; }
         public LocalUrl Link { get; init; }
         public Author? Author { get; init; }
         public FoundItem Item { get; init; } = null!;
         public bool IsSelected { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

@@ -1,11 +1,10 @@
 @page "/test/auth"
-@inherits ComputedStateComponent<AuthTestPage.Model>
+@inherits ComputedStateComponent<AuthTestPage.Model?>
 @{
 #pragma warning disable IL2026
 
-    var m = State.Value;
-    var error = State.Error;
-    var usedAuthSchemas = m.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var (m, error) = (State.LastNonErrorValue, State.Error);
+    var usedAuthSchemas = m?.User.Identities.Select(kv => kv.Key.Schema).ToHashSet() ?? new HashSet<string>();
     var unusedAuthSchemas = AccountUI.GetAuthSchemas().Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
 
@@ -13,8 +12,10 @@
 <MainHeader>Authentication Test Page</MainHeader>
 
 @if (error != null) {
-    <ErrorToast Title="Update error" Class="mb-3">@error.Message</ErrorToast>
+    <ErrorToast Class="mb-3">@error.Message</ErrorToast>
 }
+@if (m is null)
+    return;
 
 <h3 class="section border-0">Session</h3>
 <ul>
@@ -125,17 +126,9 @@
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private LiveTime LiveTime { get; init; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
@@ -162,8 +155,7 @@
 
     // Nested types
 
-    public sealed record SessionModel
-    {
+    public sealed record SessionModel {
         public string SessionHash { get; init; } = "";
         public string IPAddress { get; init; } = "";
         public string UserAgent { get; init; } = "";
@@ -174,12 +166,13 @@
     }
 
     public sealed record Model {
-        public static readonly Model None = new() { Account = SpecialAccount.None };
-        public static readonly Model Loading = new() { Account = SpecialAccount.Loading };
-
         public SessionInfo? SessionInfo { get; init; }
         public AccountFull Account { get; init; } = null!;
         public User User => Account.User;
         public ImmutableList<SessionModel> Sessions { get; init; } = ImmutableList<SessionModel>.Empty;
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

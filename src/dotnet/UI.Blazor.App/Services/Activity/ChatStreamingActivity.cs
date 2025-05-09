@@ -28,7 +28,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;
 
     public ChatActivity Owner { get; }
-    public ChatId ChatId { get; internal set; }
+    public ChatId ChatId { get; internal set; } = null!;
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
 
@@ -49,7 +49,6 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     {
         Owner = owner;
         Hub = owner.Hub;
-        ChatId = SpecialChat.Loading.Id;
         _lastTranscribedAt = Hub.StateFactory()
             .NewMutable((Moment?)Moment.MinValue,
                 StateCategories.Get(GetType(), nameof(LastTranscribedAt)));

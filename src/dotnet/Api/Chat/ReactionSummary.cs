@@ -1,10 +1,12 @@
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; } = "";
     [DataMember, MemoryPackOrder(1)] public long Version { get; init; }
@@ -34,4 +36,9 @@ public partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequ
 
     public ReactionSummary RemoveAuthor(AuthorId authorId)
         => this with { FirstAuthorIds = FirstAuthorIds.Remove(authorId) };
+
+    // This record relies on referential equality
+    public bool Equals(ReactionSummary? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+
 }

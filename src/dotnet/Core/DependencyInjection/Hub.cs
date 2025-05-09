@@ -6,10 +6,11 @@ namespace ActualChat.DependencyInjection;
 
 public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IHasIsDisposed
 {
+    private readonly MomentClockSet _clocks;
     private readonly HostInfo _hostInfo;
     private readonly StateFactory _stateFactory;
     private readonly ILoggerFactory _logs;
-    private readonly MomentClockSet _clocks;
+    private readonly Tracer _tracer;
     private readonly List<Task> _tasks = new();
     private readonly List<object> _disposables = new();
     private readonly CancellationTokenSource _whenStoppedCts;
@@ -21,13 +22,13 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     private Features? _features;
     private ICommander? _commander;
     private RpcHub? _rpcHub;
-    private Tracer? _tracer;
 
     public IServiceProvider Services { get; }
     [field: AllowNull, MaybeNull]
     public DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
+    public MomentClockSet Clocks() => _clocks;
     public HostInfo HostInfo() => _hostInfo;
     public Session Session() => _session ??= Services.GetRequiredService<Session>();
     public UrlMapper UrlMapper() => _urlMapper ??= Services.GetRequiredService<UrlMapper>();
@@ -36,7 +37,12 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     public Features Features() => _features ??= Services.GetRequiredService<Features>();
     public ICommander Commander() => _commander ??= Services.Commander();
     public RpcHub RpcHub() => _rpcHub ??= Services.GetRequiredService<RpcHub>();
-    public Tracer Tracer() => _tracer ??= Services.Tracer();
+    public StateFactory StateFactory() => _stateFactory;
+    public ILoggerFactory LoggerFactory() => _logs;
+    public Tracer Tracer() => _tracer;
+    public Tracer Tracer(string name) => Tracer()[name];
+    public Tracer Tracer(Type type) => Tracer()[type];
+    public Tracer Tracer<TService>() => Tracer()[typeof(TService)];
 
     public CancellationToken StopToken { get; }
     public Task? WhenDisposed => _whenDisposed;
@@ -48,18 +54,12 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
         _hostInfo = services.HostInfo();
         _stateFactory = services.GetRequiredService<StateFactory>();
         _logs = services.GetRequiredService<ILoggerFactory>();
+        _tracer = services.Tracer();
         _clocks = services.GetRequiredService<MomentClockSet>();
 
         _whenStoppedCts = new CancellationTokenSource();
         StopToken = _whenStoppedCts.Token;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public StateFactory StateFactory() => _stateFactory;
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ILoggerFactory LoggerFactory() => _logs;
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public MomentClockSet Clocks() => _clocks;
 
     public ValueTask DisposeAsync()
     {
@@ -120,12 +120,12 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
             return ad.DisposeSilentlyAsync();
         case IDisposable d:
             d.DisposeSilently();
-            return default;
+            break;
         case Func<ValueTask> f:
             return f.Invoke();
         case Action a:
             a.Invoke();
-            return default;
+            break;
         }
         return default;
     }

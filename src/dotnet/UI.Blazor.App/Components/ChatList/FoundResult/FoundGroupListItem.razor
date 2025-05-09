@@ -1,44 +1,44 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@inherits ComputedRenderStateComponent<FoundGroupListItem.Model>
+@inherits ComputedRenderStateComponent<FoundGroupListItem.Model?>
 @{
     var m = State.Value;
-    if (ReferenceEquals(m, Model.None))
+    if (m is null) {
+        <ChatListItemSkeleton />
+        return;
+    }
+    if (m.ChatState is null)
         return;
 
     var chat = m.ChatState.Chat;
 }
 
-@if (m == Model.Loading) {
-    <ChatListItemSkeleton />
-} else {
-    <NavbarItem Class="found-result chat" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
-        <div class="c-content">
-            <div class="c-container">
-                <ChatIcon Chat="@chat"/>
-                <div class="c-description">
-                    <div class="c-first-line">
-                        <span class="c-title">
-                            <SearchMatchHighlighter Match="@m.TitleMatch"/>
-                        </span>
-                        <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
-                    </div>
-                    @if (m.Place is not null && !IsPlace) {
-                        <div class="c-second-line">
-                            In <span class="c-place-title">@m.Place.Title</span>
-                        </div>
-                    }
-                    @if (!chat.Description.IsNullOrEmpty()) {
-                        <div class="c-third-line">
-                            @chat.Description
-                        </div>
-                    }
+<NavbarItem Class="found-result chat" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+    <div class="c-content">
+        <div class="c-container">
+            <ChatIcon Chat="@chat"/>
+            <div class="c-description">
+                <div class="c-first-line">
+                    <span class="c-title">
+                        <SearchMatchHighlighter Match="@m.TitleMatch"/>
+                    </span>
+                    <span class="c-members">@m.MemberCount @("member".Pluralize(m.MemberCount))</span>
                 </div>
+                @if (m.Place is not null && !IsPlace) {
+                    <div class="c-second-line">
+                        In <span class="c-place-title">@m.Place.Title</span>
+                    </div>
+                }
+                @if (!chat.Description.IsNullOrEmpty()) {
+                    <div class="c-third-line">
+                        @chat.Description
+                    </div>
+                }
             </div>
         </div>
-    </NavbarItem>
-}
+    </div>
+</NavbarItem>
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -51,14 +51,7 @@
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
     [Parameter] public bool IsPlace { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
@@ -91,15 +84,18 @@
     // Nested types
 
     public sealed record Model {
-        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
-        public static readonly Model None = new() { ChatState = ChatState.None };
+        public static readonly Model None = new();
 
-        public ChatState ChatState { get; init; } = ChatState.None;
+        public ChatState? ChatState { get; init; }
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
         public LocalUrl Link { get; init; }
         public FoundItem Item { get; init; } = null!;
         public bool IsSelected { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

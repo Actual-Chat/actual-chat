@@ -28,7 +28,11 @@ public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
     protected override async Task Troubleshoot(CancellationToken cancellationToken)
     {
         var model = new RecordingTroubleshooterModal.Model();
-        var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
-        await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var modalRef = await ModalUI
+            .Show(model, cancellationToken)
+            .ConfigureAwait(false); // Ok (see the next line)
+        await modalRef.WhenClosed
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false); // Ok (pre-exit)
     }
 }

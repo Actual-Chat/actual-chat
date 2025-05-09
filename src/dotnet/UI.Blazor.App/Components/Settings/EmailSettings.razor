@@ -1,12 +1,12 @@
 @using System.ComponentModel.DataAnnotations
-@using System.Diagnostics.CodeAnalysis
 @using TimeZone = ActualChat.Users.TimeZone
 @implements IDisposable
 @{
-#pragma warning disable IL2091
+    #pragma warning disable IL2091
 
-    if (ReferenceEquals(_timeZoneFormModel, null))
+    if (!_readyToRender)
         return;
+
     var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZoneName, _timeZoneFormModel.SelectedTimeZoneName);
     var browserTimeZoneNameFound = _timeZoneFormModel.BrowserTimeZoneName != "";
     var updateTimeZoneVisible = timeZoneChanged && browserTimeZoneNameFound;
@@ -83,7 +83,8 @@
     private TimeZoneFormModel _timeZoneFormModel = null!;
     private EmailFormModel _emailFormModel = null!;
     private IReadOnlyCollection<TimeZone> _timeZones = [];
-    private AccountFull _account = SpecialAccount.Loading;
+    private AccountFull _account = null!;
+    private bool _readyToRender;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private ITimeZones TimeZones { get; init; } = null!;
@@ -109,6 +110,7 @@
             BrowserTimeZoneId = browserTimeZoneId,
             BrowserTimeZoneName = browserTimeZoneName,
         };
+        _readyToRender = true;
     }
 
     public void Dispose() {

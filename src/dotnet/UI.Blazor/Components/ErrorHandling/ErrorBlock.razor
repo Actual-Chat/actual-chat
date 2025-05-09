@@ -1,49 +1,46 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<AccountFull?>
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, SpecialAccount.Loading))
-        return;
 }
 
 @if (Failures.Errors.Any(e => e is GuestAccountException)) {
     <SignInBlock/>
 } else if (Failures.Errors.Any(e => e is SuspendedAccountException)) {
-    <SignOutBlock>
+    <SignOutOrSignInBlock Account="@account">
         <b>Your account is suspended.</b><br/>
         Please feel free to contact us &ndash; we'll try to help.
-    </SignOutBlock>
+    </SignOutOrSignInBlock>
 } else if (Failures.Errors.Any(e => e is InactiveAccountException)) {
-    <SignOutBlock>
+    <SignOutOrSignInBlock Account="@account">
         You're successfully signed in, but your account is inactive.<br/>
         We activate new accounts when we're ready to onboard more people.<br/>
         If you have an invite code, you can use it now.
-    </SignOutBlock>
+    </SignOutOrSignInBlock>
 } else if (Failures.Errors.Any(e => e is NonAdminAccountException)) {
-    <SignOutBlock>
+    <SignOutOrSignInBlock Account="@account">
         Sorry, but only service administrators can perform this action.
-    </SignOutBlock>
+    </SignOutOrSignInBlock>
 } else {
     <RequirementFailureBlock Failures="@Failures" Account="@account"/>
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
     [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;
 
-    protected override ComputedState<AccountFull>.Options GetStateOptions()
+    protected override ComputedState<AccountFull?>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.Use(cancellationToken);
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        // This component can be rendered before AccountUI.WhenReady,
+        // so AccountUI.OwnAccount could be null here!
+        => AccountUI.OwnAccount.Use(cancellationToken)!;
 }

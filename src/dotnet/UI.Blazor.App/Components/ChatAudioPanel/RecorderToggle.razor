@@ -115,7 +115,7 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     private ChatId? ChatId => (ChatId?)Chat.Id;
 
     protected override void OnInitialized() {

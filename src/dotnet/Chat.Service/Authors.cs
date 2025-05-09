@@ -52,7 +52,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account.Id == userId)
-            return author; // It's own author
+            return author; // Its own author
 
         var contactId = ContactId.NewUser(account.Id, userId);
         var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);

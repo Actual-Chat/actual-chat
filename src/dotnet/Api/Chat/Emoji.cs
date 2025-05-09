@@ -1,5 +1,8 @@
+using ActualLab.Fusion.Blazor;
+
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequirementTarget
 {
     public static readonly Emoji None = new(Symbol.Empty, "");
@@ -41,10 +44,7 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
     public static implicit operator Emoji(Symbol code) => _all.GetValueOrDefault(code, None);
     public static implicit operator Emoji(string code) => _all.GetValueOrDefault(code, None);
 
-    // Equality
-
-    public bool Equals(Emoji? other)
-        => !ReferenceEquals(null, other) && Id.Equals(other.Id);
-    public override int GetHashCode()
-        => Id.GetHashCode();
+    // Equality is based on Id
+    public bool Equals(Emoji? other) => !ReferenceEquals(null, other) && Id.Equals(other.Id);
+    public override int GetHashCode() => Id.GetHashCode();
 }

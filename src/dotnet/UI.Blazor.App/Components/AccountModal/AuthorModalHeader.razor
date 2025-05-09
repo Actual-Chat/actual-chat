@@ -103,7 +103,9 @@
         if (account == null)
             return null;
 
-        return await ShareUI.GetModel(account.Id, cancellationToken).ConfigureAwait(true);
+        return await ShareUI
+            .GetModel(account.Id, cancellationToken)
+            .ConfigureAwait(false); // Ok (pre-exit)
     }
 
     private Task OnShareClick()

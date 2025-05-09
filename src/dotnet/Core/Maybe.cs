@@ -1,3 +1,4 @@
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 using MessagePack;
 
@@ -18,6 +19,7 @@ public static class Maybe
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [MessagePackObject(true, SuppressSourceGeneration = true)]
 [DebuggerDisplay("{" + nameof(DebugValue) + "}")]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
 public partial class Maybe<T>(bool hasValue, T? valueOrDefault)

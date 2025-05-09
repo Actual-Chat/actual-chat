@@ -7,8 +7,8 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
-[ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ChatEntry(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long Version = 0
@@ -137,7 +137,7 @@ public sealed partial record ChatEntry(
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method:MemoryPackConstructor]
+[method: MemoryPackConstructor]
 public sealed partial record ChatEntryDiff() : RecordDiff
 {
     [DataMember, MemoryPackOrder(10)] public bool? IsRemoved { get; init; }

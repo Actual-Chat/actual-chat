@@ -6,7 +6,6 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     private Symbol? _key;
 
     public string Key => _key ??= GetKey();
-
     public long Id { get; } = id;
 
     public ChatMessageReplacementKind ReplacementKind { get; init; }
@@ -30,11 +29,9 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
 
     // Equality
 
+    public abstract bool Equals(ChatMessage? other);
     public override bool Equals(object? obj)
         => ReferenceEquals(this, obj) || (obj is ChatMessage other && Equals(other));
-
-    public abstract bool Equals(ChatMessage? other);
-
     public abstract override int GetHashCode();
 
     public static bool operator ==(ChatMessage? left, ChatMessage? right) => Equals(left, right);

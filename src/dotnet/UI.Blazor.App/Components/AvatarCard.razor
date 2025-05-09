@@ -2,12 +2,12 @@
 
 <Pic
     Class="@Class"
-    Title="@Avatar.Name"
-    Picture="@Avatar.Picture"
+    Title="@(Avatar?.Name ?? "")"
+    Picture="@Avatar?.Picture"
     Size="@Size"/>
 
 @code {
-    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = SpecialAvatar.None;
+    [Parameter, EditorRequired] public Avatar? Avatar { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public string Class { get; set; } = "";
 }

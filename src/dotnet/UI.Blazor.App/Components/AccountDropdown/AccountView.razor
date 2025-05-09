@@ -1,9 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<Account>
+@inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, SpecialAccount.Loading))
-        return;
 }
 
 <AvatarBadge
@@ -11,19 +9,19 @@
     Size="@SquareSize.Size9"
     NameClass="hidden">
     <BadgeContent>
-        <AccountPresenceIndicator UserId="@account.Id" />
+        <AccountPresenceIndicator UserId="@account?.Id" />
     </BadgeContent>
 </AvatarBadge>
 
 @code {
     [Inject] private AccountUI AccountUI { get; init; } = null!;
 
-    protected override ComputedState<Account>.Options GetStateOptions()
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override async Task<Account> ComputeState(CancellationToken cancellationToken)
-        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken);
 }

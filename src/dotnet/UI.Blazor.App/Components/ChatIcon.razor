@@ -4,7 +4,7 @@
     var chat = Chat;
 }
 
-@switch (chat.Kind) {
+@switch (chat?.Kind) {
 case ChatKind.Group or ChatKind.Place:
     <Pic
         Title="@chat.Title"
@@ -25,7 +25,7 @@ case ChatKind.Peer when _peerChatUserId is not null:
     break;
 default:
     <AvatarCircle
-        Avatar="@SpecialAvatar.None"
+        Avatar="@null"
         Size="@Size"
         IsBlurred="@IsBlurred" />
     break;
@@ -37,7 +37,7 @@ default:
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool ShowPresence { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public bool IsSquare { get; set; }
@@ -48,7 +48,7 @@ default:
         => _peerChatUserId = GetPeerChatUserId();
 
     private UserId? GetPeerChatUserId() {
-        if (Chat.Id is not PeerChatId peerChatId)
+        if (Chat?.Id is not PeerChatId peerChatId)
             return null;
 
         var account = AccountUI.OwnAccount.Value;

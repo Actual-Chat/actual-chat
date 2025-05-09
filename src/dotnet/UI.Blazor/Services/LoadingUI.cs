@@ -37,7 +37,7 @@ public class LoadingUI
         Services = services;
         HostInfo = Services.HostInfo();
         if (HostInfo.HostKind.IsMauiApp() && StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
-            // This is to make sure first scope's timings in MAUI are relative to app start
+            // This is to make sure the first scope's timings in MAUI are relative to app start
             Tracer = StaticTracer[GetType()];
         }
         else
@@ -70,7 +70,7 @@ public class LoadingUI
         LoadTime = Tracer.Elapsed;
         Tracer.Point();
 
-        // We want to make sure MarkRendered is called no matter what (e.g. even if render fails)
+        // We want to make sure MarkRendered is called no matter what (e.g., even if render fails)
         _ = Task.Delay(TimeSpan.FromSeconds(0.5)).ContinueWith(
             _ => MarkRendered(),
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);

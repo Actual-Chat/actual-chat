@@ -53,14 +53,9 @@ internal sealed class CursorStates<TState> : ICursorStates<TState>, IDisposable
 
     public async Task SaveAsync(string key, TState state, CancellationToken cancellationToken)
     {
-        var response = await _openSearch.IndexAsync(
-                state,
-                e => e
-                    .Index(IndexSettings.IndexName)
-                    .Id(key),
-                cancellationToken
-            )
-            .ConfigureAwait(true);
+        var response = await _openSearch
+            .IndexAsync(state, e => e.Index(IndexSettings.IndexName).Id(key), cancellationToken)
+            .ConfigureAwait(false);
 
         // TODO: figure out why the code below doesn't work. Probably serialization related issue.
         // var request = new UpdateRequest<TState, TState>(IndexSettings.IndexName, key) {

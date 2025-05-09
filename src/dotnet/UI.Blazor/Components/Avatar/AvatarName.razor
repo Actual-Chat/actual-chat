@@ -1,33 +1,32 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits FusionComponentBase
 @{
-    var name = ShowAsYou ? "You" : Avatar.Name;
-    var flexClass = ShowAsYou || name.Length < 10 ? "non-shrinkable" : "shrinkable";
-}
+    if (Avatar is null) {
+        // See avatar-name-spacing class - any width mentioned below has to be listed there
+        var tailwindSpacing = new[] { 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40 };
+        var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];
+        var secondLength = tailwindSpacing[Random.Shared.Next(0, 7)];
+        <span class="@Class avatar-name skeleton animate-pulse">
+            <span class="bg-skeleton rounded-md w-@firstLength h-4"></span>
+            <span class="bg-skeleton rounded-md w-@secondLength h-4"></span>
+        </span>
+        return;
+    }
 
-@if (ReferenceEquals(Avatar, SpecialAvatar.Loading)) {
-    // See avatar-name-spacing class - any width mentioned below has to be listed there
-    var tailwindSpacing = new [] { 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40 };
-    var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];
-    var secondLength = tailwindSpacing[Random.Shared.Next(0, 7)];
-    <span class="@Class avatar-name skeleton animate-pulse">
-        <span class="bg-skeleton rounded-md w-@firstLength h-4"></span>
-        <span class="bg-skeleton rounded-md w-@secondLength h-4"></span>
-    </span>
-} else {
+    var name = IsYours ? "You" : Avatar?.Name ?? "";
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
-    <span class="@Class @extraClass @flexClass avatar-name" @onclick="@Click">
-        @name
-    </span>
-
+    var flexClass = IsYours || name.Length < 10 ? "non-shrinkable" : "shrinkable";
 }
+
+<span class="@Class @extraClass @flexClass avatar-name" @onclick="@Click">
+    @name
+</span>
 
 @code {
-    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
+    [Parameter, EditorRequired] public Avatar? Avatar { get; set; }
+    [Parameter] public bool IsAnonymous { get; set; }
+    [Parameter] public bool IsYours { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
-    [Parameter] public bool IsAnonymous { get; set; }
-    [Parameter] public bool ShowAsYou { get; set; }
 }

@@ -32,4 +32,8 @@ public sealed partial record AuthorRules(
         => Permissions.Has(required);
     public void Require(ChatPermissions required)
         => Permissions.Require(required);
+
+    // This record relies on referential equality
+    public bool Equals(AuthorRules? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

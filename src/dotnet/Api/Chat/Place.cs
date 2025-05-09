@@ -6,8 +6,8 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
-[ParameterComparer(typeof(ByIdAndVersionParameterComparer<PlaceId, long>))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Place(
     [property: DataMember, MemoryPackOrder(0)] PlaceId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0

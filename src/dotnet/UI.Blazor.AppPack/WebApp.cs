@@ -8,6 +8,9 @@ public sealed class WebApp : AppBase
 {
     [Inject] private AppNonScopedServiceStarter AppNonScopedServiceStarter { get; init; } = null!;
 
+    static WebApp()
+        => OtherUIAssemblies = [typeof(WebApp).Assembly];
+
     protected override Task OnInitializedAsync()
     {
         if (OSInfo.IsWebAssembly)

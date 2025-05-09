@@ -1,9 +1,11 @@
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Users;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Account(
     [property: DataMember, MemoryPackOrder(0)] UserId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0

@@ -343,12 +343,12 @@
         _url = new LocalUrl(HttpContext.Request.Path.Value);
         (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
         SessionResolver.Session = _session;
-        Task<AccountFull> accountTask;
+        Task<AccountFull?> accountTask;
         if (_isNewSession) {
             HttpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
-            accountTask = Task.FromResult(SpecialAccount.None);
+            accountTask = Task.FromResult((AccountFull?)null);
         } else
-            accountTask = Accounts.GetOwn(_session, cancellationToken);
+            accountTask = Accounts.GetOwn(_session, cancellationToken)!;
 
         var sessionTokenTask = SecureTokens.CreateForSession(_session, cancellationToken);
         await Task.WhenAll(accountTask, sessionTokenTask);

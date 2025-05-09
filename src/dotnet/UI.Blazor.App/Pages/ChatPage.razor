@@ -2,20 +2,22 @@
 @page "/chat/{*Route}"
 @layout ListViewLayout
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<ChatPage.Model>
+@inherits ComputedStateComponent<ChatPage.Model?>
 @{
     var m = Rendered = State.Value;
     if (_isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value)
         return;
 
-    var chat = m.Chat;
-    var account = m.OwnAccount;
-    var chatId = chat?.Id is null ? ChatId : chat.Id;
-    var chatKey = chatId?.Value;
+    var account = m?.OwnAccount;
+    var route = m?.Route;
+    var chatId = route?.ChatId;
+    var chatKey = chatId?.Value ?? "";
+    var chat = m?.Chat;
+    var footerModel = m?.FooterModel;
     Log.LogDebug("Rendered for #{ChatId}", chatId);
 }
 
-@if (ReferenceEquals(chat, SpecialChat.Unavailable) && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
+@if (chat is null && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
      <RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
          <LeftPanel IsSkeletonWidePanel="@true">
              <WidePanelBottomContent>
@@ -26,15 +28,17 @@
 }
 
 <RenderIntoSlot Name="@LayoutSlots.MainHeader">
-    @if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
-        <SkeletonChatHeader/>
-    } else {
+    @if (chat is not null) {
         <ChatHeader Chat="@chat"/>
+    } else if (route?.ChatId is not null) {
+        <ChatHeader Chat="@null" NoChatTitle="@UnavailableChatTitle"/>
+    } else {
+        <SkeletonChatHeader/>
     }
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="@LayoutSlots.MainFooter">
-    <ChatFooter Chat="@chat" Model="m.FooterModel" />
+    <ChatFooter Chat="@chat" Model="@footerModel" />
 </RenderIntoSlot>
 
 <RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1000_000" Key="BannersSubHeader">
@@ -46,29 +50,29 @@
     <ChatRightPanel Chat="@chat"/>
 </RenderIntoSlot>
 
-@if (ReferenceEquals(chat, SpecialChat.Loading)) {
+@if (m is null) {
     <chat-view-skeleton count="15" />
-} else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
-    if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
-        <InaccessiblePlace ShowSignIn="@(!account.IsActive())"/>
-    } else {
-        <ChatNotFound ShowSignIn="@(!account.IsActive())"/>
-    }
-} else if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
+} else if (chat is not null) {
+    <ChatView @key="@chatKey" ChatId="@chat.Id"/>
+} else if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
+    <InaccessiblePlace ShowSignIn="@(!account.IsActive())"/>
+} else if (route?.ChatId is not null) {
+    <ChatNotFound ShowSignIn="@(!account.IsActive())"/>
+} else {
     <NoChatSelected/>
-} else if (chatId is not null) {
-    <ChatView @key="@chatKey" ChatId="@chatId"/>
 }
 
 @code {
+    protected const string UnavailableChatTitle = "This chat is unavailable";
+
     protected static TimeSpan VeryFirstLoadDelay = TimeSpan.FromSeconds(1.5);
     protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
     private static bool _isVeryFirstLoad = true;
 
+    protected RouteResult? ParsedRoute;
+    protected RouteResult? FixedRoute;
     protected Model? Rendered;
-    protected PageRouteState RouteState = PageRouteState.Resolving;
-    protected ChatId? ChatId;
 
     [Inject] protected ChatUIHub Hub { get; init; } = null!;
     protected Features Features => Hub.Features();
@@ -91,88 +95,39 @@
 
     [Parameter] public string? Route { get; set; }
 
-    protected override void OnInitialized() {
-        ChatAudioUI.Enable();
-    }
+    protected override void OnInitialized()
+        => ChatAudioUI.Enable();
 
-    protected override void OnParametersSet() {
-        RouteState = PageRouteState.Resolving;
-        ChatId = null;
-        var pageRoute = Route;
-        if (pageRoute.IsNullOrEmpty()) {
-            RouteState = PageRouteState.ChatSid;
-            _ = SelectChat(null);
-            return;
-        }
+    protected override Task OnParametersSetAsync()
+        => SetRoute(Route);
 
-        if (pageRoute.StartsWith(Links.AliasPrefix))
-            return;
+    protected override bool ShouldRender()
+        => ReferenceEquals(Rendered, null)
+            || State.HasError
+            || State.Value != Rendered;
 
-        RouteState = PageRouteState.ChatSid;
-        _ = ChatId.TryParse(pageRoute, out var chatId)
-            ? SelectChat(chatId)
-            : SelectChat(null);
-    }
-
-    protected override async Task OnParametersSetAsync() {
-        var pageRoute = Route;
-        if (RouteState != PageRouteState.Resolving)
-            return;
-
-        var result = await HandleAlias(pageRoute, default).ConfigureAwait(false);
-        if (ReferenceEquals(result, PageRoute.Redirect)) {
-            RouteState = PageRouteState.Redirect;
-            return;
-        }
-
-        if (ReferenceEquals(result, PageRoute.UnknownAlias)) {
-            RouteState = PageRouteState.UnknownAlias;
-            return;
-        }
-
-        RouteState = PageRouteState.ChatSid;
-        await SelectChat(result.ChatId);
-    }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(GetType()),
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
-        // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
-        // and moreover, we want to make sure ComputeState gets invalidated
-        // specifically when SelectedChatId changes (vs when ChatSid changes).
-
-        var hostInfo = HostInfo;
-        var isEmptyPageRoute = Route.IsNullOrEmpty();
-
-        var pageRouteState = RouteState;
-        if (pageRouteState is PageRouteState.Redirect or PageRouteState.Resolving)
-            return Model.Loading;
-
-        if (pageRouteState == PageRouteState.UnknownAlias)
-            return Model.Unavailable(false);
-
-        await ChatUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        ChatId = chatId;
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var lastState = State.ValueOrDefault;
-        var lasChat = lastState?.Chat;
-        var lastChatId = lasChat?.Id;
+        var hostInfo = HostInfo;
+        var parsedRoute = ParsedRoute;
+        var fixedRoute = FixedRoute;
+        // .ConfigureAwait(false) is fine from here
 
-        var canSendJoinPlaceRequest = false;
-        var enableIncompleteUITask = Features.IsIncompleteUIEnabled(cancellationToken);
-        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+        if (fixedRoute is null)
+            return lastState; // Synchronizing
+
+        if (!ChatUI.WhenReady.IsCompleted)
+            await ChatUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+
+        if (chatId != fixedRoute.ChatId)
+            return lastState; // Synchronizing
 
         if (_isVeryFirstLoad) {
             _isVeryFirstLoad = false;
             var mustDelayVeryFirstLoad =
                 hostInfo.HostKind.IsApp()
-                && isEmptyPageRoute
+                && parsedRoute == RouteResult.Empty
                 && BrowserInfo.ScreenSize.Value.IsNarrow();
             if (mustDelayVeryFirstLoad) {
                 // Postpone chat loading when it's invisible
@@ -182,65 +137,61 @@
             }
         }
 
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId is null)
+            return Model.NewUnavailable(account, fixedRoute, false);
+
+        var canSendJoinPlaceRequest = false;
+        var enableIncompleteUITask = Features.IsIncompleteUIEnabled(cancellationToken);
+        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+
         try {
-            if (!AccountUI.WhenReady.IsCompleted)
-                await AccountUI.WhenReady.WaitAsync(LoadTimeout, cancellationToken).ConfigureAwait(false);
-            var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-            var chat = SpecialChat.NoChatSelected;
-            if (chatId is not null) {
 #if false // NOTE(AY): Let's try to disable this for now, maybe it works better after rendering changes
-                if (OSInfo.IsAndroid) {
-                    // Postponing chat change to let left panel slide smoothly - don't change this delay!
-                    var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
-                    if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow())
-                        await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
-                }
+            if (OSInfo.IsAndroid) {
+                // Postponing chat change to let the left panel slide smoothly - don't change this delay!
+                var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
+                if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow())
+                    await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
+            }
 #endif
 
-                chat = await Chats
-                    .Get(Session, chatId, cancellationToken)
-                    .WaitAsync(LoadTimeout, cancellationToken)
-                    .ConfigureAwait(false);
-                if (chat is null && chatId is PlaceChatId placeChatId) {
-                    var place = await Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
-                    if (place is null) {
-                        // Place does not exist or user is not member of the place.
-                        // TODO: Check if user can request place invitation.
-                        // Result should contain the following details:
-                        //  - if it's possible to send request,
-                        //  - if there is a pending request,
-                        //  - last request was declined.
-                        canSendJoinPlaceRequest = false;
-                    }
+            var chat = await Chats
+                .Get(Session, chatId, cancellationToken)
+                .WaitAsync(LoadTimeout, cancellationToken)
+                .ConfigureAwait(false);
+            if (chat is null && chatId is PlaceChatId placeChatId) {
+                var place = await Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+                if (place is null) {
+                    // Place does not exist or user is not member of the place.
+                    // TODO: Check if user can request place invitation.
+                    // Result should contain the following details:
+                    //  - if it's possible to send request,
+                    //  - if there is a pending request,
+                    //  - last request was declined.
+                    canSendJoinPlaceRequest = false;
                 }
-                chat ??= SpecialChat.Unavailable;
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
             var enableIncompleteUI = await enableIncompleteUITask.ConfigureAwait(false);
-            return new(chat, account, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
+            return new(account, fixedRoute, chat, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
         }
         catch (TimeoutException) {
             Computed.Current?.Invalidate(LoadTimeoutToReloadDelay);
-            this.NotifyStateHasChanged();
-            return lastState != null && chatId == lastChatId
+            return lastState != null && chatId == lastState.Route.ChatId
                 ? lastState
-                : Model.Loading;
+                : null;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-            this.NotifyStateHasChanged();
-            return Model.Unavailable(false);
+            return Model.NewUnavailable(account, fixedRoute, false);
         }
     }
 
-    protected async ValueTask<FooterModel> GetFooterModel(Chat chat, Account account, CancellationToken cancellationToken) {
+    protected async ValueTask<FooterModel> GetFooterModel(Chat? chat, Account account, CancellationToken cancellationToken) {
         var session = Session;
-        if (chat.Id is not { } chatId)
+        if (chat?.Id is not { } chatId)
             return FooterModel.None;
 
-        var otherUserId = chatId is PeerChatId peerChatId
-            ? peerChatId.UserIds.OtherThan(account.Id)
-            : null;
         var canPost = chat.Rules.CanWrite();
         var canJoin = !canPost && chat.Rules.CanJoin();
         var shouldJoinPlaceFirst = false;
@@ -255,6 +206,10 @@
                 canJoin = false;
             }
         }
+
+        var otherUserId = chatId is PeerChatId peerChatId
+            ? peerChatId.UserIds.OtherThan(account.Id)
+            : null;
         var hasMultipleAvatars = false;
         var canJoinWithGuestAccount = false;
         var canJoinAnonymously = false;
@@ -272,7 +227,8 @@
         }
 
         return new() {
-            OtherUserId = otherUserId,
+            Place = place,
+            PeerId = otherUserId,
             IsGuest = account.IsGuestOrNull(),
             CanPost = canPost,
             CanJoin = canJoin,
@@ -280,139 +236,154 @@
             HasMultipleAvatars = hasMultipleAvatars,
             CanJoinWithGuestAccount = canJoinWithGuestAccount,
             CanJoinAnonymously = canJoinAnonymously,
-            Place = place,
         };
     }
 
-    protected override bool ShouldRender()
-        => ReferenceEquals(Rendered, null)
-            || State.HasError
-            || State.Value != Rendered;
+    protected async Task SetRoute(string? route) {
+        ParsedRoute = null;
+        FixedRoute = null;
+        ChatId? chatId;
 
-    protected async ValueTask SelectChat(ChatId? chatId) {
-        if (chatId is not null) {
-            var chat = await Chats.Get(Session, chatId, CancellationToken.None);
-            if (chat?.Id != null)
-                chatId = chat.Id;
-            else {
-                chatId = null;
-                RouteState = PageRouteState.UnknownAlias;
-            }
+        RouteResult parsedRoute;
+        if (route.IsNullOrEmpty())
+            parsedRoute = RouteResult.Empty;
+        else if (route.StartsWith(Links.AliasPrefix))
+            parsedRoute = await ResolveAliasRoute(route);
+        else {
+            chatId = ChatId.TryParse(route);
+            parsedRoute = chatId is not null
+                ? new RouteResult(chatId)
+                : RouteResult.Invalid;
         }
-        if (chatId is null) {
-            await ChatUI.WhenReady;
+
+        chatId = parsedRoute.ChatId;
+        if (parsedRoute == RouteResult.Empty) {
+            if (!ChatUI.WhenReady.IsCompleted)
+                await ChatUI.WhenReady;
             chatId = ChatUI.SelectedChatId.Value;
-            // If the selected place is there, but chat Id isn't, then apparently the place has no chats,
-            // and we want to display a blank chat screen. Do not show Announcements chat.
-            if (chatId is null && Hub.ChatUI.SelectedPlaceId.Value is null)
-                chatId = Constants.Chat.AnnouncementsChatId;
-        }
+            if (chatId is null && ChatUI.SelectedPlaceId.Value is { } placeId) {
+                // If the SelectedPlaceId is there, let's try to display its Welcome chat
+                chatId = await Places.GetWelcomeChatId(Session, placeId, CancellationToken.None);
+            }
 
-        ChatId = chatId;
+            chatId ??= Constants.Chat.AnnouncementsChatId;
+        }
+        ParsedRoute = parsedRoute;
+        FixedRoute = chatId is null ? parsedRoute : new RouteResult(chatId);
         ChatUI.SelectChatOnNavigation(chatId);
     }
 
-    private async Task<PageRoute> HandleAlias(string? pageRoute, CancellationToken cancellationToken) {
-        if (pageRoute.IsNullOrEmpty())
-            return PageRoute.Empty;
+    protected async ValueTask<RouteResult> ResolveAliasRoute(string? route) {
+        if (route.IsNullOrEmpty())
+            return RouteResult.Empty;
 
-        var parts = pageRoute[1..].Split("/");
+        var parts = route[1..].Split("/");
         if (parts.Length is < 1 or > 2)
-            return PageRoute.InvalidRoute;
+            return RouteResult.Invalid;
 
         ChatId targetChatId;
         if (parts.Length == 1) {
             // ChatId or alias
             var chatAliasSid = parts[0];
             if (!AliasId.TryParse(chatAliasSid, out var chatAliasId))
-                return PageRoute.UnknownAlias;
+                return RouteResult.InvalidAlias;
 
-            var aliasTarget = await Hub.Aliases.GetTarget(chatAliasId, cancellationToken);
+            var aliasTarget = await Hub.Aliases.GetTarget(chatAliasId);
             if (aliasTarget is null || aliasTarget.Kind != AliasKind.Chat)
-                return PageRoute.UnknownAlias;
+                return RouteResult.InvalidAlias;
 
             if (!ChatId.TryParse(aliasTarget.TargetId, out var chatId))
-                return PageRoute.InvalidRoute;
+                return RouteResult.Invalid;
 
             targetChatId = chatId;
         } else {
             // If the page route consists of 2 parts, the first one should always be a PlaceId alias
             var placeAliasSid = parts[0];
             if (!AliasId.TryParse(placeAliasSid, out var placeAliasId))
-                return PageRoute.UnknownAlias;
+                return RouteResult.InvalidAlias;
 
-            var aliasTarget = await Hub.Aliases.GetTarget(placeAliasId, cancellationToken);
+            var aliasTarget = await Hub.Aliases.GetTarget(placeAliasId);
             if (aliasTarget is null || aliasTarget.Kind != AliasKind.Place)
-                return PageRoute.UnknownAlias;
+                return RouteResult.InvalidAlias;
 
             if (!PlaceId.TryParse(aliasTarget.TargetId, out var placeId))
-                return PageRoute.InvalidRoute;
+                return RouteResult.Invalid;
 
             var chatSidPart = parts[1];
             if (chatSidPart.IsNullOrEmpty())
-                return PageRoute.InvalidRoute;
+                return RouteResult.Invalid;
 
             PlaceChatId? placeChatId;
             if (!chatSidPart.StartsWith("@")) {
                 if (!PlaceChatId.TryParse(chatSidPart, out var localChatId) || localChatId.Kind != ChatKind.Group)
-                    return PageRoute.InvalidRoute;
+                    return RouteResult.Invalid;
                 if (!PlaceChatId.TryParse(PlaceChatId.Format(placeId, localChatId.Value), out var placeChatId1))
-                    return PageRoute.InvalidRoute;
+                    return RouteResult.Invalid;
 
                 placeChatId = placeChatId1;
             } else {
                 var chatAliasSid = chatSidPart[1..];
                 if (!AliasId.TryParse(chatAliasSid, out var chatAliasId))
-                    return PageRoute.UnknownAlias;
+                    return RouteResult.InvalidAlias;
 
                 placeChatId = await Hub.Aliases
-                    .GetPlaceChatIdByAlias(placeId, chatAliasId, cancellationToken)
+                    .GetPlaceChatIdByAlias(placeId, chatAliasId)
                     .ConfigureAwait(false);
                 if (placeChatId is null)
-                    return PageRoute.UnknownAlias;
+                    return RouteResult.InvalidAlias;
             }
             targetChatId = placeChatId;
         }
 
         await Hub.History.NavigateTo(Links.Chat(targetChatId), true);
-        return PageRoute.Redirect;
+        return RouteResult.Redirect;
     }
 
     // Nested types
 
     public sealed record Model(
-        Chat? Chat,
         AccountFull OwnAccount,
+        RouteResult Route,
+        Chat? Chat,
         FooterModel FooterModel,
         bool CanSendJoinPlaceRequest,
         bool EnableIncompleteUI
     ) {
-        public static Model Loading { get; } = new(SpecialChat.Loading, SpecialAccount.Loading, FooterModel.None, false, false);
+        public static Model NewUnavailable(AccountFull ownAccount, RouteResult route, bool canSendJoinPlaceRequest)
+            => new(ownAccount, route, null, FooterModel.None, canSendJoinPlaceRequest, false);
 
-        public static Model Unavailable(bool canSendJoinPlaceRequest)
-            => new(SpecialChat.Unavailable, SpecialAccount.None, new(), canSendJoinPlaceRequest, false);
-    }
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    };
 
+    [ParameterComparer(typeof(ByRefParameterComparer))]
     public sealed record FooterModel {
         public static readonly FooterModel None = new();
 
-        public UserId? OtherUserId { get; init; }
+        public Place? Place { get; init; }
+        public UserId? PeerId { get; init; }
         public bool IsGuest { get; init; }
+        public bool HasMultipleAvatars { get; init; }
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
-        public bool HasMultipleAvatars { get; init; }
         public bool CanJoinWithGuestAccount { get; init; }
         public bool CanJoinAnonymously { get; init; }
         public bool ShouldJoinPlaceFirst { get; init; }
-        public Place? Place { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(FooterModel? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 
-    public enum PageRouteState { Resolving, ChatSid, UnknownAlias, Redirect }
+    public sealed record RouteResult(ChatId? ChatId = null) {
+        public static readonly RouteResult Empty = new();
+        public static readonly RouteResult Invalid = new();
+        public static readonly RouteResult InvalidAlias = new();
+        public static readonly RouteResult Redirect = new();
 
-    public record PageRoute(ChatId? ChatId) {
-        public static readonly PageRoute Empty = new((ChatId?)null);
-        public static readonly PageRoute InvalidRoute = new ((ChatId?)null);
-        public static readonly PageRoute UnknownAlias = new ((ChatId?)null);
-        public static readonly PageRoute Redirect = new ((ChatId?)null);
+        // This record relies on referential equality
+        public bool Equals(RouteResult? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

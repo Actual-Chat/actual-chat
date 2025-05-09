@@ -1,8 +1,8 @@
+@using ActualChat.UI.Blazor.App.Pages
 @inherits ComputedStateComponent<ChatHeader.Model>
 @{
     var m = State.Value;
     var chat = Chat;
-    var chatId = chat?.Id;
     var searchCls = m.IsSearchMode ? "on" : "";
 }
 
@@ -20,10 +20,8 @@
         </HeaderButton>
     }
     <div class="chat-header-center" @onclick="@OnToggleRightPanelClick">
-        @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
-            @if (!ReferenceEquals(chat, SpecialChat.Unavailable)) {
-                <ChatIcon Chat="@chat"/>
-            }
+        @if (chat is not null) {
+            <ChatIcon Chat="@chat"/>
             <div class="chat-header-title">
                 <div class="c-title-wrapper">
                     <div class="c-title">
@@ -35,8 +33,8 @@
                 </div>
                 <div class="c-info">
                     @if (chat.Kind != ChatKind.Peer) {
-                        @if (chatId is not null && chat.Rules.CanJoin()) {
-                            <ChatMemberCounter ChatId="@chatId"/>
+                        @if (chat.Rules.CanJoin()) {
+                            <ChatMemberCounter ChatId="@chat.Id"/>
                         }
                     }
                     else { // chat.Kind == ChatKind.Peer
@@ -47,9 +45,18 @@
             @if (!ScreenSize.IsNarrow()) {
                 <ChatActivityPanel Chat="@chat"/>
             }
+        } else {
+            <ChatIcon Chat="@null"/>
+            <div class="chat-header-title">
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        @NoChatTitle
+                    </div>
+                </div>
+            </div>
         }
     </div>
-    @if (chatId is not null) {
+    @if (chat is not null) {
         <div class="chat-header-control-panel">
         @if (m.EnableIncompleteUI) {
             <HeaderButton Click="@OnSearchClick" Class="@searchCls">
@@ -72,6 +79,7 @@
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
+    [Parameter] public string NoChatTitle { get; set; } = "Loading...";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

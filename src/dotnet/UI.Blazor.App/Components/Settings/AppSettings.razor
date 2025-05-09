@@ -116,7 +116,7 @@
     }
 
     private async Task OnRestartWalkThrough() {
-        await BubbleUI.ResetSettings().ConfigureAwait(true);
+        await BubbleUI.ResetSettings();
         ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 

@@ -1,9 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatEntryMessageView.Model>
+@inherits ComputedStateComponent<ChatEntryMessageView.Model?>
 @{
     var m = _rendered = State.Value;
-    var chat = m.Chat;
+    if (m?.Chat is not { } chat)
+        return;
+
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
     var entry = message.Entry;
@@ -288,12 +290,12 @@
             || !ReferenceEquals(_renderedMessage, Message)
             || !ReferenceEquals(_renderedMarkup, _markup);
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        var initialValue = Model.None;
+    protected override ComputedState<Model?>.Options GetStateOptions() {
+        Model? initialValue = null;
         var repliedEntry = Entry.RepliedEntryLid.HasValue ? ChatEntry.Loading : null;
         var isOwnMessage = Message.Flags.HasFlag(ChatMessageFlags.IsOwnMessage);
         if (isOwnMessage || repliedEntry != null) {
-            initialValue = new(SpecialChat.Loading) {
+            initialValue = new Model(null) {
                 IsOwnMessage = isOwnMessage,
                 RepliedEntry = repliedEntry,
             };
@@ -304,16 +306,16 @@
         };
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
         var previousMessage = Message.PreviousMessage as ChatEntryMessage;
         var nextMessage = Message.NextMessage as ChatEntryMessage;
         var prevEntry = previousMessage?.Entry;
         var chatId = ChatId;
         var chatMessage = Message;
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false) ?? SpecialChat.Unavailable;
-        var ownAuthor = chat.Rules.Author;
-        var ownAuthorId = chat.Rules.Author?.Id;
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = chat?.Rules.Author;
+        var ownAuthorId = chat?.Rules.Author?.Id;
         var isOwnMessage = ownAuthorId is not null && entry.AuthorId == ownAuthorId;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
@@ -364,7 +366,7 @@
         var isSelectionEnd = isSelected && !isNextSelected;
 
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
-        if (ownAuthorId is not null)
+        if (chat is not null && ownAuthorId is not null)
             (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
@@ -405,7 +407,13 @@
         };
     }
 
-    private async Task<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(Chat chat, ChatEntry entry, ChatEntry? prevEntry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
+    private async ValueTask<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(
+        Chat chat,
+        ChatEntry entry,
+        ChatEntry? prevEntry,
+        AuthorId ownAuthorId,
+        CancellationToken cancellationToken)
+    {
         if (_hasBeenRead)
             return (false, false);
 
@@ -418,7 +426,7 @@
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
         var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
-        // Do not show `Unread` label for old messages (before the feature was introduced)
+        // Do not show the ` Unread ` label for old messages (before the feature was introduced)
         // until we have at least more or less good enough read positions stat.
         if (!canCalculateHasRead)
             return  (false, false);
@@ -430,7 +438,7 @@
         return (!hasBeenRead, previousHasBeenRead);
     }
 
-    private async Task<bool> ChatSupportsUnreadStatus(Chat chat, CancellationToken cancellationToken) {
+    private async ValueTask<bool> ChatSupportsUnreadStatus(Chat chat, CancellationToken cancellationToken) {
         // NOTE(DF): move this check to ChatContext to share among all message views.
         // ChatContext and Chat can be considered as immutable and used from any thread.
         if (chat.HasSingleAuthor)
@@ -553,9 +561,7 @@
 
     // Nested types
 
-    public sealed record Model(Chat Chat) {
-        public static readonly Model None = new(SpecialChat.Unavailable);
-
+    public sealed record Model(Chat? Chat) {
         public bool IsOwnMessage { get; init; }
         public bool IsHighlighted { get; init; }
         public bool IsReplyTarget { get; init; }

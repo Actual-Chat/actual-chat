@@ -19,7 +19,7 @@ public partial class History
         }
         catch (OperationCanceledException e) when (cancellationToken.IsCancellationRequested) {
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-            Log.LogDebug(e, $"{WhenNavigationCompletedOrTimeout} timed out");
+            Log.LogDebug(e, $"{nameof(WhenNavigationCompletedOrTimeout)} timed out");
         }
         finally {
             cts.CancelAndDisposeSilently();
@@ -81,7 +81,7 @@ public partial class History
             return true;
         }
 
-        // There is no back item but there are back steps, so let's generating back item
+        // There is no back item, but there are back steps, so we generate the back item
         if (backItem == null) {
             backItem = currentItem.GenerateBackItem();
             if (backItem == null)

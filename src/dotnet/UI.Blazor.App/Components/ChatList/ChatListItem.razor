@@ -136,7 +136,7 @@
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsLastItemInBlock { get; set; }
     [Parameter] public bool IsFirstItem { get; set; }
 

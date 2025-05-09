@@ -10,6 +10,9 @@ public sealed class MauiBlazorApp : AppBase, IDisposable
     private MauiWebView? _mauiWebView;
     private MauiWebViewPageContextTracker? _pageContextTracker;
 
+    static MauiBlazorApp()
+        => OtherUIAssemblies = [typeof(WebApp).Assembly, typeof(MauiBlazorApp).Assembly];
+
     public void Dispose()
     {
         Log.LogInformation("Dispose MauiBlazorApp");

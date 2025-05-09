@@ -64,7 +64,7 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     private async Task CloseSteps()
     {
         while (_modalStepRef != null)
-            await CloseStep(_modalStepRef, true).ConfigureAwait(true);
+            await CloseStep(_modalStepRef, true);
     }
 
     private static async Task CloseStep(ModalStepRefImpl modalStepRef, bool isModalClosing)

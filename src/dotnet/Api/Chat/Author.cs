@@ -1,10 +1,12 @@
 using ActualChat.Users;
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Author(
     [property: DataMember, MemoryPackOrder(0)] AuthorId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0

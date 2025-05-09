@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using ActualChat.Chat
 @inherits FusionComponentBase
 
 <div class="avatar-badge @Class" @onclick="@Click">
@@ -19,7 +18,7 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
+    [Parameter, EditorRequired] public Avatar? Avatar { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }
     [Parameter] public RenderFragment? StatusContent { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;

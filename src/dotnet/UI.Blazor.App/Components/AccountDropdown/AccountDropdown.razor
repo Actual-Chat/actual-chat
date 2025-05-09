@@ -3,9 +3,6 @@
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, SpecialAccount.Loading))
-        return;
-
     if (!account.IsGuest) {
         <NavbarButton
             Class="settings-btn"

@@ -7,8 +7,6 @@ namespace ActualChat.DependencyInjection;
 public abstract class ScopedServiceBase<THub>(THub hub) : IHasIsDisposed
     where THub : Hub
 {
-    private ILogger? _log;
-
     public THub Hub { get; } = hub;
     public bool IsDisposed => Hub.IsDisposed;
 
@@ -62,6 +60,9 @@ public abstract class ScopedServiceBase<THub>(THub hub) : IHasIsDisposed
         get => Hub.Clocks();
     }
 
-    protected ILogger Log => _log ??= Hub.LoggerFactory().CreateLogger(GetType().NonProxyType());
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Hub.LoggerFactory().CreateLogger(GetType().NonProxyType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
+    [field: AllowNull, MaybeNull]
+    protected Tracer Tracer => field ??= Hub.Tracer()[GetType()];
 }

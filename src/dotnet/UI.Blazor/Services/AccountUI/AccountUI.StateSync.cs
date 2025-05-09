@@ -27,13 +27,16 @@ public partial class AccountUI
             if (error != null || newAccount == null!)
                 continue;
 
-            if (!TrySetOwnAccount(newAccount, out var oldAccount))
+            if (!TryChangeAccount(newAccount, out var oldAccount))
                 continue;
-
-            Log.LogInformation("Account changed to: {Account}", newAccount);
+            if (oldAccount is null) {
+                MarkReady();
+                continue; // Very first account change
+            }
             if (oldAccount.Id == newAccount.Id)
                 continue; // Only account properties have changed
 
+            Log.LogInformation("Account is changed to: {Account}", newAccount);
             _lastChangedAt.Value = CpuClock.Now;
             var circuitContext = CircuitContext;
             await circuitContext.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -45,14 +48,21 @@ public partial class AccountUI
 
     // Private methods
 
-    private bool TrySetOwnAccount(AccountFull account, out AccountFull oldAccount)
+    private void MarkReady()
+    {
+        if (_whenReadySource.TrySetResult())
+            // ReSharper disable once ExplicitCallerInfoArgument
+            Tracer.Point("AccountUI is ready");
+    }
+
+    private bool TryChangeAccount(AccountFull account, out AccountFull? oldAccount)
     {
         oldAccount = _ownAccount.Value;
-        var isChanged = !ReferenceEquals(oldAccount, account);
-        if (isChanged)
-            _ownAccount.Value = account;
-        _whenReadySource.TrySetResult();
-        return isChanged;
+        if (oldAccount == account)
+            return false;
+
+        _ownAccount.Value = account;
+        return true;
     }
 
     private void ProcessOwnAccountChange(AccountFull? account, AccountFull? oldAccount)
@@ -78,7 +88,7 @@ public partial class AccountUI
     private async Task StartOnSignedInWorkflow()
     {
         DebugLog?.LogInformation("Starting OnSignedInWorkflow");
-        await PostponeOnSignedInWorkflow().ConfigureAwait(true); // Continue on Blazor UI Context.
+        await PostponeOnSignedInWorkflow().ConfigureAwait(true);
 
         // We were signed out -> it's a sign-in
         _ = OnboardingUI.TryShow();

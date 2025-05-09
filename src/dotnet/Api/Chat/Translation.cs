@@ -5,8 +5,8 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Translation(
     [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
@@ -17,4 +17,8 @@ public sealed partial record Translation(
     [DataMember, MemoryPackOrder(4)] public HashString SourceContentHash { get; init; }
     [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public Moment ModifiedAt { get; init; }
+
+    // This record relies on referential equality
+    public bool Equals(Translation? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

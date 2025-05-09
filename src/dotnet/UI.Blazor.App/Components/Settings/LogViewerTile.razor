@@ -23,7 +23,7 @@
 
     private async Task OnGetLogFileClick() {
         var getLogFileTask = MauiLogAccessor.GetLogFile!.Invoke();
-        var successfully = await getLogFileTask.ConfigureAwait(true);
+        var successfully = await getLogFileTask;
         if (successfully)
             ToastUI.Show("Got log file successfully.", "icon-checkmark-circle-2", ToastDismissDelay.Short);
         else

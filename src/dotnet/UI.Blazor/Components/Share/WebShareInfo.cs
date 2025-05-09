@@ -29,19 +29,19 @@ public sealed class WebShareInfo : IDisposable, IWebShareInfoBackend
 
     public async ValueTask<bool> CanShare()
     {
-        await WhenReady.ConfigureAwait(true);
+        await WhenReady;
         return _canShareText || _canShareLink;
     }
 
     public async ValueTask<bool> CanShareText()
     {
-        await WhenReady.ConfigureAwait(true);
+        await WhenReady;
         return _canShareText;
     }
 
     public async ValueTask<bool> CanShareLink()
     {
-        await WhenReady.ConfigureAwait(true);
+        await WhenReady;
         return _canShareLink;
     }
 

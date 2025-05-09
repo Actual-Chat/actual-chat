@@ -159,7 +159,7 @@ public static class MauiDiagnostics
 
     private static async Task CreateSentryTraceProvider()
     {
-        // Initialize client trace provider only in development environment or for admin users.
+        // Initialize client trace provider only in the development environment or for admin users.
  #pragma warning disable CS0162 // Unreachable code detected
         if (!MauiSettings.IsDevApp) {
             var scopedServices = await WhenBlazorAppServicesReady().ConfigureAwait(false);

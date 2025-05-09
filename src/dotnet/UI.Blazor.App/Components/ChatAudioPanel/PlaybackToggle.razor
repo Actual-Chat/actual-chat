@@ -4,7 +4,7 @@
 @{
     var rendered = _rendered;
     var m = _rendered = State.Value;
-    if (rendered.Chat.Id != m.Chat.Id)
+    if (rendered?.Chat.Id != m.Chat.Id)
         rendered = m;
     var audioState = m.AudioState;
 
@@ -34,7 +34,7 @@
 
 @code {
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.PlaybackToggle.init";
-    private Model _rendered = Model.Loading;
+    private Model? _rendered;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
@@ -47,7 +47,7 @@
     private bool IsUpdating => Chat?.Id is not null && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -58,12 +58,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = GetStateCategory(t),
-            });
+        => new() {
+            InitialValue = Model.NewLoading(Chat),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
@@ -79,7 +78,7 @@
                 isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
             }
         }
-        return new (chat, audioState, isAnimated);
+        return new(chat, audioState, isAnimated);
     }
 
     private void OnListenClick() {
@@ -96,6 +95,6 @@
         ChatAudioState AudioState,
         bool IsAnimated = false
     ) {
-        public static readonly Model Loading = new(SpecialChat.Loading, ChatAudioState.None);
+        public static Model NewLoading(Chat chat) => new(chat, ChatAudioState.None);
     }
 }

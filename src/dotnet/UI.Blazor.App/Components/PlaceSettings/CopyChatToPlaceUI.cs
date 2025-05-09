@@ -17,13 +17,16 @@ public static class CopyChatToPlaceUI
         var chat = await hub.Chats.Get(session, sourceChatId, default).Require();
         var place = await hub.Places.Get(session, placeId, cancellationToken).Require();
         var message = $"You are about to copy chat '{chat.Title}' to place '{place.Title}'. Do you want to proceed?";
-        await hub.ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = CopyInternal()), cancellationToken).ConfigureAwait(true);
+        await hub.ModalUI
+            .Show(new ConfirmModal.Model(false, message, () => _ = CopyInternal()), cancellationToken)
+            .ConfigureAwait(false); // Ok (pre-exit)
+        return;
 
         async Task CopyInternal() {
             onBeforeCopy?.Invoke();
             var correlationId = Guid.NewGuid().ToString();
             var command = new Chat_CopyChat(session, sourceChatId, placeId, correlationId);
-            var (result, error) = await hub.UICommander().Run(command, cancellationToken).ConfigureAwait(true);
+            var (result, error) = await hub.UICommander().Run(command, cancellationToken);
             onAfterCopy?.Invoke(error);
             if (error != null)
                 return;
@@ -35,7 +38,9 @@ public static class CopyChatToPlaceUI
                 hub.ToastUI.Show(info, ToastDismissDelay.Long);
             } else {
                 var model = new CopyChatToPlaceErrorModal.Model(correlationId, result.HasChanges, chat.Title, place.Title);
-                await hub.ModalUI.Show(model, cancellationToken).ConfigureAwait(false);
+                await hub.ModalUI
+                    .Show(model, cancellationToken)
+                    .ConfigureAwait(false); // Ok (pre-exit)
             }
         }
     }
@@ -52,13 +57,17 @@ public static class CopyChatToPlaceUI
         placeChatId.Require();
         var place = await hub.Places.Get(session, placeChatId.PlaceId, default).Require();
         var message = $"You are about to publish copied chat '{newChat.Title}' from place '{place.Title}'. Do you want to proceed?";
-        await hub.ModalUI.Show(new ConfirmModal.Model(false, message, () => _ = PublishInternal()), cancellationToken);
+        await hub.ModalUI
+            .Show(new ConfirmModal.Model(false, message, () => _ = PublishInternal()), cancellationToken)
+            .ConfigureAwait(false); // Ok (pre-exit)
+        return;
 
         async Task PublishInternal() {
             var command = new Chat_PublishCopiedChat(session, placeChatId, sourceChatId);
             var (_, error) = await hub.UICommander().Run(command, cancellationToken).ConfigureAwait(true);
             if (error != null)
                 return;
+
             hub.ToastUI.Show($"Chat '{newChat.Title}' was successfully published.", ToastDismissDelay.Long);
         }
     }

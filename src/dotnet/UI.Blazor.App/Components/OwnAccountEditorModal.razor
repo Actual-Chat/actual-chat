@@ -1,8 +1,9 @@
 @using System.ComponentModel.DataAnnotations
 @implements IModalView<OwnAccountEditorModal.Model>
 @{
-    if (ReferenceEquals(_account, SpecialAccount.Loading) || _form == null!)
+    if (_account == null! || _form == null!)
         return;
+
     // TODO(FC): show verify by sms on phone change
     var phone = _form.ParsedPhone;
     var isPhoneVerified = _account.HasVerifiedPhone();
@@ -154,7 +155,7 @@
     private readonly string _defaultPhoneValue = PhoneCodes.Default.DisplayCode;
     private Form _formRef = null!;
     private FormModel _form = null!;
-    private AccountFull _account = SpecialAccount.Loading;
+    private AccountFull _account = null!;
     private AsyncDataAnnotationsValidator _validator = null!;
     private ElementReference _aliasTextBoxRef;
     private string _copyAliasFormatString = "";
@@ -162,32 +163,34 @@
 
     [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private IPhones Phones { get; init; } = null!;
+
     private Session Session => Hub.Session();
+    private AccountUI AccountUI => Hub.AccountUI;
     private UrlMapper UrlMapper => Hub.UrlMapper();
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
+    protected override Task OnInitializedAsync() {
         _aliasTextBoxRefSetter = c => {
             _aliasTextBoxRef = c;
             StateHasChanged();
         };
         _copyAliasFormatString = UrlMapper.ToAbsolute(Links.UserAliasPrefix) + "{0}";
 
+        _account = AccountUI.OwnAccount.Value;
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        _account = await Hub.Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
         _form.Email = _account.Email.NullIfEmpty();
         _form.Phone = _account.Phone?.ToReadable() ?? "";
         _form.ParsedPhone = _account.Phone;
         _form.AliasId = _form.CurrentAliasId = _account.AliasId?.Value ?? "";
-
         _form.CopyToBase();
+        return Task.CompletedTask;
     }
 
-    private async void OnSave() {
+    private async Task OnSave() {
         if (!await _validator.Validate())
             return;
 

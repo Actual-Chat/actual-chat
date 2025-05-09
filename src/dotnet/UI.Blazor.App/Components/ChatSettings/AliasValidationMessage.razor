@@ -86,13 +86,13 @@
             return;
 
         if (ReferenceEquals(Scope, AliasScope.Account)) {
-            var userId = await Hub.Aliases.GetUserIdByAlias(aliasId).ConfigureAwait(true);
+            var userId = await Hub.Aliases.GetUserIdByAlias(aliasId);
             _aliasIsAvailable = userId is null;
         } else if (Scope.PlaceId is null) {
-            var aliasTarget = await Hub.Aliases.GetTarget(aliasId).ConfigureAwait(true);
+            var aliasTarget = await Hub.Aliases.GetTarget(aliasId);
             _aliasIsAvailable = aliasTarget is null;
         } else {
-            var placeChatId = await Hub.Aliases.GetPlaceChatIdByAlias(Scope.PlaceId, aliasId).ConfigureAwait(true);
+            var placeChatId = await Hub.Aliases.GetPlaceChatIdByAlias(Scope.PlaceId, aliasId);
             _aliasIsAvailable = placeChatId is null;
         }
 

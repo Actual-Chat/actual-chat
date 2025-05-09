@@ -29,4 +29,8 @@ public sealed partial record PlaceRules(
         => Permissions.Has(required);
     public void Require(PlacePermissions required)
         => Permissions.Require(required);
+
+    // This record relies on referential equality
+    public bool Equals(PlaceRules? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

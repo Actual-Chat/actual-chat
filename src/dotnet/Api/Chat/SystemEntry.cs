@@ -1,8 +1,10 @@
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record SystemEntry : IUnionRecord<SystemEntryOption?>
 {
     // Union options
@@ -22,6 +24,10 @@ public sealed partial record SystemEntry : IUnionRecord<SystemEntryOption?>
     }
 
     public static implicit operator SystemEntry(SystemEntryOption option) => new() { Option = option };
+
+    // This record relies on referential equality
+    public bool Equals(SystemEntry? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 public abstract record SystemEntryOption : IRequirementTarget

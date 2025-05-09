@@ -4,9 +4,6 @@
 @{
     var m = State.Value;
     var account = m.AccountFull;
-    if (ReferenceEquals(account, SpecialAccount.Loading))
-        return;
-
     var isGuest = account.IsGuest;
     var showMyAccount = !isGuest;
     var showNotifications = !isGuest && _enableIncompleteUI;

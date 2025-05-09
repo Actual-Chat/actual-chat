@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppScopedServiceStarter
+public sealed class AppScopedServiceStarter
 {
     private volatile string? _sessionHash;
 
@@ -57,8 +57,8 @@ public class AppScopedServiceStarter
             _ = Hub.UIEventHub(); // Touch
 
             // Awaiting completion of initialization tasks.
-            // NOTE(AY): it's fine to use .ConfigureAwait(false) below this point,
-            //           coz tasks were started on Dispatcher thread already.
+            // NOTE(AY): It's fine to use .ConfigureAwait(false) below this point,
+            //           coz tasks were started on the Dispatcher thread already.
 
             // Finishing w/ BrowserInfo
             await browserInfo.WhenReady.ConfigureAwait(false);
@@ -74,6 +74,9 @@ public class AppScopedServiceStarter
             await browserInit.WhenInitialized.ConfigureAwait(false); // Must be completed before the next call
             // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInit completed");
+
+            // Finishing with AccountUI
+            await Hub.AccountUI.WhenReady.ConfigureAwait(false);
 
             // Finishing with auto-navigation & History init
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);

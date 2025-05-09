@@ -1,9 +1,10 @@
-using ActualChat.Users;
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 public sealed partial record AuthorFull(
     [property: DataMember, MemoryPackOrder(6)] UserId UserId,

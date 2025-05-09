@@ -61,11 +61,11 @@
         base.OnInitialized();
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
         // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
         // and moreover, we want to make sure ComputeState gets invalidated
-        // specifically when SelectedChatId changes (vs when ChatSid changes).
+        // specifically when SelectedChatId changes (vs. when ChatSid changes).
 
         // var computed = Computed.GetCurrent()!;
         // computed.Invalidated += c => {
@@ -101,7 +101,7 @@
 
                 _ = InvokeAsync(async () => {
                     // Set new ChatSid
-                    await SelectChat(newChat.Id);
+                    await SetRoute(newChat.Id);
                 });
 
                 return Model.Loading;

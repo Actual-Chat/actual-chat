@@ -104,7 +104,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
 
     public async Task LaunchAISearch()
     {
-        var searchChatId = await CreateSearchChat().ConfigureAwait(true); // Continue on Blazor Context
+        var searchChatId = await CreateSearchChat().ConfigureAwait(true);
         if (searchChatId is null)
             return;
 

@@ -42,7 +42,9 @@ public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
 
     public async Task StartAnonymousPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
     {
-        var account = await Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken).ConfigureAwait(true);
+        var account = await Authors
+            .GetAccount(Session, authorId.ChatId, authorId, cancellationToken)
+            .ConfigureAwait(true);
         if (account == null)
             return;
 

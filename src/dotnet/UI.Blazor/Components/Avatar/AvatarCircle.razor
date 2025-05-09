@@ -3,13 +3,15 @@
 @using ActualChat.UI.Blazor.Services
 @inherits FusionComponentBase
 @{
-    var title = HasTooltip ? Avatar.Name : "";
+    var title = HasTooltip
+        ? Avatar?.Name ?? ""
+        : "";
     var avatarClass = IsBlurred ? "avatar-blurred": "";
 }
 
 <div class="avatar-circle @avatarClass">
     <div class="c-content">
-        @if (ReferenceEquals(Avatar, SpecialAvatar.Loading)) {
+        @if (Avatar is null) {
             <div class="c-skeleton @_class"></div>
         } else if (!_pictureUrl.IsNullOrEmpty()){
             <image-skeleton
@@ -34,7 +36,7 @@
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
+    [Parameter, EditorRequired] public Avatar? Avatar { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public bool IsBlurred { get; set; }
@@ -51,11 +53,11 @@
         if (Click.HasDelegate)
             _class += " cursor-pointer";
 
-        if (Avatar.Picture != null) {
+        if (Avatar?.Picture != null) {
             _pictureUrl = UrlMapper.PicturePreview128Url(Avatar.Picture);
             _avatarKey = _pictureUrl.IsNullOrEmpty() ? Avatar.Picture.AvatarKey ?? "" : "";
         } else {
-            _avatarKey = DefaultUserPicture.GetAvatarKey(Avatar.Id);
+            _avatarKey = DefaultUserPicture.GetAvatarKey(Avatar?.Id.Value ?? "");
         }
 
         var isSvg = !_pictureUrl.IsNullOrEmpty()
