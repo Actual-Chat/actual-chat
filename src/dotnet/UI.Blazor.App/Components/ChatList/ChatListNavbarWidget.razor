@@ -2,6 +2,7 @@
 @inherits FusionComponentBase
 @{
     var showFilters = PlaceId is null || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
+
     RenderFragment RenderTab(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
         var title = filter.Title;
@@ -63,7 +64,7 @@
 
         var placeId = PlaceId;
         var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
-        _placeChatListSettings ??= placeChatListSettings; // Ensure field is initialized before first render.
+        _placeChatListSettings ??= placeChatListSettings; // Ensure the field is initialized before the first render.
         var chatListSettings = await placeChatListSettings.Get();
         if (placeId != PlaceId)
             return; // PlaceId was changed while we were reading settings
