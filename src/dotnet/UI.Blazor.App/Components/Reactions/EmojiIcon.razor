@@ -1,29 +1,30 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-@{
-    var svgName = "";
-    if (Id == Emoji.ThumbsUp)
-        svgName = "emoji-thumbs-up";
-    else if (Id == Emoji.RedHeart)
-        svgName = "emoji-red-heart";
-    else if (Id == Emoji.Lol)
-        svgName = "emoji-lol";
-    else if (Id == Emoji.Surprise)
-        svgName = "emoji-surprise";
-    else if (Id == Emoji.Sad)
-        svgName = "emoji-sad";
-    else if (Id == Emoji.Angry)
-        svgName = "emoji-angry";
-    else if (Id == Emoji.Poo)
-        svgName = "emoji-poo";
-}
-@if (!svgName.IsNullOrEmpty()) {
-    <img class="@Class" src="/dist/images/@(svgName).svg" alt="@svgName" />
+@if (_svgName is not null) {
+    <img class="@Class" src="/dist/images/@(_svgName).svg" alt="@Emoji?.Title" />
 } else {
-    @Id
+    @(Emoji?.Value ?? "")
 }
 
 @code {
-    [Parameter] public string Id { get; set; } = "";
+    public static readonly Dictionary<Emoji, string> SvgNames = new() {
+        { Emojis.ThumbsUp, "emoji-thumbs-up" },
+        { Emojis.RedHeart, "emoji-red-heart" },
+        { Emojis.Lol, "emoji-lol" },
+        { Emojis.Surprise, "emoji-surprise" },
+        { Emojis.Sad, "emoji-sad" },
+        { Emojis.Angry, "emoji-angry" },
+        { Emojis.Poo, "emoji-poo" },
+    };
+
+    private string? _svgName;
+
+    [Parameter] public Emoji? Emoji { get; set; }
     [Parameter] public string Class { get; set; } = "";
+
+    protected override void OnParametersSet() {
+        _svgName = Emoji is { } emoji
+            ? SvgNames.GetValueOrDefault(emoji)
+            : null;
+    }
 }

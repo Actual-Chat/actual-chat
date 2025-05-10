@@ -43,7 +43,7 @@ public static class UserExt
             throw StandardError.Constraint("Email identity already set for this user.");
 
         return user.WithIdentity(ToEmailIdentity(email))
-            .WithIdentity(ToHashedEmailIdentity(ContactLinkExt.Hash(email)));
+            .WithIdentity(ToHashedEmailIdentity(ContactExt.Hash(email)));
     }
 
     public static UserIdentity GetPhoneIdentity(this User user)

@@ -228,7 +228,7 @@ public sealed class ServerAuth
             if (existingUserId is not null || !AuthSchema.IsExternal(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } email)
                 return;
 
-            var emailHash = ContactLinkExt.Hash(email);
+            var emailHash = ContactExt.Hash(email);
             var userId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken)
                 .ConfigureAwait(false);
             if (userId is null)

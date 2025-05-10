@@ -35,15 +35,6 @@ public interface IRouletteProfilesBackend : IComputeService, IBackendService
     Task OnChatRouletteCompletedEvent(ChatRouletteCompletedEvent eventCommand, CancellationToken cancellationToken);
 }
 
-public record ProfileFull(
-    [property: DataMember, MemoryPackOrder(2)] UserId UserId,
-    Symbol Id)
-    : Profile(Id)
-{
-    public Profile ToProfile()
-        => New(Avatar, Preferences);
-}
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record RouletteProfilesBackend_ChangeUserSettings(

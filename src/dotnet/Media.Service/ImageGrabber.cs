@@ -194,14 +194,16 @@ public class ImageGrabber(IServiceProvider services)
     private static string GetMediaIdScope(string imageUrl)
         => imageUrl.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 
-    private Task<GrabStatus> SaveGrabStatus(string imageUrl, bool success, CancellationToken cancellationToken)
-        => Commander.Call(new GrabStatusesBackend_Change(GrabStatus.ComposeId(imageUrl), success),
-            true,
-            cancellationToken);
+    private Task<GrabStatus> SaveGrabStatus(string imageUrl, bool success, CancellationToken cancellationToken) {
+        var cmd = new GrabStatusesBackend_Change(GrabStatus.ComposeId(imageUrl), success);
+        return Commander.Call(cmd, true, cancellationToken);
+    }
 
     private bool NeedsUpdate(GrabStatus? grabStatus) => grabStatus is null
         || grabStatus.ModifiedAt + GetUpdatePeriod(grabStatus) < Clocks.SystemClock.Now;
 
     private TimeSpan GetUpdatePeriod(GrabStatus? grabStatus)
-        => grabStatus?.Success != false ? Settings.LinkPreviewUpdatePeriod : TimeSpan.FromHours(1);
+        => grabStatus?.IsSuccessful != false
+            ? Settings.LinkPreviewUpdatePeriod
+            : TimeSpan.FromHours(1);
 }

@@ -39,7 +39,7 @@
         @foreach (var interest in preferences.Interests) {
             var match = matchInterests.Contains(interest);
             <div class="cr-badge @(match ? "selected" : "")">
-                <span>@(Interests.GetTitle(interest))</span>
+                <span>@interest.Title</span>
             </div>
         }
     </div>

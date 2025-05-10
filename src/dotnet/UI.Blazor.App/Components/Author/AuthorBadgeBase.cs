@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.Model>
+public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.Model?>
 {
     [Inject] protected ChatUIHub Hub { get; init; } = null!;
     protected Session Session => Hub.Session();
@@ -14,6 +14,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     protected AuthorId? AuthorId { get; private set; }
     protected ChatId? ChatId => AuthorId?.ChatId;
 
+    // TODO(AY): Use AuthorId instead
     [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
 
     protected override void OnInitialized()
@@ -22,23 +23,18 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     protected override void OnParametersSet()
         => AuthorId = AuthorId.ParseNullable(AuthorSid);
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
     {
         var (authorId, chatId) = (AuthorId, AuthorId?.ChatId);
         if (authorId is null || chatId is null)
-            return ComputedStateComponent.GetStateOptions(GetType(),
-                static t => new ComputedState<Model>.Options() {
-                    InitialValue = Model.Loading,
-                    Category = GetStateCategory(t),
-                });
+            return base.GetStateOptions();
 
         var authorComputed = Computed.GetExisting(() => Authors.Get(Session, chatId, authorId, default));
         var author = authorComputed?.IsConsistent() == true &&  authorComputed.HasValue ? authorComputed.Value : null;
 
-        var model = Model.Loading;
-        if (author != null) {
+        Model? model = null;
+        if (author is not null) {
             model = new Model(author);
-
             var ownAuthorComputed = Computed.GetExisting(() => Authors.GetOwn(Session, chatId, default));
             var ownAuthor = ownAuthorComputed?.IsConsistent() == true &&  ownAuthorComputed.HasValue ? ownAuthorComputed.Value : null;
             var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
@@ -52,7 +48,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         };
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var (authorId, chatId) = (AuthorId, AuthorId?.ChatId);
         if (authorId is null || chatId is null)
             return Model.None;
@@ -69,10 +65,9 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     // Nested types
 
     public sealed record Model(
-        Author Author,
+        Author? Author,
         bool IsOwn = false)
     {
-        public static readonly Model None = new(SpecialAuthor.None);
-        public static readonly Model Loading = new(SpecialAuthor.Loading);
+        public static Model None => new ((Author?)null);
     }
 }

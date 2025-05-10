@@ -14,9 +14,9 @@
         return;
     }
 
-    var name = IsYours ? "You" : Avatar?.Name ?? "";
+    var name = IsOwn ? "You" : Avatar?.Name ?? "";
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
-    var flexClass = IsYours || name.Length < 10 ? "non-shrinkable" : "shrinkable";
+    var flexClass = IsOwn || name.Length < 10 ? "non-shrinkable" : "shrinkable";
 }
 
 <span class="@Class @extraClass @flexClass avatar-name" @onclick="@Click">
@@ -26,7 +26,7 @@
 @code {
     [Parameter, EditorRequired] public Avatar? Avatar { get; set; }
     [Parameter] public bool IsAnonymous { get; set; }
-    [Parameter] public bool IsYours { get; set; }
+    [Parameter] public bool IsOwn { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 }

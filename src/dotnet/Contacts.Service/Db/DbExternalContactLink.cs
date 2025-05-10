@@ -13,7 +13,7 @@ public class DbExternalContactLink
     private const string PhonePrefix = "tel:";
     private const string EmailPrefix = "mailto:";
 
-    [Column("ExternalContactId")]
+    [Column("ExternalContactId")] // TODO(AY): Rename to external_contact_id
     public string DbExternalContactId { get; set; } = "";
     public string Value { get; set; } = "";
     public bool IsChecked { get; set; }

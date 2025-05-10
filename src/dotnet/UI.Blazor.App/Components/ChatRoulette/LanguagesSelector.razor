@@ -70,7 +70,7 @@
             return;
 
         if (language.ShortTitle.Length > 2
-            && ActualChat.Languages.SupportedMap.TryGetValue(language.ShortTitle[..2], out var alternative)
+            && ActualChat.Languages.SupportedById.TryGetValue(language.ShortTitle[..2], out var alternative)
             && alternative != language)
             language = alternative;
 

@@ -51,7 +51,7 @@ public class DbChatRoulette : IHasId<string>, IHasVersion<long>, IRequirementTar
     }
 
     public ChatRouletteFull ToModel()
-        => new (new ChatRouletteId(Id), Version) {
+        => new (ChatRouletteId.Parse(Id), Version) {
             ChatId = ActualChat.ChatId.Parse(ChatId),
             UserId1 = UserId.Parse(UserId1),
             UserId2 = UserId.Parse(UserId2),

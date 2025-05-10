@@ -6,10 +6,10 @@
     var authorCircleSize = ScreenSize.IsNarrow() ? SquareSize.Size5 : SquareSize.Size4;
 }
 <li class="reaction-badge @ownReactionClass @showIconsClass"
-    data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id.Value, Reaction.Emoji))"
+    data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id.Value, Reaction.Emoji.Value))"
     data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
     @onclick="@(_ => ToggleReaction(Reaction.Emoji))">
-    <EmojiIcon Id="@Reaction.Emoji.Id" Class="c-emoji"/>
+    <EmojiIcon Emoji="@Reaction.Emoji" Class="c-emoji"/>
     @if (showIcons) {
         @for (int i = 0; i < Reaction.FirstAuthorIds.Count; i++) {
             <div class="c-author" style="z-index: @(Reaction.FirstAuthorIds.Count - i - 1)">
@@ -31,12 +31,14 @@
     [Parameter, EditorRequired] public ReactionSummary Reaction { get; set; } = null!;
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
-    private Task ToggleReaction(Symbol emojiId) {
+    private Task ToggleReaction(Emoji emoji) {
         _ = Hub.TuneUI.Play(Tune.React);
-        return UICommander.Run(new Reactions_React(Session, new Reaction {
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
             AuthorId = null!,
             EntryId = Entry.Id.ToTextEntryId(),
-            EmojiId = emojiId,
-        }));
+            Emoji = emoji,
+        };
+        return UICommander.Run(new Reactions_React(Session, reaction));
     }
 }

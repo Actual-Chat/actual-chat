@@ -4,9 +4,9 @@
     @foreach (var emoji in _emojis) {
         <MenuEntry
             Class="reaction-select-reaction"
-            Click="@(_ => React(emoji.Id))">
+            Click="@(_ => React(emoji))">
             <IconContent>
-                <EmojiIcon Id="@emoji.Id" Class="reaction-select-reaction-emoji"/>
+                <EmojiIcon Emoji="@emoji" Class="reaction-select-reaction-emoji"/>
             </IconContent>
         </MenuEntry>
     }
@@ -26,16 +26,17 @@
 
     protected override void OnParametersSet() {
         var skipCount = ShowDefaultReaction ? 0 : 1;
-        _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
+        _emojis = Emojis.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
     }
 
-    private Task React(Symbol emojiId) {
-        var command = new Reactions_React(Session, new Reaction {
+    private Task React(Emoji emoji) {
+        _ = TuneUI.Play(Tune.React);
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
             AuthorId = null!,
             EntryId = Entry.Id.ToTextEntryId(),
-            EmojiId = emojiId,
-        });
-        _ = TuneUI.Play(Tune.React);
-        return UICommander.Run(command);
+            Emoji = emoji,
+        };
+        return UICommander.Run(new Reactions_React(Session, reaction));
     }
 }

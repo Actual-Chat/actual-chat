@@ -35,12 +35,12 @@
             </div>
             <div class="c-bottom">
                 @{
-                    var matchInterests = m.ChatRouletteInfo.OwnProfile.Preferences.Preferences.Interests;
+                    var matchInterests = m.ChatRouletteInfo.OwnProfile?.Preferences.Preferences.Interests ?? [];
                 }
                 @foreach (var interest in preferences.Interests) {
                     var match = matchInterests.Contains(interest);
                     <div class="cr-badge @(match ? "selected" : "")">
-                        <span>@(Interests.GetTitle(interest))</span>
+                        <span>@interest.Title</span>
                     </div>
                 }
             </div>

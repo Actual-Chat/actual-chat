@@ -34,10 +34,10 @@
                     <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true" AdditionalAttributes="@bioFieldAttrs"/>
                 </FormSection>
 
-                <FormSection For="() => _form.CountryCode" InputId="@_form.CountryCodeFieldId" Label="Choose country" IsLabelInsideInput="true">
-                    <InputSelect @bind-Value="@_form.CountryCode">
-                        @foreach (var country in RouletteUI.CountryOptions) {
-                            <option value="@country.Code">@country.Title</option>
+                <FormSection For="() => _form.CountryId" InputId="@_form.CountryIdFieldId" Label="Choose country" IsLabelInsideInput="true">
+                    <InputSelect @bind-Value="@_form.CountryId">
+                        @foreach (var country in RouletteUI.Countries) {
+                            <option value="@country.Value">@country.Title</option>
                         }
                     </InputSelect>
                 </FormSection>
@@ -76,7 +76,7 @@
 </Form>
 
 @code {
-    private Profile _profile = SpecialProfile.None;
+    private Profile _profile = null!;
     private Form _formRef = null!;
     private FormModel _form = null!;
 
@@ -108,7 +108,7 @@
             _form.Picture = avatar.Picture;
             _form.Name = avatar.Name;
             _form.Bio = avatar.Bio;
-            _form.CountryCode = preferences.Country.Code;
+            _form.CountryId = preferences.Country.Value;
             _form.Languages = preferences.Languages;
             _form.Gender = preferences.Gender;
             _form.Interests = preferences.Interests;
@@ -129,7 +129,7 @@
         };
         avatar = avatar.WithPicture(_form.Picture);
         var preferences = profile.Preferences.Preferences with {
-            Country = Country.ParseOrNone(_form.CountryCode),
+            Country = Country.Parse(_form.CountryId),
             Gender = _form.Gender,
             Languages = _form.Languages.ToArray(),
             Interests = _form.Interests.ToArray(),
@@ -169,12 +169,12 @@
         public string Bio { get; set; } = "";
         public string BioFieldId { get; set; } = "";
         public Picture? Picture { get; set; }
-        public string CountryCode { get; set; } = "";
-        public string CountryCodeFieldId { get; set; } = "";
+        public string CountryId { get; set; } = "";
+        public string CountryIdFieldId { get; set; } = "";
         [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
         public IReadOnlyList<Language> Languages { get; set; } = [];
         public string LanguagesFieldId { get; set; } = "";
-        public Gender Gender { get; set; } = Gender.NotSpecified;
+        public Gender Gender { get; set; } = Gender.Undefined;
         public string GenderFieldId { get; set; } = "";
         public IReadOnlyList<Interest> Interests { get; set; } = [];
         public string InterestsFieldId { get; set; } = "";

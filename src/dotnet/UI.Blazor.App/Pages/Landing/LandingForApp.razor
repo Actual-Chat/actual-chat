@@ -10,7 +10,7 @@
 
     <LandingPage Class="page-1">
         <LandingPage1
-            IsGuest="@account.IsGuest"
+            IsGuest="@account.IsGuestOrNull()"
             SignInClick="@SignIn"
             ShowVideoClick="@OnShowVideoClick"/>
     </LandingPage>
@@ -31,14 +31,14 @@
         await base.DisposeAsync();
     }
 
-    protected override ComputedState<AccountFull>.Options GetStateOptions()
+    protected override ComputedState<AccountFull?>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.Use(cancellationToken);
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken)!;
 
     protected virtual Task SignIn()
         => ModalUI.Show(new SignInModal.Model());

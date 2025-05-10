@@ -11,32 +11,34 @@ partial class RouletteUI
             .RunIsolated(StopToken);
 
     [ComputeMethod]
-    protected virtual async Task<(Symbol, Profile)> GetSelectedProfile(CancellationToken cancellationToken)
+    protected virtual async Task<(Profile? Cached, Profile? Actual)> GetSelectedProfile(
+        CancellationToken cancellationToken)
     {
-        var selectedProfile = await SelectedProfile.Use(cancellationToken).ConfigureAwait(false);
-        var selectedProfileId = selectedProfile.Id;
-        if (selectedProfileId.IsEmpty)
-            return (Symbol.Empty, SpecialProfile.None);
+        var cached = await SelectedProfile.Use(cancellationToken).ConfigureAwait(false);
+        if (cached is null)
+            return (null, null);
 
-        var profile = await RouletteProfiles.GetOwnProfile(Session, selectedProfileId, cancellationToken).ConfigureAwait(false);
-        return (selectedProfileId, profile ?? SpecialProfile.None);
+        var actual = await RouletteProfiles.GetOwnProfile(Session, cached.Id, cancellationToken).ConfigureAwait(false);
+        return (cached, actual);
     }
 
     private async Task SyncSelectedProfile(CancellationToken cancellationToken)
     {
-        var cGetProfile0 = await Computed
+        var cGetSelectedProfilePair0 = await Computed
             .Capture(() =>  GetSelectedProfile(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var changes = cGetProfile0.Changes(FixedDelayer.NextTick, cancellationToken).Skip(1);
-        await foreach (var cGetProfile in changes.ConfigureAwait(false)) {
-            var (profileId, profile) = cGetProfile.Value;
-            if (SelectedProfile.Value.Id != profileId)
-                continue; // Skip update if the selected profile id has changed.
+        var changes = cGetSelectedProfilePair0.Changes(FixedDelayer.NextTick, cancellationToken).Skip(1);
+        await foreach (var cGetProfilePair in changes.ConfigureAwait(false)) {
+            var (cached, actual) = cGetProfilePair.Value;
+            var cachedId = cached?.Id ?? Symbol.Empty;
+            var actualId = actual?.Id ?? Symbol.Empty;
+            if (cachedId != actualId)
+                continue; // Skip update if the selected profile Id has changed.
 
-            if (profile.Id.IsEmpty)
-                DiscardSelectedProfile();
+            if (actualId.IsEmpty)
+                ResetSelectedProfile();
             else
-                SelectProfile(profile);
+                SelectProfile(actual);
         }
     }
 }

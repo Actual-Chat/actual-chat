@@ -31,12 +31,12 @@
         </div>
         <div class="c-bottom">
             @{
-                var matchInterests = m.ChatRouletteInfo.OwnProfile.Preferences.Preferences.Interests;
+                var matchInterests = m.ChatRouletteInfo.OwnProfile?.Preferences.Preferences.Interests ?? [];
             }
             @foreach (var interest in preferences.Interests) {
                 var match = matchInterests.Contains(interest);
                 <div class="cr-badge @(match ? "selected" : "")">
-                    <span>@(Interests.GetTitle(interest))</span>
+                    <span>@interest.Title</span>
                 </div>
             }
         </div>
@@ -113,10 +113,12 @@
         if (chatRouletteProfiles is null)
             return null;
 
-        if (chatRouletteProfiles.PeerProfile.Id.IsEmpty)
+        var peerProfile = chatRouletteProfiles.PeerProfile;
+        var ownProfile = chatRouletteProfiles.OwnProfile;
+        if (peerProfile is null || ownProfile is null)
             return null;
 
-        return new ChatRouletteInfo(chatRouletteProfiles.PeerProfile, chatRouletteProfiles.OwnProfile);
+        return new ChatRouletteInfo(peerProfile, chatRouletteProfiles.OwnProfile);
     }
 
     // Nested types
@@ -129,5 +131,5 @@
         public ChatRouletteInfo? ChatRouletteInfo { get; init; }
     }
 
-    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile OwnProfile);
+    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile? OwnProfile);
 }

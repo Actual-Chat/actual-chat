@@ -1,12 +1,11 @@
-@using ActualChat.Roulette
 @namespace ActualChat.UI.Blazor.App.Components
 
 <div class="interests-selector cr-badge-selector c-content">
-    @foreach (var option in ActualChat.Roulette.Interests.All) {
-        var isSelected = Interests.Contains(option);
+    @foreach (var interest in ActualChat.Interests.All) {
+        var isSelected = Interests.Contains(interest);
         var cls = isSelected ? "selected" : "";
-        <div class="cr-badge profile-badge clickable @cls" @onclick="@(() => Select(option, !isSelected))">
-            @ActualChat.Roulette.Interests.GetTitle(option)
+        <div class="cr-badge profile-badge clickable @cls" @onclick="@(() => Select(interest, !isSelected))">
+            @interest.Title
         </div>
     }
 </div>

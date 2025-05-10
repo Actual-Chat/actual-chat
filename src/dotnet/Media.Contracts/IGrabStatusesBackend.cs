@@ -18,7 +18,7 @@ public interface IGrabStatusesBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record GrabStatusesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] Symbol Id,
-    [property: DataMember, MemoryPackOrder(1)] bool Success
+    [property: DataMember, MemoryPackOrder(1)] bool IsSuccessful
 ) : ICommand<GrabStatus>, IBackendCommand, IHasShardKey<Symbol>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

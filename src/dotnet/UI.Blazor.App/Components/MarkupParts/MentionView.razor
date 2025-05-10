@@ -14,10 +14,7 @@
 }
 
 <AuthorBadgeTemplate AuthorSid="@(_authorId?.Value ?? "")">
-    @{
-        var authorId = (AuthorId?)context.Author.Id;
-    }
-    @if (authorId is null) {
+    @if (context?.Author is not { } author) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
@@ -26,9 +23,9 @@
         class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "") @cls cursor-pointer"
         data-tooltip="@tooltip"
         data-tooltip-position="@FloatingPosition.Top.ToPositionString()"
-        @onclick="@(_ => AuthorUI.Show(authorId))">
+        @onclick="@(_ => AuthorUI.Show(author.Id))">
         <div class="truncate">
-            @context.Author.Avatar.Name
+            @author.Avatar.Name
         </div>
     </div>
 </AuthorBadgeTemplate>
@@ -70,5 +67,6 @@
     }
 
     // Nested types
-    public record Model(bool? HasRead);
+
+    public sealed record Model(bool? HasRead);
 }

@@ -5,7 +5,9 @@
 @{
     var m = State.Value;
     var profiles = m.Profiles;
-    var canApply = !_selectedProfile.Id.IsEmpty && m.SelectedProfileId != _selectedProfile.Id;
+    var canApply = _selectedProfile is not null
+        && !_selectedProfile.Id.IsEmpty
+        && m.SelectedProfileId != _selectedProfile.Id;
 }
 
 <DialogFrame
@@ -18,7 +20,7 @@
             @foreach (var profile in profiles) {
                 <ChatRouletteProfileItem
                     Profile="@profile"
-                    IsSelected="@(profile.Id.Equals(_selectedProfile.Id))"
+                    IsSelected="@(profile.Id.Equals(_selectedProfile?.Id))"
                     SelectClick="@(() => SelectProfile(profile))" />
             }
             <Button Class="cr-btn" Click="@OnCreateProfileClick">
@@ -34,7 +36,7 @@
 </DialogFrame>
 
 @code {
-    private Profile _selectedProfile = null!;
+    private Profile? _selectedProfile;
 
     [Inject] ChatUIHub Hub { get; init; } = null!;
 

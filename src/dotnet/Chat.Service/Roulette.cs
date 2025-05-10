@@ -91,8 +91,9 @@ public class Roulette(IServiceProvider services) : IRoulette
             return null;
 
         var chatRouletteId = await RouletteExt.GetChatRouletteId(chatId, AuthorsBackend, cancellationToken).ConfigureAwait(false);
-        if (chatRouletteId.IsNone)
+        if (chatRouletteId is null)
             return null;
+
         var chatRoulette = await Backend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
         if (chatRoulette is null)
             return null;
@@ -123,7 +124,7 @@ public class Roulette(IServiceProvider services) : IRoulette
         if (peerProfile is null || peerProfile.UserId == account.Id)
             return null;
 
-        var chatRouletteId = new ChatRouletteId(ownProfileId, peerProfileId);
+        var chatRouletteId = ChatRouletteId.New(ownProfileId, peerProfileId);
         var chatRoulette = await Backend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
         if (chatRoulette is not null)
             return chatRoulette.ChatId;

@@ -2,11 +2,11 @@ namespace ActualChat;
 
 public static class Languages
 {
-    // For Arabic we need RTL support.
-    //public static readonly Language2 Arabic = new("ar-SA", "SA", "Arabic", AssumeValid.Option);
+    // For Arabic, we need RTL support.
+    // public static readonly Language2 Arabic = new("ar-SA", "SA", "Arabic", AssumeValid.Option);
     // Chinese does support only `chirp` recognition model which does not support streaming.
-    //public static readonly Language2 Arabic       = new("ar-SA", "AR", "Arabic (Saudi Arabia)", AssumeValid.Option); We need RTL support
-    //public static readonly Language2 Bengali      = new("bn-BD", "BN", "Bengali", AssumeValid.Option); Not supported
+    // public static readonly Language2 Arabic = new("ar-SA", "AR", "Arabic (Saudi Arabia)", AssumeValid.Option); We need RTL support
+    // public static readonly Language2 Bengali = new("bn-BD", "BN", "Bengali", AssumeValid.Option); Not supported
     public static readonly Language Chinese = new("zh-CN", "CN", "Chinese");
     public static readonly Language ChineseTW = new("zh-TW", "TW", "Chinese (Taiwan)");
     public static readonly Language Czech = new("cs-CZ", "CZ", "Czech");
@@ -38,7 +38,6 @@ public static class Languages
     public static readonly Language Vietnamese = new("vi-VN", "VN", "Vietnamese");
 
     public static readonly Language Main = English;
-    public static readonly Language Loading = new("Loading", "Loading", "Loading");
 
     public static readonly Language[] All = [
         Chinese,
@@ -72,7 +71,7 @@ public static class Languages
         Vietnamese,
     ];
 
-    public static readonly Language[] Supported = [
+    public static readonly Language[] AllSupported = [
         // Arabic,
         // Chinese,
         English,
@@ -97,10 +96,10 @@ public static class Languages
         Thai,
         Turkish,
         Ukrainian,
-        Vietnamese
+        Vietnamese,
     ];
 
-    public static readonly Dictionary<string, Language> Map =
+    public static readonly Dictionary<string, Language> ById =
         All.Select(x => new KeyValuePair<string, Language>(x.Value, x))
             .Concat(All.Select(x => new KeyValuePair<string, Language>(x.Value.ToLowerInvariant(), x)))
             .Concat(All.Select(x => new KeyValuePair<string, Language>(x.ShortTitle, x)))
@@ -108,7 +107,7 @@ public static class Languages
             .DistinctBy(kv => kv.Key)
             .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 
-    public static readonly Dictionary<string, Language> SupportedMap =
-        Map.Where(x => Supported.Contains(x.Value))
+    public static readonly Dictionary<string, Language> SupportedById =
+        ById.Where(x => AllSupported.Contains(x.Value))
             .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 }

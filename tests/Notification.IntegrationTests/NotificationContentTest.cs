@@ -24,7 +24,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         await Tester.SignIn(bob);
         var entry = await Tester.CreateTextEntry(chatId, "Ok!");
         await Tester.SignIn(alice);
-        await Tester.React(entry.Id.ToTextEntryId(), Emoji.RedHeart);
+        await Tester.React(entry.Id.ToTextEntryId(), Emojis.RedHeart);
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
@@ -61,7 +61,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         var media = await Tester.Attach(chatId, TestImages.GetUploadedImage(TestImages.DefaultJpg));
         var entry = await Tester.CreateTextEntry(chatId, "", media.Id);
         await Tester.SignIn(alice);
-        await Tester.React(entry.Id.ToTextEntryId(), Emoji.RedHeart);
+        await Tester.React(entry.Id.ToTextEntryId(), Emojis.RedHeart);
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);

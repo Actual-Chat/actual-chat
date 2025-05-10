@@ -6,7 +6,7 @@
 }
 <div class="flex-x gap-x-1">
     <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
-        <EmojiIcon Id="@Emoji.ThumbsUp.Id" Class="w-5 h-5"/>
+        <EmojiIcon Emoji="@Emojis.ThumbsUp" Class="w-5 h-5"/>
     </ButtonRound>
     @if (m.CanReply && !IsSystem) {
         <ButtonRound
@@ -59,11 +59,13 @@
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
-        return UICommander.Run(new Reactions_React(Session, new Reaction {
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
             AuthorId = null!,
             EntryId = Message.Entry.Id.ToTextEntryId(),
-            EmojiId = Emoji.ThumbsUp,
-        }));
+            Emoji = Emojis.ThumbsUp,
+        };
+        return UICommander.Run(new Reactions_React(Session, reaction));
     }
 
     // Nested types

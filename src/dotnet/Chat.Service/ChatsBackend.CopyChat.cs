@@ -721,7 +721,7 @@ public partial class ChatsBackend
             var entryId = TextEntryId.Parse(dbSummary.EntryId);
             var newEntryId = TextEntryId.New(newChatId, entryId.LocalId);
             dbSummary.EntryId = newEntryId.Value;
-            dbSummary.Id = DbReactionSummary.ComposeId(newEntryId, dbSummary.EmojiId);
+            dbSummary.Id = DbReactionSummary.ComposeId(newEntryId, dbSummary.Emoji);
 
             var summary = dbSummary.ToModel();
             var authorIds = summary.FirstAuthorIds;

@@ -126,11 +126,3 @@ public sealed partial class ContactId : StringIdentifier, IStringIdentifier<Cont
         return true;
     }
 }
-
-public static class ContactId2Ext
-{
-    public static UserId? GetOtherUserId(this ContactId id)
-        => id.ChatId is PeerChatId peerChatId
-            ? peerChatId.AnotherUserIdOrNull(id.OwnerId)
-            : null;
-}

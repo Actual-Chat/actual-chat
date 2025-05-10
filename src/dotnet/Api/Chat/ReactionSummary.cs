@@ -8,18 +8,15 @@ namespace ActualChat.Chat;
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; } = "";
+    [DataMember, MemoryPackOrder(0)] public required Symbol Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public long Version { get; init; }
     [DataMember, MemoryPackOrder(2)] public required TextEntryId EntryId { get; init; }
-    [DataMember, MemoryPackOrder(3)] public Symbol EmojiId { get; init; }
-    [DataMember, MemoryPackOrder(4)] public long Count { get; init; }
+    [DataMember, MemoryPackOrder(3)] public required Emoji Emoji { get; init; }
+    [DataMember, MemoryPackOrder(4)] public required long Count { get; init; }
 
     // Set on read; ImmutableList is justified here, see Add/RemoveAuthor
     [DataMember, MemoryPackOrder(5)]
     public ImmutableList<AuthorId> FirstAuthorIds { get; init; } = ImmutableList<AuthorId>.Empty;
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Emoji Emoji => Emoji.Get(EmojiId);
 
     public ReactionSummary IncrementCount(long diff = 1)
     {

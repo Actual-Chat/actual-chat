@@ -11,10 +11,10 @@ public static class ExternalContactExt
         => externalContact with { PhoneHashes = externalContact.PhoneHashes.With(phone.Hash) };
 
     public static ExternalContactFull WithoutEmail(this ExternalContactFull externalContact, string email)
-        => externalContact with { EmailHashes = externalContact.EmailHashes.Without(ContactLinkExt.Hash(email)) };
+        => externalContact with { EmailHashes = externalContact.EmailHashes.Without(ContactExt.Hash(email)) };
 
     public static ExternalContactFull WithEmail(this ExternalContactFull externalContact, string email)
-        => externalContact with { EmailHashes = externalContact.EmailHashes.With(ContactLinkExt.Hash(email)) };
+        => externalContact with { EmailHashes = externalContact.EmailHashes.With(ContactExt.Hash(email)) };
 
     public static ExternalContactFull WithHash(this ExternalContactFull externalContact, ExternalContactHasher hasher, bool recompute = true)
         => recompute || externalContact.Hash.IsNone || externalContact.Hash.Algorithm != HashAlgorithm.SHA256

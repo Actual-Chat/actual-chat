@@ -27,7 +27,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
             return null;
 
         var prefs = await GetPreferences(profileId, cancellationToken).ConfigureAwait(false);
-        return new ProfileFull(avatar.UserId, profileId) {
+        return new ProfileFull {
+            Id = profileId,
+            UserId = avatar.UserId,
             Avatar = avatar.ToAvatar(),
             Preferences = prefs?.ToProfilePreferences() ?? new ProfilePreferences(profileId)
         };
@@ -70,21 +72,21 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         queryable = queryable
             .Where(c => !completedPeerProfileIds.Contains(c.Id)); // Exclude completed chats
         queryable = queryable.Where(c => usersWithEnabledChatRoulette.Contains(c.UserId));
-        if (!filter.Country.IsNotSpecified)
-            queryable = queryable.Where(c => c.CountryCode == filter.Country.Code);
-        if (filter.Gender != Gender.NotSpecified)
+        if (!filter.Country.IsUndefined)
+            queryable = queryable.Where(c => c.Country == filter.Country.Value);
+        if (filter.Gender != Gender.Undefined)
             queryable = queryable.Where(c => c.Gender == filter.Gender);
         var filterLanguageIds = filter.Languages.Select(l => l.Id.Value).ToArray();
         queryable = queryable.Where(c => filterLanguageIds.Any(l => c.Languages.Contains(l)));
         if (filter.Interests.Length > 0) {
-            var hasFlexible = filter.Interests.Any(c => Equals(c.Code, Interests.Flexible.Code));
+            var hasFlexible = filter.Interests.Any(i => i == Interests.Flexible);
             if (hasFlexible) {
                 // Flexible interest indicates that profiles with any interests will suite.
-                queryable = queryable.Where(c => c.Interests.Length > 0);
+                queryable = queryable.Where(i => i.Interests.Length > 0);
             }
             else {
-                var filterInterestCodes = filter.Interests.Select(c => c.Code).ToArray();
-                queryable = queryable.Where(c => filterInterestCodes.Any(i => c.Interests.Contains(i)));
+                var filterInterestCodes = filter.Interests.Select(i => i.Value).ToArray();
+                queryable = queryable.Where(x => filterInterestCodes.Any(i => x.Interests.Contains(i)));
             }
         }
         var candidates = await queryable.ToListAsync(cancellationToken)

@@ -53,7 +53,7 @@ public class ReactionsBackend(IServiceProvider services)
         }
 
         var context = CommandContext.GetCurrent();
-        var emoji = Emoji.Get(reaction.EmojiId).Require();
+        var emoji = reaction.Emoji;
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).Require().ConfigureAwait(false);
@@ -81,16 +81,16 @@ public class ReactionsBackend(IServiceProvider services)
                 mustUpdateHasReactions = false; // There were already reaction before
         }
         else {
-            if (emoji.Id == dbReaction.EmojiId) {
+            if (emoji.Id == dbReaction.Emoji) {
                 dbContext.Remove(dbReaction);
                 var dbSummary = await UpsertDbSummary(emoji, false).ConfigureAwait(false);
                 if (dbSummary.Count > 0)
                     mustUpdateHasReactions = false; // Some reactions are still there
             }
             else {
-                var oldEmoji = Emoji.Get(dbReaction.EmojiId);
+                var oldEmoji = Emoji.Parse(dbReaction.Emoji);
                 dbReaction.Version = VersionGenerator.NextVersion(dbReaction.Version);
-                dbReaction.EmojiId = emoji.Id;
+                dbReaction.Emoji = emoji.Id;
                 dbReaction.ModifiedAt = Clocks.SystemClock.Now;
                 await UpsertDbSummary(oldEmoji, false).ConfigureAwait(false);
                 await UpsertDbSummary(emoji, true).ConfigureAwait(false);
@@ -111,7 +111,7 @@ public class ReactionsBackend(IServiceProvider services)
 
         async Task<DbReactionSummary> UpsertDbSummary(Emoji emoji1, bool mustIncrementCount)
         {
-            var dbSummaryId = DbReactionSummary.ComposeId(entryId, emoji1);
+            var dbSummaryId = DbReactionSummary.ComposeId(entryId, emoji1.Value);
             var dbSummary = await dbContext.ReactionSummaries.ForUpdate()
                 .FirstOrDefaultAsync(x => x.Id == dbSummaryId, cancellationToken)
                 .ConfigureAwait(false);
@@ -119,13 +119,15 @@ public class ReactionsBackend(IServiceProvider services)
                 dbSummary.Require();
 
             if (dbSummary == null) {
-                dbSummary = new DbReactionSummary(new ReactionSummary {
-                    EntryId = entryId,
-                    FirstAuthorIds = ImmutableList.Create(authorId),
-                    EmojiId = emoji1.Id,
-                    Count = 1,
-                    Version = VersionGenerator.NextVersion(),
-                });
+                dbSummary = new DbReactionSummary(
+                    new ReactionSummary {
+                        Id = Symbol.Empty,
+                        EntryId = entryId,
+                        FirstAuthorIds = ImmutableList.Create(authorId),
+                        Emoji = emoji1,
+                        Count = 1,
+                        Version = VersionGenerator.NextVersion(),
+                    });
                 dbContext.Add(dbSummary);
             }
             else {

@@ -1,17 +1,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
 @using ActualChat.Search
-@inherits ComputedRenderStateComponent<FoundPlaceListItem.Model>
+@inherits ComputedRenderStateComponent<FoundPlaceListItem.Model?>
 @{
     var m = State.Value;
-    var place = m.Place;
-    if (m == Model.None)
+    @if (m is null) {
+        <ChatListItemSkeleton />
         return;
-}
+    }
 
-@if (m == Model.Loading) {
-    <ChatListItemSkeleton />
-    return;
+    if (m.Place is not { } place)
+        return;
 }
 
 <NavbarItem Class="found-result place" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
@@ -49,14 +48,7 @@
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
@@ -66,7 +58,7 @@
             return Model.None;
 
         var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
-        if (place == null)
+        if (place is null)
             return Model.None;
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
@@ -83,14 +75,17 @@
 
     // Nested types
 
-    public sealed record Model(Place Place) {
-        public static readonly Model Loading = new(SpecialPlace.Loading);
-        public static readonly Model None = new(SpecialPlace.Unavailable);
+    public sealed record Model(Place? Place) {
+        public static readonly Model None = new((Place?)null);
 
         public SearchMatch TitleMatch { get; init; } = SearchMatch.Empty;
         public int MemberCount { get; init; }
         public LocalUrl Link { get; init; }
         public FoundItem Item { get; init; } = null!;
         public bool IsSelected { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

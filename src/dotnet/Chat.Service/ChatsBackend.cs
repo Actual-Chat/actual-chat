@@ -1854,7 +1854,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var hasCompleted = false;
             var chatRouletteId = await RouletteExt.GetChatRouletteId(chatId, AuthorsBackend, cancellationToken)
                 .ConfigureAwait(false);
-            if (chatRouletteId.IsNone)
+            if (chatRouletteId is null)
                 hasCompleted = true;
             else {
                 var chatRoulette = await RouletteBackend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);

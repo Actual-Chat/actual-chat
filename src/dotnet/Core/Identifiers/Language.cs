@@ -14,7 +14,7 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<Language>))]
 [MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<Language>))]
 [TypeConverter(typeof(StringIdentifierTypeConverter<Language>))]
-[ParameterComparer(typeof(ByValueParameterComparer))]
+[ParameterComparer(typeof(ByRefParameterComparer))] // Fine for Language
 public sealed partial class Language : StringIdentifier, IStringIdentifier<Language>
 {
     private static ILogger? _log;
@@ -67,19 +67,10 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Language? result)
     {
+        if (!s.IsNullOrEmpty() && (Languages.ById.TryGetValue(s, out result) || Languages.ById.TryGetValue(s.ToLowerInvariant(), out result)))
+            return true;
+
         result = null;
-        if (s.IsNullOrEmpty())
-            return false;
-
-        if (Languages.Map.TryGetValue(s, out var language)) {
-            result = language;
-            return true;
-        }
-        if (Languages.Map.TryGetValue(s.ToLowerInvariant(), out language)) {
-            result = language;
-            return true;
-        }
-
         return false;
     }
 }

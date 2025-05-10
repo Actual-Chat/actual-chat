@@ -4,7 +4,7 @@ namespace ActualChat.Chat;
 
 internal static class RouletteExt
 {
-    public static async Task<ChatRouletteId> GetChatRouletteId(
+    public static async Task<ChatRouletteId?> GetChatRouletteId(
         ChatId chatId,
         IAuthorsBackend authorsBackend,
         CancellationToken cancellationToken)
@@ -14,11 +14,10 @@ internal static class RouletteExt
         var author1 = await authorsBackend.Get(chatId, authorId1, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         var author2 = await authorsBackend.Get(chatId, authorId2, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (author1 is null || author2 is null)
-            return ChatRouletteId.None;
+            return null;
 
         var profileId1 = author1.AvatarId;
         var profileId2 = author2.AvatarId;
-        var chatRouletteId = new ChatRouletteId(profileId1, profileId2);
-        return chatRouletteId;
+        return ChatRouletteId.New(profileId1, profileId2);
     }
 }

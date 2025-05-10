@@ -41,7 +41,6 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -64,10 +63,8 @@
 
     // Nested types
 
-    public record Model {
-        public static readonly Model Loading = new () { SelectedProfile = SpecialProfile.Loading };
-
+    public sealed record Model {
         public bool IsRightPanelVisible { get; init; }
-        public Profile SelectedProfile { get; init; } = SpecialProfile.None;
+        public Profile? SelectedProfile { get; init; }
     }
 }

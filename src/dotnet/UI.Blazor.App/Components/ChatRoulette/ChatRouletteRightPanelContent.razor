@@ -18,13 +18,13 @@
 
         <div class="c-center">
             <FormBlock>
-                <FormSection For="() => _form.CountryCode"
-                             InputId="@_form.CountryCodeFieldId"
+                <FormSection For="() => _form.CountryId"
+                             InputId="@_form.CountryIdFieldId"
                              Label="Choose country"
                              IsLabelInsideInput="true">
-                    <InputSelect @bind-Value="@_form.CountryCode">
-                        @foreach (var country in RouletteUI.CountryOptions) {
-                            <option value="@country.Code">@country.Title</option>
+                    <InputSelect @bind-Value="@_form.CountryId">
+                        @foreach (var country in RouletteUI.Countries) {
+                            <option value="@country.Value">@country.Title</option>
                         }
                     </InputSelect>
                 </FormSection>
@@ -92,7 +92,7 @@
 
     private void OnSubmit() {
         var preferences = new Preferences {
-            Country = Country.ParseOrNone(_form.CountryCode),
+            Country = Country.Parse(_form.CountryId),
             Gender = _form.Gender,
             Languages = _form.Languages.ToArray(),
             Interests = _form.Interests.ToArray(),
@@ -101,7 +101,7 @@
     }
 
     private bool HasFilterChanged(FormModel form, Preferences searchFilter) {
-        if (form.CountryCode != searchFilter.Country.Code)
+        if (!OrdinalEquals(form.CountryId, searchFilter.Country.Value))
             return true;
 
         if (form.Gender != searchFilter.Gender)
@@ -117,7 +117,7 @@
     }
 
     private void FillInForm(FormModel form, Preferences searchCriteria) {
-        form.CountryCode = searchCriteria.Country.Code;
+        form.CountryId = searchCriteria.Country.Value;
         form.Gender = searchCriteria.Gender;
         form.Languages = searchCriteria.Languages;
         form.Interests = searchCriteria.Interests;
@@ -129,12 +129,12 @@
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
     public sealed class FormModel : FormModel<FormModel> {
-        public string CountryCode { get; set; } = "";
-        public string CountryCodeFieldId { get; set; } = "";
+        public string CountryId { get; set; } = "";
+        public string CountryIdFieldId { get; set; } = "";
         [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
         public IReadOnlyList<Language> Languages { get; set; } = [];
         public string LanguagesFieldId { get; set; } = "";
-        public Gender Gender { get; set; } = Gender.NotSpecified;
+        public Gender Gender { get; set; } = Gender.Undefined;
         public string GenderFieldId { get; set; } = "";
         public IReadOnlyList<Interest> Interests { get; set; } = [];
         public string InterestsFieldId { get; set; } = "";

@@ -39,7 +39,7 @@
             <AuthorBadgeTemplate AuthorSid="@authorId.Value">
                 <div class="mention-markup mention-markup-valid @mentionIndexCls">
                     <div class="truncate">
-                        @context.Author.Avatar.Name
+                        @(context?.Author?.Avatar.Name ?? "")
                     </div>
                 </div>
             </AuthorBadgeTemplate>

@@ -13,7 +13,7 @@ public sealed partial record GrabStatus(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0)
     : IHasId<Symbol>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2)] public bool Success { get; init; }
+    [DataMember, MemoryPackOrder(2)] public bool IsSuccessful { get; init; }
     [DataMember, MemoryPackOrder(3)] public Moment ModifiedAt { get; init; }
 
     // Computed properties

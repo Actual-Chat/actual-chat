@@ -20,10 +20,9 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         ChatRouletteId id,
         CancellationToken cancellationToken)
     {
-        if (id.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(id));
+        ArgumentNullException.ThrowIfNull(id);
 
-        var dbChatRoulette = await DbChatRouletteResolver.Get(id, cancellationToken).ConfigureAwait(false);
+        var dbChatRoulette = await DbChatRouletteResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         return dbChatRoulette?.ToModel();
     }
 
@@ -46,7 +45,7 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
 
         var dbChatRoulette = await dbContext.ChatRoulettes.ForUpdate()
                 // ReSharper disable once AccessToModifiedClosure
-                .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+                .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
         var oldChatRoulette = dbChatRoulette?.ToModel();
         ChatRouletteFull chatRoulette;
@@ -152,8 +151,10 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         if (chat is null || !chat.IsChatRoulette())
             return;
 
-        var chatRouletteId = await RouletteExt.GetChatRouletteId(chat.Id, AuthorsBackend, cancellationToken).ConfigureAwait(false);
-        if (chatRouletteId.IsNone)
+        var chatRouletteId = await RouletteExt
+            .GetChatRouletteId(chat.Id, AuthorsBackend, cancellationToken)
+            .ConfigureAwait(false);
+        if (chatRouletteId is null)
             return;
 
         var chatRoulette = await GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);

@@ -93,6 +93,6 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         if (contactEmail.EmailAddress.IsNullOrEmpty() || !MailAddress.TryCreate(contactEmail.EmailAddress, out _))
             return null;
 
-        return ContactLinkExt.Hash(contactEmail.EmailAddress);
+        return ContactExt.Hash(contactEmail.EmailAddress);
     }
 }
