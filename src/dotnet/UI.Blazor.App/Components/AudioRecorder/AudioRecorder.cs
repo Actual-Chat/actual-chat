@@ -161,6 +161,17 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     // JS backend callback handlers
     [JSInvokable]
+    public bool IsRecording(string chatId)
+    {
+        var state = State.Value;
+        if (!string.Equals(state.ChatId, chatId, StringComparison.OrdinalIgnoreCase))
+            return false; // Not recording
+
+        return state.IsRecording;
+    }
+
+    // JS backend callback handlers
+    [JSInvokable]
     public void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive)
     {
         var state = State.Value;
