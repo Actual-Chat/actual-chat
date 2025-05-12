@@ -9,7 +9,8 @@ public partial class ChatIndexInitializerShardTests
     [Fact]
     public void HandleCompletionEventMethodIncrementsEventCounter()
     {
-        var evt = new MLSearch_TriggerChatIndexingCompletion(null!);
+        var chatId = GroupChatId.New();
+        var evt = new MLSearch_TriggerChatIndexingCompletion(chatId);
         var state = new ChatIndexInitializerShard.SharedState(_fakeCursor, 1);
 
         var expected = state.EventCount + 1;

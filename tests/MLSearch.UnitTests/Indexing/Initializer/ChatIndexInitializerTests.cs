@@ -64,10 +64,11 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         var shardIndexResolver = Mock.Of<IShardIndexResolver<string>>(MockBehavior.Loose);
         var shard = Mock.Of<IChatIndexInitializerShard>(MockBehavior.Loose);
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>(MockBehavior.Loose);
+        var chatId = GroupChatId.New();
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver, shard, coordinator, logger);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
-                new MLSearch_TriggerChatIndexingCompletion(null!), CancellationToken.None));
+                new MLSearch_TriggerChatIndexingCompletion(chatId), CancellationToken.None));
     }
 
     [Fact]
@@ -81,13 +82,14 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Returns(ActiveShardIndex);
         var shard = Mock.Of<IChatIndexInitializerShard>(MockBehavior.Loose);
         var logger = Mock.Of<ILogger<ChatIndexInitializer>>(MockBehavior.Loose);
+        var chatId = GroupChatId.New();
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, coordinator, logger);
         // Emulate staring of some inactive shards
         _ = initializer.OnRun(InactiveShardIndex1, CancellationToken.None);
         _ = initializer.OnRun(InactiveShardIndex2, CancellationToken.None);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
-                new MLSearch_TriggerChatIndexingCompletion(null!), CancellationToken.None));
+                new MLSearch_TriggerChatIndexingCompletion(chatId), CancellationToken.None));
     }
 
     [Theory]

@@ -78,13 +78,13 @@ public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.Equal(placeId, rootChatMetadata.PlaceId);
 
         var placeChatId = PlaceChatId.New(placeId);
-        var placeChatEntryId = TextEntryId.New(rootChatId, 1);
+        var placeChatEntryId = TextEntryId.New(placeChatId, 1);
         var placeChatMetadata = CreateMetadata(placeChatEntryId);
         Assert.Equal(placeChatId, placeChatMetadata.ChatId);
         Assert.Equal(placeId, placeChatMetadata.PlaceId);
 
         static ChatSliceMetadata CreateMetadata(TextEntryId chatEntryId) => new (
-            [null!],
+            [AuthorId.New(chatEntryId.ChatId, 1)],
             [new (chatEntryId, 1, 1)], null, null,
             [], [], [], [],
             "en-US",

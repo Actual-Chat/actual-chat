@@ -24,7 +24,7 @@ public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
         Assert.EndsWith("33", id, StringComparison.Ordinal);
 
         static ChatSliceMetadata CreateMetadata(TextEntryId chatEntryId1, TextEntryId chatEntryId2, int startOffset, int endOffset) => new (
-            [null!],
+            [AuthorId.New(chatEntryId1.ChatId, 1)],
             [new (chatEntryId1, 1, 1), new (chatEntryId2, 2, 1)], startOffset, endOffset,
             [], [], [], [],
             "en-US",

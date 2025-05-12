@@ -14,7 +14,8 @@ public partial class ChatIndexInitializerShardTests
     public async Task ScheduleJobMethodWaitsForSemaphoreSlot()
     {
         const int maxConcurrency = 5;
-        var chatInfo = new ChatIndexInitializerShard.ChatInfo(null!, 0);
+        var chatId = GroupChatId.New();
+        var chatInfo = new ChatIndexInitializerShard.ChatInfo(chatId, 0);
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
         var queues = QueuesMock.Create().Object;
@@ -40,7 +41,8 @@ public partial class ChatIndexInitializerShardTests
     public async Task ScheduleJobMethodDoesNotLogCancellationError()
     {
         const int maxConcurrency = 5;
-        var chatInfo = new ChatIndexInitializerShard.ChatInfo(null!, 0);
+        var chatId = GroupChatId.New();
+        var chatInfo = new ChatIndexInitializerShard.ChatInfo(chatId, 0);
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
@@ -66,7 +68,8 @@ public partial class ChatIndexInitializerShardTests
     public async Task ScheduleJobMethodLogsErrors()
     {
         const int maxConcurrency = 5;
-        var chatInfo = new ChatIndexInitializerShard.ChatInfo(null!, 0);
+        var chatId = GroupChatId.New();
+        var chatInfo = new ChatIndexInitializerShard.ChatInfo(chatId, 0);
         var cursor = new ChatIndexInitializerShard.Cursor(333);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 
@@ -95,7 +98,8 @@ public partial class ChatIndexInitializerShardTests
         ChatIndexInitializerShard.RetrySettings retrySettings =
             new (attemptCount, RetryDelaySeq.Exp(0.3, 3, 0), TransiencyResolvers.PreferTransient);
 
-        var chatInfo = new ChatIndexInitializerShard.ChatInfo(null!, 0);
+        var chatId = GroupChatId.New();
+        var chatInfo = new ChatIndexInitializerShard.ChatInfo(chatId, 0);
         var cursor = new ChatIndexInitializerShard.Cursor(0);
         var state = new ChatIndexInitializerShard.SharedState(cursor, maxConcurrency);
 

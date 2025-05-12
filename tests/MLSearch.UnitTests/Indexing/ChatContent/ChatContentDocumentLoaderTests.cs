@@ -127,8 +127,9 @@ public class ChatContentDocumentLoaderTests(ITestOutputHelper @out) : TestBase(@
 
         var documentLoader = new ChatContentDocumentLoader(searchEngine.Object, namingPolicy);
 
+        var chatId = GroupChatId.New();
         var cursor = new ChatContentCursor(0, 0);
-        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(null!, cursor, 5));
+        await Assert.ThrowsAsync<UniqueException>(() => documentLoader.LoadTailAsync(chatId, cursor, 5));
     }
 
     [Fact]

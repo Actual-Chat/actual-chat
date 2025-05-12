@@ -37,7 +37,8 @@ public static class ChatContentArranger2Utils
             if (!authors.TryGetValue(authorNick, out var author)) {
                 var authorId = AuthorId.New(chatId, authors.Count + 1);
                 var avatarId = AvatarIdGenerator.Next();
-                author = new AuthorFull(null!, authorId, 1) {
+                var userId = UserId.New();
+                author = new AuthorFull(userId, authorId, 1) {
                     AvatarId = avatarId,
                     Avatar = new Avatar(avatarId, 1) {
                         Name = authorNick.ToString()
