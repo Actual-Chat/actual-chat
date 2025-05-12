@@ -46,9 +46,9 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var baseTime = new DateTime(2024, 1, 1, 12, 0, 0);
         var entries = new List<TextEntry>
         {
-            new (0, "Entry 1", default, baseTime, null, false, null),
-            new (0, "Entry 2", default, baseTime.AddMinutes(1), null, false, null),
-            new (0, "Entry 3", default, baseTime.AddHours(13 + 1), null, false, null), // 13 hours after entry2
+            new (1, "Entry 1", default, baseTime, null, false, null),
+            new (2, "Entry 2", default, baseTime.AddMinutes(1), null, false, null),
+            new (3, "Entry 3", default, baseTime.AddHours(13 + 1), null, false, null), // 13 hours after entry2
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -76,7 +76,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var groupWordCount = 100;
         var entries = Enumerable.Range(0, 10)
             .Select(i => new TextEntry(
-                0,
+                i,
                 string.Join(" ", Enumerable.Repeat("word", 10)),
                 default,
                 DateTime.Now.AddMinutes(i),
@@ -101,7 +101,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         // Arrange
         var groupWordCount = 100;
         var entries = Enumerable.Range(0, 10)
-            .Select(i => new TextEntry(0, string.Join(" ", Enumerable.Repeat("word", 10)), default, DateTime.Now.AddMinutes(i), null, false, null))
+            .Select(i => new TextEntry(i, string.Join(" ", Enumerable.Repeat("word", 10)), default, DateTime.Now.AddMinutes(i), null, false, null))
             .ToList();
 
         // Use a custom embeddings calculator with low similarity

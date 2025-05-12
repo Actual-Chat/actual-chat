@@ -61,7 +61,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
             ? chunkBuilder.MaxLid
             : groupBuilder.Entries.Count > 0
                 ? groupBuilder.MaxLid
-                : 0;
+                : -1;
         foreach (var entry in entries.SkipWhile(e => e.LocalId <= lastEntryLid)) {
             if (string.IsNullOrWhiteSpace(entry.Content))
                 continue;
