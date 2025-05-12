@@ -8,6 +8,7 @@ import { AudioPlayer } from '../AudioPlayer/audio-player';
 import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { Log } from 'logging';
+import { throttle } from 'promises';
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
@@ -37,7 +38,6 @@ export class AudioRecorder {
 
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
     private chatId?: string = null;
-    private hearbeatTimer?: number = null;
 
     public static async terminate(): Promise<void> {
         debugLog?.log(`-> terminate()`);
@@ -54,8 +54,9 @@ export class AudioRecorder {
     public constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.ensureConnected(true));
-        opusMediaRecorder.subscribeToStateChanges((isRecording, isConnected, isVoiceActive) =>
-            this.onRecordingStateChange(isRecording, isConnected, isVoiceActive));
+        opusMediaRecorder.subscribeToStateChanges((isRecording, isSignalDetected, isConnected, isVoiceActive) =>
+            this.onRecordingStateChange(isRecording, isSignalDetected, isConnected, isVoiceActive));
+        opusMediaRecorder.subscribeToRecordingHeartbeat(() => this.heartbeatThrottled());
     }
 
     /** Called from Blazor */
@@ -150,11 +151,6 @@ export class AudioRecorder {
             }
 
             this.state = 'starting';
-            if (this.hearbeatTimer) {
-                window.clearInterval(this.hearbeatTimer);
-                this.hearbeatTimer = null;
-            }
-            this.hearbeatTimer = window.setInterval(() => this.heartbeat(), HEARTBEAT_INTERVAL);
             await opusMediaRecorder.start(chatId, repliedChatEntryId);
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
@@ -225,11 +221,14 @@ export class AudioRecorder {
         return await opusMediaRecorder.runDiagnostics(diagnosticsState);
     }
 
+    private readonly heartbeatThrottled = throttle(() => this.heartbeat(), HEARTBEAT_INTERVAL);
     private async heartbeat(): Promise<void> {
         try {
             const chatId = this.chatId;
-            if (!chatId)
+            if (!chatId) {
+                void this.stopRecording();
                 return;
+            }
 
             const isRecording = await this.blazorRef.invokeMethodAsync<boolean>('IsRecording', chatId);
             if (isRecording)
@@ -243,9 +242,9 @@ export class AudioRecorder {
         }
     }
 
-    private async onRecordingStateChange(isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {
+    private async onRecordingStateChange(isRecording: boolean, isSignalDetected: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {
         try {
-            await this.blazorRef.invokeMethodAsync('OnRecordingStateChange', isRecording, isConnected, isVoiceActive);
+            await this.blazorRef.invokeMethodAsync('OnRecordingStateChange', isRecording, isSignalDetected, isConnected, isVoiceActive);
         }
         catch (error) {
             errorLog?.log(`onRecordingStateChange: unhandled error:`, error);
