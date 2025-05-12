@@ -9,5 +9,5 @@ public partial record AuthorsRemovedEvent(
 ) : EventCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Authors.Count > 0 ? Authors[0].ChatId : ChatId.None;
+    public ChatId ShardKey => Authors.Length > 0 ? Authors[0].ChatId : ChatId.None;
 }
