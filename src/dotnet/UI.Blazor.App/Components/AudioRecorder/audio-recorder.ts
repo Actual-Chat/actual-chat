@@ -175,10 +175,6 @@ export class AudioRecorder {
         try {
             debugLog?.log(`-> stopRecording`);
             this.chatId = null;
-            if (this.hearbeatTimer) {
-                window.clearInterval(this.hearbeatTimer);
-                this.hearbeatTimer = null;
-            }
             await opusMediaRecorder.stop();
         }
         catch (error) {
