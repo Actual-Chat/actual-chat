@@ -89,7 +89,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public stream?: MediaStream;
 
     private get isRecording(): boolean {
-        return this.stream && this.state === 'recording';
+        return !!(this.stream && this.state === 'recording');
     }
 
     public static async stopStreamTracks(stream?: MediaStream): Promise<void> {
@@ -378,7 +378,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         debugLog?.log(`start(): awaiting whenInitialized`);
         await this.ensureInitialized();
         debugLog?.log(`start(): whenInitialized completed`);
-        
+
         this.state = 'recording';
         const contextRef = this.contextRef;
         this.recording = contextRef.use(async context => {
