@@ -16,9 +16,6 @@
     @apply gap-y-2;
     @apply py-2;
 }
-.share-modal .contact-selector-list {
-    @apply pt-2;
-}
 .narrow .share-modal .contact-selector-list {
     @apply pb-0;
 }

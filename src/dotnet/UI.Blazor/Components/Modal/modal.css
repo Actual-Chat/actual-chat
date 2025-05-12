@@ -119,7 +119,7 @@ body.device-ios .modal-chrome {
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
     @apply w-full h-full max-h-screen;
-    @apply md:w-96 xl:w-112 2xl:w-128 md:h-auto md:max-h-192;
+    @apply md:w-96 xl:w-104 2xl:w-112 md:h-auto md:max-h-192;
     @apply pb-4;
     @apply rounded-lg;
     @apply font-medium;

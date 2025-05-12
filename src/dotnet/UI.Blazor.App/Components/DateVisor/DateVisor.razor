@@ -7,9 +7,11 @@
 }
 
 <div @ref="Ref" class="date-visor-wrapper">
-    <div class="date-visor">
-        @m
-    </div>
+    @if (!m.IsNullOrEmpty()) {
+        <div class="date-visor">
+            @m
+        </div>
+    }
 </div>
 
 @code {
@@ -20,7 +22,6 @@
     private ElementReference Ref { get; set; }
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
     private IJSRuntime JS => Hub.JSRuntime();
     private IChats Chats => Hub.Chats;
     private Session Session => Hub.Session();

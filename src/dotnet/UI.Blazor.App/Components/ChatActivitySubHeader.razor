@@ -1,0 +1,35 @@
+@inherits ComputedStateComponent<Chat?>
+@{
+    var m = State.Value;
+    if (!ScreenSize.IsNarrow())
+        return;
+}
+
+<div class="chat-activity-subheader">
+    @if (m is { Id.IsNone: false }) {
+        <ChatActivityPanel Chat="@m"/>
+    }
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override ComputedState<Chat?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Chat?>.Options() {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Chat?> ComputeState(CancellationToken cancellationToken) {
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var selectedChat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
+        return selectedChat;
+    }
+}

@@ -150,7 +150,7 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply sticky top-0 z-90;
     @apply flex-none flex-y items-center;
     @apply w-full;
-    @apply px-3 -mt-px mb-0.5;
+    @apply px-1 md:px-3 pb-1 -mt-px mb-0.5;
     @apply overflow-visible;
     @apply bg-transparent;
     @apply transition-height;

@@ -16,16 +16,15 @@ class PlaybackToggleSvg extends LitElement {
 
     static styles = [css`
         :host {}
-        @media (min-width: 640px) and (orientation: portrait) {
+        @media (max-width: 819px) and (orientation: portrait) {
             :host {
                 --text-color: var(--audio-panel-button-text);
             }
         }
-        @media (min-width: 640px) and (orientation: landscape) {
+        @media (max-width: 819px) and (orientation: landscape) {
             :host {
                 --text-color: var(--mobile-landscape-audio-panel-button-text);
             }
-        }
         @media (min-width: 820px) {
             :host {
                 --text-color: var(--audio-panel-button-text);

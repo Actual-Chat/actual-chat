@@ -18,7 +18,7 @@
         filter: opacity(0);
     }
 }
-.date-visor-wrapper:has(.date-visor:empty) {
+.date-visor-wrapper:empty {
     @apply hidden;
 }
 .date-visor {

@@ -11,7 +11,9 @@
     @apply h-12;
     @apply px-2;
     @apply rounded-md;
-    @apply hover:bg-hover;
+}
+body.hoverable .contact-selector-list-item:hover {
+    @apply bg-hover;
 }
 .contact-selector-list-item,
 .contact-selector-list-item * {
