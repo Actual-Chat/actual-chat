@@ -70,8 +70,11 @@ public static class ShardKeyResolvers
 
     public static void Register<T>(ShardKeyResolver<T> resolver)
     {
-        if (!Registered.TryAdd(typeof(T), resolver))
+        if (!Registered.TryAdd(typeof(T), (ShardKeyResolver<T>)NullableResolver))
             throw StandardError.Internal($"ShardKeyResolver for type {typeof(T).GetName()} is already registered.");
+
+        int NullableResolver(T x)
+            => x is not null ? resolver(x) : 0;
     }
 
     public static ShardKeyResolver<object?> GetUntyped(
