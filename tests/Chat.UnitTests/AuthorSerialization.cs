@@ -6,7 +6,8 @@ public class AuthorSerializationTest
     public void BasicTest()
     {
         var authorId = AuthorId.New(GroupChatId.Parse("testChatId"), 0);
-        var author = new AuthorFull(null!, authorId) {
+        var userId = UserId.New();
+        var author = new AuthorFull(userId, authorId) {
             Avatar = new (Symbol.Empty) {
                 Name = "Alex",
             },
@@ -14,6 +15,7 @@ public class AuthorSerializationTest
         var sa = author.PassThroughSystemJsonSerializer();
         sa.Id.Should().Be(author.Id);
         sa.Version.Should().Be(author.Version);
+        sa.UserId.Should().Be(userId);
         sa.Avatar.Id.Should().Be(author.Avatar.Id);
         sa.Avatar.Name.Should().Be(author.Avatar.Name);
     }
