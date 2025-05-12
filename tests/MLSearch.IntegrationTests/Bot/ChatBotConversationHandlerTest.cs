@@ -46,10 +46,10 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .Returns<string, SearchType, string, string, int, CancellationToken>(
-                (query, searchType, conversationId, userId, limit, cancellationToken)
+                (query, searchType, conversationId, userId1, limit, cancellationToken)
                     => Task.FromResult<SearchResult[]>([
                         new SearchResult { Text = $"Dumb {query} content", Link = "link1" },
-                        new SearchResult { Text = $"Expected {searchType} cotent", Link = "link2" },
+                        new SearchResult { Text = $"Expected {searchType} content", Link = "link2" },
                     ])
             );
         var forwardPlugin = Mock.Of<IForwardPlugin>(MockBehavior.Loose);
@@ -75,12 +75,12 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         // Assert
         mockSearchPlugin.Verify(
             x => x.Find(
-                It.Is<string>(x => x == "transport infrastructure"),
-                It.Is<SearchType>(x => x == SearchType.General),
-                It.Is<string>(x => x == chatId.Value),
-                It.Is<string>(x => x == userId.Value),
-                It.Is<int>(x => x == 5),
-                It.Is<CancellationToken>(x => x == cancellationSource.Token)),
+                It.Is<string>(c => c == "transport infrastructure"),
+                It.Is<SearchType>(c => c == SearchType.General),
+                It.Is<string>(c => c == chatId.Value),
+                It.Is<string>(c => c == userId.Value),
+                It.Is<int>(c => c == 5),
+                It.Is<CancellationToken>(c => c == cancellationSource.Token)),
             Times.Once
         );
     }
@@ -94,7 +94,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         return Kernel.CreateBuilder()
             .AddOpenAIChatCompletion(
                 apiKey: openAISettings!.ApiKey,
-                modelId: openAISettings!.ChatModel)
+                modelId: openAISettings.ChatModel)
             .Build();
     }
 
