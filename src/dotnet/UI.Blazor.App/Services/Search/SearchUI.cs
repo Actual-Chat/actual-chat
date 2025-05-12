@@ -200,7 +200,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         public ContactSearchQuery ToContactQuery(SubgroupKey key)
             => new () {
                 Criteria = Text,
-                PlaceId = PlaceId,
+                PlaceId = PlaceId, // search everywhere (chats and places) if Null
                 Scope = key.Scope,
                 Limit = ExtendedLimits.Contains(key.Scope)
                     ? Constants.Search.ExtendedPageSize
@@ -211,7 +211,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
         public EntrySearchQuery ToEntryQuery(SubgroupKey key)
             => new () {
                 Criteria = Text,
-                PlaceId = PlaceId,
+                PlaceId = PlaceId, // search everywhere (chats and places) if Null
                 Limit = ExtendedLimits.Contains(key.Scope)
                     ? Constants.Search.ExtendedPageSize
                     : Constants.Search.DefaultPageSize,

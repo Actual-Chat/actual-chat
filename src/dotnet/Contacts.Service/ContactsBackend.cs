@@ -59,10 +59,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
     // [ComputeMethod]
     public virtual async Task<ContactId[]> ListIdsForSearch(
-        UserId userId, Option<PlaceId?> placeIdOpt, bool includePublic, CancellationToken cancellationToken)
+        UserId userId, ContactSubset contactSubset, bool includePublic, CancellationToken cancellationToken)
     {
-        if (placeIdOpt.HasValue)
-            return await ListPlaceContactIds(userId, placeIdOpt.Value, includePublic, cancellationToken).ConfigureAwait(false);
+        if (!contactSubset.IsAll())
+            return await ListPlaceContactIds(userId, contactSubset.PlaceId, includePublic, cancellationToken).ConfigureAwait(false);
 
         var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
         var contactIds = await placeIds.PrefixWith(null)
@@ -76,9 +76,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ContactId[]> ListIdsForGroupContactSearch(UserId userId, Option<PlaceId?> placeIdOpt, CancellationToken cancellationToken)
+    public virtual async Task<ContactId[]> ListIdsForGroupContactSearch(UserId userId, ContactSubset contactSubset, CancellationToken cancellationToken)
     {
-        var contactIds = await ListIdsForSearch(userId, placeIdOpt, true, cancellationToken).ConfigureAwait(false);
+        var contactIds = await ListIdsForSearch(userId, contactSubset, true, cancellationToken).ConfigureAwait(false);
         return contactIds.Where(x => x.ChatId is { Kind: ChatKind.Group or ChatKind.Place })
             .ToArray();
     }

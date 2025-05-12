@@ -348,7 +348,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         ContactSearchQuery query,
         CancellationToken cancellationToken)
     {
-        var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
+        var contactSubset = query.PlaceId is not null ? ContactSubset.Place(query.PlaceId) : ContactSubset.All();
+        var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, contactSubset, cancellationToken).ConfigureAwait(false);
         if (ownGroupContactIds.Length == 0 && query.Own)
             return ContactSearchResultPage.Empty;
 
@@ -387,7 +388,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                         : q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds)));
 
         ContactSearchResult ToSearchResult(IHit<IndexedGroup> hit)
-            => new(ContactId.NewAny(userId, hit.Source.Id!), hit.GetSearchMatch());
+            => new(ContactId.NewAny(userId, hit.Source.Id), hit.GetSearchMatch());
     }
 
     private async Task<ContactSearchResultPage> FindPlaces(
@@ -482,7 +483,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             if (query.ChatId is not null)
                 return [query.ChatId];
 
-            var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, true, cancellationToken).ConfigureAwait(false);
+            var contactSubset = query.PlaceId is not null ? ContactSubset.Place(query.PlaceId) : ContactSubset.All();
+            var contactIds = await ContactsBackend.ListIdsForSearch(userId, contactSubset, true, cancellationToken).ConfigureAwait(false);
             if (query.PlaceId is not { } placeId)
                 return contactIds.Select(x => x.ChatId).ToList();
 
