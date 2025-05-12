@@ -3,5 +3,5 @@
 public interface IAudioRecorderBackend
 {
     [JSInvokable]
-    void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive);
+    void OnRecordingStateChange(bool isRecording, bool isSignalDetected, bool isConnected, bool isVoiceActive);
 }
