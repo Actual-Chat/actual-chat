@@ -28,7 +28,7 @@
             });
 
     protected override async Task<Chat?> ComputeState(CancellationToken cancellationToken) {
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var selectedChat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
         return selectedChat;
     }
