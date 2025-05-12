@@ -28,7 +28,7 @@ public static class ServiceCollectionExt
         => AddTestLogging(services, new TestOutputHelperAccessor(output.ToSafe()));
     public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
     {
-        services.AddTracers(outputAccessor.Output.NewTracer(), useScopedTracers: true);
+        services.AddTracers(c => c.LoggerFactory().NewTracer(), useScopedTracers: true);
         services.AddLogging(logging => {
             // Overriding default logging to more test-friendly setup
             logging.ClearProviders();

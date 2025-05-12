@@ -8,6 +8,15 @@ public static class TestOutputHelperExt
     public static Tracer NewTracer(this ITestOutputHelper output, string name = "Test")
         => new(name, x => output.WriteLine(x.Format()));
 
+    public static Tracer NewTracer(this ILoggerFactory loggerFactory, string name = "Test")
+    {
+        var logger = loggerFactory.CreateLogger<Tracer>();
+        return new Tracer(name, x => {
+            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+            logger.LogInformation(x.Format());
+        });
+    }
+
     public static ITestOutputHelper ToSafe(this ITestOutputHelper output)
     {
         if (output is SafeTestOutput or MessageSinkTestOutput)
