@@ -17,9 +17,6 @@ public sealed partial record Conversation(
         (Conversation? c) => c?.Id is not null,
         new(() => StandardError.NotFound<Conversation>()));
 
-    // public static readonly Conversation None = new((ConversationId)null!);
-    // public static readonly Conversation Loading = new((ConversationId)null!, -1); // Should differ by Id & Version from None
-
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string Description { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public string Summary { get; init; } = "";

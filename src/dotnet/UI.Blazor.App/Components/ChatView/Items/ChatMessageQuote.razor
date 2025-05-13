@@ -3,6 +3,7 @@
 @{
     var authorNameCls = IsOwn ? "text-author-name " : "text-02 ";
     authorNameCls += "font-medium text-text-1";
+    var authorSid = ((AuthorId?)Entry.AuthorId)?.Value ?? ""; // NOTE(DF): AuthorId can be null for Loading and Removed ChatEntry.
 }
 
 @if (Entry.IsRemoved) {
@@ -19,7 +20,7 @@
             <div class="c-author">
                 <AuthorName
                     ShowDetailsOnClick="false"
-                    AuthorSid="@Entry.AuthorId.Value"
+                    AuthorSid="@authorSid"
                     Class="@authorNameCls"/>
             </div>
             <div class="c-text">@_text</div>

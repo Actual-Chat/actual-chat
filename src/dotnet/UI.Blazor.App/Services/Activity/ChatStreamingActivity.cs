@@ -98,7 +98,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
 
         var entries = entryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (entry.EndsAt < startAt || !entry.IsStreaming || ChatEntry.Loading.AuthorId.Equals(entry.AuthorId))
+            if (entry.EndsAt < startAt || !entry.IsStreaming)
                 continue;
 
             AddEntry(entry);

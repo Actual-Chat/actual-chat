@@ -15,7 +15,6 @@ public sealed partial record ChatEntry(
     ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
-    public static readonly ChatEntry Loading = new((ChatEntryId)null!, -1); // Should differ by Id & Version from None
 
     public static readonly Requirement<ChatEntry> MustExist = Requirement.New(
         (ChatEntry? c) => c?.Id is not null,
@@ -26,6 +25,8 @@ public sealed partial record ChatEntry(
 
     public static ChatEntry Removed(ChatEntryId id)
         => new (id) { IsRemoved = true };
+    public static ChatEntry Loading(ChatEntryId id)
+        => new (id, -1);
 
     #region MemoryPackXxx properties
 

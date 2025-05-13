@@ -61,30 +61,26 @@
 }
 
 @if (isSystem) {
-    if (ReferenceEquals(entry, ChatEntry.Loading)) {
-        <string-skeleton firstWidth="2" secondWidth="4" height="6" system="true"/>
-    } else {
-        <div class="@cls"
-             data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))"
-             @onmouseenter="@ShowHoverMenu"
-             @onmouseleave="@HideHoverMenu">
-            <div class="chat-message">
-                <div class="c-content">
-                    <div class="message-content">
-                        <p class="chat-message-markup">
-                            <CascadingValue Value="@entry" IsFixed="true">
-                                <MarkupView Markup="@markup"/>
-                            </CascadingValue>
-                        </p>
-                    </div>
+    <div class="@cls"
+         data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))"
+         @onmouseenter="@ShowHoverMenu"
+         @onmouseleave="@HideHoverMenu">
+        <div class="chat-message">
+            <div class="c-content">
+                <div class="message-content">
+                    <p class="chat-message-markup">
+                        <CascadingValue Value="@entry" IsFixed="true">
+                            <MarkupView Markup="@markup"/>
+                        </CascadingValue>
+                    </p>
                 </div>
-                @if (entry.HasReactions) {
-                    <MessageReactions Entry="@entry"/>
-                }
             </div>
-            <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" />
+            @if (entry.HasReactions) {
+                <MessageReactions Entry="@entry"/>
+            }
         </div>
-    }
+        <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" />
+    </div>
     return;
 }
 
@@ -292,7 +288,10 @@
 
     protected override ComputedState<Model?>.Options GetStateOptions() {
         Model? initialValue = null;
-        var repliedEntry = Entry.RepliedEntryLid.HasValue ? ChatEntry.Loading : null;
+        ChatEntry? repliedEntry = null;
+        var repliedEntryId = GetRepliedEntryId(Message.Entry);
+        if (repliedEntryId is not null)
+            repliedEntry = ChatEntry.Loading(repliedEntryId);
         var isOwnMessage = Message.Flags.HasFlag(ChatMessageFlags.IsOwnMessage);
         if (isOwnMessage || repliedEntry != null) {
             initialValue = new Model(null) {
@@ -389,15 +388,17 @@
         return result.Equals(_rendered) ? _rendered! : result;
 
         async Task<ChatEntry?> GetRepliedEntry(CancellationToken cancellationToken1) {
-            if (Entry.RepliedEntryLid is not { } repliedEntryLocalId)
+            var repliedEntryId1 = GetRepliedEntryId(chatMessage.Entry);
+            if (repliedEntryId1 is null)
                 return null;
 
-            var messageEntry = chatMessage.Entry;
-            var repliedEntryId1 = CreateChatEntryId(messageEntry.Kind, chatId, repliedEntryLocalId);
             var repliedEntry1 = await Chats.GetEntry(Session, repliedEntryId1, cancellationToken1).ConfigureAwait(false) ?? ChatEntry.Removed(repliedEntryId1);
             return repliedEntry1;
         }
     }
+
+    private ChatEntryId? GetRepliedEntryId(ChatEntry entry)
+        => entry.RepliedEntryLid is not { } repliedEntryLocalId ? null : CreateChatEntryId(entry.Kind, entry.ChatId, repliedEntryLocalId);
 
     private static ChatEntryId CreateChatEntryId(ChatEntryKind kind, ChatId chatId, long localId) {
         return kind switch {
