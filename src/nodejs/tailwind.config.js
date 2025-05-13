@@ -463,7 +463,7 @@ module.exports = {
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
-      'highlight': 'highlight 750ms ease-in-out 2 forwards',
+      'highlight': 'highlight 2s ease-in-out',
       'notify-panel-opening': 'notify-panel-opening 150ms ease-in-out',
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
       'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
@@ -1121,10 +1121,29 @@ module.exports = {
       },
       'highlight': {
           '0%': {
-            opacity: 1,
+            'background': 'transparent',
+            'border-color': 'transparent',
+            'filter': 'opacity(1)',
+          },
+          '25%': {
+            'background': 'var(--replied-message-hover)',
+            'border-color': 'var(--replied-message-border)',
+            'filter': 'opacity(1)',
+          },
+          '50%': {
+            'background': 'transparent',
+            'border-color': 'transparent',
+            'filter': 'opacity(0.75)',
           },
           '75%': {
-            opacity: 0.5,
+            'background': 'var(--replied-message-hover)',
+            'border-color': 'var(--replied-message-border)',
+            'filter': 'opacity(1)',
+          },
+          '100%': {
+            'background': 'transparent',
+            'border-color': 'transparent',
+            'filter': 'opacity(1)',
           },
       },
       'opacity-0-100-0': {

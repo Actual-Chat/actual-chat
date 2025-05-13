@@ -22,9 +22,10 @@
     @apply overflow-hidden;
     @apply rounded-lg;
 }
-.right-panel-chat-info-item.hovered {
+body.hoverable .right-panel-chat-info-item.hovered:hover,
+.touch-capable .right-panel-chat-info-item.hovered:active {
     @apply cursor-pointer;
-    @apply hover:bg-hover;
+    @apply bg-hover;
 }
 .right-panel-chat-info-item > .c-icon {
     @apply flex items-center justify-center;
@@ -138,7 +139,8 @@
     @apply rounded-xl;
     @apply cursor-pointer;
 }
-body.hoverable .author-list-tab .avatar-badge:hover {
+body.hoverable .author-list-tab .avatar-badge:hover,
+.touch-capable .author-list-tab .avatar-badge:active {
     @apply bg-hover;
 }
 .author-list-tab > .c-content {
@@ -168,7 +170,8 @@ body.hoverable .author-list-tab .avatar-badge:hover {
     @apply cursor-pointer;
     @apply rounded-md;
 }
-body.hoverable .thread-list-item:hover {
+body.hoverable .thread-list-item:hover,
+.touch-capable .thread-list-item:active {
     @apply bg-hover;
 }
 .thread-list-item .c-top {

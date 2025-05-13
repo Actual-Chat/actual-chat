@@ -5,14 +5,17 @@
     @apply md:select-text;
     @apply translate-z-0;
 }
-body.hoverable .message-wrapper:hover {
+body.hoverable .message-wrapper:hover,
+.touch-capable .message-wrapper:active {
     @apply bg-message-hover;
     @apply border-message-hover;
 }
-body.hoverable .message-wrapper:hover .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge,
+.touch-capable .message-wrapper:active .avatar-badge {
     @apply bg-message-hover;
 }
-body.hoverable .system-entry.message-wrapper:hover {
+body.hoverable .system-entry.message-wrapper:hover,
+.touch-capable .system-entry.message-wrapper:active {
     @apply bg-transparent;
     @apply border-transparent;
 }
@@ -62,8 +65,10 @@ body.hoverable .system-entry.message-wrapper:hover {
 .chat-message-author-name {
     @apply truncate;
     @apply text-headline-1 text-author-name;
-    @apply hover:opacity-80;
     @apply cursor-pointer;
+}
+body.hoverable .chat-message-author-name:hover {
+    @apply opacity-80;
 }
 
 .forwarded-message .forwarded-chat-header {
@@ -89,8 +94,10 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply text-headline-1 text-author-name;
 }
 .message-link {
-    @apply hover:opacity-80;
     @apply cursor-pointer;
+}
+body.hoverable .message-link:hover {
+    @apply opacity-80;
 }
 
 .forwarded-message .message-content,
@@ -110,7 +117,8 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply animate-highlight;
 }
 
-body.hoverable .message-wrapper:hover .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge,
+.touch-capable .message-wrapper:active .avatar-badge {
     @apply bg-inherit;
 }
 
@@ -120,8 +128,9 @@ body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-replied-message;
 }
 body.hoverable .message-wrapper.replied-message:hover,
-body.hoverable .message-wrapper.mention.replied-message:hover {
-    @apply border-l-2 border-replied-message-border;
+.touch-capable .message-wrapper.replied-message:active,
+body.hoverable .message-wrapper.mention.replied-message:hover,
+.touch-capable .message-wrapper.mention.replied-message:active {
     @apply bg-replied-message-hover;
 }
 
@@ -132,8 +141,9 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply bg-selected-message;
 }
 body.hoverable .message-wrapper.selected-message:hover,
-body.hoverable .message-wrapper.mention.selected-message:hover {
-    @apply border-l-2 border-selected-message-border;
+.touch-capable .message-wrapper.selected-message:active,
+body.hoverable .message-wrapper.mention.selected-message:hover,
+.touch-capable .message-wrapper.mention.selected-message:active {
     @apply bg-selected-message-hover;
 }
 .message-wrapper.selected-message.selection-start {
@@ -249,7 +259,9 @@ body.hoverable .chat-header-title:hover {
 .system-entry .message-content .avatar-name {
     @apply font-semibold;
     @apply cursor-pointer;
-    @apply hover:opacity-80;
+}
+body.hoverable .system-entry .message-content .avatar-name:hover {
+    @apply opacity-80;
 }
 .system-entry .mention-markup,
 .system-entry .mention-markup.mention-markup-own {
@@ -272,7 +284,8 @@ body.hoverable .chat-header-title:hover {
     @apply text-03 cursor-pointer;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
-body.hoverable .chat-message-quote:hover {
+body.hoverable .chat-message-quote:hover,
+.touch-capable .chat-message-quote:active {
     @apply bg-hover;
 }
 .chat-message-quote.removed {
@@ -402,7 +415,8 @@ body.narrow .chat-link .c-link-buttons {
 .chat-link .btn .btn-content {
     @apply flex-x gap-x-3;
 }
-body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
+body.hoverable .message-wrapper:has(.chat-welcome-block):hover,
+.touch-capable .message-wrapper:has(.chat-welcome-block):active {
     @apply border-transparent;
     @apply bg-transparent;
 }
@@ -480,12 +494,12 @@ body.hoverable .notify-mentioned-members .not-mentioned {
     @apply flex items-center;
     @apply w-0 h-0;
     filter: opacity(0);
-    transition: filter 0ms linear 0ms, width 0ms linear 0ms;
+    transition: filter 0ms linear 0ms, -webkit-filter 0ms linear 0ms, width 0ms linear 0ms;
 }
 body.hoverable .notify-mentioned-members:hover .not-mentioned {
     width: auto;
     filter: opacity(1);
-    transition: filter 150ms linear 150ms, width 150ms linear 150ms;
+    transition: filter 150ms linear 150ms, -webkit-filter 150ms linear 150ms, width 150ms linear 150ms;
 }
 @keyframes shimmer {
     0%, 90% {
@@ -571,7 +585,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply h-full w-4;
 }
 .hover-menu-wrapper.small-offset {
-    @apply -top-2;
+    @apply top-2;
 }
 .message-hover-menu-new {
     @apply sticky z-10 bottom-0;

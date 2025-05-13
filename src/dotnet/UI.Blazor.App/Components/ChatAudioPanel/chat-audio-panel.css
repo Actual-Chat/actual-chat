@@ -80,7 +80,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 
 .playback-wrapper.listen-off-to-on,
 .playback-wrapper.listen-on {
-    @apply outline outline-1 outline-primary outline-offset-0;
+    @apply outline outline-2 outline-primary outline-offset-[-1px];
     @apply bg-round-focus;
 }
 .playback-wrapper.listen-off-to-on {
@@ -91,6 +91,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
         outline-width: 1px;
     }
     50% {
+        outline-width: 3px;
+    }
+    100% {
         outline-width: 2px;
     }
 }
@@ -161,7 +164,7 @@ body.narrow .text-mode .recorder-wrapper::before {
         box-shadow:
             -1px 0 0 0 var(--recorder-on-top),
             0 -1px 0 0 var(--recorder-on-top),
-            2px 0 0 0 var(--recorder-on-bottom),
+            1px 0 0 0 var(--recorder-on-bottom),
             0 2px 0 0 var(--recorder-on-bottom);
     }
     100% {
@@ -371,7 +374,7 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 }
 .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn {
     @apply opacity-100;
-    animation: record-btn-on 1000ms ease-in-out forwards;
+    animation: record-btn-on 1s ease-in-out forwards, record-btn-on-pulse 2s ease-in-out infinite;
 }
 @keyframes record-btn-on {
     0%, 100% {
@@ -379,6 +382,14 @@ body.narrow .chat-audio-panel .recorder-wrapper {
     }
     50% {
         box-shadow: 0 0 1rem 0 var(--magenta-60);
+    }
+}
+@keyframes record-btn-on-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(0.96);
     }
 }
 .chat-audio-panel .recorder-wrapper {
@@ -521,7 +532,8 @@ body.hoverable .transcription-options-modal .language-btn-group > .c-title > .c-
     @apply text-primary;
     @apply cursor-default;
 }
-body.hoverable .transcription-options-modal .language-btn-group > .c-languages > button:not(.active):hover {
+body.hoverable .transcription-options-modal .language-btn-group > .c-languages > button:not(.active):hover,
+.touch-capable .transcription-options-modal .language-btn-group > .c-languages > button:not(.active):active {
     @apply bg-round;
 }
 .transcription-options-modal .language-btn-group > .c-languages > .c-none {
