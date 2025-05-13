@@ -175,7 +175,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         {
             new(2, "Entry 1", default, DateTime.Now, null, false, null),
             new(3, "Reply to Entry 1", default, DateTime.Now.AddSeconds(10), null, false, 1),
-            new(4, "Late Reply", default, DateTime.Now.AddMinutes(1), null, false, null),
+            new(4, "Late Reply", default, DateTime.Now.AddMinutes(5), null, false, null),
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -202,7 +202,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
 
         // Assert
         result.Groups.Should().NotBeEmpty();
-        result.Groups.Count.Should().BeLessThan(60);
+        result.Groups.Count.Should().BeLessThan(40);
         result.Groups.Should().AllSatisfy(group => group.Entries.Should().NotBeEmpty());
     }
 
