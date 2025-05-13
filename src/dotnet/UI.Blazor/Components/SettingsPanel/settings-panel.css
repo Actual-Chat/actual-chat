@@ -63,7 +63,8 @@
 .settings-panel > .c-tabs .c-tab-item i {
     @apply text-03;
 }
-body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
+body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i,
+.touch-capable .settings-panel > .c-tabs .c-tab-item:active i {
     @apply text-02;
 }
 .settings-panel > .c-tabs .c-tab-item .btn {
@@ -128,17 +129,20 @@ body.hoverable .tile:hover {
     @apply pr-2;
     @apply rounded-lg;
 }
-body.hoverable .tile-item.clickable:hover {
+body.hoverable .tile-item.clickable:hover,
+.touch-capable .tile-item.clickable:active {
     @apply bg-hover;
 }
 body.hoverable .tile-item.clickable,
 body.hoverable .tile-item.clickable span {
     @apply cursor-pointer;
 }
-body.hoverable .tile-item.clickable.transparent:hover {
+body.hoverable .tile-item.clickable.transparent:hover,
+.touch-capable .tile-item.clickable.transparent:active {
     @apply bg-transparent;
 }
-body.hoverable .tile-item.clickable.item-danger:hover {
+body.hoverable .tile-item.clickable.item-danger:hover,
+.touch-capable .tile-item.clickable.item-danger:active {
     @apply bg-menuitem-hover-warning;
 }
 .tile-item.item-danger .tile-item-icon,
@@ -178,7 +182,8 @@ body.hoverable .tile-item.clickable.item-danger:hover {
 body.hoverable .tile-hidden-btn:hover {
     @apply text-primary;
 }
-body.hoverable .tile-btn:hover {
+body.hoverable .tile-btn:hover,
+.touch-capable .tile-btn:active {
     @apply text-primary;
 }
 .add-avatar-btn.btn {

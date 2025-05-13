@@ -66,5 +66,5 @@ body.narrow .editor-content:focus {
     @apply ml-0;
 }
 @keyframes cursor {
-    50% { opacity: 0; }
+    50% { filter: opacity(0); }
 }

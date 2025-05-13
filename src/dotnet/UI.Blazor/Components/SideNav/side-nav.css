@@ -21,9 +21,6 @@ body.device-ios .side-nav {
 .side-nav.animated > *:first-child {
     @apply transition-opacity duration-200 ease-out;
 }
-.side-nav.animated.pulling {
-    @apply transition-none;
-}
 .side-nav.animated.pulling > *:first-child {
     @apply transition-none;
 }

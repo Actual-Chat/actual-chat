@@ -192,16 +192,20 @@ body.wide.app-maui .landing .landing-header {
     @apply flex-1 flex-x items-center gap-x-2;
 }
 .landing .landing-header .dark-header {
-    @apply absolute opacity-0;
+    @apply absolute;
+    @apply opacity-0;
 }
 .landing .landing-header.filled .dark-header {
-    @apply relative opacity-100;
+    @apply relative;
+    @apply opacity-100;
 }
 .landing .landing-header .light-header {
-    @apply relative opacity-100;
+    @apply relative;
+    @apply opacity-100;
 }
 .landing .landing-header.filled .light-header {
-    @apply absolute opacity-0;
+    @apply absolute;
+    @apply opacity-0;
 }
 .landing .landing-header .light-header .c-title-wrapper,
 .landing .landing-header .dark-header .c-title-wrapper {

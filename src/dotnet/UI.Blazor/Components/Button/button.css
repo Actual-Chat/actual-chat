@@ -283,7 +283,9 @@ body.hoverable .btn.btn-round:hover::after {
     @apply text-03;
 }
 body.hoverable .btn.btn-square.btn-transparent:hover,
-body.hoverable .btn.btn-round.btn-transparent:hover {
+.touch-capable .btn.btn-square.btn-transparent:active,
+body.hoverable .btn.btn-round.btn-transparent:hover,
+.touch-capable .btn.btn-round.btn-transparent:active {
     @apply text-02;
 }
 body.hoverable .btn.btn-square.btn-transparent:hover::after,

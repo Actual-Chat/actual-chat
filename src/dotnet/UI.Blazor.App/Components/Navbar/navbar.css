@@ -117,7 +117,8 @@ body.hoverable .navbar-place-buttons .navbar-button .left-line:hover {
     @apply overflow-hidden;
 }
 
-body.hoverable .navbar-item:hover {
+body.hoverable .navbar-item:hover,
+.touch-capable .navbar-item:active {
     @apply bg-hover;
     @apply cursor-pointer;
 }
