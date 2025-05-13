@@ -1756,12 +1756,18 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             var endsAt = entry.GetEndsAt();
             var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
-            await Flows.GetAndResume<ConversationSplitFlow>(chat.Id,
+            var splitFlow = await Flows.GetAndResume<ConversationSplitFlow>(chat.Id,
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     nameof(OnTextEntryChangedEvent),
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     cancellationToken)
                 .ConfigureAwait(false);
+            if (splitFlow == null) // Recreate flow if it was removed
+                await Flows.StartOrReset<ConversationSplitFlow>(chat.Id,
+                        timeSinceEnded + Settings.ChatEntrySummarizationDelay,
+                        nameof(OnTextEntryChangedEvent),
+                        cancellationToken)
+                    .ConfigureAwait(false);
         }
     }
 
