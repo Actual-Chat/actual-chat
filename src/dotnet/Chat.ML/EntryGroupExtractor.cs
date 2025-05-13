@@ -38,7 +38,6 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
 {
     private const int ChunkWordCount = 100;
     private const int MaxPauseBetweenEntries = 60 * 60 * 12; // 12 hours
-    private const int MinPauseBetweenSpeechEntries = 30; // 30 seconds
     private const int MinPauseBetweenTextEntries = 5 * 60; // 5 minutes
 
     private IEmbeddingsCalculator EmbeddingsCalculator { get; } = embeddingsCalculator;
@@ -79,7 +78,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
                 }
             if (replyBuilder.Entries.Count is > 0 and <= 3) {
                 var pauseAfterReply = replyBuilder.GetPauseBetween(entry);
-                if (pauseAfterReply < MinPauseBetweenSpeechEntries)
+                if (pauseAfterReply < Constants.Audio.MaxStreamDuration.TotalSeconds * 2)
                     replyBuilder.Add(entry);
                 else {
                     // The pause after the reply is too long
@@ -134,7 +133,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
         void CompleteGroupOnPause(EntryGroupBuilder groupBuilder1, TextEntry entry)
         {
             var currentPause = groupBuilder1.GetPauseBetween(entry);
-            var minPause = entry.IsTranscript ? MinPauseBetweenSpeechEntries : MinPauseBetweenTextEntries;
+            var minPause = entry.IsTranscript ? Constants.Audio.MaxStreamDuration.TotalSeconds : MinPauseBetweenTextEntries;
             var significantlyLargerThanAverage = chunkBuilder.AveragePauseBetweenEntries * 10;
             if ((currentPause < minPause || currentPause < significantlyLargerThanAverage) && currentPause < MaxPauseBetweenEntries)
                 return;
