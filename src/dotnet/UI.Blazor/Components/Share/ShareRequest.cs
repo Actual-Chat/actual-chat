@@ -26,10 +26,10 @@ public readonly record struct ShareRequest
     // WithXxx
 
     public ShareRequest WithText(string text)
-        => new() { Text = text };
+        => new() { Text = text, Link = Link };
 
     public ShareRequest WithTextUnlessEmpty(string text)
-        => text.IsNullOrEmpty() ? this : new() { Text = text };
+        => text.IsNullOrEmpty() ? this : new() { Text = text, Link = Link };
 
     // HasXxx
 
