@@ -585,7 +585,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply h-full w-4;
 }
 .hover-menu-wrapper.small-offset {
-    @apply -top-2;
+    @apply top-2;
 }
 .message-hover-menu-new {
     @apply sticky z-10 bottom-0;
