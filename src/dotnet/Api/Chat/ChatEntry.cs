@@ -15,7 +15,7 @@ public sealed partial record ChatEntry(
     ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
-    public static readonly ChatEntry Loading = new(null!, -1); // Should differ by Id & Version from None
+    public static readonly ChatEntry Loading = new((ChatEntryId)null!, -1); // Should differ by Id & Version from None
 
     public static readonly Requirement<ChatEntry> MustExist = Requirement.New(
         (ChatEntry? c) => c?.Id is not null,

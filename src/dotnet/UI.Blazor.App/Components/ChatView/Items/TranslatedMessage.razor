@@ -8,7 +8,7 @@
 <MarkupView Markup="@m.Markup" />
 
 @code {
-    private Model _rendered = Model.None;
+    private Model? _rendered;
     private ChatUIHub Hub => ChatContext.Hub;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private Features Features => Hub.Features();
@@ -21,7 +21,8 @@
     public Markup Markup { get; set; } = null!;
 
     protected override bool ShouldRender()
-        => !ReferenceEquals(_rendered, State.Value)
+        => _rendered is null ||
+           !ReferenceEquals(_rendered, State.Value)
             && (_rendered.Message.Entry.ContentHash != State.Value.Message.Entry.ContentHash
                 || _rendered.Markup != State.Value.Markup);
 
@@ -57,7 +58,5 @@
 
     // Nested types
 
-    public sealed record Model(Markup Markup, ChatEntryMessage Message) {
-        public static readonly Model None = new(Markup.Empty, new (ChatEntry.Loading));
-    }
+    public sealed record Model(Markup Markup, ChatEntryMessage Message);
 }

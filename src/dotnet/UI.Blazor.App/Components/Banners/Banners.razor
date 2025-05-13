@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<Banners.ComputedModel>
 @{
     var m = State.Value;
-    var chatId = (ChatId?)Chat.Id;
+    var chatId = Chat?.Id;
     var hasChat = chatId is not null;
 }
 
@@ -31,7 +31,7 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

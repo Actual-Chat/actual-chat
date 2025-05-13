@@ -59,7 +59,7 @@
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        if (PlaceId == _placeChatListSettings?.PlaceId)
+        if (_placeChatListSettings is not null && PlaceId == _placeChatListSettings.PlaceId)
             return;
 
         var placeId = PlaceId;

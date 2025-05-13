@@ -43,7 +43,9 @@
 
 <RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1000_000" Key="BannersSubHeader">
     <Banners Chat="@chat"/>
-    <TranslationSubHeader Chat="@chat"/>
+    @if (chat is not null) {
+        <TranslationSubHeader Chat="@chat"/>
+    }
 </RenderIntoStack>
 
 <RenderIntoSlot Name="@LayoutSlots.MainRightDrawer">

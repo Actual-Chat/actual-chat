@@ -55,17 +55,14 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(),
+                InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var chatId = (ChatId?)chat.Id;
-        if (chatId is null)
-            return Model.Loading;
-
+        var chatId = chat.Id;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var showMemberTab = rules.CanSeeMembers() && !chat.IsAiSearchChat();

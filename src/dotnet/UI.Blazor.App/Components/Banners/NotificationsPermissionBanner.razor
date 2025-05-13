@@ -41,14 +41,9 @@
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
     private HostInfo HostInfo => Hub.HostInfo();
-    private Session Session => Hub.Session();
     private LocalSettings LocalSettings => Hub.LocalSettings();
     private MomentClockSet Clocks => Hub.Clocks();
     private NotificationUI NotificationUI => Hub.NotificationUI;
-    private UICommander UICommander => Hub.UICommander();
-    private IJSRuntime JS => Hub.JSRuntime();
-    [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override void OnInitialized()
         => _dismissedAt = StateFactory.NewKvasStored<Moment>(

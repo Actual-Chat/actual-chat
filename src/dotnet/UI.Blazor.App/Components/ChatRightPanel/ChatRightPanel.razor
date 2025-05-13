@@ -8,8 +8,10 @@
     // Log.LogDebug("RightPanel IsOpen={IsOpen}", isOpen);
 }
 
-@if (showSkeletonsOnly && isOpen) {
-    <SkeletonRightPanel/>
+@if (showSkeletonsOnly) {
+    if (isOpen) {
+        <SkeletonRightPanel />
+    }
     return;
 }
 
@@ -26,7 +28,7 @@
     private ILogger Log => Hub.LogFor<ChatRightPanel>();
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
