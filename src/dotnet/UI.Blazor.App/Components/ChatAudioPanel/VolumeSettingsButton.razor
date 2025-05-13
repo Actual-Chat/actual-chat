@@ -1,7 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<Language>
+@inherits ComputedStateComponent<Language?>
 @{
     var language = State.Value;
+    if (language is null)
+        return;
 }
 
 <button class="volume-settings-btn text" @onclick="@OnClick">
@@ -17,15 +19,15 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<Language>.Options GetStateOptions()
+    protected override ComputedState<Language?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Language>.Options() {
+            static t => new ComputedState<Language?>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override Task<Language> ComputeState(CancellationToken cancellationToken)
-        => LanguageUI.GetChatLanguage(Chat.Id, cancellationToken);
+    protected override async Task<Language?> ComputeState(CancellationToken cancellationToken)
+        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
 
     private void OnClick()
         => ModalUI.Show(new VoiceSettingsModal.Model(Chat.Id));
