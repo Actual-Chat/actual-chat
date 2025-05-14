@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 @{
     var isToday = false;
     var isYesterday = false;
@@ -42,9 +43,5 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private MomentClockSet Clocks => Hub.Clocks();
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-
     [Parameter] public ChatEntry? LastEntry { get; set; }
 }

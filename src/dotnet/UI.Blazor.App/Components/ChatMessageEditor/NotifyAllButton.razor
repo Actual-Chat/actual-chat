@@ -1,6 +1,6 @@
 @using ActualChat.Notification
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NotifyAllButton.Model>
+@inherits ComputedStateComponent<ChatUIHub, NotifyAllButton.Model>
 @{
     var m = State.Value;
     if (m.IsUnavailable)
@@ -30,15 +30,10 @@
     private MarkupString MarkupTitle => (MarkupString)$"<p>Are you sure you want to alert <span class='{AlertClass}'>{AlertTarget}</span>?</p>";
     private (ChatEntry, Moment)? _lastKnownOwnUnreadEntryInfo;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private ToastUI ToastUI => Hub.ToastUI;
-    private UICommander UICommander => Hub.UICommander();
-    private MomentClock Clock => Hub.Clocks().SystemClock;
+    private MomentClock Clock => Clocks.SystemClock;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

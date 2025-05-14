@@ -1,8 +1,7 @@
 @using ActualChat.Media
-@inherits ComputedStateComponent<PlaceInfo.Model>
+@inherits ComputedStateComponent<ChatUIHub, PlaceInfo.Model?>
 @{
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.Loading))
+    if (State.IsInitial(out var m) || m is null)
         return;
 
     var place = m.Place;
@@ -125,29 +124,19 @@
 </RenderIntoStack>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
-    private Features Features => Hub.Features();
 
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
         if (placeId is null)
-            return Model.None;
+            return null;
 
         var place = await Places.Get(Session, placeId, default).ConfigureAwait(false);
         if (place is null)
-            return Model.None;
+            return null;
 
         var ownAuthor = place.Rules.Author;
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
@@ -172,9 +161,6 @@
     // Nested types
 
     public sealed record Model {
-        public static readonly Model Loading = new();
-        public static readonly Model None = new();
-
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
         public AuthorId[] AuthorIds { get; init; } = [];
@@ -188,5 +174,9 @@
             => OwnerIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
             => OwnAuthorId is not null && OwnAuthorId.Equals(authorId);
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

@@ -1,7 +1,10 @@
+using ActualLab.Fusion.Blazor;
+
 namespace ActualChat.Chat;
 
 public enum TextStyle { None = 0, Italic = 1, Bold = 2 }
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed record StylizedMarkup(Markup Content, TextStyle Style) : Markup
 {
     public string StyleToken => Style switch {
@@ -24,4 +27,8 @@ public sealed record StylizedMarkup(Markup Content, TextStyle Style) : Markup
         var markup = Content.Simplify();
         return ReferenceEquals(markup, Content) ? this : new StylizedMarkup(markup, Style);
     }
+
+    // This record relies on referential equality
+    public bool Equals(StylizedMarkup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

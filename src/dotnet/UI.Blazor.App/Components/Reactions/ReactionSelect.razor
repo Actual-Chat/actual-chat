@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 
 <ul class="reaction-select">
     @foreach (var emoji in _emojis) {
@@ -15,11 +16,6 @@
 @code {
     private const int MaxReactionCount = 7;
     private Emoji[] _emojis = null!;
-
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private TuneUI TuneUI => Hub.TuneUI;
-    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;

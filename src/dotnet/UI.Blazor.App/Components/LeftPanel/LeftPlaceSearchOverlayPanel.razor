@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<LeftPlaceSearchOverlayPanel.Model>
+@inherits ComputedStateComponent<ChatUIHub, LeftPlaceSearchOverlayPanel.Model>
 @{
     var m = State.Value;
     var cls = m.IsOpen ? "open" : "closed";
@@ -53,12 +53,9 @@
 </RenderIntoStack>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter] public Place? Place { get; set; }
-
-    private SearchUI SearchUI => Hub.SearchUI;
-    private Features Features => Hub.Features();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

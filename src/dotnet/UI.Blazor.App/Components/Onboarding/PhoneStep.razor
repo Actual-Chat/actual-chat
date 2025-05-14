@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.ComponentModel.DataAnnotations
-@inherits Step;
+@inherits SimpleStep<ChatUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -73,16 +73,12 @@
     private bool? _skipped;
     private AsyncDataAnnotationsValidator _validator = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private IPhones Phones { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private ICaptcha Captcha { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
+    private IPhones Phones => Hub.Phones;
+    private ICaptcha Captcha => Hub.Captcha;
     private TotpUI TotpUI => Hub.TotpUI;
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
-    private UICommander UICommander => Hub.UICommander();
-    private ModalUI ModalUI => Hub.ModalUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
     [Parameter] public EventCallback OnVerifyClick { get; set; }

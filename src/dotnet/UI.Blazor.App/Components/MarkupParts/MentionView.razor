@@ -34,11 +34,6 @@
     private AuthorId? _authorId;
     private bool? _hasRead;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private IChats Chats => Hub.Chats;
-    private AuthorUI AuthorUI => Hub.AuthorUI;
-
     protected override void OnParametersSet()
         => _authorId = Markup.Id.PrincipalId as AuthorId;
 

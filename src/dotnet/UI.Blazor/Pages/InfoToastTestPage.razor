@@ -79,7 +79,7 @@
 @code {
     [Inject] UIHub UIHub { get; init; } = null!;
     private ToastUI ToastUI => UIHub.ToastUI;
-    private AppBlazorCircuitContext CircuitContext => UIHub.CircuitContext;
+    private AppCircuitHub CircuitHub => UIHub.CircuitHub;
     private UICommander UICommander => UIHub.UICommander();
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= UIHub.LogFor(GetType());
@@ -96,7 +96,7 @@
         => throw StandardError.Internal("Simulated crash!");
 
     private void OnAppCrashClick() {
-        var rootComponent = (IRootComponent)CircuitContext.RootComponent;
+        var rootComponent = (IRootComponent)CircuitHub.RootComponent;
         rootComponent.SimulateCrash(StandardError.Internal("Simulated application crash!"));
     }
 }

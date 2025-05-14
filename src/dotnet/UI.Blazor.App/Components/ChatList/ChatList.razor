@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     DebugLog?.LogDebug("Rendered: {List}", ChatListKind.All);
 }
@@ -30,14 +30,14 @@
     private VirtualList<ChatListItemModel>? _virtualListRef;
     private int _skeletonCount;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
-    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
+
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
     [Parameter, EditorRequired] public bool UsePlaceChatListSettings { get; set; } = true;
 

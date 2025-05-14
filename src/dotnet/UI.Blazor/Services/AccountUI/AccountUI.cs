@@ -15,7 +15,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private List<Task>? _postponeOnSignedInWorkflowTasks;
 
     private IAccounts Accounts => Hub.Accounts;
-    private AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
+    private AppCircuitHub CircuitHub => Hub.CircuitHub;
 
     [field: AllowNull, MaybeNull]
     private IClientAuth ClientAuth => field ??= Services.GetRequiredService<IClientAuth>();

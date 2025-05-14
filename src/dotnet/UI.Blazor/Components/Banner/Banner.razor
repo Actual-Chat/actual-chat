@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<UIHub>
 @using ActualChat.UI.Blazor.Services
 @implements IDisposable
 @{
@@ -50,9 +50,8 @@
     [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Default;
     [Parameter] public EventCallback Dismiss { get; set; }
 
-    protected override void OnInitialized() {
-        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
-    }
+    protected override void OnInitialized()
+        => _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
 
     public void Dispose()
         => _animator.DisposeSilently();
@@ -73,5 +72,5 @@
         BannerSeverity.Error => "banner-error",
         BannerSeverity.Warning => "banner-warning",
         _ => "bg-02",
-        };
+    };
 }

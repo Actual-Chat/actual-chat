@@ -38,7 +38,7 @@ public partial class AccountUI
 
             Log.LogInformation("Account is changed to: {Account}", newAccount);
             _lastChangedAt.Value = CpuClock.Now;
-            var circuitContext = CircuitContext;
+            var circuitContext = CircuitHub;
             await circuitContext.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             await circuitContext.Dispatcher
                 .InvokeSafeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount), Log)

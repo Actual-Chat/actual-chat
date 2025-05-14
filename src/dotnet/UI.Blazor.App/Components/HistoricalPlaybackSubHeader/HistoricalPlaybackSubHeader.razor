@@ -1,10 +1,10 @@
-@inherits ComputedStateComponent<HistoricalPlaybackSubHeader.Model>
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.MediaPlayback
 @using Timer = System.Timers.Timer;
+@inherits ComputedStateComponent<ChatUIHub, HistoricalPlaybackSubHeader.Model?>
 @{
     var m = State.Value;
-    if (ReferenceEquals(m, Model.NotPlaying))
+    if (m is null)
         return;
 
     var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
@@ -75,31 +75,27 @@
 @code {
     private RewindDelayer? _rewindController;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
-    [Inject] private LiveTime LiveTime { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
+    private LiveTime LiveTime => Hub.LiveTime;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.NotPlaying,
+            static t => new ComputedState<Model?>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var lastState = State.Value;
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
-            return Model.NotPlaying;
+            return null;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
@@ -139,11 +135,11 @@
                 AuthorSids = authorSids.ToList(),
             };
 
-        var canUseLastModel = !ReferenceEquals(lastState, Model.NotPlaying)
+        var canUseLastState = lastState is not null
             && lastState.ChatId == chatId
             && lastState.ChatPlayer == historicalChatPlayer
             && lastState.IsPaused == isPaused;
-        return canUseLastModel ? lastState! : Model.NotPlaying;
+        return canUseLastState ? lastState : null;
     }
 
     private void OnStop()
@@ -151,15 +147,17 @@
 
     private void OnResume() {
         var m = State.Value;
-        if (m.ChatPlayer == null)
+        if (m?.ChatPlayer == null)
             return;
+
         _ = m.ChatPlayer.Playback.Resume(default);
     }
 
     private void OnPause() {
         var m = State.Value;
-        if (m.ChatPlayer == null)
+        if (m?.ChatPlayer == null)
             return;
+
         _ = m.ChatPlayer.Playback.Pause(default);
     }
 
@@ -171,7 +169,7 @@
 
     private void Rewind(TimeSpan offset) {
         var m = State.Value;
-        if (m.ChatPlayer is null || m.PlayingAt is not { } playingAt)
+        if (m?.ChatPlayer is null || m.PlayingAt is not { } playingAt)
             return;
 
         _rewindController ??= new RewindDelayer(OnRewindRequested);
@@ -181,7 +179,7 @@
     private void OnRewindRequested(ChatId chatId, Moment origin, TimeSpan offset) {
         _ = InvokeAsync(() => {
             var m = State.Value;
-            if (m.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
+            if (m?.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
                 _ = PlayAt(m.ChatPlayer, origin, offset);
         });
     }
@@ -199,8 +197,6 @@
 
     public sealed record Model
     {
-        public static readonly Model NotPlaying = new() { ChatId = null! };
-
         public Moment? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
         public HistoricalChatPlayer? ChatPlayer { get; init; }
@@ -208,6 +204,10 @@
         public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
         public List<string> AuthorSids { get; init; } = [];
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 
     private sealed class RewindDelayer

@@ -1,8 +1,10 @@
 using System.Text;
+using ActualLab.Fusion.Blazor;
 using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed record MarkupSeq(params Markup[] Items) : Markup
 {
     public MarkupSeq() : this([]) { }
@@ -64,4 +66,8 @@ public sealed record MarkupSeq(params Markup[] Items) : Markup
         builder.Append(']');
         return true;
     }
+
+    // This record relies on referential equality
+    public bool Equals(MarkupSeq? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

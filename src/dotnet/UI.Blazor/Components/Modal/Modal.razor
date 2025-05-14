@@ -1,7 +1,7 @@
 ﻿@using ActualChat.UI.Blazor.Components.Internal
 @namespace ActualChat.UI.Blazor.Components
 @* Use FusionComponentBase base class to avoid modal re-rendring when other modals are added/removed. *@
-@inherits FusionComponentBase
+@inherits FusionComponentBase<UIHub>
 @{
     var cls = Ref.Options.OverlayClass;
     if (!Class.IsNullOrEmpty())

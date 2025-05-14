@@ -2,7 +2,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.UI.Blazor.Components.FileUpload
 @using ActualLab.Generators
-@inherits Step;
+@inherits SimpleStep<ChatUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -58,13 +58,9 @@
     private readonly Model _model = new();
     private Form? _formRef;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject]  private OnboardingUI OnboardingUI { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
     private IAvatars Avatars => Hub.Avatars;
-    private UICommander UICommander => Hub.UICommander();
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsAvatarStepCompleted;
 

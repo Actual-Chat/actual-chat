@@ -1,5 +1,5 @@
 ﻿@using System.ComponentModel.DataAnnotations
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 
 @{
@@ -97,9 +97,6 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private bool _isAdmin;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";

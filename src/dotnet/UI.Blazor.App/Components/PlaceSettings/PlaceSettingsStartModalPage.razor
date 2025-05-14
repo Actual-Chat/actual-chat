@@ -1,11 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits ComputedStateComponent<PlaceSettingsStartModalPage.ComputedModel>
+@inherits ComputedStateComponent<ChatUIHub, PlaceSettingsStartModalPage.ComputedModel>
 @{
-    var m = State.Value;
-    if (ReferenceEquals(m, ComputedModel.Loading))
+    if (State.IsInitial(out var m))
         return;
-
     if (m.Place == null) {
         Context.Close();
         return;
@@ -121,9 +119,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
@@ -138,7 +133,6 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = ComputedModel.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -169,8 +163,6 @@
     // Nested types
 
     public sealed record ComputedModel {
-        public static readonly ComputedModel Loading = new();
-
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
         public bool IsOwner { get; init; }

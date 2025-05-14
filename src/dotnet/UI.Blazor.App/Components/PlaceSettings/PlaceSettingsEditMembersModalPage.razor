@@ -1,7 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<PlaceSettingsEditMembersModalPage.ComputedModel>
-
+@inherits ComputedStateComponent<ChatUIHub, PlaceSettingsEditMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
     Context.Title = $"{m.MemberCount} members";
@@ -53,10 +52,7 @@
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private PlaceId PlaceId { get; set; } = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     private IPlaces Places => Hub.Places;
-    private Session Session => Hub.Session();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -97,6 +93,7 @@
             .ToList();
 
         if (_searchPhrase.IsEmpty) {
+            // ReSharper disable once ConvertToLocalFunction
             Comparison<(AuthorId, string)> comparison = (info1, info2)
                 => OrdinalCompare(info1.Item2, info2.Item2);
             authors.Sort(comparison);

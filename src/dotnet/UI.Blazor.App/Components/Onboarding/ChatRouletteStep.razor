@@ -1,7 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Kvas
 @using ActualChat.Roulette
-@inherits Step;
+@inherits SimpleStep<ChatUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -37,15 +36,9 @@
     private Profile? _profile;
     private bool _hasLoaded;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
-    private IAvatars Avatars => Hub.Avatars;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
-    private UICommander UICommander => Hub.UICommander();
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
-    private AccountSettings AccountSettings => Hub.AccountSettings();
 
     public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsChatRouletteStepCompleted;
 

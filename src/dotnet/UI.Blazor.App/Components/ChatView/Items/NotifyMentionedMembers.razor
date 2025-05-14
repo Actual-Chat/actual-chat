@@ -1,20 +1,20 @@
 @using ActualChat.Notification
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NotifyMentionedMembers.Model>
+@inherits ComputedStateComponent<ChatUIHub, NotifyMentionedMembers.Model>
 @{
-    var m = State.Value;
+    if (State.IsInitial(out var m)) {
+        <div class="notify-mentioned-members">
+            <span>&nbsp;</span>
+        </div>
+        return;
+    }
+    if (m is { HasNotified: false, EverybodyHasRead: true })
+        return;
+
     var cls = m.HasNotified ? "has-notified" : "cursor-pointer";
     var clickHandler = !m.HasNotified ? EventCallback.Factory.Create(this, OnNotifyAuthorsClick) : EventCallback.Empty;
 }
-@if (ReferenceEquals(m, Model.Loading)) {
-    <div class="notify-mentioned-members">
-        <span>&nbsp;</span>
-    </div>
-    return;
-}
-@if (!m.HasNotified && m.EverybodyHasRead) {
-    return;
-}
+
 <div class="notify-mentioned-members @cls" @onclick="@clickHandler">
     @if (!m.HasNotified) {
         <span class="c-icon">
@@ -57,17 +57,12 @@
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public IReadOnlyList<AuthorId> AuthorIds { get; set; } = [];
 
-    private ChatUIHub Hub => ChatContext.Hub;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private INotifications Notifications => Hub.Notifications;
-    private UICommander UICommander => Hub.UICommander();
-    private ModalUI ModalUI => Hub.ModalUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -107,7 +102,6 @@
         => _ = UICommander.Call(new Notifications_NotifyMentionedMembers(Session, (TextEntryId)ChatEntry.Id));
 
     // Nested types
-    public record Model(bool HasNotified, bool EverybodyHasRead) {
-        public static readonly Model Loading = new (false, false);
-    }
+
+    public record Model(bool HasNotified, bool EverybodyHasRead);
 }

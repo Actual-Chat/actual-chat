@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<(IReadOnlyList<Language>?, Language)>
+@inherits ComputedStateComponent<ChatUIHub, (IReadOnlyList<Language>?, Language)>
 @{
     var m = State.Value;
     var (languages, language) = m;
@@ -39,9 +39,7 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private LanguageUI LanguageUI => Hub.LanguageUI;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }

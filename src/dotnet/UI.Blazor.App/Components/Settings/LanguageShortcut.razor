@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<UserLanguageSettings>
+@inherits ComputedStateComponent<ChatUIHub, UserLanguageSettings>
 @{
     var m = State.Value;
     var text = m.Primary.ShortTitle.ToSentenceCase();
@@ -11,7 +11,7 @@
 </div>
 
 @code{
-    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
 
     protected override ComputedState<UserLanguageSettings>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

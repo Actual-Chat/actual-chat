@@ -1,6 +1,7 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class ComputedMenuBase<TState> : ComputedStateComponent<TState>, IMenu
+public abstract class ComputedMenuBase<THub, TState> : ComputedStateComponent<THub, TState>, IMenu
+    where THub : UIHub
 {
     private readonly AsyncTaskMethodBuilder _whenClosedSource = AsyncTaskMethodBuilderExt.New();
 

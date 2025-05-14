@@ -2,6 +2,7 @@ using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+// TODO(AY): Struct -> record
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public readonly partial record struct ActiveChat(

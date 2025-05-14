@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var authorSids = AuthorSids;
     if (authorSids.Count == 0)
@@ -52,12 +52,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private IAuthors Authors => Hub.Authors;
-    private ChatActivity ChatActivity => Hub.ChatActivity;
-
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
-
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int MaxIconCount { get; set; } = 5;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;

@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<object?>
+@inherits ComputedStateComponent<ChatUIHub, object?>
 @{
     var allChats = Selector.AllChats.Value;
     var selectedChatIds = Selector.SelectedChatIds.Value;

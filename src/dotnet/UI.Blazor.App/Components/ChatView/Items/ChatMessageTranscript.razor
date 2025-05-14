@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @implements IAsyncDisposable
 @using ActualChat.Transcription
 @using ActualChat.Streaming
@@ -35,9 +35,8 @@
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private IStreamClient StreamClient => Hub.StreamClient;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
+
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 

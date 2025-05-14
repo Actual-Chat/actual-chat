@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<Moment>
+@inherits ComputedStateComponent<UIHub, Moment>
 @{
     var time = State.Value;
     var second = (long) time.ToDateTime().TimeOfDay.TotalSeconds;

@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
-@inherits FusionComponentBase
+@inherits FusionComponentBase<UIHub>
 @{
     var title = HasTooltip
         ? Avatar?.Name ?? ""
@@ -33,8 +33,6 @@
     private string _class = "";
     private string _pictureUrl = "";
     private string _avatarKey = "";
-
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired] public Avatar? Avatar { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }

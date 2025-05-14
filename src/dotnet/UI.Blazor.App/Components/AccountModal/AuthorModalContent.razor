@@ -1,5 +1,5 @@
-@using ActualChat.UI.Blazor.App
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 
 <Tile>
     @if (Author.IsAnonymous) {
@@ -70,11 +70,7 @@
 </Tile>
 
 @code {
-
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
-    private ShareUI ShareUI => Hub.ShareUI;
 
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }

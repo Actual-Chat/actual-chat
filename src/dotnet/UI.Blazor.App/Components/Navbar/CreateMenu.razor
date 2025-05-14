@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<CreateMenu.Model>
+@inherits ComputedMenuBase<ChatUIHub, CreateMenu.Model>
 @{
     var m = State.Value;
 }
@@ -23,11 +23,7 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private ModalUI ModalUI => Hub.ModalUI;
     private RouletteUI RouletteUI => Hub.RouletteUI;
-    private Features Features => Hub.Features();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

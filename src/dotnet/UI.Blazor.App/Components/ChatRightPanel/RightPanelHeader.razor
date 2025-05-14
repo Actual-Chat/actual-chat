@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<RightPanelHeader.Model>
+@inherits ComputedStateComponent<ChatUIHub, RightPanelHeader.Model>
 @{
     var m = State.Value;
     var canEditProperties = m.CanEditProperties;
@@ -62,13 +62,8 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IContacts Contacts => Hub.Contacts;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private ShareUI ShareUI => Hub.ShareUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;

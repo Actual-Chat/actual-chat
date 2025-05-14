@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatRightPanelContent.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatRightPanelContent.Model>
 @{
     var m = State.Value;
 }
@@ -43,11 +43,7 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
-    private Features Features => Hub.Features();
-    private PanelsUI PanelsUI => Hub.PanelsUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;

@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
-
 @using System.ComponentModel.DataAnnotations
+@inherits ComponentBase<ChatUIHub>
 @implements IModalView<CopyChatToPlaceModal.Model>
 
 <DialogFrame Title="Copy chat to place" HasCloseButton="true">
@@ -29,9 +29,6 @@
     private Form? _formRef;
     private FormModel _form = null!;
     private bool _isCopying;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

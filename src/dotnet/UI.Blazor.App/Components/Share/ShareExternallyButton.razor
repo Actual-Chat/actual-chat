@@ -1,5 +1,6 @@
 ﻿@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 
 <div class="share-button share-externally-button @Class">
     @if (MauiShare != null) {
@@ -35,8 +36,6 @@
 @code {
     private bool _canUseWebShare;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
     private IMauiShare? MauiShare { get; set; }
 
     [Parameter] public string Class { get; set; } = "";

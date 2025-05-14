@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<ChatUIHub, bool>
 @{
     var isVisible = State.Value;
 }
@@ -20,8 +20,6 @@
 }
 
 @code {
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public EventCallback Click { get; set; }

@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
 @using ActualChat.Permissions
-@inherits ComputedStateComponent<ContactsPermissionBanner.Model>
+@inherits ComputedStateComponent<ChatUIHub, ContactsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -35,10 +35,7 @@
     private bool _permissionStateWasDefined;
     private bool _checkIsRequired;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
-    private LocalSettings LocalSettings => Hub.LocalSettings();
-    private MomentClockSet Clocks => Hub.Clocks();
 
     protected override void OnInitialized()
         => _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));

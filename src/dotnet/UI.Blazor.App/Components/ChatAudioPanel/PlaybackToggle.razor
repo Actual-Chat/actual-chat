@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<PlaybackToggle.Model>
+@inherits ComputedStateComponent<ChatUIHub, PlaybackToggle.Model>
 @{
     var rendered = _rendered;
     var m = _rendered = State.Value;
@@ -36,13 +36,9 @@
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.PlaybackToggle.init";
     private Model? _rendered;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
-    private IAuthors Authors => Hub.Authors;
-    private IJSRuntime JS => Hub.JSRuntime();
 
     private bool IsUpdating => Chat?.Id is not null && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };

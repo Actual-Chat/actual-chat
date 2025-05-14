@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatRouletteCenter.Model?>
+@inherits ComputedStateComponent<ChatUIHub, ChatRouletteCenter.Model?>
 @{
     var m = State.Value;
     if (m is null)
@@ -39,7 +39,6 @@
 </div>
 
 @code {
-    [Inject] ChatUIHub Hub { get; init; } = null!;
     private RouletteUI RouletteUI => Hub.RouletteUI;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {

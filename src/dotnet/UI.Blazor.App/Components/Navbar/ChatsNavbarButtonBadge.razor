@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatsNavbarButtonBadge.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatsNavbarButtonBadge.Model>
 @{
     var m = State.Value;
     _rendered = m;
@@ -12,7 +12,7 @@
 @code {
     private Model? _rendered;
 
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
 

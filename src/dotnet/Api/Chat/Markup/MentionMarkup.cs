@@ -1,7 +1,9 @@
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record MentionMarkup(
     [property: DataMember, MemoryPackOrder(0)] MentionId Id,
@@ -27,4 +29,8 @@ public sealed partial record MentionMarkup(
 
     public static string Quote(string name)
         => string.Concat("`", name.OrdinalReplace("`", "``"), "`");
+
+    // This record relies on referential equality
+    public bool Equals(MentionMarkup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

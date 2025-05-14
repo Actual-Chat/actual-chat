@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 @implements IModalView<LanguagesSelectorPopup.Model>
 @{
     #pragma warning disable IL2091
@@ -29,9 +30,6 @@
 
 @code {
     private FormModel _form = null!;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

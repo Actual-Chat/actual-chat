@@ -1,6 +1,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Media
 @using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<ChatUIHub>
 @implements IAttachmentListBackend
 @implements IAsyncDisposable
 @namespace ActualChat.UI.Blazor.App.Components
@@ -89,10 +90,6 @@
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
     private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
     private ElementReference FilePickerRef { get; set; }
-
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private UICommander UICommander => Hub.UICommander();
-    private IJSRuntime JS => Hub.JSRuntime();
 
     [Parameter] public EventCallback OnSendClick { get; set; }
 

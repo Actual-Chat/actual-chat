@@ -1,6 +1,6 @@
 @page "/test/copy-chat2place"
 @using System.ComponentModel.DataAnnotations
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Copy chat to place</MainHeader>
@@ -34,9 +34,6 @@
 @code {
     private Form? _formRef;
     private FormModel _form = null!;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     protected override void OnInitialized()
         => _form = new FormModel(ComponentIdGenerator);

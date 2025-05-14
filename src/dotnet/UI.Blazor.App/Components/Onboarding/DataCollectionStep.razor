@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Kvas
-@inherits Step;
+@inherits SimpleStep<ChatUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -35,20 +34,14 @@
 </div>
 
 @code {
-
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private AccountSettings AccountSettings => Hub.AccountSettings();
-    private OnboardingUI OnboardingUI => (OnboardingUI)Hub.OnboardingUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
 
     [Parameter, EditorRequired] public bool IsConfigured { get; set; }
 
     public override bool CanSkip => true;
-
     public override string SkipTitle => "Decline";
     public override string NextTitle => "Enable Telemetry";
-
     public override bool IsCompleted
         => OnboardingUI.UserSettings.Value.IsDataCollectionStepCompleted || IsConfigured;
 

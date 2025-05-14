@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Contacts
-@inherits ComputedStateComponent<PlaceMenuButton.Model>
+@inherits ComputedStateComponent<ChatUIHub, PlaceMenuButton.Model>
 @{
     var m = State.Value;
     var canEditProperties = m.CanEditSettings;
@@ -44,11 +43,8 @@
 @code {
     private EventCallback _editSettingsHandler;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private ChatUI ChatUI => Hub.ChatUI;
     private IPlaces Places => Hub.Places;
-    private ModalUI ModalUI => Hub.ModalUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [Parameter, EditorRequired] public Place Place { get; set; } = null!;
 

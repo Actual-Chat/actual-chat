@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits MenuBase<ChatUIHub>
 
 <MenuEntry
     Class="important-item"
@@ -39,11 +39,7 @@
     private bool _isOwner;
     private bool _canLeave;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
-    private ModalUI ModalUI => Hub.ModalUI;
     private ChatUI ChatUI => Hub.ChatUI;
 
     protected override async Task OnParametersSetAsync() {

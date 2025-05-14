@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var authorNameCls = IsOwn ? "text-author-name " : "text-02 ";
     authorNameCls += "font-medium text-text-1";
@@ -32,9 +32,8 @@
     private IChatMarkupHub _chatMarkupHub = null!;
     private string _text = "";
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ChatUI ChatUI => Hub.ChatUI;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }

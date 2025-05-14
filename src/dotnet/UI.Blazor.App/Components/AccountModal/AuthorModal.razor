@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Events
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<AuthorModal.Model>
-@inherits ComputedStateComponent<AuthorModal.ComputedModel?>
+@inherits ComputedStateComponent<ChatUIHub, AuthorModal.ComputedModel?>
 @{
     var m = State.Value;
     if (m is null)
@@ -160,17 +160,10 @@
     private bool _isAutoClosed;
     private bool _anonymousChat;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
     private AuthorUI AuthorUI => Hub.AuthorUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private UICommander UICommander => Hub.UICommander();
-    private UIEventHub UIEventHub => Hub.UIEventHub();
-    private Features Features => Hub.Features();
 
     private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
     private ChatId ChatId => AuthorId.ChatId; // Shortcut

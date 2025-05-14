@@ -1,10 +1,10 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<EditPlaceMemberModel?>
-
+@inherits ComputedMenuBase<ChatUIHub, EditPlaceMemberModel?>
 @{
     var m = State.Value;
     if (m == null)
         return;
+
     var statusText = m.IsOwner ? "Owner" : null;
 }
 
@@ -43,8 +43,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Chat { get; init; } = null!;
-
     private AuthorId AuthorId { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
@@ -56,13 +54,13 @@
     }
 
     protected override Task<EditPlaceMemberModel?> ComputeState(CancellationToken cancellationToken)
-        => EditPlaceMemberCommands.ComputeState(Chat, AuthorId, cancellationToken);
+        => EditPlaceMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
 
     private Task OnRemoveFromPlaceClick(Author author)
-        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(Chat, author);
+        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(Hub, author);
 
     private async Task OnPromoteToOwnerClick(Author author) {
         await WhenClosed;
-        await EditPlaceMemberCommands.OnPromoteToOwnerClick(Chat, author);
+        await EditPlaceMemberCommands.OnPromoteToOwnerClick(Hub, author);
     }
 }

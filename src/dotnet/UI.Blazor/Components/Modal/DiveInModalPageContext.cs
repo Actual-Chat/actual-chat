@@ -8,7 +8,9 @@ public class DiveInModalPageContext
     private readonly DiveInDialogPage _page;
 
     public object? Model => _page.Model;
+    // TODO(AY): Replace with MutablePropertyBag
     public IDictionary<string, object> PageDataBag { get; } = new Dictionary<string, object>(StringComparer.Ordinal);
+    // TODO(AY): Replace with MutablePropertyBag
     public IDictionary<string, object> ModalDataBag => _modalContext.DataBag;
 
     public string Title {

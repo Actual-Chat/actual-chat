@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var isRecording = ChatState.IsRecording;
     var cls = "important-item " + (isRecording ? "on" : "off");
@@ -22,7 +21,6 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 

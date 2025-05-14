@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 
 <div class="left-panel-content-header place chat-roulette">
     <div class="c-content">
@@ -23,8 +24,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     private RouletteUI RouletteUI => Hub.RouletteUI;
 
     private Task StartChatRoulette()

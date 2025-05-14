@@ -3,6 +3,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
+// NOTE(AY): Convert this to a scoped service, but see how its current constructor is used
 public sealed class ChatVoiceSettings(IServiceProvider services, AccountSettings accountSettings)
 {
     private IServiceProvider Services { get; } = services;

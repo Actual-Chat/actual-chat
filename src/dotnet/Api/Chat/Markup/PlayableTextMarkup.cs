@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
+using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) : TextMarkup(Text)
 {
     private const float InfTime = 1e6f;
@@ -42,6 +44,12 @@ public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) 
         }
         return words.ToArray();
     }
+
+    // This record relies on referential equality
+    public bool Equals(PlayableTextMarkup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+
+    // Nested types
 
     public record struct Word(
         string Value,

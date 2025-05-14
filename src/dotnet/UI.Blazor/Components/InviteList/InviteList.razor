@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 @if (Invites.Count > 0) {
     @foreach (var invite in Invites) {
@@ -41,12 +42,6 @@
 }
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ShareUI ShareUI => Hub.ShareUI;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private UICommander UICommander => Hub.UICommander();
-    private Session Session => Hub.Session();
-
     [Parameter, EditorRequired] public List<Invite> Invites { get; set; } = [];
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
     [Parameter] public bool AllowRevoke { get; set; }

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<Language?>
+@inherits ComputedStateComponent<ChatUIHub, Language?>
 @{
     var language = State.Value;
     if (language is null)
@@ -18,8 +18,6 @@
 </div>
 
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private LanguageUI LanguageUI => Hub.LanguageUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;

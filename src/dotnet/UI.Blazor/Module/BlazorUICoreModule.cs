@@ -40,10 +40,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
 
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext + expose Dispatcher
-        services.AddScoped(c => new AppBlazorCircuitContext(c));
-        services.AddTransient(c => (IDispatcherResolver)c.GetRequiredService<AppBlazorCircuitContext>());
-        services.AddTransient(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
-        services.AddTransient(c => c.GetRequiredService<AppBlazorCircuitContext>().Dispatcher);
+        services.AddScoped(c => new AppCircuitHub(c));
+        services.AddTransient(c => (CircuitHub)c.GetRequiredService<AppCircuitHub>());
+        services.AddTransient(c => (IDispatcherResolver)c.GetRequiredService<AppCircuitHub>());
+        services.AddTransient(c => c.GetRequiredService<AppCircuitHub>().Dispatcher);
 
         // Core UI-related services
         services.AddScoped(c => new UIHub(c));

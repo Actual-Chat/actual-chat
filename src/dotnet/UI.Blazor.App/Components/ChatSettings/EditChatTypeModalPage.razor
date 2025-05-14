@@ -1,10 +1,9 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<EditChatTypeModalPage.ComputedModel>
+@inherits ComputedStateComponent<ChatUIHub, EditChatTypeModalPage.ComputedModel>
 @{
 #pragma warning disable IL2091
 
-    var m = State.Value;
-    if (ReferenceEquals(m, ComputedModel.Loading))
+    if (State.IsInitial(out var m))
         return;
 
     if (m.Chat == null || !m.Chat.Rules.CanEditProperties()) {

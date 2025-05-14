@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @implements IDisposable
 
 <SearchBox
@@ -73,9 +73,6 @@
     private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
     private CancellationToken DisposeToken { get; set; }
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private StateFactory StateFactory => Hub.StateFactory();
     private IAccounts Accounts => Hub.Accounts;
 
     [Parameter] public string SearchBoxPlaceholder { get; set; } = "Whom would you like to add?";

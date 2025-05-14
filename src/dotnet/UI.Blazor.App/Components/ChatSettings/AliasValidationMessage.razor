@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.Linq.Expressions
+@inherits ComponentBase<ChatUIHub>
 @implements IDisposable
 @{
     var messages = CurrentEditContext.GetValidationMessages(_fieldIdentifier).ToList();
@@ -25,8 +26,6 @@
     private Expression<Func<string>>? _previousFieldAccessor;
     private FieldIdentifier _fieldIdentifier;
     private bool? _aliasIsAvailable;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
 

@@ -1,6 +1,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 @{
     var showVerifier = _validationState is ValidationState.Valid or ValidationState.CodeSentRecently;
@@ -45,14 +46,9 @@
     private TotpVerifier? _totpVerifier;
     private ValidationState _validationState = ValidationState.None;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private ICaptcha Captcha { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private IAccounts Accounts => Hub.Accounts;
+    private ICaptcha Captcha => Hub.Captcha;
     private TotpUI TotpUI => Hub.TotpUI;
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private MomentClockSet Clocks => Hub.Clocks();
 
     [Parameter, EditorRequired] public Phone Phone { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

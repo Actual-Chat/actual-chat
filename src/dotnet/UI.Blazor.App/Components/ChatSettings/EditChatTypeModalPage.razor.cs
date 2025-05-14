@@ -1,5 +1,4 @@
 using ActualChat.Invite;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -22,20 +21,13 @@ public partial class EditChatTypeModalPage
     private Action<ElementReference> _setAliasCopySource = null!;
     private bool _isPlaceAliasRequired;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
     private IInvites Invites => Hub.Invites;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private UICommander UICommander => Hub.UICommander();
-    private Features Features => Hub.Features();
-    private MomentClockSet Clocks => Hub.Clocks();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
+
     private ChatId ChatId { get; set; } = null!;
 
     protected override void OnInitialized()
@@ -95,13 +87,6 @@ public partial class EditChatTypeModalPage
             }
         };
     }
-
-    protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = ComputedModel.Loading,
-                Category = GetStateCategory(t),
-            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken)
     {
@@ -238,8 +223,6 @@ public partial class EditChatTypeModalPage
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record ComputedModel
     {
-        public static readonly ComputedModel Loading = new ();
-
         public Chat.Chat? Chat { get; init; }
         public List<Invite.Invite> Invites { get; init; } = [];
         public bool AllowEditIsTemplate { get; init; }

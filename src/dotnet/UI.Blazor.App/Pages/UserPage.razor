@@ -1,11 +1,9 @@
 @page "/u"
 @page "/u/{PageRoute}"
+@inherits ComponentBase<ChatUIHub>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
-    private History History => Hub.History;
     private IAliases Aliases => Hub.Aliases;
 
     [Parameter] public string? PageRoute { get; set; }

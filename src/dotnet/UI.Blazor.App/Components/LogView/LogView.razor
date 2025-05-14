@@ -1,41 +1,25 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<LogView.Model>
-
-
-@if (!State.Value.IsEnabled) {
-    <div>Local logs are disabled. To enable go to
-        <Button Class="btn-transparent unhovered compact" Click="@OnSettingsClick">settings</Button>
-    </div>
-    return;
+@inherits ComputedStateComponent<ChatUIHub, bool>
+@{
+    if (State.IsInitial(out var isEnabled))
+        return;
+    if (!isEnabled) {
+        <div>Local logs are disabled. To enable go to
+            <Button Class="btn-transparent unhovered compact" Click="@OnSettingsClick">settings</Button>
+        </div>
+        return;
+    }
 }
 
 <LogList />
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
     private LogUI LogUI => Hub.LogUI;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-    }
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isEnabled = await LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
-        return new(isEnabled);
-    }
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => LogUI.IsEnabled.Use(cancellationToken);
 
     private Task OnSettingsClick()
         => UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.App));
-
-    // Nested types
-
-    public sealed record Model(bool IsEnabled) {
-        public static readonly Model Loading = new(false);
-    }
 }

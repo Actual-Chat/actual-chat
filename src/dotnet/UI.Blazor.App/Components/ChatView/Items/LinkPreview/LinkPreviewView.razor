@@ -1,19 +1,18 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
 @using LinkPreview = ActualChat.Media.LinkPreview;
-@inherits ComputedStateComponent<LinkPreviewView.Model>
+@inherits ComputedStateComponent<ChatUIHub, LinkPreviewView.Model?>
 @{
-    var m = State.Value;
-    @if (ReferenceEquals(m, Model.None))
+    if (State.IsInitial(out var m) || m is null)
         return;
 
     var preview = m.Preview;
     var uri = m.Uri;
-    var imageUrl = GetImageUrl(preview.PreviewMedia);
+    var imageUrl = GetImageUrl(preview.PreviewMedia, m.Entry.LinkPreviewMode);
     var compactCls = preview.PreviewMedia != null ? "" : "compact";
 }
 
-@if (m.LocalLink is { CanRender:true }) {
+@if (m.LocalLink is { CanRender: true }) {
     <LocalLinkPreview Data="@m.LocalLink"/>
 } else {
     var isLocal = m.LocalLink is { };
@@ -39,7 +38,7 @@
         <ButtonRound
             Tooltip="Forward"
             Class="btn-xs"
-            Click="@(() => SelectionUI.Forward(Entry.Id))">
+            Click="@(() => SelectionUI.Forward(m.Entry.Id))">
             <i class="icon-share"></i>
         </ButtonRound>
     }
@@ -77,9 +76,6 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private UrlMapper UrlMapper => Hub.UrlMapper();
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
 
@@ -87,20 +83,43 @@
     [Parameter, EditorRequired] public LinkPreview LinkPreview { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    private string GetImageUrl(Media? preview)
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var entry = Entry;
+        var linkPreview = LinkPreview;
+        if (entry.LinkPreviewMode == LinkPreviewMode.None || linkPreview.IsEmpty)
+            return null;
+
+        Uri.TryCreate(linkPreview.Url, UriKind.Absolute, out var uri);
+        if (uri == null)
+            return null;
+
+        var localLink = await LinkPreviewUI
+            .TryGetLocal(linkPreview.Url, cancellationToken)
+            .ConfigureAwait(false); // Ok here: no further access to locals
+        return new Model {
+            Entry = entry,
+            Preview = linkPreview,
+            Uri = uri,
+            LocalLink = localLink,
+        };
+    }
+
+    // Private methods
+
+    private string GetImageUrl(Media? preview, LinkPreviewMode linkPreviewMode)
     {
         if (preview?.ContentId.IsNullOrEmpty() != false)
             return "";
 
         var imageUrl = UrlMapper.ContentUrl(preview.ContentId);
         // TODO: use image metadata for better proportions selection
-        var (width, height) = GetImageMaxSize();
+        var (width, height) = GetImageMaxSize(linkPreviewMode);
         return UrlMapper.ImagePreviewUrl(imageUrl, width, height);
     }
 
-    private (int? Width, int Height) GetImageMaxSize() {
+    private (int? Width, int Height) GetImageMaxSize(LinkPreviewMode linkPreviewMode) {
         const int sizeMultiplier = 2; // reduced images look blurry
-        switch (Entry.LinkPreviewMode) {
+        switch (linkPreviewMode) {
             case LinkPreviewMode.Compact:
                 var maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
                 return (maxHeight * sizeMultiplier, maxHeight * sizeMultiplier);
@@ -113,37 +132,10 @@
         }
     }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-        static t => new ComputedState<Model>.Options() {
-            InitialValue = Model.None,
-            Category = GetStateCategory(t),
-        });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatEntry = Entry;
-        var linkPreview = LinkPreview;
-        if (chatEntry.LinkPreviewMode == LinkPreviewMode.None || linkPreview.IsEmpty)
-            return Model.None;
-
-        Uri.TryCreate(linkPreview.Url, UriKind.Absolute, out var uri);
-        if (uri == null)
-            return Model.None;
-
-        return new Model {
-            ChatEntry = chatEntry,
-            Preview = linkPreview,
-            Uri = uri,
-            LocalLink = await LinkPreviewUI.TryGetLocal(linkPreview.Url, cancellationToken),
-        };
-    }
-
     // Nested types
 
     public sealed record Model {
-        public static readonly Model None = new();
-
-        public ChatEntry ChatEntry { get; init; } = null!;
+        public ChatEntry Entry { get; init; } = null!;
         public LinkPreview Preview { get; init; } = null!;
         public Uri Uri { get; init; } = null!;
         public LocalLinkInfo? LocalLink { get; init; }

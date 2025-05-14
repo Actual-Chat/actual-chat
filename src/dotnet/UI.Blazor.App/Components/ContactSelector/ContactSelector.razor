@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<IReadOnlyList<ChatInfo>>
+@inherits ComputedStateComponent<ChatUIHub, IReadOnlyList<ChatInfo>>
 @using ActualChat.Search
 
 <CascadingValue IsFixed="true" Value="@this">
@@ -11,7 +11,7 @@
     private MutableState<ImmutableHashSet<ChatId>> _selectedChatIds = null!;
     private PlaceId? _placeId;
 
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
     [Parameter] public ChatListOrder Order { get; set; } = ChatListOrder.ByOwnUpdateTime;
     [Parameter] public ChatListPreOrder ChatListPreOrder { get; set; } = ChatListPreOrder.ChatList;

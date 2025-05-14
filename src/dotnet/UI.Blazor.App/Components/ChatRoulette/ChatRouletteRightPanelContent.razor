@@ -1,7 +1,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Roulette
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatRouletteRightPanelContent.Model?>
+@inherits ComputedStateComponent<ChatUIHub, ChatRouletteRightPanelContent.Model?>
 @{
     #pragma warning disable IL2091
     var m = State.Value;
@@ -67,10 +67,7 @@
     private Form? _formRef = null!;
     private FormModel _form = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     private RouletteUI RouletteUI => Hub.RouletteUI;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     protected override Task OnInitializedAsync() {
         MustRenderAfterEvent = true;
@@ -128,7 +125,9 @@
     public record Model;
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
-    public sealed class FormModel : FormModel<FormModel> {
+    public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
+        : FormModel<FormModel>("search-filter", componentIdGenerator)
+    {
         public string CountryId { get; set; } = "";
         public string CountryIdFieldId { get; set; } = "";
         [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
@@ -138,9 +137,5 @@
         public string GenderFieldId { get; set; } = "";
         public IReadOnlyList<Interest> Interests { get; set; } = [];
         public string InterestsFieldId { get; set; } = "";
-
-        public FormModel(ComponentIdGenerator? componentIdGenerator)
-            : base("search-filter", componentIdGenerator) {
-        }
     }
 }

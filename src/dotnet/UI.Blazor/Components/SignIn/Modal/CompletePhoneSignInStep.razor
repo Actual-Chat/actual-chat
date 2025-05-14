@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Services
 @using TaskExt = ActualLab.Async.TaskExt
 @using ActualChat.Hosting
-@inherits Step;
+@inherits SimpleStep<UIHub>;
 
 @{
     var phone = PhoneSignInModel.Phone;
@@ -27,10 +27,6 @@
 
 @code {
     private TotpVerifier? _totpVerifier;
-
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;

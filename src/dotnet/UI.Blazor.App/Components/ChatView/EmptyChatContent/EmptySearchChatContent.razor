@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<EmptySearchChatContent.Model?>
+@inherits ComputedStateComponent<ChatUIHub, EmptySearchChatContent.Model?>
 @{
     var m = State.ValueOrDefault; // Intended: Error != null when chat is not found
     if (ReferenceEquals(m, null))
@@ -23,11 +23,8 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
     private ChatUI ChatUI => Hub.ChatUI;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

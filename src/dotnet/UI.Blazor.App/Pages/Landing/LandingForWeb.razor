@@ -60,8 +60,6 @@
 </div>
 
 @code {
-    private IJSRuntime JS => Hub.JSRuntime();
-
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

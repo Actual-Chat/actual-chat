@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Events
-@inherits MenuBase
+@inherits MenuBase<ChatUIHub>
 
 <div class="chat-message-editor-menu">
     @if (HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Android) {
@@ -28,10 +28,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    public UIEventHub UIEventHub => Hub.UIEventHub();
-    public HostInfo HostInfo => Hub.HostInfo();
-
     private async Task OnAttachClick(string acceptTypes = "") {
         await WhenClosed;
         _ = UIEventHub.Publish(new AttachButtonClickEvent(acceptTypes));

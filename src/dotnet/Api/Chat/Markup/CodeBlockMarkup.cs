@@ -1,7 +1,9 @@
 using System.Text;
+using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed record CodeBlockMarkup(
     string Code,
     string Language = ""
@@ -22,4 +24,8 @@ public sealed record CodeBlockMarkup(
         builder.Append("```");
         return true; // Indicates there is no comma / tail "}" must be prefixed with space
     }
+
+    // This record relies on referential equality
+    public bool Equals(CodeBlockMarkup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

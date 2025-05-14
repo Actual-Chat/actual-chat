@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatEntryMessageView.Model?>
+@inherits ComputedStateComponent<ChatUIHub, ChatEntryMessageView.Model?>
 @{
     var m = _rendered = State.Value;
     if (m?.Chat is not { } chat)
@@ -243,22 +243,16 @@
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
-    private ChatUIHub Hub => ChatContext.Hub;
     private ChatId ChatId => Entry.ChatId;
-    private Session Session => Hub.Session();
-    private History History => Hub.History;
+
     private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
+    private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ChatUI ChatUI => Hub.ChatUI;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-    private Features Features => Hub.Features();
-    private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;

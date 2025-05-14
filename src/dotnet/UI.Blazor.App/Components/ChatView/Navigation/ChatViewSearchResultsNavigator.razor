@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<ChatUIHub, bool>
 @if (!State.Value) {
     return;
 }
@@ -16,7 +16,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 

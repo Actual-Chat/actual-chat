@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatCopyBanner.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatCopyBanner.Model>
 @{
     var m = State.Value;
     if (!m.IsVisible)
@@ -22,8 +22,6 @@
 @code {
     private bool _isCopying;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;

@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 @{
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
@@ -29,15 +30,10 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
-    private NavigationManager Nav => Hub.Nav;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    [Parameter, EditorRequired]
-    public TextEntryAttachment Attachment { get; set; } = null!;
+    [Parameter, EditorRequired] public TextEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public string Class { get; set; } = "";
 }

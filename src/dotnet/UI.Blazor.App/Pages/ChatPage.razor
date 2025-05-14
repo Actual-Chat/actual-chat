@@ -2,7 +2,7 @@
 @page "/chat/{*Route}"
 @layout ListViewLayout
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<ChatPage.Model?>
+@inherits ComputedStateComponent<ChatUIHub, ChatPage.Model?>
 @{
     var m = Rendered = State.Value;
     if (_isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value)
@@ -76,10 +76,6 @@
     protected RouteResult? FixedRoute;
     protected Model? Rendered;
 
-    [Inject] protected ChatUIHub Hub { get; init; } = null!;
-    protected Features Features => Hub.Features();
-    protected Session Session => Hub.Session();
-    protected HostInfo HostInfo => Hub.HostInfo();
     protected IChats Chats => Hub.Chats;
     protected IPlaces Places => Hub.Places;
     protected IAccounts Accounts => Hub.Accounts;
@@ -87,10 +83,7 @@
     protected IAliases Aliases => Hub.Aliases;
     protected ChatUI ChatUI => Hub.ChatUI;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    protected AccountUI AccountUI => Hub.AccountUI;
-    protected PanelsUI PanelsUI => Hub.PanelsUI;
     protected BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    protected UICommander UICommander => Hub.UICommander();
 
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());

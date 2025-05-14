@@ -1,6 +1,6 @@
 @page "/test/content-indexer-settings"
 @using ActualChat.Kvas
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Content indexer settings</MainHeader>
@@ -32,9 +32,8 @@
     private Form? _formRef;
     private FormModel _form = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ServerSettingsKvasClient ServerSettings { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    [field: AllowNull, MaybeNull]
+    private ServerSettingsKvasClient ServerSettings => field ??= Hub.GetRequiredService<ServerSettingsKvasClient>();
 
     protected override void OnInitialized()
         => _form = new FormModel(ComponentIdGenerator);

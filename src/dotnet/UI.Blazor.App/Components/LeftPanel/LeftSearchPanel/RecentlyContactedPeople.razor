@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<IReadOnlyList<Chat>>
+@inherits ComputedStateComponent<ChatUIHub, IReadOnlyList<Chat>>
 @{
     var chats = State.ValueOrDefault ?? [];
     if (chats.Count == 0)
@@ -14,13 +14,10 @@
 <Divider Class="mx-4 my-1.5"/>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-
     [Parameter] public Place? Place { get; set; }
 
-    private IChatUsages ChatUsages => Hub.ChatUsages;
     private IChats Chats => Hub.Chats;
-    private Session Session => Hub.Session();
+    private IChatUsages ChatUsages => Hub.ChatUsages;
 
     protected override ComputedState<IReadOnlyList<Chat>>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

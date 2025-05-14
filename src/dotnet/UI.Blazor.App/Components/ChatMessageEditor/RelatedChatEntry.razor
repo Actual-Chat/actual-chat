@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Events
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var entry = Entry;
     var colorCls = "text-primary ";
@@ -45,10 +45,8 @@
     private IChatMarkupHub _chatMarkupHub = null!;
     private string _text = null!;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private ChatUI ChatUI => Hub.ChatUI;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public RelatedEntryKind Kind { get; set; }

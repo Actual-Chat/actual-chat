@@ -21,7 +21,6 @@
     private string _hrefUrl = "";
     private bool _isRenderedAsLocal;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
 
     protected override async Task OnParametersSetAsync() {

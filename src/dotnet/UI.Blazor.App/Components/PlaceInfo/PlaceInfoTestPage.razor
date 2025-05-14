@@ -1,6 +1,6 @@
 @page "/test/place-info"
 @layout DiscoverLayout
-@inherits ComputedStateComponent<PlaceInfoTestPage.Model>
+@inherits ComputedStateComponent<ChatUIHub, PlaceInfoTestPage.Model>
 @{
     var m = State.Value;
 }
@@ -18,10 +18,6 @@
 
 @code {
     private PlaceId? _selectedPlaceId;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

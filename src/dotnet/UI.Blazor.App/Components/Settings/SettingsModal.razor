@@ -1,6 +1,6 @@
 @using ActualChat.Hosting
 @implements IModalView<SettingsModal.Model>
-@inherits ComputedStateComponent<SettingsModal.ComputedModel>
+@inherits ComputedStateComponent<ChatUIHub, SettingsModal.ComputedModel>
 @{
     var m = State.Value;
     var account = m.AccountFull;
@@ -83,11 +83,6 @@
 @code {
     private bool _enableIncompleteUI;
     private IDeveloperTools? _developerTools;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private Features Features => Hub.Features();
-    private AccountUI AccountUI => Hub.AccountUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;

@@ -1,5 +1,4 @@
-@using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<string>
+@inherits ComputedStateComponent<UIHub, string>
 @{
     var m = State.Value;
 }
@@ -7,8 +6,6 @@
 <span class="@Class live-time-text">@m</span>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public Moment Moment { get; set; }
     [Parameter] public TimeSpan UpdatePeriod { get; set; } = TimeSpan.FromSeconds(1);

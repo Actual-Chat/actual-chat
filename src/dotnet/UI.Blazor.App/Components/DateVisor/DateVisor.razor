@@ -1,6 +1,6 @@
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<string>
+@inherits ComputedStateComponent<ChatUIHub, string>
 @{
     var m = State.Value.NullIfEmpty() ?? _lastDate;
     _lastDate = m;
@@ -19,14 +19,9 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private IJSRuntime JS => Hub.JSRuntime();
     private IChats Chats => Hub.Chats;
-    private Session Session => Hub.Session();
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
-
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
 

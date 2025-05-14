@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @implements IDisposable
 
 <FormBlock Class="with-contact-list">
@@ -38,9 +38,6 @@
     }
     private IReadOnlySet<UserId> SelectedUserIds
         => _memberSelector?.SelectedUserIds.Value ?? ImmutableHashSet<UserId>.Empty;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 

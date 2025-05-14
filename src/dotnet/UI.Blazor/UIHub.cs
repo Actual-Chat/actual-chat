@@ -13,10 +13,19 @@ public class UIHub(IServiceProvider services) : Hub(services)
     private UIEventHub? _uiEventHub;
     private IJSRuntime? _jsRuntime;
 
+    // Generic services
+    [field: AllowNull, MaybeNull]
+    public ITimeZones TimeZones => field ??= Services.GetRequiredService<ITimeZones>();
     [field: AllowNull, MaybeNull]
     public IFusionTime FusionTime => field ??= Services.GetRequiredService<IFusionTime>();
     [field: AllowNull, MaybeNull]
     public LiveTime LiveTime => field ??= Services.GetRequiredService<LiveTime>();
+    [field: AllowNull, MaybeNull]
+    public ICaptcha Captcha => field ??= Services.GetRequiredService<ICaptcha>();
+    [field: AllowNull, MaybeNull]
+    public IPhones Phones => field ??= Services.GetRequiredService<IPhones>();
+
+    // Account-related & chat-related services
     [field: AllowNull, MaybeNull]
     public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
@@ -29,7 +38,18 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public IRouletteProfiles RouletteProfiles => field ??= Services.GetRequiredService<IRouletteProfiles>();
     [field: AllowNull, MaybeNull]
     public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
+    [field: AllowNull, MaybeNull]
+    public IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
+    [field: AllowNull, MaybeNull]
+    public ISessionResolver SessionResolver => field ??= CircuitHub.SessionResolver;
+    [field: AllowNull, MaybeNull]
+    public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
+    [field: AllowNull, MaybeNull]
+    public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
+    [field: AllowNull, MaybeNull]
+    public LogSinks LogSinks => field ??= Services.GetRequiredService<LogSinks>();
 
+    // UI services
     [field: AllowNull, MaybeNull]
     public LoadingUI LoadingUI => field ??= Services.GetRequiredService<LoadingUI>();
     [field: AllowNull, MaybeNull]
@@ -85,6 +105,7 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public LogUI LogUI => field ??= Services.GetRequiredService<LogUI>();
 
+    // UI-related services w/o UI suffix
     [field: AllowNull, MaybeNull]
     public Escapist Escapist => field ??= Services.GetRequiredService<Escapist>();
     [field: AllowNull, MaybeNull]
@@ -102,24 +123,16 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public Dispatcher Dispatcher => field ??= Services.GetRequiredService<Dispatcher>();
     [field: AllowNull, MaybeNull]
-    public JSRuntimeInfo JSRuntimeInfo => field ??= CircuitContext.JSRuntimeInfo;
+    public JSRuntimeInfo JSRuntimeInfo => field ??= CircuitHub.JSRuntimeInfo;
     [field: AllowNull, MaybeNull]
-    public AppBlazorCircuitContext CircuitContext => field ??= Services.GetRequiredService<AppBlazorCircuitContext>();
-    [field: AllowNull, MaybeNull]
-    public ISessionResolver SessionResolver => field ??= Services.GetRequiredService<ISessionResolver>();
-    [field: AllowNull, MaybeNull]
-    public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
-    [field: AllowNull, MaybeNull]
-    public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
-    [field: AllowNull, MaybeNull]
-    public LogSinks LogSinks => field ??= Services.GetRequiredService<LogSinks>();
+    public AppCircuitHub CircuitHub => field ??= (AppCircuitHub)Services.GetRequiredService<CircuitHub>();
 
     // Shortcuts
     public bool IsPrerendering => JSRuntimeInfo.IsPrerendering;
     public bool IsInteractive => JSRuntimeInfo.IsInteractive;
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
-    public UICommander UICommander() => _uiCommander ??= Services.UICommander();
+    public UICommander UICommander() => _uiCommander ??= CircuitHub.UICommander;
     public UIEventHub UIEventHub() => _uiEventHub ??= Services.UIEventHub();
-    public IJSRuntime JSRuntime() => _jsRuntime ??= Services.JSRuntime();
+    public IJSRuntime JSRuntime() => _jsRuntime ??= CircuitHub.JS;
 }

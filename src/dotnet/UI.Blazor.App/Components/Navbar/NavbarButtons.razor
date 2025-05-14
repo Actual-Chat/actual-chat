@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<NavbarButtons.Model>
+@inherits ComputedStateComponent<ChatUIHub, NavbarButtons.Model>
 @{
     var m = State.Value;
     var ownAccount = m.OwnAccount;
@@ -45,14 +45,8 @@
 </div>
 
 @code {
-    [Inject] protected UIHub Hub { get; init; } = null!;
-    protected Session Session => Hub.Session();
-    protected AccountUI AccountUI => Hub.AccountUI;
-    protected ModalUI ModalUI => Hub.ModalUI;
-    protected NavbarUI NavbarUI => Hub.NavbarUI;
-    protected PanelsUI PanelsUI => Hub.PanelsUI;
-    protected Features Features => Hub.Features();
-    protected IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     protected override void OnInitialized()
         => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;

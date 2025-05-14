@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
+@inherits ComponentBase<ChatUIHub>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.SelectionHost.create";
@@ -9,8 +10,6 @@
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<SelectionHost> _blazorRef = null!;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private IJSRuntime JS => Hub.JSRuntime();
     private SelectionUI SelectionUI => Hub.SelectionUI;
 
     [Parameter, EditorRequired] public string Selected { get; set; } = "";

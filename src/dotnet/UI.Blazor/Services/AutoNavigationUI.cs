@@ -18,7 +18,7 @@ public sealed class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
     private History History => Hub.History;
-    private AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
+    private AppCircuitHub CircuitHub => Hub.CircuitHub;
     private Dispatcher Dispatcher => Hub.Dispatcher;
 
     public Task<LocalUrl> GetAutoNavigationUrl()
@@ -73,13 +73,13 @@ public sealed class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        if (CircuitContext.WhenInitialized.IsCompleted)
+        if (CircuitHub.WhenInitialized.IsCompleted)
             return Dispatcher.CheckAccess()
                 ? NavigateTo(url, reason)
                 : Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
 
         return Task.Run(async () => {
-            await CircuitContext.WhenInitialized.ConfigureAwait(false);
+            await CircuitHub.WhenInitialized.ConfigureAwait(false);
             await Dispatcher.InvokeAsync(() => NavigateTo(url, reason)).ConfigureAwait(false);
         });
     }

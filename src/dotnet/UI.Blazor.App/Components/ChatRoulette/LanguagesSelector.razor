@@ -1,6 +1,6 @@
 @using System.Linq.Expressions
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<LanguagesSelector.Model>
+@inherits ComputedStateComponent<ChatUIHub, LanguagesSelector.Model>
 @{
     var m = State.Value;
     var availableLanguages = m.AvailableLanguages;
@@ -25,12 +25,9 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ModalUI ModalUI => Hub.ModalUI;
     private FieldIdentifier? _fieldIdentifier;
     private IReadOnlyList<Language>? _renderedLanguages;
     private bool _renderedLanguagesHasChanged;
-
 
     [CascadingParameter] private EditContext? CascadedEditContext { get; set; }
     [Parameter] public IReadOnlyList<Language> Languages { get; set; } = [];

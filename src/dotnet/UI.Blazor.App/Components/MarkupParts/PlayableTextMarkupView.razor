@@ -42,15 +42,9 @@
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
-    private SelectionUI SelectionUI => Hub.SelectionUI;
-    private HighlightUI HighlightUI => Hub.HighlightUI;
-    private IJSRuntime JS => Hub.JSRuntime();
-    private Session Session => Hub.Session();
-    private IChats Chats => Hub.Chats;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;

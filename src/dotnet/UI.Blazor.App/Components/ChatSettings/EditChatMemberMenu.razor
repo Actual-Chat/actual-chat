@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<EditChatMemberModel?>
-
+@inherits ComputedMenuBase<ChatUIHub, EditChatMemberModel?>
 @{
     var m = State.Value;
     if (m == null)
@@ -43,8 +42,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     private AuthorId AuthorId { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {

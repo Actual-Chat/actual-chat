@@ -23,6 +23,7 @@ public partial class SearchUI : ScopedWorkerBase<ChatUIHub>, IComputeService, IN
     public IState<bool> IsShowRecentOn => _isShowRecentOn;
     public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
     public IState<FoundItem?> SelectedItem => _selectedItem;
+
     private IMutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
     private History History => Hub.History;
     private ISearch Search => Hub.Search;

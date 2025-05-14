@@ -1,6 +1,6 @@
 ﻿@using ActualChat.Media;
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NavbarPlaceButtons.Model>
+@inherits ComputedStateComponent<ChatUIHub, NavbarPlaceButtons.Model>
 @implements ISortableListBackend
 @{
     var m = State.Value;
@@ -61,11 +61,6 @@
     private DotNetObjectReference<NavbarPlaceButtons> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
-    private Session Session => Hub.Session();
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 

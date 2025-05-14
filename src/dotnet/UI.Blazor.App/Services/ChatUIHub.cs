@@ -34,8 +34,6 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
     [field: AllowNull, MaybeNull]
-    public IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
-    [field: AllowNull, MaybeNull]
     public IChatUsages ChatUsages => field ??= Services.GetRequiredService<IChatUsages>();
     [field: AllowNull, MaybeNull]
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();

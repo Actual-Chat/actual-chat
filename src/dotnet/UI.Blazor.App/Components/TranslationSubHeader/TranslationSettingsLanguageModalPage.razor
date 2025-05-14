@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<TranslationSettingsLanguageModalPage.Model>
+@inherits ComputedStateComponent<ChatUIHub, TranslationSettingsLanguageModalPage.Model>
 @{
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.None))
+    if (State.IsInitial(out var m))
         return;
 }
 
@@ -20,7 +19,6 @@
 </FormBlock>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
@@ -29,13 +27,6 @@
     protected override void OnInitialized() {
         Context.Title = "Select language";
     }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options {
-                InitialValue = Model.None,
-                Category = GetStateCategory(t),
-            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Context.GetModel<ChatId>();
@@ -51,7 +42,8 @@
 
     // Nested types
 
-    public sealed record Model(IReadOnlyList<Language> Languages, Language Selected, ChatId ChatId) {
-        public static readonly Model None = new([], null!, null!);
-    }
+    public sealed record Model(
+        IReadOnlyList<Language> Languages,
+        Language Selected,
+        ChatId ChatId);
 }

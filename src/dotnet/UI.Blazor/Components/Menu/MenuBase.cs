@@ -1,6 +1,7 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class MenuBase : ComponentBase, IMenu, IDisposable
+public abstract class MenuBase<THub> : ComponentBase<THub>, IMenu, IDisposable
+    where THub : UIHub
 {
     private readonly AsyncTaskMethodBuilder _whenClosedSource = AsyncTaskMethodBuilderExt.New();
 

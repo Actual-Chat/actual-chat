@@ -1,13 +1,11 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<Presence>
+@inherits ComputedStateComponent<ChatUIHub, Presence>
 @{
     var presence = State.Value;
 }
 @PresenceFragments.PresenceIndicator(presence)
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 

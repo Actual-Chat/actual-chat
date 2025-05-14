@@ -26,8 +26,7 @@
 @code {
     private LandingLeftMenu? _landingLeftMenu;
 
-    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
-
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public DocsPage Page { get; set; }
 
     private void OnMenuHandleClick()

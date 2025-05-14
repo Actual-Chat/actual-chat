@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<EditChatMembersModalPage.ComputedModel>
+@inherits ComputedStateComponent<ChatUIHub, EditChatMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
     Context.Title = $"{m.MemberCount} members";
@@ -54,9 +54,8 @@
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private ChatId ChatId { get; set; } = null!;
 
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    private IAuthors Authors => Hub.Authors;
+    private IRoles Roles => Hub.Roles;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -76,7 +75,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             InitialValue = new ComputedModel {
-                // Try to use stored members count to avoid header title blinking.
+                // Try to use stored members count to avoid header title blinking
                 MemberCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartModalPage.ComputedModel.MemberCount), 1),
             },
             Category = GetStateCategory(GetType()),

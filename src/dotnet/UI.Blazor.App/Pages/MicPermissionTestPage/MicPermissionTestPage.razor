@@ -1,7 +1,4 @@
-
 @namespace ActualChat.UI.Blazor.App.Pages
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.App.Components
 @page "/test/mic-permission-guides"
 
 @{
@@ -66,9 +63,8 @@
 </div>
 
 @code {
-    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject] private ILogger<MicPermissionTestPage> Log { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] protected ChatUIHub Hub { get; init; } = null!;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 

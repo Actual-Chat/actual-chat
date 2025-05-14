@@ -1,7 +1,7 @@
 @page "/test/auth"
-@inherits ComputedStateComponent<AuthTestPage.Model?>
+@inherits ComputedStateComponent<ChatUIHub, AuthTestPage.Model?>
 @{
-#pragma warning disable IL2026
+    #pragma warning disable IL2026
 
     var (m, error) = (State.LastNonErrorValue, State.Error);
     var usedAuthSchemas = m?.User.Identities.Select(kv => kv.Key.Schema).ToHashSet() ?? new HashSet<string>();
@@ -122,11 +122,10 @@
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private LiveTime LiveTime { get; init; } = null!;
+    [field: AllowNull, MaybeNull]
+    private IAuth Auth => field ??= Hub.GetRequiredService<IAuth>();
+    private IAccounts Accounts => Hub.Accounts;
+    private LiveTime LiveTime => Hub.LiveTime;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);

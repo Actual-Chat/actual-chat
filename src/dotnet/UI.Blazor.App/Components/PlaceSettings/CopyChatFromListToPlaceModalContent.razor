@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<List<Contact?>>
+@inherits ComputedStateComponent<ChatUIHub, List<Contact?>>
 @{
     var m = State.Value;
 }
@@ -22,9 +22,7 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private IContacts Contacts => Hub.Contacts;
-    private Session Session => Hub.Session();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public EventCallback<ChatId> OnChatClick { get; set; }

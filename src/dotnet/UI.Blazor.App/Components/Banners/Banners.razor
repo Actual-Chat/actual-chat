@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<Banners.ComputedModel>
+@inherits ComputedStateComponent<ChatUIHub, Banners.ComputedModel>
 @{
     var m = State.Value;
     var chatId = Chat?.Id;
@@ -26,11 +26,9 @@
 @code {
     private const int MaxCount = 2;
 
-    [Inject] ChatUIHub Hub { get; init; } = null!;
     private BannerUI BannerUI => Hub.BannerUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<AccountFull?>
+@inherits ComputedStateComponent<ChatUIHub, AccountFull?>
 @{
     var account = State.Value;
 }
@@ -21,10 +21,6 @@
     protected ElementReference Ref { get; set; }
     protected LandingLeftMenu? LandingLeftMenuRef { get; set; }
 
-    [Inject] protected UIHub Hub { get; init; } = null!;
-    protected AccountUI AccountUI => Hub.AccountUI;
-    protected ModalUI ModalUI => Hub.ModalUI;
-
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -40,12 +36,12 @@
     protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
         => AccountUI.OwnAccount.Use(cancellationToken)!;
 
-    protected virtual Task SignIn()
+    protected Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
 
-    protected virtual Task OnShowVideoClick()
+    protected Task OnShowVideoClick()
         => ModalUI.Show(new LandingVideoModal.Model());
 
-    protected virtual void OnMenuHandleClick()
+    protected void OnMenuHandleClick()
         => LandingLeftMenuRef?.Open();
 }

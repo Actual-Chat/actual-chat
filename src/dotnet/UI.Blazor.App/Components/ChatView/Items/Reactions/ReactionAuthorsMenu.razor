@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits MenuBase<ChatUIHub>
 
 <ul>
     @foreach (var authorId in _firstAuthorIds) {
@@ -14,8 +14,6 @@
     private Emoji? _emoji;
     private ImmutableList<AuthorId> _firstAuthorIds = ImmutableList<AuthorId>.Empty;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IReactions Reactions => Hub.Reactions;
 
     protected override async Task OnParametersSetAsync() {

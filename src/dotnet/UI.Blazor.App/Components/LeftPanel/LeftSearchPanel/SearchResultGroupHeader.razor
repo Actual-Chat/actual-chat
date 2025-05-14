@@ -1,8 +1,8 @@
 @using ActualChat.Search
-@inherits ComputedStateComponent<bool>
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<ChatUIHub, bool>
 @{
-    var isExpanded = State.ValueOrDefault;
+    var isExpanded = State.Value;
     var btnText = isExpanded ? "Show less" : "Show more";
     var isExpandedCls = isExpanded ? "expanded" : "";
     var title = IsGlobalSearchResult ? "Global search" : Scope.ToString();
@@ -21,7 +21,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter, EditorRequired] public bool CanExpandOrCollapse { get; set; }

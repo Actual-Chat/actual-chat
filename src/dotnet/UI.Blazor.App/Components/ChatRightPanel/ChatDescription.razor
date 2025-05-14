@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatDescription.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatDescription.Model>
 @{
     var m = State.Value;
 }
@@ -44,12 +44,9 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private IRoulette Roulette => Hub.Roulette;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;

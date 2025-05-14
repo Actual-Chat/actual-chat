@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @implements IDisposable
-@inherits ComputedStateComponent<LeftPanelContentHeader.Model>
+@inherits ComputedStateComponent<ChatUIHub, LeftPanelContentHeader.Model>
 @{
     var m = State.Value;
     var place = m.Place;
@@ -18,12 +18,9 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private SearchUI SearchUI => Hub.SearchUI;
-
-    private NavbarUI NavbarUI => Hub.NavbarUI;
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     protected override async Task OnInitializedAsync() {
         NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupOrTitleChanged;
@@ -67,5 +64,6 @@
         => State.Invalidate();
 
     // Nested types
+
     public record Model(Place? Place, bool IsChatRoulette);
 }

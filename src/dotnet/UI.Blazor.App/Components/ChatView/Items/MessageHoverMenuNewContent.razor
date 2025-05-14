@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<MessageHoverMenuNewContent.Model>
+@inherits ComputedStateComponent<ChatUIHub, MessageHoverMenuNewContent.Model>
 @{
     var m = State.Value;
 }
@@ -32,11 +32,8 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }

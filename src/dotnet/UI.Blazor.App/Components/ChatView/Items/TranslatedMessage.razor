@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedRenderStateComponent<TranslatedMessage.Model>
+@inherits ComputedRenderStateComponent<ChatUIHub, TranslatedMessage.Model>
 @{
     var m = State.Value;
     _rendered = m;
@@ -9,16 +9,12 @@
 
 @code {
     private Model? _rendered;
-    private ChatUIHub Hub => ChatContext.Hub;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
-    private Features Features => Hub.Features();
     private TranslationUI TranslationUI => Hub.TranslationUI;
-    private ILogger Log => Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByRefParameterComparer))]
-    public Markup Markup { get; set; } = null!;
+    [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
 
     protected override bool ShouldRender()
         => _rendered is null ||
@@ -30,7 +26,7 @@
         // Do not use cached options as we need to pass Message and Markup parameters.
         var initialData = new Model(Markup, Message);
         return new() {
-            InitialValue = initialData, // show original text immediately
+            InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
         };
     }

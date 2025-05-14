@@ -17,8 +17,6 @@
 
     private ElementReference _preRef;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
     protected override Task OnAfterRenderAsync(bool firstRender)
         => JS.InvokeVoidAsync(JSHighlightCodeMethod, _preRef, Markup.Language.NullIfWhiteSpace(), Markup.Code).AsTask();
 }

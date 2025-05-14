@@ -2,11 +2,10 @@ using ActualChat.Chat;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public class RequireChat : RequirementComponent
+public sealed class RequireChat : RequirementComponent
 {
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IChats Chats { get; init; } = null!;
-    [Inject] protected ILogger<RequireChat> Log { get; init; } = null!;
+    [field: AllowNull, MaybeNull]
+    private IChats Chats => field ??= Hub.GetRequiredService<IChats>();
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
 

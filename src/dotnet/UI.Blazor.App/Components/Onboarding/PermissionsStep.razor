@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits Step;
+@inherits SimpleStep<ChatUIHub>;
 @{
     var m = _model;
-    if (CurrentStep != this || m == null)
+    if (CurrentStep != this || m is null)
         return;
 }
 
@@ -98,8 +98,8 @@
     private PermissionStepModel? _model;
     private ElementReference _notificationPermissionHandlerRef;
 
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private NotificationUI NotificationUI => Hub.NotificationUI;
 
     [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; set; } = null!;
 

@@ -2,16 +2,13 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase.Model>
+public abstract class AccountBadgeBase : ComputedStateComponent<UIHub, AccountBadgeBase.Model>
 {
-    [Inject] private UIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
 
-    protected UserId? UserId { get; private set; }
-
     [Parameter, EditorRequired] public string UserSid { get; set; } = "";
+
+    protected UserId? UserId { get; private set; }
 
     protected override void OnParametersSet()
         => UserId = UserId.Parse(UserSid);

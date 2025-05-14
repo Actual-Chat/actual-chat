@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AuthorPresenceText.Model>
+@inherits ComputedStateComponent<ChatUIHub, AuthorPresenceText.Model>
 @{
     var m = State.Value;
 }
@@ -7,8 +7,6 @@
 @PresenceFragments.PresenceText((m.Presence, m.LastCheckIn))
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 

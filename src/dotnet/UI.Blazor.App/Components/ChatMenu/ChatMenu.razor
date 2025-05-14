@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Contacts
-@inherits ComputedMenuBase<ChatState?>
+@inherits ComputedMenuBase<ChatUIHub, ChatState?>
 @{
     var m = State.Value;
     if (m == null)
@@ -44,9 +44,7 @@
     private ChatId _chatId = null!;
     private ChatListKind _listKind;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ModalUI ModalUI => Hub.ModalUI;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sChatId, var sListKind ])

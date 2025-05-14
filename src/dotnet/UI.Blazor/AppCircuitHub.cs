@@ -2,14 +2,17 @@ using ActualLab.Internal;
 
 namespace ActualChat.UI.Blazor;
 
-public sealed class AppBlazorCircuitContext : BlazorCircuitContext, IDispatcherResolver
+public sealed class AppCircuitHub : CircuitHub, IDispatcherResolver
 {
+    [field: AllowNull, MaybeNull]
+    public UIHub UIHub => field ??= Services.GetRequiredService<UIHub>();
+
     public ComponentBase RootComponent {
         get => field ?? throw Errors.NotInitialized();
         private set;
     } = null!;
 
-    public AppBlazorCircuitContext(IServiceProvider services)
+    public AppCircuitHub(IServiceProvider services)
         : base(services)
     {
         if (!OSInfo.IsWebAssembly)

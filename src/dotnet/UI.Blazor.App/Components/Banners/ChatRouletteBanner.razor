@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Roulette
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<ChatRouletteBanner.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatRouletteBanner.Model>
 @{
     var m = State.Value;
     if (!m.IsVisible)
@@ -53,18 +53,9 @@
 </div>
 
 @code {
-    private static readonly TimeSpan DismissDuration = TimeSpan.FromDays(7);
-
     private SyncedState<Moment> _dismissedAt = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private UICommander UICommander => Hub.UICommander();
-    private AccountSettings AccountSettings => Hub.AccountSettings();
     private IRoulette Roulette => Hub.Roulette;
-    private MomentClockSet Clocks => Hub.Clocks();
-    [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

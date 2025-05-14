@@ -1,11 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Events
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Kvas
 @using ActualLab.Locking
 @using ActualChat.Pooling
 @using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<ChatUIHub>
+@implements IAsyncDisposable
 @{
     var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
 }
@@ -94,18 +95,12 @@
     private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; }
     private SentAttachmentsStorage? AttachmentsStorage { get; set; }
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
-    private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
-    private TuneUI TuneUI => Hub.TuneUI;
     private SearchUI SearchUI => Hub.SearchUI;
-    private UICommander UICommander => Hub.UICommander();
-    private IJSRuntime JS => Hub.JSRuntime();
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

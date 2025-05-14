@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatActivityPanel.Model?>
+@inherits ComputedStateComponent<ChatUIHub, ChatActivityPanel.Model?>
 @{
     var m = State.Value;
     if (m is null)
@@ -47,7 +47,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;

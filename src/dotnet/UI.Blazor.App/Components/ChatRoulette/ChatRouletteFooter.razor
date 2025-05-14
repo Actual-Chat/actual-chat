@@ -1,4 +1,6 @@
 @using ActualChat.Roulette
+@inherits ComponentBase<ChatUIHub>
+
 <div class="cr-footer">
     <ButtonRound
         Class="post-panel-btn btn-transparent btn-xxs mobile"
@@ -35,9 +37,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private ModalUI ModalUI => Hub.ModalUI;
     private RouletteUI RouletteUI => Hub.RouletteUI;
 
     [Parameter, EditorRequired] public Profile Profile { get; set; } = null!;

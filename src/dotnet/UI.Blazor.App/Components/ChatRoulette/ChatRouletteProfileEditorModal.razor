@@ -1,7 +1,8 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Roulette
-@implements IModalView<ChatRouletteProfileEditorModal.Model>
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
+@implements IModalView<ChatRouletteProfileEditorModal.Model>
 @{
     #pragma warning disable IL2091
     var bioFieldAttrs = new Dictionary<string, object> { { "maxLength", 160 } };
@@ -80,13 +81,8 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
-    private UICommander UICommander => Hub.UICommander();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

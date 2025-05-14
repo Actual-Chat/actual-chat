@@ -1,3 +1,4 @@
+@inherits ComponentBase<ChatUIHub>
 @{
     var getLogFileAction = MauiLogAccessor.GetLogFile;
 }
@@ -14,11 +15,6 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private ToastUI ToastUI => Hub.ToastUI;
-    private UICommander UICommander => Hub.UICommander();
-
     [Parameter, EditorRequired] public IMauiLogAccessor MauiLogAccessor { get; set; } = null!;
 
     private async Task OnGetLogFileClick() {

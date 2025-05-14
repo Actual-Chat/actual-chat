@@ -1,5 +1,5 @@
 @using ActualChat.Media
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var chat = Chat;
 }
@@ -33,9 +33,6 @@ default:
 
 @code {
     private UserId? _peerChatUserId;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool ShowPresence { get; set; }

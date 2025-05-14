@@ -203,7 +203,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Returns(moqMeshLocks.Object);
         moqServices
             .Setup(x => x.GetService(typeof(StateFactory)))
-            .Returns(() => new StateFactory(moqServices.Object));
+            .Returns(() => new StateFactory(moqServices.Object, false));
         moqServices
             .Setup(x => x.GetService(typeof(HostInfo)))
             .Returns(() => new HostInfo());

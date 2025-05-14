@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedRenderStateComponent<ChatListItem.Model>
+@inherits ComputedRenderStateComponent<ChatUIHub, ChatListItem.Model>
 @{
     var m = State.Value;
     var listKind = m.ListKind ?? ListKind;
@@ -122,19 +122,17 @@
     };
     private static readonly Dictionary<string, object> NoneAttributes = [];
 
-    private ILogger? _log;
     private Model? _renderedModel;
     private ChatEntryId? _hasBeenReadEntryId;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ChatUI ChatUI => Hub.ChatUI;
-    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
     private IChats Chats => Hub.Chats;
-    private Session Session => Hub.Session();
+    private ChatUI ChatUI => Hub.ChatUI;
 
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatListKind ListKind { get; set; } = ChatListKind.All;
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsLastItemInBlock { get; set; }

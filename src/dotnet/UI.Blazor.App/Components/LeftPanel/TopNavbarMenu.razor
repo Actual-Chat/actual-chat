@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedMenuBase<TopNavbarMenu.Model>
+@inherits ComputedMenuBase<ChatUIHub, TopNavbarMenu.Model>
 @{
     var m = State.Value;
 }
@@ -43,14 +43,8 @@
 }
 
 @code {
-    [Inject] protected ChatUIHub Hub { get; init; } = null!;
-
-    private UIEventHub UIEventHub => Hub.UIEventHub();
     private NavbarUI NavbarUI => Hub.NavbarUI;
-    private AccountUI AccountUI => Hub.AccountUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
-    private History History => Hub.History;
-    private TuneUI TuneUI => Hub.TuneUI;
     private LogUI LogUI => Hub.LogUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()

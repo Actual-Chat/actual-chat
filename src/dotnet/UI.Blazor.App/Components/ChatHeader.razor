@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<ChatHeader.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatHeader.Model>
 @{
     var m = State.Value;
     var chat = Chat;
@@ -70,10 +70,7 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;

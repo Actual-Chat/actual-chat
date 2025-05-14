@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<RecorderToggle.Model>
+@inherits ComputedStateComponent<ChatUIHub, RecorderToggle.Model>
 @{
     var m = State.Value;
     _animator.State = m.IsRecordingHere;
@@ -96,13 +96,11 @@
     private Language? _oldRecordingLanguage;
     private CpuTimestamp _lastActionAt;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private SearchUI SearchUI => Hub.SearchUI;
-    private IJSRuntime JS => Hub.JSRuntime();
 
     private ChatId? RecordingChatId {
         get {

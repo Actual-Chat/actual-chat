@@ -1,10 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 
 <CopyChatFromListToPlaceModalContent OnChatClick="@OnCopyChatClick"/>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     private PlaceId PlaceId { get; set; } = null!;

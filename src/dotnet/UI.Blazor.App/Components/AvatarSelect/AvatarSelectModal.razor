@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<AvatarSelectModal.Model>
 @using ActualLab.Generators
-@inherits ComputedStateComponent<AvatarSelectModal.ViewModel>
+@inherits ComputedStateComponent<ChatUIHub, AvatarSelectModal.ViewModel>
 @{
     var m = State.Value;
     var mode = ModalModel is RevealModel
@@ -91,12 +91,9 @@
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private Avatar? _anonymous;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
     private IAuthors Authors => Hub.Authors;
     private IAvatars Avatars => Hub.Avatars;
-    private UICommander UICommander => Hub.UICommander();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

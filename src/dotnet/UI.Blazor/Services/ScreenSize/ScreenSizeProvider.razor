@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<ScreenSize>
+@inherits ComputedStateComponent<UIHub, ScreenSize>
 @{
     var m = State.Value;
     _renderedScreenSize = m;
@@ -15,9 +15,7 @@
     private ScreenSize _renderedScreenSize;
     private RenderFragment? _renderedChildContent;
 
-    [Inject] private UIHub Hub { get; set; } = null!;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    private ILogger Log => Hub.LogFor(GetType());
 
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 

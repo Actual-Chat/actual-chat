@@ -2,8 +2,11 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class RequirementComponent : ComputedStateComponent<object?>
+public abstract class RequirementComponent : ComputedStateComponent<UIHub, object?>
 {
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Hub.LogFor(GetType());
+
     [CascadingParameter] protected RequirementChecker? RequirementChecker { get; private set; }
 
     public abstract Task Require(CancellationToken cancellationToken);

@@ -1,4 +1,4 @@
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var account = Account;
 }
@@ -143,10 +143,6 @@
 </div>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private History History => Hub.History;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public AccountFull? Account { get; set; }
     [Parameter] public EventCallback PricingClick { get; set; }

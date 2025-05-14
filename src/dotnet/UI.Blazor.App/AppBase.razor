@@ -55,7 +55,7 @@
     protected IServiceProvider Services => UIHub.Services;
     protected HostInfo HostInfo => UIHub.HostInfo();
     protected ISessionResolver SessionResolver => UIHub.SessionResolver;
-    protected AppBlazorCircuitContext CircuitContext => UIHub.CircuitContext;
+    protected AppCircuitHub CircuitHub => UIHub.CircuitHub;
 
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
     [field: AllowNull, MaybeNull]
@@ -74,8 +74,8 @@
 
     protected override void OnInitialized() {
         Log.LogWarning("OnInitialized, Hash: {Hash}", GetHashCode());
-        if (CircuitContext.IsInteractive)
-            CircuitContext.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
+        if (CircuitHub.IsInteractive)
+            CircuitHub.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
     }
 
     protected override async Task OnInitializedAsync() {
@@ -107,7 +107,7 @@
         await AppScopedServiceStarter.PrepareFirstRender(sessionHash);
         _readyToFullyRender = true;
         _shouldRender = true;
-        _ = AppScopedServiceStarter.AfterFirstRender(CircuitContext.StopToken);
+        _ = AppScopedServiceStarter.AfterFirstRender(CircuitHub.StopToken);
     }
 
     public void SimulateCrash(Exception error) {

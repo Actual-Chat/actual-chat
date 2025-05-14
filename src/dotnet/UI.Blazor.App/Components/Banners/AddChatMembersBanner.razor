@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<ChatUIHub, bool>
 
 <Banner
     IsVisible="@State.Value"
@@ -25,15 +25,8 @@
 
     private SyncedState<Moment> _dismissedAt = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private IRoles Roles => Hub.Roles;
     private IAuthors Authors => Hub.Authors;
-    private AccountSettings AccountSettings => Hub.AccountSettings();
-    private ModalUI ModalUI => Hub.ModalUI;
-    private MomentClockSet Clocks => Hub.Clocks();
-    [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Hub.LogFor(GetType());
+    private IRoles Roles => Hub.Roles;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

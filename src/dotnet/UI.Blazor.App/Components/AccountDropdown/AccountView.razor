@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<ChatUIHub, AccountFull>
 @{
     var account = State.Value;
 }
@@ -14,8 +14,6 @@
 </AvatarBadge>
 
 @code {
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NavbarChatButtons.Model>
+@inherits ComputedStateComponent<ChatUIHub, NavbarChatButtons.Model>
 @implements ISortableListBackend
 @{
     var m = State.Value;
@@ -44,10 +44,7 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
-    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");

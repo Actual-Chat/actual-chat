@@ -1,7 +1,7 @@
 @using System.Timers
 @using Timer = System.Timers.Timer
 @using Notification = ActualChat.Notification.Notification
-@inherits ComputedStateComponent<NotificationEntry.Model>
+@inherits ComputedStateComponent<ChatUIHub, NotificationEntry.Model>
 @implements IDisposable
 @{
     var model = State.Value;
@@ -35,8 +35,6 @@
     private bool _isClosed;
     private bool _isClosing;
     private Timer? _closingTimer;
-
-    [Inject] private UrlMapper UrlMapper { get; set; } = null!;
 
     [Parameter] public Notification Notification { get; set; } = null!;
     [Parameter] public EventCallback Closed { get; set; }
@@ -127,5 +125,9 @@
         public string Title { get; init; } = "";
         public string Content { get; init; } = "";
         public string? NavigateToUrl { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

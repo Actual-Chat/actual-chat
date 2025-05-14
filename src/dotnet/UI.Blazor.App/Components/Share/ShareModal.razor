@@ -1,5 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
+@inherits ComponentBase<ChatUIHub>
 @implements IModalView<ShareModalModel>
 @{
     var canSend = HasSelectedItems;
@@ -85,11 +86,7 @@
             ?? _memberSelectorRef?.SelectedUserIds.Value.Count ?? 0) > 0;
     private ShareRequest RequestWithComment => ModalModel.Request.WithText(_comment);
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private Session Session => Hub.Session();
-    private UICommander UICommander => Hub.UICommander();
-    private UserId OwnAccountId => Hub.AccountUI.OwnAccount.Value.Id;
+    private AccountFull OwnAccount => Hub.AccountUI.OwnAccount.Value;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public ShareModalModel ModalModel { get; set; } = null!;
@@ -97,7 +94,7 @@
     protected override void OnInitialized() {
         _comment = ModalModel.Request.Text;
         if (ModalModel.SelectorPrefs is ShareWithPlaceMembersOnly selector) {
-            _memberListSource = new PlaceMemberListSource(Hub, selector.PlaceId, new [] { OwnAccountId });
+            _memberListSource = new PlaceMemberListSource(Hub, selector.PlaceId, [OwnAccount.Id]);
             _hideShareExternallyButton = true;
             _selectorKind = SelectorKind.Members;
         }
@@ -123,7 +120,7 @@
         if (_selectorKind == SelectorKind.Contact)
             selectedChatIds = _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
         else if (_selectorKind == SelectorKind.Members) {
-            var ownUserId = OwnAccountId;
+            var ownUserId = OwnAccount.Id;
             var selectedUserIds = _memberSelectorRef?.SelectedUserIds.Value ?? ImmutableHashSet<UserId>.Empty;
             selectedChatIds = selectedUserIds.Select(userId => PeerChatId.New(ownUserId, userId));
         }

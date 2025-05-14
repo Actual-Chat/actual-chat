@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits Step;
+@inherits SimpleStep<ChatUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -94,10 +94,7 @@
 @code {
     private readonly Model _model = new();
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsCreateChatsStepCompleted;
 

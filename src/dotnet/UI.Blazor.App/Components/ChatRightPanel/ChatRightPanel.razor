@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Components.SideNav
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<ChatUIHub, bool>
 
 @{
     var showSkeletonsOnly = Chat?.Id is null;
@@ -23,10 +23,6 @@
 </SideNav>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
-    private ILogger Log => Hub.LogFor<ChatRightPanel>();
-
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
 

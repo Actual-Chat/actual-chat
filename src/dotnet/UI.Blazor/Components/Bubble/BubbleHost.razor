@@ -29,14 +29,15 @@
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= CircuitContext.Services.LogFor(GetType());
+    private BubbleUI BubbleUI => field ??= Hub.BubbleUI;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    [field: AllowNull, MaybeNull]
+    private IJSRuntime JS => field ??= Hub.JSRuntime();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
     public BubbleHost() { }

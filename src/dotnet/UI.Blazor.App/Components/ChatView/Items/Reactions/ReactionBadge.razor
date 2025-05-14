@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 @{
     var ownReactionClass = OwnReaction?.Emoji == Reaction.Emoji ? "own" : "";
     var showIcons = Reaction.Count <= 3;
@@ -22,10 +23,6 @@
 </li>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private UICommander UICommander => Hub.UICommander();
-
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public Reaction? OwnReaction { get; set; }
     [Parameter, EditorRequired] public ReactionSummary Reaction { get; set; } = null!;

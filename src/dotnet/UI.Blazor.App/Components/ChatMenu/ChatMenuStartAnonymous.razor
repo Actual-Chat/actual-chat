@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @if (_peerUserId is null) {
     return;
 }
@@ -12,8 +12,6 @@
 
 @code {
     private UserId? _peerUserId;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 

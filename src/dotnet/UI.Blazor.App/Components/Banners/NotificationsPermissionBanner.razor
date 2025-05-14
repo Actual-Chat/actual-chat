@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Hosting
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<NotificationsPermissionBanner.Model>
+@inherits ComputedStateComponent<ChatUIHub, NotificationsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -38,11 +38,7 @@
 @code {
     private StoredState<Moment> _dismissedAt = null!;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private LocalSettings LocalSettings => Hub.LocalSettings();
-    private MomentClockSet Clocks => Hub.Clocks();
+    private INotificationsPermission NotificationsPermission => Hub.GetRequiredService<INotificationsPermission>();
     private NotificationUI NotificationUI => Hub.NotificationUI;
 
     protected override void OnInitialized()

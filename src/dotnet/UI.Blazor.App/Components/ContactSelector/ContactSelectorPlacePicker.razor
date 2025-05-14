@@ -1,12 +1,11 @@
 @using ActualChat.Contacts
 @using ActualChat.Media;
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ContactSelectorPlacePicker.Model>
+@inherits ComputedStateComponent<ChatUIHub, List<Place>>
 @{
-    var m = State.Value;
-    var places = m.Places;
-    if (places.Count == 0)
+    if (State.IsInitial(out var places) || places.Count == 0)
         return;
+
     var order = 0;
 }
 
@@ -37,21 +36,12 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
     private ChatUI ChatUI => Hub.ChatUI;
 
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options {
-                InitialValue = new (),
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<List<Place>> ComputeState(CancellationToken cancellationToken) {
         var navbarSettings = await ChatUI.NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
         var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
         var maybePlaces = await placeIds
@@ -60,7 +50,7 @@
             .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
             .ConfigureAwait(false);
         var places = maybePlaces.SkipNullItems().ToList();
-        return new() { Places = places };
+        return places;
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {
@@ -72,10 +62,4 @@
 
     private void SelectPlace(PlaceId? placeId)
         => Selector.SelectPlace(placeId);
-
-    // Nested types
-
-    public record Model {
-        public List<Place> Places { get; init; } = [];
-    }
 }

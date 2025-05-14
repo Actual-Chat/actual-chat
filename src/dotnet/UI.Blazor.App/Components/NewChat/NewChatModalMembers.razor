@@ -1,4 +1,4 @@
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var selectedUserIds = SelectedUserIds;
@@ -33,8 +33,6 @@
 
     private IReadOnlySet<UserId> SelectedUserIds
         => _memberSelector?.SelectedUserIds.Value ?? ImmutableHashSet<UserId>.Empty;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits MenuBase<ChatUIHub>
 
 @if (_entry != null) {
     <div class="reaction-select-menu">
@@ -10,8 +10,7 @@
 @code {
     private ChatEntry? _entry;
 
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    private IChats Chats => Hub.Chats;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sEntryId ])

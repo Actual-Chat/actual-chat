@@ -1,5 +1,5 @@
 @using ActualChat.UI.Blazor.Components.SideNav
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<ChatUIHub, bool>
 
 <SideNav
     Side="SideNavSide.Right"
@@ -12,9 +12,6 @@
 </SideNav>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
-
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<bool>.Options() {

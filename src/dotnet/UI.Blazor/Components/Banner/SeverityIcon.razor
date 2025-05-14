@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<UIHub>
 
 <div class="severity-icon">
      <i class="@Icon"></i>
@@ -17,7 +17,6 @@
                 BannerSeverity.Warning => "alert-triangle",
                 _ => "info",
             };
-
             return $"icon-{iconName}";
         }
     }

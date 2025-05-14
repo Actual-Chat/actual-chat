@@ -1,5 +1,5 @@
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedMenuBase<AccountFull>
+@inherits ComputedMenuBase<ChatUIHub, AccountFull>
 @{
     var m = State.Value;
     var avatar = m.Avatar;
@@ -53,9 +53,6 @@
 </div>
 
 @code {
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,

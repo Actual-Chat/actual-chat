@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 
 <Banner IsVisible="@true" Severity="BannerSeverity.Default" Class="chat-activity-banner subheader">
     <Icon></Icon>
@@ -8,12 +9,11 @@
 </Banner>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
-
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();

@@ -1,9 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<TranslationButton.Model>
-@{
-    var m = State.Value;
-    if(!m.IsVisible)
-        return;
+@inherits ComputedStateComponent<ChatUIHub, bool>
+@if (!State.Value) {
+    return;
 }
 
 <div class="translation-btn-wrapper">
@@ -13,36 +11,20 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Features Features => Hub.Features();
     private TranslationUI TranslationUI => Hub.TranslationUI;
-    private ModalUI ModalUI => Hub.ModalUI;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options {
-                InitialValue = Model.None,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
         if (!enableIncompleteUI)
-            return Model.None;
+            return false;
 
         var isOn = await TranslationUI.IsOn(chatId, cancellationToken).ConfigureAwait(false);
-        return new(isOn == true);
+        return isOn == true;
     }
 
     private void OnClick()
         => ModalUI.Show(new TranslationSettingsModal.Model(ChatId));
-
-    // Nested types
-
-    public sealed record Model(bool IsVisible) {
-        public static readonly Model None = new(false);
-    }
 }

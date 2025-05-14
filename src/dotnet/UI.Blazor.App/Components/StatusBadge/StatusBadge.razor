@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<StatusBadge.Model>
+@inherits ComputedStateComponent<ChatUIHub, StatusBadge.Model>
 @{
     var m = State.Value;
 }
@@ -33,11 +33,8 @@
 </span>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsColorful { get; set; } = true;

@@ -14,9 +14,6 @@
 }
 
 @code {
-    [Inject] ChatUIHub Hub { get; init; } = null!;
-    private HighlightUI HighlightUI => Hub.HighlightUI;
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {

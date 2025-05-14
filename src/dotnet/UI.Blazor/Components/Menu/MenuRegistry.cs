@@ -7,7 +7,7 @@ public static class MenuRegistry
     private static int _lastMenuId;
 
     public static string GetTypeId<TMenu>()
-        where TMenu: MenuBase
+        where TMenu : IMenu
         => GetTypeId(typeof(TMenu));
 
     public static string GetTypeId(Type type)

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 
 @if (EditMembersUI.CanAddMembers(Chat)) {
     <MenuEntry
@@ -11,8 +11,6 @@
 
 @code {
     private Chat Chat => ChatState.Chat;
-
-    [Inject] public ModalUI ModalUI { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 

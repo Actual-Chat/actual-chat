@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<AccountFull?>
+@inherits ComputedStateComponent<UIHub, AccountFull?>
 @{
     var account = State.Value;
 }
@@ -28,8 +28,6 @@
 }
 
 @code {
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-
     [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
     [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;
 

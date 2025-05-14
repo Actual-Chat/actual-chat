@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<OnboardingModal.Model>
-@inherits ComputedStateComponent<OnboardingModal.ViewModel?>
+@inherits ComputedStateComponent<ChatUIHub, OnboardingModal.ViewModel?>
 @{
     var m = State.Value;
     if (m is null)
@@ -102,10 +102,7 @@
     private readonly Mutable<ElementReference> _nextButtonRef = new();
     private bool _canMoveForward = true;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private AccountUI AccountUI => Hub.AccountUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
-    private IFeatures Features => Hub.Features();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

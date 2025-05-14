@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<AddToContactsBanner.Model>
+@inherits ComputedStateComponent<ChatUIHub, AddToContactsBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -17,11 +17,7 @@
 </Banner>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
-    private AccountUI AccountUI => Hub.AccountUI;
-    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

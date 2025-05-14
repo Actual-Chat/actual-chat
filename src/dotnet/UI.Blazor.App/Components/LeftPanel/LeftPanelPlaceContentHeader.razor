@@ -1,15 +1,13 @@
-@using ActualChat.Contacts
 @using ActualChat.Media
 @using ActualChat.UI.Blazor.App.Events
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<LeftPanelPlaceContentHeader.Model>
+@inherits ComputedStateComponent<ChatUIHub, LeftPanelPlaceContentHeader.Model>
+<OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
 @{
     var m = State.Value;
     var hasBackground = m.Place.Background != null;
     var picture = m.Place.Background?.ToPicture() ?? m.Place.Picture.ToPicture();
 }
-
-<OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
 
 <div class="left-panel-content-header place">
     <div class="c-content">
@@ -40,15 +38,9 @@
 </div>
 
 @code {
-    private SearchBox? _searchBoxRef = null;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-
-    private SearchUI SearchUI => Hub.SearchUI;
     private IPlaces Places => Hub.Places;
-    private Session Session => Hub.Session();
-    private ModalUI ModalUI => Hub.ModalUI;
+    private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter, EditorRequired] public Place Place { get; set; } = null!;
 
@@ -77,11 +69,9 @@
     private void OnSearchBoxCancelled()
         => SearchUI.Clear();
 
-    private async Task OnSearchCleared(SearchClearedEvent e, CancellationToken cancellationToken) {
-        if (_searchBoxRef != null) {
-            await _searchBoxRef.Cancel();
-            StateHasChanged();
-        }
+    private Task OnSearchCleared(SearchClearedEvent e, CancellationToken cancellationToken) {
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private void OnInviteMembersClick()

@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 @implements IModalView<CopyChatFromListToPlaceModal.Model>
 
 <DialogFrame Title="Copy chat to place" HasCloseButton="true" Class="copy-chat-to-place-modal">
@@ -8,8 +9,6 @@
 </DialogFrame>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 

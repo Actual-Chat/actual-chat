@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatRouletteProfileModal.ComputedModel>
+@inherits ComputedStateComponent<ChatUIHub, ChatRouletteProfileModal.ComputedModel>
 @implements IModalView<ChatRouletteProfileModal.Model>
 @{
     var m = State.Value;
@@ -38,13 +38,9 @@
 @code {
     private Profile? _selectedProfile;
 
-    [Inject] ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAvatars Avatars => Hub.Avatars;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
     private RouletteUI RouletteUI => Hub.RouletteUI;
-    private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

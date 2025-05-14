@@ -1,12 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Invite
-@inherits ComputedStateComponent<PlaceSettingsEditTypeModalPage.ComputedModel>
+@inherits ComputedStateComponent<ChatUIHub, PlaceSettingsEditTypeModalPage.ComputedModel>
 @{
 #pragma warning disable IL2091
-    var m = State.Value;
-    if (ReferenceEquals(m, ComputedModel.Loading))
+    if (State.IsInitial(out var m))
         return;
-
     if (m.Place == null || !m.Place.Rules.CanEditProperties()) {
         Context.Close();
         return;
@@ -122,15 +120,8 @@
     private string _copyAliasFormatString = "";
     private Action<ElementReference> _aliasTextBoxRefSetter = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
-    private UICommander UICommander => Hub.UICommander();
     private IInvites Invites => Hub.Invites;
-    private MomentClockSet Clocks => Hub.Clocks();
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -165,13 +156,6 @@
         };
         Context.Class = "edit-chat-type";
     }
-
-    protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = ComputedModel.Loading,
-                Category = GetStateCategory(t),
-            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var placeId = PlaceId;
@@ -259,8 +243,6 @@
     }
 
     public sealed record ComputedModel {
-        public static readonly ComputedModel Loading = new();
-
         public Place? Place { get; init; }
         public List<Invite> Invites { get; init; } = [];
         public bool IsPublic { get; init; }

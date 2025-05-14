@@ -1,4 +1,4 @@
-﻿@inherits ComputedStateComponent<PageHeader.Model>
+﻿@inherits ComputedStateComponent<ChatUIHub, PageHeader.Model>
 @{
     var m = State.Value;
     var title = "Actual Chat";
@@ -18,7 +18,7 @@
 </HeadContent>
 
 @code {
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

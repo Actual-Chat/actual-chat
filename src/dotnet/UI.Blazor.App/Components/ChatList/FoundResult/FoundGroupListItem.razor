@@ -1,10 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@inherits ComputedRenderStateComponent<FoundGroupListItem.Model?>
+@inherits ComputedRenderStateComponent<ChatUIHub, FoundGroupListItem.Model>
 @{
-    var m = State.Value;
-    if (m is null) {
+    if (State.IsInitial(out var m)) {
         <ChatListItemSkeleton />
         return;
     }
@@ -41,17 +40,15 @@
 </NavbarItem>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ChatUI ChatUI => Hub.ChatUI;
-    private SearchUI SearchUI => Hub.SearchUI;
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
-    private Session Session => Hub.Session();
+    private ChatUI ChatUI => Hub.ChatUI;
+    private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
     [Parameter] public bool IsPlace { get; set; }
 
-    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.

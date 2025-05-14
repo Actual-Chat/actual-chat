@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatActivities.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatActivities.Model>
 @{
     var m = State.Value;
     var size = SquareSize.Size8;
@@ -20,8 +20,6 @@
 @*      Size="@size" /> *@
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private IAuthors Authors => Hub.Authors;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }

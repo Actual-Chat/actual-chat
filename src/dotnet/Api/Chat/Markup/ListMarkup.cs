@@ -1,17 +1,10 @@
+using ActualLab.Fusion.Blazor;
 using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public record ListItemMarkup(Markup Content, bool Ordered, int? Order = null) : Markup
-{
-    public override string Format()
-        => GetPrefix() + Content.Format();
-
-    private string GetPrefix()
-        => Ordered ? $"{Order}. " : "- ";
-}
-
-public record ListMarkup : Markup
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed record ListMarkup : Markup
 {
     public bool IsOrdered { get; }
     public ListItemMarkup[] Items { get; init; } // Immutable!
@@ -38,4 +31,8 @@ public record ListMarkup : Markup
 
     public void Deconstruct(out ListItemMarkup[] items)
         => items = Items;
+
+    // This record relies on referential equality
+    public bool Equals(ListMarkup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

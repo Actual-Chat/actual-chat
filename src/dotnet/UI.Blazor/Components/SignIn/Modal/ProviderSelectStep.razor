@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Users
-@inherits Step<ProviderSelectStep.Model>;
+@inherits Step<UIHub, ProviderSelectStep.Model>;
 @{
     if (CurrentStep != this)
         return;
@@ -13,7 +13,6 @@
     var m = State.LastNonErrorValue;
     var codeHasBeenSent = m.HasSentCodeRecently;
 }
-
 
 <div class="sign-in-step provider-select-step">
     <div class="c-auth-providers">
@@ -105,17 +104,10 @@
     private bool _isPhoneAuthEnabled;
     private AsyncDataAnnotationsValidator _validator = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private ICaptcha Captcha { get; init; } = null!;
-    [Inject] private IPhones Phones { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private Features Features => Hub.Features();
-    private AccountUI AccountUI => Hub.AccountUI;
+    private IPhones Phones => Hub.Phones;
+    private ICaptcha Captcha => Hub.Captcha;
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private TotpUI TotpUI => Hub.TotpUI;
-    private UICommander UICommander => Hub.UICommander();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;

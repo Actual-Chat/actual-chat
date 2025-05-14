@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<MessageMenuPlay.Model>
+@inherits ComputedStateComponent<ChatUIHub, MessageMenuPlay.Model>
 @{
     var m = State.Value;
     var canPlay = m.CanPlay;
@@ -44,15 +44,14 @@
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
 
     [Parameter] public ChatEntry Entry { get; set; } = null!;
-    [Parameter] public bool IsMenu { get; set; } = false;
+    [Parameter] public bool IsMenu { get; set; }
 
-    private ILogger? _log;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

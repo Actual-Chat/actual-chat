@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var m = Data;
     if (!m.CanRender)
@@ -69,10 +69,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private History History => Hub.History;
-
     [Parameter, EditorRequired] public LocalLinkInfo Data { get; set; } = null!;
 
     private void NavigateToUrl()

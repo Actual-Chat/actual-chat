@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<ChatUIHub>
 
 <div class="c-header">
     <ButtonRound Click="@OnClose" Class="author-modal-close-btn close-btn btn-sm">
@@ -69,11 +70,8 @@
     private ShareModalModel? _shareModalModel;
     private string? _peerOwnName;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
     private IAvatars Avatars => Hub.Avatars;
-    private ShareUI ShareUI => Hub.ShareUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;

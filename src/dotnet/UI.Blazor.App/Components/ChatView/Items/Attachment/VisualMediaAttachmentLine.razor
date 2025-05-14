@@ -9,8 +9,8 @@
 </div>
 
 @code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ImageRow Row { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public string Class { get; set; } = "";
-    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
 }

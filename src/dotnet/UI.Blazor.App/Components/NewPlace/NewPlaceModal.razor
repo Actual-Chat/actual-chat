@@ -1,5 +1,5 @@
 @implements IModalView<NewPlaceModal.Model>
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var title = _place?.Title ?? "New place";
@@ -40,8 +40,6 @@
     private Place? _place;
     private Chat? _defaultChat;
     private Page _page = Page.Props;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

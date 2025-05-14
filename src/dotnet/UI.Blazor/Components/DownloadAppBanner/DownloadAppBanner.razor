@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Kvas
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<UIHub, bool>
 @{
     if (State.Value)
         return;
@@ -32,11 +31,6 @@
 
 @code {
     private StoredState<bool> _isDismissed = null!;
-
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private LocalSettings LocalSettings => Hub.LocalSettings();
-    private ModalUI ModalUI => Hub.ModalUI;
 
     [Parameter] public bool CanBeClosed { get; set; } = true;
 

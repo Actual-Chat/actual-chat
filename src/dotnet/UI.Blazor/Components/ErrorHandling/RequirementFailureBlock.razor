@@ -1,8 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using ActualChat.Hosting
-@using ActualChat.UI.Blazor.Services
-@inherits FusionComponentBase
+@inherits FusionComponentBase<UIHub>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
 @{
@@ -26,11 +24,6 @@
 </LayoutView>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-
     [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
     [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;
     [Parameter, EditorRequired] public AccountFull? Account { get; set; }

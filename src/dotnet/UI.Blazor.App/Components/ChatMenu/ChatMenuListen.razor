@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @{
     var playingHistoricalClass = ChatState.IsPlayingHistorical ? "opacity-60" : "";
     var listeningClass = ChatState.IsListening ? "on" : "off";
@@ -24,8 +24,6 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;

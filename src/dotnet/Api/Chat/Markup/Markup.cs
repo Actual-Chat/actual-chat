@@ -1,5 +1,8 @@
-﻿namespace ActualChat.Chat;
+﻿using ActualLab.Fusion.Blazor;
 
+namespace ActualChat.Chat;
+
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public abstract record Markup
 {
     public static Markup Empty => PlainTextMarkup.Empty;
@@ -45,4 +48,8 @@ public abstract record Markup
 
     public static Markup operator +(Markup first, Markup second)
         => Join(first, second);
+
+    // This record relies on referential equality
+    public virtual bool Equals(Markup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

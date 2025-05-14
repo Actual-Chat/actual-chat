@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatViewNavigationPanel.Model>
+@inherits ComputedStateComponent<ChatUIHub, ChatViewNavigationPanel.Model>
 @{
     var m = State.Value;
 }
@@ -13,7 +13,6 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 

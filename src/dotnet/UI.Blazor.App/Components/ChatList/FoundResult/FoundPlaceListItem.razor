@@ -1,14 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
 @using ActualChat.Search
-@inherits ComputedRenderStateComponent<FoundPlaceListItem.Model?>
+@inherits ComputedRenderStateComponent<ChatUIHub, FoundPlaceListItem.Model>
 @{
-    var m = State.Value;
-    @if (m is null) {
+    if (State.IsInitial(out var m)) {
         <ChatListItemSkeleton />
         return;
     }
-
     if (m.Place is not { } place)
         return;
 }
@@ -41,14 +39,12 @@
 </NavbarItem>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private SearchUI SearchUI => Hub.SearchUI;
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
+    private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
 
-    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.

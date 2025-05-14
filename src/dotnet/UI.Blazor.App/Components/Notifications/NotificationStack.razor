@@ -1,5 +1,5 @@
 @using ActualChat.Notification
-@inherits ComputedStateComponent<NotificationStack.Model>
+@inherits ComputedStateComponent<ChatUIHub, NotificationStack.Model>
 @{
     var model = State.Value;
     var notifications = model.Notifications;
@@ -22,10 +22,7 @@
 @code {
     private bool _isHovered;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private INotifications Notifications { get; set; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    private INotifications Notifications => Hub.Notifications;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -71,5 +68,9 @@
         public static readonly Model None = new();
 
         public List<ActualChat.Notification.Notification> Notifications { get; init; } = [];
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

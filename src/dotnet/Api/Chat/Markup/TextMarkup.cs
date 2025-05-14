@@ -1,7 +1,9 @@
 using System.Text;
+using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public abstract record TextMarkup(string Text) : Markup
 {
     public static TextMarkup New(TextMarkupKind kind, string text)
@@ -59,4 +61,8 @@ public abstract record TextMarkup(string Text) : Markup
         builder.Append('"');
         return true; // Indicates there is no comma / tail "}" must be prefixed with space
     }
+
+    // This record relies on referential equality
+    public virtual bool Equals(TextMarkup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

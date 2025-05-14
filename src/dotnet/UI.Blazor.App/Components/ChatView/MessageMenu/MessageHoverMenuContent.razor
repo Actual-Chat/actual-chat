@@ -1,9 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<MessageHoverMenuContent.Model>
+@inherits ComputedStateComponent<ChatUIHub, MessageHoverMenuContent.Model>
 @{
     var entry = Message.Entry;
     var m = State.Value;
 }
+
 <div class="flex-x gap-x-1">
     <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
         <EmojiIcon Emoji="@Emojis.ThumbsUp" Class="w-5 h-5"/>
@@ -30,11 +31,8 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }

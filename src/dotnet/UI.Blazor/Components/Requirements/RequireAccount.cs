@@ -2,10 +2,9 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public class RequireAccount : RequirementComponent
+public sealed class RequireAccount : RequirementComponent
 {
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IAccounts Accounts { get; init; } = null!;
+    private IAccounts Accounts => Hub.Accounts;
 
     [Parameter] public bool MustBeActive { get; set; } = true;
     [Parameter] public bool MustBeAdmin { get; set; }

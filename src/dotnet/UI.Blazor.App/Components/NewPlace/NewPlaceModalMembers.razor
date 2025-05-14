@@ -1,5 +1,5 @@
 @using ActualChat.Search
-@inherits FusionComponentBase
+@inherits FusionComponentBase<ChatUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var selectedChatIds = SelectedChatIds;
@@ -47,9 +47,6 @@
         => _contactSelectorRef?.AllChats.Value ?? ImmutableDictionary<ChatId, ChatInfo>.Empty;
     private IReadOnlySet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
-
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; } = null!;
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";

@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using Microsoft.AspNetCore.Components.Web.Virtualization
-@inherits ComputedStateComponent<AuthorList.Model>
+@inherits ComputedStateComponent<ChatUIHub, AuthorList.Model>
 
 @{
     var m = State.Value;
@@ -67,9 +67,6 @@
 @code {
     private EventCallback<AuthorId> _onClickCallback;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
     private IRoles Roles => Hub.Roles;
