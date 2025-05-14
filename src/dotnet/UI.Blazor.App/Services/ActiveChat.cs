@@ -2,24 +2,19 @@ using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-// TODO(AY): Struct -> record
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public readonly partial record struct ActiveChat(
+public partial record ActiveChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] bool IsListening = false,
     [property: DataMember, MemoryPackOrder(2)] bool IsRecording = false,
     [property: DataMember, MemoryPackOrder(3)] Moment Recency = default, // CPU time
     [property: DataMember, MemoryPackOrder(4)] Moment ListeningRecency = default // CPU time
-    ) : ICanBeNone<ActiveChat>
+    )
 {
-    public static ActiveChat None => default;
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsNone => ChatId is null;
-
-    public bool IsSameAs(ActiveChat other)
-        => ChatId == other.ChatId
+    public bool IsSameAs(ActiveChat? other)
+        => other != null
+            && ChatId == other.ChatId
             && Recency == other.Recency
             && ListeningRecency == other.ListeningRecency
             && IsListening == other.IsListening
@@ -29,6 +24,6 @@ public readonly partial record struct ActiveChat(
         => new(chatId);
 
     // Equality is based solely on ChatId property
-    public bool Equals(ActiveChat other) => Equals(ChatId, other.ChatId);
-    public override int GetHashCode() => ChatId?.GetHashCode() ?? 0;
+    public virtual bool Equals(ActiveChat? other) => Equals(ChatId, other?.ChatId);
+    public override int GetHashCode() => ChatId.GetHashCode();
 }

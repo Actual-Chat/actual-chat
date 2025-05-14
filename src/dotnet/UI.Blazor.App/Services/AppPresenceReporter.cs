@@ -6,10 +6,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
 {
-    private MutableState<Moment> _lastCheckInAt;
+    private readonly MutableState<Moment> _lastCheckInAt;
 
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
-    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private RpcHub RpcHub => Hub.RpcHub();
     private Moment CpuNow => Clocks.CpuClock.Now;

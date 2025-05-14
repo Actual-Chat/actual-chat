@@ -105,7 +105,8 @@
     private ChatId? RecordingChatId {
         get {
             var activeChats = ActiveChatsUI.ActiveChats.Value;
-            return activeChats.Length > 0 ? activeChats[0].ChatId : null;
+            var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
+            return recordingChat?.ChatId;
         }
     }
     private bool IsRecordingHere => ChatId is not null && RecordingChatId == ChatId;
@@ -138,7 +139,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
+            static t => new ComputedState<Model>.Options {
                 InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),

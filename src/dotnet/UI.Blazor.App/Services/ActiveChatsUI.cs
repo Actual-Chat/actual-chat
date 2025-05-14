@@ -102,12 +102,12 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
             if (newChat.IsRecording && newChat.ChatId != recordingChat.ChatId)
                 newChat = newChat with { IsRecording = false };
             if (!(newChat.IsListening || newChat.IsRecording)) // Must be active
-                newChat = default;
+                newChat = null;
             else if (!rules.CanRead()) // Must be accessible
-                newChat = default;
+                newChat = null;
 
             if (!chat.IsSameAs(newChat))
-                activeChats = newChat.IsNone
+                activeChats = newChat == null
                     ? activeChats.Without(chat).ToArray()
                     : activeChats.WithOrReplace(newChat).ToArray();
         }

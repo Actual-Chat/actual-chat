@@ -64,8 +64,10 @@ public partial class ChatAudioUI
             using (Invalidation.Begin()) {
                 if (newRecordingChat != oldRecordingChat) {
                     _ = GetRecordingChatId();
-                    _ = GetState(oldRecordingChat.ChatId);
-                    _ = GetState(newRecordingChat.ChatId);
+                    if (oldRecordingChat != null)
+                        _ = GetState(oldRecordingChat.ChatId);
+                    if (newRecordingChat != null)
+                        _ = GetState(newRecordingChat.ChatId);
                 }
                 if (changed.Count > 0) {
                     _ = GetListeningChatIds();
@@ -289,10 +291,9 @@ public partial class ChatAudioUI
             var toStart = listeningChatIds.Except(monitors.Keys).ToList();
 
             var stopTasks = new List<Task>();
-            foreach (var chatId in toStop) {
+            foreach (var chatId in toStop)
                 if (monitors.Remove(chatId, out var monitor))
                     stopTasks.Add(monitor.Stop());
-            }
             await stopTasks.Collect(ApiConstants.Concurrency.Unlimited, cancellationToken).ConfigureAwait(false);
 
             foreach (var chatId in toStart) {
