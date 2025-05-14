@@ -83,6 +83,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         if (Settings.IsTranslationEnabled) {
+            Settings.LanguageDetection.PromptFile.RequireFileExists();
+            Settings.Translation.PromptFile.RequireFileExists();
             AddKeyedOpenAI(services,
                 Constants.Translation.ServiceKey,
                 Settings.Translation.OpenAIModel,
