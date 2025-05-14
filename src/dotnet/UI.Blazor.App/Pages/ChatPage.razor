@@ -72,8 +72,7 @@
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
     private static bool _isVeryFirstLoad = true;
 
-    protected RouteResult? ParsedRoute;
-    protected RouteResult? FixedRoute;
+    private MutableState<RouteState> _routeState = null!;
     protected Model? Rendered;
 
     protected IChats Chats => Hub.Chats;
@@ -90,8 +89,10 @@
 
     [Parameter] public string? Route { get; set; }
 
-    protected override void OnInitialized()
-        => ChatAudioUI.Enable();
+    protected override void OnInitialized() {
+        ChatAudioUI.Enable();
+        _routeState = StateFactory.NewMutable(RouteState.None);
+    }
 
     protected override Task OnParametersSetAsync()
         => SetRoute(Route);
@@ -104,10 +105,9 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var lastState = State.ValueOrDefault;
         var hostInfo = HostInfo;
-        var parsedRoute = ParsedRoute;
-        var fixedRoute = FixedRoute;
-        // .ConfigureAwait(false) is fine from here
-
+        var routeState = await _routeState.Use(cancellationToken).ConfigureAwait(false);
+        var parsedRoute = routeState.Parsed;
+        var fixedRoute = routeState.Fixed;
         if (fixedRoute is null)
             return lastState; // Synchronizing
 
@@ -235,8 +235,7 @@
     }
 
     protected async Task SetRoute(string? route) {
-        ParsedRoute = null;
-        FixedRoute = null;
+        _routeState.Value = new RouteState(null, null);
         ChatId? chatId;
 
         RouteResult parsedRoute;
@@ -263,8 +262,8 @@
 
             chatId ??= Constants.Chat.AnnouncementsChatId;
         }
-        ParsedRoute = parsedRoute;
-        FixedRoute = chatId is null ? parsedRoute : new RouteResult(chatId);
+        var fixedRoute = chatId is null ? parsedRoute : new RouteResult(chatId);
+        _routeState.Value = new RouteState(parsedRoute, fixedRoute);
         ChatUI.SelectChatOnNavigation(chatId);
     }
 
@@ -380,5 +379,9 @@
         // This record relies on referential equality
         public bool Equals(RouteResult? other) => ReferenceEquals(this, other);
         public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
+
+    public record RouteState(RouteResult? Parsed, RouteResult? Fixed) {
+        public static readonly RouteState None = new (null, null);
     }
 }
