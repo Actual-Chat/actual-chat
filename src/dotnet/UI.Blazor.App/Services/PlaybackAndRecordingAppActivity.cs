@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 #pragma warning disable MA0084
 
-public class ChatAppActivity(AppUIHub hub) : AppActivity(hub)
+public class PlaybackAndRecordingAppActivity(AppUIHub hub) : AppActivity(hub)
 {
     // [ComputeMethod]
     protected override async Task<bool> MustBeBackgroundActive(CancellationToken cancellationToken)
