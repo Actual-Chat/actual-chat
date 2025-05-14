@@ -29,9 +29,12 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
             }
 
             var newItem = VisitListItem(item, ref state);
-            if (newItem is ListItemMarkup listItemMarkup)
-                newItems.Add(listItemMarkup);
-            isUnchanged &= ReferenceEquals(newItem, item);
+            if (newItem is ListItemMarkup newListItem) {
+                newItems.Add(newListItem);
+                isUnchanged &= newItem == item;
+            }
+            else
+                isUnchanged = false;
         }
         if (isUnchanged)
             return markup;
@@ -45,10 +48,8 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
             return Markup.Empty;
 
         var newContent = Visit(markup.Content, ref state);
-        if (ReferenceEquals(newContent, markup.Content))
-            return markup;
-
-        return markup with { Content = newContent };
+        return newContent == markup.Content ? markup
+            : new ListItemMarkup(newContent, markup.Order);
     }
 
     protected override Markup VisitSeq(MarkupSeq markup, ref State state)
@@ -64,9 +65,10 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
             var newItem = Visit(item, ref state);
             if (newItem != null!)
                 newItems.Add(newItem);
-            isUnchanged &= ReferenceEquals(newItem, item);
+            isUnchanged &= newItem == item;
         }
-        return isUnchanged ? markup : new MarkupSeq(newItems.ToArray());
+        return isUnchanged ? markup
+            : new MarkupSeq(newItems.ToArray());
     }
 
     // We assume any mention is of length 8
@@ -106,8 +108,9 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
         }
         if (sb.Length == 0)
             return state.TryAppendEllipsis();
+
         state.Append(sb.Length);
-        return new MarkupSeq(markup with { Code = sb.ToString() }, state.TryAppendEllipsis());
+        return new MarkupSeq(new CodeBlockMarkup(sb.ToString(), markup.Language), state.TryAppendEllipsis());
     }
 
     protected override Markup VisitText(TextMarkup markup, ref State state)
@@ -116,7 +119,8 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
             state.Append(markup.Text.Length);
             return markup;
         }
-        markup = markup with { Text = markup.Text.Truncate(state.MaxLength - state.Length) };
+
+        markup = markup.WithText(markup.Text.Truncate(state.MaxLength - state.Length));
         state.Append(markup.Text.Length);
         return new MarkupSeq(markup, state.TryAppendEllipsis());
     }

@@ -5,15 +5,17 @@ namespace ActualChat.Chat;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record MentionMarkup(
-    [property: DataMember, MemoryPackOrder(0)] MentionId Id,
-    [property: DataMember, MemoryPackOrder(1)] string Name = ""
-    ) : Markup
+public sealed partial class MentionMarkup(MentionId id, string name = "") : Markup
 {
     public static readonly string NotAvailableName = "(n/a)";
     public static readonly Func<MentionMarkup, string> DefaultFormatter = m => m.Format();
     public static readonly Func<MentionMarkup, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
     public static readonly Func<MentionMarkup, string> NameOrIdFormatter = m => "@" + m.NameOrId;
+
+    [DataMember, MemoryPackOrder(0)]
+    public MentionId Id { get; } = id;
+    [DataMember, MemoryPackOrder(1)]
+    public string Name { get; } = name;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string QuotedName => Quote(Name);
@@ -29,8 +31,4 @@ public sealed partial record MentionMarkup(
 
     public static string Quote(string name)
         => string.Concat("`", name.OrdinalReplace("`", "``"), "`");
-
-    // This record relies on referential equality
-    public bool Equals(MentionMarkup? other) => ReferenceEquals(this, other);
-    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

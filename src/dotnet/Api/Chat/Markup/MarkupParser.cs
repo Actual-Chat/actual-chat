@@ -230,13 +230,13 @@ public partial class MarkupParser : IMarkupParser
         from _ in OneOf(Char('-'), Char('*'), Char('+')).Before(WhitespaceChar)
         from content in TextBlock
         from _1 in EndOfLine.Optional()
-        select (Markup)new ListItemMarkup(content, Ordered: false);
+        select (Markup)new ListItemMarkup(content);
 
     private static readonly Parser<char, Markup> OrderedListItem =
         from number in Digit.AtLeastOnceString().Before(Char('.')).Before(WhitespaceChar)
         from content in TextBlock
         from _ in EndOfLine.Optional()
-        select (Markup)new ListItemMarkup(content, Ordered: true, Order: int.Parse(number, CultureInfo.InvariantCulture));
+        select (Markup)new ListItemMarkup(content, int.Parse(number, CultureInfo.InvariantCulture));
 
     private static readonly Parser<char, Markup> ListBlock =
         SafeTryOneOf(UnorderedListItem, OrderedListItem)

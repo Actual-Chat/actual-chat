@@ -8,7 +8,7 @@ public interface IMentionNamer
 public record MentionNamer(IMentionResolver<string> MentionResolver) : AsyncMarkupRewriter, IMentionNamer
 {
     public Func<MentionMarkup, MentionMarkup> UnresolvedMentionRewriter { get; init; } =
-        m => m with { Name = m.NameOrNotAvailable };
+        m => new MentionMarkup(m.Id, m.NameOrNotAvailable);
 
     public ValueTask<Markup> Apply(Markup markup, CancellationToken cancellationToken)
         => Visit(markup, cancellationToken);
@@ -16,11 +16,11 @@ public record MentionNamer(IMentionResolver<string> MentionResolver) : AsyncMark
     protected override async ValueTask<Markup> VisitMention(MentionMarkup markup, CancellationToken cancellationToken)
     {
         var targetName = await MentionResolver.Resolve(markup, cancellationToken).ConfigureAwait(false);
-        if (targetName == null)
+        if (targetName is null)
             return UnresolvedMentionRewriter.Invoke(markup);
 
         return OrdinalEquals(markup.Name, targetName)
             ? markup
-            : markup with { Name = targetName };
+            : new MentionMarkup(markup.Id, targetName);
     }
 }

@@ -5,16 +5,17 @@ namespace ActualChat.Chat;
 public enum TextStyle { None = 0, Italic = 1, Bold = 2 }
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed record StylizedMarkup(Markup Content, TextStyle Style) : Markup
+public sealed class StylizedMarkup(Markup content, TextStyle style) : Markup
 {
+    public Markup Content { get; init; } = content;
+    public TextStyle Style { get; init; } = style;
+
     public string StyleToken => Style switch {
         TextStyle.None => "",
         TextStyle.Italic => "*",
         TextStyle.Bold => "**",
         _ => throw StandardError.Internal($"Invalid {nameof(Style)} property value."),
     };
-
-    public StylizedMarkup() : this(null!, default) { }
 
     public override string Format()
     {
@@ -27,8 +28,4 @@ public sealed record StylizedMarkup(Markup Content, TextStyle Style) : Markup
         var markup = Content.Simplify();
         return ReferenceEquals(markup, Content) ? this : new StylizedMarkup(markup, Style);
     }
-
-    // This record relies on referential equality
-    public bool Equals(StylizedMarkup? other) => ReferenceEquals(this, other);
-    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

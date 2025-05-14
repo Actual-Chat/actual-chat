@@ -3,7 +3,7 @@
 namespace ActualChat.Chat;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public abstract record Markup
+public abstract class Markup
 {
     public static Markup Empty => PlainTextMarkup.Empty;
 
@@ -39,6 +39,9 @@ public abstract record Markup
         };
     }
 
+    public override string ToString()
+        => $"{GetType()}({Format()})";
+
     public abstract string Format();
 
     public virtual Markup Simplify()
@@ -48,8 +51,4 @@ public abstract record Markup
 
     public static Markup operator +(Markup first, Markup second)
         => Join(first, second);
-
-    // This record relies on referential equality
-    public virtual bool Equals(Markup? other) => ReferenceEquals(this, other);
-    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

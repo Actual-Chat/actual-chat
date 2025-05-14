@@ -7,10 +7,13 @@ public abstract record MarkupRewriter<TState> : MarkupVisitorWithState<TState, M
         var newItems = new List<ListItemMarkup>();
         var isUnchanged = true;
         foreach (var item in markup.Items) {
-            var newItem = (ListItemMarkup)VisitListItem(item, ref state);
-            if (newItem != null!)
-                newItems.Add(newItem);
-            isUnchanged &= ReferenceEquals(newItem, item);
+            var newItem = VisitListItem(item, ref state);
+            if (newItem is ListItemMarkup newListItem) {
+                newItems.Add(newListItem);
+                isUnchanged &= newItem == item;
+            }
+            else
+                isUnchanged = false;
         }
         return isUnchanged ? markup : new ListMarkup(newItems);
     }
@@ -23,15 +26,17 @@ public abstract record MarkupRewriter<TState> : MarkupVisitorWithState<TState, M
             var newItem = Visit(item, ref state);
             if (newItem != null!)
                 newItems.Add(newItem);
-            isUnchanged &= ReferenceEquals(newItem, item);
+            isUnchanged &= newItem == item;
         }
-        return isUnchanged ? markup : new MarkupSeq(newItems.ToArray());
+        return isUnchanged ? markup
+            : new MarkupSeq(newItems.ToArray());
     }
 
     protected override Markup VisitStylized(StylizedMarkup markup, ref TState state)
     {
         var newMarkup = Visit(markup.Content, ref state);
-        return ReferenceEquals(newMarkup, markup) ? markup : markup with { Content = newMarkup };
+        return newMarkup == markup ? markup
+            : new StylizedMarkup(newMarkup, markup.Style);
     }
 
     protected override Markup VisitUrl(UrlMarkup markup, ref TState state) => markup;

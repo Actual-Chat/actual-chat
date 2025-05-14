@@ -10,40 +10,41 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
             var newItem = await Visit(item, cancellationToken).ConfigureAwait(false);
             if (newItem != null!)
                 newItems.Add(newItem);
-            isUnchanged &= ReferenceEquals(newItem, item);
+            isUnchanged &= newItem == item;
         }
-        return isUnchanged ? markup : new MarkupSeq(newItems.ToArray());
+        return isUnchanged ? markup
+            : new MarkupSeq(newItems.ToArray());
     }
 
     protected override async ValueTask<Markup> VisitList(ListMarkup markup, CancellationToken cancellationToken)
     {
-        var newItems = new List<Markup>();
+        var newItems = new List<ListItemMarkup>();
         var isUnchanged = false;
         foreach (var item in markup.Items) {
             var newItem = await Visit(item, cancellationToken).ConfigureAwait(false);
-            if (newItem != null!)
-                newItems.Add(newItem);
-            isUnchanged &= ReferenceEquals(newItem, item);
+            if (newItem is ListItemMarkup newListItem) {
+                newItems.Add(newListItem);
+                isUnchanged &= newItem == item;
+            }
+            else
+                isUnchanged = false;
         }
-        if (isUnchanged)
-            return markup;
-
-        if (newItems.All(c => c is ListItemMarkup))
-            return new ListMarkup(newItems.Cast<ListItemMarkup>());
-
-        return Markup.Empty;
+        return isUnchanged ? markup
+            : new ListMarkup(newItems);
     }
 
     protected override async ValueTask<Markup> VisitListItem(ListItemMarkup markup, CancellationToken cancellationToken)
     {
         var newMarkup = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
-        return ReferenceEquals(newMarkup, markup) ? markup : new ListItemMarkup(newMarkup, markup.Ordered, markup.Order);
+        return newMarkup == markup ? markup
+            : new ListItemMarkup(newMarkup, markup.Order);
     }
 
     protected override async ValueTask<Markup> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)
     {
         var newMarkup = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
-        return ReferenceEquals(newMarkup, markup) ? markup : markup with { Content = newMarkup };
+        return newMarkup == markup ? markup
+            : new StylizedMarkup(newMarkup, markup.Style);
     }
 
     protected override ValueTask<Markup> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
