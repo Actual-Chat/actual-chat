@@ -29,7 +29,7 @@ export class RpcCall {
                 args.pop();
                 this.noWait = true;
             }
-            else if (lastArg['type'] && lastArg['type'] === 'rpc-timeout') {
+            else if (lastArg && lastArg['type'] && lastArg['type'] === 'rpc-timeout') {
                 args.pop();
                 const rpcTimeout = lastArg as RpcTimeout;
                 this.timeoutMs = rpcTimeout.timeoutMs;
