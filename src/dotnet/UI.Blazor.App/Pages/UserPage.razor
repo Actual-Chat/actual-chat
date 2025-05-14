@@ -11,24 +11,24 @@
     protected override async Task OnParametersSetAsync() {
         var userId = await GetUserIdFromPageRoute(PageRoute, default);
         if (userId.IsGuestOrNull()) {
-            _ = History.NavigateTo(Links.NotFound);
+            _ = History.NavigateTo(Links.NotFound, true);
             return;
         }
 
         var ownAccount = await Accounts.GetOwn(Session, default);
         var account = await Accounts.Get(Session, userId, default);
         if (account == null || account.IsGuestOrNull()) {
-            _ = History.NavigateTo(Links.NotFound);
+            _ = History.NavigateTo(Links.NotFound, true);
             return;
         }
 
         if (ownAccount.Id == account.Id) { // Own account
-            _ = History.NavigateTo(Links.Chats);
+            _ = History.NavigateTo(Links.Chats, true);
             return;
         }
 
         var chatId = PeerChatId.New(ownAccount.Id, account.Id);
-        _ = History.NavigateTo(Links.Chat(chatId));
+        _ = History.NavigateTo(Links.Chat(chatId), true);
     }
 
     private async Task<UserId?> GetUserIdFromPageRoute(string? pageRoute, CancellationToken cancellationToken) {
