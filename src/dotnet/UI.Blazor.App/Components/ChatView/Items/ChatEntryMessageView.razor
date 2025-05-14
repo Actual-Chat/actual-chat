@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatUIHub, ChatEntryMessageView.Model?>
+@inherits ComputedStateComponent<AppUIHub, ChatEntryMessageView.Model?>
 @{
     var m = _rendered = State.Value;
     if (m?.Chat is not { } chat)

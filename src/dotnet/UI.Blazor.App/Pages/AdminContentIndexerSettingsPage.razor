@@ -1,6 +1,6 @@
 @page "/test/content-indexer-settings"
 @using ActualChat.Kvas
-@inherits FusionComponentBase<ChatUIHub>
+@inherits FusionComponentBase<AppUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Content indexer settings</MainHeader>
@@ -33,13 +33,13 @@
     private FormModel _form = null!;
 
     [field: AllowNull, MaybeNull]
-    private ServerSettingsKvasClient ServerSettings => field ??= Hub.GetRequiredService<ServerSettingsKvasClient>();
+    private ServerSettingsKvasClient ServerSettings => field ??= Hub.Services.GetRequiredService<ServerSettingsKvasClient>();
 
     protected override void OnInitialized()
         => _form = new FormModel(ComponentIdGenerator);
 
     protected override async Task OnInitializedAsync() {
-        var showDocIdChatIds = await Hub.AccountSettings().Get<string>(ChatUI.ShowIndexDocIdChatIdsSettingsKey);
+        var showDocIdChatIds = await Hub.AccountSettings.Get<string>(ChatUI.ShowIndexDocIdChatIdsSettingsKey);
         var useArranger2ChatIds = await ServerSettings.Get<string>(Constants.ServerSettings.UseChatContentArranger2ChatIds);
         _form.ShowDocIdChatIdList = showDocIdChatIds ?? "";
         _form.UseArranger2ChatIdList = useArranger2ChatIds ?? "";
@@ -49,7 +49,7 @@
         if (!EnsureFormIsValid())
             return;
 
-        await Hub.AccountSettings().Set(ChatUI.ShowIndexDocIdChatIdsSettingsKey, _form.ShowDocIdChatIdList);
+        await Hub.AccountSettings.Set(ChatUI.ShowIndexDocIdChatIdsSettingsKey, _form.ShowDocIdChatIdList);
         await ServerSettings.Set(Constants.ServerSettings.UseChatContentArranger2ChatIds, _form.UseArranger2ChatIdList);
     }
 
@@ -59,7 +59,7 @@
         if (_formRef == null)
             return false;
         if (!_formRef.IsValid) {
-            Hub.UICommander().ShowError(StandardError.Constraint("Form is not valid"));
+            Hub.UICommander.ShowError(StandardError.Constraint("Form is not valid"));
             return false;
         }
 
@@ -76,7 +76,7 @@
     {
         foreach (var chatSid in chatIdList.Split(";")) {
             if (!ChatId.TryParse(chatSid, out _)) {
-                Hub.UICommander().ShowError(StandardError.Constraint($"Chat id list '{listName}' contains invalid chat id: '{chatSid}'"));
+                Hub.UICommander.ShowError(StandardError.Constraint($"Chat id list '{listName}' contains invalid chat id: '{chatSid}'"));
                 return false;
             }
         }

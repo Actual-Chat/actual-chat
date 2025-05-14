@@ -1,14 +1,15 @@
-namespace ActualChat.DependencyInjection;
+namespace ActualChat.UI.Blazor;
 
 #pragma warning disable MA0064
 
-public interface IScopedWorker
+public interface IUIWorker
 {
     Task Run();
 }
 
-public abstract class ScopedWorkerBase<TScope>(TScope hub) : ScopedServiceBase<TScope>(hub), IScopedWorker
-    where TScope : Hub
+public abstract class UIWorkerBase<THub>(THub hub)
+    : UIServiceBase<THub>(hub), IUIWorker
+    where THub : UIHub
 {
     private volatile Task? _whenRunning;
 

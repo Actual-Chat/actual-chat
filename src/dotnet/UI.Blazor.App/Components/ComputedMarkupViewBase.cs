@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 namespace ActualChat.UI.Blazor.App.Components;
 
 public abstract class ComputedMarkupViewBase<TMarkup, TState>
-    : ComputedRenderStateComponent<ChatUIHub, TState>, IMarkupView<TMarkup>
+    : ComputedRenderStateComponent<AppUIHub, TState>, IMarkupView<TMarkup>
     where TMarkup : Markup
 {
     [CascadingParameter] public ChatEntry Entry { get; set; } = null!;

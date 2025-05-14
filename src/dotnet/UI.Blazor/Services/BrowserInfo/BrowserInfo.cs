@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
+public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
 {
     private readonly MutableState<ScreenSize> _screenSize;
     private readonly MutableState<bool> _isHoverable;
@@ -10,8 +10,6 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
     protected readonly AsyncTaskMethodBuilder WhenReadySource = AsyncTaskMethodBuilderExt.New();
     protected readonly AsyncTaskMethodBuilder WhenWasmReadySource = AsyncTaskMethodBuilderExt.New();
     protected readonly object Lock = new();
-
-    protected UICommander UICommander => Hub.UICommander();
 
     public DotNetObjectReference<IBrowserInfoBackend> BlazorRef { get; private set; }
     // ReSharper disable once InconsistentlySynchronizedField

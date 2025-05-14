@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, TranscriptionSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, TranscriptionSettings.Model>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091:GenericArgumentDoNotHaveAnnotation", Justification = "Primitive types will be preserved.")]
 @{
     #pragma warning disable IL2091
@@ -87,7 +87,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features().IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new(languages, enableIncompleteUI);
     }
 

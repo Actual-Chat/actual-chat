@@ -1,7 +1,7 @@
 ﻿@page "/test/toasts"
 @using ActualChat.UI.Blazor.Services
-@using Microsoft.AspNetCore.Components.RenderTree
 @using System.Text
+@inherits ComponentBase<UIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Toasts Test Page</MainHeader>
@@ -77,12 +77,8 @@
 </div>
 
 @code {
-    [Inject] UIHub UIHub { get; init; } = null!;
-    private ToastUI ToastUI => UIHub.ToastUI;
-    private AppCircuitHub CircuitHub => UIHub.CircuitHub;
-    private UICommander UICommander => UIHub.UICommander();
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= UIHub.LogFor(GetType());
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private void OnClick(int count) {
         var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
@@ -96,7 +92,7 @@
         => throw StandardError.Internal("Simulated crash!");
 
     private void OnAppCrashClick() {
-        var rootComponent = (IRootComponent)CircuitHub.RootComponent;
+        var rootComponent = (IRootComponent)Hub.RootComponent;
         rootComponent.SimulateCrash(StandardError.Internal("Simulated application crash!"));
     }
 }

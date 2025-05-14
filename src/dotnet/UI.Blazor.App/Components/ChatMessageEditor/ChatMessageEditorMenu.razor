@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Events
-@inherits MenuBase<ChatUIHub>
+@inherits Menu<AppUIHub>
 
 <div class="chat-message-editor-menu">
     @if (HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Android) {

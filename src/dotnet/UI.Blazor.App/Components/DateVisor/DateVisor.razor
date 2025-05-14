@@ -1,6 +1,6 @@
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, string>
+@inherits ComputedStateComponent<AppUIHub, string>
 @{
     var m = State.Value.NullIfEmpty() ?? _lastDate;
     _lastDate = m;

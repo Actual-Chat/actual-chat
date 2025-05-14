@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class HistoricalChatPlayer : ChatPlayer
 {
-    public HistoricalChatPlayer(ChatUIHub hub, ChatId chatId)
+    public HistoricalChatPlayer(AppUIHub hub, ChatId chatId)
         : base(hub, chatId)
         => PlayerKind = ChatPlayerKind.Historical;
 

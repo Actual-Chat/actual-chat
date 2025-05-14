@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<ChatUIHub, (IReadOnlyList<Language>?, Language)>
+@inherits ComputedStateComponent<AppUIHub, (IReadOnlyList<Language>?, Language)>
 @{
     var m = State.Value;
     var (languages, language) = m;

@@ -18,7 +18,6 @@ public class AppActivityTest: TestBase
                 IsTested = true,
             })
             .AddSingleton<UIHub>()
-            .AddAlias<Hub, UIHub>()
             .AddSingleton<BackgroundStateTracker, MauiBackgroundStateTracker>()
             .AddFusion()
             .AddService<AppActivity, TestAppActivity>()
@@ -97,7 +96,7 @@ public class AppActivityTest: TestBase
 public class TestAppActivity(UIHub hub) : AppActivity(hub)
 {
     private readonly MutableState<bool> _mustBeBackgroundActive
-        = hub.StateFactory().NewMutable<bool>();
+        = hub.StateFactory.NewMutable<bool>();
 
     [ComputeMethod]
     protected override async Task<bool> MustBeBackgroundActive(CancellationToken cancellationToken)

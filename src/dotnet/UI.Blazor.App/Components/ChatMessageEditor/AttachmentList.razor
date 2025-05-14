@@ -1,7 +1,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Media
 @using System.Diagnostics.CodeAnalysis
-@inherits ComponentBase<ChatUIHub>
+@inherits ComponentBase<AppUIHub>
 @implements IAttachmentListBackend
 @implements IAsyncDisposable
 @namespace ActualChat.UI.Blazor.App.Components
@@ -125,7 +125,7 @@
     }
 
     public async Task SetSentAttachments(string[] urls) {
-        var downloader = Hub.GetRequiredService<IIncomingShareFileDownloader>();
+        var downloader = Hub.Services.GetRequiredService<IIncomingShareFileDownloader>();
         var fileNames = urls
             .Select(c => {
                 downloader.TryExtractFileName(c, out var fileName);

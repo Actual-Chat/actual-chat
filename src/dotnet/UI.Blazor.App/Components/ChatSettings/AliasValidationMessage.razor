@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.Linq.Expressions
-@inherits ComponentBase<ChatUIHub>
+@inherits ComponentBase<AppUIHub>
 @implements IDisposable
 @{
     var messages = CurrentEditContext.GetValidationMessages(_fieldIdentifier).ToList();

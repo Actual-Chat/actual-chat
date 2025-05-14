@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, List<Chat>>
+@inherits ComputedStateComponent<AppUIHub, List<Chat>>
 @{
     DebugLog?.LogDebug("Rendered: {List}", ChatListKind.Active);
     if (State.IsInitial(out var chats) || chats.Count == 0)

@@ -3,11 +3,9 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BubbleUI : ScopedServiceBase<UIHub>
+public sealed class BubbleUI : UIServiceBase<UIHub>
 {
     private readonly SyncedState<UserBubbleSettings> _settings;
-
-    private AccountUI AccountUI => Hub.AccountUI;
 
     public IState<UserBubbleSettings> Settings => _settings;
     public TaskCompletionSource<BubbleHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<BubbleHost>();

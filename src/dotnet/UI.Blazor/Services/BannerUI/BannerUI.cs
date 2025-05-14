@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class BannerUI : ScopedServiceBase<UIHub>
+public class BannerUI : UIServiceBase<UIHub>
 {
     private readonly Lock _lock = new();
     private readonly MutableState<ImmutableList<BannerDef>> _banners;
@@ -17,7 +17,7 @@ public class BannerUI : ScopedServiceBase<UIHub>
         _banners = StateFactory.NewMutable(
             ImmutableList<BannerDef>.Empty,
             StateCategories.Get(GetType(), nameof(Banners)));
-        ViewResolver = hub.GetRequiredService<TypeMapper<IBannerView>>();
+        ViewResolver = Services.GetRequiredService<TypeMapper<IBannerView>>();
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2072:DoesNotSatisfyDynamicallyAccessedMemberTypes.Method", Justification = "TBannerModel is marked with DynamicallyAccessedMembers.")]

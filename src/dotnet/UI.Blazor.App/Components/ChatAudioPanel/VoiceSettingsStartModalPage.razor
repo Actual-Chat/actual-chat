@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, VoiceSettingsStartModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, VoiceSettingsStartModalPage.ComputedModel>
 @{
     var m = State.Value;
     var voiceStatus = !m.CanChangeMustStreamVoice
@@ -40,7 +40,7 @@
     private ChatUI ChatUI => Hub.ChatUI;
 
     [field: AllowNull, MaybeNull]
-    private ChatVoiceSettings ChatVoiceSettings => field ??= new(Hub.Services, Hub.AccountSettings());
+    private ChatVoiceSettings ChatVoiceSettings => field ??= new(Hub.Services, Hub.AccountSettings);
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 

@@ -3,7 +3,7 @@ using System.Text;
 using ActualChat.Contacts;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hashing;
-using ActualChat.Permissions;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using banditoth.MAUI.DeviceId.Interfaces;
 using PhoneNumbers;

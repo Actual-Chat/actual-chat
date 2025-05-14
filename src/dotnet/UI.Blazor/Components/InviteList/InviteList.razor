@@ -1,5 +1,4 @@
 @using ActualChat.Invite
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
@@ -76,7 +75,7 @@
             }
             case ChatInviteOption chatDetails: {
                 // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
-                var chats = Hub.GetRequiredService<IChats>();
+                var chats = Hub.Services.GetRequiredService<IChats>();
                 var chatId = chatDetails.ChatId;
                 var chat = await chats.Get(Session, chatId, default);
                 if (chat == null || !chat.CanInvite())
@@ -84,7 +83,7 @@
 
                 Place? place = null;
                 if (chatId is PlaceChatId placeChatId) {
-                    var places = Hub.GetRequiredService<IPlaces>();
+                    var places = Hub.Services.GetRequiredService<IPlaces>();
                     place = await places.Get(Session, placeChatId.PlaceId, default).ConfigureAwait(false);
                     if (place is null)
                         return; // We should be able to get chat's place. Return if it's not like that.
@@ -104,7 +103,7 @@
                 return;
             }
             case PlaceInviteOption placeDetails: {
-                var places = Hub.GetRequiredService<IPlaces>();
+                var places = Hub.Services.GetRequiredService<IPlaces>();
                 var place = await places.Get(Session, placeDetails.PlaceId, default);
                 if (place == null || !place.Rules.CanInvite())
                     return;

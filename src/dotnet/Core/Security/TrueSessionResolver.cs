@@ -8,7 +8,7 @@ namespace ActualChat.Security;
 public sealed class TrueSessionResolver(IServiceProvider services) : ISessionResolver
 {
     private readonly Lock _lock = new();
-    private readonly Tracer _tracer = services.Tracer(typeof(TrueSessionResolver));
+    private readonly Tracer _tracer = services.TracerFor(typeof(TrueSessionResolver));
     private volatile TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
     private volatile Session? _session;
 

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, IReadOnlyList<Chat>>
+@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<Chat>>
 @{
     var chats = State.ValueOrDefault ?? [];
     if (chats.Count == 0)

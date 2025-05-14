@@ -2,7 +2,7 @@ using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.UI.Blazor.Components;
+namespace ActualChat.UI.Blazor;
 
 public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
     where THub : UIHub
@@ -11,24 +11,23 @@ public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
 
     // Service shortcuts copied from CircuitHubComponentBase
     protected IServiceProvider Services => Hub.Services;
-    protected AppCircuitHub CircuitHub => Hub.CircuitHub;
-    protected Session Session => Hub.Session();
-    protected StateFactory StateFactory => Hub.StateFactory();
-    protected UICommander UICommander => Hub.UICommander();
+    protected Session Session => Hub.Session;
+    protected StateFactory StateFactory => Hub.StateFactory;
+    protected UICommander UICommander => Hub.UICommander;
     protected NavigationManager Nav => Hub.Nav;
-    protected IJSRuntime JS => Hub.JSRuntime();
+    protected IJSRuntime JS => Hub.JS;
 
     // Core UI service shortcuts
-    protected HostInfo HostInfo => Hub.HostInfo();
-    protected UrlMapper UrlMapper => Hub.UrlMapper();
-    protected MomentClockSet Clocks => Hub.Clocks();
+    protected HostInfo HostInfo => Hub.HostInfo;
+    protected UrlMapper UrlMapper => Hub.UrlMapper;
+    protected MomentClockSet Clocks => Hub.Clocks;
     protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-    protected AccountSettings AccountSettings => Hub.AccountSettings();
-    protected LocalSettings LocalSettings => Hub.LocalSettings();
+    protected AccountSettings AccountSettings => Hub.AccountSettings;
+    protected LocalSettings LocalSettings => Hub.LocalSettings;
     protected ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     protected DiffEngine DiffEngine => Hub.DiffEngine;
     protected History History => Hub.History;
-    protected UIEventHub UIEventHub => Hub.UIEventHub();
+    protected UIEventHub UIEventHub => Hub.UIEventHub;
     protected AccountUI AccountUI => Hub.AccountUI;
     protected PanelsUI PanelsUI => Hub.PanelsUI;
     protected ModalUI ModalUI => Hub.ModalUI;
@@ -36,13 +35,13 @@ public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
     protected TuneUI TuneUI => Hub.TuneUI;
     protected ShareUI ShareUI => Hub.ShareUI;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
-    protected Features Features => Hub.Features();
+    protected Features Features => Hub.Features;
 
     // Shortcuts
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
 
     // Explicit IHasFusionHub & IHasServices implementation
-    CircuitHub IHasCircuitHub.CircuitHub => CircuitHub;
+    CircuitHub IHasCircuitHub.CircuitHub => Hub;
     IServiceProvider IHasServices.Services => Services;
 }

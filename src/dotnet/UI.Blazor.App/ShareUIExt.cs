@@ -38,14 +38,15 @@ public static class ShareUIExt
         this ShareUI shareUI, ChatId chatId, CancellationToken cancellationToken = default)
     {
         var hub = shareUI.Hub;
-        var session = hub.Session();
-        var chats = hub.GetRequiredService<IChats>();
+        var services = hub.Services;
+        var session = hub.Session;
+        var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null || chat.HasSingleAuthor)
             return null;
 
         if (chatId is PeerChatId peerChatId) {
-            var accountUI = hub.GetRequiredService<AccountUI>();
+            var accountUI = services.GetRequiredService<AccountUI>();
             await accountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             var ownAccount = accountUI.OwnAccount.Value;
             if (ownAccount.IsGuestOrNull())
@@ -58,7 +59,7 @@ public static class ShareUIExt
 
         Place? place = null;
         if (chatId is PlaceChatId placeChatId) {
-            var places = hub.GetRequiredService<IPlaces>();
+            var places = services.GetRequiredService<IPlaces>();
             place = await places.Get(session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place is null)
                 return null; // We should be able to get chat's place. Return null if it's not like that.
@@ -78,7 +79,7 @@ public static class ShareUIExt
                 null);
         }
 
-        var invites = hub.GetRequiredService<IInvites>();
+        var invites = services.GetRequiredService<IInvites>();
         var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken)
             .ConfigureAwait(false);
         if (invite == null)
@@ -97,8 +98,9 @@ public static class ShareUIExt
         this ShareUI shareUI, PlaceId placeId, CancellationToken cancellationToken = default)
     {
         var hub = shareUI.Hub;
-        var session = hub.Session();
-        var places = hub.GetRequiredService<IPlaces>();
+        var services = hub.Services;
+        var session = hub.Session;
+        var places = services.GetRequiredService<IPlaces>();
         var place = await places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)
             return null;
@@ -118,7 +120,7 @@ public static class ShareUIExt
                 null);
         }
 
-        var invites = hub.GetRequiredService<IInvites>();
+        var invites = services.GetRequiredService<IInvites>();
         var invite = await invites.GetOrGeneratePlaceInvite(session, place.Id, cancellationToken).ConfigureAwait(false);
         if (invite == null)
             return null;
@@ -138,14 +140,16 @@ public static class ShareUIExt
             return null;
 
         var hub = shareUI.Hub;
-        var accountUI = hub.GetRequiredService<AccountUI>();
+        var services = hub.Services;
+        var session = hub.Session;
+
+        var accountUI = hub.AccountUI;
         await accountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         var ownAccount = accountUI.OwnAccount.Value;
         if (userId == ownAccount.Id)
             return await shareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
 
-        var session = hub.Session();
-        var accounts = hub.GetRequiredService<IAccounts>();
+        var accounts = services.GetRequiredService<IAccounts>();
         var account = await accounts.Get(session, userId, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;

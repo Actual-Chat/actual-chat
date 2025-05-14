@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<AvatarSelectModal.Model>
 @using ActualLab.Generators
-@inherits ComputedStateComponent<ChatUIHub, AvatarSelectModal.ViewModel>
+@inherits ComputedStateComponent<AppUIHub, AvatarSelectModal.ViewModel>
 @{
     var m = State.Value;
     var mode = ModalModel is RevealModel

@@ -11,7 +11,7 @@ using ActualLab.Interception;
 namespace ActualChat.UI.Blazor.App.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
+public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
 {
     private readonly SharedResourcePool<ChatId, SyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
@@ -32,7 +32,6 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
-    private AccountUI AccountUI => Hub.AccountUI;
     private IContacts Contacts => Hub.Contacts;
     private IChats Chats => Hub.Chats;
     private IConversations Conversations => Hub.Conversations;
@@ -40,18 +39,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private IChatPositions ChatPositions => Hub.ChatPositions;
     private IMentions Mentions => Hub.Mentions;
     private IMLSearch MLSearch => Hub.MLSearch;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
-    private History History => Hub.History;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private KeepAwakeUI KeepAwakeUI => Hub.KeepAwakeUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
-    private UICommander UICommander => Hub.UICommander();
-    private UIEventHub UIEventHub => Hub.UIEventHub();
     private NavbarUI NavbarUI { get; }
 
     public IState<ChatId?> SelectedChatId => _selectedChatId;
@@ -66,7 +60,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     public static event Action<(ChatId, long)> OnReadPositionUpdated = _ => { };
 
-    public ChatUI(ChatUIHub hub) : base(hub)
+    public ChatUI(AppUIHub hub) : base(hub)
     {
         NavbarUI = Hub.Services.GetRequiredService<NavbarUI>();
         NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;

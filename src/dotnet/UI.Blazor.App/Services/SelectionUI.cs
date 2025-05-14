@@ -4,25 +4,20 @@ using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class SelectionUI : ScopedServiceBase<ChatUIHub>
+public class SelectionUI : UIServiceBase<AppUIHub>
 {
     private readonly MutableState<ImmutableHashSet<ChatEntryId>> _selection;
     private readonly MutableState<bool> _hasSelection;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private History History => Hub.History;
-    private ToastUI ToastUI => Hub.ToastUI;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
-    private UICommander UICommander => Hub.UICommander();
 
     public IState<bool> HasSelection => _hasSelection;
     public IState<ImmutableHashSet<ChatEntryId>> Selection => _selection;
 
-    public SelectionUI(ChatUIHub hub) : base(hub)
+    public SelectionUI(AppUIHub hub) : base(hub)
     {
         var type = GetType();
         _selection = StateFactory.NewMutable(

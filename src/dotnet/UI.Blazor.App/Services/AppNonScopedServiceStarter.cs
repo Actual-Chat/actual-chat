@@ -15,7 +15,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
     [field: AllowNull, MaybeNull]
-    private Tracer Tracer => field ??= Services.Tracer(GetType());
+    private Tracer Tracer => field ??= Services.TracerFor(GetType());
 
     public static void WarmupStaticServices(HostInfo hostInfo)
     {

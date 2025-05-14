@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@inherits ComputedRenderStateComponent<ChatUIHub, FoundGroupListItem.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, FoundGroupListItem.Model>
 @{
     if (State.IsInitial(out var m)) {
         <ChatListItemSkeleton />

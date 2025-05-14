@@ -22,7 +22,7 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Host.Services.GetRequiredService<ChatSettings>();
     [field: AllowNull, MaybeNull]
-    private Tracer Tracer => field ??= Host.Services.Tracer(GetType());
+    private Tracer Tracer => field ??= Host.Services.TracerFor(GetType());
 
     protected override async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {

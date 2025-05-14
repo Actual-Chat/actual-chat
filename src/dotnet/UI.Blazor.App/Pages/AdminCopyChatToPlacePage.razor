@@ -1,6 +1,6 @@
 @page "/test/copy-chat2place"
 @using System.ComponentModel.DataAnnotations
-@inherits FusionComponentBase<ChatUIHub>
+@inherits FusionComponentBase<AppUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Copy chat to place</MainHeader>
@@ -64,7 +64,7 @@
             return false;
         if (_formRef.IsValid)
             return true;
-        Hub.UICommander().ShowError(StandardError.Constraint("Form is not valid"));
+        Hub.UICommander.ShowError(StandardError.Constraint("Form is not valid"));
         return false;
     }
 

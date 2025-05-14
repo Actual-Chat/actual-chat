@@ -1,7 +1,7 @@
 @using ActualChat.Media
 @using ActualChat.UI.Blazor.App.Events
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, LeftPanelPlaceContentHeader.Model>
+@inherits ComputedStateComponent<AppUIHub, LeftPanelPlaceContentHeader.Model>
 <OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
 @{
     var m = State.Value;

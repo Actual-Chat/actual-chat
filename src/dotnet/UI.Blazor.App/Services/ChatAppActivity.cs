@@ -4,13 +4,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 #pragma warning disable MA0084
 
-public class ChatAppActivity(ChatUIHub hub) : AppActivity(hub)
+public class ChatAppActivity(AppUIHub hub) : AppActivity(hub)
 {
     // [ComputeMethod]
     protected override async Task<bool> MustBeBackgroundActive(CancellationToken cancellationToken)
     {
         // ReSharper disable once LocalVariableHidesPrimaryConstructorParameter
-        var hub = (ChatUIHub)Hub;
+        var hub = (AppUIHub)Hub;
         var playbackState = await hub.ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (!ReferenceEquals(playbackState, null))
             return true;

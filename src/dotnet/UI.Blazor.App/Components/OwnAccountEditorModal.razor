@@ -1,5 +1,5 @@
 @using System.ComponentModel.DataAnnotations
-@inherits ComponentBase<ChatUIHub>
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<OwnAccountEditorModal.Model>
 @{
     if (_account == null! || _form == null!)
@@ -204,7 +204,7 @@
                 AliasId = AliasId.ParseNullable(_form.AliasId),
             },
             account.Version);
-        var (_, error) = await Hub.UICommander().Run(updateAccountCommand);
+        var (_, error) = await Hub.UICommander.Run(updateAccountCommand);
         if (error != null)
             return;
 

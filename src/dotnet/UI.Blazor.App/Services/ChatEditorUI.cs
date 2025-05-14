@@ -5,21 +5,18 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private readonly Lock _lock = new();
     private readonly MutableState<RelatedChatEntry?> _relatedChatEntry;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
-    private TuneUI TuneUI => Hub.TuneUI;
-    private UICommander UICommander => Hub.UICommander();
-    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
 
-    public ChatEditorUI(ChatUIHub hub) : base(hub)
+    public ChatEditorUI(AppUIHub hub) : base(hub)
         => _relatedChatEntry = StateFactory.NewMutable(
             (RelatedChatEntry?)null,
             StateCategories.Get(GetType(), nameof(RelatedChatEntry)));

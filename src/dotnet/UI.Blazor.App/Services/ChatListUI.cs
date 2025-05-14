@@ -4,7 +4,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;
     public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize * 2; // 40
@@ -23,12 +23,9 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
-    private AccountUI AccountUI => Hub.AccountUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private TuneUI TuneUI => Hub.TuneUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    private UICommander UICommander => Hub.UICommander();
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
 #pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
@@ -40,7 +37,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public ChatListUI(ChatUIHub hub) : base(hub)
+    public ChatListUI(AppUIHub hub) : base(hub)
     {
         var type = GetType();
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,

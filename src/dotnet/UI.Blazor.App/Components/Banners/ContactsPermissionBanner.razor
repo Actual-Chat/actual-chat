@@ -1,7 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@using ActualChat.Permissions
-@inherits ComputedStateComponent<ChatUIHub, ContactsPermissionBanner.Model>
+@inherits ComputedStateComponent<AppUIHub, ContactsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))

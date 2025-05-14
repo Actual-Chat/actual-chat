@@ -1,9 +1,8 @@
-using ActualChat.UI;
 using ActualLab.Locking;
 
-namespace ActualChat.Permissions;
+namespace ActualChat.UI.Blazor.Services;
 
-public abstract class PermissionHandler : ScopedWorkerBase<Hub>
+public abstract class PermissionHandler : UIWorkerBase<UIHub>
 {
     private readonly MutableState<bool?> _cached;
 
@@ -18,7 +17,7 @@ public abstract class PermissionHandler : ScopedWorkerBase<Hub>
 
     public IState<bool?> Cached => _cached;
 
-    protected PermissionHandler(Hub hub, bool mustStart = true) : base(hub)
+    protected PermissionHandler(UIHub hub, bool mustStart = true) : base(hub)
     {
         _cached = StateFactory.NewMutable(
             (bool?)null,

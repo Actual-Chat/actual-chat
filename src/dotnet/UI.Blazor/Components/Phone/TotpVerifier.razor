@@ -28,9 +28,9 @@
 
     [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private TotpUI TotpUI { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private UICommander UICommander => Hub.UICommander();
-    private MomentClockSet Clocks => Hub.Clocks();
+    private Session Session => Hub.Session;
+    private UICommander UICommander => Hub.UICommander;
+    private MomentClockSet Clocks => Hub.Clocks;
     private TuneUI TuneUI => Hub.TuneUI;
 
     [Parameter] public Phone Phone { get; set; } = null!;

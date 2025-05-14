@@ -22,8 +22,8 @@
     private IJSObjectReference JSRef { get; set; } = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private IJSRuntime JS => Hub.JSRuntime();
+    private HostInfo HostInfo => Hub.HostInfo;
+    private IJSRuntime JS => Hub.JS;
 
     [Parameter] public bool ShowHome { get; set; }
 

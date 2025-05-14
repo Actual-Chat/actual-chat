@@ -8,19 +8,19 @@ public sealed class AppScopedServiceStarter
 {
     private volatile string? _sessionHash;
 
-    private ChatUIHub Hub { get; }
+    private AppUIHub Hub { get; }
     private Tracer Tracer { get; }
-    private HostInfo HostInfo => Hub.HostInfo();
+    private HostInfo HostInfo => Hub.HostInfo;
     private History History => Hub.History;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
-    public AppScopedServiceStarter(ChatUIHub hub)
+    public AppScopedServiceStarter(AppUIHub hub)
     {
         Hub = hub;
-        Tracer = Hub.Tracer(GetType());
+        Tracer = Hub.TracerFor(GetType());
     }
 
     public async Task PrepareFirstRender(string sessionHash)
@@ -40,9 +40,9 @@ public sealed class AppScopedServiceStarter
             var baseUri = HostInfo.BaseUrl;
 
             // Creating core services - this should be done as early as possible
-            var recaptchaUI = Hub.GetRequiredService<CaptchaUI>();
+            var recaptchaUI = Hub.Services.GetRequiredService<CaptchaUI>();
             var browserInfo = Hub.BrowserInfo;
-            var browserInit = Hub.GetRequiredService<BrowserInit>();
+            var browserInit = Hub.Services.GetRequiredService<BrowserInit>();
             _ = browserInit.Initialize(
                 HostInfo.HostKind,
                 HostInfo.AppKind,
@@ -54,7 +54,7 @@ public sealed class AppScopedServiceStarter
 
             // Start AccountUI & UIEventHub
             _ = Hub.AccountUI; // Touch
-            _ = Hub.UIEventHub(); // Touch
+            _ = Hub.UIEventHub; // Touch
 
             // Awaiting completion of initialization tasks.
             // NOTE(AY): It's fine to use .ConfigureAwait(false) below this point,
@@ -65,7 +65,7 @@ public sealed class AppScopedServiceStarter
             // ReSharper disable once ExplicitCallerInfoArgument
             Tracer.Point("BrowserInfo is ready");
 
-            Hub.GetRequiredService<ThemeUI>().Start();
+            Hub.Services.GetRequiredService<ThemeUI>().Start();
             var dateTimeConverter = Hub.DateTimeConverter;
             if (dateTimeConverter is ServerSideDateTimeConverter serverSideDateTimeConverter)
                 serverSideDateTimeConverter.Initialize(browserInfo.UtcOffset);
@@ -113,15 +113,15 @@ public sealed class AppScopedServiceStarter
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
-            Hub.GetRequiredService<ReconnectUI>().Start();
+            Hub.Services.GetRequiredService<ReconnectUI>().Start();
             if (hostKind.IsApp())
-                Hub.GetRequiredService<SessionTokens>().Start();
-            Hub.GetRequiredService<AppPresenceReporter>().Start();
-            Hub.GetRequiredService<AppIconBadgeUpdater>().Start();
-            Hub.GetRequiredService<AppActivity>().Start();
+                Hub.Services.GetRequiredService<SessionTokens>().Start();
+            Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
+            Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
+            Hub.Services.GetRequiredService<AppActivity>().Start();
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
             if (!HostInfo.IsProductionInstance)
-                Hub.GetRequiredService<DebugUI>();
+                Hub.Services.GetRequiredService<DebugUI>();
 
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
             Hub.AudioInitializer.Start();
@@ -131,7 +131,7 @@ public sealed class AppScopedServiceStarter
             await ConfigureDataCollection(cancellationToken).ConfigureAwait(false);
 
             await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
-            Hub.GetRequiredService<ContactSync>().Start();
+            Hub.Services.GetRequiredService<ContactSync>().Start();
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");
@@ -143,11 +143,11 @@ public sealed class AppScopedServiceStarter
 
     private async Task ConfigureDataCollection(CancellationToken cancellationToken)
     {
-        var dataCollectionSettingsUI = Hub.GetRequiredService<IDataCollectionSettingsUI>();
+        var dataCollectionSettingsUI = Hub.Services.GetRequiredService<IDataCollectionSettingsUI>();
         if (await dataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false))
             return;
 
-        var accountSettings = Hub.AccountSettings();
+        var accountSettings = Hub.AccountSettings;
         var settings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
         var isDataCollectionEnabled = settings.IsDataCollectionEnabled;
         if (!isDataCollectionEnabled.HasValue)
@@ -160,7 +160,7 @@ public sealed class AppScopedServiceStarter
     {
         using var _ = Tracer.Region();
         var tracePrefix = nameof(StartHostedServices) + ": starting ";
-        foreach (var hostedService in Hub.HostedServices()) {
+        foreach (var hostedService in Hub.Services.HostedServices()) {
             Tracer.Point(tracePrefix + hostedService.GetType().Name);
             await hostedService.StartAsync(default).ConfigureAwait(true);
             await Task.Yield();

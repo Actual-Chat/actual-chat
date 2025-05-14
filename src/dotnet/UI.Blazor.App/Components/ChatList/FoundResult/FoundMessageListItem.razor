@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits ComputedRenderStateComponent<ChatUIHub, FoundMessageListItem.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, FoundMessageListItem.Model>
 @{
     if (State.IsInitial(out var m)) {
         <ChatListItemSkeleton />

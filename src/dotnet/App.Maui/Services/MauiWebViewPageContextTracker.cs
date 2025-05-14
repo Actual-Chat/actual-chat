@@ -9,7 +9,7 @@ public sealed class MauiWebViewPageContextTracker(IServiceProvider services) : I
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<MauiWebViewPageContextTracker>();
     private readonly Lock _lock = new ();
-    private readonly AppCircuitHub _circuitHub = services.GetRequiredService<AppCircuitHub>();
+    private readonly UIHub _hub = services.GetRequiredService<UIHub>();
     private readonly SafeJSRuntime _safeJSRuntime = services.GetRequiredService<SafeJSRuntime>();
     private MauiWebView? _mauiWebView;
     private bool _disconnectJSRuntimeRequested;
@@ -86,7 +86,7 @@ public sealed class MauiWebViewPageContextTracker(IServiceProvider services) : I
             }
             _monitorDisposeCompletionRequested = true;
         }
-        var cancellationToken = _circuitHub.StopToken;
+        var cancellationToken = _hub.StopToken;
         try {
             await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
         }

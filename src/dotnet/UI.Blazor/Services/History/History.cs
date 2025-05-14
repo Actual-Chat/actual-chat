@@ -6,7 +6,7 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class History : ScopedServiceBase<UIHub>, IDisposable
+public partial class History : UIServiceBase<UIHub>, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.History.init";
 
@@ -20,10 +20,6 @@ public partial class History : ScopedServiceBase<UIHub>, IDisposable
 
     internal object Lock { get; } = new();
     internal HistoryItemIdFormatter ItemIdFormatter { get; }
-
-    private NavigationManager Nav => Hub.Nav;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
-    private IJSRuntime JS => Hub.JSRuntime();
 
     public NavigationQueue NavigationQueue { get; }
     public Task WhenReady => _whenReadySource.Task;

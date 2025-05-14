@@ -1,5 +1,5 @@
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<ChatUIHub, AppSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, AppSettings.Model>
 @{
     var m = State.Value;
     var dataCollectionStatus = m.IsDataCollectionEnabled
@@ -94,7 +94,7 @@
     private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
-        => NativeAppSettings = Hub.GetService<INativeAppSettings>();
+        => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };

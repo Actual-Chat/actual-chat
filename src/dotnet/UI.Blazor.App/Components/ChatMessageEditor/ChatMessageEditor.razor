@@ -5,7 +5,7 @@
 @using ActualLab.Locking
 @using ActualChat.Pooling
 @using System.Diagnostics.CodeAnalysis
-@inherits ComponentBase<ChatUIHub>
+@inherits ComponentBase<AppUIHub>
 @implements IAsyncDisposable
 @{
     var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
@@ -149,7 +149,7 @@
             if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
                 return; // Dispose may happen during await above
 
-            AttachmentsStorage = Hub.GetRequiredService<SentAttachmentsStorage>();
+            AttachmentsStorage = Hub.Services.GetRequiredService<SentAttachmentsStorage>();
             if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
                 await SetAttachments(AttachmentsStorage);
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;

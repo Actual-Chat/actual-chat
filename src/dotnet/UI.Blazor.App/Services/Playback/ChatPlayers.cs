@@ -3,7 +3,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
@@ -13,12 +13,11 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     private readonly MutableState<PlaybackState?> _playbackState;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private TuneUI TuneUI => Hub.TuneUI;
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
-    public ChatPlayers(ChatUIHub hub) : base(hub)
-        => _playbackState = hub.StateFactory().NewMutable(
+    public ChatPlayers(AppUIHub hub) : base(hub)
+        => _playbackState = hub.StateFactory.NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
 

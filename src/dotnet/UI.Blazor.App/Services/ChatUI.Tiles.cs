@@ -613,7 +613,7 @@ public partial class ChatUI
         if (!account.IsAdmin)
             return false;
 
-        var chatIdListToShowIndexDocId = await Hub.AccountSettings()
+        var chatIdListToShowIndexDocId = await Hub.AccountSettings
             .Get<string>(ShowIndexDocIdChatIdsSettingsKey, cancellationToken)
             .ConfigureAwait(false);
         var chatSidsShowIndexDocId = chatIdListToShowIndexDocId?.Split(';') ?? [];

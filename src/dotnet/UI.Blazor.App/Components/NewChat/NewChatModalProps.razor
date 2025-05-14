@@ -1,5 +1,5 @@
 ﻿@using System.ComponentModel.DataAnnotations
-@inherits FusionComponentBase<ChatUIHub>
+@inherits FusionComponentBase<AppUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
 #pragma warning disable IL2091
@@ -152,7 +152,7 @@
 
     protected override async Task OnInitializedAsync() {
         if (PlaceId is not null) {
-            _place = await Hub.Places.Get(Hub.Session(), PlaceId, default).Require().ConfigureAwait(false);
+            _place = await Hub.Places.Get(Hub.Session, PlaceId, default).Require().ConfigureAwait(false);
             if (!_place.Rules.CanApplyPublicChatType())
                 _form.IsPublic = false;
         }
@@ -179,7 +179,7 @@
         if (!_formRef.IsValid)
             return;
         try {
-            var command = new Chats_Change(Hub.Session(), null, null, new() {
+            var command = new Chats_Change(Hub.Session, null, null, new() {
                 Create = new ChatDiff {
                     Title = _form.Title,
                     Description = _form.Description,
@@ -191,7 +191,7 @@
                     PlaceId = PlaceId
                 },
             });
-            var (chat, createChatError) = await Hub.UICommander().Run(command, CancellationToken.None);
+            var (chat, createChatError) = await Hub.UICommander.Run(command, CancellationToken.None);
             if (createChatError != null)
                 return;
 

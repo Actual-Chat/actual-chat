@@ -1,12 +1,13 @@
 using ActualChat.Pooling;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ChatActivity : ScopedServiceBase<ChatUIHub>, IAsyncDisposable
+public class ChatActivity : UIServiceBase<AppUIHub>, IAsyncDisposable
 {
     private readonly SharedResourcePool<ChatId, ChatStreamingActivity> _activityPool;
 
-    public ChatActivity(ChatUIHub hub) : base(hub)
+    public ChatActivity(AppUIHub hub) : base(hub)
         => _activityPool = new SharedResourcePool<ChatId, ChatStreamingActivity>(NewChatStreamingActivity);
 
     public async Task<IChatStreamingActivity> GetStreamingActivity(ChatId chatId, CancellationToken cancellationToken)

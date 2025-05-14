@@ -85,8 +85,8 @@ public class AppServicesAccessor
         var scopedServicesTask = _blazorAppServicesSource.Task;
         if (scopedServicesTask.IsCompletedSuccessfully) {
             var c = scopedServicesTask.Result;
-            var circuitHub = c.GetRequiredService<AppCircuitHub>();
-            if (circuitHub.WhenInitialized.IsCompletedSuccessfully) {
+            var hub = c.GetRequiredService<UIHub>();
+            if (hub.WhenInitialized.IsCompletedSuccessfully) {
                 if (!whenRendered)
                     return scopedServicesTask;
 
@@ -162,12 +162,12 @@ public class AppServicesAccessor
                     return c;
             }
             else {
-                var circuitHub = c.GetRequiredService<AppCircuitHub>();
-                await circuitHub.WhenInitialized
+                var hub = c.GetRequiredService<UIHub>();
+                await hub.WhenInitialized
                     .WaitAsync(WhenRenderedTimeout, cancellationToken)
                     .SilentAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
-                if (circuitHub.WhenInitialized.IsCompletedSuccessfully)
+                if (hub.WhenInitialized.IsCompletedSuccessfully)
                     return c;
             }
         }

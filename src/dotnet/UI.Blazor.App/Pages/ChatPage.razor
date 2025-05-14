@@ -2,7 +2,7 @@
 @page "/chat/{*Route}"
 @layout ListViewLayout
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<ChatUIHub, ChatPage.Model?>
+@inherits ComputedStateComponent<AppUIHub, ChatPage.Model?>
 @{
     var m = Rendered = State.Value;
     if (_isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value)

@@ -5,6 +5,7 @@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2071", Justification = "UI types are expected to be untrimmed.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
+@inherits ComponentBase<UIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Email templates</MainHeader>
@@ -42,9 +43,6 @@
     private Model _model = null!;
     private FormModel _form = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
         var templates = new List<EmailTemplateModel> {
@@ -72,8 +70,8 @@
     }
 
     private async Task SendDigest() {
-        var commander = Hub.UICommander();
-        var sendDigestCommand = new Emails_SendDigest(Hub.Session());
+        var commander = Hub.UICommander;
+        var sendDigestCommand = new Emails_SendDigest(Hub.Session);
         var (_, error) = await commander.Run(sendDigestCommand, CancellationToken.None).ConfigureAwait(false);
         if (error is not null) {
             Hub.ToastUI.Show($"Error: {error.Message}", ToastDismissDelay.Long);

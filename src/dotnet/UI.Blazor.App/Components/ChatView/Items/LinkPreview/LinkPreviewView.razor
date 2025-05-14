@@ -1,7 +1,7 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
 @using LinkPreview = ActualChat.Media.LinkPreview;
-@inherits ComputedStateComponent<ChatUIHub, LinkPreviewView.Model?>
+@inherits ComputedStateComponent<AppUIHub, LinkPreviewView.Model?>
 @{
     if (State.IsInitial(out var m) || m is null)
         return;

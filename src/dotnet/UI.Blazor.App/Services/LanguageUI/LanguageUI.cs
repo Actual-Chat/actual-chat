@@ -5,17 +5,14 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDisposable
+public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
     private readonly SyncedState<UserLanguageSettings> _settings;
 
-    private TuneUI TuneUI => Hub.TuneUI;
-    private IJSRuntime JS => Hub.JSRuntime();
-
     public IState<UserLanguageSettings> Settings => _settings;
 
-    public LanguageUI(ChatUIHub hub) : base(hub)
+    public LanguageUI(AppUIHub hub) : base(hub)
         => _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
                 InitialValue = new UserLanguageSettings(),

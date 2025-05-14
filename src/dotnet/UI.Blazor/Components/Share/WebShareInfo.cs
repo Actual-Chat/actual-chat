@@ -2,7 +2,7 @@
 
 namespace ActualChat.UI.Blazor.Components;
 
-public sealed class WebShareInfo : IDisposable, IWebShareInfoBackend
+public sealed class WebShareInfo : UIServiceBase<UIHub>, IDisposable, IWebShareInfoBackend
 {
     private static readonly string JSInitWebShareInfoMethod = $"{BlazorUICoreModule.ImportName}.Share.init";
 
@@ -12,14 +12,10 @@ public sealed class WebShareInfo : IDisposable, IWebShareInfoBackend
     private bool _canShareLink;
 
     private Task WhenReady => _whenReadySource.Task;
-    private IJSRuntime JS { get; }
-    private ILogger Log { get; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebShareInfo))]
-    public WebShareInfo(IServiceProvider services)
+    public WebShareInfo(UIHub hub) : base(hub)
     {
-        Log = services.LogFor(GetType());
-        JS = services.JSRuntime();
         _backendRef = DotNetObjectReference.Create<IWebShareInfoBackend>(this);
         _ = JS.InvokeVoidAsync(JSInitWebShareInfoMethod, _backendRef);
     }

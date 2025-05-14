@@ -1,9 +1,10 @@
 @using ActualChat.Hosting
 @using ActualChat.Security
 @using ActualChat.UI.Blazor.App.Pages.Landing
+@inherits ComponentBase<UIHub>
 @implements IRootComponent
 @{
-    if (!UIHub.IsInteractive) {
+    if (!Hub.IsInteractive) {
         <LandingForWeb/>
         return;
     }
@@ -50,20 +51,18 @@
     private Exception? _simulatedCrashError;
     private readonly AsyncTaskMethodBuilder _whenFirstRendered = AsyncTaskMethodBuilderExt.New();
 
-    [Inject] protected INavigationInterception NavigationInterception { get; init; } = null!;
-    [Inject] protected UIHub UIHub { get; init; } = null!;
-    protected IServiceProvider Services => UIHub.Services;
-    protected HostInfo HostInfo => UIHub.HostInfo();
-    protected ISessionResolver SessionResolver => UIHub.SessionResolver;
-    protected AppCircuitHub CircuitHub => UIHub.CircuitHub;
+    [field: AllowNull, MaybeNull]
+    protected INavigationInterception NavigationInterception
+        => field ??= Hub.Services.GetRequiredService<INavigationInterception>();
+    protected ISessionResolver SessionResolver => Hub.SessionResolver;
 
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
     [field: AllowNull, MaybeNull]
     protected AppScopedServiceStarter AppScopedServiceStarter => field ??= Services.GetRequiredService<AppScopedServiceStarter>();
     [field: AllowNull, MaybeNull]
-    protected Tracer Tracer => field ??= UIHub.Tracer();
+    protected Tracer Tracer => field ??= Hub.Tracer;
     [field: AllowNull, MaybeNull]
-    protected ILogger Log => field ??= UIHub.LogFor(GetType());
+    protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";
@@ -74,8 +73,8 @@
 
     protected override void OnInitialized() {
         Log.LogWarning("OnInitialized, Hash: {Hash}", GetHashCode());
-        if (CircuitHub.IsInteractive)
-            CircuitHub.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
+        if (IsInteractive)
+            Hub.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
     }
 
     protected override async Task OnInitializedAsync() {
@@ -92,7 +91,7 @@
         else if (hostKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
         }
-        if (!UIHub.IsInteractive)
+        if (!Hub.IsInteractive)
             return;
 
         // The Router component enables navigation interception in its OnAfterRenderAsync method:
@@ -107,7 +106,7 @@
         await AppScopedServiceStarter.PrepareFirstRender(sessionHash);
         _readyToFullyRender = true;
         _shouldRender = true;
-        _ = AppScopedServiceStarter.AfterFirstRender(CircuitHub.StopToken);
+        _ = AppScopedServiceStarter.AfterFirstRender(Hub.StopToken);
     }
 
     public void SimulateCrash(Exception error) {

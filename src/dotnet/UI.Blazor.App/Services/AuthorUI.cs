@@ -1,15 +1,11 @@
-using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
+public sealed class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
     private IAccounts Accounts => Hub.Accounts;
     private IAuthors Authors => Hub.Authors;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private History History => Hub.History;
-    private UICommander UICommander => Hub.UICommander();
 
     public Task<ModalRef> Show(AuthorId authorId)
         => ModalUI.Show(new AuthorModal.Model(authorId), CancellationToken.None);

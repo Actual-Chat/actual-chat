@@ -63,7 +63,7 @@
 </div>
 
 @code {
-    [Inject] protected ChatUIHub Hub { get; init; } = null!;
+    [Inject] protected AppUIHub Hub { get; init; } = null!;
     private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

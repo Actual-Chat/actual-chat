@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<ChatUIHub, AccountFull>
+@inherits ComputedStateComponent<AppUIHub, AccountFull>
 @{
     var account = State.Value;
     if (!account.IsGuest) {

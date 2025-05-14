@@ -6,7 +6,7 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed partial class AudioInitializer(UIHub hub)
-    : ScopedWorkerBase<UIHub>(hub), IAudioInfoBackend
+    : UIWorkerBase<UIHub>(hub), IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.AudioInitializer.init";
     private static readonly string JSUpdateBackgroundStateMethod = $"{BlazorUIAppModule.ImportName}.AudioInitializer.setBackgroundState";
@@ -19,8 +19,6 @@ public sealed partial class AudioInitializer(UIHub hub)
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
 
-    [field: AllowNull, MaybeNull]
-    private IJSRuntime JS => field ??= Services.JSRuntime();
     [field: AllowNull, MaybeNull]
     private AppActivity AppActivity => field ??= Services.GetRequiredService<AppActivity>();
 

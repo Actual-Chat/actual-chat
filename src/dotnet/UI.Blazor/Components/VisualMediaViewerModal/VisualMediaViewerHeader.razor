@@ -68,11 +68,11 @@
     private bool _enableIncompleteUI;
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private Session Session => Hub.Session();
-    private Features Features => Hub.Features();
+    private HostInfo HostInfo => Hub.HostInfo;
+    private Session Session => Hub.Session;
+    private Features Features => Hub.Features;
     [field: AllowNull, MaybeNull]
-    private IAuthors Authors => field ??= Hub.GetRequiredService<IAuthors>();
+    private IAuthors Authors => field ??= Hub.Services.GetRequiredService<IAuthors>();
     private IUIActionHandler? SaveMediaActionHandler { get; set; }
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
@@ -81,7 +81,7 @@
     [Parameter] public string ContentType { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
-        var saver = Hub.GetService<IMediaSaver>();
+        var saver = Hub.Services.GetService<IMediaSaver>();
         if (saver != null) {
             SaveMediaActionHandler = UIActionHandler.Create(
                 this,

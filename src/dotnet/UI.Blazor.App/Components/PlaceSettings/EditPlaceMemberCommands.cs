@@ -5,13 +5,14 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public static class EditPlaceMemberCommands
 {
-    public static async Task<EditPlaceMemberModel?> ComputeState(ChatUIHub hub, AuthorId authorId, CancellationToken cancellationToken)
+    public static async Task<EditPlaceMemberModel?> ComputeState(AppUIHub hub, AuthorId authorId, CancellationToken cancellationToken)
     {
         var chatId = authorId.ChatId;
-        if (chatId is not PlaceChatId placeChatId || !placeChatId.IsRoot)
+        if (chatId is not PlaceChatId { IsRoot: true } placeChatId)
             throw new ArgumentOutOfRangeException(nameof(authorId), "AuthorId should belong to place root chat");
+
         var placeId = placeChatId.PlaceId;
-        var session = hub.Session();
+        var session = hub.Session;
         var author = await hub.Places.Get(session, placeId, authorId, cancellationToken);
         if (author == null || author.HasLeft)
             return null;
@@ -30,10 +31,10 @@ public static class EditPlaceMemberCommands
         return new EditPlaceMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
     }
 
-    public static async Task OnRemoveFromPlaceClick(ChatUIHub hub, Author author)
+    public static async Task OnRemoveFromPlaceClick(AppUIHub hub, Author author)
     {
-        var session = hub.Session();
-        var result = await hub.UICommander().Run(new Places_Exclude(session, author.Id));
+        var session = hub.Session;
+        var result = await hub.UICommander.Run(new Places_Exclude(session, author.Id));
         if (result.HasError)
             return;
         var authorName = author.Avatar.Name;
@@ -41,11 +42,11 @@ public static class EditPlaceMemberCommands
 
         void Undo() {
             var undoCommand = new Places_Restore(session, author.Id);
-            _ = hub.UICommander().Run(undoCommand);
+            _ = hub.UICommander.Run(undoCommand);
         }
     }
 
-    public static async Task OnPromoteToOwnerClick(ChatUIHub hub, Author author)
+    public static async Task OnPromoteToOwnerClick(AppUIHub hub, Author author)
     {
         var authorName = author.Avatar.Name;
         _ = await hub.ModalUI.Show(new ConfirmModal.Model(
@@ -56,9 +57,9 @@ public static class EditPlaceMemberCommands
         });
     }
 
-    private static async Task OnPromoteToOwnerConfirmed(ChatUIHub hub, AuthorId authorId, string authorName)
+    private static async Task OnPromoteToOwnerConfirmed(AppUIHub hub, AuthorId authorId, string authorName)
     {
-        var result = await hub.UICommander().Run(new Places_PromoteToOwner(hub.Session(), authorId));
+        var result = await hub.UICommander.Run(new Places_PromoteToOwner(hub.Session, authorId));
         if (result.HasError)
             return;
 

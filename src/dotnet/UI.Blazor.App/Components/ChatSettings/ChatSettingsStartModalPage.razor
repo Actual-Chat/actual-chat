@@ -2,7 +2,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Media
 @using ActualLab.Generators
-@inherits ComputedStateComponent<ChatUIHub, ChatSettingsStartModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, ChatSettingsStartModalPage.ComputedModel>
 @{
     if (State.IsInitial(out var m))
         return;
@@ -256,7 +256,7 @@
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await Hub.UICommander().Run(command);
+        await Hub.UICommander.Run(command);
     }
 
     // Nested types

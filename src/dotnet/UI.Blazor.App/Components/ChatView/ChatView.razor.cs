@@ -26,15 +26,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<Navigation?> _nextNavigation = null!;
     private ChatContext _chatContext = null!;
 
-    private ChatUIHub Hub { get; set; }
-    private Session Session => Hub.Session();
-    private ICommander Commander => Hub.Commander();
+    private AppUIHub Hub { get; set; }
+    private Session Session => Hub.Session;
+    private ICommander Commander => Hub.Commander;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private NavigationManager Nav => Hub.Nav;
     private History History => Hub.History;
-    private StateFactory StateFactory => Hub.StateFactory();
+    private StateFactory StateFactory => Hub.StateFactory;
     private CancellationToken DisposeToken { get; }
 
     [field: AllowNull] [field: MaybeNull]
@@ -58,7 +58,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
-    public ChatView(ChatUIHub hub)
+    public ChatView(AppUIHub hub)
     {
         Hub = hub;
         _disposeTokenSource = new CancellationTokenSource();
@@ -166,7 +166,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    var uri = localUrl.ToAbsolute(Hub.UrlMapper()).ToUri();
+                    var uri = localUrl.ToAbsolute(Hub.UrlMapper).ToUri();
                     var uriWithoutMsgId = uri.DropQueryItem(Links.ChatEntryLidQueryParameterName).PathAndQuery;
                     _ = History.NavigateTo(uriWithoutMsgId, true);
                 }

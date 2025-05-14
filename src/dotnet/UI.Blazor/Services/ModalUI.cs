@@ -1,9 +1,8 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class ModalUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
+public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
-    private TypeMapper<IModalView> ViewResolver { get; } = hub.GetRequiredService<TypeMapper<IModalView>>();
-
+    private TypeMapper<IModalView> ViewResolver { get; } = hub.Services.GetRequiredService<TypeMapper<IModalView>>();
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
 
     public TaskCompletionSource<ModalHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<ModalHost>();

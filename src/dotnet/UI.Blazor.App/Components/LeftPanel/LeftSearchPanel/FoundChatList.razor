@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, IReadOnlyList<FoundItem>>
+@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<FoundItem>>
 @{
     if (State.IsInitial(out var foundItems))
         return;

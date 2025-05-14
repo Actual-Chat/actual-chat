@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using SearchUI = ActualChat.UI.Blazor.App.Services.SearchUI
-@inherits ComputedStateComponent<ChatUIHub, bool>
+@inherits ComputedStateComponent<AppUIHub, bool>
 
 @if (!State.Value) {
     <RecentlyContactedPeople Place="@Place"/>

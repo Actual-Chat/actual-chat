@@ -42,7 +42,7 @@
     private ConversationMessage? _lastMessage;
     private ChatEntry _fakeEntry = null!;
 
-    private ChatUIHub Hub => ChatContext.Hub;
+    private AppUIHub Hub => ChatContext.Hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;

@@ -1,18 +1,15 @@
 using ActualChat.Contacts;
-using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService
+public class ContactSync(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
 {
     private const int BatchSize = 100;
     private static readonly RandomTimeSpan BatchInterval = TimeSpan.FromSeconds(1).ToRandom(0.1);
 
-    [field: AllowNull, MaybeNull]
-    private AccountUI AccountUI => field ??= Services.GetRequiredService<AccountUI>();
     [field: AllowNull, MaybeNull]
     private IExternalContacts ExternalContacts => field ??= Services.GetRequiredService<IExternalContacts>();
     [field: AllowNull, MaybeNull]

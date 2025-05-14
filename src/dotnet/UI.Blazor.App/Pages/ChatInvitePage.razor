@@ -1,6 +1,6 @@
 ﻿@page "/join/{InviteId}"
 @using ActualChat.Invite
-@inherits ComponentBase<ChatUIHub>
+@inherits ComponentBase<AppUIHub>
 
 <MainHeader>Joining via invite link</MainHeader>
 
@@ -22,7 +22,7 @@
     private AccountFull? _account;
 
     private IPlaces Places => Hub.Places;
-    private ICommander Commander => Hub.Commander();
+    private ICommander Commander => Hub.Commander;
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());

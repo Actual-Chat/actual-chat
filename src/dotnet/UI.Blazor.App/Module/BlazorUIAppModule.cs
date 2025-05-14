@@ -1,7 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
-using ActualChat.Permissions;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
@@ -31,13 +30,13 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        services.AddScoped(c => new ChatUIHub(c));
-        services.AddAlias<UIHub, ChatUIHub>(ServiceLifetime.Scoped);
+        services.AddScoped(c => new AppUIHub(c));
+        services.AddAlias<UIHub, AppUIHub>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new AnalyticEvents());
         services.AddScoped(c => new NavbarUI(c));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
-        services.AddScoped(c => new AuthorUI(c.ChatUIHub()));
-        services.AddScoped(c => new EditMembersUI(c.ChatUIHub()));
+        services.AddScoped(c => new AuthorUI(c.AppUIHub()));
+        services.AddScoped(c => new EditMembersUI(c.AppUIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
@@ -49,15 +48,15 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddService<AppActivity, ChatAppActivity>(ServiceLifetime.Scoped);
-        services.AddScoped(c => new SelectionUI(c.ChatUIHub()));
-        services.AddScoped(c => new ActiveChatsUI(c.ChatUIHub()));
+        services.AddScoped(c => new SelectionUI(c.AppUIHub()));
+        services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
         services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
 
         // Chat activity
-        services.AddScoped(c => new ChatActivity(c.ChatUIHub()));
+        services.AddScoped(c => new ChatActivity(c.AppUIHub()));
         fusion.AddService<ChatStreamingActivity>(ServiceLifetime.Transient);
 
         // Settings
@@ -65,7 +64,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<LanguageUI>(ServiceLifetime.Scoped);
 
         // OnboardingUI
-        services.AddScoped(c => new OnboardingUI(c.ChatUIHub()));
+        services.AddScoped(c => new OnboardingUI(c.AppUIHub()));
         services.AddAlias<IOnboardingUI, OnboardingUI>(ServiceLifetime.Scoped);
 
         // SearchUI
@@ -132,9 +131,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
                 return Task.CompletedTask;
             }));
 
-        services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c.ChatUIHub()));
+        services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c.AppUIHub()));
         services.AddSingleton<AppNonScopedServiceStarter>(c => new AppNonScopedServiceStarter(c));
-        services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c.ChatUIHub()));
+        services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c.AppUIHub()));
 
         if (HostInfo.HostKind.IsServerOrWasmApp())
             services.AddScoped<IDataCollectionSettingsUI>(c => new WebDataCollectionSettingsUI(c));
@@ -180,7 +179,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Streaming
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
-        services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.ChatUIHub()));
+        services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.AppUIHub()));
         if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());

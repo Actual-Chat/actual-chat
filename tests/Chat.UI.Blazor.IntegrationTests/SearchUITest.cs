@@ -14,7 +14,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
 {
     private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
     private string UniquePart { get; } = UniqueNames.Prefix();
-    private SearchUI SearchUI => Tester.ScopedAppServices.ChatUIHub().SearchUI;
+    private SearchUI SearchUI => Tester.ScopedAppServices.AppUIHub().SearchUI;
 
     protected override async Task DisposeAsync()
     {

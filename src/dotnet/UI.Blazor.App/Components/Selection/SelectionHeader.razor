@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, SelectionHeader.Model?>
+@inherits ComputedStateComponent<AppUIHub, SelectionHeader.Model?>
 @{
     var m = State.Value;
     if (m is null || m.Selection.Count == 0) {

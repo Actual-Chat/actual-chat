@@ -15,11 +15,11 @@
 </ChatRouletteItem>
 
 @code {
-    [Inject] ChatUIHub Hub { get; init; } = null!;
+    [Inject] AppUIHub Hub { get; init; } = null!;
 
-    private Session Session => Hub.Session();
+    private Session Session => Hub.Session;
     private ModalUI ModalUI => Hub.ModalUI;
-    private UICommander UICommander => Hub.UICommander();
+    private UICommander UICommander => Hub.UICommander;
 
     [Parameter] public Profile Profile { get; set; } = null!;
     [Parameter] public bool IsSelected { get; set; }

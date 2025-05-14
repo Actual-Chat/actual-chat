@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, NavigateToUnreadOrEnd.Model?>
+@inherits ComputedStateComponent<AppUIHub, NavigateToUnreadOrEnd.Model?>
 @{
     var m = State.Value;
     if (m is null)
@@ -30,7 +30,7 @@
 
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
-    private Moment CpuNow => Hub.Clocks().CpuClock.Now;
+    private Moment CpuNow => Hub.Clocks.CpuClock.Now;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;

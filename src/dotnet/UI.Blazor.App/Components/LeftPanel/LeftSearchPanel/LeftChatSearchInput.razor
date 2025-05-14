@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Events
-@inherits ComputedStateComponent<ChatUIHub, LeftChatSearchInput.Model>
+@inherits ComputedStateComponent<AppUIHub, LeftChatSearchInput.Model>
 <OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
 @{
     var m = State.Value;

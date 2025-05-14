@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<OnboardingModal.Model>
-@inherits ComputedStateComponent<ChatUIHub, OnboardingModal.ViewModel?>
+@inherits ComputedStateComponent<AppUIHub, OnboardingModal.ViewModel?>
 @{
     var m = State.Value;
     if (m is null)

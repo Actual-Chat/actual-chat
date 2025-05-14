@@ -377,7 +377,7 @@ public partial class ChatAudioUI
 
     private async Task ReconnectOnRpcReconnect(CancellationToken cancellationToken)
     {
-        var rpcDependentReconnectDelayer = Hub.GetService<RpcDependentReconnectDelayer>();
+        var rpcDependentReconnectDelayer = Hub.Services.GetService<RpcDependentReconnectDelayer>();
         if (rpcDependentReconnectDelayer == null)
             return;
 

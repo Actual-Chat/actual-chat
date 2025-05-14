@@ -7,7 +7,7 @@ public class KeepAwakeUI(UIHub hub)
     private static readonly string JSSetKeepAwakeMethod = $"{BlazorUICoreModule.ImportName}.KeepAwakeUI.setKeepAwake";
 
     protected UIHub Hub => hub;
-    protected IJSRuntime JS => hub.JSRuntime();
+    protected IJSRuntime JS => hub.JS;
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= hub.LogFor(GetType());
 

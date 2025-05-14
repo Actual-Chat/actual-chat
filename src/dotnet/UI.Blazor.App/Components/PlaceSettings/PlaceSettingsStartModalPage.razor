@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatUIHub, PlaceSettingsStartModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, PlaceSettingsStartModalPage.ComputedModel>
 @{
     if (State.IsInitial(out var m))
         return;
@@ -144,7 +144,7 @@
             return new() { Place = place };
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features().IsIncompleteUIEnabled(cancellationToken);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken);
 
         return new() {
             Place = place,

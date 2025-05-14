@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public abstract class MarkupViewBase<TMarkup> : FusionComponentBase<ChatUIHub>, IMarkupView<TMarkup>
+public abstract class MarkupViewBase<TMarkup> : FusionComponentBase<AppUIHub>, IMarkupView<TMarkup>
     where TMarkup : Markup
 {
     [CascadingParameter] public ChatEntry Entry { get; set; } = null!;

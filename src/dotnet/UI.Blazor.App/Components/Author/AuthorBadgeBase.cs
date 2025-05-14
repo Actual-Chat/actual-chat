@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public abstract class AuthorBadgeBase : ComputedStateComponent<ChatUIHub, AuthorBadgeBase.Model?>
+public abstract class AuthorBadgeBase : ComputedStateComponent<AppUIHub, AuthorBadgeBase.Model?>
 {
     protected IAuthors Authors => Hub.Authors;
     protected IContacts Contacts => Hub.Contacts;

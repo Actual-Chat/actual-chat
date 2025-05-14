@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, EmptySearchChatContent.Model?>
+@inherits ComputedStateComponent<AppUIHub, EmptySearchChatContent.Model?>
 @{
     var m = State.ValueOrDefault; // Intended: Error != null when chat is not found
     if (ReferenceEquals(m, null))

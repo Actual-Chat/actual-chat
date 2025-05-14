@@ -4,7 +4,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INotifyInitialized
+public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyInitialized
 {
     private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private readonly MutableState<AccountFull> _ownAccount;
@@ -15,7 +15,6 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private List<Task>? _postponeOnSignedInWorkflowTasks;
 
     private IAccounts Accounts => Hub.Accounts;
-    private AppCircuitHub CircuitHub => Hub.CircuitHub;
 
     [field: AllowNull, MaybeNull]
     private IClientAuth ClientAuth => field ??= Services.GetRequiredService<IClientAuth>();
@@ -23,7 +22,6 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
     private INotificationUI NotificationUI => Hub.NotificationUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private ReloadUI ReloadUI => Hub.ReloadUI;
-    private History History => Hub.History;
     private MomentClock CpuClock { get; }
 
     public Task WhenReady => _whenReadySource.Task;

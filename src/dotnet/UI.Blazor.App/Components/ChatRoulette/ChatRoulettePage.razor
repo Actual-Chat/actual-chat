@@ -1,7 +1,7 @@
 @page "/chat-roulette"
 @layout ListViewLayout
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatUIHub, ChatRoulettePage.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatRoulettePage.Model>
 @{
     var m = State.Value;
     var isRightPanelVisible = m.IsRightPanelVisible;

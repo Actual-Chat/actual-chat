@@ -1,7 +1,7 @@
 @using System.Timers
 @using Timer = System.Timers.Timer
 @using Notification = ActualChat.Notification.Notification
-@inherits ComputedStateComponent<ChatUIHub, NotificationEntry.Model>
+@inherits ComputedStateComponent<AppUIHub, NotificationEntry.Model>
 @implements IDisposable
 @{
     var model = State.Value;

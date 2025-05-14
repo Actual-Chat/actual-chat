@@ -6,14 +6,14 @@ namespace ActualChat.UI.Blazor.App.Components;
 public static class CopyChatToPlaceUI
 {
     public static async Task CopyChat(
-        ChatUIHub hub,
+        AppUIHub hub,
         ChatId sourceChatId,
         PlaceId placeId,
         Action? onBeforeCopy = null,
         Action<Exception?>? onAfterCopy = null,
         CancellationToken cancellationToken = default)
     {
-        var session = hub.Session();
+        var session = hub.Session;
         var chat = await hub.Chats.Get(session, sourceChatId, default).Require();
         var place = await hub.Places.Get(session, placeId, cancellationToken).Require();
         var message = $"You are about to copy chat '{chat.Title}' to place '{place.Title}'. Do you want to proceed?";
@@ -26,7 +26,7 @@ public static class CopyChatToPlaceUI
             onBeforeCopy?.Invoke();
             var correlationId = Guid.NewGuid().ToString();
             var command = new Chat_CopyChat(session, sourceChatId, placeId, correlationId);
-            var (result, error) = await hub.UICommander().Run(command, cancellationToken);
+            var (result, error) = await hub.UICommander.Run(command, cancellationToken);
             onAfterCopy?.Invoke(error);
             if (error != null)
                 return;
@@ -46,15 +46,16 @@ public static class CopyChatToPlaceUI
     }
 
     public static async Task PublishCopiedChat(
-        ChatUIHub hub,
+        AppUIHub hub,
         ChatId newChatId,
         ChatId sourceChatId,
         CancellationToken cancellationToken = default)
     {
-        var session = hub.Session();
+        var session = hub.Session;
         var newChat = await hub.Chats.Get(session, newChatId, default).Require();
         var placeChatId = newChat.Id as PlaceChatId;
         placeChatId.Require();
+
         var place = await hub.Places.Get(session, placeChatId.PlaceId, default).Require();
         var message = $"You are about to publish copied chat '{newChat.Title}' from place '{place.Title}'. Do you want to proceed?";
         await hub.ModalUI
@@ -64,7 +65,7 @@ public static class CopyChatToPlaceUI
 
         async Task PublishInternal() {
             var command = new Chat_PublishCopiedChat(session, placeChatId, sourceChatId);
-            var (_, error) = await hub.UICommander().Run(command, cancellationToken).ConfigureAwait(true);
+            var (_, error) = await hub.UICommander.Run(command, cancellationToken).ConfigureAwait(true);
             if (error != null)
                 return;
 

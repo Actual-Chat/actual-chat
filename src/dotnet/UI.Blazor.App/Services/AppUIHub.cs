@@ -9,7 +9,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
+public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
 {
     [field: AllowNull, MaybeNull]
     public IChats Chats => field ??= Services.GetRequiredService<IChats>();
@@ -101,5 +101,5 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ChatEntryReader NewEntryReader(ChatId chatId, ChatEntryKind entryKind)
-        => new(Chats, Session(), chatId, entryKind);
+        => new(Chats, Session, chatId, entryKind);
 }

@@ -2,9 +2,9 @@ using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.UI.Blazor.Components;
+namespace ActualChat.UI.Blazor;
 
-public abstract class ComputedRenderStateComponent<THub, TState> : ComputedRenderStateComponent<TState>
+public abstract class ComputedStateComponent<THub, TState> : ComputedStateComponent<TState>
     where THub : UIHub
 {
     private THub? _hub;
@@ -12,16 +12,16 @@ public abstract class ComputedRenderStateComponent<THub, TState> : ComputedRende
     protected THub Hub => _hub!;
 
     // Core UI service shortcuts
-    protected HostInfo HostInfo => Hub.HostInfo();
-    protected UrlMapper UrlMapper => Hub.UrlMapper();
-    protected MomentClockSet Clocks => Hub.Clocks();
+    protected HostInfo HostInfo => Hub.HostInfo;
+    protected UrlMapper UrlMapper => Hub.UrlMapper;
+    protected MomentClockSet Clocks => Hub.Clocks;
     protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-    protected AccountSettings AccountSettings => Hub.AccountSettings();
-    protected LocalSettings LocalSettings => Hub.LocalSettings();
+    protected AccountSettings AccountSettings => Hub.AccountSettings;
+    protected LocalSettings LocalSettings => Hub.LocalSettings;
     protected ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     protected DiffEngine DiffEngine => Hub.DiffEngine;
     protected History History => Hub.History;
-    protected UIEventHub UIEventHub => Hub.UIEventHub();
+    protected UIEventHub UIEventHub => Hub.UIEventHub;
     protected AccountUI AccountUI => Hub.AccountUI;
     protected PanelsUI PanelsUI => Hub.PanelsUI;
     protected ModalUI ModalUI => Hub.ModalUI;
@@ -29,7 +29,7 @@ public abstract class ComputedRenderStateComponent<THub, TState> : ComputedRende
     protected TuneUI TuneUI => Hub.TuneUI;
     protected ShareUI ShareUI => Hub.ShareUI;
     protected Dispatcher Dispatcher => Hub.Dispatcher;
-    protected Features Features => Hub.Features();
+    protected Features Features => Hub.Features;
 
     // Shortcuts
     protected bool IsPrerendering => Hub.IsPrerendering;
@@ -37,7 +37,7 @@ public abstract class ComputedRenderStateComponent<THub, TState> : ComputedRende
 
     public override Task SetParametersAsync(ParameterView parameters)
     {
-        _hub ??= (THub)((AppCircuitHub)CircuitHub).UIHub;
+        _hub ??= (THub)CircuitHub;
         return base.SetParametersAsync(parameters);
     }
 }

@@ -25,12 +25,12 @@ public class CaptchaUI : ICaptchaUIBackend
         => IsConfigured ? ValueTask.CompletedTask : Initialize();
 
     public ValueTask<string> GetActionToken(string action, CancellationToken cancellationToken)
-        => Hub.JSRuntime().InvokeAsync<string>(JSGetTokenMethod, CancellationToken.None, SiteKey, action);
+        => Hub.JS.InvokeAsync<string>(JSGetTokenMethod, CancellationToken.None, SiteKey, action);
 
     [JSInvokable]
     public void OnInitialized(string siteKey)
         => SiteKey = siteKey;
 
     private ValueTask Initialize()
-        => Hub.JSRuntime().InvokeVoidAsync(JSInitMethod, _blazorRef);
+        => Hub.JS.InvokeVoidAsync(JSInitMethod, _blazorRef);
 }

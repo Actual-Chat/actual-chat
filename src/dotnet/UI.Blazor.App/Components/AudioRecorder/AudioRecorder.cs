@@ -1,6 +1,5 @@
 ﻿using ActualChat.Diagnostics;
 using ActualChat.Hosting;
-using ActualChat.Permissions;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
@@ -26,25 +25,25 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private IJSObjectReference _jsRef = null!;
     private Activity? _recordingActivity;
 
-    private ChatUIHub Hub { get; }
-    private HostInfo HostInfo => Hub.HostInfo();
+    private AppUIHub Hub { get; }
+    private HostInfo HostInfo => Hub.HostInfo;
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
-    private MomentClockSet Clocks => Hub.Clocks();
-    private IJSRuntime JS => Hub.JSRuntime();
+    private MomentClockSet Clocks => Hub.Clocks;
+    private IJSRuntime JS => Hub.JS;
     private TuneUI TuneUI => Hub.TuneUI;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     public MicrophonePermissionHandler MicrophonePermission
-        => _microphonePermission ??= Hub.GetRequiredService<MicrophonePermissionHandler>();
+        => _microphonePermission ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     public IState<AudioRecorderState> State => _state;
     public Task WhenInitialized { get; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorder))]
-    public AudioRecorder(ChatUIHub hub)
+    public AudioRecorder(AppUIHub hub)
     {
         Hub = hub;
-        _state = Hub.StateFactory().NewMutable(
+        _state = Hub.StateFactory.NewMutable(
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         WhenInitialized = Initialize();
@@ -73,7 +72,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var audioInitializer = Hub.GetRequiredService<AudioInitializer>();
+        var audioInitializer = Hub.Services.GetRequiredService<AudioInitializer>();
         await audioInitializer.WhenInitialized.ConfigureAwait(false);
 
         using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
@@ -89,7 +88,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         var sessionToken = "";
         if (HostInfo.HostKind.IsApp()) {
-            var sessionTokens = _sessionTokens ??= Hub.GetRequiredService<SessionTokens>();
+            var sessionTokens = _sessionTokens ??= Hub.Services.GetRequiredService<SessionTokens>();
             var secureToken = await sessionTokens.Get(cancellationToken).ConfigureAwait(false);
             sessionToken = secureToken.Token;
         }

@@ -4,7 +4,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class RouletteUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     public static readonly IReadOnlyList<Country> Countries = ActualChat.Countries.All;
 
@@ -15,8 +15,6 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private IRoulette Roulette => Hub.Roulette;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
-    private History History => Hub.History;
-    private UICommander UICommander => Hub.UICommander();
 
     public Task WhenReady => _whenReadySource.Task;
     public IState<Profile?> SelectedProfile => _selectedProfile;
@@ -25,16 +23,16 @@ public partial class RouletteUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     //private SearchRequest? _searchRequest;
 
-    public RouletteUI(ChatUIHub hub) : base(hub)
+    public RouletteUI(AppUIHub hub) : base(hub)
     {
         _whenReadySource = AsyncTaskMethodBuilderExt.New();
-        _selectedProfile = hub.StateFactory().NewMutable((Profile?)null);
+        _selectedProfile = hub.StateFactory.NewMutable((Profile?)null);
         _selectedProfile.Updated += (_, _) => {
             var profileId = _selectedProfile.Value?.Id;
             _ = Commander.Run(new RouletteProfiles_SelectProfile(Session, profileId ?? Symbol.Empty));
         };
-        _activeSearch = hub.StateFactory().NewMutable<Search?>();
-        _searchCriteria = hub.StateFactory().NewMutable(Preferences.Empty);
+        _activeSearch = hub.StateFactory.NewMutable<Search?>();
+        _searchCriteria = hub.StateFactory.NewMutable(Preferences.Empty);
     }
 
     void INotifyInitialized.Initialized()

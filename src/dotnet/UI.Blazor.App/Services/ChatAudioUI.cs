@@ -5,7 +5,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<NextBeepState?> _nextBeep;
@@ -20,13 +20,9 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private InteractiveUI InteractiveUI => Hub.InteractiveUI;
     private DeviceAwakeUI DeviceAwakeUI => Hub.DeviceAwakeUI;
-    private TuneUI TuneUI => Hub.TuneUI;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
-
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
 
@@ -34,7 +30,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
-    public ChatAudioUI(ChatUIHub hub) : base(hub)
+    public ChatAudioUI(AppUIHub hub) : base(hub)
     {
         // Read entry states from other windows / devices are delayed by 1s
         var type = GetType();

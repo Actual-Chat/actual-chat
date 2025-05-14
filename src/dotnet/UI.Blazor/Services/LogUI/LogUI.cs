@@ -4,7 +4,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
+public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
 {
     private const string IsEnabledKvasKey = $"{nameof(LogUI)}_{nameof(IsEnabled)}";
     private static readonly string OwnLogCategory = $"{typeof(LogUI).Namespace}.{nameof(LogUI)}";
@@ -16,7 +16,6 @@ public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, I
     private MutableState<bool>? _isEnabled;
 
     private LogSinks LogSinks => Hub.LogSinks;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     public static ILogger? DiagLog { get; set; }
     public IMutableState<bool> IsEnabled => _isEnabled!;
@@ -31,7 +30,7 @@ public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, I
         //         Category = StateCategories.Get(GetType(), nameof(IsEnabled)),
         //         UpdateDelayer = FixedDelayer.NextTick,
         //     });
-        _isEnabled = Hub.StateFactory().NewMutable<bool>();
+        _isEnabled = Hub.StateFactory.NewMutable<bool>();
         Hub.RegisterDisposable(_isEnabled);
         Hub.RegisterDisposable(() => LogSinks.Remove(this));
         Hub.RegisterDisposable(() => _whenReady.TrySetException(new ObjectDisposedException("LogUI is disposed")));

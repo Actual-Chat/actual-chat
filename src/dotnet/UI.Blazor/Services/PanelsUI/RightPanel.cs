@@ -25,13 +25,13 @@ public class RightPanel
         Owner = owner;
         Hub = owner.Hub;
 
-        var stateFactory = Hub.StateFactory();
+        var stateFactory = Hub.StateFactory;
         _isVisible = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsVisible)));
         _isSearchMode = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchMode)));
         var initialState = new OwnHistoryState(this, false);
         History.Register(initialState);
 
-        var localSettings = Hub.LocalSettings().WithPrefix(StatePrefix);
+        var localSettings = Hub.LocalSettings.WithPrefix(StatePrefix);
         _isVisibleStored = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {
                 InitialValue = false,

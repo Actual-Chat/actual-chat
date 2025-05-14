@@ -1,6 +1,6 @@
 @using ActualChat.Contacts
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<ChatUIHub>
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<PeerContactEditorModal.Model>
 
 <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">

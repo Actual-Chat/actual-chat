@@ -1,5 +1,5 @@
 @page "/test/auth"
-@inherits ComputedStateComponent<ChatUIHub, AuthTestPage.Model?>
+@inherits ComputedStateComponent<AppUIHub, AuthTestPage.Model?>
 @{
     #pragma warning disable IL2026
 
@@ -123,7 +123,7 @@
 
 @code {
     [field: AllowNull, MaybeNull]
-    private IAuth Auth => field ??= Hub.GetRequiredService<IAuth>();
+    private IAuth Auth => field ??= Hub.Services.GetRequiredService<IAuth>();
     private IAccounts Accounts => Hub.Accounts;
     private LiveTime LiveTime => Hub.LiveTime;
 

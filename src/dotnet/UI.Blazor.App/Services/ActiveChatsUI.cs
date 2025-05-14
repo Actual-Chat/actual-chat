@@ -1,10 +1,11 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
+public class ActiveChatsUI : UIServiceBase<AppUIHub>
 {
     public const int MaxActiveChatCount = 3;
 
@@ -12,13 +13,12 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     private readonly StoredState<ActiveChat[]> _activeChats;
 
     private IChats Chats => Hub.Chats;
-    private UICommander UICommander => Hub.UICommander();
     private Moment CpuNow => Clocks.CpuClock.Now;
 
     public IMutableState<ActiveChat[]> ActiveChats => _activeChats;
     public Task WhenReady => _activeChats.WhenRead;
 
-    public ActiveChatsUI(ChatUIHub hub) : base(hub)
+    public ActiveChatsUI(AppUIHub hub) : base(hub)
         => _activeChats = StateFactory.NewKvasStored<ActiveChat[]>(
             new (LocalSettings, nameof(ActiveChats)) {
                 InitialValue = [],

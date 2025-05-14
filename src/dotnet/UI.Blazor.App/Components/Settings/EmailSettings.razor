@@ -88,7 +88,7 @@
 
     [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private ITimeZones TimeZones { get; init; } = null!;
-    private Session Session => Hub.Session();
+    private Session Session => Hub.Session;
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     protected override async Task OnInitializedAsync() {
@@ -148,7 +148,7 @@
             Session,
             account with { TimeZone = _timeZoneFormModel.SelectedTimeZoneId },
             account.Version);
-        var (_, error) = await Hub.UICommander().Run(updateAccountCommand);
+        var (_, error) = await Hub.UICommander.Run(updateAccountCommand);
         if (error != null)
             return;
 

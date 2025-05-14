@@ -2,23 +2,20 @@ using ActualChat.Media;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Fusion.UI;
 using Foundation;
 using Photos;
 using UIKit;
 
 namespace ActualChat.App.Maui;
 
-public class IosMediaSaver(UIHub uiHub) : IMediaSaver
+public class IosMediaSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IMediaSaver
 {
-    private HttpClient? _httpClient;
-    private ILogger? _log;
-
-    private HttpClient HttpClient => _httpClient ??= uiHub.HttpClientFactory().CreateClient(GetType().Name);
-    private AddPhotoPermissionHandler PermissionHandler => uiHub.GetRequiredService<AddPhotoPermissionHandler>();
-    private ToastUI ToastUI => uiHub.ToastUI;
-    private UICommander UICommander => uiHub.UICommander();
-    private ILogger Log => _log ??= uiHub.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private HttpClient HttpClient
+        => field ??= Hub.Services.HttpClientFactory().CreateClient(GetType().Name);
+    [field: AllowNull, MaybeNull]
+    private AddPhotoPermissionHandler PermissionHandler
+        => field ??= Hub.Services.GetRequiredService<AddPhotoPermissionHandler>();
 
     public async Task Save(string uri, string contentType)
     {

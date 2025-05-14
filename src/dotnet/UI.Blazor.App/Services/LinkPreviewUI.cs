@@ -1,6 +1,8 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class LinkPreviewUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), IComputeService
+public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;

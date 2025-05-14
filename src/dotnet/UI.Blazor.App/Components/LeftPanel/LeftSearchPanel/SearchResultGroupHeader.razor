@@ -1,6 +1,6 @@
 @using ActualChat.Search
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, bool>
+@inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isExpanded = State.Value;
     var btnText = isExpanded ? "Show less" : "Show more";

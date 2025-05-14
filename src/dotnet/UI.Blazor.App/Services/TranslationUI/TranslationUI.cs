@@ -1,8 +1,9 @@
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class TranslationUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), IComputeService
+public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     public ChatUI ChatUI => Hub.ChatUI;
     public LanguageUI LanguageUI => Hub.LanguageUI;

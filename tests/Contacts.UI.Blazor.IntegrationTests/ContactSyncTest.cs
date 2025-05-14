@@ -3,6 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Security;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
 using ActualLab.Generators;
@@ -68,28 +69,28 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JackPhone).WithEmail(JackEmail));
 
         // act
-        var scope = new UIHub(_tester.ClientServices);
-        var sut = new ContactSync(scope);
+        var hub = new UIHub(_tester.ClientServices);
+        var sut = new ContactSync(hub);
         sut.Start();
 
         // assert
         var externalContacts = await ListExternalContacts(1);
         externalContacts.Should().BeEquivalentTo(DeviceContacts, options => options.ExcludingSystemProperties());
-        await scope.DisposeAsync();
+        await hub.DisposeAsync();
 
         // arrange
         DeviceContacts[0] = DeviceContacts[0].WithoutPhone(JackPhone).WithPhone(Phone.Parse("1-1002003000"));
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JanePhone).WithEmail(JaneEmail));
 
         // act
-        scope = new UIHub(_tester.ClientServices);
-        sut = new ContactSync(scope);
+        hub = new UIHub(_tester.ClientServices);
+        sut = new ContactSync(hub);
         sut.Start();
 
         // assert
         externalContacts = await ListExternalContacts(2);
         externalContacts.Should().BeEquivalentTo(DeviceContacts, options => options.ExcludingSystemProperties());
-        await scope.DisposeAsync();
+        await hub.DisposeAsync();
     }
 
     private ExternalContactFull NewExternalContact(AccountFull owner)

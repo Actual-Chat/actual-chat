@@ -13,13 +13,9 @@ public enum AutoNavigationReason
     SignOut = 100,
 }
 
-public sealed class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
+public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
-
-    private History History => Hub.History;
-    private AppCircuitHub CircuitHub => Hub.CircuitHub;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
 
     public Task<LocalUrl> GetAutoNavigationUrl()
         => Dispatcher.InvokeAsync(async () => {
@@ -73,13 +69,13 @@ public sealed class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        if (CircuitHub.WhenInitialized.IsCompleted)
+        if (Hub.WhenInitialized.IsCompleted)
             return Dispatcher.CheckAccess()
                 ? NavigateTo(url, reason)
                 : Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
 
         return Task.Run(async () => {
-            await CircuitHub.WhenInitialized.ConfigureAwait(false);
+            await Hub.WhenInitialized.ConfigureAwait(false);
             await Dispatcher.InvokeAsync(() => NavigateTo(url, reason)).ConfigureAwait(false);
         });
     }

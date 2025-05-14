@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Events
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<AuthorModal.Model>
-@inherits ComputedStateComponent<ChatUIHub, AuthorModal.ComputedModel?>
+@inherits ComputedStateComponent<AppUIHub, AuthorModal.ComputedModel?>
 @{
     var m = State.Value;
     if (m is null)

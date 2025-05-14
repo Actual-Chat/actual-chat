@@ -1,11 +1,13 @@
-﻿namespace ActualChat.UI.Blazor.App.Services;
+﻿using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.UI.Blazor.App.Services;
 
 public interface IAppIconBadge
 {
     void SetUnreadChatCount(int count);
 }
 
-public class AppIconBadgeUpdater(ChatUIHub hub) : ScopedWorkerBase<ChatUIHub>(hub)
+public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
     protected override Task OnRun(CancellationToken cancellationToken)
         => Task.WhenAll(

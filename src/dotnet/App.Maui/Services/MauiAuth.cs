@@ -9,7 +9,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
 {
     [field: AllowNull, MaybeNull]
     private SessionTokens SessionTokens => field ??= hub.GetRequiredService<SessionTokens>();
-    private HostInfo HostInfo => hub.HostInfo();
+    private HostInfo HostInfo => hub.HostInfo;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
 
@@ -78,7 +78,7 @@ internal sealed class MauiAuth(UIHub hub) : IClientAuth
             }
 
             // WebView-based authentication
-            var redirectUrl = hub.UrlMapper().ToAbsolute( isSignIn ? Links.Chats : Links.Home);
+            var redirectUrl = hub.UrlMapper.ToAbsolute( isSignIn ? Links.Chats : Links.Home);
             // NOTE(AY): returnUrl here points to https://[xxx.]actual.chat/xxx ,
             // but MauiNavigationInterceptor will correct it to the local one anyway.
             url = $"{url}&redirectUrl={redirectUrl.UrlEncode()}";

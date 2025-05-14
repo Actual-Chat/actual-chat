@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<ChatUIHub, RecorderToggle.Model>
+@inherits ComputedStateComponent<AppUIHub, RecorderToggle.Model>
 @{
     var m = State.Value;
     _animator.State = m.IsRecordingHere;

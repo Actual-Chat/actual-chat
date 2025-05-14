@@ -1,6 +1,6 @@
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits OwnAccountComponentBase<ChatUIHub>
+@inherits OwnAccountComponentBase<AppUIHub>
 @{
     var m = State.Value;
     PlaceId? placeId = null;
@@ -67,7 +67,7 @@
     private EventHandler<NavbarGroupChangedEventArgs> _navbarUIOnSelectedGroupChanged = null!;
 
     [field: AllowNull, MaybeNull]
-    private NavbarUI NavbarUI => field ??= Hub.GetRequiredService<NavbarUI>();
+    private NavbarUI NavbarUI => field ??= Hub.Services.GetRequiredService<NavbarUI>();
 
     protected override void OnInitialized() {
         _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;

@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<ChatUIHub, EditChatMembersModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, EditChatMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
     Context.Title = $"{m.MemberCount} members";

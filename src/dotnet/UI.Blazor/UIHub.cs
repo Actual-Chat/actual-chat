@@ -1,19 +1,37 @@
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.Logging;
 using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using ActualLab.Internal;
+using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor;
 
-public class UIHub(IServiceProvider services) : Hub(services)
+// AppUIHub extends this type, and its instance is actually used
+public class UIHub : CircuitHub, IDispatcherResolver
 {
-    private UICommander? _uiCommander;
-    private UIEventHub? _uiEventHub;
-    private IJSRuntime? _jsRuntime;
+    private readonly List<Task> _tasks = new();
+    private readonly List<object> _disposables = new();
+
+    public ComponentBase RootComponent {
+        get => field ?? throw Errors.NotInitialized();
+        private set;
+    } = null!;
 
     // Generic services
+    public HostInfo HostInfo { get; }
+    public Features Features { get; }
+    public MomentClockSet Clocks { get; }
+    public UrlMapper UrlMapper { get; }
+    public ILoggerFactory LoggerFactory { get; }
+    public Tracer Tracer { get; }
+
+    // Generic lazy services
+    [field: AllowNull, MaybeNull]
+    public UIEventHub UIEventHub => field ??= Services.GetRequiredService<UIEventHub>();
     [field: AllowNull, MaybeNull]
     public ITimeZones TimeZones => field ??= Services.GetRequiredService<ITimeZones>();
     [field: AllowNull, MaybeNull]
@@ -24,6 +42,14 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public ICaptcha Captcha => field ??= Services.GetRequiredService<ICaptcha>();
     [field: AllowNull, MaybeNull]
     public IPhones Phones => field ??= Services.GetRequiredService<IPhones>();
+    [field: AllowNull, MaybeNull]
+    public DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
+    [field: AllowNull, MaybeNull]
+    public SessionTokens SessionTokens => field ??= Services.GetRequiredService<SessionTokens>();
+    [field: AllowNull, MaybeNull]
+    public IHttpClientFactory HttpClientFactory => field ??= Services.GetRequiredService<IHttpClientFactory>();
+    [field: AllowNull, MaybeNull]
+    public RpcHub RpcHub => field ??= Services.GetRequiredService<RpcHub>();
 
     // Account-related & chat-related services
     [field: AllowNull, MaybeNull]
@@ -39,9 +65,11 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
     [field: AllowNull, MaybeNull]
-    public IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
+    public AccountSettings AccountSettings => field ??= Services.GetRequiredService<AccountSettings>();
     [field: AllowNull, MaybeNull]
-    public ISessionResolver SessionResolver => field ??= CircuitHub.SessionResolver;
+    public LocalSettings LocalSettings => field ??= Services.GetRequiredService<LocalSettings>();
+    [field: AllowNull, MaybeNull]
+    public IUserPresences UserPresences => field ??= Services.GetRequiredService<IUserPresences>();
     [field: AllowNull, MaybeNull]
     public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
     [field: AllowNull, MaybeNull]
@@ -117,22 +145,100 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
     [field: AllowNull, MaybeNull]
-    public NavigationManager Nav => field ??= Services.GetRequiredService<NavigationManager>();
-    [field: AllowNull, MaybeNull]
     public History History => field ??= Services.GetRequiredService<History>();
-    [field: AllowNull, MaybeNull]
-    public Dispatcher Dispatcher => field ??= Services.GetRequiredService<Dispatcher>();
-    [field: AllowNull, MaybeNull]
-    public JSRuntimeInfo JSRuntimeInfo => field ??= CircuitHub.JSRuntimeInfo;
-    [field: AllowNull, MaybeNull]
-    public AppCircuitHub CircuitHub => field ??= (AppCircuitHub)Services.GetRequiredService<CircuitHub>();
 
-    // Shortcuts
-    public bool IsPrerendering => JSRuntimeInfo.IsPrerendering;
-    public bool IsInteractive => JSRuntimeInfo.IsInteractive;
+    public Tracer TracerFor(string name) => Tracer[name];
+    public Tracer TracerFor(Type type) => Tracer[type];
+    public Tracer TracerFor<TService>() => Tracer[typeof(TService)];
 
-    // These properties are exposed as methods to "close" the static ones on IServiceProvider
-    public UICommander UICommander() => _uiCommander ??= CircuitHub.UICommander;
-    public UIEventHub UIEventHub() => _uiEventHub ??= Services.UIEventHub();
-    public IJSRuntime JSRuntime() => _jsRuntime ??= CircuitHub.JS;
+    public ILogger<T> LogFor<T>() => LoggerFactory.CreateLogger<T>();
+    public ILogger LogFor(Type type) => LoggerFactory.CreateLogger(type.NonProxyType());
+    public ILogger LogFor(string category) => LoggerFactory.CreateLogger(category);
+
+    public UIHub(IServiceProvider services) : base(services)
+    {
+        if (!OSInfo.IsWebAssembly)
+            Log.LogInformation("[+] #{Id}", Id.Format());
+
+        HostInfo = services.HostInfo();
+        Features = services.Features();
+        Clocks = services.GetRequiredService<MomentClockSet>();
+        UrlMapper = services.UrlMapper();
+        LoggerFactory = services.GetRequiredService<ILoggerFactory>();
+        Tracer = services.Tracer();
+    }
+
+    protected override async Task DisposeAsyncCore()
+    {
+        if (!OSInfo.IsWebAssembly)
+            Log.LogInformation("[-] #{Id}", Id.Format());
+
+        // This type is used in UI scopes - that's why SilentAwait(true)
+        await Task.WhenAll(_tasks).SilentAwait();
+        for (var i = _disposables.Count - 1; i >= 0; i--)
+            await DisposeOne(_disposables[i]).SilentAwait();
+        return;
+
+        static ValueTask DisposeOne(object? disposableOrAction) {
+            switch (disposableOrAction) {
+            case IAsyncDisposable ad:
+                return ad.DisposeSilentlyAsync();
+            case IDisposable d:
+                d.DisposeSilently();
+                break;
+            case Func<ValueTask> f:
+                return f.Invoke();
+            case Action a:
+                a.Invoke();
+                break;
+            }
+            return default;
+        }
+    }
+
+    public override void Initialize(
+        Dispatcher dispatcher,
+        RenderModeDef renderMode)
+        => throw StandardError.NotSupported("Use another implementation of Initialize.");
+
+    public void Initialize(ComponentBase rootComponent, RenderModeDef renderMode)
+    {
+        var dispatcher = rootComponent.GetDispatcher();
+        lock (Lock) {
+            if (WhenInitializedSource.Task.IsCompleted) {
+                if (Dispatcher == dispatcher && RenderMode == renderMode) {
+                    RootComponent = rootComponent;
+                    return;
+                }
+
+                throw Errors.AlreadyInitialized();
+            }
+
+            RootComponent = rootComponent;
+            Dispatcher = dispatcher;
+            RenderMode = renderMode;
+            WhenInitializedSource.TrySetResult();
+        }
+    }
+
+    public void RegisterAwaitable(Task task)
+    {
+        lock (_tasks) {
+            StopToken.ThrowIfCancellationRequested();
+            _tasks.Add(task);
+        }
+    }
+
+    public void RegisterDisposable(object disposableOrAction)
+    {
+        var isDisposed = false;
+        lock (_tasks) {
+            if (IsDisposed)
+                isDisposed = true;
+            else
+                _disposables.Add(disposableOrAction);
+        }
+        if (isDisposed)
+            _ = DisposableExt.DisposeUnknownSilently(disposableOrAction);
+    }
 }

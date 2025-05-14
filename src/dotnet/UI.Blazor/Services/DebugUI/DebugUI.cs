@@ -6,39 +6,25 @@ using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class DebugUI : IDisposable
+public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DebugUI.init";
 
     private DotNetObjectReference<DebugUI>? _blazorRef;
 
-    private IServiceProvider Services { get; }
-    private IJSRuntime JS { get; }
-    private ILogger Log { get; }
-    private HostInfo HostInfo { get; }
-
     public Task WhenReady { get; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DebugUI))]
-    public DebugUI(IServiceProvider services)
+    public DebugUI(UIHub hub) : base(hub)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
-        JS = services.JSRuntime();
-        HostInfo = services.HostInfo();
-        WhenReady = Initialize();
+        _blazorRef = DotNetObjectReference.Create(this);
+        WhenReady = JS.InvokeVoidAsync(JSInitMethod, _blazorRef).AsTask();
     }
 
     public void Dispose()
     {
         _blazorRef.DisposeSilently();
         _blazorRef = null;
-    }
-
-    private Task Initialize()
-    {
-        _blazorRef = DotNetObjectReference.Create(this);
-        return JS.InvokeVoidAsync(JSInitMethod, _blazorRef).AsTask();
     }
 
     [JSInvokable]

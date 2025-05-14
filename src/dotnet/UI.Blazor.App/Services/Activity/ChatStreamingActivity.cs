@@ -32,10 +32,10 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
 
-    private ChatUIHub Hub { get; }
-    private Session Session => Hub.Session();
+    private AppUIHub Hub { get; }
+    private Session Session => Hub.Session;
     [field: AllowNull, MaybeNull]
-    private MomentClock ServerClock => field ??= Hub.Clocks().ServerClock;
+    private MomentClock ServerClock => field ??= Hub.Clocks.ServerClock;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     [field: AllowNull, MaybeNull]
@@ -49,7 +49,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     {
         Owner = owner;
         Hub = owner.Hub;
-        _lastTranscribedAt = Hub.StateFactory()
+        _lastTranscribedAt = Hub.StateFactory
             .NewMutable((Moment?)Moment.MinValue,
                 StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
     }
@@ -84,7 +84,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
 
     private async Task PushStreamingEntries(ChatEntryKind entryKind, CancellationToken cancellationToken)
     {
-        var startAt = Hub.Clocks().ServerClock.Now;
+        var startAt = Hub.Clocks.ServerClock.Now;
         var entryReader = GetEntryReader(entryKind);
         using var syncScope = RemoteComputedSynchronizer.Default.Activate();
 

@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
+public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 {
     private static readonly SemaphoreSlim Lock = new (1);
     private readonly SyncedState<UserOnboardingSettings> _userSettings;
@@ -12,19 +12,17 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
 
-    private AccountUI AccountUI => Hub.AccountUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
 
     public IState<UserOnboardingSettings> UserSettings => _userSettings;
     public new IState<LocalOnboardingSettings> LocalSettings => _localSettings;
     public Task WhenLocalSettingsRead => _localSettings.WhenRead;
 
-    public OnboardingUI(ChatUIHub hub) : base(hub)
+    public OnboardingUI(AppUIHub hub) : base(hub)
     {
-        var stateFactory = hub.StateFactory();
-        var accountSettings = hub.AccountSettings();
-        var localSettings = hub.LocalSettings();
+        var stateFactory = hub.StateFactory;
+        var accountSettings = hub.AccountSettings;
+        var localSettings = hub.LocalSettings;
         var type = GetType();
         _userSettings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (accountSettings, UserOnboardingSettings.KvasKey) {
@@ -114,7 +112,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
 
         if (!_localSettings.Value.IsPermissionsStepCompleted) {
             // Fix IsPermissionsStepCompleted based on actual permissions:
-            // we don't want to show "Required permissions" screen if they're already granted
+            // we don't want to show the "Required permissions" screen if they're already granted
             var permissionsStepModel = await PermissionStepModel.New(Services, cancellationToken).ConfigureAwait(false);
             if (permissionsStepModel.SkipEverything) {
                 permissionsStepModel.MarkCompleted();

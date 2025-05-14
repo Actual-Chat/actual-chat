@@ -48,7 +48,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
     protected virtual bool UseJsVibration => true;
 
     private UIHub Hub { get; }
-    private IJSRuntime JS => Hub.JSRuntime();
+    private IJSRuntime JS => Hub.JS;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor<TuneUI>();
 

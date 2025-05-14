@@ -4,13 +4,10 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class FileUploader(Hub hub)
+public sealed class FileUploader(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
-    [field: AllowNull, MaybeNull]
-    private SessionTokens SessionTokens => field ??= hub.GetRequiredService<SessionTokens>();
-    private HostInfo HostInfo => hub.HostInfo();
-    private UrlMapper UrlMapper => hub.UrlMapper();
-    private IHttpClientFactory HttpClientFactory => hub.HttpClientFactory();
+    private SessionTokens SessionTokens => Hub.SessionTokens;
+    private IHttpClientFactory HttpClientFactory => Hub.HttpClientFactory;
 
     [RequiresUnreferencedCode("Uses ReadFromJsonAsync")]
     public async Task<MediaContent> Upload(ChatId chatId, Stream file, string? contentType, string? fileName, CancellationToken cancellationToken = default)

@@ -5,10 +5,10 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public static class EditChatMemberCommands
 {
-    public static async Task<EditChatMemberModel?> ComputeState(ChatUIHub hub, AuthorId authorId, CancellationToken cancellationToken)
+    public static async Task<EditChatMemberModel?> ComputeState(AppUIHub hub, AuthorId authorId, CancellationToken cancellationToken)
     {
         var chatId = authorId.ChatId;
-        var session = hub.Session();
+        var session = hub.Session;
         var author = await hub.Authors.Get(session, chatId, authorId, cancellationToken);
         if (author == null || author.HasLeft)
             return null;
@@ -32,21 +32,21 @@ public static class EditChatMemberCommands
         return new EditChatMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
     }
 
-    public static async Task OnRemoveFromGroupClick(ChatUIHub hub, Author author)
+    public static async Task OnRemoveFromGroupClick(AppUIHub hub, Author author)
     {
-        var result = await hub.UICommander().Run(new Authors_Exclude(hub.Session(), author.Id));
+        var result = await hub.UICommander.Run(new Authors_Exclude(hub.Session, author.Id));
         if (result.HasError)
             return;
         var authorName = author.Avatar.Name;
         hub.ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", ToastDismissDelay.Long);
 
         void Undo() {
-            var undoCommand = new Authors_Restore(hub.Session(), author.Id);
-            _ = hub.UICommander().Run(undoCommand);
+            var undoCommand = new Authors_Restore(hub.Session, author.Id);
+            _ = hub.UICommander.Run(undoCommand);
         }
     }
 
-    public static async Task OnPromoteToOwnerClick(ChatUIHub hub, Author author)
+    public static async Task OnPromoteToOwnerClick(AppUIHub hub, Author author)
     {
         var authorName = author.Avatar.Name;
         _ = await hub.ModalUI.Show(new ConfirmModal.Model(
@@ -57,9 +57,9 @@ public static class EditChatMemberCommands
         });
     }
 
-    private static async Task OnPromoteToOwnerConfirmed(ChatUIHub hub, AuthorId authorId, string authorName)
+    private static async Task OnPromoteToOwnerConfirmed(AppUIHub hub, AuthorId authorId, string authorName)
     {
-        var result = await hub.UICommander().Run(new Authors_PromoteToOwner(hub.Session(), authorId));
+        var result = await hub.UICommander.Run(new Authors_PromoteToOwner(hub.Session, authorId));
         if (result.HasError)
             return;
 

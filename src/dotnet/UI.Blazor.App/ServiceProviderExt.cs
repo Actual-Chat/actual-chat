@@ -5,6 +5,6 @@ namespace ActualChat.UI.Blazor.App;
 public static class ServiceProviderExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ChatUIHub ChatUIHub(this IServiceProvider services)
-        => services.GetRequiredService<ChatUIHub>();
+    public static AppUIHub AppUIHub(this IServiceProvider services)
+        => services.GetRequiredService<AppUIHub>();
 }

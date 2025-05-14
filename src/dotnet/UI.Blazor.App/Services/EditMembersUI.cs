@@ -1,8 +1,8 @@
 ﻿namespace ActualChat.UI.Blazor.App.Services;
 
-public class EditMembersUI(ChatUIHub hub)
+public class EditMembersUI(AppUIHub hub)
 {
-    private ChatUIHub Hub { get; } = hub;
+    private AppUIHub Hub { get; } = hub;
 
     public async Task<bool> HaveMembersToAdd(Chat.Chat chat)
     {

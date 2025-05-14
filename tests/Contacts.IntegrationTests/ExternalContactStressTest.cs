@@ -41,7 +41,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         // arrange
         var prefix = UniqueNames.Prefix();
-        var tracer = AppHost.Services.Tracer(GetType());
+        var tracer = AppHost.Services.TracerFor(GetType());
         using var __ = tracer.Region();
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
         var accounts = new AccountFull[count];

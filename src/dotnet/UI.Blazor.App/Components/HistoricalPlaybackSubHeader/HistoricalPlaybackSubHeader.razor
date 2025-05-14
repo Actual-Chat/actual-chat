@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.MediaPlayback
 @using Timer = System.Timers.Timer;
-@inherits ComputedStateComponent<ChatUIHub, HistoricalPlaybackSubHeader.Model?>
+@inherits ComputedStateComponent<AppUIHub, HistoricalPlaybackSubHeader.Model?>
 @{
     var m = State.Value;
     if (m is null)

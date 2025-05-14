@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// <summary>
 /// Keeps the splash screen / splash UI open in WASM & MAUI.
 /// </summary>
-public class LoadingUI
+public class LoadingUI : UIServiceBase<UIHub>
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
     // ReSharper disable once InconsistentNaming
@@ -21,9 +21,7 @@ public class LoadingUI
     private readonly AsyncTaskMethodBuilder _whenChatListLoadedSource = AsyncTaskMethodBuilderExt.New();
     private volatile int _isWebSplashRemoved;
 
-    private IServiceProvider Services { get; }
-    private HostInfo HostInfo { get; }
-    private Tracer Tracer { get; }
+    private new Tracer Tracer { get; }
 
     public TimeSpan LoadTime { get; private set; }
     public TimeSpan RenderTime { get; private set; }
@@ -32,16 +30,14 @@ public class LoadingUI
     public Task WhenRendered => _whenRenderedSource.Task;
     public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
 
-    public LoadingUI(IServiceProvider services)
+    public LoadingUI(UIHub hub) : base(hub)
     {
-        Services = services;
-        HostInfo = Services.HostInfo();
         if (HostInfo.HostKind.IsMauiApp() && StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
             // This is to make sure the first scope's timings in MAUI are relative to app start
             Tracer = StaticTracer[GetType()];
         }
         else
-            Tracer = services.Tracer(GetType());
+            Tracer = Hub.TracerFor(GetType());
     }
 
     public static void MarkAppBuilt()
@@ -102,13 +98,12 @@ public class LoadingUI
             return;
 
         _ = ForegroundTask.Run(async () => {
-                await Services.JSRuntime()
-                    .InvokeVoidAsync(
+                await JS.InvokeVoidAsync(
                         $"{BlazorUICoreModule.ImportName}.BrowserInit.removeWebSplash",
-                        instantly
-                    ).ConfigureAwait(false);
+                        instantly)
+                    .ConfigureAwait(false);
                 Interlocked.Exchange(ref _isWebSplashRemoved, 1);
             },
-            e => Services.LogFor<LoadingUI>().LogError(e, "RemoveWebSplash failed"));
+            e => Log.LogError(e, "RemoveWebSplash failed"));
     }
 }

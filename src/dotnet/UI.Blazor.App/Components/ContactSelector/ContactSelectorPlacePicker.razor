@@ -1,7 +1,7 @@
 @using ActualChat.Contacts
 @using ActualChat.Media;
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatUIHub, List<Place>>
+@inherits ComputedStateComponent<AppUIHub, List<Place>>
 @{
     if (State.IsInitial(out var places) || places.Count == 0)
         return;

@@ -1,32 +1,28 @@
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.CloudMessaging.EventArgs;
 using UIKit;
 using UserNotifications;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
-public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermission, IDisposable
+public class IosPushNotifications : UIServiceBase<AppUIHub>, IDeviceTokenRetriever, INotificationsPermission, IDisposable
 {
-    private NotificationUI? _notificationUI;
-    private SystemSettingsUI? _systemSettingsUI;
-    private ILogger? _log;
-
-    private UIHub Hub { get; }
     private IFirebaseCloudMessaging Messaging { get; }
-    private NotificationUI NotificationUI => _notificationUI ??= Hub.GetRequiredService<NotificationUI>();
-    private SystemSettingsUI SystemSettingsUI => _systemSettingsUI ??= Hub.GetRequiredService<SystemSettingsUI>();
-    private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    public IosPushNotifications(UIHub hub)
+    [field: AllowNull, MaybeNull]
+    private NotificationUI NotificationUI => field ??= Hub.Services.GetRequiredService<NotificationUI>();
+    [field: AllowNull, MaybeNull]
+    private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
+    private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
+
+    public IosPushNotifications(AppUIHub hub) : base(hub)
     {
-        Hub = hub;
-        Messaging = hub.GetRequiredService<IFirebaseCloudMessaging>();
+        Messaging = hub.Services.GetRequiredService<IFirebaseCloudMessaging>();
         Messaging.NotificationTapped += OnNotificationTapped;
         Messaging.NotificationReceived += OnNotificationReceived;
     }
@@ -83,7 +79,7 @@ public class IosPushNotifications : IDeviceTokenRetriever, INotificationsPermiss
 
     private void OnNotificationReceived(object? sender, FCMNotificationReceivedEventArgs e)
         => _ = DispatchToBlazor(_ => {
-            var unreadChatCount = Hub.ChatUIHub().ChatListUI.UnreadChatCount.Value.Value;
+            var unreadChatCount = Hub.ChatListUI.UnreadChatCount.Value.Value;
             UNUserNotificationCenter.Current.SetBadgeCount(unreadChatCount, null);
         }, "PushNotifications.OnNotificationReceived()");
 

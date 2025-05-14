@@ -1,5 +1,5 @@
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatUIHub, PlaceInfo.Model?>
+@inherits ComputedStateComponent<AppUIHub, PlaceInfo.Model?>
 @{
     if (State.IsInitial(out var m) || m is null)
         return;

@@ -1,0 +1,53 @@
+using ActualChat.Hosting;
+using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Services;
+using ActualLab.Diagnostics;
+
+namespace ActualChat.UI.Blazor;
+
+public abstract class UIServiceBase<THub>(THub hub) : IHasIsDisposed
+    where THub : UIHub
+{
+    public THub Hub { get; } = hub;
+
+    // Service shortcuts copied from CircuitHubComponentBase
+    protected IServiceProvider Services => Hub.Services;
+    protected Session Session => Hub.Session;
+    protected StateFactory StateFactory => Hub.StateFactory;
+    protected ICommander Commander => Hub.Commander;
+    protected UICommander UICommander => Hub.UICommander;
+    protected NavigationManager Nav => Hub.Nav;
+    protected IJSRuntime JS => Hub.JS;
+
+    // Core UI service shortcuts
+    protected HostInfo HostInfo => Hub.HostInfo;
+    protected UrlMapper UrlMapper => Hub.UrlMapper;
+    [field: AllowNull, MaybeNull]
+    protected MomentClockSet Clocks => field ??= Hub.Clocks;
+    protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    protected AccountSettings AccountSettings => Hub.AccountSettings;
+    protected LocalSettings LocalSettings => Hub.LocalSettings;
+    protected ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    protected DiffEngine DiffEngine => Hub.DiffEngine;
+    protected History History => Hub.History;
+    protected UIEventHub UIEventHub => Hub.UIEventHub;
+    protected AccountUI AccountUI => Hub.AccountUI;
+    protected PanelsUI PanelsUI => Hub.PanelsUI;
+    protected ModalUI ModalUI => Hub.ModalUI;
+    protected ToastUI ToastUI => Hub.ToastUI;
+    protected TuneUI TuneUI => Hub.TuneUI;
+    protected ShareUI ShareUI => Hub.ShareUI;
+    protected Dispatcher Dispatcher => Hub.Dispatcher;
+    protected Features Features => Hub.Features;
+
+    // Shortcuts
+    public bool IsDisposed => Hub.IsDisposed;
+    protected bool IsPrerendering => Hub.IsPrerendering;
+    protected bool IsInteractive => Hub.IsInteractive;
+
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Hub.LoggerFactory.CreateLogger(GetType().NonProxyType());
+    protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
+    [field: AllowNull, MaybeNull]
+    protected Tracer Tracer => field ??= Hub.Tracer[GetType()];
+}
