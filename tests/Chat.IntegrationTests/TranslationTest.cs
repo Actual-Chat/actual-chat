@@ -27,9 +27,6 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     //[InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
     public async Task ShouldDetectLanguageOnInsert(string text, int entryCount, string sExpectedLanguages)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // only for local runs for now
-
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
