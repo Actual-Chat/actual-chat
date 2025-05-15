@@ -37,6 +37,16 @@ public interface IChats : IComputeService
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
+    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 300)]
+    Task<ChatPage> GetPage(
+        Session session,
+        ChatId chatId,
+        ConversationId[] expandedConversationIds,
+        long idTileStart,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken);
+
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<Author[]> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 

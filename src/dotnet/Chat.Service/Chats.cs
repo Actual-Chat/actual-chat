@@ -1,15 +1,20 @@
 using ActualChat.Contacts;
 using ActualChat.Users;
+using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.Chat;
 
 public class Chats(IServiceProvider services) : IChats
 {
+    public static readonly TileStack<long> ConversationTileStack = Constants.Chat.ConversationTileStack;
+    public static readonly TileStack<long> ViewIdTileStack = Constants.Chat.ViewIdTileStack;
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
     [field: AllowNull, MaybeNull]
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
+    private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -91,6 +96,136 @@ public class Chats(IServiceProvider services) : IChats
     {
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await Backend.GetTile(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ChatPage> GetPage(
+        Session session,
+        ChatId chatId,
+        ConversationId[] expandedConversationIds,
+        long idTileStart,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        var showConversations = chat.IsSummarized ?? false;
+        List<Range<long>> conversationIdRanges = [];
+        List<Conversation> conversations = [];
+        List<ChatEntry> entries = [];
+        if (showConversations) {
+            var conversationIdTile = ConversationTileStack.LastLayer
+                .GetTile(idTileStart); // Get the largest tile that contains the requested range
+            var conversationIds = await ConversationsBackend
+                .GetPage(chatId,
+                    conversationIdTile.Start,
+                    offset,
+                    limit,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            var conversationsRaw = await conversationIds
+                .Select(cId => ConversationsBackend.Get(cId, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+
+            conversations = conversationsRaw
+                .Where(c => c != null)
+                .OrderBy(c => c!.EntryRange.Start)
+                .ToList()!;
+
+            if (conversations.Count >= limit) {
+                // We have enough conversations to fill the page, no need to subscribe to invalidation
+                // as the result can be invalidated by deleting any requested conversations
+            }
+            else {
+                var lastConversation = conversations.LastOrDefault();
+                var lastConversationTile = lastConversation != null
+                    ? ConversationTileStack.LastLayer.GetTile(lastConversation.EndEntryLid)
+                    : conversationIdTile;
+
+                // Subscribe on invalidation
+                _ = await ConversationsBackend.List(chatId, lastConversationTile.Range, cancellationToken).ConfigureAwait(false);
+            }
+
+            conversationIdRanges = conversations
+                .Where(c => !expandedConversationIds.Contains(c.Id))
+                .Select(c => c.EntryRange)
+                .ToList();
+        }
+        var entryIdTile = ViewIdTileStack.FirstLayer.GetTile(idTileStart);
+        var minEntryId = Math.Min(entryIdTile.Start + offset, conversations.FirstOrDefault()?.Id.StartEntryLid ?? entryIdTile.Start);
+        var maxEntryId = Math.Max(entryIdTile.End + limit, (conversations.LastOrDefault()?.EndEntryLid ?? entryIdTile.End) + limit);
+        var hasFulfilled = false;
+        while (!hasFulfilled) {
+            var entryRange = new Range<long>(minEntryId, maxEntryId);
+            var entryIdTiles = ViewIdTileStack.LastLayer.GetCoveringTiles(entryRange); // Largest tiles
+            var filteredEntryTiles = entryIdTiles
+                .Where(t => !conversationIdRanges.Exists(r => r.Contains(t.Range)))
+                .ToList();
+
+            var entryTiles = await filteredEntryTiles
+                .Select(et => Backend.GetTile(chatId,
+                    ChatEntryKind.Text,
+                    et.Range,
+                    false,
+                    cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+
+            entries = entryTiles
+                .OrderBy(t => t.IdTileRange.Start)
+                .SelectMany(t => t.Entries)
+                .Where(e => !conversationIdRanges.Any(r => r.Contains(e.LocalId)))
+                .ToList();
+
+            hasFulfilled = entries.Count >= limit;
+            if (hasFulfilled)
+                break;
+
+            // Check id range
+            Computed<Range<long>> cChatIdRange;
+            using (Computed.BeginIsolation())
+                cChatIdRange = await Computed.Capture(
+                    () => Backend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+            var chatIdRange = cChatIdRange.Value;
+            if (chatIdRange.End < maxEntryId) {
+                await cChatIdRange.Use(cancellationToken).ConfigureAwait(false); // Add dependency on chatIdRange
+                break;
+            }
+            // Expand the range
+            maxEntryId += ViewIdTileStack.MaxTileSize;
+        }
+
+        var merged = entries.Merge(conversations, (ce, co) => (int)(ce.LocalId - co.Id.StartEntryLid)).ToList();
+        var indexOfIdTileStart = merged.AsSpan().BinarySearch(p => (p.Left?.Id.LocalId ?? p.Right?.Id.StartEntryLid) >= idTileStart);
+        var startIndex = Math.Max(
+            0,
+            offset >= 0
+                ? indexOfIdTileStart
+                : indexOfIdTileStart < 0
+                    ? merged.Count - limit - 1
+                    : indexOfIdTileStart);
+        var endIndex = Math.Min(
+            merged.Count - 1,
+            startIndex + limit);
+
+        var limited = merged[startIndex..endIndex];
+        var limitedEntryTiles = limited
+            .Where(p => p.Left != null)
+            .Select(p => ViewIdTileStack.LastLayer.GetTile(p.Left!.Id.LocalId).Range)
+            .Distinct()
+            .OrderBy(r => r.Start)
+            .ToArray();
+        var limitedConversations = limited
+            .Where(p => p.Right != null)
+            .Select(p => ConversationTileStack.LastLayer.GetTile(p.Right!.Id.StartEntryLid).Range)
+            .Distinct()
+            .OrderBy(r => r.Start)
+            .ToArray();
+
+        return new ChatPage(limitedEntryTiles, limitedConversations);
     }
 
     // Note that it returns (firstId, lastId + 1) range!
