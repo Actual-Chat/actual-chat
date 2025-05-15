@@ -12,20 +12,19 @@ public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedSe
         if (!Settings.IsTranslationEnabled)
             return [];
 
+        var request = $"""
+                       ```xml
+                       {Serializer.SerializeRequest(texts)}
+                       ```
+                       """;
+        var content = await Ask(Prompt, request, cancellationToken).ConfigureAwait(false);
         try {
-            var request =
-                $"""
-                 ```xml
-                 {Serializer.SerializeRequest(texts)}
-                 ```
-                 """;
-            var content = await Ask(Prompt, request, cancellationToken).ConfigureAwait(false);
             content = content.OrdinalIgnoreCaseReplace("```xml", "").OrdinalReplace("```", "");
             return Serializer.DeserializeResponse(content, texts.Count);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogWarning(e, "Could not detect languages in bulk");
-            return Enumerable.Repeat(Array.Empty<Language>(), texts.Count).ToArray();
+            Log.LogError(e, "Could not deserialize language detection response");
+            return [..Enumerable.Repeat(Array.Empty<Language>(), texts.Count)];
         }
     }
 }

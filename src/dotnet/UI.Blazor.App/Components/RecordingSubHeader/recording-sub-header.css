@@ -2,12 +2,10 @@
     @apply relative;
     @apply flex-x items-center justify-start gap-x-2;
     @apply min-h-10;
-    @apply px-4;
-    @apply bg-banner-warning shadow-lg;
-    @apply animate-opacity-from-0;
-}
-.recording-sub-header.recording-elsewhere {
+    @apply px-2 md:px-4;
+    @apply rounded-lg border-banner-error border-2;
     @apply bg-banner-error;
+    @apply animate-opacity-from-0;
 }
 .recording-sub-header > .c-container {
     @apply flex-1 flex-y md:flex-x items-start justify-start gap-y-1;
@@ -39,7 +37,7 @@
 .recording-sub-header .c-line-1 .c-text,
 .recording-sub-header .c-line-2 .c-text {
     @apply shrink-0;
-    @apply text-caption-4 text-banner-warning;
+    @apply text-caption-4 text-banner-error;
 }
 .recording-sub-header.recording-elsewhere .c-line-1 .c-text,
 .recording-sub-header.recording-elsewhere .c-line-2 .c-text {
@@ -47,7 +45,7 @@
     @apply text-caption-4 text-banner-error;
 }
 .recording-sub-header .c-line-2 .c-text {
-    @apply text-banner-warning;
+    @apply text-banner-error;
 }
 .recording-sub-header.recording-elsewhere .c-line-2 .c-text {
     @apply text-banner-error;
@@ -59,7 +57,7 @@
 }
 .recording-sub-header .btn {
     @apply flex-none;
-    @apply text-banner-warning;
+    @apply text-banner-error;
 }
 .recording-sub-header.recording-elsewhere .btn {
     @apply px-1;

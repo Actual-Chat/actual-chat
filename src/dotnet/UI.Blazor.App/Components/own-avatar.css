@@ -1,6 +1,3 @@
-.modal-frame.own-account-editor-modal {
-    @apply max-w-full md:max-w-90 md:min-h-160;
-}
 .modal-frame.own-account-editor-modal .dialog-body {
     @apply overflow-y-auto custom-scrollbar;
 }
@@ -22,7 +19,8 @@
 .is-default-avatar label.checkbox {
     @apply m-0;
 }
-body.hoverable .default-avatar-btn:hover {
+body.hoverable .default-avatar-btn:hover,
+.touch-capable .default-avatar-btn:active {
     @apply bg-outline-hover;
 }
 .default-avatar-btn,
@@ -55,7 +53,8 @@ body.hoverable .default-avatar-btn:hover {
 .avatar-btn.delete-avatar-btn > .c-content > .c-text {
     @apply text-danger;
 }
-body.hoverable .delete-avatar-btn:hover {
+body.hoverable .delete-avatar-btn:hover,
+.touch-capable .delete-avatar-btn:active {
     @apply bg-danger-outline-hover;
 }
 .edit-account-avatar {

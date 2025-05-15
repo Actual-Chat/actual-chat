@@ -1,6 +1,7 @@
 @inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isVisible = State.Value;
+    var cls = ScreenSize.IsNarrow() ? "btn-sm" : "";
 }
 
 @if (isVisible) {
@@ -8,6 +9,7 @@
         data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
         data-bubble-priority="401"
         data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
+        Class="@cls"
         Click="Click"
         Tooltip="Chat properties"
         TooltipPosition="FloatingPosition.Bottom">

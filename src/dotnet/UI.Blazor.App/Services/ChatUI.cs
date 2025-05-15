@@ -34,6 +34,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
     private IChats Chats => Hub.Chats;
+    private IChatThreads ChatThreads => Hub.ChatThreads;
     private IConversations Conversations => Hub.Conversations;
     private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
@@ -127,9 +128,22 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
 
             var lastTextEntryText = "";
+            Chat.Chat? lastThreadChat = null;
+            Author? lastThreadCreator = null;
             if (news.LastTextEntry is { } lastTextEntry) {
                 if (lastTextEntry.IsStreaming)
                     lastTextEntryText = Constants.Messages.RecordingSkeleton;
+                else if (lastTextEntry.IsThreadStartEntry) {
+                    var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);
+                    var threadChatTask = Chats.Get(Session, threadChatId, cancellationToken);
+                    var threadCreatorTask = ChatThreads.GetThreadCreator(Session, threadChatId, cancellationToken);
+                    var threadChat = await threadChatTask.ConfigureAwait(false);
+                    var threadCreator = await threadCreatorTask.ConfigureAwait(false);
+                    lastThreadChat = threadChat;
+                    lastThreadCreator = threadCreator;
+                    if (lastThreadChat is not null)
+                        lastTextEntryText = $"Thread '{lastThreadChat.Title}'";
+                }
                 else {
                     var chatMarkupHub = ChatMarkupHubFactory[chatId];
                     var markup = await chatMarkupHub
@@ -143,6 +157,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 News = news,
                 UserSettings = userSettings,
                 LastMention = lastMention,
+                LastThread = lastThreadChat,
+                LastThreadCreator = lastThreadCreator,
                 ReadEntryLid = readEntryLid,
                 UnreadCount = unreadCount,
                 HasUnreadMentions = hasUnreadMentions,
@@ -294,6 +310,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public void DeleteChat(Chat.Chat chat)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "chat",
             m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
+
+    public void DeleteThread(Chat.Chat chat)
+    {
+        if (!chat.Id.IsThread)
+            throw new ArgumentOutOfRangeException(nameof(chat), "Given chat should be a thread");
+
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true,
+            "thread",
+            m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
+    }
 
     public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, "place",

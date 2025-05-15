@@ -38,8 +38,7 @@ internal class ChatContentArranger4(
         var currentTextEntries = tailEntries.Select(e => new TextEntry(e)).ToList();
         var extractorState = new ExtractorState(new EntryGroupBuilder(currentTextEntries), new EntryGroupBuilder());
         var bufferedTextEntries = bufferedEntries.Select(e => new TextEntry(e)).ToList();
-        var extractResult = await entryGroupExtractor.ExtractGroups(extractorState, bufferedTextEntries, cancellationToken)
-            .ConfigureAwait(false);
+        var extractResult = entryGroupExtractor.ExtractGroups(extractorState, bufferedTextEntries);
 
         foreach (var group in extractResult.Groups) {
             var entries = group.Entries.Select(e => entryMap[e.LocalId]).ToList();

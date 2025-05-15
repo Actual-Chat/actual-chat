@@ -61,7 +61,9 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var place = Place;
+        var place1 = Place;
+        var place = await Places.Get(Session, place1.Id, cancellationToken).ConfigureAwait(false);
+        place ??= place1;
         int? memberCount = null;
         if (place.Rules.CanSeeMembers()) {
             var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);

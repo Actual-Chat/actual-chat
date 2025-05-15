@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using System.Numerics
 @inherits ComputedRenderStateComponent<AppUIHub, TranslatedMessage.Model>
 @{
     var m = State.Value;
@@ -10,7 +11,9 @@
 @code {
     private Model? _rendered;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
+    private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
+    private ILogger Log => Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
@@ -19,12 +22,12 @@
     protected override bool ShouldRender()
         => _rendered is null ||
            !ReferenceEquals(_rendered, State.Value)
-            && (_rendered.Message.Entry.ContentHash != State.Value.Message.Entry.ContentHash
+            && (_rendered.Entry.ContentHash != State.Value.Entry.ContentHash
                 || _rendered.Markup != State.Value.Markup);
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.
-        var initialData = new Model(Markup, Message);
+        var initialData = new Model(Markup, Message.Entry);
         return new() {
             InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
@@ -34,25 +37,56 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
-        var markup = Markup;
-        var entry = message.Entry;
+        var renderedEntry = _rendered?.Entry ?? message.Entry;
+        var markup = _rendered?.Markup ?? Markup;
+        var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
+        if (entry == null) {
+            Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
+            return _rendered;
+        }
+
+        if (!renderedEntry.VersionEquals(entry)) {
+            markup = MarkupParser.Parse(entry.Content);
+        }
+
         if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-            return new(markup, message);
+            return new(markup, entry);
 
         var isOn = await TranslationUI.IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) ?? false;
         if (!isOn)
-            return new(markup, message);
+            return new(markup, entry);
 
         var textEntryId = entry.Id.ToTextEntryId();
         var needsTranslation = await TranslationUI.NeedsTranslation(textEntryId, cancellationToken).ConfigureAwait(false);
         if (!needsTranslation)
-            return new(markup, message);
+            return new(markup, entry);
 
         var translation = await TranslationUI.Get(textEntryId, cancellationToken).ConfigureAwait(false);
-        return new (translation == null ? markup : MarkupParser.Parse(translation.Content), message);
+        if (translation is null)
+            return new(markup, entry);
+
+        var translatedMarkup = entry.HasMediaEntry ? new PlayableTextMarkup(translation.Content, GetTimeMap()) : MarkupParser.Parse(translation.Content);
+        return new (translatedMarkup, entry);
+
+        LinearMap GetTimeMap()
+        {
+            if (entry.Content.Length == translation.Content.Length)
+                return entry.TimeMap;
+
+            var factor = translation.Content.Length / (float)entry.Content.Length;
+            var scaledPoints = new Vector2[entry.TimeMap.Points.Length];
+            for (var i = 0; i < entry.TimeMap.Points.Length; i++) {
+                var point = entry.TimeMap.Points[i];
+                scaledPoints[i] = point with {
+                    X = (int)point.X * factor,
+                };
+            }
+
+            return new LinearMap(scaledPoints);
+        }
     }
 
     // Nested types
 
-    public sealed record Model(Markup Markup, ChatEntryMessage Message);
+    public sealed record Model(Markup Markup, ChatEntry Entry);
 }

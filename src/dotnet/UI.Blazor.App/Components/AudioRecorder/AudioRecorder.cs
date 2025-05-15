@@ -157,7 +157,18 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     // JS backend callback handlers
     [JSInvokable]
-    public void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive)
+    public bool IsRecording(string chatId)
+    {
+        var state = State.Value;
+        if (!string.Equals(state.ChatId, chatId, StringComparison.OrdinalIgnoreCase))
+            return false; // Not recording
+
+        return state.IsRecording;
+    }
+
+    // JS backend callback handlers
+    [JSInvokable]
+    public void OnRecordingStateChange(bool isRecording, bool isSignalDetected, bool isConnected, bool isVoiceActive)
     {
         var state = State.Value;
         if (state.ChatId is null) {
@@ -170,6 +181,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         var newState = state with {
             IsRecording = isRecording,
+            IsSignalDetected = isSignalDetected,
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
         };
@@ -190,6 +202,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             ?.AddSentrySimulatedEvent(new ActivityEvent("Recording state changed",
                 tags: new ActivityTagsCollection {
                     { "AC." + nameof(AudioRecorderState.IsRecording), isRecording },
+                    { "AC." + nameof(AudioRecorderState.IsSignalDetected), isSignalDetected },
                     { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
@@ -253,9 +266,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private void MarkStarting(ChatId chatId)
     {
         var currentState = State.Value;
-        var (_, isRecording, isConnected, isVoiceActive) = currentState;
+        var (_, isRecording, isSignalDetected, isConnected, isVoiceActive) = currentState;
         UpdateState(new AudioRecorderState(chatId) {
             IsRecording = isRecording,
+            IsSignalDetected = isSignalDetected,
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
             RecordingStartTime = currentState.RecordingStartTime,
@@ -267,6 +281,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             .AddSentrySimulatedEvent(new ActivityEvent("Recoding is starting",
                 tags: new ActivityTagsCollection {
                     { "AC." + nameof(AudioRecorderState.IsRecording), isRecording },
+                    { "AC." + nameof(AudioRecorderState.IsSignalDetected), isSignalDetected },
                     { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
@@ -276,9 +291,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private void MarkStopped()
     {
         var currentState = State.Value;
-        var (_, isRecording, isConnected, isVoiceActive) = currentState;
+        var (_, isRecording, isSignalDetected, isConnected, isVoiceActive) = currentState;
         UpdateState(AudioRecorderState.Idle with {
             IsRecording = isRecording,
+            IsSignalDetected = isSignalDetected,
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
             RecordingStartTime = currentState.RecordingStartTime,
@@ -287,6 +303,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             ?.AddSentrySimulatedEvent(new ActivityEvent("Recording is stopped",
                 tags: new ActivityTagsCollection {
                     { "AC." + nameof(AudioRecorderState.IsRecording), isRecording },
+                    { "AC." + nameof(AudioRecorderState.IsSignalDetected), isSignalDetected },
                     { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
@@ -306,6 +323,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         public VadEvent? LastVadEvent { get; init; }
         public long? LastVadFrameProcessedAt { get; init; }
         public bool? IsConnected { get; init; }
+        public bool? IsSignalDetected { get; init; }
         public long? LastFrameProcessedAt { get; init; }
         public string? VadWorkletState { get; init; }
         public long? LastVadWorkletFrameProcessedAt { get; init; }
@@ -313,7 +331,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         public long? LastEncoderWorkletFrameProcessedAt { get; init; }
 
         public override string ToString()
-            => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceMaintained)}: {IsAudioContextSourceMaintained}, {nameof(IsAudioContextRunning)}: {IsAudioContextRunning}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
+            => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceMaintained)}: {IsAudioContextSourceMaintained}, {nameof(IsAudioContextRunning)}: {IsAudioContextRunning}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(IsSignalDetected)}: {IsSignalDetected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
     }
 
     public class VadEvent

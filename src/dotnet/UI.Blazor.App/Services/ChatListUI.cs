@@ -304,6 +304,8 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
 
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
+        if (selectedChatId.IsThread)
+            return false;
 
         using var gracefulCts = cancellationToken.CreateDelayedTokenSource(HeavyTaskCancellationDelay);
         var cancellationToken2 = gracefulCts.Token;

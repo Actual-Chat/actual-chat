@@ -2,7 +2,11 @@
 @{
     var m = State.Value;
     var chat = Chat;
-    var searchCls = m.IsSearchMode ? "on" : "";
+    var searchCls = ScreenSize.IsNarrow() ? "btn-sm" : "";
+    if (m.IsSearchMode)
+        searchCls += " on";
+    var isThread = chat?.Id.IsThread ?? false;
+    var showBackBtn = isThread || ScreenSize.IsNarrow();
 }
 
 @if (m.HasSelection) {
@@ -13,7 +17,7 @@
 }
 
 <div class="c-content">
-    @if (IsLeftNavigateButtonVisible) {
+    @if (IsLeftNavigateButtonVisible && showBackBtn) {
         <HeaderButton Click="@OnOpenLeftPanelClick" Class="chat-header-back">
             <i class="icon-arrow-left"></i>
         </HeaderButton>
@@ -57,14 +61,18 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel">
-        @if (m.EnableIncompleteUI) {
-            <HeaderButton Click="@OnSearchClick" Class="@searchCls">
-                <i class="icon-ai-search"></i>
-            </HeaderButton>
-        }
-        @if (IsRightNavigateButtonVisible) {
-            <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
-        }
+            <TranslationButton ChatId="@chat.Id"/>
+            @if (m.EnableIncompleteUI) {
+                <HeaderButton Click="@OnSearchClick" Class="@searchCls">
+                    <i class="icon-ai-search"></i>
+                </HeaderButton>
+            }
+            @if (chat.Id.IsThread) {
+                <ChatHeaderFollowThreadToggle ThreadChatId="@chat.Id" />
+            }
+            @if (IsRightNavigateButtonVisible) {
+                <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
+            }
         </div>
     }
 </div>
@@ -99,8 +107,25 @@
     private void OnToggleRightPanelClick()
         => Hub.PanelsUI.Right.Toggle();
 
-    private void OnOpenLeftPanelClick()
-        => Hub.PanelsUI.Left.SetIsVisible(true);
+    private async Task OnOpenLeftPanelClick() {
+        if (Chat is not null && Chat.Id.IsThread) {
+            var parentChatId = Chat.Id.GetThreadParent();
+            var parentChatLink = Links.Chat(parentChatId);
+            if (History.TryGetStepBackUrl(out var backUrl)) {
+                var threadChatLink = Links.Chat(Chat.Id);
+                if (backUrl.StartsWith(parentChatLink) && !backUrl.StartsWith(threadChatLink)) {
+                    if (await History.TryStepBack())
+                        return;
+                }
+            }
+
+             await History.NavigateTo(Links.Chat(parentChatId), true);
+             return;
+        }
+
+        if (ScreenSize.IsNarrow())
+            Hub.PanelsUI.Left.SetIsVisible(true);
+    }
 
     private void OnSearchClick()
         => Hub.PanelsUI.Right.SearchToggle();

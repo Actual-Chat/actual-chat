@@ -1,6 +1,3 @@
-.add-member-modal.modal-frame {
-    @apply md:min-w-90 md:max-w-90 md:h-160 md:max-h-160;
-}
 .add-member-modal-content .dialog-body {
     @apply flex-y gap-y-2;
 }
@@ -27,7 +24,10 @@
     @apply min-h-12 max-h-12;
     @apply px-2;
     @apply rounded-md;
-    @apply hover:bg-hover;
+}
+body.hoverable .c-contact-list > .c-item:hover,
+.touch-capable .c-contact-list > .c-item:active {
+    @apply bg-hover;
 }
 .c-contact-list > .c-item,
 .c-contact-list > .c-item * {
@@ -38,7 +38,8 @@
     @apply truncate;
     @apply text-headline-1 text-02;
 }
-.c-contact-list > .c-item:hover > .avatar-name {
+body.hoverable .c-contact-list > .c-item:hover > .avatar-name,
+.touch-capable .c-contact-list > .c-item:active > .avatar-name {
     @apply text-01;
 }
 

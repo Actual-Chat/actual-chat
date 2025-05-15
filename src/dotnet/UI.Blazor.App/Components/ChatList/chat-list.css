@@ -158,7 +158,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply flex-x items-end gap-x-1;
     @apply w-full h-3.5;
     @apply truncate;
-    @apply text-xs text-03;
+    @apply text-caption-4 text-03;
 }
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-chat-title > .c-skeleton,
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-last-message > .c-skeleton {
@@ -169,7 +169,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply flex;
     @apply truncate;
     @apply whitespace-pre;
-    @apply text-xs text-02 font-medium;
+    @apply text-caption-1 text-02;
 }
 .chat-list .navbar-item-content .c-last-message .c-name:has(.non-shrinkable) {
     @apply flex-none;
@@ -179,7 +179,7 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 }
 .chat-list .navbar-item-content .c-last-message .c-colon {
     @apply -ml-1;
-    @apply text-xs text-02 font-medium;
+    @apply text-caption-1 text-02;
 }
 .chat-list .navbar-item-content .c-last-message .c-text {
     @apply min-w-8;
@@ -224,7 +224,7 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply hidden;
 }
 .navbar-item .message-counter-badge {
-    @apply absolute right-2.5 bottom-1.5;
+    @apply absolute z-10 right-2.5 bottom-1.5;
     @apply mx-0;
 }
 .navbar-item .navbar-item-ending .message-counter-badge {

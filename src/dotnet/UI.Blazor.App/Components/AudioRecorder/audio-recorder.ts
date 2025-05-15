@@ -8,6 +8,7 @@ import { AudioPlayer } from '../AudioPlayer/audio-player';
 import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { Log } from 'logging';
+import { throttle } from 'promises';
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
@@ -29,11 +30,14 @@ export class AudioDiagnosticsState {
     public lastEncoderWorkletFrameProcessedAt?: number = null;
 }
 
+const HEARTBEAT_INTERVAL = 2000; // ms
+
 export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly onReconnected: EventHandler<void>;
 
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
+    private chatId?: string = null;
 
     public static async terminate(): Promise<void> {
         debugLog?.log(`-> terminate()`);
@@ -50,13 +54,15 @@ export class AudioRecorder {
     public constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.ensureConnected(true));
-        opusMediaRecorder.subscribeToStateChanges((isRecording, isConnected, isVoiceActive) =>
-            this.onRecordingStateChange(isRecording, isConnected, isVoiceActive));
+        opusMediaRecorder.subscribeToStateChanges((isRecording, isSignalDetected, isConnected, isVoiceActive) =>
+            this.onRecordingStateChange(isRecording, isSignalDetected, isConnected, isVoiceActive));
+        opusMediaRecorder.subscribeToRecordingHeartbeat(() => this.heartbeatThrottled());
     }
 
     /** Called from Blazor */
     public async dispose(): Promise<void> {
         debugLog?.log(`-> dispose()`);
+        this.chatId = null;
         if (this.onReconnected)
             BrowserInit.reconnectedEvents.remove(this.onReconnected);
         try {
@@ -130,6 +136,7 @@ export class AudioRecorder {
     /** Called from Blazor  */
     public async startRecording(chatId: string, repliedChatEntryId: string, sessionToken: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
+        this.chatId = chatId;
 
         try {
             if (sessionToken)
@@ -141,7 +148,6 @@ export class AudioRecorder {
             }
 
             this.state = 'starting';
-
             await opusMediaRecorder.start(chatId, repliedChatEntryId);
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
@@ -151,6 +157,7 @@ export class AudioRecorder {
         catch (e) {
             errorLog?.log(`startRecording: unhandled error:`, e);
             this.state = 'failed';
+            this.chatId = null;
             throw e;
         }
         finally {
@@ -164,6 +171,7 @@ export class AudioRecorder {
     public async stopRecording(): Promise<void> {
         try {
             debugLog?.log(`-> stopRecording`);
+            this.chatId = null;
             await opusMediaRecorder.stop();
         }
         catch (error) {
@@ -206,9 +214,30 @@ export class AudioRecorder {
         return await opusMediaRecorder.runDiagnostics(diagnosticsState);
     }
 
-    private async onRecordingStateChange(isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {
+    private readonly heartbeatThrottled = throttle(() => this.heartbeat(), HEARTBEAT_INTERVAL);
+    private async heartbeat(): Promise<void> {
         try {
-            await this.blazorRef.invokeMethodAsync('OnRecordingStateChange', isRecording, isConnected, isVoiceActive);
+            const chatId = this.chatId;
+            if (!chatId) {
+                void this.stopRecording();
+                return;
+            }
+
+            const isRecording = await this.blazorRef.invokeMethodAsync<boolean>('IsRecording', chatId);
+            if (isRecording)
+                return;
+
+            debugLog?.log(`heartbeat: recording is stopped`);
+            void this.stopRecording();
+        } catch (e) {
+            warnLog?.log('heartbeat: failed', e);
+            void this.stopRecording();
+        }
+    }
+
+    private async onRecordingStateChange(isRecording: boolean, isSignalDetected: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {
+        try {
+            await this.blazorRef.invokeMethodAsync('OnRecordingStateChange', isRecording, isSignalDetected, isConnected, isVoiceActive);
         }
         catch (error) {
             errorLog?.log(`onRecordingStateChange: unhandled error:`, error);

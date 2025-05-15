@@ -7,9 +7,11 @@
 }
 
 <div @ref="Ref" class="date-visor-wrapper">
-    <div class="date-visor">
-        @m
-    </div>
+    @if (!m.IsNullOrEmpty()) {
+        <div class="date-visor">
+            @m
+        </div>
+    }
 </div>
 
 @code {

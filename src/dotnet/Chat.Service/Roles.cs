@@ -81,7 +81,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
 
         var authorIds = await Backend.ListAuthorIds(targetChatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
         if (targetChatId != chatId)
-            authorIds = authorIds.Select(c => Remap(c, chatId)).ToArray();
+            authorIds = authorIds.Select(c => ActualChat.Chat.AuthorsBackend.Remap(c, chatId)).ToArray();
         // Mask anonymous owners
         if (!rules.IsOwner())
             authorIds = await MaskAnonymousAuthors(authorIds, cancellationToken).ConfigureAwait(false);
@@ -147,7 +147,4 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
 
         return authorIds.Except(toExclude).ToArray();
     }
-
-    private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
-        => AuthorId.New(targetChatId, authorId.LocalId);
 }

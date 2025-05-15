@@ -26,6 +26,9 @@
         width: calc(100% - 4rem);
     }
 }
+.left-chat-search-input.closed > .c-search {
+    @apply delay-300;
+}
 .left-chat-search-input.place > .c-search {
     @apply w-32;
 }
@@ -36,6 +39,11 @@
 .left-chat-search-input.place.open > .c-search {
     @apply bg-transparent;
     @apply border-transparent;
+}
+.left-chat-search-input .search-input {
+    transition: border-color;
+    transition-duration: 500ms;
+    transition-timing-function: ease-in-out;
 }
 .left-chat-search-input .search-input input {
     @apply px-4;

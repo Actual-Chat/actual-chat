@@ -50,6 +50,9 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply h-auto max-h-14;
     @apply pr-3;
 }
+body.narrow .chat-activity-banner.banner {
+    @apply py-0 px-0.5;
+}
 .chat-activity-banner.banner:not(:has(.chat-activity-panel)) {
     @apply hidden;
 }

@@ -69,6 +69,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApiOrLocal<IConversations, Conversations>();
         rpcHost.AddBackend<IConversationsBackend, ConversationsBackend>();
 
+        // Chat threads
+        rpcHost.AddApiOrLocal<IChatThreads, ChatThreads>();
+        rpcHost.AddBackend<IChatThreadsBackend, ChatThreadsBackend>();
+
         // IBackendChatMarkupHub
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
@@ -79,6 +83,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         if (Settings.IsTranslationEnabled) {
+            Settings.LanguageDetection.PromptFile.RequireFileExists();
+            Settings.Translation.PromptFile.RequireFileExists();
             AddKeyedOpenAI(services,
                 Constants.Translation.ServiceKey,
                 Settings.Translation.OpenAIModel,
@@ -104,11 +110,14 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIApiKey, Settings.OpenAIChatModel);
+            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIChatModel, Settings.OpenAIApiKey);
             services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
+            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>();
         }
-        else
+        else {
             services.AddSingleton<IConversationSummarizer, ConversationSummarizerStub>();
+            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractorStub>();
+        }
 
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();

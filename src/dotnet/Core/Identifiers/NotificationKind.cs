@@ -9,5 +9,6 @@ public enum NotificationKind
     Mention,
     Reaction,
     Attention,
+    NewThread,
     Invalid, // Must be the very last entry here - it is used in NotificationId parsing logic
 }

@@ -29,25 +29,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (authorId.ChatId != chatId)
             return null;
 
-        if (authorKind == default || chatId is not PlaceChatId placeChatId || placeChatId.IsRoot)
-            return await GetInternal(chatId, authorId, cancellationToken).ConfigureAwait(false);
-
-        var rootChatId = placeChatId.PlaceId.RootChatId;
-        var rootAuthor = await GetInternal(rootChatId, Remap(authorId, rootChatId), cancellationToken)
-            .ConfigureAwait(false);
-        if (rootAuthor == null)
-            return null;
-
-        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return null;
-
-        if (chat.IsPublic)
-            return rootAuthor with { Id = Remap(rootAuthor.Id, chatId) };
-
-        // If it's a private Chat on the Place, then we should have explicit author on the Chat.
-        var author = await GetInternal(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        return CreatePrivateChatAuthor(author, rootAuthor);
+        var author = await Get(chatId, (PrincipalId)authorId, authorKind, cancellationToken).ConfigureAwait(false);
+        return author;
     }
 
     // [ComputeMethod]
@@ -59,24 +42,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         ArgumentNullException.ThrowIfNull(chatId);
         ArgumentNullException.ThrowIfNull(userId);
 
-        if (authorKind == default || chatId is not PlaceChatId placeChatId || placeChatId.IsRoot)
-            return await GetByUserIdInternal(chatId, userId, cancellationToken).ConfigureAwait(false);
-
-        var rootChatId = placeChatId.PlaceId.RootChatId;
-        var rootAuthor = await GetByUserIdInternal(rootChatId, userId, cancellationToken).ConfigureAwait(false);
-        if (rootAuthor == null)
-            return null;
-
-        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return null;
-
-        if (chat.IsPublic)
-            return rootAuthor with { Id = Remap(rootAuthor.Id, chatId) };
-
-        // Private chats in places have their own author instances
-        var author = await GetByUserIdInternal(chatId, userId, cancellationToken).ConfigureAwait(false);
-        return CreatePrivateChatAuthor(author, rootAuthor);
+        var author = await Get(chatId, (PrincipalId)userId, authorKind, cancellationToken).ConfigureAwait(false);
+        return author;
     }
 
     // [ComputeMethod]
@@ -136,6 +103,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     {
         var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
         ArgumentNullException.ThrowIfNull(chatId);
+        chatId.EnsureNonThread();
         if (authorId is null) {
             if (userId is null)
                 throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId must be provided.");
@@ -152,7 +120,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             var (invAuthor, invOldAuthor) = context.Operation.Items.KeylessGet<(AuthorFull?, AuthorFull?)>();
             if (invAuthor is not null) {
                 _ = GetInternal(chatId, invAuthor.Id, default);
-                _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
+                _ = GetInternal(chatId, invAuthor.UserId, default);
                 var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
                 if (invAuthor.HasLeft != invOldHadLeft) {
                     _ = ListAuthorIdsInternal(chatId, default);
@@ -334,6 +302,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId) = command;
+        chatId.EnsureNonThread();
         var nonNullCount = (authorId is not null ? 1 : 0) + (chatId is not null ? 1 : 0) + (userId is not null ? 1 : 0);
         if (nonNullCount != 1)
             throw new ArgumentOutOfRangeException(nameof(command),
@@ -350,7 +319,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                     var invChatId = invAuthor.ChatId;
                     invChatIds.Add(invChatId);
                     _ = GetInternal(invChatId, invAuthor.Id, default);
-                    _ = GetByUserIdInternal(invChatId, invAuthor.UserId, default);
+                    _ = GetInternal(invChatId, invAuthor.UserId, default);
                 }
             }
             foreach (var invChatId in invChatIds) {
@@ -417,7 +386,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (Invalidation.IsActive) {
             if (context.Operation.Items.KeylessGet<List<UserId>>() is { } invAuthorUserIds)
                 foreach (var invAuthorUserId in invAuthorUserIds)
-                    _ = GetByUserIdInternal(newChatId, invAuthorUserId, default);
+                    _ = GetInternal(newChatId, invAuthorUserId, default);
             if (context.Operation.Items.KeylessGet<List<AuthorId>>() is { } invAuthorIds)
                 foreach (var invAuthorId in invAuthorIds)
                     _ = GetInternal(newChatId, invAuthorId, default);
@@ -557,42 +526,56 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<AuthorFull?> GetInternal(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    protected virtual async Task<AuthorFull?> Get(
+        ChatId chatId,
+        PrincipalId principalId,
+        RequestedAuthorKind authorKind,
+        CancellationToken cancellationToken)
     {
-        if (authorId.ChatId != chatId)
-            return null;
-
-        if (authorId == Bots.GetWalleId(chatId))
-            return Bots.GetWalle(chatId);
-
-        var dbAuthor = await DbAuthorResolver.Get(authorId.Value, cancellationToken).ConfigureAwait(false);
-        AuthorFull? author;
-        if (dbAuthor == null) {
-            if (chatId is not PeerChatId peerChatId)
+        if (chatId.IsThread) {
+            var parentChatId = chatId.GetThreadParent();
+            var author2 = await Get(parentChatId, Remap(principalId, parentChatId), option, cancellationToken).ConfigureAwait(false);
+            if (author2 is null)
                 return null;
 
-            author = GetDefaultPeerChatAuthor(peerChatId, authorId);
-            if (author == null)
-                return null;
+            return author2 with {
+                Id = Remap(author2.Id, chatId),
+                RoleIds = [],
+            };
         }
-        else
-            author = dbAuthor.ToModel();
+        if (authorKind is RequestedAuthorKind.Default
+            || chatId is not PlaceChatId placeChatId
+            || placeChatId.IsRoot)
+            return await GetInternal(chatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        if (chatId is not PlaceChatId placeChatId || placeChatId.IsRoot)
-            author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
-        return author;
+        return await GetPlaceChatAuthor(chatId, principalId, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
-    protected virtual async Task<AuthorFull?> GetByUserIdInternal(
-        ChatId chatId, UserId userId,
+    protected virtual async Task<AuthorFull?> GetInternal(
+        ChatId chatId, PrincipalId principalId,
         CancellationToken cancellationToken)
     {
-        if (userId == Constants.User.Walle.UserId)
-            return Bots.GetWalle(chatId);
-
         AuthorFull? author;
-        { // Closes "using" block earlier
+        UserId? userId = null;
+        AuthorId? authorId = null;
+        if (principalId is AuthorId authorId1) {
+            authorId = authorId1;
+            if (authorId.ChatId != chatId)
+                return null;
+
+            if (authorId == Bots.GetWalleId(chatId))
+                return Bots.GetWalle(chatId);
+
+            var dbAuthor = await DbAuthorResolver.Get(authorId.Value, cancellationToken).ConfigureAwait(false);
+            author = dbAuthor?.ToModel();
+        }
+        else if (principalId is UserId userId1) {
+            userId = userId1;
+            if (userId == Constants.User.Walle.UserId)
+                return Bots.GetWalle(chatId);
+
+            // Closes "using" block earlier
             var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
             await using var _ = dbContext.ConfigureAwait(false);
 
@@ -602,11 +585,16 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                 .ConfigureAwait(false);
             author = dbAuthor?.ToModel();
         }
+        else
+            throw new ArgumentOutOfRangeException(nameof(principalId));
+
         if (author == null) {
             if (chatId is not PeerChatId peerChatId)
                 return null;
 
-            author = GetDefaultPeerChatAuthor(peerChatId, userId);
+            author = userId is not null
+                ? GetDefaultPeerChatAuthor(peerChatId, userId)
+                : GetDefaultPeerChatAuthor(peerChatId, authorId!);
             if (author == null)
                 return null;
         }
@@ -649,6 +637,26 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // Private / internal methods
+
+    private async Task<AuthorFull?> GetPlaceChatAuthor(ChatId chatId, PrincipalId principalId, CancellationToken cancellationToken)
+    {
+        var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
+        var rootAuthor = await GetInternal(rootChatId, Remap(principalId, rootChatId), cancellationToken)
+            .ConfigureAwait(false);
+        if (rootAuthor == null)
+            return null;
+
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
+        if (chat.IsPublic)
+            return rootAuthor with { Id = Remap(rootAuthor.Id, chatId) };
+
+        // If it's a private Chat on the Place, then we should have explicit author on the Chat.
+        var author = await GetInternal(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        return CreatePrivateChatAuthor(author, rootAuthor);
+    }
 
     private async ValueTask<AuthorFull> AddAvatar(AuthorFull author, CancellationToken cancellationToken)
     {
@@ -709,6 +717,9 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
     private async Task<ChatId> GetAuthorChatId(ChatId chatId, CancellationToken cancellationToken)
     {
+        if (chatId.IsThread)
+            return await GetAuthorChatId(chatId.GetOutermostThreadParentOrSelf(), cancellationToken).ConfigureAwait(false);
+
         if (chatId is not PlaceChatId placeChatId || placeChatId.IsRoot)
             return chatId;
 
@@ -720,6 +731,17 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
     private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
         => AuthorId.New(targetChatId, authorId.LocalId);
+
+    internal static PrincipalId Remap(PrincipalId principalId, ChatId targetChatId)
+    {
+        if (principalId is AuthorId authorId)
+            return Remap(authorId, targetChatId);
+
+        if (principalId is UserId)
+            return principalId;
+
+        throw new ArgumentOutOfRangeException(nameof(principalId), $"Can't remap principalId with Kind={principalId.Kind}.");
+    }
 
     private static AuthorFull? CreatePrivateChatAuthor(AuthorFull? author2, AuthorFull rootAuthor)
     {

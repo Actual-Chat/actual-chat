@@ -22,15 +22,15 @@ public class ChatEntryAuthorGroup : ChatMessage, IVirtualListGroup<ChatEntryMess
         if (ReferenceEquals(this, other))
             return true;
 
-        if (other is not ExpandedConversationMessage otherConversationMessage)
+        if (other is not ChatEntryAuthorGroup chatEntryAuthorGroup)
             return false;
 
-        return Key.Equals(otherConversationMessage.Key)
+        return Key.Equals(chatEntryAuthorGroup.Key)
             && ReplacementKind == other.ReplacementKind
             && Date == other.Date
             && Flags == other.Flags
-            && Items.Count == otherConversationMessage.Items.Count
-            && Items.SequenceEqual(otherConversationMessage.Items);
+            && Items.Count == chatEntryAuthorGroup.Items.Count
+            && Items.SequenceEqual(chatEntryAuthorGroup.Items);
     }
 
     public override int GetHashCode()

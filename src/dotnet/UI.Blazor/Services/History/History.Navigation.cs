@@ -67,6 +67,22 @@ public partial class History
         await entry.WhenCompleted.ConfigureAwait(false);
     }
 
+    public bool TryGetStepBackUrl(out string backUrl)
+    {
+        backUrl = "";
+        Dispatcher.AssertAccess();
+        var currentItem = _currentItem;
+        if (!currentItem.HasBackSteps)
+            return false;
+
+        var backItem = GetItemById(currentItem.BackItemId);
+        if (backItem is null)
+            return false;
+
+        backUrl = backItem.Url;
+        return true;
+    }
+
     public async Task<bool> TryStepBack()
     {
         Dispatcher.AssertAccess();

@@ -1,5 +1,4 @@
 .onboarding-modal.modal-frame {
-    @apply h-full md:min-w-90 md:max-w-90 md:min-h-160 md:max-h-160;
     @apply p-0;
     @apply text-01;
 }

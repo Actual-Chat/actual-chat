@@ -12,6 +12,8 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public ChatNews News { get; init; }
     public UserChatSettings UserSettings { get; init; } = UserChatSettings.Default;
     public Mention? LastMention { get; init; }
+    public Chat.Chat? LastThread { get; init; }
+    public Author? LastThreadCreator { get; init; }
     public long ReadEntryLid { get; init; }
     public Trimmed<int> UnreadCount { get; init; }
     public bool HasUnreadMentions { get; init; }
@@ -22,6 +24,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public ChatId Id => Contact.Id.ChatId;
     public Chat.Chat Chat => Contact.Chat;
     public ChatEntry? LastTextEntry => News.LastTextEntry;
+    public bool IsThreadStartEntry => LastTextEntry?.IsThreadStartEntry == true;
 
     // Computed
     public Trimmed<int> UnmutedUnreadCount => UserSettings.NotificationMode switch {

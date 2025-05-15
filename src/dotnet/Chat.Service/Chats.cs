@@ -108,8 +108,17 @@ public class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
+        var isThread = chatId.IsThread;
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (isThread) {
+            var permissions = rules.Permissions;
+            if (permissions.HasFlag(ChatPermissions.Write))
+                permissions |= ChatPermissions.EditProperties;
+            rules = rules with {
+                Permissions = permissions,
+            };
+        }
         return rules;
     }
 
@@ -233,18 +242,53 @@ public class Chats(IServiceProvider services) : IChats
             await ValidatePlaceChatChangeConstraints(placeId, chatDiff1).ConfigureAwait(false);
         }
         else {
-            var requiredPermissions = change.Remove
-                ? ChatPermissions.Owner
-                : ChatPermissions.EditProperties;
-            chat.Require().Rules.Permissions.Require(requiredPermissions);
-            if (change.IsUpdate(out var chatDiff2))
-                await ValidatePlaceChatChangeConstraints((chat.Id as PlaceChatId)?.PlaceId, chatDiff2).ConfigureAwait(false);
+            chatId.Require();
+            if (chatId.IsThread) {
+                if (change.IsUpdate(out var chatDiff2)) {
+                    chat.Require().Rules.Permissions.Require(ChatPermissions.EditProperties);
+                    ValidateThreadChatChangeConstraints(chatDiff2);
+                }
+                else if (change.Kind is ChangeKind.Remove) {
+                    var parentChatId = chatId.GetThreadParentOrSelf();
+                    var parentChat = await Get(session, parentChatId, cancellationToken).ConfigureAwait(false);
+                    parentChat.Require().Rules.Permissions.Require(ChatPermissions.Owner); // Thread can be removed only by parent chat owner.
+                }
+                else
+                    throw StandardError.Internal("Invalid ChangeKind");
+            }
+            else {
+                var requiredPermissions = change.Remove
+                    ? ChatPermissions.Owner
+                    : ChatPermissions.EditProperties;
+                chat.Require().Rules.Permissions.Require(requiredPermissions);
+
+                if (change.IsUpdate(out var chatDiff2))
+                    await ValidatePlaceChatChangeConstraints((chat.Id as PlaceChatId)?.PlaceId, chatDiff2).ConfigureAwait(false);
+            }
         }
 
         chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         if (change.Create.HasValue)
             await Authors.EnsureJoined(session, chat.Id, cancellationToken).ConfigureAwait(false);
         return chat;
+
+        void ValidateThreadChatChangeConstraints(ChatDiff chatDiff)
+        {
+            var isReadOnlyProperty = chatDiff.IsPublic.HasValue
+                || chatDiff.PlaceId is not null
+                || chatDiff.IsTemplate.HasValue
+                || chatDiff.TemplateId.HasValue
+                || chatDiff.TemplatedForUserId.HasValue
+                || chatDiff.Kind.HasValue
+                || chatDiff.IsArchived.HasValue
+                || chatDiff.MediaId is not null
+                || chatDiff.SystemTag.HasValue
+                || chatDiff.AliasId is not null
+                || chatDiff.AllowAnonymousAuthors.HasValue
+                || chatDiff.AllowGuestAuthors.HasValue;
+            if (isReadOnlyProperty)
+                throw StandardError.Constraint("It's allowed to change only Title or Description for the thread.");
+        }
 
         async Task ValidatePlaceChatChangeConstraints(PlaceId? placeId, ChatDiff chatDiff)
         {

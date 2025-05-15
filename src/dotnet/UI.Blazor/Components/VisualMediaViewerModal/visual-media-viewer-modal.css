@@ -18,6 +18,7 @@
     @apply w-full;
     @apply md:shadow-md;
     background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+    transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
 }
 .image-viewer-header > .c-author {
     @apply flex-1 flex-x items-center gap-x-4;
@@ -54,12 +55,10 @@ body.hoverable .image-viewer-header .btn-h:hover {
 .image-viewer-header.hide-to-show {
     opacity: 1;
     transform: translateY(0);
-    transition: all 300ms ease-in-out;
 }
 .image-viewer-header.show-to-hide {
     opacity: 0;
     transform: translateY(-3.5rem);
-    transition: all 300ms ease-in-out;
 }
 
 /* Image viewer footer */
@@ -69,16 +68,16 @@ body.hoverable .image-viewer-header .btn-h:hover {
     @apply h-14 w-full;
     @apply md:shadow-md-top;
     background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+    transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
+
 }
 .image-viewer-footer.hide-to-show {
     opacity: 1;
     transform: translateY(0);
-    transition: all 300ms ease-in-out;
 }
 .image-viewer-footer.show-to-hide {
     opacity: 0;
     transform: translateY(3.5rem);
-    transition: all 300ms ease-in-out;
 }
 
 /* Swiper */
@@ -271,16 +270,16 @@ swiper-container.media-preview-swiper::part(wrapper) {
 swiper-container.media-swiper.navigation-hidden::part(button-prev) {
     filter: opacity(0);
     transform: translateX(-40px);
-    transition: all 300ms ease-in-out;
+    transition: transform 300ms ease-in-out, filter 300ms ease-in-out, -webkit-filter 300ms ease-in-out;
 }
 swiper-container.media-swiper.navigation-hidden::part(button-next) {
     filter: opacity(0);
     transform: translateX(40px);
-    transition: all 300ms ease-in-out;
+    transition: transform 300ms ease-in-out, filter 300ms ease-in-out, -webkit-filter 300ms ease-in-out;
 }
 swiper-container.media-swiper.navigation-visible::part(button-next),
 swiper-container.media-swiper.navigation-visible::part(button-prev) {
-    transition: all 300ms ease-in-out;
+    transition: transform 300ms ease-in-out, filter 300ms ease-in-out, -webkit-filter 300ms ease-in-out;
 }
 
 .media-preview-swiper .swiper-slide-visible {

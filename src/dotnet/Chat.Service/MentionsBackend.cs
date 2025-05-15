@@ -30,8 +30,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
     // Events
 
     // [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(
-        TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind, _) = eventCommand;
         var context = CommandContext.GetCurrent();
@@ -53,6 +52,7 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        MentionId[] toAddMentionIds = [];
         var changedMentionIds = new HashSet<MentionId>();
         if (changeKind is ChangeKind.Remove) {
             dbContext.Mentions.RemoveRange(existingMentions);
@@ -74,7 +74,8 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             dbContext.Mentions.AddRange(toAdd);
 
             changedMentionIds.AddRange(toRemove.Select(m => MentionId.Parse(m.MentionId)));
-            changedMentionIds.AddRange(toAdd.Select(m => MentionId.Parse(m.MentionId)));
+            toAddMentionIds = toAdd.Select(m => MentionId.Parse(m.MentionId)).ToArray();
+            changedMentionIds.AddRange(toAddMentionIds);
         }
 
         if (changedMentionIds.Count == 0)
@@ -82,6 +83,10 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(changedMentionIds);
+
+        var chatId = eventCommand.Entry.ChatId;
+        if (chatId.IsThread && toAddMentionIds.Length > 0)
+            context.Operation.AddEvent(new UserMentionedInThreadChatEvent(chatId, toAddMentionIds));
     }
 
     private async Task<HashSet<MentionId>> GetMentionIds(ChatEntry entry, CancellationToken cancellationToken)

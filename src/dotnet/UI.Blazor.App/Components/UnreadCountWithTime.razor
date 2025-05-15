@@ -17,7 +17,7 @@
 
 <div class="message-counter-with-time">
     @if (!HideLastEntryTime) {
-        <LastEntryTime LastEntry="@LastEntry"/>
+        @Hub.MarkupHelpers.LastEntryTime(LastEntry?.BeginsAt)
     }
     @if (Value != 0 || HasMentions) {
         <Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>

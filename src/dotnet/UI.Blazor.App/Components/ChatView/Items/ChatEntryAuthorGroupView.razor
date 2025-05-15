@@ -1,10 +1,18 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@{
+    var m = Message;
+    var firstItem = m.Items.FirstOrDefault();
+    var showAuthorBadge = !(firstItem?.Entry.IsSystemEntry ?? false);
+}
+
 
 <div class="chat-message-group">
     <div class="c-left">
-        <ChatMessageAuthorCircle
-            AuthorSid="@Message.AuthorId.Value"
-            Click="@_onClickCallback"/>
+        @if (showAuthorBadge) {
+            <ChatMessageAuthorCircle
+                AuthorSid="@Message.AuthorId.Value"
+                Click="@_onClickCallback"/>
+        }
     </div>
     <div class="c-group-items">
         @foreach (var item in Message.Items) {

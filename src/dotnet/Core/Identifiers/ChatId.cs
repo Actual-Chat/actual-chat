@@ -18,6 +18,8 @@ namespace ActualChat;
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasShardKey<string>
 {
+    public const char ThreadIdSeparator = '-';
+
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatId>();
     private static readonly ILruCache<string, ChatId> Cache = CreateCache<ChatId>(512);
@@ -30,6 +32,36 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     public bool IsSystem => Constants.Chat.SystemChatIds.Contains(this);
     [IgnoreDataMember]
     public virtual string ShardKey => Value;
+
+    public long ThreadId => Kind switch {
+        ChatKind.Group => GroupChatId.ThreadId,
+        ChatKind.Place => PlaceChatId.ThreadId,
+        _ => 0,
+    };
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsThread => ThreadId > 0;
+    public ChatId GetThreadParentOrSelf() => Kind switch {
+        ChatKind.Group => GroupChatId.GetThreadParentOrSelf(),
+        ChatKind.Place => PlaceChatId.GetThreadParentOrSelf(),
+        _ => this,
+    };
+    public ChatId GetThreadParent()
+    {
+        if (!IsThread)
+            throw StandardError.NotSupported("This method is supported only for thread chat ids.");
+        return Kind switch {
+            ChatKind.Group => GroupChatId.GetThreadParentOrSelf(),
+            ChatKind.Place => PlaceChatId.GetThreadParentOrSelf(),
+            _ => this,
+        };
+    }
+
+    public ChatId GetOutermostThreadParentOrSelf() {
+        var result = this;
+        while (result.IsThread)
+            result = result.GetThreadParentOrSelf();
+        return result;
+    }
 
     // Factories and constructors
 

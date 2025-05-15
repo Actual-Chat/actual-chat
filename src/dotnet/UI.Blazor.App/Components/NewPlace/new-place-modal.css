@@ -1,5 +1,4 @@
 .new-place-modal.modal-frame {
-    @apply md:min-w-96 md:max-w-96 md:h-160 md:max-h-160;
     @apply gap-y-0;
 }
 .new-place-modal .dialog-body {

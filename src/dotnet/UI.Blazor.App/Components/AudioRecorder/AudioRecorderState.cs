@@ -4,6 +4,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 public readonly record struct AudioRecorderState(
     ChatId? ChatId,
     bool IsRecording = false,
+    bool IsSignalDetected = false,
     bool IsConnected = false,
     bool IsVoiceActive = false)
 {

@@ -48,7 +48,6 @@ export class VirtualList {
     private readonly endSpacerRef: HTMLElement;
     private readonly renderIndexRef: HTMLElement;
     private readonly endAnchorRef: HTMLElement;
-    private readonly layoutFooter?: HTMLElement;
     private readonly abortController: AbortController;
     private readonly itemSetChangeObserver: MutationObserver;
     private readonly sizeObserver: ResizeObserver;
@@ -140,6 +139,9 @@ export class VirtualList {
         this.defaultSpacerSize = spacerSize;
         this.expandMultiplier = expandMultiplier;
 
+        this.items = new Map<string, VirtualListItem>();
+        this.sizeCache = new Map<string, number>();
+
         this.isDisposed = false;
         this.abortController = new AbortController();
         this.wrapperRef = this.ref.querySelector(':scope > .c-wrapper');
@@ -149,7 +151,6 @@ export class VirtualList {
         this.renderStateRef = this.ref.querySelector(':scope > .data.render-state');
         this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index');
         this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor');
-        this.layoutFooter = document.querySelector('.layout-body-wrapper > .c-container > .layout-footer');
         this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
         this.endAnchorSize = this.endAnchorRef.getBoundingClientRect().height;
 
@@ -208,7 +209,6 @@ export class VirtualList {
         this.unmeasuredItems = new Set<string>();
         this.visibleItems = new Set<string>();
 
-        this.sizeObserver.observe(this.layoutFooter);
         this.sizeObserver.observe(this.endAnchorRef, { box: 'border-box' });
         this.visibilityObserver.observe(this.endAnchorRef);
         this.skeletonObserver0.observe(this.spacerRef);
@@ -216,8 +216,6 @@ export class VirtualList {
         this.skeletonObserver1.observe(this.spacerRef);
         this.skeletonObserver1.observe(this.endSpacerRef);
 
-        this.items = new Map<string, VirtualListItem>();
-        this.sizeCache = new Map<string, number>();
         this.renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
@@ -734,7 +732,7 @@ export class VirtualList {
                     ? this.getLastItemKey()
                     : null;
             if (itemKey) {
-                shouldUseSmoothScroll = true;
+                shouldUseSmoothScroll = itemKey !== this.stickyEdge.itemKey;
                 scrollType = 'sticky-edge';
                 scrollFunc = () => {
                     this.setStickyEdge({ itemKey, edge: this.stickyEdge.edge });
@@ -1217,14 +1215,7 @@ export class VirtualList {
                 totalSizeDiff = totalSize - oldTotalSize;
 
                 if (this.defaultEdge === VirtualListEdge.End) {
-                    if (scrollMetadata?.shouldUseSmoothScroll && scrollMetadata?.scrollType === 'last-item') {
-                        // Find previous item end to make smooth scroll possible with fallback to the latest one
-                        const lastItem = orderedItems[orderedItems.length - 1];
-                        offset = -endAnchorSize;
-                        scrollTopOffset = -lastItem?.size ?? 0;
-                    }
-                    else
-                        offset = end;
+                    offset = end;
 
                     if (interactivePivot) {
                         let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
@@ -1278,7 +1269,7 @@ export class VirtualList {
                             warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
                     }
 
-                    if (offset > 0) {
+                    if (offset > -endAnchorSize) {
                         // scroll position does not allow to show the last item
                         scrollTopOffset = -offset;
 

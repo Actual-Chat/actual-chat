@@ -1,17 +1,24 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, bool>
-@if (!State.Value) {
-    return;
+@{
+    @if (!State.Value)
+        return;
+
+    var cls = ScreenSize.IsNarrow() ? "translation-btn btn-sm" : "translation-btn";
 }
 
-<div class="translation-btn-wrapper">
-    <ButtonRound Class="translation-btn btn-sm" Click="OnClick">
+<HeaderButton
+    Class="@cls"
+    Tooltip="Translation"
+    TooltipPosition="FloatingPosition.Bottom"
+    Click="OnClick">
         <i class="icon-language text-2xl"></i>
-    </ButtonRound>
-</div>
+</HeaderButton>
 
 @code {
     private TranslationUI TranslationUI => Hub.TranslationUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 

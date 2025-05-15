@@ -138,6 +138,27 @@ public static class ChatsBackendExt
         return tiles.SelectMany(t => t.Entries).ToList();
     }
 
+    public static async IAsyncEnumerable<ChatEntry> ReadEntries(
+        this IChatsBackend chatsBackend,
+        ChatId chatId,
+        ChatEntryKind kind,
+        Range<long> idRange,
+        bool includeRemoved = false,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var idTiles = Constants.Chat.ViewIdTileStack.FirstLayer.GetCoveringTiles(idRange);
+        foreach (var idTile in idTiles) {
+            var tile = await chatsBackend.GetTile(
+                chatId,
+                kind,
+                idTile.Range,
+                includeRemoved,
+                cancellationToken).ConfigureAwait(false);
+            foreach (var chatEntry in tile.Entries)
+                yield return chatEntry;
+        }
+    }
+
     public static async IAsyncEnumerable<Chat[]> Batch(
         this IChatsBackend chatsBackend,
         Moment minCreatedAt,

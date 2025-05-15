@@ -11,7 +11,7 @@
     if (m is { HasNotified: false, EverybodyHasRead: true })
         return;
 
-    var cls = m.HasNotified ? "has-notified" : "cursor-pointer";
+    var cls = m.HasNotified ? "has-notified" : "not-notified";
     var clickHandler = !m.HasNotified ? EventCallback.Factory.Create(this, OnNotifyAuthorsClick) : EventCallback.Empty;
 }
 

@@ -62,7 +62,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     }
 
     private state: 'inactive' | 'initializing' | 'recording' | 'stopped'  = 'inactive';
-    private lastState: RecorderState = { isRecording: false, isConnected: false, isVoiceActive: false };
+    private lastState: RecorderState = { isRecording: false, isSignalDetected: false, isConnected: false, isVoiceActive: false };
     private whenInitialized: PromiseSource<void>;
 
     private encoderWorkerInstance: Worker = null;
@@ -77,7 +77,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private recording?: Disposable = null;
     private chatId?: string = null;
     private onStateChanged?: RecorderStateChanged;
-    private isRecording: boolean = false;
+    private onRecordingHeartbeat?: () => void;
+    private isSignalDetected: boolean = false;
     private isConnected: boolean = false;
     private isVoiceActive: boolean = false;
     private sessionToken: string | null;
@@ -86,6 +87,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
+
+    private get isRecording(): boolean {
+        return !!(this.stream && this.state === 'recording');
+    }
 
     public static async stopStreamTracks(stream?: MediaStream): Promise<void> {
         if (!stream)
@@ -163,6 +168,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     constructor() {
         this.whenInitialized = new PromiseSource<void>();
+        this.onStateChanged = null;
+        this.onRecordingHeartbeat = null;
     }
 
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
@@ -357,6 +364,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
         this.stateChanged();
     }
 
+    public subscribeToRecordingHeartbeat(onRecordingHeartbeat: () => void): void {
+        this.onRecordingHeartbeat = onRecordingHeartbeat;
+    }
+
     public async start(chatId: string, repliedChatEntryId: string): Promise<void> {
         this.stateChanged();
 
@@ -368,22 +379,23 @@ export class OpusMediaRecorder implements RecorderStateServer {
         await this.ensureInitialized();
         debugLog?.log(`start(): whenInitialized completed`);
 
-        await this.stop();
-        debugLog?.log(`start(): after stop() call`);
-
         this.state = 'recording';
         const contextRef = this.contextRef;
         this.recording = contextRef.use(async context => {
             try {
                 debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
+                if (this.chatId === chatId && this.stream)
+                    return; // Already started
+
                 await Promise.all([
                     this.encoderWorker.start(chatId, repliedChatEntryId),
                     this.vadWorker.reset(),
                     this.encoderWorklet.start(rpcNoWait)
                 ]);
 
-                await this.startMicrophoneStream(context);
                 this.chatId = chatId;
+                await this.startMicrophoneStream(context);
+                this.stateChanged();
             }
             catch (e) {
                 this.state = 'stopped';
@@ -412,9 +424,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public async stop(): Promise<void> {
         this.state = 'stopped';
         this.chatId = null;
-
-        if (!this.stream && !this.source)
-            return;
 
         debugLog?.log(`-> stop()`);
 
@@ -492,11 +501,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
         return ResolvedPromise.Void;
     }
 
-    public onRecordingStateChanged(isRecording: boolean, _noWait?: RpcNoWait): Promise<void> {
-        if (this.isRecording === isRecording)
+    public onSignalStateChanged(isSignalDetected: boolean, _noWait?: RpcNoWait): Promise<void> {
+        if (this.isSignalDetected === isSignalDetected)
             return ResolvedPromise.Void;
 
-        this.isRecording = isRecording;
+        this.isSignalDetected = isSignalDetected;
         this.stateChanged();
         return ResolvedPromise.Void;
     }
@@ -512,12 +521,25 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     public onAudioPowerChange(power: number, _noWait?: RpcNoWait): Promise<void> {
         OpusMediaRecorder.audioPowerChangedSubject.next(power);
+
+        if (!this.isSignalDetected)
+            void this.onSignalStateChanged(true);
+
+        const onRecordingHeartbeat = this.onRecordingHeartbeat;
+        if (onRecordingHeartbeat)
+            onRecordingHeartbeat();
+
+        this.recordingFailedDebounced();
         return ResolvedPromise.Void;
     }
 
     public recordingInProgress(gain: number, noWait?: RpcNoWait): Promise<void> {
-        if (!this.isRecording)
-            void this.onRecordingStateChanged(true);
+        if (!this.isSignalDetected)
+            void this.onSignalStateChanged(true);
+
+        const onRecordingHeartbeat = this.onRecordingHeartbeat;
+        if (onRecordingHeartbeat)
+            onRecordingHeartbeat();
 
         this.recordingFailedDebounced();
         return ResolvedPromise.Void;
@@ -548,12 +570,16 @@ export class OpusMediaRecorder implements RecorderStateServer {
         const onStateChanged = this.onStateChanged;
         // set current state
         if (onStateChanged)
-            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
+            void onStateChanged(this.isRecording, this.isSignalDetected, this.isConnected, this.isVoiceActive);
 
+        const isRecording = this.isRecording;
         const lastState = this.lastState;
-        const state = { isRecording: this.isRecording, isConnected: this.isConnected, isVoiceActive: this.isVoiceActive };
+        const state = { isRecording: isRecording, isSignalDetected: this.isSignalDetected, isConnected: this.isConnected, isVoiceActive: this.isVoiceActive };
         debugLog?.log(`stateChanged(): ${JSON.stringify(state)}`);
-        if (!state.isRecording == lastState.isRecording && state.isConnected == lastState.isConnected && state.isVoiceActive == lastState.isVoiceActive)
+        if (state.isRecording == lastState.isRecording
+            && state.isSignalDetected == lastState.isSignalDetected
+            && state.isConnected == lastState.isConnected
+            && state.isVoiceActive == lastState.isVoiceActive)
             return;
 
         this.lastState = state;
@@ -562,7 +588,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     private recordingFailedDebounced = debounce(() => this.recordingFailed(), RecordingFailedInterval);
     private async recordingFailed(): Promise<void> {
-        await this.onRecordingStateChanged(false);
+        await this.onSignalStateChanged(false);
     }
 
     private async startMicrophoneStream(context: AudioContext): Promise<void> {

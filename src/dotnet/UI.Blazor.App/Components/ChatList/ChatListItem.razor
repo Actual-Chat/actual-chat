@@ -32,19 +32,19 @@
         <div class="c-container">
             <ChatIcon Chat="@chat" ShowPresence="@true"/>
             <div class="c-description">
-                    <span class="c-chat-title">
-                        <span>@chat.Title</span>
-                        <span class="c-incut"></span>
-                        @if (lastTextEntry != null && !showEnding) {
-                            <LastEntryTime LastEntry="@lastTextEntry"/>
-                        }
+                <span class="c-chat-title">
+                    <span>@chat.Title</span>
+                    <span class="c-incut"></span>
+                    @if (lastTextEntry != null && !showEnding) {
+                        @Hub.MarkupHelpers.LastEntryTime(m.LastBeginsAt)
+                    }
                 </span>
                 @if (lastTextEntry != null) {
                     <div class="c-last-message">
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="c-name">
                                 <AuthorName
-                                    AuthorSid="@lastTextEntry.AuthorId.Value"
+                                    AuthorSid="@m.LastAuthorId.Value"
                                     ShowDetailsOnClick="false"
                                     ShowAsOwn="true"/>
                             </span>
@@ -187,7 +187,8 @@
             return Model.None;
         }
         DebugLog?.LogDebug("<- ComputeState: {ListKind} #{ChatTitle}, OK, ChatId={ChatId}", listKind, chatTitle, chatId);
-        var lastEntry = chatState.Info.LastTextEntry;
+        var chatInfo = chatState.Info;
+        var lastEntry = chatInfo.LastTextEntry;
         var isUnreadByOthers = false;
         if (lastEntry != null)
             isUnreadByOthers = ownAuthorId is not null && await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
@@ -195,15 +196,17 @@
             ListKind = listKind,
             Chat = chatState.Chat,
             AudioState = chatState.AudioState,
-            NotificationMode = chatState.Info.UserSettings.NotificationMode,
+            NotificationMode = chatInfo.UserSettings.NotificationMode,
             IsSelected = chatState.IsSelected,
-            UnreadCount = chatState.Info.UnreadCount,
-            HasUnreadMentions = chatState.Info.HasUnreadMentions,
+            UnreadCount = chatInfo.UnreadCount,
+            HasUnreadMentions = chatInfo.HasUnreadMentions,
             LastTextEntry = lastEntry,
-            LastTextEntryText = chatState.Info.LastTextEntryText,
+            LastTextEntryText = chatInfo.LastTextEntryText,
             IsLastItemInBlock = isLastItemInBlock,
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
+            LastThread = chatInfo.LastThread,
+            LastThreadCreator = chatInfo.LastThreadCreator,
         };
     }
 
@@ -249,5 +252,9 @@
         public bool IsLastItemInBlock { get; init; }
         public bool IsFirstItem { get; init; }
         public bool IsUnreadByOthers { get; init; }
+        public Chat? LastThread { get; init; }
+        public Author? LastThreadCreator { get; init; }
+        public Moment LastBeginsAt => LastThread?.CreatedAt ?? LastTextEntry?.BeginsAt ?? Moment.EpochStart;
+        public AuthorId LastAuthorId => LastThreadCreator?.Id ?? LastTextEntry?.AuthorId ?? AuthorId.None;
     }
 }

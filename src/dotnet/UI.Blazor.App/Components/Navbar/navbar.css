@@ -6,7 +6,7 @@
 .navbar-button {
     @apply relative;
     @apply flex-none flex-x items-center justify-end;
-    @apply lg:w-20;
+    @apply md:w-16 lg:w-20;
 }
 .navbar-button .btn-square {
     @apply min-h-0;
@@ -29,6 +29,16 @@ body.narrow .navbar-button .btn-square {
 .navbar-button:not(.selected) .left-line {
     @apply invisible;
 }
+body.hoverable .navbar-place-buttons .navbar-button:not(.selected):hover .left-line {
+    @apply visible;
+}
+body.hoverable .navbar-place-buttons .navbar-button:not(.selected):hover .left-line > .c-content {
+    @apply bg-05;
+}
+body.hoverable .navbar-place-buttons .navbar-button .left-line:hover {
+    @apply cursor-move;
+}
+
 .navbar-button .badge {
     @apply absolute -right-0.5 -top-0.5;
     @apply min-w-4 min-h-4 w-4 h-4;
@@ -107,7 +117,8 @@ body.narrow .navbar-button .btn-square {
     @apply overflow-hidden;
 }
 
-body.hoverable .navbar-item:hover {
+body.hoverable .navbar-item:hover,
+.touch-capable .navbar-item:active {
     @apply bg-hover;
     @apply cursor-pointer;
 }

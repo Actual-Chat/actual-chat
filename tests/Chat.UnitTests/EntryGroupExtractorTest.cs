@@ -9,14 +9,14 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     private readonly AuthorId _authorId = AuthorId.New(GroupChatId.New(), 1);
 
     [Fact]
-    public async Task ExtractGroups_EmptyEntries_ReturnsEmpty()
+    public void ExtractGroups_EmptyEntries_ReturnsEmpty()
     {
         // Arrange
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
         var initialState = new ExtractorState(null, null);
 
         // Act
-        var result = await extractor.ExtractGroups(initialState, [], CancellationToken.None);
+        var result = extractor.ExtractGroups(initialState, []);
 
         // Assert
         result.Groups.Should().BeEmpty();
@@ -24,7 +24,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     }
 
     [Fact]
-    public async Task ExtractGroups_SystemEntry_IsIgnored()
+    public void ExtractGroups_SystemEntry_IsIgnored()
     {
         // Arrange
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -34,28 +34,28 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         };
 
         // Act
-        var result = await extractor.ExtractGroups(initialState, entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(initialState, entries);
 
         // Assert
         result.Groups.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task ExtractGroups_PauseExceedsMax_CompletesGroup()
+    public void ExtractGroups_PauseExceedsMax_CompletesGroup()
     {
         // Arrange
         var baseTime = new DateTime(2024, 1, 1, 12, 0, 0);
         var entries = new List<TextEntry>
         {
-            new (0, "Entry 1", _authorId, baseTime, null, false, null),
-            new (0, "Entry 2", _authorId, baseTime.AddHours(1), null, false, null),
-            new (0, "Entry 3", _authorId, baseTime.AddHours(13 + 1), null, false, null), // 13 hours after entry2
+            new (1, "Entry 1", _authorId, baseTime, null, false, null),
+            new (2, "Entry 2", _authorId, baseTime.AddMinutes(1), null, false, null),
+            new (3, "Entry 3", _authorId, baseTime.AddHours(13 + 1), null, false, null), // 13 hours after entry2
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
-        var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(new ExtractorState(null, null), entries);
 
         // Assert
         result.Groups.Should().ContainSingle();
@@ -71,13 +71,13 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     }
 
     [Fact]
-    public async Task ExtractGroups_ChunkFillsAndMerges_CompletesGroupWhenWordCountMet()
+    public void ExtractGroups_ChunkFillsAndMerges_CompletesGroupWhenWordCountMet()
     {
         // Arrange
         var groupWordCount = 100;
         var entries = Enumerable.Range(0, 10)
             .Select(i => new TextEntry(
-                0,
+                i,
                 string.Join(" ", Enumerable.Repeat("word", 10)),
                 _authorId,
                 DateTime.Now.AddMinutes(i),
@@ -89,7 +89,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log, groupWordCount);
 
         // Act
-        var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(new ExtractorState(null, null), entries);
 
         // Assert
         result.Groups.Should().ContainSingle();
@@ -97,12 +97,12 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     }
 
     [Fact]
-    public async Task ExtractGroups_ChunkNotMergedDueToLowSimilarity_CompletesGroup()
+    public void ExtractGroups_ChunkNotMergedDueToLowSimilarity_CompletesGroup()
     {
         // Arrange
         var groupWordCount = 100;
         var entries = Enumerable.Range(0, 10)
-            .Select(i => new TextEntry(0, string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, DateTime.Now.AddMinutes(i), null, false, null))
+            .Select(i => new TextEntry(i, string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, DateTime.Now.AddMinutes(i), null, false, null))
             .ToList();
 
         // Use a custom embeddings calculator with low similarity
@@ -110,7 +110,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var extractor = new EntryGroupExtractor(lowSimilarityCalculator, log, groupWordCount);
 
         // Act
-        var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(new ExtractorState(null, null), entries);
 
         // Assert
         result.Groups.Should().ContainSingle();
@@ -118,7 +118,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     }
 
     [Fact]
-    public async Task ExtractGroups_ReplySequenceWithinGroup_IsNotCaptured()
+    public void ExtractGroups_ReplySequenceWithinGroup_IsNotCaptured()
     {
         // Arrange
         var entries = new List<TextEntry>
@@ -131,7 +131,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
-        var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(new ExtractorState(null, null), entries);
 
         // Assert
         result.ReplySequences.Should().BeEmpty();
@@ -142,7 +142,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     }
 
     [Fact]
-    public async Task ExtractGroups_ReplySequenceExceedsLimit_CompletesSequence()
+    public void ExtractGroups_ReplySequenceExceedsLimit_CompletesSequence()
     {
         // Arrange
         var entries = new List<TextEntry>
@@ -157,7 +157,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
-        var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(new ExtractorState(null, null), entries);
 
         // Assert
         result.ReplySequences.Should().ContainSingle();
@@ -166,20 +166,20 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     }
 
     [Fact]
-    public async Task ExtractGroups_ReplySequenceWithLongPause_CompletesSequence()
+    public void ExtractGroups_ReplySequenceWithLongPause_CompletesSequence()
     {
         // Arrange
         var entries = new List<TextEntry>
         {
             new(2, "Entry 1", _authorId, DateTime.Now, null, false, null),
             new(3, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1),
-            new(4, "Late Reply", _authorId, DateTime.Now.AddMinutes(1), null, false, null),
+            new(4, "Late Reply", _authorId, DateTime.Now.AddMinutes(5), null, false, null),
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
 
         // Act
-        var result = await extractor.ExtractGroups(new ExtractorState(null, null), entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(new ExtractorState(null, null), entries);
 
         // Assert
         result.ReplySequences.Should().ContainSingle();
@@ -196,11 +196,11 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var entries = await ReadTestEntries("./data/chat_entries.zip");
 
         // Act
-        var result = await extractor.ExtractGroups(initialState, entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(initialState, entries);
 
         // Assert
         result.Groups.Should().NotBeEmpty();
-        result.Groups.Count.Should().BeLessThan(60);
+        result.Groups.Count.Should().BeLessThan(40);
         result.Groups.Should().AllSatisfy(group => group.Entries.Should().NotBeEmpty());
     }
 
@@ -217,7 +217,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var entries = await ReadTestEntries("./data/chat_entries.zip");
 
         // Act
-        var result = await extractor.ExtractGroups(initialState, entries, CancellationToken.None);
+        var result = extractor.ExtractGroups(initialState, entries);
 
         // Assert
         result.Groups.Should().NotBeEmpty();

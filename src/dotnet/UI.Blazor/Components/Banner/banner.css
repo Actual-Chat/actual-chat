@@ -1,17 +1,17 @@
 .banner {
     @apply flex-x gap-x-2 items-center justify-center;
-    @apply w-full md:max-w-160 h-14;
+    @apply w-full lg:max-w-192 h-14;
     @apply px-2;
-    @apply rounded-lg border-separator border-2;
-    @apply bg-02;
-    @apply text-02;
+    @apply rounded-lg border-banner-default border-2;
+    @apply bg-banner-default;
+    @apply text-banner-default;
 }
 .banner i {
     @apply text-xl md:text-2xl;
 }
 .banner .c-content {
     @apply flex-1 flex-x justify-center items-center gap-x-2;
-    @apply md:max-w-160;
+    @apply lg:max-w-192;
     @apply md:px-2;
 }
 .banner-body {

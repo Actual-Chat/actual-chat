@@ -6,15 +6,19 @@ body.device-ios * {
 /* Touch target */
 .button-touch-target {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: calc(100% + 1rem);
-    height: calc(100% + 1rem);
-    transform: translate(-50%, -50%);
     display: none;
+    border-radius: 9999px;
+    inset: -0.5rem;
+    transform-origin: center center;
+    transition: transform 150ms ease;
+    transform: scale(1);
 }
 .touch-capable .button-touch-target {
     display: block;
+}
+.touch-capable .btn-h:active .button-touch-target {
+    @apply bg-hover;
+    transform: scale(1.2);
 }
 
 /* Disable active and focus outline on touch devices */
@@ -279,7 +283,9 @@ body.hoverable .btn.btn-round:hover::after {
     @apply text-03;
 }
 body.hoverable .btn.btn-square.btn-transparent:hover,
-body.hoverable .btn.btn-round.btn-transparent:hover {
+.touch-capable .btn.btn-square.btn-transparent:active,
+body.hoverable .btn.btn-round.btn-transparent:hover,
+.touch-capable .btn.btn-round.btn-transparent:active {
     @apply text-02;
 }
 body.hoverable .btn.btn-square.btn-transparent:hover::after,

@@ -5,6 +5,7 @@ export class DateVisor {
     private readonly dateVisor: HTMLElement;
     private chatView: HTMLElement;
     private subHeader: HTMLElement;
+    private endAnchor: HTMLElement;
     private isScrolling: boolean;
     private disposed$: Subject<void> = new Subject<void>();
 
@@ -17,14 +18,15 @@ export class DateVisor {
         const checkInterval = setInterval(() => {
             this.chatView = document.querySelector('.chat-view');
             this.subHeader = this.dateVisor.closest('.layout-subheader');
-            if (this.chatView && this.subHeader) {
+            this.endAnchor = this.chatView ? this.chatView.querySelector('.c-end-anchor') : null;
+            if (this.chatView && this.subHeader && this.endAnchor) {
                 clearInterval(checkInterval);
 
                 fromEvent(this.chatView, 'scroll')
                     .pipe(takeUntil(this.disposed$))
                     .subscribe(this.onScrollHandler);
             }
-        }, 200);
+        }, 800);
     }
 
     public dispose() {
@@ -39,21 +41,32 @@ export class DateVisor {
         this.isScrolling = true;
         this.onScrollStopDebounced();
         const scrollWithTimeout = new PromiseSourceWithTimeout<void>();
-        scrollWithTimeout.setTimeout(250, () => {
+        scrollWithTimeout.setTimeout(800, () => {
             this.onScrollThrottled();
         });
     }
 
     private onScrollThrottled = throttle(() => this.onScroll(), 250, 'delayHead');
     private onScroll() {
-        if (this.isScrolling && !this.dateVisor.classList.contains('show')) {
+        if (this.isScrolling
+            && !this.dateVisor.classList.contains('show')
+            && !this.isInViewport(this.endAnchor, this.chatView)) {
             this.dateVisor.classList.add('show');
         }
     }
 
-    private onScrollStopDebounced = debounce(() => this.onScrollStop(), 1000);
+    private onScrollStopDebounced = debounce(() => this.onScrollStop(), 800);
     private onScrollStop() {
         this.isScrolling = false;
         this.dateVisor.classList.remove('show');
+    }
+
+    private isInViewport(anchor, chat = null) {
+        const rect = anchor.getBoundingClientRect();
+
+        if (chat) {
+            const chatRect = chat.getBoundingClientRect();
+            return rect.top >= chatRect.top && rect.top < chatRect.bottom;
+        }
     }
 }

@@ -108,11 +108,15 @@
     @apply border-danger;
 }
 .label-inside-input input,
+.label-inside-input textarea,
 .label-inside-input select {
-    @apply h-8 min-h-8 md:h-6 md:min-h-6;
     @apply border-none rounded-none;
     @apply bg-transparent;
     @apply text-02 font-normal;
+}
+.label-inside-input input,
+.label-inside-input select {
+    @apply h-8 min-h-8 md:h-6 md:min-h-6;
 }
 .form-section-content > .c-left > select,
 .label-inside-input select {
@@ -271,7 +275,7 @@
     @apply overflow-hidden;
 }
 .form-block.with-contact-list > div:not(.contact-selector-badges) {
-    @apply px-4;
+    @apply px-2;
 }
 .form-block.with-contact-list > .contact-selector-list,
 .form-block.with-contact-list > .c-contact-list {

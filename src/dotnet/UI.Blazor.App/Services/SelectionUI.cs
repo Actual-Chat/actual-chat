@@ -166,4 +166,26 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             return sb.ToString();
         }
     }
+
+    public async Task StartThread(IReadOnlySet<ChatEntryId>? selection = null) {
+        selection ??= Selection.Value;
+        if (selection.Count == 0)
+            return;
+
+        var chatId = selection.First().ChatId;
+        var textEntryIds = selection.OrderBy(c => c.LocalId).Select(c => c.ToTextEntryId()).ToArray();
+        var modalModel = new NewThreadModal.Model(chatId, textEntryIds);
+        await (await ModalUI.Show(modalModel).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
+        if (modalModel.Title.IsNullOrEmpty())
+            return;
+
+        var cmd = new ChatThreads_Start(
+            Session,
+            chatId,
+            modalModel.Title,
+            modalModel.Description,
+            textEntryIds);
+        await UICommander.Call(cmd, CancellationToken.None).ConfigureAwait(true);
+        Clear();
+    }
 }

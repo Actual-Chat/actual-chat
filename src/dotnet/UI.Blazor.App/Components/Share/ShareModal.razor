@@ -7,7 +7,7 @@
     var shareExternallyButtonClass = !canSend && !_hideShareExternallyButton ? "" : "hidden";
     var shareButtonClass = !canSend ? "hidden" : "";
     shareButtonClass += " btn-modal btn-primary share-button";
-    var cls = "share-modal";
+    var cls = "share-modal fixed-height";
     if (_selectorKind == SelectorKind.Contact)
         cls += " share-modal-with-contact-selector";
     else if (_selectorKind == SelectorKind.Members)

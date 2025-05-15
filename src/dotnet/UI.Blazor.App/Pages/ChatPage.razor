@@ -99,8 +99,8 @@
 
     protected override bool ShouldRender()
         => ReferenceEquals(Rendered, null)
-            || State.HasError
-            || State.Value != Rendered;
+           || State.HasError
+           || State.Value != Rendered;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var lastState = State.ValueOrDefault;

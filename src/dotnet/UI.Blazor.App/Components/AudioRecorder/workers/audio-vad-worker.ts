@@ -78,7 +78,7 @@ class VadLoader {
                 const nnVad = new NeuralVoiceActivityDetector(OnnxModel as unknown as URL, lastActivityEvent);
                 await nnVad.init();
                 queue.clear();
-                await vadWorklet.start(vads.windowSizeMs);
+                await vadWorklet?.start(vads.windowSizeMs);
                 queue.clear();
                 this.neuralVad = nnVad;
             })();

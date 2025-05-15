@@ -8,7 +8,7 @@
 }
 .left-panel-buttons {
     @apply z-10;
-    @apply flex-x;
+    @apply flex-none flex-x;
     @apply lg:w-30 h-full;
     @apply px-1 lg:px-3;
     @apply bg-04;
@@ -48,7 +48,7 @@
 .left-panel-content {
     @apply relative;
     @apply flex-y;
-    @apply w-full lg:w-80 h-full;
+    @apply w-full h-full;
     @apply bg-03;
     @apply overflow-hidden;
 }

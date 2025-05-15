@@ -8,24 +8,26 @@
 }
 
 <DialogFrame
-    Class="forward-message-modal"
+    Class="forward-message-modal fixed-height"
     Title="Forward message"
     HasCloseButton="true"
     NarrowViewSettings="_viewSettings">
     <Body>
+    <FormBlock Class="with-contact-list">
         <ContactSelector
             @ref="@_contactSelectorRef"
             ExcludeChatIds="@ModalModel.ExcludedChatIds"
             ChatListPreOrder="@ChatListPreOrder.NotesFirst"
             SearchPhrase="@_searchPhrase"
             Changed="@StateHasChanged">
-            <SearchBoxNew
+            <SearchBox
                 Placeholder="Who would you like to share with"
                 MaxLength="@Constants.Chat.MaxSearchFilterLength"
                 TextChanged="@OnFilter"/>
             <ContactSelectorPlacePicker/>
             <ContactSelectorListView/>
         </ContactSelector>
+    </FormBlock>
     </Body>
     <Buttons>
         <Button

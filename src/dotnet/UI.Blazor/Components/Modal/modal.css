@@ -81,25 +81,6 @@ body.narrow .modal-frame.modal-sm {
     bottom: 4vh;
 }
 
-.modal-frame.modal-xs {
-    @apply min-h-fit;
-    @apply rounded-xl;
-    @apply max-w-72;
-}
-body.narrow .modal-frame.modal-xs {
-    @apply absolute;
-    @apply left-4 right-4 bottom-10;
-    @apply min-h-fit max-w-none;
-    @apply rounded-xl;
-}
-.modal-frame.modal-xs .c-text {
-    @apply flex-y gap-y-2;
-    @apply font-medium text-sm;
-}
-body.narrow .modal-frame.modal-xs .c-text {
-    @apply font-medium text-base;
-}
-
 .narrow .narrow-view__modal__position-bottom {
     @apply absolute bottom-0 left-0 right-0;
     @apply w-auto h-auto rounded-b-none;
@@ -137,7 +118,8 @@ body.device-ios .modal-chrome {
 }
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
-    @apply max-h-screen h-full w-full md:h-auto md:w-modal;
+    @apply w-full h-full max-h-screen;
+    @apply md:w-96 xl:w-104 2xl:w-112 md:h-auto md:max-h-192;
     @apply pb-4;
     @apply rounded-lg;
     @apply font-medium;
@@ -146,23 +128,29 @@ body.device-ios .modal-chrome {
     transition-behavior: allow-discrete;
     transition-property: filter, -webkit-filter, transform;
 }
+.modal-frame.modal-sm {
+    @apply md:w-88 xl:w-104 2xl:w-120 md:h-auto md:max-h-192;
+}
+.modal-frame.fixed-height {
+    @apply md:h-192;
+}
 body.device-ios .modal-frame {
     @apply ios-height;
 }
 .modal-overlay .modal-frame {
-    transform: scale(1);
     filter: opacity(1);
+    transform: translateY(0);
     @starting-style {
         filter: opacity(0);
-        transform: scale(0.5);
+        transform: translateY(5rem);
     }
 }
 .modal-overlay.hide .modal-frame {
-    transform: scale(0.5);
     filter: opacity(0);
+    transform: translateY(5rem);
     @starting-style {
         filter: opacity(1);
-        transform: scale(1);
+        transform: translateY(0);
     }
 }
 
@@ -196,7 +184,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-header-interactive {
     @apply ordinary-header;
-    @apply bg-02 border-separator border-b;
+    @apply bg-02;
 }
 .modal-header-interactive .btn-submit {
     @apply mr-2;
@@ -208,6 +196,10 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-header-interactive .modal-title {
     @apply text-title-1 text-02;
+}
+
+.interactive-header-divider {
+    @apply -mt-2 mx-4;
 }
 
 .dialog-body {

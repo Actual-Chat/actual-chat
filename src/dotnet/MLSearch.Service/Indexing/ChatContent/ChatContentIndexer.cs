@@ -89,9 +89,8 @@ internal sealed class ChatContentIndexer(
         _cursor = cursor;
         var tailDocuments = await documentLoader.LoadTailAsync(chatId, cursor, MaxTailSetSize, cancellationToken)
             .ConfigureAwait(false);
-        foreach (var document in tailDocuments) {
-            _tailDocs.Add(document.Id, document);
-        }
+        foreach (var document in tailDocuments)
+            _tailDocs[document.Id] = document;
     }
 
     public async ValueTask ApplyAsync(ChatEntry entry, CancellationToken cancellationToken)

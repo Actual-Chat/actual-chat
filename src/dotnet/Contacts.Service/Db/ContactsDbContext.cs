@@ -12,6 +12,7 @@ public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : Db
     public DbSet<DbExternalContactsHash> ExternalContactsHashes { get; protected set; } = null!;
     public DbSet<DbExternalContactLink> ExternalContactLinks { get; protected set; } = null!;
     public DbSet<DbPlaceContact> PlaceContacts { get; protected set; } = null!;
+    public DbSet<DbThreadContact> ThreadContacts { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -41,6 +42,14 @@ public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : Db
         placeContact.Property(e => e.Id).UseCollation("C");
         placeContact.Property(e => e.PlaceId).UseCollation("C");
         placeContact.Property(e => e.OwnerId).UseCollation("C");
+
+        var threadContact = model.Entity<DbThreadContact>();
+        threadContact.Property(e => e.Id).UseCollation("C");
+        threadContact.Property(e => e.OwnerId).UseCollation("C");
+        threadContact.Property(e => e.ThreadChatId).UseCollation("C");
+        threadContact.Property(c => c.ParentChatId).UseCollation("C");
+        threadContact.Property(c => c.OutermostParentChatId).UseCollation("C");
+        threadContact.Property(c => c.PlaceId).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

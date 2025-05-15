@@ -2,7 +2,16 @@
     @apply flex-none self-stretch flex-x items-stretch;
     @apply pr-0.5;
 }
-.left-line > div {
+.left-line.can-move {
+    @apply cursor-pointer;
+    transition: transform .2s ease-in-out;
+}
+body.hoverable .left-line.can-move:hover {
+    transform: scale3d(2, 1.2, 1);
+}
+
+.left-line > .c-content {
+    @apply relative;
     @apply bg-primary;
     @apply rounded-full;
 }

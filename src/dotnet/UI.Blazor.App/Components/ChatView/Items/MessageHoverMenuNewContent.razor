@@ -2,9 +2,10 @@
 @inherits ComputedStateComponent<AppUIHub, MessageHoverMenuNewContent.Model>
 @{
     var m = State.Value;
+    var topOffsetClass = IsSystem || MessageWithAuthor ? "small-offset" : "";
 }
 
-<div class="hover-menu-wrapper">
+<div class="hover-menu-wrapper @topOffsetClass">
     <div class="message-hover-menu-new">
         <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
             <EmojiIcon Emoji="@Emojis.ThumbsUp" Class="w-5 h-5"/>
@@ -37,6 +38,7 @@
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }
+    [Parameter] public bool MessageWithAuthor { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

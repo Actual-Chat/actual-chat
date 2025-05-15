@@ -9,6 +9,10 @@
         if (item is ChatEntryMessage message) {
             <ChatEntryMessageView ChatContext="@chatContext" Message="@message"/>
         }
+        else if(item is ThreadMessage threadMessage)
+        {
+            <ThreadMessageView ChatContext="@chatContext" Message="@threadMessage" />
+        }
         else if (item is ConversationMessage conversationMessage)
         {
             <ConversationMessageView ChatContext="@chatContext" Message="@conversationMessage" />
@@ -55,7 +59,6 @@
 
 <RenderIntoStack Name="@LayoutSlots.SubFooter" Order="-1000_000" Key="NavigationSubFooter">
     <ChatViewNavigationPanel ChatId="@ChatId" ChatView="@this" />
-    <TranslationButton ChatId="@ChatId"/>
 </RenderIntoStack>
 
 <RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1000_000" Key="DateVisor">
