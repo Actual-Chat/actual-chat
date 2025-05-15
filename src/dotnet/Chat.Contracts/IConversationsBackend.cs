@@ -13,6 +13,9 @@ public interface IConversationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ConversationId[]> List(ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken);
 
+    // Not a compute method
+    Task<ConversationId[]> GetPage(ChatId chatId, long idTileStart, int offset, int limit, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

@@ -51,6 +51,54 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToArray();
     }
 
+    public async Task<ConversationId[]> GetPage(
+        ChatId chatId,
+        long idTileStart,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        List<string> sConversationIds;
+        if (offset >= 0)
+            sConversationIds = await dbContext.Conversations
+                .Where(c => c.ChatId == chatId && c.StartEntryLid >= idTileStart)
+                .OrderBy(c => c.StartEntryLid)
+                .Skip(offset)
+                .Take(limit)
+                .Select(c => c.Id)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        else {
+            var firstMatchedConversationSid = await dbContext.Conversations
+                .Where(c => c.ChatId == chatId && c.StartEntryLid < idTileStart)
+                .OrderByDescending(c => c.StartEntryLid)
+                .Skip(-offset)
+                .Select(c => c.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(firstMatchedConversationSid))
+                sConversationIds = [];
+            else {
+                var firstMatchedConversationId = new ConversationId(firstMatchedConversationSid, ParseOrNone.Option);
+                sConversationIds = await dbContext.Conversations
+                    .Where(c => c.ChatId == chatId && c.StartEntryLid >= firstMatchedConversationId.StartEntryLid)
+                    .OrderBy(c => c.StartEntryLid)
+                    .Take(limit)
+                    .Select(c => c.Id)
+                    .ToListAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+
+        return sConversationIds
+            .Select(s => new ConversationId(s, ParseOrNone.Option))
+            .ToArray();
+    }
+
     // Commands
 
     // [CommandHandler]
