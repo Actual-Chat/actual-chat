@@ -42,7 +42,7 @@
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
-            return _rendered;
+            return _rendered ?? new Model(markup, message.Entry);
         }
 
         if (!renderedEntry.VersionEquals(entry)) {

@@ -3,11 +3,11 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class MarkupHelpers(ChatUIHub hub)
+public class MarkupHelpers(AppUIHub hub)
 {
-    private ChatUIHub Hub { get; } = hub;
+    private AppUIHub Hub { get; } = hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-    private MomentClockSet Clocks => Hub.Clocks();
+    private MomentClockSet Clocks => Hub.Clocks;
 
     public MarkupString LastEntryTime(Moment? moment)
     {

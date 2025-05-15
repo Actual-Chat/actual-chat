@@ -23,7 +23,7 @@ public class ChatThreadsBackend(IServiceProvider services) : IChatThreadsBackend
             return null;
 
         var ownerAuthorId = ownerAuthorIds[0];
-        var ownerAuthor = await AuthorsBackend.Get(ownerAuthorId.ChatId, ownerAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var ownerAuthor = await AuthorsBackend.Get(ownerAuthorId.ChatId, ownerAuthorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         return ownerAuthor;
     }
 }

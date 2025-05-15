@@ -18,7 +18,7 @@ public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTa
     public string ThreadChatId { get; set; } = "";
     public string ParentChatId { get; set; } = "";
     public string OutermostParentChatId { get; set; } = "";
-    public string PlaceId { get; set; } = "";
+    public string PlaceId { get; set; }
     public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
@@ -30,7 +30,7 @@ public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTa
     public DbThreadContact(ThreadContact contact) => UpdateFrom(contact);
 
     public ThreadContact ToModel()
-        => new(new ContactId(Id), Version) {
+        => new(ContactId.Parse(Id), Version) {
             TouchedAt = TouchedAt.ToMoment(),
             IsPinned = IsPinned,
         };
@@ -38,7 +38,7 @@ public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTa
     public void UpdateFrom(ThreadContact model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
         Version = model.Version;
@@ -47,13 +47,13 @@ public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTa
         if (!Id.IsNullOrEmpty())
             return; // Only the above properties can be changed for already existing contacts
 
-        Id = id;
+        Id = id.Value;
         OwnerId = model.OwnerId.Value.NullIfEmpty() ?? throw StandardError.Constraint("OwnerId cannot be empty.");
-        ThreadChatId = model.ThreadChatId;
-        ParentChatId = model.ThreadChatId.GetThreadParentOrSelf();
+        ThreadChatId = model.ThreadChatId.Value;
+        ParentChatId = model.ThreadChatId.GetThreadParentOrSelf().Value;
         var outermostParentChatId = model.ThreadChatId.GetOutermostThreadParentOrSelf();
-        OutermostParentChatId = outermostParentChatId;
-        PlaceId = outermostParentChatId.PlaceId;
+        OutermostParentChatId = outermostParentChatId.Value;
+        PlaceId = (outermostParentChatId as PlaceChatId)?.PlaceId.Value ?? "";
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbThreadContact>

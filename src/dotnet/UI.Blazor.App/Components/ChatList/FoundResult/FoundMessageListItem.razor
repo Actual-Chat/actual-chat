@@ -24,7 +24,7 @@
                     <span class="c-title">
                         @chat.Title
                     </span>
-                    <LastEntryTime LastEntry="@m.Entry"/>
+                    @Hub.MarkupHelpers.LastEntryTime(@m.Entry.BeginsAt)
                 </div>
                 @if (chat.Kind == ChatKind.Peer) {
                     // Peer chat message

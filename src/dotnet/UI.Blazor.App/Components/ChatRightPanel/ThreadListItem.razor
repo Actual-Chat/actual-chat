@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedRenderStateComponent<ThreadListItem.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, ThreadListItem.Model>
 @{
     var m = State.Value;
     var chat = m.Chat ?? Chat;
@@ -24,10 +24,10 @@
                     @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                         <span class="c-name">
                             <AuthorName
-                                AuthorSid="@lastTextEntry.AuthorId"
+                                AuthorSid="@lastTextEntry.AuthorId.Value"
                                 Class="chat-message-author-name"
                                 ShowDetailsOnClick="false"
-                                ShowAsYou="true"/>
+                                ShowAsOwn="true"/>
                         </span>
                         <span class="c-colon">:</span>
                     }
@@ -51,14 +51,10 @@
 
 @code {
     private Model? _renderedModel;
-    private ChatEntryId _hasBeenReadEntryId;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
-    private Session Session => Hub.Session();
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     private Task OnItemClicked()
         => Hub.History.NavigateTo(Links.Chat(Chat.Id));

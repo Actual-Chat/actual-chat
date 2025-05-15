@@ -160,7 +160,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public bool IsRecording(string chatId)
     {
         var state = State.Value;
-        if (!string.Equals(state.ChatId, chatId, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(state.ChatId?.Value, chatId, StringComparison.OrdinalIgnoreCase))
             return false; // Not recording
 
         return state.IsRecording;

@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<Chat?>
+@inherits ComputedStateComponent<AppUIHub, Chat?>
 @{
     var m = State.Value;
     if (!ScreenSize.IsNarrow())
@@ -6,14 +6,12 @@
 }
 
 <div class="chat-activity-subheader">
-    @if (m is { Id.IsNone: false }) {
+    @if (m is not null) {
         <ChatActivityPanel Chat="@m"/>
     }
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
 
@@ -29,6 +27,9 @@
 
     protected override async Task<Chat?> ComputeState(CancellationToken cancellationToken) {
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (selectedChatId is null)
+            return null;
+
         var selectedChat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
         return selectedChat;
     }

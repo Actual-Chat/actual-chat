@@ -44,7 +44,7 @@
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="c-name">
                                 <AuthorName
-                                    AuthorSid="@m.LastAuthorId.Value"
+                                    AuthorSid="@(m.LastAuthorId?.Value ?? "")"
                                     ShowDetailsOnClick="false"
                                     ShowAsOwn="true"/>
                             </span>
@@ -255,6 +255,6 @@
         public Chat? LastThread { get; init; }
         public Author? LastThreadCreator { get; init; }
         public Moment LastBeginsAt => LastThread?.CreatedAt ?? LastTextEntry?.BeginsAt ?? Moment.EpochStart;
-        public AuthorId LastAuthorId => LastThreadCreator?.Id ?? LastTextEntry?.AuthorId ?? AuthorId.None;
+        public AuthorId? LastAuthorId => LastThreadCreator?.Id ?? LastTextEntry?.AuthorId;
     }
 }

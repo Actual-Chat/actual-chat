@@ -175,11 +175,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ContactId contactId,
         CancellationToken cancellationToken)
     {
-        if (ownerId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(ownerId));
         ArgumentOutOfRangeException.ThrowIfNotEqual(ownerId, contactId.OwnerId);
 
-        var dbThreadContact = await DbThreadContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
+        var dbThreadContact = await DbThreadContactResolver.Get(contactId.Value, cancellationToken).ConfigureAwait(false);
         return dbThreadContact?.ToModel();
     }
 
@@ -189,9 +187,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ChatId parentChatId,
         CancellationToken cancellationToken)
     {
-        if (ownerId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(ownerId));
-
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var idPrefix = ownerId.Value + ' ' + parentChatId.Value + ChatId.ThreadIdSeparator;
@@ -204,8 +199,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ConfigureAwait(false);
 
         return sChatIds
-            .Select(ChatId.ParseOrNone)
-            .Where(c => !c.IsNone && c.IsThread)
+            .Select(ChatId.ParseNullable)
+            .SkipNullItems()
+            .Where(c => c.IsThread)
             .ToArray();
     }
 
@@ -227,8 +223,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ConfigureAwait(false);
 
         return sChatIds
-            .Select(c => ChatId.ParseNullable(c))
-            .Where(c => c is not null && c.IsThread)
+            .Select(ChatId.ParseNullable)
+            .SkipNullItems()
+            .Where(c => c.IsThread)
             .ToArray();
     }
 
@@ -680,8 +677,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 parent = parent.GetThreadParentOrSelf();
                 _ = ListThreadIdsForChat(ownerId, parent, default);
             } while (parent.IsThread);
-            if (chatId.IsPlaceChat)
-                _ = ListThreadIdsForPlace(ownerId, chatId.PlaceId, default);
+            if (chatId is PlaceChatId placeChatId)
+                _ = ListThreadIdsForPlace(ownerId, placeChatId.PlaceId, default);
             return default!;
         }
 
@@ -695,7 +692,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await dbContext.ThreadContacts.Lock(id, cancellationToken).ConfigureAwait(false);
 
         var dbThreadContact = await dbContext.ThreadContacts
-            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
 
         if (change.IsCreate(out var threadContact)) {
@@ -900,11 +897,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var parentChat = chatId.GetOutermostThreadParentOrSelf();
         foreach (var mentionId in mentionIds) {
             AuthorFull? author = null;
-            if (mentionId.IsAuthor(out var authorId))
+            if (mentionId.PrincipalId is AuthorId authorId)
                 author = await AuthorsBackend
                     .Get(parentChat, authorId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);
-            else if (mentionId.IsUser(out var userId))
+            else if (mentionId.PrincipalId is UserId userId)
                 author = await AuthorsBackend
                     .GetByUserId(parentChat, userId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);
@@ -945,9 +942,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private async Task EnsureThreadContactExits(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
         var contactId = ContactId.NewAny(userId, chatId);
-        if (contactId is null)
-            return;
-
         var threadContact = await GetThreadContact(userId, contactId, cancellationToken).ConfigureAwait(false);
         if (threadContact is not null)
             return;

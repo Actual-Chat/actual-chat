@@ -20,16 +20,18 @@ public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<GroupChatId>();
 
+    private readonly LocalChatId _localChatId;
+
     // Factories and constructors
 
     public static GroupChatId New()
     {
         var localChatId = IdGenerator.Next();
-        return new(localChatId);
+        return new(localChatId, LocalChatId.New(localChatId));
     }
 
-    internal GroupChatId(string value) : base(value, ChatKind.Group)
-    { }
+    internal GroupChatId(string value, LocalChatId localChatId) : base(value, ChatKind.Group)
+        => _localChatId = localChatId;
 
     // Equality
 
@@ -70,5 +72,15 @@ public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>
 
         result = chatId as GroupChatId;
         return result is not null;
+    }
+
+    public override long ThreadId => _localChatId.ThreadId;
+    public new GroupChatId GetThreadParentOrSelf()
+    {
+        if (!IsThread)
+            return this;
+
+        var parentGroupChat = _localChatId.Parent;
+        return new GroupChatId(parentGroupChat!.Id, parentGroupChat);
     }
 }

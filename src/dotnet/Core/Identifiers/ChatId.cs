@@ -33,27 +33,20 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     [IgnoreDataMember]
     public virtual string ShardKey => Value;
 
-    public long ThreadId => Kind switch {
-        ChatKind.Group => GroupChatId.ThreadId,
-        ChatKind.Place => PlaceChatId.ThreadId,
-        _ => 0,
-    };
+    public virtual long ThreadId => 0;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsThread => ThreadId > 0;
     public ChatId GetThreadParentOrSelf() => Kind switch {
-        ChatKind.Group => GroupChatId.GetThreadParentOrSelf(),
-        ChatKind.Place => PlaceChatId.GetThreadParentOrSelf(),
+        ChatKind.Group => ((GroupChatId)this).GetThreadParentOrSelf(),
+        ChatKind.Place => ((PlaceChatId)this).GetThreadParentOrSelf(),
         _ => this,
     };
     public ChatId GetThreadParent()
     {
         if (!IsThread)
             throw StandardError.NotSupported("This method is supported only for thread chat ids.");
-        return Kind switch {
-            ChatKind.Group => GroupChatId.GetThreadParentOrSelf(),
-            ChatKind.Place => PlaceChatId.GetThreadParentOrSelf(),
-            _ => this,
-        };
+
+        return GetThreadParentOrSelf();
     }
 
     public ChatId GetOutermostThreadParentOrSelf() {
@@ -128,6 +121,21 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
         return true;
     }
 
+    // Threads
+
+    public ChatId CreateThreadId(long threadId)
+    {
+        if (Kind is not (ChatKind.Group or ChatKind.Place))
+            throw StandardError.NotSupported($"{Kind} chats do not support threads");
+        return Parse(Value + ThreadIdSeparator + threadId.ToInvariantString());
+    }
+
+    public void EnsureNonThread()
+    {
+        if (IsThread)
+            throw StandardError.Constraint("ChatId should not belong to Thread");
+    }
+
     // Private methods
 
     private static PeerChatId? TryParsePeerChatId(string s)
@@ -156,19 +164,22 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
         if (!PlaceId.TryParse(tail[..placeIdLength].ToString(), out var placeId))
             return null;
-        if (!TryParse(tail[(placeIdLength + 1)..].ToString(), out var localChatId))
+        if (!LocalChatId.TryParse(tail[(placeIdLength + 1)..].ToString(), null, out var localChatId))
             return null;
-        if (localChatId.Kind != ChatKind.Group)
-            return null; // Both PlaceId and local ChatId must be there
 
-        return new PlaceChatId(s, placeId, localChatId.Value);
+        return new PlaceChatId(s, placeId, localChatId);
     }
 
     private static GroupChatId? TryParseGroupChatId(string s)
     {
-        if (Alphabet.AlphaNumeric.IsMatch(s) || OrdinalEquals(s, "the-actual-one") || OrdinalEquals(s, "feedback-template"))
-            return new GroupChatId(s);
+        if (LocalChatId.TryParse(s, SpecialChatId, out var localChatId))
+            return new GroupChatId(s, localChatId);
 
         return null;
+
+        static bool SpecialChatId(string s1)
+        {
+            return OrdinalEquals(s1, "the-actual-one") || OrdinalEquals(s1, "feedback-template");
+        }
     }
 }

@@ -29,7 +29,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (authorId.ChatId != chatId)
             return null;
 
-        var author = await Get(chatId, (PrincipalId)authorId, authorKind, cancellationToken).ConfigureAwait(false);
+        var author = await GetInternal(chatId, authorId, authorKind, cancellationToken).ConfigureAwait(false);
         return author;
     }
 
@@ -42,7 +42,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         ArgumentNullException.ThrowIfNull(chatId);
         ArgumentNullException.ThrowIfNull(userId);
 
-        var author = await Get(chatId, (PrincipalId)userId, authorKind, cancellationToken).ConfigureAwait(false);
+        var author = await GetInternal(chatId, userId, authorKind, cancellationToken).ConfigureAwait(false);
         return author;
     }
 
@@ -302,7 +302,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId) = command;
-        chatId.EnsureNonThread();
+        chatId?.EnsureNonThread();
         var nonNullCount = (authorId is not null ? 1 : 0) + (chatId is not null ? 1 : 0) + (userId is not null ? 1 : 0);
         if (nonNullCount != 1)
             throw new ArgumentOutOfRangeException(nameof(command),
@@ -526,7 +526,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<AuthorFull?> Get(
+    protected virtual async Task<AuthorFull?> GetInternal(
         ChatId chatId,
         PrincipalId principalId,
         RequestedAuthorKind authorKind,
@@ -534,12 +534,13 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     {
         if (chatId.IsThread) {
             var parentChatId = chatId.GetThreadParent();
-            var author2 = await Get(parentChatId, Remap(principalId, parentChatId), option, cancellationToken).ConfigureAwait(false);
-            if (author2 is null)
+            var parentChatAuthorId = Remap(principalId, parentChatId);
+            var parentChatAuthor = await GetInternal(parentChatId, parentChatAuthorId, authorKind, cancellationToken).ConfigureAwait(false);
+            if (parentChatAuthor is null)
                 return null;
 
-            return author2 with {
-                Id = Remap(author2.Id, chatId),
+            return parentChatAuthor with {
+                Id = Remap(parentChatAuthor.Id, chatId),
                 RoleIds = [],
             };
         }
@@ -548,12 +549,13 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             || placeChatId.IsRoot)
             return await GetInternal(chatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        return await GetPlaceChatAuthor(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        return await GetPlaceChatAuthor(placeChatId, principalId, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
     protected virtual async Task<AuthorFull?> GetInternal(
-        ChatId chatId, PrincipalId principalId,
+        ChatId chatId,
+        PrincipalId principalId,
         CancellationToken cancellationToken)
     {
         AuthorFull? author;
@@ -638,9 +640,9 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
     // Private / internal methods
 
-    private async Task<AuthorFull?> GetPlaceChatAuthor(ChatId chatId, PrincipalId principalId, CancellationToken cancellationToken)
+    private async Task<AuthorFull?> GetPlaceChatAuthor(PlaceChatId chatId, PrincipalId principalId, CancellationToken cancellationToken)
     {
-        var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
+        var rootChatId = chatId.RootChatId;
         var rootAuthor = await GetInternal(rootChatId, Remap(principalId, rootChatId), cancellationToken)
             .ConfigureAwait(false);
         if (rootAuthor == null)
@@ -729,7 +731,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             : chatId;
     }
 
-    private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
+    internal static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
         => AuthorId.New(targetChatId, authorId.LocalId);
 
     internal static PrincipalId Remap(PrincipalId principalId, ChatId targetChatId)

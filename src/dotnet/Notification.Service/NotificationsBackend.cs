@@ -491,7 +491,7 @@ public class NotificationsBackend(IServiceProvider services)
         // New thread has been created.
         var parentChatId = chat.Id.GetThreadParent();
         var userIds = await ListSubscribedUserIds(parentChatId, cancellationToken).ConfigureAwait(false);
-        var similarityKey = parentChatId;
+        var similarityKey = parentChatId.Value;
         var creator = await ChatThreadsBackend.GetThreadCreator(chat.Id, cancellationToken).ConfigureAwait(false);
         if (creator is null)
             return;
@@ -699,10 +699,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var subscriberIdWithStatus = await userIds
             .Select<UserId, Task<(UserId, bool)>>(async subscriberId  => {
-                var contactId = new ContactId(subscriberId, chatId, ParseOrNone.Option);
-                if (contactId.IsNone)
-                    return (subscriberId, false);
-
+                var contactId = ContactId.NewAny(subscriberId, chatId);
                 var threadContact = await ContactsBackend
                     .GetThreadContact(subscriberId, contactId, cancellationToken)
                     .ConfigureAwait(false);

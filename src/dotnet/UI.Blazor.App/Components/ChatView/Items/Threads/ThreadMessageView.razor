@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using Cysharp.Text
-@inherits ComputedStateComponent<ThreadMessageView.Model?>
+@inherits ComputedStateComponent<AppUIHub, ThreadMessageView.Model?>
 @{
     var chat = Message.Chat;
     var m = State.Value;
@@ -48,7 +48,7 @@
                     Size="SquareSize.Size8" />
                 <div class="c-content">
                     <div class="c-info">
-                        <AuthorName AuthorSid="@chatEntry.AuthorId" Class="chat-message-author-name"/>
+                        <AuthorName AuthorSid="@chatEntry.AuthorId.Value" Class="chat-message-author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@chatEntry.BeginsAt"/>
                     </div>
                     <span class="c-message">
@@ -82,15 +82,9 @@
 @code {
     private IChatMarkupHub _chatMarkupHub = null!;
 
-    private ChatUIHub Hub => ChatContext.Hub;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IChatThreads ChatThreads => Hub.ChatThreads;
-    private History History => Hub.History;
-    private MomentClockSet Clocks => Hub.Clocks();
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     // ChatContext belongs to parent Chat, not to the thread chat.
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;

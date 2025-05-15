@@ -17,10 +17,6 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
-    private IRolesBackend RolesBackend => field ??= services.GetRequiredService<IRolesBackend>();
-    [field: AllowNull, MaybeNull]
-    private IAuthorsBackend AuthorsBackend => field ??= services.GetRequiredService<IAuthorsBackend>();
-    [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= services.GetRequiredService<IContactsBackend>();
     [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= services.GetRequiredService<ICommander>();
@@ -68,10 +64,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         if (account.IsGuest)
             return false;
 
-        var contactId = new ContactId(account.Id, threadChatId, ParseOrNone.Option);
-        if (contactId.IsNone)
-            return false;
-
+        var contactId = ContactId.NewAny(account.Id, threadChatId);
         var threadContact = await ContactsBackend.GetThreadContact(account.Id, contactId, cancellationToken).ConfigureAwait(false);
         return threadContact is not null;
     }
@@ -161,31 +154,31 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var description = command.Description;
         var parentChat = await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false);
         parentChat.Rules.Permissions.Require(ChatPermissions.Write);
-        var ownerId = parentChat.Rules.Account.Id;
+        var ownerId = parentChat.Rules.Account!.Id;
 
         var isFirst = true;
-        var chatId = ChatId.None;
         Chat? threadChat = null;
         foreach (var textEntryId in command.EntryIds.OrderBy(c => c.LocalId)) {
             var textEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
             if (textEntry is null || textEntry.IsRemoved)
                 continue;
 
-            if (isFirst) {
+            if (threadChat is null) {
                 var threadId = textEntry.LocalId; // Start Entry Id
-                chatId = parentChatId.CreateThreadId(threadId);
+                var threadChatId = parentChatId.CreateThreadId(threadId);
                 var chatChange = Change.Create(new ChatDiff {
                     Title = title,
                     Description = description,
                     IsPublic = false,
                 });
-                threadChat = await Commander.Call(new ChatsBackend_Change(chatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
+                threadChat = await Commander.Call(new ChatsBackend_Change(threadChatId, null, chatChange, OwnerId:ownerId), cancellationToken).ConfigureAwait(false);
             }
+            var chatId = threadChat.Id;
 
             // Create thread chat entry.
             {
-                var textEntryId1 = new TextEntryId(chatId, 0, AssumeValid.Option);
-                var textEntryAuthorId = ActualChat.Chat.AuthorsBackend.Remap(textEntry.AuthorId, chatId);
+                var textEntryId1 = TextEntryId.New(chatId, 0);
+                var textEntryAuthorId = AuthorsBackend.Remap(textEntry.AuthorId, chatId);
                 var upsertEntryCommand = new ChatsBackend_ChangeEntry(
                     textEntryId1,
                     null,
@@ -232,7 +225,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         if (account.IsGuest)
             throw new ArgumentOutOfRangeException(nameof(session));
 
-        var contactId = new ContactId(account.Id, threadChatId);
+        var contactId = ContactId.NewAny(account.Id, threadChatId);
         var threadContact = await ContactsBackend.GetThreadContact(account.Id, contactId, cancellationToken).ConfigureAwait(false);
         var change = threadContact is null ? Change.Create(new ThreadContact(contactId)) : Change.Remove<ThreadContact>();
         var toggleCommand = new ContactsBackend_ChangeThreadContact(contactId, null, change);
