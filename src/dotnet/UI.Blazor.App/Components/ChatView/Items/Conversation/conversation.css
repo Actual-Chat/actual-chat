@@ -35,7 +35,11 @@
 }
 .conversation-header-short .c-ending,
 .conversation-header .c-ending {
+    @apply relative;
     @apply flex-none flex-x self-start gap-x-0.5;
+    @apply p-px;
+    @apply rounded-full;
+    @apply overflow-hidden;
     @apply text-cr-item-badge-selected-text text-caption-1;
     @apply cursor-pointer;
 }
@@ -43,6 +47,47 @@
     @apply rotate-180;
     transition: transform 250ms ease-in-out;
 }
+
+.conversation-header-short .c-ending.loading-conversation::before,
+.conversation-header .c-ending.loading-conversation::before {
+    content: "";
+    position: absolute;
+    top: -2rem;
+    left: -2rem;
+    width: calc(100% + 4rem);
+    height: calc(100% + 4rem);
+    background: conic-gradient(
+        from 0deg,
+        var(--transparent),
+        var(--cr-item-badge-selected-text),
+        var(--transparent),
+        var(--cr-item-badge-selected-text)
+    );
+    animation: spin 1.5s linear infinite;
+    z-index: 0;
+}
+.conversation-header-short .c-ending .c-content,
+.conversation-header .c-ending .c-content {
+    @apply relative z-10;
+    @apply flex-x items-center gap-x-0.5;
+    @apply p-1;
+    @apply rounded-full;
+}
+.conversation-header-short .c-ending.loading-conversation .c-content,
+.conversation-header .c-ending.loading-conversation .c-content {
+    @apply bg-01;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
 .conversation-message .c-summary .c-short {
     @apply block;
     @apply min-h-6;
@@ -152,8 +197,8 @@
     @apply text-cr-item-badge-selected-text text-caption-6;
 }
 
-.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-message),
-.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-header),
-.virtual-list > .c-wrapper > ul.c-virtual-container > li.item:has(.conversation-footer) {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-message),
+.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-header),
+.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-footer) {
     @apply p-2;
 }

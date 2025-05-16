@@ -8,18 +8,28 @@
         <div class="c-title" @onclick="TitleClick">
             @Title
         </div>
-        <div class="c-ending" @onclick="MessageCountClick">
-            <i class="icon-message-stars"></i>
-            <span class="c-message-count">@MessageCount</span>
-            <i class="icon-chevron-compact-down rotate-icon"></i>
+        <div class="c-ending @_loadingCls" @onclick="OnMessageCountClick">
+            <div class="c-content">
+                <i class="icon-message-stars"></i>
+                <span class="c-message-count">@MessageCount</span>
+                <i class="icon-chevron-compact-down rotate-icon"></i>
+            </div>
         </div>
     </div>
 </div>
 
 @code{
+    private string _loadingCls = "";
+
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public int MessageCount { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
     [Parameter] public EventCallback MessageCountClick { get; set; }
     [Parameter] public EventCallback TitleClick { get; set; }
+
+    private void OnMessageCountClick() {
+        _loadingCls = string.IsNullOrEmpty(_loadingCls) ? "loading-conversation" : "";
+        StateHasChanged();
+        MessageCountClick.InvokeAsync();
+    }
 }
