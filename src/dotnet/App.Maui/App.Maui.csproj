@@ -397,10 +397,6 @@
 
   <!-- Windows build properties -->
 
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
-  </PropertyGroup>
-
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Debug'">
     <!-- <WindowsPackageType>None</WindowsPackageType>-->
   </PropertyGroup>
