@@ -32,14 +32,14 @@ body.device-ios .side-nav {
 }
 .page-with-header-and-footer.rp-open > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
-    @apply md:transition-width md:duration-150 md:ease-out md:delay-150;
+    @apply md:transition-width md:duration-150 md:ease-linear md:delay-150;
 }
 .page-with-header-and-footer:has(.right-skeleton-panel) > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-110;
 }
 .page-with-header-and-footer.rp-closed > .side-nav.side-nav-left {
     @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
-    @apply md:transition-width md:duration-150 md:ease-out md:delay-150;
+    @apply md:transition-width md:duration-150 md:ease-linear md:delay-150;
 }
 body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply hidden;
@@ -77,7 +77,7 @@ body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
         @apply absolute;
         @apply w-1/2;
         @apply left-1/2;
-        transition: transform 300ms ease-in;
+        transition: transform 300ms linear;
     }
     .side-nav.side-nav-right[data-side-nav="open"] {
         width: 50%;
