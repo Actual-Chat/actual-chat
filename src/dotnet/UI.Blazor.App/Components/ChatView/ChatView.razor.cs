@@ -370,21 +370,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     ItemVisibilityState = ItemVisibility.Value,
                 };
         }
-        // else if (!isQueryFulfilled && !isLoadLimitReached && !hasAllItems) {
-        //     // We need to load more data to fulfill the query
-        //     var expandedDataQuery = await ChatUI
-        //         .ExpandDataQuery(chatId,
-        //             dataQuery,
-        //             originalLoadBefore,
-        //             originalLoadAfter,
-        //             items,
-        //             cancellationToken)
-        //         .ConfigureAwait(false);
-        //     if (expandedDataQuery != null) {
-        //         dataQuery = expandedDataQuery;
-        //         goto rebuildTiles;
-        //     }
-        // }
 
         if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(items, ref readEntryLid)) {
             tryUpdateShownReadEntryLid = false;
@@ -466,7 +451,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => new ChatDataQuery(
                 secondLayer.GetTile(keyRange.Start).Start,
                 (int)secondLayer.GetTile(query.MoveRange.Start).Start,
-                (int)secondLayer.GetTile(keyRange.Move(query.MoveRange).Size()).Start),
+                ChatUI.LoadLimit),
         };
 
         // If we are scrolling somewhere within idRange, let's extend the range to scrollAnchor & nearby entries.

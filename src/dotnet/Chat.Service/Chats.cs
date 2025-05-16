@@ -201,15 +201,16 @@ public class Chats(IServiceProvider services) : IChats
 
         var merged = entries.Merge(conversations, (ce, co) => (int)(ce.LocalId - co.Id.StartEntryLid)).ToList();
         var indexOfIdTileStart = merged.AsSpan().BinarySearch(p => (p.Left?.Id.LocalId ?? p.Right?.Id.StartEntryLid) >= idTileStart);
+        var maxIndex = Math.Max(0, merged.Count - 1);
         var startIndex = Math.Clamp(
             indexOfIdTileStart + offset,
             0,
-            merged.Count - 1
+            maxIndex
         );
         var endIndex = Math.Clamp(
             startIndex + limit,
             startIndex,
-            merged.Count - 1
+            maxIndex
         );
 
         if (merged.Count == 0 || startIndex >= endIndex)
