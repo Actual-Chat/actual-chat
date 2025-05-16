@@ -29,105 +29,81 @@ public partial class ChatUI
             return [];
 
         var showConversations = chat.IsSummarized ?? false;
-        IImmutableSet<ConversationId> expandedConversations = ImmutableHashSet<ConversationId>.Empty;
+        IImmutableSet<ConversationId> expandedConversations = [];
         if (showConversations) {
             expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
             var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
-                .OrderByDescending(c => dataQuery.IdRange.Contains(c.StartEntryLid))
+                .OrderBy(c => c.StartEntryLid)
                 .ToList();
             LastExpandedConversations = expandedConversations;
             if (changedExpand.Count > 0) {
                 // Adjust data query to load tiles around expanded conversation entries
                 var conversationId = changedExpand.FirstOrDefault();
-                var conversation = await Conversations.Get(Session, conversationId, cancellationToken)
-                    .ConfigureAwait(false);
-                var isExpanded = expandedConversations.Contains(conversationId);
-                var loadBefore = isExpanded ? HalfLoadLimit : SecondTileSize;
-                var loadAfter = isExpanded ? 0 : HalfLoadLimit + SecondTileSize;
-                var keyRange = new Range<long>(
-                    Math.Min(dataQuery.IdRange.Start, conversationId.StartEntryLid),
-                    Math.Max(dataQuery.IdRange.End, conversation.Require().EndEntryLid));
-                dataQuery = new ChatDataQuery(keyRange, loadBefore, loadAfter);
+                dataQuery = new ChatDataQuery(
+                    IdTileStack.LastLayer.GetTile(conversationId.StartEntryLid).Start,
+                    -HalfLoadLimit,
+                    LoadLimit);
             }
         }
+        DebugLog?.LogDebug("Chats.GetPage: {ChatId} {DataQuery}", chatId, dataQuery);
+        var chatPage = await Chats.GetPage(Session,
+                chatId,
+                expandedConversations.ToArray(),
+                dataQuery.IdTileStart,
+                dataQuery.Offset,
+                dataQuery.Limit,
+                cancellationToken)
+            .ConfigureAwait(false);
 
-        var originalLoadBefore = dataQuery.LoadBefore;
-        var originalLoadAfter = dataQuery.LoadAfter;
+        var idTiles = GetIdTilesToLoad(chatPage);
         var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        while (true) {
-            var idTiles = GetIdTilesToLoad(dataQuery);
-            var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
-            var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
-            foreach (var idTile in idTiles) {
-                var lastReadEntryLid = shownReadyEntryLid;
-                if (lastReadEntryLid < idTile.Range.Start)
-                    lastReadEntryLid = 0;
-                else if (shownReadyEntryLid >= idTile.Range.End - 1)
-                    lastReadEntryLid = long.MaxValue;
-                var tile = await GetTile(
-                        chatId,
-                        chat.Rules.Author?.Id ?? AuthorId.None,
-                        idTile.Range,
-                        showConversations,
-                        expandedConversations,
-                        prevMessage,
-                        lastReadEntryLid,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-                if (tile.Items.Count == 0)
-                    continue;
-
-                if (expandedConversations.Count > alreadyAddedConversationHeaders.Count) {
-                    // Find conversation headers
-                    var filteredItems = tile.Items
-                        .Where(chatMessage => chatMessage is not ConversationHeader conversationHeader
-                            || alreadyAddedConversationHeaders.Add(conversationHeader.Conversation!.Id))
-                        .ToList();
-                    if (filteredItems.Count != tile.Items.Count)
-                        tile = tile with { Items = filteredItems };
-                }
-                else if (alreadyAddedConversationHeaders.Count > 0)
-                    // Skip first conversation header if already added
-                    if (tile.Items[0] is ConversationHeader conversationHeader
-                        && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation!.Id))
-                        tile = tile with { Items = tile.Items.Skip(1).ToList() };
-
-                if (tile.Items.Count == 0)
-                    continue;
-
-                if (tile.Items[0].Equals(prevMessage)) {
-                    // Skip first item if it's the same as previous tile - e.g. large conversation that spans across multiple tiles
-                    tile = tile with { Items = tile.Items.Skip(1).ToList() };
-                    if (tile.Items.Count == 0)
-                        continue;
-                }
-
-                tiles.Add(tile);
-                prevMessage = tile.Items[^1];
-#if false
-        // Uncomment for debugging:
-        DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
-            idTile.Range.Format(), isUnread, lastReadEntryLidArg);
-        foreach (var item in tile.Items)
-            DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
-#endif
-            }
-            if (originalLoadBefore == 0 && originalLoadAfter == 0)
-                break;
-
-            var expandedDataQuery = await ExpandDataQuery(chatId,
-                    dataQuery,
-                    originalLoadBefore,
-                    originalLoadAfter,
-                    tiles.SelectMany(t => t.Items),
+        var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
+        var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
+        foreach (var idTile in idTiles) {
+            var lastReadEntryLid = shownReadyEntryLid;
+            if (lastReadEntryLid < idTile.Start)
+                lastReadEntryLid = 0;
+            else if (shownReadyEntryLid >= idTile.End - 1)
+                lastReadEntryLid = long.MaxValue;
+            var tile = await GetTile(
+                    chatId,
+                    chat.Rules.Author?.Id ?? AuthorId.None,
+                    idTile,
+                    showConversations,
+                    expandedConversations,
+                    prevMessage,
+                    lastReadEntryLid,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (expandedDataQuery == null)
-                break;
+            if (tile.Items.Count == 0)
+                continue;
 
-            dataQuery = expandedDataQuery;
-            tiles.Clear();
+            if (expandedConversations.Count > alreadyAddedConversationHeaders.Count) {
+                // Find conversation headers
+                var filteredItems = tile.Items
+                    .Where(chatMessage => chatMessage is not ConversationHeader conversationHeader
+                        || alreadyAddedConversationHeaders.Add(conversationHeader.Conversation!.Id))
+                    .ToList();
+                if (filteredItems.Count != tile.Items.Count)
+                    tile = tile with { Items = filteredItems };
+            }
+            else if (alreadyAddedConversationHeaders.Count > 0)
+                // Skip the first conversation header if already added
+                if (tile.Items[0] is ConversationHeader conversationHeader
+                    && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation!.Id))
+                    tile = tile with { Items = tile.Items.Skip(1).ToList() };
+            if (tile.Items.Count == 0)
+                continue;
+
+            if (tile.Items[0].Equals(prevMessage)) {
+                // Skip the first item if it's the same as the previous tile - e.g., a large conversation that spans across multiple t
+                tile = tile with { Items = tile.Items.Skip(1).ToList() };
+                if (tile.Items.Count == 0)
+                    continue;
+            }
+            tiles.Add(tile);
+            prevMessage = tile.Items[^1];
         }
 
         // Fix NextMessage reference for cached tiles
@@ -145,6 +121,14 @@ public partial class ChatUI
 
         var groupedTiles = GroupExpandedConversations(groupedItems);
         return groupedTiles;
+
+        List<Range<long>> GetIdTilesToLoad(ChatPageMap page)
+            => page.EntryIdTileRanges
+                .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
+                .Concat(page.ConversationIdTileRanges.Select(r => IdTileStack.FirstLayer.GetTile(r.Start)))
+                .Select(t => t.Range)
+                .Distinct()
+                .ToList();
     }
 
     [ComputeMethod]
@@ -152,47 +136,6 @@ public partial class ChatUI
         ChatEntryId id,
         CancellationToken cancellationToken = default)
         => Chats.GetEntry(Session, id, cancellationToken);
-
-    public async Task<ChatDataQuery?> ExpandDataQuery(
-        ChatId chatId,
-        ChatDataQuery dataQuery,
-        int originalLoadBefore,
-        int originalLoadAfter,
-        IEnumerable<ChatMessage> items,
-        CancellationToken cancellationToken)
-    {
-        var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts(dataQuery, items);
-        var hasBeforeOrAfter = originalLoadBefore > 0 || originalLoadAfter > 0;
-        var beforeFulfilled = hasBeforeOrAfter && beforeCount >= originalLoadBefore / 2;
-        var afterFulfilled = hasBeforeOrAfter && afterCount >= originalLoadAfter / 2;
-        if (beforeFulfilled && afterFulfilled)
-            return null;
-
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
-            .ConfigureAwait(false);
-        var hasVeryFirstItem = chatIdRange.Start >= dataQuery.Start;
-        var hasVeryLastItem = chatIdRange.End <= dataQuery.End;
-        if (hasVeryFirstItem && hasVeryLastItem)
-            return null;
-
-        if (beforeFulfilled && hasVeryLastItem)
-            return null;
-
-        if (afterFulfilled && hasVeryFirstItem)
-            return null;
-
-        // Expand load limits and reset tiles if we need to load more just to fulfill one side
-        var expandedLoadBefore = hasVeryFirstItem || beforeFulfilled
-            ? dataQuery.LoadBefore
-            : Math.Max(dataQuery.LoadBefore * 4, HalfLoadLimit);
-        var expandedLoadAfter = hasVeryLastItem || afterFulfilled
-            ? dataQuery.LoadAfter
-            : Math.Max(dataQuery.LoadAfter * 4, HalfLoadLimit);
-        return new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
-            HasVeryFirstItem = hasVeryFirstItem,
-            HasVeryLastItem = hasVeryLastItem,
-        };
-    }
 
     // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
@@ -501,27 +444,6 @@ public partial class ChatUI
         }
     }
 
-    private (int, int) GetLoadedBeforeAndAfterCounts(ChatDataQuery dataQuery, IEnumerable<ChatMessage> items)
-    {
-        var before = 0;
-        var after = 0;
-        foreach (var item in items)
-            if (item is IVirtualListGroup<ChatMessage> group)
-                foreach (var nestedItem in group.Items)
-                    UpdateCounts(nestedItem);
-            else
-                UpdateCounts(item);
-        return (before, after);
-
-        void UpdateCounts(ChatMessage item)
-        {
-            if (item.Id < dataQuery.IdRange.Start)
-                before++;
-            else if (item.Id > dataQuery.IdRange.End)
-                after++;
-        }
-    }
-
     private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
     {
         if (idRange.IsEmptyOrNegative)
@@ -579,45 +501,45 @@ public partial class ChatUI
 
     // Private methods
 
-    private Tile<long>[] GetIdTilesToLoad(ChatDataQuery dataQuery)
-    {
-        // DebugLog?.LogDebug("GetIdTilesToLoad: {ChatDataQuery}", dataQuery);
-        var idRangeToLoad = new Range<long>(dataQuery.Start, dataQuery.End);
-        var firstLayer = IdTileStack.FirstLayer;
-        var secondLayer = IdTileStack.Layers[1];
-        var tiles = ArrayBuffer<Tile<long>>.Lease(true);
-        try {
-            // hot range assumes high probability of changes - so close to the end of the chat messages
-            var hotRangeTiles = dataQuery.HasVeryLastItem
-                ? firstLayer.GetCoveringTiles(new Range<long>(idRangeToLoad.End - secondLayer.TileSize,
-                    idRangeToLoad.End + firstLayer.TileSize))
-                : [];
-            var hotRange = hotRangeTiles.Length > 0
-                ? new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End)
-                : default;
-            if (!idRangeToLoad
-                    .Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
-                hotRange = default;
-
-            var coldRange = hotRange.IsEmpty
-                ? idRangeToLoad
-                : new Range<long>(secondLayer.GetTile(idRangeToLoad.Start).Start, hotRange.Start);
-
-            // load second layer stack to improve reuse if large tiles during scroll
-            tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
-            var lastColdRange = tiles.Count > 0
-                ? tiles[^1].Range
-                : default;
-            tiles.AddRange(firstLayer.GetCoveringTiles(hotRange).SkipWhile(hr => hr.Range.Overlaps(lastColdRange)));
-            var result = tiles.ToArray();
-            // if (result.DistinctBy(x => x.Range).Count() != result.Length)
-            //     Debugger.Break();
-            return result;
-        }
-        finally {
-            tiles.Release();
-        }
-    }
+    // private Tile<long>[] GetIdTilesToLoad(ChatDataQuery dataQuery)
+    // {
+    //     // DebugLog?.LogDebug("GetIdTilesToLoad: {ChatDataQuery}", dataQuery);
+    //     var idRangeToLoad = new Range<long>(dataQuery.Start, dataQuery.End);
+    //     var firstLayer = IdTileStack.FirstLayer;
+    //     var secondLayer = IdTileStack.Layers[1];
+    //     var tiles = ArrayBuffer<Tile<long>>.Lease(true);
+    //     try {
+    //         // hot range assumes high probability of changes - so close to the end of the chat messages
+    //         var hotRangeTiles = dataQuery.HasVeryLastItem
+    //             ? firstLayer.GetCoveringTiles(new Range<long>(idRangeToLoad.End - secondLayer.TileSize,
+    //                 idRangeToLoad.End + firstLayer.TileSize))
+    //             : [];
+    //         var hotRange = hotRangeTiles.Length > 0
+    //             ? new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End)
+    //             : default;
+    //         if (!idRangeToLoad
+    //                 .Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
+    //             hotRange = default;
+    //
+    //         var coldRange = hotRange.IsEmpty
+    //             ? idRangeToLoad
+    //             : new Range<long>(secondLayer.GetTile(idRangeToLoad.Start).Start, hotRange.Start);
+    //
+    //         // load second layer stack to improve reuse if large tiles during scroll
+    //         tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
+    //         var lastColdRange = tiles.Count > 0
+    //             ? tiles[^1].Range
+    //             : default;
+    //         tiles.AddRange(firstLayer.GetCoveringTiles(hotRange).SkipWhile(hr => hr.Range.Overlaps(lastColdRange)));
+    //         var result = tiles.ToArray();
+    //         // if (result.DistinctBy(x => x.Range).Count() != result.Length)
+    //         //     Debugger.Break();
+    //         return result;
+    //     }
+    //     finally {
+    //         tiles.Release();
+    //     }
+    // }
 
     private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
     {

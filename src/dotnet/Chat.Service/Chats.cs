@@ -99,7 +99,7 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatPage> GetPage(
+    public virtual async Task<ChatPageMap> GetPage(
         Session session,
         ChatId chatId,
         ConversationId[] expandedConversationIds,
@@ -108,6 +108,7 @@ public class Chats(IServiceProvider services) : IChats
         int limit,
         CancellationToken cancellationToken)
     {
+        Log.LogInformation("GetPage: '{ChatId}' {IdTileStart}@({Offset}->{Limit})", chatId, idTileStart, offset, limit);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         var showConversations = chat.IsSummarized ?? false;
         List<Range<long>> conversationIdRanges = [];
@@ -200,16 +201,19 @@ public class Chats(IServiceProvider services) : IChats
 
         var merged = entries.Merge(conversations, (ce, co) => (int)(ce.LocalId - co.Id.StartEntryLid)).ToList();
         var indexOfIdTileStart = merged.AsSpan().BinarySearch(p => (p.Left?.Id.LocalId ?? p.Right?.Id.StartEntryLid) >= idTileStart);
-        var startIndex = Math.Max(
+        var startIndex = Math.Clamp(
+            indexOfIdTileStart + offset,
             0,
-            offset >= 0
-                ? indexOfIdTileStart
-                : indexOfIdTileStart < 0
-                    ? merged.Count - limit - 1
-                    : indexOfIdTileStart);
-        var endIndex = Math.Min(
-            merged.Count - 1,
-            startIndex + limit);
+            merged.Count - 1
+        );
+        var endIndex = Math.Clamp(
+            startIndex + limit,
+            startIndex,
+            merged.Count - 1
+        );
+
+        if (merged.Count == 0 || startIndex >= endIndex)
+            return new ChatPageMap([], []);
 
         var limited = merged[startIndex..endIndex];
         var limitedEntryTiles = limited
@@ -225,7 +229,7 @@ public class Chats(IServiceProvider services) : IChats
             .OrderBy(r => r.Start)
             .ToArray();
 
-        return new ChatPage(limitedEntryTiles, limitedConversations);
+        return new ChatPageMap(limitedEntryTiles, limitedConversations);
     }
 
     // Note that it returns (firstId, lastId + 1) range!

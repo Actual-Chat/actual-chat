@@ -38,7 +38,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 300)]
-    Task<ChatPage> GetPage(
+    Task<ChatPageMap> GetPage(
         Session session,
         ChatId chatId,
         ConversationId[] expandedConversationIds,
