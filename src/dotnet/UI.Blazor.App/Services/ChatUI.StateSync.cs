@@ -227,12 +227,9 @@ public partial class ChatUI
                                 : chatInfo.News.TextEntryIdRange.End;
 
                             var secondLayer = IdTileStack.Layers[1];
-                            var idRange = new Range<long>(
-                                secondLayer.GetTile(prefetchNearTo - LoadLimit).Start,
-                                secondLayer.GetTile(prefetchNearTo + HalfLoadLimit).End).IntersectWith(new Range<long>(0, long.MaxValue));
-
-                            await PrefetchTiles(chatId, idRange, cancellationToken).ConfigureAwait(false);
-                            _ = GetChatItems(chatId, new ChatDataQuery(idRange), lastReadEntryLid, cancellationToken);
+                            var idTileStart = secondLayer.GetTile(prefetchNearTo).Start;
+                            var chatDataQuery = new ChatDataQuery(idTileStart, -HalfLoadLimit, LoadLimit);
+                            _ = GetChatItems(chatId, chatDataQuery, lastReadEntryLid, cancellationToken);
                         }
                     },
                     changeToken);
