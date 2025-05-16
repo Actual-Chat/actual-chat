@@ -128,6 +128,7 @@ public partial class ChatUI
                 .Concat(page.ConversationIdTileRanges.Select(r => IdTileStack.FirstLayer.GetTile(r.Start)))
                 .Select(t => t.Range)
                 .Distinct()
+                .OrderBy(r => r.Start)
                 .ToList();
     }
 
