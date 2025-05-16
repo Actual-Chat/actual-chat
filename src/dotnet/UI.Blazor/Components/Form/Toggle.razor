@@ -1,3 +1,4 @@
+@using ActualLab.Locking
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
@@ -21,6 +22,7 @@
 
 @code {
     private bool _isChecked;
+    private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private TuneUI TuneUI => Hub.TuneUI;
@@ -37,9 +39,11 @@
         => _isChecked = IsChecked;
 
     private async Task OnChange(ChangeEventArgs eventArgs) {
+        // just avoiding concurrent click handling
+        using var _1 = await _lock.Lock();
+        _ = TuneUI.Play(Tune.ChangeToggle);
         var newValue = eventArgs.Value is bool b ? b : eventArgs.Value?.ToString() == "true";
         _isChecked = newValue;
-        _ = TuneUI.Play(Tune.ChangeToggle);
         StateHasChanged();
 
         await IsCheckedChanged.InvokeAsync(newValue);
