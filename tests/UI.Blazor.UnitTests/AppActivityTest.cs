@@ -80,7 +80,6 @@ public class AppActivityTest: TestBase
             for (int i = 0; i < 10; i++) {
                 await Task.Delay(random.Next(10,200), cts.Token);
                 appActivity.SetIsActiveInBackground(random.Next(2) == 1);
-
             }
         }, cts.Token);
 
