@@ -40,7 +40,9 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-            var ownPhone = account.HasVerifiedPhone() ? account.Phone.E164Value : "";
+            var ownPhone = account.HasVerifiedPhone()
+                ? account.Phone?.E164Value ?? ""
+                : "";
             var phoneParser = PhoneParser.ForOwnPhone(ownPhone);
             var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
                 .GetAllAsync(cancellationToken)
@@ -71,7 +73,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         UserId ownerId,
         PhoneParser phoneParser,
         MauiContact mauiContact)
-        => new ExternalContactFull(new ExternalContactId(new UserDeviceId(ownerId, DeviceId),
+        => new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(ownerId, DeviceId),
             mauiContact.Id.Replace(':', '_'))) {
             GivenName = mauiContact.GivenName ?? "",
             DisplayName = mauiContact.DisplayName ?? "",
@@ -86,7 +88,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         }.WithHash(ExternalContactHasher);
 
     private static string? GetPhoneHash(ContactPhone contactPhone, PhoneParser phoneParser)
-        => phoneParser.Parse(contactPhone.PhoneNumber)?.Hash;
+        => phoneParser.TryParse(contactPhone.PhoneNumber)?.Hash;
 
     private static string? GetEmailHash(ContactEmail contactEmail)
     {

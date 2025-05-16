@@ -43,9 +43,9 @@ public class ChatAttentionService
             lock (ClassSyncObject) {
                 if (field == null) {
                      field = new ChatAttentionService();
-                     ChatUI.OnReadPositionUpdated += tuple => {
-                         var (chatId, entryLid) = tuple;
-                         field.Clear(chatId.Value, entryLid);
+                     ChatUI.OnReadPositionUpdated += arg => {
+                         var (chatId, entryLid) = arg;
+                         field.Clear(chatId, entryLid);
                      };
                 }
                 return field;
@@ -68,7 +68,7 @@ public class ChatAttentionService
     public void Ask(ChatAttentionRequest request)
         => DispatchOnNonMainThread(() => AskInternal(request));
 
-    public void Clear(Symbol chatId, long chatPosition)
+    public void Clear(ChatId chatId, long chatPosition)
         => DispatchOnNonMainThread(() => ClearInternal(chatId, chatPosition));
 
     public void OnHandleIntent(Intent intent)
@@ -100,7 +100,7 @@ public class ChatAttentionService
         DoJob(state);
     }
 
-    private void ClearInternal(Symbol chatId, long chatPosition)
+    private void ClearInternal(ChatId chatId, long chatPosition)
     {
         var originalState = GetPersistedState();
         var state = originalState;
