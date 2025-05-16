@@ -1,13 +1,16 @@
 @using ActualChat.UI.Blazor.Services
+@implements IDisposable
 @namespace ActualChat.UI.Blazor.Components
 
 <label class="@Class toggle"
-       data-input-checked="@CurrentValue"
+       role="switch"
+       aria-checked="@_localValue.ToString().ToLower()"
+       data-input-checked="@_localValue"
        data-input-disabled="@IsDisabled">
     <input type="checkbox"
-           id="@Id" disabled="@IsDisabled" checked="@CurrentValue"
-           @onclick:stopPropagation="true"
-           @onclick:preventDefault="true"
+           id="@Id"
+           disabled="@IsDisabled"
+           checked="@_localValue"
            @onchange="@OnChange"/>
     <span class="dash"><span class="o">&nbsp;</span></span>
     @if (LabelContent != null) {
@@ -18,7 +21,9 @@
 </label>
 
 @code {
-    private bool? _previousValue;
+    private bool _localValue;
+    private bool? _previousConfirmedValue;
+    private CancellationTokenSource? _cts;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private TuneUI TuneUI => Hub.TuneUI;
@@ -31,23 +36,47 @@
     [Parameter] public bool IsChecked { get; set; }
     [Parameter] public EventCallback<bool> IsCheckedChanged { get; set; }
 
-    public bool CurrentValue { get; set; }
-
     protected override void OnParametersSet() {
-        if (_previousValue is null) {
-            _previousValue = IsChecked;
-        } else {
-            if (_previousValue.Value != IsChecked) {
-                _previousValue = IsChecked;
-                _ = TuneUI.Play(Tune.ChangeToggle);
-            }
+        if (_previousConfirmedValue is null) {
+            _previousConfirmedValue = IsChecked;
+        } else if (_previousConfirmedValue != IsChecked) {
+            _previousConfirmedValue = IsChecked;
+            _ = TuneUI.Play(Tune.ChangeToggle);
         }
 
-        CurrentValue = IsChecked;
+        _localValue = IsChecked;
     }
 
-    private void OnChange(ChangeEventArgs eventArgs) {
-        CurrentValue = eventArgs.Value is true;
-        IsCheckedChanged.InvokeAsync(CurrentValue);
+    private async Task OnChange(ChangeEventArgs eventArgs) {
+        var newValue = eventArgs.Value is bool b ? b : eventArgs.Value?.ToString() == "true";
+
+        if (_cts is not null) {
+            await _cts.CancelAsync();
+            _cts.Dispose();
+        }
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        _localValue = newValue;
+        StateHasChanged();
+
+        await IsCheckedChanged.InvokeAsync(newValue);
+
+        try {
+            await Task.Delay(2000, token);
+
+            if (IsChecked != _localValue) {
+                _localValue = IsChecked;
+                StateHasChanged();
+            }
+        }
+        catch (TaskCanceledException) {
+            throw new TaskCanceledException();
+        }
+    }
+
+    public void Dispose() {
+        _cts?.Cancel();
+        _cts?.Dispose();
     }
 }
