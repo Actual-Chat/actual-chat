@@ -8,14 +8,13 @@ public class StreamClient(IServiceProvider services) : IStreamClient
 {
     private static readonly int StreamBufferSize = 64;
 
-    private ILogger? _log;
-    private ILogger? _audioSourceLog;
-    private IStreamServer? _streamServer;
-
     private IServiceProvider Services { get; } = services;
-    private IStreamServer StreamServer => _streamServer ??= Services.GetRequiredService<IStreamServer>();
-    private ILogger AudioSourceLog => _audioSourceLog ??= Services.LogFor<AudioSource>();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
+    [field: AllowNull, MaybeNull]
+    private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AudioSource> GetAudio(
         Symbol streamId,
@@ -53,6 +52,22 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     {
         Log.LogDebug("GetTranscript({StreamId})", streamId.Value);
         var diffs = await StreamServer.GetTranscript(streamId, cancellationToken).ConfigureAwait(false);
+        if (diffs == null)
+            yield break;
+
+        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
+        await foreach (var diff in diffs.ConfigureAwait(false))
+            yield return diff;
+    }
+
+    public async IAsyncEnumerable<TranscriptDiff> GetTranslatedTranscript(
+        Symbol streamId,
+        TranslationId translationId,
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken)
+    {
+        Log.LogDebug("GetTranscript({StreamId})", streamId.Value);
+        var diffs = await StreamServer.GetTranslatedTranscript(translationId, streamId, cancellationToken).ConfigureAwait(false);
         if (diffs == null)
             yield break;
 

@@ -13,6 +13,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
     [ConcurrencyCheck] public long Version { get; set; }
     public string Content { get; set; } = "";
     public string SourceContentHash { get; set; } = "";
+    public string StreamId { get; set; } = "";
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -31,6 +32,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
         => new(new TranslationId(Id), Version) {
             Content = Content,
             SourceContentHash = new HashString(SourceContentHash),
+            StreamId = StreamId,
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
         };
@@ -43,6 +45,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
         Version = model.Version;
         Content = model.Content;
         SourceContentHash = model.SourceContentHash;
+        StreamId = model.StreamId;
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
     }
