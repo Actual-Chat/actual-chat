@@ -95,4 +95,25 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);
     }
+
+    [Theory]
+    [InlineData("ru", "I", """
+                           I was heading towards the river.
+                           But it was still far away.
+                           .
+                           """, "Я")]
+    public async Task ShouldNotTranslateContextForShortText(Language destLanguage, string text, string context, string expected)
+    {
+        // arrange
+        var minSimilarity = 0.7;
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var translated = await Translator.Translate(text, destLanguage, context, cancellationToken);
+        Out.WriteLine($"Translated text: \n{translated}");
+
+        // assert
+        translated.Should().BeSimilarTo(expected, minSimilarity);
+    }
 }

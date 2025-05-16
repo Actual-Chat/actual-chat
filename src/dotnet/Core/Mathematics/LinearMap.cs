@@ -324,4 +324,16 @@ public readonly partial struct LinearMap
         newData.Add(pEnd.Y);
         return new LinearMap(newData.ToArray());
     }
+
+    public LinearMap Multiply(float factor)
+    {
+        var scaledPoints = new Vector2[Points.Length];
+        for (var i = 0; i < Points.Length; i++) {
+            var point = Points[i];
+            scaledPoints[i] = point with {
+                X = (int)point.X * factor,
+            };
+        }
+        return new LinearMap(scaledPoints);
+    }
 }

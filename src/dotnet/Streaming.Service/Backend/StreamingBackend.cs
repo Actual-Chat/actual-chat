@@ -14,37 +14,37 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private readonly StreamStore<byte[]> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
 
-    private ILogger Log { get; }
-    private ILogger OpenAudioSegmentLog { get; }
-    private ILogger AudioSourceLog { get; }
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
+    [field: AllowNull, MaybeNull]
+    private ILogger AudioSourceLog  => field ??= Services.LogFor<AudioSource>();
     private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
-
     private IServiceProvider Services { get; }
-    private MeshNode OwnNode { get; }
-    private AudioSegmentSaver AudioSegmentSaver { get; }
-    private ITranscriberFactory TranscriberFactory { get; }
-    private IChats Chats { get; }
-    private IAuthors Authors { get; }
-    private IServerKvas ServerKvas { get; }
-    private ICommander Commander { get; }
-    private MomentClockSet Clocks { get; }
+    [field: AllowNull, MaybeNull]
+    private MeshNode OwnNode => field ??= Services.MeshWatcher().OwnNode;
+    [field: AllowNull, MaybeNull]
+    private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
+    [field: AllowNull, MaybeNull]
+    private ITranscriberFactory TranscriberFactory => field ??= Services.GetRequiredService<ITranscriberFactory>();
+    [field: AllowNull, MaybeNull]
+    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    [field: AllowNull, MaybeNull]
+    private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
+    [field: AllowNull, MaybeNull]
+    private IServerKvas ServerKvas => field ??= Services.GetRequiredService<IServerKvas>();
+    [field: AllowNull, MaybeNull]
+    private TranslatedTranscripts TranslatedTranscripts => field ??= Services.GetRequiredService<TranslatedTranscripts>();
+    [field: AllowNull, MaybeNull]
+    private ICommander Commander => field ??= Services.Commander();
+    [field: AllowNull, MaybeNull]
+    private MomentClockSet Clocks => field ??= Services.Clocks();
 
     public StreamingBackend(IServiceProvider services)
     {
         Services = services;
-        Log = services.LogFor(GetType());
-        OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
-        AudioSourceLog = services.LogFor<AudioSource>();
-
-        OwnNode = services.MeshWatcher().OwnNode;
-        AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
-        TranscriberFactory = services.GetRequiredService<ITranscriberFactory>();
-        Chats = services.GetRequiredService<IChats>();
-        Authors = services.GetRequiredService<IAuthors>();
-        ServerKvas = services.ServerKvas();
-        Commander = services.Commander();
-        Clocks = services.Clocks();
 
         _audioStreams = new StreamStore<byte[]>() {
             StreamIdValidator = ValidateStreamId,
@@ -76,8 +76,25 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
     {
         var stream = await _transcriptStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
-        return stream == null ? null
+        return stream == null
+            ? null
             : RpcStream.New(stream);
+    }
+
+    public virtual async Task<RpcStream<TranscriptDiff>?> GetTranslatedTranscript(
+        StreamId streamId,
+        TranslationId translationId,
+        CancellationToken cancellationToken)
+    {
+        var stream = await _transcriptStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
+        if (stream is null)
+            return null;
+
+        var translatedStream = await TranslatedTranscripts.Get(translationId, streamId, stream, cancellationToken).ConfigureAwait(false);
+        if (translatedStream is null)
+            return null;
+
+        return RpcStream.New(translatedStream);
     }
 
     // Private methods

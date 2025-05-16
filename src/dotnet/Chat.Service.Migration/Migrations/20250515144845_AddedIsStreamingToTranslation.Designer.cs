@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250515144845_AddedIsStreamingToTranslation")]
+    partial class AddedIsStreamingToTranslation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -974,6 +977,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool>("IsStreaming")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_streaming");
+
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
@@ -982,11 +989,6 @@ namespace ActualChat.Chat.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("source_content_hash");
-
-                    b.Property<string>("StreamId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("stream_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()

@@ -15,6 +15,11 @@ public interface IStreamingBackend : IRpcService, IBackendService
         StreamId streamId,
         CancellationToken cancellationToken);
 
+    Task<RpcStream<TranscriptDiff>?> GetTranslatedTranscript(
+        StreamId streamId,
+        TranslationId translationId,
+        CancellationToken cancellationToken);
+
     Task ProcessAudio(
         AudioRecord record,
         int preSkip,

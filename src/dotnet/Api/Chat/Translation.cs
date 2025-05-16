@@ -17,4 +17,9 @@ public sealed partial record Translation(
     [DataMember, MemoryPackOrder(4)] public HashString SourceContentHash { get; init; }
     [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public Moment ModifiedAt { get; init; }
+    [DataMember, MemoryPackOrder(7)] public LinearMap TimeMap { get; set; }
+    [DataMember, MemoryPackOrder(8)] public Symbol StreamId { get; set; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsStreaming => !StreamId.IsEmpty;
 }

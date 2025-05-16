@@ -146,11 +146,10 @@ public partial class StreamingBackend
         var language = await settings.LanguageOrPrimary(kvas, cancellationToken).ConfigureAwait(false);
         Language?[] languages = [language, languageSettings.Primary, languageSettings.Secondary, languageSettings.Tertiary];
 
-        return languages
+        return [..languages
             .Where(l => l != null)
             .Select(l => l!.Value)
-            .Distinct()
-            .ToArray();
+            .Distinct()];
     }
 
     private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
@@ -260,68 +259,86 @@ public partial class StreamingBackend
                 if (EmptyRegex.IsMatch(transcript.Text))
                     continue;
 
-                // Got first non-empty transcript -> create text entry
-                audioEntry = audioEntryTask != null
-                    ? await audioEntryTask.ConfigureAwait(false)
-                    : null;
-                var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-                var repliedEntryLid = repliedChatEntryId.IsNone
-                    ? (long?)null
-                    : repliedChatEntryId.LocalId;
-                var command = new ChatsBackend_ChangeEntry(
-                    entryId,
-                    null,
-                    Change.Create(new ChatEntryDiff {
-                        AuthorId = authorId,
-                        Content = "",
-                        StreamId = transcriptStreamId,
-                        AudioEntryLid = audioEntry?.LocalId,
-                        BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
-                        RepliedEntryLid = repliedEntryLid,
-                    }));
-                textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
-                DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
-                    textEntry.Id,
-                    textEntry.ChatId);
+                textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
+                await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
             }
         }
         finally {
             if (lastTranscript != null && textEntry != null) {
-                audioEntry ??= audioEntryTask != null
-                    ? await audioEntryTask.ConfigureAwait(false)
-                    : null;
-
-                // Final transcript is empty -> remove text entry
-                // TODO(AY): Maybe publish [Audio: ...] markup here
-                var change = EmptyRegex.IsMatch(lastTranscript.Text)
-                    ? Change.Remove<ChatEntryDiff>()
-                    : Change.Update(new ChatEntryDiff {
-                        Content = lastTranscript.Text,
-                        StreamId = Symbol.Empty,
-                        AudioEntryLid = audioEntry?.LocalId,
-                        EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
-                        TimeMap = audioEntry != null
-                            ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
-                            : default
-                    });
-
-                var command = new ChatsBackend_ChangeEntry(
-                    textEntry.Id,
-                    null, // do not perform version check there - it might have already been changed and it's OK
-                    change);
-                var saveEntryTask = Commander.Call(command, true, CancellationToken.None);
-                var saveLanguagesTask = change.Kind is ChangeKind.Remove
-                    ? Task.CompletedTask
-                    : SaveLanguages(lastTranscript.Languages);
-                await Task.WhenAll(saveEntryTask, saveLanguagesTask).ConfigureAwait(false);
+                await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
             }
         }
         return;
 
-        Task SaveLanguages(Language[] languages)
+        async Task<ChatEntry> CreateTextEntry(Transcript transcript)
+        {
+            // Got first non-empty transcript -> create text entry
+            audioEntry = audioEntryTask != null
+                ? await audioEntryTask.ConfigureAwait(false)
+                : null;
+            var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+            var repliedEntryLid = repliedChatEntryId.IsNone
+                ? (long?)null
+                : repliedChatEntryId.LocalId;
+            var command = new ChatsBackend_ChangeEntry(
+                entryId,
+                null,
+                Change.Create(new ChatEntryDiff {
+                    AuthorId = authorId,
+                    Content = "",
+                    StreamId = transcriptStreamId,
+                    AudioEntryLid = audioEntry?.LocalId,
+                    BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
+                    RepliedEntryLid = repliedEntryLid,
+                }));
+            textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+            DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
+                textEntry.Id,
+                textEntry.ChatId);
+            return textEntry;
+        }
+
+        async Task FinalizeTextEntry()
+        {
+            audioEntry ??= audioEntryTask != null
+                ? await audioEntryTask.ConfigureAwait(false)
+                : null;
+
+            // Final transcript is empty -> remove text entry
+            // TODO(AY): Maybe publish [Audio: ...] markup here
+            var change = EmptyRegex.IsMatch(lastTranscript.Text)
+                ? Change.Remove<ChatEntryDiff>()
+                : Change.Update(new ChatEntryDiff {
+                    Content = lastTranscript.Text,
+                    StreamId = Symbol.Empty,
+                    AudioEntryLid = audioEntry?.LocalId,
+                    EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
+                    TimeMap = audioEntry != null
+                        ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
+                        : default
+                });
+
+            var command = new ChatsBackend_ChangeEntry(
+                textEntry.Id,
+                null, // do not perform version check there - it might have already been changed and it's OK
+                change);
+            await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        Task CreateLanguages(Language[] languages)
         {
             var entryLanguage = new ChatEntryLanguage(textEntry.Id) { Languages = languages, };
             var cmd = ChatEntryLanguagesBackend_BulkChange.Upserts(entryLanguage);
+            return Commander.Call(cmd, true, CancellationToken.None);
+        }
+
+        Task FinalizeLanguages()
+        {
+            if (EmptyRegex.IsMatch(lastTranscript.Text))
+                return Task.CompletedTask;
+
+            var entryLanguage = new ChatEntryLanguage(textEntry.Id);
+            var cmd = ChatEntryLanguagesBackend_BulkChange.Remove(entryLanguage);
             return Commander.Call(cmd, true, CancellationToken.None);
         }
     }

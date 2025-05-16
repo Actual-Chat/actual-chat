@@ -3,13 +3,19 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
+public class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
 {
     private IAccounts Accounts => Hub.Accounts;
     private IAuthors Authors => Hub.Authors;
     private ModalUI ModalUI => Hub.ModalUI;
     private History History => Hub.History;
     private UICommander UICommander => Hub.UICommander();
+
+    [ComputeMethod]
+    public virtual Task<AuthorFull> GetOwn(ChatId chatId, CancellationToken cancellationToken)
+        => chatId.IsNone
+            ? Task.FromResult(AuthorFull.None)
+            : Authors.GetOwn(Session, chatId, cancellationToken).Require();
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)
     {
