@@ -11,8 +11,8 @@ public static class MauiSettings
 #else
     public const bool IsDevApp = false;
 #endif
-    public const string DefaultHost = "local.actual.chat";
-    // public const string DefaultHost = IsDevApp ? "dev.actual.chat" : "actual.chat";
+    // public const string DefaultHost = "local.actual.chat";
+    public const string DefaultHost = IsDevApp ? "dev.actual.chat" : "actual.chat";
     public static readonly string Host;
     public static bool HostIsOverriden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
     public static readonly Uri BaseUri;
