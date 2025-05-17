@@ -266,10 +266,10 @@ public class ChatAttentionService
             .SetOngoing(true)
             .SetGroup(NotificationGroupKey)
             .SetPriority((int)NotificationPriority.High)
-            .SetCategory(Android.App.Notification.CategoryReminder);
+            .SetCategory(Android.App.Notification.CategoryReminder)!;
         // Intent that will be called for when tapping on the notification
         if (contentIntent != null)
-            builder.SetContentIntent(contentIntent);
+            builder = builder.SetContentIntent(contentIntent)!;
         return builder;
     }
 
