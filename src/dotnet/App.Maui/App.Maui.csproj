@@ -152,6 +152,7 @@
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
     <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Common.Java8" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime" />
@@ -261,6 +262,8 @@
     <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
     <!-- Disabled for now - no meaningful changes to startup time -->
     <EnableLLVM>false</EnableLLVM>
+    <!-- -50ms to startup time: -->
+    <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
 
     <!-- Runtime -->
     <!-- android-env.txt contains MONO_GC_PARAMS, so this has no effect:
@@ -268,9 +271,6 @@
     -->
     <!-- When true, fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
     <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
-    -->
-    <!-- Has no effect:
-    <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
     -->
 
     <!-- Preloading:
