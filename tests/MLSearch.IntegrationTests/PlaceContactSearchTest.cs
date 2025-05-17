@@ -129,5 +129,5 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
                 return results;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
-            TimeSpan.FromSeconds(30));
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
 }

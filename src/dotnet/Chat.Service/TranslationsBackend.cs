@@ -3,6 +3,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Mesh;
 using ActualChat.Queues;
+using ActualChat.Transcription;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -36,6 +37,18 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var cmd = new TranslationsBackend_Translate(id);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
         return translation;
+    }
+
+    // [ComputeMethod]
+    public virtual Task<string> GetRealtime(TranslationId id, string content, CancellationToken cancellationToken)
+    {
+        if (!Settings.IsTranslationEnabled)
+            return Task.FromResult("");
+
+        if (content.IsNullOrEmpty())
+            return Task.FromResult("");
+
+        return TranslateUnsafe(id, content, cancellationToken);
     }
 
     [ComputeMethod(AutoInvalidationDelay = 60 * 1000)]
@@ -123,7 +136,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var (_, updatedTranslation) = await TranslationLocks.TryRunLocked(
                 $"{id}.{entry.ContentHash}",
                 RunLockedOptions.NoRelock,
-                ct => TranslateUnsafe(id, ct),
+                ct => GetOrTranslateUnsafe(id, ct),
                 cancellationToken)
             .ConfigureAwait(false);
         if (updatedTranslation is null)
@@ -140,8 +153,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (entry is null)
             return false;
 
+        if (entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text || entry.IsRemoved || entry.Content.IsNullOrEmpty())
+            return false;
+
         if (translation is null)
             return true;
+
+        if (translation.IsStreaming)
+            return false;
 
         return translation.SourceContentHash != entry.ContentHash;
     }
@@ -157,19 +176,28 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return (entry, translation);
     }
 
-    private async Task<Translation?> TranslateUnsafe(TranslationId id, CancellationToken cancellationToken)
+    private async Task<Translation?> GetOrTranslateUnsafe(TranslationId id, CancellationToken cancellationToken)
     {
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (!NeedsTranslate(entry, translation))
             return translation;
 
-        var context = await GetTranslationContext(entry.Id, cancellationToken).ConfigureAwait(false);
-        var translatedText = await Translator.Translate(
-            entry.Content,
+        var translatedText = await TranslateUnsafe(id, entry.Content, cancellationToken).ConfigureAwait(false);
+        translation ??= new Translation(id);
+        return translation with {
+            Content = translatedText,
+            SourceContentHash = entry.ContentHash,
+            TimeMap = entry.TimeMap.Scale(entry.Content.Length, translatedText.Length),
+        };
+    }
+
+    private async Task<string> TranslateUnsafe(TranslationId id, string content, CancellationToken cancellationToken)
+    {
+        var context = await GetTranslationContext(id.ChatEntryId, cancellationToken).ConfigureAwait(false);
+        return await Translator.Translate(
+            content,
             id.Language,
             context,
             cancellationToken).ConfigureAwait(false);
-        translation ??= new Translation(id);
-        return translation with { Content = translatedText, SourceContentHash = entry.ContentHash };
     }
 }

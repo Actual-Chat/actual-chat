@@ -1,13 +1,16 @@
+@using ActualLab.Locking
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
 <label class="@Class toggle"
-       data-input-checked="@CurrentValue"
+       role="switch"
+       aria-checked="@_isChecked.ToString().ToLower()"
+       data-input-checked="@_isChecked"
        data-input-disabled="@IsDisabled">
     <input type="checkbox"
-           id="@Id" disabled="@IsDisabled" checked="@CurrentValue"
-           @onclick:stopPropagation="true"
-           @onclick:preventDefault="true"
+           id="@Id"
+           disabled="@IsDisabled"
+           checked="@_isChecked"
            @onchange="@OnChange"/>
     <span class="dash"><span class="o">&nbsp;</span></span>
     @if (LabelContent != null) {
@@ -18,7 +21,8 @@
 </label>
 
 @code {
-    private bool? _previousValue;
+    private bool _isChecked;
+    private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private TuneUI TuneUI => Hub.TuneUI;
@@ -31,23 +35,17 @@
     [Parameter] public bool IsChecked { get; set; }
     [Parameter] public EventCallback<bool> IsCheckedChanged { get; set; }
 
-    public bool CurrentValue { get; set; }
+    protected override void OnParametersSet()
+        => _isChecked = IsChecked;
 
-    protected override void OnParametersSet() {
-        if (_previousValue is null) {
-            _previousValue = IsChecked;
-        } else {
-            if (_previousValue.Value != IsChecked) {
-                _previousValue = IsChecked;
-                _ = TuneUI.Play(Tune.ChangeToggle);
-            }
-        }
+    private async Task OnChange(ChangeEventArgs eventArgs) {
+        // just avoiding concurrent click handling
+        using var _1 = await _lock.Lock();
+        _ = TuneUI.Play(Tune.ChangeToggle);
+        var newValue = eventArgs.Value is bool b ? b : eventArgs.Value?.ToString() == "true";
+        _isChecked = newValue;
+        StateHasChanged();
 
-        CurrentValue = IsChecked;
-    }
-
-    private void OnChange(ChangeEventArgs eventArgs) {
-        CurrentValue = eventArgs.Value is true;
-        IsCheckedChanged.InvokeAsync(CurrentValue);
+        await IsCheckedChanged.InvokeAsync(newValue);
     }
 }

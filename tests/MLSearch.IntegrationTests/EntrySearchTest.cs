@@ -239,5 +239,5 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 results.Should().HaveCount(expected);
                 return results;
             },
-            TimeSpan.FromSeconds(20));
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
 }

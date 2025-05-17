@@ -163,7 +163,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ForwardedChatEntryId = model.ForwardedChatEntryId?.Value;
         ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
-        ContentHash = model.SystemEntry != null ? HashString.None : model.Content.Hash().Blake3().ToBlake3Base64HashString();
+        ContentHash = model.SystemEntry != null ? HashString.None : model.GetContentHashString();
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewIds = model.LinkPreviewIds.Length != 0
             ? JsonSerializer.Serialize(model.LinkPreviewIds)

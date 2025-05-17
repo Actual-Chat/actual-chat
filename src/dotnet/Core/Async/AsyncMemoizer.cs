@@ -36,8 +36,10 @@ public sealed class AsyncMemoizer<T>
         try {
             var reader = channel.Reader;
             while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-            while (reader.TryRead(out var item))
+            while (reader.TryRead(out var item)) {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return item;
+            }
         }
         finally {
             channel.Writer.TryComplete();

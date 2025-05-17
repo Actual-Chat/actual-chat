@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using System.Numerics
 @inherits ComputedRenderStateComponent<AppUIHub, TranslatedMessage.Model>
 @{
     var m = State.Value;
@@ -45,45 +44,19 @@
             return _rendered ?? new Model(markup, message.Entry);
         }
 
-        if (!renderedEntry.VersionEquals(entry)) {
+        if (!renderedEntry.VersionEquals(entry))
             markup = MarkupParser.Parse(entry.Content);
-        }
 
-        if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+        var mustTranslate = await TranslationUI.MustTranslate(entry, cancellationToken).ConfigureAwait(false);
+        if (!mustTranslate)
             return new(markup, entry);
 
-        var isOn = await TranslationUI.IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) ?? false;
-        if (!isOn)
-            return new(markup, entry);
-
-        var textEntryId = entry.Id.ToTextEntryId();
-        var needsTranslation = await TranslationUI.NeedsTranslation(textEntryId, cancellationToken).ConfigureAwait(false);
-        if (!needsTranslation)
-            return new(markup, entry);
-
-        var translation = await TranslationUI.Get(textEntryId, cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
         if (translation is null)
             return new(markup, entry);
 
-        var translatedMarkup = entry.HasMediaEntry ? new PlayableTextMarkup(translation.Content, GetTimeMap()) : MarkupParser.Parse(translation.Content);
+        var translatedMarkup = entry.HasMediaEntry ? new PlayableTextMarkup(translation.Content, translation.TimeMap) : MarkupParser.Parse(translation.Content);
         return new (translatedMarkup, entry);
-
-        LinearMap GetTimeMap()
-        {
-            if (entry.Content.Length == translation.Content.Length)
-                return entry.TimeMap;
-
-            var factor = translation.Content.Length / (float)entry.Content.Length;
-            var scaledPoints = new Vector2[entry.TimeMap.Points.Length];
-            for (var i = 0; i < entry.TimeMap.Points.Length; i++) {
-                var point = entry.TimeMap.Points[i];
-                scaledPoints[i] = point with {
-                    X = (int)point.X * factor,
-                };
-            }
-
-            return new LinearMap(scaledPoints);
-        }
     }
 
     // Nested types

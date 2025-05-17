@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
@@ -5,10 +6,10 @@ using ActualChat.Users;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
-[Collection(nameof(MLSearchCollection))]
+[Collection(nameof(SlowMLSearchCollection))]
 [Trait("Category", "Slow")]
-public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+public class UserContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<SlowAppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
 
@@ -30,10 +31,11 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
     public async Task ShouldIndexManyAccounts(int portionSize, int placeCount)
     {
         // arrange
+        var sw = Stopwatch.StartNew();
         await Tester.SignInAsUniqueBob();
         var portion1 = await CreateAccounts(portionSize, "The first portion:");
         var portion2 = await CreateAccounts(50, "The second portion:");
-        var places = await CreatePlaces(placeCount, [.. portion1, .. portion2]);
+        var places = await CreatePlaces(placeCount, [..portion1, ..portion2]);
 
         // act
         var searchResults = await Find("second");
@@ -97,5 +99,5 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
                 return results;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
-            TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 60 : 20));
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(30));
 }

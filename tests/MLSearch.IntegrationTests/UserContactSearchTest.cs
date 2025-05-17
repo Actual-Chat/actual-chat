@@ -387,5 +387,5 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 return people;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
-            TimeSpan.FromSeconds(20));
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
 }

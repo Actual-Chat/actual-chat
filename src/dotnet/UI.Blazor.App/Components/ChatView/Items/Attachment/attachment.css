@@ -65,16 +65,31 @@ body.hoverable .image-line .image-item:hover {
 .one-row .image-line.md-md {
     @apply h-40 md:h-48;
 }
+.one-row .image-line.one-image {
+    @apply h-full;
+}
+.one-row .image-line.one-image.sm-sm {
+    @apply max-h-96;
+}
+.one-row .image-line.one-image .image-item {
+    @apply max-w-full;
+}
 
-.message-image-attachments.one-row:not(:has(.normal-line)):has(.sm-sm),
-.message-image-attachments.one-row:not(:has(.normal-line)):has(.sm-md) {
+.message-image-attachments.one-row:has(.sm-sm),
+.message-image-attachments.one-row:has(.sm-md) {
     @apply max-w-80;
 }
-.message-image-attachments.one-row:has(.sm-sm) .image-item {
+.message-image-attachments.one-row .sm-sm .image-item {
     @apply max-w-32 md:max-w-40;
 }
-.message-image-attachments.one-row:has(.md-md) .image-item {
+.message-image-attachments.one-row .md-md .image-item {
     @apply max-w-40 md:max-w-48;
+}
+.message-image-attachments.one-row .one-image .image-item {
+    @apply max-w-full;
+}
+.message-image-attachments.one-row .one-image.sm-sm .image-item {
+    @apply max-w-48;
 }
 
 /* attachment */

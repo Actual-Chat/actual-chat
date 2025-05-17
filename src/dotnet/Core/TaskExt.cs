@@ -63,13 +63,13 @@ public static class TaskExt
         }
     }
 
-    public static async Task Catch(this Task task, ILogger errorLog, string message)
+    public static async Task Catch(this Task task, ILogger errorLog, string? message, params object[] args)
     {
         try {
             await task.ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            errorLog.LogError(e, message);
+            errorLog.LogError(e, message, args);
         }
     }
 

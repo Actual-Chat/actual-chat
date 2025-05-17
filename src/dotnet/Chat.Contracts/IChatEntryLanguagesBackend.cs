@@ -40,6 +40,8 @@ public sealed partial record ChatEntryLanguagesBackend_BulkChange(
 {
     public static ChatEntryLanguagesBackend_BulkChange Upserts(params IEnumerable<ChatEntryLanguage> languages)
         => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Upsert(x))).ToArray());
+    public static ChatEntryLanguagesBackend_BulkChange Remove(params IEnumerable<ChatEntryLanguage> languages)
+        => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Remove(x))).ToArray());
 
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Changes[0].Id.ChatId;

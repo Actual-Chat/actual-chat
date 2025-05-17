@@ -2,10 +2,16 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
+public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
     private IAccounts Accounts => Hub.Accounts;
     private IAuthors Authors => Hub.Authors;
+
+    [ComputeMethod]
+    public virtual Task<AuthorFull> GetOwn(ChatId chatId, CancellationToken cancellationToken)
+        => chatId.IsNone
+            ? Task.FromResult(AuthorFull.None)
+            : Authors.GetOwn(Session, chatId, cancellationToken).Require();
 
     public Task<ModalRef> Show(AuthorId authorId)
         => ModalUI.Show(new AuthorModal.Model(authorId), CancellationToken.None);

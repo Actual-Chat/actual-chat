@@ -158,7 +158,7 @@
                 @if (isReply) {
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
-                @if (entry.IsStreaming) {
+                @if (entry.IsStreaming || m.IsTranslationStreaming) {
                     <ChatMessageTranscript
                         Message="@message"
                         ShowEntryKind="@message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)"/>
@@ -252,6 +252,7 @@
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
@@ -361,6 +362,7 @@
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
         if (chat is not null && ownAuthorId is not null)
             (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
+        var isTranslationStreaming = await TranslationUI.IsStreaming(entry, cancellationToken).ConfigureAwait(false);
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
             IsOwnMessage = isOwnMessage,
@@ -378,6 +380,7 @@
             IsUnreadByOthersBlockStart = isUnreadBlockStart,
             MentionedAuthorIds = mentionedAuthorIds,
             EnableIncompleteUI = enableIncompleteUI,
+            IsTranslationStreaming = isTranslationStreaming,
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
@@ -573,5 +576,6 @@
         public bool IsUnreadByOthersBlockStart { get; init; }
         public IReadOnlyList<AuthorId>? MentionedAuthorIds { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool IsTranslationStreaming { get; init; }
     }
 }

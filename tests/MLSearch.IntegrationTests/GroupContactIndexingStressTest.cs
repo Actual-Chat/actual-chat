@@ -3,10 +3,10 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
-[Collection(nameof(MLSearchCollection))]
+[Collection(nameof(SlowMLSearchCollection))]
 [Trait("Category", "Slow")]
-public class GroupContactIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+public class GroupContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<SlowAppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
 
@@ -65,7 +65,7 @@ public class GroupContactIndexingStressTest(AppHostFixture fixture, ITestOutputH
                 results = await Tester.FindGroups($"{UniquePart} {criteria}", true, null, expected);
                 results.Should().HaveCount(expected, "for criteria '{0}'", criteria);
             },
-            TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 60 : 20));
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(30));
         return results;
     }
 }
