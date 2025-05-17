@@ -50,7 +50,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
     private MomentClock CpuClock { get; }
     [field: AllowNull, MaybeNull]
     private Queue<Expiring<T>> RecentlyWritten => field ??= new Queue<Expiring<T>>(2); // Use only inside lock (Lock)!
-    private ILogger? DebugLog => Constants.DebugMode.SyncedState ? Log : null;
+    private ILogger? DebugLog => CoreConstants.DebugMode.SyncedState ? Log : null;
 
     public CancellationToken DisposeToken { get; }
     public Task WhenFirstTimeRead => _whenFirstTimeReadSource.Task;

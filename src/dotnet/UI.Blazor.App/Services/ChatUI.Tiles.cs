@@ -194,7 +194,7 @@ public partial class ChatUI
         };
     }
 
-    // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
+    // NOTE: Please don't add excessive computed dependencies without a real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     protected virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
@@ -220,7 +220,7 @@ public partial class ChatUI
         if (showConversations) {
             var conversationIdTile =
                 ConversationTileStack.LastLayer
-                    .GetTile(idRange.Start); // Get largest tile that contains the requested range
+                    .GetTile(idRange.Start); // Get the largest tile that contains the requested range
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
@@ -416,7 +416,7 @@ public partial class ChatUI
                     Date = date,
                     PreviousMessage = prevMessage,
                 };
-                // Can't skip adding conversation message even if it's the same as previous message
+                // Can't skip adding a conversation message even if it's the same as previous message
                 // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
                 if (prevMessage != null)
                     prevMessage.NextMessage = message;

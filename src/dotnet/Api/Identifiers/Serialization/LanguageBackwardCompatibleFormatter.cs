@@ -2,7 +2,7 @@ using ActualLab.Text.Internal;
 using MemoryPack;
 using MemoryPack.Internal;
 
-namespace ActualChat;
+namespace ActualChat.Serialization;
 
 public class LanguageBackwardCompatibleFormatter : MemoryPackFormatter<Language>
 {

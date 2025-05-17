@@ -43,7 +43,8 @@ public class EbmlElementDescriptor
 
     public override bool Equals(object? obj)
     {
-        if (this == obj) return true;
+        if (ReferenceEquals(this, obj))
+            return true;
 
         if (obj is EbmlElementDescriptor o2)
             return Identifier.Equals(o2.Identifier)

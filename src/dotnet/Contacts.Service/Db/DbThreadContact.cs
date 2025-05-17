@@ -18,7 +18,7 @@ public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTa
     public string ThreadChatId { get; set; } = "";
     public string ParentChatId { get; set; } = "";
     public string OutermostParentChatId { get; set; } = "";
-    public string PlaceId { get; set; }
+    public string PlaceId { get; set; } = "";
     public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {

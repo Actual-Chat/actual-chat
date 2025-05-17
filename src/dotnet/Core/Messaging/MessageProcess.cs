@@ -28,7 +28,7 @@ public abstract class MessageProcess : IMessageProcess
         MessageProcessorCtorCache = new();
     private static ILogger? _log;
 
-    protected static bool DebugMode => Constants.DebugMode.MessageProcessor;
+    protected static bool DebugMode => CoreConstants.DebugMode.MessageProcessor;
     protected static ILogger Log => _log ??= StaticLog.For<MessageProcess>();
     protected static ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 

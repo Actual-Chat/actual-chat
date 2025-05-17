@@ -50,7 +50,7 @@ public readonly struct RpcHostBuilder
         AddRpcPeerFactory();
 
         // Debug stuff
-        if (Constants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
+        if (CoreConstants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
             Rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
                 Delay = delay,
             });
@@ -280,13 +280,13 @@ public readonly struct RpcHostBuilder
     private void AddRpcPeerFactory()
     {
         var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-        var serverInboundCallLogLevel = Constants.DebugMode.RpcCalls.ApiServer && isDevelopmentInstance
+        var serverInboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiServer && isDevelopmentInstance
             ? LogLevel.Debug
             : LogLevel.None;
-        var backendInboundCallLogLevel = Constants.DebugMode.RpcCalls.BackendServer && isDevelopmentInstance
+        var backendInboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendServer && isDevelopmentInstance
             ? LogLevel.Debug
             : LogLevel.None;
-        var backendOutboundCallLogLevel = Constants.DebugMode.RpcCalls.BackendClient && isDevelopmentInstance
+        var backendOutboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendClient && isDevelopmentInstance
             ? LogLevel.Debug
             : LogLevel.None;
         Services.AddSingleton<RpcPeerFactory>(_

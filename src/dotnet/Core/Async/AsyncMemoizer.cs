@@ -18,7 +18,7 @@ public sealed class AsyncMemoizer<T>
     {
         _source = source.GetAsyncEnumerator(cancellationToken);
         _newTargets = Channel.CreateBounded<(ChannelWriter<T>, int)>(
-            new BoundedChannelOptions(Constants.Queues.AsyncMemoizerTargetQueueSize) {
+            new BoundedChannelOptions(CoreConstants.AsyncMemoizer.TargetQueueSize) {
                 SingleReader = true,
             });
         _bufferWriter = new ArrayBufferWriter<Result<T>>(16);

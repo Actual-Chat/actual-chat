@@ -29,7 +29,7 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
     [IgnoreDataMember]
     public string Number { get; }
     [IgnoreDataMember] [field: AllowNull, MaybeNull]
-    public string Hash => field ??= ContactExt.Hash(Value);
+    public string Hash => field ??= ContactIdExt.Hash(Value);
     [IgnoreDataMember] [field: AllowNull, MaybeNull]
     public string E164Value => field ??= $"+{Code}{Number}";
 

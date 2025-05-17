@@ -2,7 +2,6 @@ using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Module;
-using ActualChat.Serialization;
 using ActualChat.UI.Blazor.App.Components.ChatRoulette;
 using ActualChat.UI.Blazor.App.Components.Discover;
 using ActualChat.UI.Blazor.App.Components.PlaceInfo;
@@ -171,7 +170,7 @@ public static class ClientStartup
 #if DEBUG
         if (Constants.DebugMode.LogAnyThrownException)
             FirstChanceExceptionLogger.Use();
-        if (OSInfo.IsWebAssembly && Constants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
+        if (OSInfo.IsWebAssembly && CoreConstants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
             RemoteComputeServiceInterceptor.Options.Default = new() {
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };

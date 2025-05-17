@@ -1,6 +1,6 @@
 using System.Text;
 using ActualChat.Audio.WebM;
-using ActualChat.Serialization;
+using ActualChat.Module;
 using ActualLab.Fusion.Client;
 using ActualLab.Rpc;
 using Grpc.Core;

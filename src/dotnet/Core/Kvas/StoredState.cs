@@ -14,7 +14,7 @@ public sealed class StoredState<[DynamicallyAccessedMembers(DynamicallyAccessedM
     private readonly TaskCompletionSource _whenReadSource = TaskCompletionSourceExt.New();
 
     private Options Settings { get; }
-    private ILogger? DebugLog => Constants.DebugMode.StoredState ? Log : null;
+    private ILogger? DebugLog => CoreConstants.DebugMode.StoredState ? Log : null;
 
     public Task WhenRead => _whenReadSource.Task;
 

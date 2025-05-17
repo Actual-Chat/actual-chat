@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Hosting;
 using ActualChat.Module;
-using ActualChat.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;

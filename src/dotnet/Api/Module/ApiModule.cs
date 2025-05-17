@@ -13,7 +13,9 @@ public sealed class ApiModule(IServiceProvider moduleServices)
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion")]
     protected override void InjectServices(IServiceCollection services)
     {
+        // Common services
         var fusion = services.AddFusion();
+        services.AddSingleton(c => new UrlMapper(c.HostInfo()));
 
         // MarkupParser
         var rawParser = new MarkupParser();

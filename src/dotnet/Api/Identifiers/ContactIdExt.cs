@@ -3,7 +3,7 @@ using ActualChat.Hashing;
 
 namespace ActualChat;
 
-public static class ContactExt
+public static class ContactIdExt
 {
     public static UserId? GetOtherUserId(this ContactId id)
         => id.ChatId is PeerChatId peerChatId

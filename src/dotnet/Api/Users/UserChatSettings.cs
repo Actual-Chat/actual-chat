@@ -1,3 +1,4 @@
+using ActualChat.Serialization;
 using MemoryPack;
 
 namespace ActualChat.Users;

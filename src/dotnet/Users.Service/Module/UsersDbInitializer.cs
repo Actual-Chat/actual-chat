@@ -33,7 +33,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         => await EnsureUserExists(
                 new InternalUserInfo(Constants.User.Sherlock.UserId, Constants.User.Sherlock.Name) {
                     AvatarBio = Constants.User.Sherlock.Name,
-                    AvatarMediaId = Constants.User.Sherlock.MediaId
+                    AvatarMediaId = Constants.User.Sherlock.MediaId,
                 },
                 cancellationToken)
             .ConfigureAwait(false);

@@ -5,8 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
-    <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
+    <ProjectReference Include="..\Api\Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -21,12 +21,12 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
 
     private ILogger? _log;
 
-    protected static bool DebugMode => Constants.DebugMode.MessageProcessor;
+    protected static bool DebugMode => CoreConstants.DebugMode.MessageProcessor;
     protected ILogger Log => _log ??= StaticLog.For(GetType());
     protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
-    public int QueueSize { get; init; } = Constants.MessageProcessing.QueueSize;
-    public TimeSpan ProcessCallTimeout { get; init; } = Constants.MessageProcessing.ProcessCallTimeout;
+    public int QueueSize { get; init; } = CoreConstants.MessageProcessor.QueueSize;
+    public TimeSpan ProcessCallTimeout { get; init; } = CoreConstants.MessageProcessor.ProcessCallTimeout;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
 
     protected override Task DisposeAsyncCore()

@@ -1,6 +1,6 @@
 using MemoryPack;
 
-namespace ActualChat;
+namespace ActualChat.Serialization;
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public sealed class LanguageBackwardCompatibleFormatterAttribute(bool isNullable)
