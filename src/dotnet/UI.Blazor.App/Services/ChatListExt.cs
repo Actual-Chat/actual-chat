@@ -56,12 +56,12 @@ public static class ChatListExt
         };
         return order switch {
             ChatListOrder.ByLastEventTime => preOrderedChats
-                .ThenByDescending(c => c.News.LastTextEntry?.Version ?? c.Contact.Version),
+                .ThenByDescending(c => c.LastTextEntry?.Version ?? c.Contact.Version),
             ChatListOrder.ByOwnUpdateTime => preOrderedChats
                 .ThenByDescending(c => c.Contact.Version),
             ChatListOrder.ByUnreadCount => preOrderedChats
                 .ThenByDescending(c => c.UnreadCount.Value)
-                .ThenByDescending(c => c.News.LastTextEntry?.Version ?? c.Contact.Version),
+                .ThenByDescending(c => c.LastTextEntry?.Version ?? c.Contact.Version),
             ChatListOrder.ByAlphabet => preOrderedChats
                 .OrderByDescending(c => c.Contact.IsPinned)
                 .ThenBy(c => c.Chat.Title, StringComparer.Ordinal),

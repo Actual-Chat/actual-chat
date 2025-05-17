@@ -202,39 +202,40 @@ public partial class ChatUI
     private async Task PrefetchChatTails(CancellationToken cancellationToken)
     {
         var visibleChatsChanges = ChatListUI.VisibleChats.Computed.Changes(cancellationToken);
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         await foreach (var cVisibleChats in visibleChatsChanges.ConfigureAwait(false)) {
             if (cVisibleChats.Value.Count == 0)
                 continue;
 
-            cts.CancelAndDisposeSilently();
-            cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var changeToken = cts.Token;
+            changeTokenSource.CancelAndDisposeSilently();
+            changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var changeToken = changeTokenSource.Token;
             var visibleChatIds = cVisibleChats.Value;
             foreach (var chatId in visibleChatIds)
                 _ = BackgroundTask.Run(async () => {
-                        var cGet = await Computed.Capture(() => Get(chatId, changeToken), changeToken).ConfigureAwait(false);
-                        var chatInfoChanges = cGet.Changes(changeToken);
-                        await foreach (var cChatInfo in chatInfoChanges.ConfigureAwait(false)) {
-                            var chatInfo = cChatInfo.Value;
-                            if (chatInfo == null)
-                                continue;
+                    var cGet = await Computed.Capture(() => Get(chatId, changeToken), changeToken).ConfigureAwait(false);
+                    var chatInfoChanges = cGet.Changes(changeToken);
+                    await foreach (var cChatInfo in chatInfoChanges.ConfigureAwait(false)) {
+                        var chatInfo = cChatInfo.Value;
+                        if (chatInfo == null)
+                            continue;
 
-                            var lastReadEntryLid = chatInfo.ReadEntryLid;
-                            var prefetchNearTo = lastReadEntryLid != 0
-                                ? lastReadEntryLid
-                                : chatInfo.News.TextEntryIdRange.End;
+                        var lastReadEntryLid = chatInfo.ReadEntryLid;
+                        var prefetchNearTo = lastReadEntryLid != 0
+                            ? lastReadEntryLid
+                            : chatInfo.News?.TextEntryIdRange.End ?? 0;
 
-                            var secondLayer = IdTileStack.Layers[1];
-                            var idRange = new Range<long>(
-                                secondLayer.GetTile(prefetchNearTo - LoadLimit).Start,
-                                secondLayer.GetTile(prefetchNearTo + HalfLoadLimit).End).IntersectWith(new Range<long>(0, long.MaxValue));
+                        var secondLayer = IdTileStack.Layers[1];
+                        var idRange = new Range<long>(
+                            secondLayer.GetTile(prefetchNearTo - LoadLimit).Start,
+                            secondLayer.GetTile(prefetchNearTo + HalfLoadLimit).End).IntersectWith(new Range<long>(0, long.MaxValue));
 
-                            await PrefetchTiles(chatId, idRange, cancellationToken).ConfigureAwait(false);
-                            _ = GetChatItems(chatId, new ChatDataQuery(idRange), lastReadEntryLid, cancellationToken);
-                        }
-                    },
-                    changeToken);
+                        // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+                        await PrefetchTiles(chatId, idRange, cancellationToken).ConfigureAwait(false);
+                        // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+                        _ = GetChatItems(chatId, new ChatDataQuery(idRange), lastReadEntryLid, cancellationToken);
+                    }
+                }, changeToken);
         }
     }
 }

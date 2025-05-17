@@ -232,11 +232,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // Getting the very last chat entry
         var chatNews = await Chats.GetNews(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var chatIdGap = new Range<long>(chatNews.TextEntryIdRange.End, chatIdRange.End);
+        var chatIdGap = new Range<long>(chatNews?.TextEntryIdRange.End ?? 0, chatIdRange.End);
         var lastEntry = await entryReader.ReadReverse(chatIdGap, cancellationToken)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        lastEntry ??= chatNews.LastTextEntry;
+        lastEntry ??= chatNews?.LastTextEntry;
         var lastEntryLid = lastEntry?.LocalId ?? 0;
 
         // Observing new entries

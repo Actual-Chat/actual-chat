@@ -93,7 +93,7 @@
 
         async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken1) {
             var chatNews = await Chats.GetNews(Session, chatId, cancellationToken1).ConfigureAwait(false);
-            return chatNews.LastTextEntry?.LocalId ?? 0;
+            return chatNews?.LastTextEntry?.LocalId ?? 0;
         }
     }
 

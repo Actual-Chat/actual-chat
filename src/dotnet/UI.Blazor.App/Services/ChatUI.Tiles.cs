@@ -530,51 +530,51 @@ public partial class ChatUI
         // DebugLog?.LogDebug("PrefetchTiles: {ChatId} {IdRange}", chatId, idRange);
 
         return BackgroundTask.Run(async () => {
-                // We are making following calls during chat view rendering:
-                // IChats.Get:3
-                // IChats.GetTile:3
-                // IChats.GetIdRange:4
-                // IChats.GetRules:3
-                // IAuthors.ListAuthorIds:3
-                // IAuthors.GetPresence:4
-                // IRoles.ListOwnerIds:3
-                // IReactions.ListSummaries:3
-                // IAuthors.Get:4
-                var chatTask = Chats.Get(Session, chatId, cancellationToken);
-                var idRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
-                var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
-                var authorsTask = Authors.ListAuthorIds(Session, chatId, cancellationToken);
-                var isEmptyTask = IsEmpty(chatId, cancellationToken);
-                var tilesTask = IdTileStack.FirstLayer
-                    .GetCoveringTiles(idRange)
-                    .Select(x => Chats.GetTile(Session,
-                        chatId,
-                        ChatEntryKind.Text,
-                        x.Range,
-                        cancellationToken))
-                    .Collect(ApiConstants.Concurrency.High, cancellationToken);
+            // We are making the following calls during chat view rendering:
+            // IChats.Get:3
+            // IChats.GetTile:3
+            // IChats.GetIdRange:4
+            // IChats.GetRules:3
+            // IAuthors.ListAuthorIds:3
+            // IAuthors.GetPresence:4
+            // IRoles.ListOwnerIds:3
+            // IReactions.ListSummaries:3
+            // IAuthors.Get:4
+            var chatTask = Chats.Get(Session, chatId, cancellationToken);
+            var idRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
+            var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
+            var authorsTask = Authors.ListAuthorIds(Session, chatId, cancellationToken);
+            var isEmptyTask = IsEmpty(chatId, cancellationToken);
+            var tilesTask = IdTileStack.FirstLayer
+                .GetCoveringTiles(idRange)
+                .Select(x => Chats.GetTile(Session,
+                    chatId,
+                    ChatEntryKind.Text,
+                    x.Range,
+                    cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
 
-                var tiles = await tilesTask.ConfigureAwait(false);
+            var tiles = await tilesTask.ConfigureAwait(false);
 
-                // prefetch authors
-                await tiles
-                    .SelectMany(t => t.Entries)
-                    .Select(e => e.AuthorId)
-                    .Distinct()
-                    .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
-                    .Collect(ApiConstants.Concurrency.High, cancellationToken)
-                    .ConfigureAwait(false);
-                await Task.WhenAll(chatTask,
-                        idRangeTask,
-                        rulesTask,
-                        authorsTask,
-                        isEmptyTask,
-                        tilesTask)
-                    .ConfigureAwait(false);
-            },
-            Log,
-            "Error prefetching chat tiles.",
-            CancellationToken.None);
+            // prefetch authors
+            await tiles
+                .SelectMany(t => t.Entries)
+                .Select(e => e.AuthorId)
+                .Distinct()
+                .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                .ConfigureAwait(false);
+            await Task.WhenAll(chatTask,
+                    idRangeTask,
+                    rulesTask,
+                    authorsTask,
+                    isEmptyTask,
+                    tilesTask)
+                .ConfigureAwait(false);
+        },
+        Log,
+        "Error prefetching chat tiles.",
+        CancellationToken.None);
     }
 
     // Private methods
@@ -587,7 +587,7 @@ public partial class ChatUI
         var secondLayer = IdTileStack.Layers[1];
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
-            // hot range assumes high probability of changes - so close to the end of the chat messages
+            // Hot range assumes a high probability of changes - so close to the end of the chat messages
             var hotRangeTiles = dataQuery.HasVeryLastItem
                 ? firstLayer.GetCoveringTiles(new Range<long>(idRangeToLoad.End - secondLayer.TileSize,
                     idRangeToLoad.End + firstLayer.TileSize))
@@ -596,14 +596,14 @@ public partial class ChatUI
                 ? new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End)
                 : default;
             if (!idRangeToLoad
-                    .Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
+                    .Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond the existing chat id range
                 hotRange = default;
 
             var coldRange = hotRange.IsEmpty
                 ? idRangeToLoad
                 : new Range<long>(secondLayer.GetTile(idRangeToLoad.Start).Start, hotRange.Start);
 
-            // load second layer stack to improve reuse if large tiles during scroll
+            // Load the second layer stack to improve reuse if large tiles
             tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
             var lastColdRange = tiles.Count > 0
                 ? tiles[^1].Range

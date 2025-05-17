@@ -130,7 +130,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var lastTextEntryText = "";
             Chat.Chat? lastThreadChat = null;
             Author? lastThreadCreator = null;
-            if (news.LastTextEntry is { } lastTextEntry) {
+            if (news?.LastTextEntry is { } lastTextEntry) {
                 if (lastTextEntry.IsStreaming)
                     lastTextEntryText = Constants.Messages.RecordingSkeleton;
                 else if (lastTextEntry.IsThreadStartEntry) {
@@ -513,7 +513,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             && OrdinalEquals(NavbarUI.SelectedGroupId, selectedPlaceId.GetNavbarGroupId())) {
             var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(selectedPlaceId);
             // When a peer chat is "selected" via URL, we should retain the selected place
-            // nav group if we're on "People" tab (or no tab is selected) and the peer is a member of this place
+            // nav group if we're on the "People" tab (or no tab is selected) and the peer is a member of this place
             var chatListSettings = await placeChatListSettings.Get().ConfigureAwait(false);
             if (chatListSettings.Filter == ChatListFilter.People || chatListSettings.Filter == ChatListFilter.None) {
                 var chats = await ChatListUI.ListMembersOnly(selectedPlaceId, default).ConfigureAwait(false);
@@ -537,10 +537,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // Not compute method!
-    private static Trimmed<int> ComputeUnreadCount(ChatId chatId, ChatNews chatNews, long readEntryLid)
+    private static Trimmed<int> ComputeUnreadCount(ChatId chatId, ChatNews? chatNews, long readEntryLid)
     {
         var unreadCount = 0;
-        if ((readEntryLid > 0 || (chatId.Kind == ChatKind.Peer && readEntryLid == 0)) && !chatNews.IsNone) {
+        if (chatNews is not null && (readEntryLid > 0 || (chatId.Kind == ChatKind.Peer && readEntryLid == 0))) {
             // Otherwise the chat wasn't ever opened
             var lastId = chatNews.TextEntryIdRange.End - 1;
             unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);

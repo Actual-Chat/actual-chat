@@ -14,13 +14,13 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
-    Task<ChatNews> GetNews(
+    Task<ChatNews?> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
 
     // Note that it returns (firstId, lastId + 1) range!
-    // Client-side methods always skips entries with IsRemoved flag
+    // Client-side methods always skip entries with IsRemoved == true
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
     Task<Range<long>> GetIdRange(
         Session session,

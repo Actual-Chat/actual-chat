@@ -12,7 +12,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatNews> GetNews(
+    Task<ChatNews?> GetNews(
         ChatId chatId,
         CancellationToken cancellationToken);
 

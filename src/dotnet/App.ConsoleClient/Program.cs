@@ -29,7 +29,7 @@ if (chat == null)
 WriteLine($"Observing '{chat.Title}'...");
 var chatNews = await chats.GetNews(session, chatId, cancellationToken).ConfigureAwait(false);
 var reader = new ChatEntryReader(chats, session, chatId, ChatEntryKind.Text);
-var entries = reader.Observe(chatNews.LastTextEntry?.Id.LocalId ?? 0, cancellationToken);
+var entries = reader.Observe(chatNews?.LastTextEntry?.Id.LocalId ?? 0, cancellationToken);
 await foreach (var entry in entries.ConfigureAwait(false)) {
     var e = entry;
     if (entry.IsStreaming) {

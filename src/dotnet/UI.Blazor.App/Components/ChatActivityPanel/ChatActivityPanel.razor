@@ -90,7 +90,7 @@
         var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
         if (!audioState.IsListening) {
             var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chatInfo?.News.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
+            if (chatInfo?.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
                 var ownAuthor = chatInfo.Chat.Rules.Author;
                 isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
             }

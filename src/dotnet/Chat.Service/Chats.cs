@@ -123,14 +123,14 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatNews> GetNews(
+    public virtual async Task<ChatNews?> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false); // Make sure we can read the chat
         if (chat == null)
-            return default;
+            return null;
 
         return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
     }
