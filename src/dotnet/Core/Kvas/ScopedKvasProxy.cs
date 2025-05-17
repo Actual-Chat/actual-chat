@@ -2,6 +2,8 @@
 
 public record struct ScopedKvasProxy<TScope>(IKvas Kvas) : IKvas<TScope>
 {
+    public IServiceProvider Services => Kvas.Services;
+
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => Kvas.Get(key, cancellationToken);
 

@@ -1,7 +1,10 @@
 namespace ActualChat.Kvas;
 
-public class ServerKvasClient(IServerKvas serverKvas, Session session) : IKvas, IKvas<Session>, IKvas<User>
+public class ServerKvasClient(IServerKvas serverKvas, Session session) : IKvas<Session>, IKvas<User>
 {
+    [field: AllowNull, MaybeNull]
+    public IServiceProvider Services => field ??= ServerKvas.GetServices();
+
     public IServerKvas ServerKvas { get; } = serverKvas;
     public Session Session { get; } = session;
 

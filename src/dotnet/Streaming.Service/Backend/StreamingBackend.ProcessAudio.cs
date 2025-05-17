@@ -61,9 +61,9 @@ public partial class StreamingBackend
             .EnsureJoined(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var chatVoiceSettings = new ChatVoiceSettings(Services, new AccountSettings(ServerKvas, record.Session));
-        var chatVoiceMode = await chatVoiceSettings
-            .Get(record.Session, record.ChatId, cancellationToken)
+        var accountSettings = new AccountSettings(ServerKvas, record.Session);
+        var chatVoiceMode = await accountSettings
+            .GetChatVoiceMode(record.ChatId, cancellationToken)
             .ConfigureAwait(false);
         var mustStreamVoice = chatVoiceMode.VoiceMode.HasVoice();
 
