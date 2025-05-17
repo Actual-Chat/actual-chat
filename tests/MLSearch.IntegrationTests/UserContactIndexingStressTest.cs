@@ -93,7 +93,7 @@ public class UserContactIndexingStressTest(AppHostFixture fixture, ITestOutputHe
     private Task<ContactSearchResult[]> Find(string criteria, PlaceId? placeId = null, int expected = 50)
         => TestsExt.When(async () => {
                 var results = await Tester.FindPeople($"{UniquePart} {criteria}", false, placeId, expected);
-                results.Should().HaveCount(expected, "for place #{PlaceId} and criteria '{Criteria}'", placeId, criteria);
+                results.Should().HaveCount(expected, "for place #{0} and criteria '{1}'", placeId, criteria);
                 return results;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
