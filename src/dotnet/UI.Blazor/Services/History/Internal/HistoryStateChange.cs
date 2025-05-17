@@ -1,7 +1,6 @@
 namespace ActualChat.UI.Blazor.Services.Internal;
 
-[StructLayout(LayoutKind.Auto)]
-public readonly record struct HistoryStateChange(
+public sealed record HistoryStateChange(
     HistoryState State,
     HistoryState PrevState)
 {

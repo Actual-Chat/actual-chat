@@ -21,13 +21,13 @@ public partial class ChatEditorUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<(RelatedChatEntry?, ChatEntry?)> ComputeRelatedChatEntry(CancellationToken cancellationToken)
+    protected virtual async Task<(RelatedEntryRef?, ChatEntry?)> ComputeRelatedChatEntry(CancellationToken cancellationToken)
     {
-        var entryLink = await RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
-        if (entryLink == null)
+        var entryRef = await RelatedEntryRef.Use(cancellationToken).ConfigureAwait(false);
+        if (entryRef == null)
             return (null, null);
 
-        var entry = await Chats.GetEntry(Session, entryLink.Value.Id, cancellationToken).ConfigureAwait(false);
-        return (entryLink, entry);
+        var entry = await Chats.GetEntry(Session, entryRef.EntryId, cancellationToken).ConfigureAwait(false);
+        return (entryRef, entry);
     }
 }

@@ -1,6 +1,5 @@
 namespace ActualChat.Db;
 
-[StructLayout(LayoutKind.Auto)]
 public record struct DbLockKey(string LockSpace, int Key)
 {
     public long CombinedKey => ((long)(LockSpace.GetOrdinalHashCode() & 0x0FFFFFFF) << 32) ^ Key;

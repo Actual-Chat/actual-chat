@@ -4,10 +4,7 @@ using ActualChat.Users;
 namespace ActualChat.UI.Blazor.App.Services;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed record ChatState(
-    ChatInfo Info,
-    ChatAudioState AudioState = default
-    ) : IHasId<ChatId>
+public sealed record ChatState(ChatInfo Info, ChatAudioState AudioState) : IHasId<ChatId>
 {
     public bool IsSelected { get; init; }
     public Presence Presence { get; init; } = Presence.Unknown;

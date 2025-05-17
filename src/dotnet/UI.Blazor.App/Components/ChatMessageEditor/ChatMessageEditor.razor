@@ -175,8 +175,8 @@
         _ = TuneUI.Play(Tune.SendMessage);
         var clearMarkupTask = MarkupEditorRef.Clear();
         try {
-            var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
-            var relatedChatEntryId = relatedChatEntry?.Id;
+            var relatedChatEntry = ChatEditorUI.RelatedEntryRef.Value;
+            var relatedChatEntryId = relatedChatEntry?.EntryId;
             await ChatEditorUI.HideRelatedEntry(false);
 
             Chats_UpsertTextEntry cmd;
@@ -217,7 +217,7 @@
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: true);
+        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, (TextEntryId)chatEntry.Id, focusOnEditor: true);
         await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
     }
 

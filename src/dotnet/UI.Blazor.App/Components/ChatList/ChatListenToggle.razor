@@ -26,6 +26,8 @@
     protected override Task<ChatAudioState> ComputeState(CancellationToken cancellationToken)
         => ChatAudioUI.GetState(ChatId);
 
-    private void OnListenClick()
-        => _ = ChatAudioUI.SetListeningState(ChatId, !State.Value.IsListening);
+    private void OnListenClick() {
+        if (State.Value is { ChatId: { } chatId, IsListening: var isListening })
+            _ = ChatAudioUI.SetListeningState(chatId, !isListening);
+    }
 }

@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ThreadList.Model>
-
 @{
     var m = State.Value;
 }
@@ -65,6 +64,4 @@
 
         public IReadOnlyList<Chat> ThreadChats { get; init; } = [];
     }
-
-    public record struct AuthorInfo(AuthorId Id, string Name);
 }

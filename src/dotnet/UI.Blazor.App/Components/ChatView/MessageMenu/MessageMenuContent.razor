@@ -143,5 +143,5 @@
     [Parameter, EditorRequired] public bool CanWrite { get; set; }
 
     private Task Reply()
-        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, ChatEntry.Id, focusOnEditor: true);
+        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, (TextEntryId)ChatEntry.Id, focusOnEditor: true);
 }

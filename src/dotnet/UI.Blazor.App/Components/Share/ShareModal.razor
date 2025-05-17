@@ -84,7 +84,7 @@
     private bool HasSelectedItems
         => (_contactSelectorRef?.SelectedChatIds.Value.Count
             ?? _memberSelectorRef?.SelectedUserIds.Value.Count ?? 0) > 0;
-    private ShareRequest RequestWithComment => ModalModel.Request.WithText(_comment);
+    private ShareRequest RequestWithComment => ModalModel.Request with { Text = _comment };
 
     private AccountFull OwnAccount => Hub.AccountUI.OwnAccount.Value;
 

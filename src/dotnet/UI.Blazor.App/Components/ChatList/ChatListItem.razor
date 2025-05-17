@@ -8,7 +8,7 @@
     var isWide = ScreenSize.IsWide();
     var isActiveChatList = listKind == ChatListKind.Active;
     var audioState = m.AudioState;
-    var isListeningOrRecording = audioState.IsListening || audioState.IsRecording;
+    var isListeningOrRecording = audioState is not null && (audioState.IsListening || audioState.IsRecording);
     var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
     var lastTextEntry = m.LastTextEntry;
     var attributes = listKind == ChatListKind.All && m.IsFirstItem
@@ -85,7 +85,7 @@
                 NotificationMode="@m.NotificationMode"
                 HasMentions="@m.HasUnreadMentions"/>
             @if (hasButtons) {
-                @if (audioState.IsRecording) {
+                @if (audioState?.IsRecording == true) {
                     <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
                 }
                 <div class="listen-wrapper">
@@ -112,9 +112,9 @@
 }
 
 @code {
-    // Settings data-bubble attributes inside a component instead providing them from ChatList as additional attributes,
-    // allows to avoid unnecessary OnParametersSet call during rendering ChatList and correspondingly
-    // it allows to avoid extra ComputeState call and Rendering.
+    // Setting data-bubble attributes inside a component instead of providing them from ChatList as additional attributes
+    // allows avoiding unnecessary OnParametersSet calls during ChatList rendering
+    // and thus allows avoiding extra ComputeState calls and re-renders.
     private static readonly Dictionary<string, object> FirstItemAttributes = new() {
         { "data-bubble", BubbleRef.New<HasContextMenuBubble>() },
         { "data-bubble-priority", 204 },
@@ -161,9 +161,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
-                InitialValue = new () {
-                    AudioState = ChatAudioState.None,
-                },
+                InitialValue = Model.None,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -238,13 +236,13 @@
     // Nested types
 
     public sealed record Model {
-        public static readonly Model None = new() { AudioState = ChatAudioState.None };
+        public static readonly Model None = new();
 
         public ChatListKind? ListKind { get; init; }
         public Chat? Chat { get; init; }
         public string LastTextEntryText { get; init; } = "";
         public ChatEntry? LastTextEntry { get; init; }
-        public ChatAudioState AudioState { get; init; }
+        public ChatAudioState? AudioState { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
         public Trimmed<int> UnreadCount { get; init; }
         public bool HasUnreadMentions { get; init; }

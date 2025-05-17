@@ -1,37 +1,11 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public readonly record struct ShareRequest
+public sealed record ShareRequest(
+    string Text,
+    LocalUrl? Link = null)
 {
-    [field: AllowNull, MaybeNull]
-    public string Text {
-        get => field ?? "";
-        init;
-    }
-
-    public LocalUrl? Link { get; init; }
-
-    public ShareRequest(LocalUrl link)
-    {
-        Text = "";
-        Link = link;
-    }
-
-    // ReSharper disable once ConvertToPrimaryConstructor
-    public ShareRequest(string text, LocalUrl? link = null)
-    {
-        Text = text;
-        Link = link;
-    }
-
-    // WithXxx
-
-    public ShareRequest WithText(string text)
-        => new() { Text = text, Link = Link };
-
-    public ShareRequest WithTextUnlessEmpty(string text)
-        => text.IsNullOrEmpty() ? this : new() { Text = text, Link = Link };
-
-    // HasXxx
+    public ShareRequest(LocalUrl link) : this("", link)
+    { }
 
     public bool HasText()
         => !Text.IsNullOrEmpty();
@@ -82,10 +56,4 @@ public readonly record struct ShareRequest
 
     public string GetShareLink(UrlMapper urlMapper)
         => HasLink(out var link) ? urlMapper.ToAbsolute(link) : "";
-
-    // Equality
-    public bool Equals(ShareRequest other)
-        => OrdinalEquals(Text, other.Text) && Link == other.Link;
-    public override int GetHashCode()
-        => HashCode.Combine(Text, Link);
 }

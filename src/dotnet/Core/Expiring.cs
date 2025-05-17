@@ -2,7 +2,6 @@ using MemoryPack;
 
 namespace ActualChat;
 
-[StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Expiring<T>(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] T Value,

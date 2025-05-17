@@ -1,6 +1,5 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
-[StructLayout(LayoutKind.Auto)]
 public sealed record AudioRecorderState(ChatId? ChatId)
 {
     public static readonly AudioRecorderState Idle = new((ChatId?)null);

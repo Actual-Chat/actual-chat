@@ -2,9 +2,8 @@ using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record ActiveChat(
+public sealed partial record ActiveChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] bool IsListening = false,
     [property: DataMember, MemoryPackOrder(2)] bool IsRecording = false,
@@ -24,6 +23,6 @@ public partial record ActiveChat(
         => new(chatId);
 
     // Equality is based solely on ChatId property
-    public virtual bool Equals(ActiveChat? other) => Equals(ChatId, other?.ChatId);
+    public bool Equals(ActiveChat? other) => Equals(ChatId, other?.ChatId);
     public override int GetHashCode() => ChatId.GetHashCode();
 }

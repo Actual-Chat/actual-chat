@@ -20,7 +20,7 @@
                 <Title>Copy Place Invite link</Title>
             </Button>
         </CopyTrigger>
-        <ShareExternallyButton Request="@_shareRequest.Value"/>
+        <ShareExternallyButton Request="@_shareRequest"/>
     </FormBlock>
 }
 
@@ -52,7 +52,7 @@
         else if (Context.Model is PlaceId placeId) {
             _backend = new NewPlaceMemberSelector(Hub, placeId);
             _shareRequest = new ShareRequest(Links.PlaceInfo(placeId));
-            _placeLink = _shareRequest.Value.GetShareLink(UrlMapper);
+            _placeLink = _shareRequest.GetShareLink(UrlMapper);
         } else
             throw StandardError.NotSupported("Not supported model type");
         Context.Title = "Add members";
@@ -65,7 +65,7 @@
             var shareModal = await Hub.ShareUI.GetModel(placeId, DisposeToken);
             if (shareModal is not null) {
                 _shareRequest = shareModal.Request;
-                _placeLink = _shareRequest.Value.GetShareLink(UrlMapper);
+                _placeLink = _shareRequest.GetShareLink(UrlMapper);
             }
         }
     }

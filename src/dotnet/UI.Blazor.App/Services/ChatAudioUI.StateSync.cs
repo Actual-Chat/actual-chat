@@ -171,13 +171,13 @@ public partial class ChatAudioUI
         var abortTokenSource = cancellationToken.CreateLinkedTokenSource();
         var abortToken = abortTokenSource.Token;
         try {
-            var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(abortToken).ConfigureAwait(false);
-            var repliedChatEntryId = relatedChatEntry is { Kind: RelatedEntryKind.Reply }
-                ? relatedChatEntry.Value.Id
+            var relatedEntryRef = await ChatEditorUI.RelatedEntryRef.Use(abortToken).ConfigureAwait(false);
+            var repliedEntryId = relatedEntryRef is { Kind: RelatedEntryKind.Reply }
+                ? relatedEntryRef.EntryId
                 : null;
             await ChatEditorUI.HideRelatedEntry().ConfigureAwait(false);
 
-            await AudioRecorder.StartRecording(chatId, repliedChatEntryId, abortToken).ConfigureAwait(false);
+            await AudioRecorder.StartRecording(chatId, repliedEntryId, abortToken).ConfigureAwait(false);
             var whenStopped = ForegroundTask.Run(
                 async () => await cRecordingState
                     .When(x => x.ChatId != chatId || x.Language != language, abortToken)
@@ -313,7 +313,9 @@ public partial class ChatAudioUI
     }
 
     private async Task StopListeningWhenIdle(
-        ChatId chatId, RecordingIdleOptions options, CancellationToken cancellationToken)
+        ChatId chatId,
+        RecordingIdleOptions options,
+        CancellationToken cancellationToken)
     {
         var mustStop = true;
         try {
@@ -524,7 +526,7 @@ public partial class ChatAudioUI
     {
         var chatId = await GetRecordingChatId().ConfigureAwait(false);
         if (chatId is null)
-            return new(null, null);
+            return RecordingState.Idle;
 
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
         return new(chatId, language);
@@ -547,7 +549,7 @@ public partial class ChatAudioUI
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
         if (recordingChatId is null)
             // if recording is not started, other properties make no sense
-            return new (false, Moment.MinValue, false);
+            return RecordingBeepState.Idle;
 
         var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false); // CPU time
         var recordingStopsAt = await StopRecordingAt.Use(cancellationToken).ConfigureAwait(false); // CPU time
@@ -616,24 +618,24 @@ public partial class ChatAudioUI
 
     // Nested types
 
-    [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingState(ChatId? ChatId, Language? Language)
+    public sealed record RecordingState(ChatId? ChatId, Language? Language)
     {
-        public static readonly RecordingState None = default;
+        public static readonly RecordingState Idle = new (null, null);
     }
 
-    [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingBeepState(
+    public sealed record RecordingBeepState(
         bool IsRecording,
         Moment ActiveUntil, // CPU time
-        bool IsCountingDown);
+        bool IsCountingDown)
+    {
+        public static readonly RecordingBeepState Idle = new (false, Moment.MinValue, false);
+    }
 
     public sealed record NextBeepState(
         Moment At, // CPU time
         bool IsPreviousCancelled);
 
-    [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingIdleOptions
+    public sealed record RecordingIdleOptions
     {
         public TimeSpan IdleTimeout { get; init; }
         public TimeSpan PreCountdownTimeout { get; init; }

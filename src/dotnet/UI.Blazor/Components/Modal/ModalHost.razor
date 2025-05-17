@@ -28,8 +28,8 @@
 @code {
     private static readonly string JSUpdateBodyStyleMethod = $"{BlazorUICoreModule.ImportName}.ModalHost.updateBodyStyle";
 
-    private ModelRefsCollection _renderedRefs = new ();
-    private ModelRefsCollection _refs = new ();
+    private ModalRefSet _renderedRefs = new ();
+    private ModalRefSet _refs = new ();
     private AfterRenderQueue _afterRenderQueue = new ();
 
     [Inject] internal HistoryStepper HistoryStepper { get; init; } = null!;
@@ -188,7 +188,8 @@
 
     public enum CloseBehavior  { Immediate, FadeOut }
 
-    private struct ModelRefsCollection() {
+    [StructLayout(LayoutKind.Auto)]
+    private struct ModalRefSet() {
         private ImmutableList<ModalRef> _refs = ImmutableList<ModalRef>.Empty;
         private ImmutableList<ModalRef> _refsToRender = ImmutableList<ModalRef>.Empty;
         private ImmutableList<ModalRef> _closingRefs = ImmutableList<ModalRef>.Empty;
@@ -214,7 +215,7 @@
             _closingRefs = _closingRefs.Remove(modalRef);
         }
 
-        public bool CheckIfHasModelsToRenderChanged(ModelRefsCollection prev, out bool hasModals) {
+        public bool CheckIfHasModelsToRenderChanged(ModalRefSet prev, out bool hasModals) {
             hasModals = false;
             var prevToRenderList = prev.ToRenderList;
             var toRenderList = ToRenderList;
@@ -226,7 +227,7 @@
             return hadModals != hasModals;
         }
 
-        public bool CheckIfHasActiveModelsToRenderChanged(ModelRefsCollection prev, out bool isOpen) {
+        public bool CheckIfHasActiveModelsToRenderChanged(ModalRefSet prev, out bool isOpen) {
             isOpen = true;
             var prevActiveList = prev.ActiveList;
             var activeList = ActiveList;
@@ -240,7 +241,6 @@
 
             isOpen = activeList.Count >= prevActiveList.Count;
             return true;
-
         }
     }
 }

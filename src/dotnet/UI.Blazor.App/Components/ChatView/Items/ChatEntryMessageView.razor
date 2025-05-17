@@ -326,8 +326,8 @@
                 .Select(c => (AuthorId)c.PrincipalId)
                 .ToList();
         }
-        var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
-        var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
+        var relatedChatEntry = await ChatEditorUI.RelatedEntryRef.Use(cancellationToken).ConfigureAwait(false);
+        var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, EntryId: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken).ConfigureAwait(false);
         Chat? forwardedChat = null;
         ChatEntryId? forwardedChatEntryId = null;

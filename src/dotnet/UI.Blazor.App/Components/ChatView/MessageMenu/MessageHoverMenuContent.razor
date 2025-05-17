@@ -54,7 +54,7 @@
     }
 
     private Task Reply(ChatEntry chatEntry)
-        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
+        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, (TextEntryId)chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
         var reaction = new Reaction {
