@@ -4,10 +4,10 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
-[Collection(nameof(MLSearchCollection))]
+[Collection(nameof(SlowMLSearchCollection))]
 [Trait("Category", "Slow")]
-public class EntryIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<SlowAppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
 
@@ -75,5 +75,5 @@ public class EntryIndexingStressTest(AppHostFixture fixture, ITestOutputHelper @
                 results.Should().HaveCount(expected, "for chat #{0} and criteria '{1}'", chatId, criteria);
                 return results;
             },
-            TimeSpan.FromSeconds(60));
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(20));
 }
