@@ -1,14 +1,27 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct AudioRecorderState(
-    ChatId? ChatId,
-    bool IsRecording = false,
-    bool IsSignalDetected = false,
-    bool IsConnected = false,
-    bool IsVoiceActive = false)
+public sealed record AudioRecorderState(ChatId? ChatId)
 {
-    public static readonly AudioRecorderState Idle = default;
+    public static readonly AudioRecorderState Idle = new((ChatId?)null);
 
+    public bool IsRecording { get; init; }
+    public bool IsSignalDetected { get; init; }
+    public bool IsConnected { get; init; }
+    public bool IsVoiceActive { get; init; }
     public Moment RecordingStartTime { get; init; }
+
+    public void Deconstruct(
+        out ChatId? chatId,
+        out bool isRecording,
+        out bool isSignalDetected,
+        out bool isConnected,
+        out bool isVoiceActive)
+    {
+        chatId = ChatId;
+        isRecording = IsRecording;
+        isSignalDetected = IsSignalDetected;
+        isConnected = IsConnected;
+        isVoiceActive = IsVoiceActive;
+    }
 }

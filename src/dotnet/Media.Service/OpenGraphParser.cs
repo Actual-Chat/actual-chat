@@ -41,10 +41,8 @@ public static class OpenGraphParser
 
     private struct UrlExtractor(Uri? requestUri)
     {
-        private Uri? _baseUrl;
-
-        private Uri? BaseUrl => _baseUrl ??= requestUri != null
-            ? new UriBuilder(requestUri.Scheme, requestUri.Host, requestUri.Port).Uri
+        private Uri? BaseUrl => requestUri != null
+            ? field ??= new UriBuilder(requestUri.Scheme, requestUri.Host, requestUri.Port).Uri
             : null;
 
         public string GetUrl(Dictionary<string, string> metaMap, params string[] keys)

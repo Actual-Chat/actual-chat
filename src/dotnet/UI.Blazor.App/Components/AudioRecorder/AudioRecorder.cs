@@ -18,8 +18,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
     private readonly MutableState<AudioRecorderState> _state;
     private SessionTokens? _sessionTokens;
-    private MicrophonePermissionHandler? _microphonePermission;
-    private ILogger? _log;
 
     private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
     private IJSObjectReference _jsRef = null!;
@@ -31,11 +29,14 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private MomentClockSet Clocks => Hub.Clocks;
     private IJSRuntime JS => Hub.JS;
     private TuneUI TuneUI => Hub.TuneUI;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
 
+    [field: AllowNull, MaybeNull]
     public MicrophonePermissionHandler MicrophonePermission
-        => _microphonePermission ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
+        => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     public IState<AudioRecorderState> State => _state;
     public Task WhenInitialized { get; }
 
@@ -292,7 +293,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     {
         var currentState = State.Value;
         var (_, isRecording, isSignalDetected, isConnected, isVoiceActive) = currentState;
-        UpdateState(AudioRecorderState.Idle with {
+        UpdateState(new AudioRecorderState(null) {
             IsRecording = isRecording,
             IsSignalDetected = isSignalDetected,
             IsConnected = isConnected,

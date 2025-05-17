@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.MediaPlayback;
 
-public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, PlayerState State);
+public sealed record PlayerStateChangedEventArgs(PlayerState PreviousState, PlayerState State);
 
 public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILogger log) : ProcessorBase
 {
