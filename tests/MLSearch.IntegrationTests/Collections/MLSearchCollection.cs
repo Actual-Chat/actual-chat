@@ -12,8 +12,8 @@ public class AppHostFixture(IMessageSink messageSink)
         ConfigureHost = (__, cfg) => {
             _ = cfg.AddInMemory<MLSearchSettings>((x => x.IsEnabled, "true"),
                 (x => x.IsInitialIndexingDisabled, "true"),
-                (x => x.ChangedEntityIndexingDelay, "00:00:03"),
-                (x => x.IndexingFlowResumeDelay, "00:00:01"));
+                (x => x.ChangedEntityIndexingDelay, "00:00:04"),
+                (x => x.IndexingFlowResumeDelay, "00:00:01.5"));
         },
         ConfigureServices = (__, services) => {
             _ = services.AddSingleton<OpenSearchInit>()
