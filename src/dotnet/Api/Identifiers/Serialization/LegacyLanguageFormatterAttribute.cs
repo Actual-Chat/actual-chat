@@ -3,9 +3,11 @@ using MemoryPack;
 namespace ActualChat.Serialization;
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public sealed class LanguageBackwardCompatibleFormatterAttribute(bool isNullable)
+public sealed class LegacyLanguageFormatterAttribute(bool isNullable)
     : MemoryPackCustomFormatterAttribute<IMemoryPackFormatter<Language?>, Language?>
 {
     public override IMemoryPackFormatter<Language?> GetFormatter()
-        => isNullable ? NullableLanguageBackwardCompatibleFormatter.Default : LanguageBackwardCompatibleFormatter.Default!;
+        => isNullable
+            ? LegacyNullableLanguageFormatter.Default
+            : LegacyLanguageFormatter.Default!;
 }

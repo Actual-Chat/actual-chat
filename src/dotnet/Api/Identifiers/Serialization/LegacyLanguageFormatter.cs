@@ -4,9 +4,9 @@ using MemoryPack.Internal;
 
 namespace ActualChat.Serialization;
 
-public class LanguageBackwardCompatibleFormatter : MemoryPackFormatter<Language>
+public class LegacyLanguageFormatter : MemoryPackFormatter<Language>
 {
-    public static readonly LanguageBackwardCompatibleFormatter Default = new ();
+    public static readonly LegacyLanguageFormatter Default = new ();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void Serialize<TBufferWriter>(
@@ -59,38 +59,5 @@ public class LanguageBackwardCompatibleFormatter : MemoryPackFormatter<Language>
         value = null;
         for (int i = 1; i < count; i++)
             reader.Advance(deltas[i]);
-    }
-}
-
-public class NullableLanguageBackwardCompatibleFormatter : MemoryPackFormatter<Language?>
-{
-    public static readonly NullableLanguageBackwardCompatibleFormatter Default = new ();
-
-    public override void Serialize<TBufferWriter>(
-        ref MemoryPackWriter<TBufferWriter> writer,
-        scoped ref Language? value)
-    {
-        if (value is null)
-        {
-            writer.WriteNullObjectHeader();
-            return;
-        }
-
-        writer.WriteObjectHeader(1);
-        LanguageBackwardCompatibleFormatter.Default.Serialize(ref writer, ref value);
-    }
-
-    public override void Deserialize(ref MemoryPackReader reader, scoped ref Language? value)
-    {
-        if (!reader.TryReadObjectHeader(out var count))
-        {
-            value = null;
-            return;
-        }
-
-        if (count != 1)
-            MemoryPackSerializationException.ThrowInvalidPropertyCount(1, count);
-
-        LanguageBackwardCompatibleFormatter.Default.Deserialize(ref reader, ref value);
     }
 }
