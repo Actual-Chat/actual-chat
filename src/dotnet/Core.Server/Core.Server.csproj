@@ -10,7 +10,6 @@
     <PackageReference Include="ActualLab.Core" />
     <PackageReference Include="ActualLab.Fusion.Server" />
     <PackageReference Include="Anthropic.SDK" />
-    <PackageReference Include="Blake3" />
     <PackageReference Include="CliWrap" />
     <PackageReference Include="FFMpegCore" />
     <PackageReference Include="Google.Cloud.Storage.V1" />

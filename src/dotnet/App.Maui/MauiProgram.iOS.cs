@@ -20,7 +20,7 @@ public static partial class MauiProgram
         services.AddSingleton(CrossFirebaseAnalytics.Current);
         services.AddSingleton(CrossFirebaseCrashlytics.Current);
 
-        services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.UIHub()));
+        services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.AppUIHub()));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<IRecordingPermissionRequester>(_ => new IosRecordingPermissionRequester());

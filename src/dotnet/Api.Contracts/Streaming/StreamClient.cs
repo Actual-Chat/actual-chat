@@ -62,12 +62,12 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     }
 
     public async IAsyncEnumerable<TranscriptDiff> GetTranslatedTranscript(
-        Symbol streamId,
+        string streamId,
         TranslationId translationId,
         [EnumeratorCancellation]
         CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetTranscript({StreamId})", streamId.Value);
+        Log.LogDebug("GetTranscript({StreamId})", streamId);
         var diffs = await StreamServer.GetTranslatedTranscript(translationId, streamId, cancellationToken).ConfigureAwait(false);
         if (diffs == null)
             yield break;

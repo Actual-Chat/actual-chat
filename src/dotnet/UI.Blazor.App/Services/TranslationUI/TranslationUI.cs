@@ -33,7 +33,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
             return false;
 
-        if (entry.IsSystemEntry || (entry.Content.IsNullOrEmpty() && !entry.IsStreaming))
+        if (entry.IsSystemEntry || (entry.Content.IsNullOrEmpty() && !entry.IsStreaming) || entry.Id.Kind is not ChatEntryKind.Text)
             return false;
 
         var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
@@ -43,7 +43,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
-        return await IsForeignEntry(entry.Id, cancellationToken).ConfigureAwait(false);
+        return await IsForeignEntry(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -93,7 +93,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
    public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntry entry, [EnumeratorCancellation] CancellationToken cancellationToken) {
         var targetLanguage = await GetTargetLanguage(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var translationId = new TranslationId(entry.Id, targetLanguage, AssumeValid.Option);
+        var translationId = TranslationId.New(entry.Id.ToTextEntryId(), targetLanguage);
         var streamId = await GetTranscriptionStreamId(entry, cancellationToken).ConfigureAwait(false);
         if (streamId.IsEmpty)
             yield break;
@@ -105,11 +105,11 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
    [ComputeMethod]
    protected virtual async Task<Symbol> GetTranscriptionStreamId(ChatEntry entry, CancellationToken cancellationToken)
    {
-       if (entry.StreamId)
+       if (entry.IsStreaming)
            return entry.StreamId;
 
        // when entry finished streaming translation is still in progress
-       var translation = await Get(entry.Id, cancellationToken).ConfigureAwait(false);
+       var translation = await Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
        if (translation is null || !translation.IsStreaming)
            return Symbol.Empty;
 

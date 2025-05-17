@@ -235,7 +235,7 @@ public partial class StreamingBackend
             null, // do not perform version check there - it might have already been changed and it's OK
             Change.Update(new ChatEntryDiff {
                 Content = audioBlobId ?? "",
-                StreamId = Symbol.Empty,
+                StreamId = "",
                 EndsAt = endsAt,
                 ContentEndsAt = contentEndsAt,
             }));
@@ -297,6 +297,7 @@ public partial class StreamingBackend
             DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
                 textEntry.Id,
                 textEntry.ChatId);
+            return textEntry;
         }
 
         async Task FinalizeTextEntry()
@@ -311,7 +312,7 @@ public partial class StreamingBackend
                 ? Change.Remove<ChatEntryDiff>()
                 : Change.Update(new ChatEntryDiff {
                     Content = lastTranscript.Text,
-                    StreamId = Symbol.Empty,
+                    StreamId = "",
                     AudioEntryLid = audioEntry?.LocalId,
                     EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
                     TimeMap = audioEntry != null

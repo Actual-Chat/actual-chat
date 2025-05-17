@@ -24,11 +24,11 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranslatedTranscript(
         TranslationId translationId,
-        Symbol streamId,
+        string streamId,
         CancellationToken cancellationToken)
     {
         // We must return another RpcStream here - they aren't "shareable"
-        var source = await Backend.GetTranslatedTranscript(new StreamId(streamId), translationId, cancellationToken).ConfigureAwait(false);
+        var source = await Backend.GetTranslatedTranscript(StreamId.Parse(streamId), translationId, cancellationToken).ConfigureAwait(false);
         return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
     }
 

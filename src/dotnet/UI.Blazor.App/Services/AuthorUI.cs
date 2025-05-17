@@ -9,9 +9,7 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 
     [ComputeMethod]
     public virtual Task<AuthorFull> GetOwn(ChatId chatId, CancellationToken cancellationToken)
-        => chatId.IsNone
-            ? Task.FromResult(AuthorFull.None)
-            : Authors.GetOwn(Session, chatId, cancellationToken).Require();
+        => Authors.GetOwn(Session, chatId, cancellationToken).Require();
 
     public Task<ModalRef> Show(AuthorId authorId)
         => ModalUI.Show(new AuthorModal.Model(authorId), CancellationToken.None);

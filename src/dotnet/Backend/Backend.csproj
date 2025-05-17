@@ -9,6 +9,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Blake3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="$(RootNamespace).Audio.UnitTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(RootNamespace).Audio.IntegrationTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(RootNamespace).Chat.UnitTests$(AssemblyPublicKey)" />
