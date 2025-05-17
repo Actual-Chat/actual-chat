@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
+@inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
 <div class="modal-chrome-wrapper">
@@ -12,7 +13,7 @@
 @code {
     private IAsyncDisposable? _escapeSubscription;
 
-    [Inject] private Escapist Escapist { get; init; } = null!;
+    private Escapist Escapist => Hub.Escapist;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

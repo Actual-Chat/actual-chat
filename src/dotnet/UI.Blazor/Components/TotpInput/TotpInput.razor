@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
-@using System.Net.Mime
 @using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
 <div @ref="_ref" class="totp-input">
@@ -33,14 +33,11 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.{nameof(TotpInput)}.create";
 
     private const int Length = Constants.Auth.Phone.TotpLength;
-    private ElementReference[] _inputRefs = new ElementReference[Length];
-    private int?[] _digits = new int?[Length];
+    private readonly ElementReference[] _inputRefs = new ElementReference[Length];
+    private readonly int?[] _digits = new int?[Length];
     private ElementReference _ref;
     private DotNetObjectReference<TotpInput> _blazorRef = null!;
-    private IJSObjectReference? _jsRef = null!;
-
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private FocusUI FocusUI { get; init; } = null!;
+    private IJSObjectReference? _jsRef;
 
     [Parameter] public bool IsVerifying { get; set; }
     [Parameter] public string ErrorText { get; set; } = "Invalid code. Please correct it or request a new one.";

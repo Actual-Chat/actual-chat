@@ -1,10 +1,6 @@
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <Button
     Class="btn-outline"
     Click="@(_ => AccountUI.SignOut())">Sign out</Button>
-
-@code {
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-}

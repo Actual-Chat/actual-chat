@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="download-tiles">
     <DownloadTile Link="@(Links.Apps.Android)">
@@ -45,8 +46,6 @@
 </div>
 
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
 }

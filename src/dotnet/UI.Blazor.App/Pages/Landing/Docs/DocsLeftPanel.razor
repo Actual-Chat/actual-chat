@@ -1,8 +1,6 @@
 @using ActualChat.UI.Blazor.Components.SideNav
+@inherits ComponentBase<AppUIHub>
 @implements IDisposable
-@{
-    var isNarrow = ScreenSize.IsNarrow();
-}
 
 <SideNav
     Side="SideNavSide.Left"
@@ -33,9 +31,6 @@
 </SideNav>
 
 @code {
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public DocsPage ActivePage { get; set; }
 

@@ -1,5 +1,6 @@
 @using System.ComponentModel.DataAnnotations
 @using TimeZone = ActualChat.Users.TimeZone
+@inherits ComponentBase<AppUIHub>
 @implements IDisposable
 @{
     #pragma warning disable IL2091
@@ -86,10 +87,7 @@
     private AccountFull _account = null!;
     private bool _readyToRender;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private ITimeZones TimeZones { get; init; } = null!;
-    private Session Session => Hub.Session;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private ITimeZones TimeZones => Hub.TimeZones;
 
     protected override async Task OnInitializedAsync() {
         _timeZones = await TimeZones.List("en-US", CancellationToken.None);

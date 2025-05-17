@@ -3,7 +3,7 @@
 @DateTime.Now.ToString("F")
 
 @code {
-    [Inject] private IFusionTime FusionTime { get; init; } = null!;
+    private IFusionTime FusionTime => Hub.FusionTime;
 
     [Parameter] public double UpdatePeriod { get; set; } = 1;
 

@@ -1,4 +1,5 @@
 @using ActualChat.UI.Blazor.App.Module
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<LandingVideoModal.Model>
 @implements IAsyncDisposable
 
@@ -51,12 +52,7 @@
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<LandingVideoModal> BlazorRef { get; set; } = null!;
 
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
-
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -76,6 +72,8 @@
 
     private void OnClick()
         => Modal.Close();
+
+    // Nested
 
     public sealed record Model;
 }

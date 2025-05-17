@@ -1,12 +1,11 @@
 @page "/unavailable"
 @page "/unavailable/{What}"
+@inherits ComponentBase<UIHub>
 
 <MainHeader>Unavailable</MainHeader>
 
 This @(What.NullIfEmpty() ?? "page") doesn't exist.
 
 @code {
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-
     [Parameter] public string? What { get; set; }
 }

@@ -1,17 +1,14 @@
 ﻿@page "/settings/{SettingsOption}"
 @page "/settings"
 @using ActualChat.UI.Blazor.App.Components.Settings
+@inherits ComponentBase<AppUIHub>
 
 <div class="flex-x h-full">
     <SkeletonChatPanel/>
     <SkeletonRightPanel/>
 </div>
 
-
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-
     [Parameter] public string? SettingsOption { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

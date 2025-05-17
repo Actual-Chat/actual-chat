@@ -1,18 +1,16 @@
 @using ActualChat.UI.Blazor.App.Module
+@inherits ComponentBase<AppUIHub>
 @implements IDisposable
 
 @code {
     private static readonly string JSScrollToIdMethod = $"{BlazorUIAppModule.ImportName}.scrollToId";
     private static readonly string JSSetSettings = $"{BlazorUIAppModule.ImportName}.setSettings";
 
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private IJSRuntime JSRuntime { get; init; } = null!;
-
     protected override void OnInitialized()
         => Nav.LocationChanged += OnLocationChanged;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        await JSRuntime.InvokeVoidAsync(JSSetSettings);
+        await JS.InvokeVoidAsync(JSSetSettings);
         await ScrollToFragment();
     }
 
@@ -28,7 +26,7 @@
         if (fragment.StartsWith('#')) {
             var elementId = fragment[1..];
             if (!elementId.IsNullOrEmpty())
-               await JSRuntime.InvokeVoidAsync(JSScrollToIdMethod, elementId);
+               await JS.InvokeVoidAsync(JSScrollToIdMethod, elementId);
         }
     }
 }

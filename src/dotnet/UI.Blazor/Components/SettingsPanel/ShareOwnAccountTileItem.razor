@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<ActualChat.Users.AccountFull>
+@inherits ComputedStateComponent<UIHub, ActualChat.Users.AccountFull>
 @{
     var account = State.Value;
     if (account.IsGuestOrNull())
@@ -26,8 +26,6 @@
 </TileItem>
 
 @code {
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-
     [Parameter] public SquareSize AvatarSize { get; set; } = SquareSize.Size12;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()

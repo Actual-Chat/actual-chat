@@ -1,6 +1,6 @@
 @implements IModalView<NewThreadModal.Model>
 @using System.ComponentModel.DataAnnotations
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 
 <Form Model="@_form" Class="h-full" Id="@_form.FormId">
@@ -70,18 +70,14 @@
     private FormModel _form = null!;
     private bool _generatingSmartTitle;
 
-    [Inject] private AppUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     private IChatThreads ChatThreads => Hub.ChatThreads;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override void OnInitialized() {
-        _form = new(ComponentIdGenerator);
-    }
+    protected override void OnInitialized()
+        => _form = new(ComponentIdGenerator);
 
     protected override async Task OnInitializedAsync() {
         if (ModalModel.TextEntryIds.Length == 0)

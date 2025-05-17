@@ -1,6 +1,5 @@
-﻿@using ActualChat.UI.Blazor.Services
-@namespace ActualChat.UI.Blazor.Components
-
+﻿@namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 @{
     var mainButtonClass = ButtonType == MenuButton.Default ? "btn-primary " : "btn-round ";
     var btnClass = mainButtonClass + ButtonClass;
@@ -21,8 +20,6 @@
         Default,
         Round,
     }
-
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public MenuButton ButtonType { get; set; } = MenuButton.Default;

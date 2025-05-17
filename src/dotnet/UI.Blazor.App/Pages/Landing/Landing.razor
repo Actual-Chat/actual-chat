@@ -1,12 +1,8 @@
 @using ActualChat.Hosting
-@using ActualChat.UI.Blazor.App.Pages.Landing
+@inherits ComponentBase<AppUIHub>
 
 @if (HostInfo.HostKind.IsMauiApp()) {
     <LandingForApp/>
 } else {
     <LandingForWeb/>
-}
-
-@code {
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 }

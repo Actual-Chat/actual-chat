@@ -1,5 +1,6 @@
 @page "/user/invite/{InviteId}"
 @using ActualChat.Invite
+@inherits ComponentBase<AppUIHub>
 
 <RequireAccount MustBeActive="false"/>
 <MainHeader>Joining via invite link</MainHeader>
@@ -19,9 +20,6 @@
 
 @code {
     private Result<Invite>? _useResult;
-
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter] public string InviteId { get; set; } = "";
 

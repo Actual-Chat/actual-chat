@@ -24,6 +24,6 @@ public abstract class ComputedMenuBase<THub, TState> : ComputedStateComponent<TH
 
     protected async Task NavigateTo(string url) {
         await WhenClosed;
-        await Host.History.NavigateTo(url);
+        await History.NavigateTo(url);
     }
 }

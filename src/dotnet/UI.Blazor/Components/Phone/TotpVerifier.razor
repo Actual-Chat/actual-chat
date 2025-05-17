@@ -1,6 +1,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
@@ -26,12 +27,7 @@
     private Moment? _totpExpiresAt;
     private bool _isVerifying;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private TotpUI TotpUI { get; init; } = null!;
-    private Session Session => Hub.Session;
-    private UICommander UICommander => Hub.UICommander;
-    private MomentClockSet Clocks => Hub.Clocks;
-    private TuneUI TuneUI => Hub.TuneUI;
+    private TotpUI TotpUI => Hub.TotpUI;
 
     [Parameter] public Phone Phone { get; set; } = null!;
     [Parameter] public string Email { get; set; } = "";

@@ -1,3 +1,4 @@
+@inherits ComponentBase<AppUIHub>
 <NavbarItem
     Url="/docs/privacy"
     Class="my-0.5"
@@ -39,8 +40,6 @@
 
 @code {
     private bool _enableIncompleteUI;
-
-    [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public DocsPage ActivePage { get; set; }
 

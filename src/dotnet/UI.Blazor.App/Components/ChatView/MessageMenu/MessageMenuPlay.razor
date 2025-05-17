@@ -44,8 +44,8 @@
 }
 
 @code {
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    private IChats Chats => Hub.Chats;
+    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
 
     [Parameter] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsMenu { get; set; }
@@ -93,7 +93,7 @@
             }
         }
         if (!playingAt.HasValue && !ReferenceEquals(lastState, Model.NotPlaying)) {
-            // Try to keep last state to avoid blinking
+            // Try to keep the last state to avoid blinking
             if (lastState.CanPlay == canPlay)
                 return lastState;
         }

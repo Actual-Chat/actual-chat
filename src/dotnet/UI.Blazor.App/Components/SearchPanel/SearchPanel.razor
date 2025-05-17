@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @{
     var cls = IsSmooth ? "smooth open" : "instant open";
 }
@@ -35,8 +36,7 @@
 
     TextInput? _inputRef;
 
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter] public SearchPanelSide Side { get; set; } = SearchPanelSide.Right;
     [Parameter] public string Class { get; set; } = "";

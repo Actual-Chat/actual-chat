@@ -1,3 +1,4 @@
+@inherits ComponentBase<UIHub>
 @{
     var now = (long) Clocks.SystemClock.Now.EpochOffset.TotalMilliseconds;
     if (now % Modulo <= Boundary)
@@ -10,8 +11,6 @@
 </div>
 
 @code {
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-
     [Parameter] public long Modulo { get; set; } = 60_000;
     [Parameter] public long Boundary { get; set; } = 10_000;
 

@@ -5,10 +5,9 @@ public abstract class Menu<THub> : ComponentBase<THub>, IMenu, IDisposable
 {
     private readonly AsyncTaskMethodBuilder _whenClosedSource = AsyncTaskMethodBuilderExt.New();
 
+    [CascadingParameter] public MenuHost Host { get; set; } = null!;
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string[] Arguments { get; set; } = [];
-
-    [CascadingParameter] public MenuHost Host { get; set; } = null!;
 
     public Task WhenClosed => _whenClosedSource.Task;
 
@@ -20,6 +19,6 @@ public abstract class Menu<THub> : ComponentBase<THub>, IMenu, IDisposable
 
     protected async Task NavigateTo(string url) {
         await WhenClosed;
-        await Host.History.NavigateTo(url);
+        await History.NavigateTo(url);
     }
 }
