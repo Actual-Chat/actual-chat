@@ -227,8 +227,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         var client = ServerKvas
             .GetClient(session);
         var invite = await client
-            .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
-        if (invite.HasValue) {
+            .Get<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+            .ConfigureAwait(false);
+        if (invite is not null) {
             // Remove the invite
             var removeInviteCommand = new ServerKvas_Set(session, ServerKvasInviteKey.ForChat(chatId), null);
             await Commander.Call(removeInviteCommand, true, cancellationToken).ConfigureAwait(false);

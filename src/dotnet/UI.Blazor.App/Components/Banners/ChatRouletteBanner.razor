@@ -53,15 +53,17 @@
 </div>
 
 @code {
-    private SyncedState<Moment> _dismissedAt = null!;
+    private SyncedState<Box<Moment>> _dismissedAt = null!;
 
     private IRoulette Roulette => Hub.Roulette;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override void OnInitialized() {
-        var key = $"ChatRouletteBanner_DismissedAt_{Chat.Id.Value}";
-        _dismissedAt = StateFactory.NewKvasSynced<Moment>(new(AccountSettings, key));
+        var key = $"ChatRouletteBanner[{Chat.Id.Value}].DismissedAt";
+        _dismissedAt = StateFactory.NewKvasSynced<Box<Moment>>(new(AccountSettings, key) {
+            InitialValue = Box.New(default(Moment)),
+        });
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -84,7 +86,7 @@
             await _dismissedAt.WhenFirstTimeRead.ConfigureAwait(false);
 
         var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
-        if (dismissedAt > Moment.EpochStart)
+        if (dismissedAt.Value > Moment.EpochStart)
             return new Model(false);
 
         var info = await Roulette.GetProfiles(Session, chat.Id, cancellationToken).ConfigureAwait(false);
@@ -97,7 +99,7 @@
     // Event handlers
 
     private void OnDismiss()
-        => _dismissedAt.Value = Clocks.ServerClock.Now;
+        => _dismissedAt.Value = Box.New(Clocks.ServerClock.Now);
 
     private void OnAcceptClick()
         => OnDismiss();

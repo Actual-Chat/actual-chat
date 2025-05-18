@@ -6,10 +6,12 @@ public interface IStoredState : IMutableState
 }
 
 public interface IStoredState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-    : IMutableState<T>, IStoredState;
+    : IMutableState<T>, IStoredState
+    where T : class?;
 
 public sealed class StoredState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : MutableState<T>, IStoredState<T>
+    where T : class?
 {
     private readonly TaskCompletionSource _whenReadSource = TaskCompletionSourceExt.New();
 
@@ -81,16 +83,16 @@ public sealed class StoredState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
     public new abstract record Options : MutableState<T>.Options
     {
-        internal abstract ValueTask<Option<T>> Read(CancellationToken cancellationToken);
+        internal abstract ValueTask<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);
     }
 
     public record CustomOptions(
-        Func<CancellationToken, ValueTask<Option<T>>> Reader,
+        Func<CancellationToken, ValueTask<T>> Reader,
         Func<T, CancellationToken, Task> Writer
         ) : Options
     {
-        internal override ValueTask<Option<T>> Read(CancellationToken cancellationToken)
+        internal override ValueTask<T> Read(CancellationToken cancellationToken)
             => Reader.Invoke(cancellationToken);
         internal override Task Write(T value, CancellationToken cancellationToken)
             => Writer.Invoke(value, cancellationToken);
@@ -99,15 +101,19 @@ public sealed class StoredState<[DynamicallyAccessedMembers(DynamicallyAccessedM
     public record KvasOptions(IKvas Kvas, string Key) : Options
     {
         public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
+        public Func<CancellationToken, ValueTask<T>>? MissingValueFactory { get; init; }
 
-        internal override async ValueTask<Option<T>> Read(CancellationToken cancellationToken)
+        internal override async ValueTask<T> Read(CancellationToken cancellationToken)
         {
-            var valueOpt = await Kvas.TryGet<T>(Key, cancellationToken).ConfigureAwait(false);
-            if (!valueOpt.IsSome(out var value))
-                return default;
+            var value = await Kvas.Get<T>(Key, cancellationToken).ConfigureAwait(false);
+            if (value is null)
+                return MissingValueFactory != null
+                    ? await MissingValueFactory(cancellationToken).ConfigureAwait(false)
+                    : InitialValue;
 
             if (Corrector != null)
                 value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
+
             return value;
         }
 

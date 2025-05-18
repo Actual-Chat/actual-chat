@@ -7,7 +7,7 @@ public class RightPanel
     private const string StatePrefix = nameof(RightPanel) + "UI";
     private readonly MutableState<bool> _isVisible;
     private readonly MutableState<bool> _isSearchMode;
-    private readonly StoredState<bool> _isVisibleStored;
+    private readonly StoredState<Box<bool>> _isVisibleStored;
 
     private UIHub Hub { get; }
     private History History => Hub.History;
@@ -32,16 +32,16 @@ public class RightPanel
         History.Register(initialState);
 
         var localSettings = Hub.LocalSettings.WithPrefix(StatePrefix);
-        _isVisibleStored = stateFactory.NewKvasStored<bool>(
-            new (localSettings, nameof(IsVisible)) {
-                InitialValue = false,
+        _isVisibleStored = stateFactory.NewKvasStored<Box<bool>>(
+            new (localSettings, "RightPanel.IsVisible") {
+                InitialValue = Box.New(false),
                 Category = StateCategories.Get(GetType(), nameof(IsVisible) + "Stored"),
             });
 
-        // Automatically open right panel on wide screen if it was open during last session.
+        // Automatically open the right panel on a wide screen if it was open during the last session
         _ = Task.WhenAll(_isVisibleStored.WhenRead, Hub.History.WhenReady)
             .ContinueWith(_1 => {
-                    if (Owner.IsWide() && _isVisibleStored.Value)
+                    if (Owner.IsWide() && _isVisibleStored.Value.Value)
                         SetIsVisible(true);
                 },
                 TaskScheduler.Default);
@@ -70,7 +70,7 @@ public class RightPanel
 
             _isVisible.Value = value;
             if (Owner.IsWide())
-                _isVisibleStored.Value = value;
+                _isVisibleStored.Value = Box.New(value);
             if (!value)
                 _isSearchMode.Value = false;
             History.Save<OwnHistoryState>();

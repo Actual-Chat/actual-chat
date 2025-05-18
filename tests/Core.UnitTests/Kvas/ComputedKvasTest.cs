@@ -24,18 +24,17 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
 
         await kvas.Set("a", "a");
         (await kvas.Get<string>("a")).Should().Be("a");
-        await kvas.Set("b", 1);
-        (await kvas.Get<int>("b")).Should().Be(1);
+        await kvas.Set("b", Box.New(1));
+        (await kvas.Get<Box<int>>("b"))!.Value.Should().Be(1);
         await kvas.Set("c", "c");
         (await kvas.Get<string>("c")).Should().Be("c");
         await kvas.Set("d", "");
         (await kvas.Get<string>("d")).Should().Be("");
         await kvas.Set("d", (string?)null);
-        (await kvas.Get<string?>("d")).Should().Be(null);
+        (await kvas.Get<string>("d")).Should().Be(null);
 
-        await kvas.Remove("b");
-        (await kvas.Get<int>("b")).Should().Be(0);
-        (await kvas.TryGet<int>("b")).Should().Be(Option<int>.None);
+        await kvas.Set("b", null);
+        (await kvas.Get<Box<int>>("b")).Should().BeNull();
 
         var kvas2 = services.GetRequiredService<IKvas>();
         var aTask = kvas2.Get<string>("a");
@@ -62,11 +61,11 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var services = CreateServices();
         var kvas = services.GetRequiredService<IKvas>();
 
-        var moment = CpuClock.Instance.Now;
+        var value = "test-value";
         using var buffer = new ArrayPoolBufferWriter<byte>();
-        SystemJsonSerializer.Default.Write(buffer, moment);
+        SystemJsonSerializer.Default.Write(buffer, value);
         await kvas.Set("a", buffer.WrittenMemory.ToArray());
-        (await kvas.Get<Moment>("a")).Should().Be(moment);
+        (await kvas.Get<string>("a")).Should().Be(value);
     }
 
     [Fact]
@@ -172,14 +171,14 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 0; i < propertyCount; i++) {
             using var cts = new CancellationTokenSource(timeout);
             var cancellationToken = cts.Token;
-            using var state = stateFactory.NewKvasSynced<bool>(new (kvas, $"{keyPrefix}.b{i}") {
-                InitialValue = false,
+            using var state = stateFactory.NewKvasSynced<Box<bool>>(new (kvas, $"{keyPrefix}.b{i}") {
+                InitialValue = Box.New(false),
                 UpdateDelayer = updateDelayer,
             });
-            state.Value = true;
+            state.Value = Box.New(true);
             if (mustUpdateBeforeWaiting)
                 await state.Update(cancellationToken);
-            await state.Computed.When(x => x, cancellationToken);
+            await state.Computed.When(x => x.Value, cancellationToken);
         }
     }
 
@@ -195,16 +194,17 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var updateDelayer = FixedDelayer.NextTick;
         using var cts = new CancellationTokenSource(timeout);
         var cancellationToken = cts.Token;
-        using var state = stateFactory.NewKvasSynced<bool>(new(kvas, $"{rsg.Next(5)}.b1") {
+        using var state = stateFactory.NewKvasSynced<Box<bool>>(new(kvas, $"{rsg.Next(5)}.b1") {
+            InitialValue = Box.New(false),
             UpdateDelayer = updateDelayer,
         });
 
         // act
-        state.Value = true;
-        await state.Computed.When(x => x, cancellationToken);
+        state.Value = Box.New(true);
+        await state.Computed.When(x => x.Value, cancellationToken);
 
         // assert
-        await TestExt.When(() => state.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
+        await TestExt.When(() => (state.ValueOrDefault?.Value ?? false).Should().BeTrue(), TimeSpan.FromSeconds(10));
     }
 }
 

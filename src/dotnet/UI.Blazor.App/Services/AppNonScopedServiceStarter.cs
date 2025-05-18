@@ -68,11 +68,11 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         using var _1 = Tracer.Region();
         // Start preloading top contacts
         // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
-        // because we don't know selected place yet.
+        // because we don't know the selected place yet.
         var localSettings = Services.LocalSettings();
-        var selectedChatIdOpt = await localSettings.TryGet<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
+        var selectedChatId = await localSettings.Get<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
         var selectedPlaceId = (PlaceId?)null;
-        if (selectedChatIdOpt.IsSome(out var selectedChatId))
+        if (selectedChatId is not null)
             selectedPlaceId = (selectedChatId as PlaceChatId)?.PlaceId;
         Tracer.Point($"-- {nameof(PreloadContactListData)}.{nameof(PlaceId)}: '{selectedPlaceId}'");
         var contacts = Services.GetRequiredService<IContacts>();

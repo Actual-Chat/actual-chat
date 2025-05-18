@@ -2111,12 +2111,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<bool> HasActivatedInvite(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
-        var activationKeyOpt = await ServerKvasBackend
+        var activationKey = await ServerKvasBackend
             .GetUserClient(userId)
-            .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+            .Get<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
             .ConfigureAwait(false);
-        if (!activationKeyOpt.IsSome(out var activationKey))
+        if (activationKey is null)
             return false;
+
         return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -12,47 +12,29 @@ public static class KvasExt
     // Get, Set, Remove w/ <T>
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
-    public static async ValueTask<Option<T>> TryGet<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, CancellationToken cancellationToken = default)
-  {
-        var data = await kvas.Get(key, cancellationToken).ConfigureAwait(false);
-        return data is null ? Option<T>.None : Serializer.Read<T>(data);
-  }
-
-    public static ValueTask<T?> Get<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, CancellationToken cancellationToken = default)
-        => Get<T>(kvas, key, default, cancellationToken);
-
     public static async ValueTask<T?> Get<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, T? @default, CancellationToken cancellationToken = default)
-    {
-        var (hasValue, value) = await TryGet<T>(kvas, key, cancellationToken).ConfigureAwait(false);
-        return hasValue ? value ?? @default : @default;
-    }
+        (this IKvas kvas, string key, CancellationToken cancellationToken = default)
+        where T : class?
+  {
+        var data = await kvas.Get(key, cancellationToken).ConfigureAwait(false);
+        return data is null ? null : Serializer.Read<T>(data);
+  }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     [UnconditionalSuppressMessage("Tasks", "MA0100", Justification = "Don't need to wait for Set completion to dispose buffer writer.")]
     public static Task Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
         (this IKvas kvas, string key, T value, CancellationToken cancellationToken = default)
+        where T : class?
     {
+        if (value is null)
+            return kvas.Set(key, null, cancellationToken);
+
         using var buffer = new ArrayPoolBufferWriter<byte>();
         Serializer.Write(buffer, value);
         return kvas.Set(key, buffer.WrittenMemory.ToArray(), cancellationToken);
     }
-
-    public static Task Set<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
-        (this IKvas kvas, string key, Option<T> value, CancellationToken cancellationToken = default)
-        => value.IsSome(out var v)
-            ? kvas.Set(key, v, cancellationToken)
-            : kvas.Remove(key, cancellationToken);
-
-    public static Task Remove(this IKvas kvas, string key, CancellationToken cancellationToken = default)
-        => kvas.Set(key, null, cancellationToken);
 
     public static async Task WhenMigrated(this IKvas kvas, CancellationToken cancellationToken = default)
     {

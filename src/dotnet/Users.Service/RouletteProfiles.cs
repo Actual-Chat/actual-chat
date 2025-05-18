@@ -5,7 +5,7 @@ namespace ActualChat.Users;
 
 public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
 {
-    private const string SelectedRouletteProfileIdKvasKey = "SelectedRouletteProfileId";
+    private const string SelectedRouletteProfileIdKvasKey = "Roulette.SelectedProfileId";
 
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
@@ -17,8 +17,8 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
     public virtual async Task<Symbol> GetSelectedProfileId(Session session, CancellationToken cancellationToken)
     {
         var kvas = ServerKvas.GetClient(session);
-        var selectedProfileId = await kvas.Get(SelectedRouletteProfileIdKvasKey, Symbol.Empty, cancellationToken).ConfigureAwait(false);
-        if (selectedProfileId.IsEmpty)
+        var selectedProfileId = await kvas.Get<string>(SelectedRouletteProfileIdKvasKey, cancellationToken).ConfigureAwait(false);
+        if (selectedProfileId is null)
             return Symbol.Empty;
 
         var profile = await GetOwnProfile(session, selectedProfileId, cancellationToken).ConfigureAwait(false);
@@ -141,7 +141,7 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
         }
 
         var kvas = ServerKvas.GetClient(session);
-        await kvas.Set(SelectedRouletteProfileIdKvasKey, profileId, cancellationToken).ConfigureAwait(false);
+        await kvas.Set(SelectedRouletteProfileIdKvasKey, profileId.Value, cancellationToken).ConfigureAwait(false);
     }
 
     [CommandHandler]

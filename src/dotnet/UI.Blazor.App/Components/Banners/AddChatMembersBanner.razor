@@ -23,7 +23,7 @@
 @code {
     private static readonly TimeSpan DismissDuration = TimeSpan.FromDays(7);
 
-    private SyncedState<Moment> _dismissedAt = null!;
+    private SyncedState<Box<Moment>> _dismissedAt = null!;
 
     private IAuthors Authors => Hub.Authors;
     private IRoles Roles => Hub.Roles;
@@ -33,8 +33,10 @@
     protected override void OnInitialized() {
         var chatId = Chat.Id;
         var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? ((PlaceChatId)Chat.Id).PlaceId.RootChatId :  chatId;
-        var key = $"AddChatMembersBanner_DismissedAt_{dismissChatId.Value}";
-        _dismissedAt = StateFactory.NewKvasSynced<Moment>(new(AccountSettings, key));
+        var key = $"AddChatMembersBanner[{dismissChatId.Value}].DismissedAt";
+        _dismissedAt = StateFactory.NewKvasSynced<Box<Moment>>(new(AccountSettings, key) {
+            InitialValue = Box.New(default(Moment)),
+        });
     }
 
     protected override ComputedState<bool>.Options GetStateOptions()
@@ -55,7 +57,7 @@
             return false;
 
         var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
-        if (dismissedAt + DismissDuration > Clocks.ServerClock.Now)
+        if (dismissedAt.Value + DismissDuration > Clocks.ServerClock.Now)
             return false;
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -73,7 +75,7 @@
     // Event handlers
 
     private void OnDismiss()
-        => _dismissedAt.Value = Clocks.ServerClock.Now;
+        => _dismissedAt.Value = Box.New(Clocks.ServerClock.Now);
 
     private void OnInviteClick()
         => ModalUI.Show(new AddMemberModal.Model(Chat.Id));

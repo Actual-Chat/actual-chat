@@ -67,15 +67,17 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
 
         var type = GetType();
-        _selectedChatId = StateFactory.NewKvasStored<ChatId?>(new(LocalSettings, nameof(SelectedChatId)) {
-            Corrector = FixSelectedChatId,
-        });
+        _selectedChatId = StateFactory.NewKvasStored<ChatId?>(
+            new(LocalSettings, nameof(SelectedChatId)) {
+                Corrector = FixSelectedChatId,
+            });
         _selectedPlaceId = StateFactory.NewMutable(
             (PlaceId?)null,
             StateCategories.Get(type, nameof(SelectedPlaceId)));
-        _selectedChatIds = StateFactory.NewKvasStored<IImmutableDictionary<string, ChatId>>(new (LocalSettings, nameof(SelectedChatIds)) {
-            InitialValue = ImmutableDictionary<string, ChatId>.Empty,
-        });
+        _selectedChatIds = StateFactory.NewKvasStored<IImmutableDictionary<string, ChatId>>(
+            new (LocalSettings, nameof(SelectedChatIds)) {
+                InitialValue = ImmutableDictionary<string, ChatId>.Empty,
+            });
         _highlightedEntryId = StateFactory.NewMutable(
             (TextEntryId?)null,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
@@ -616,6 +618,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
 
         _ = SelectLastUsedChat();
+        return;
 
         async Task SelectLastUsedChat(CancellationToken cancellationToken = default) {
             try {

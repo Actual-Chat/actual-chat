@@ -30,18 +30,17 @@ public class BatchingKvasTest(ITestOutputHelper @out) : TestBase(@out)
 
         await kvas.Set("a", "a");
         (await kvas.Get<string>("a")).Should().Be("a");
-        await kvas.Set("b", 1);
-        (await kvas.Get<int>("b")).Should().Be(1);
+        await kvas.Set("b", Box.New(1));
+        (await kvas.Get<Box<int>>("b"))!.Value.Should().Be(1);
         await kvas.Set("c", "c");
         (await kvas.Get<string>("c")).Should().Be("c");
         await kvas.Set("d", "");
         (await kvas.Get<string>("d")).Should().Be("");
         await kvas.Set("d", (string?)null);
-        (await kvas.Get<string?>("d")).Should().Be(null);
+        (await kvas.Get<string>("d")).Should().Be(null);
 
-        await kvas.Remove("b");
-        (await kvas.Get<int>("b")).Should().Be(0);
-        (await kvas.TryGet<int>("b")).Should().Be(Option<int>.None);
+        await kvas.Set("b", null);
+        (await kvas.Get<Box<int>>("b")).Should().BeNull();
         await kvas.Flush();
 
         var kvas2 = services.GetRequiredService<BatchingKvas>();
@@ -69,11 +68,11 @@ public class BatchingKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var services = CreateServices();
         var kvas = services.GetRequiredService<BatchingKvas>();
 
-        var moment = CpuClock.Instance.Now;
+        var value = "test-value";
         using var buffer = new ArrayPoolBufferWriter<byte>();
-        SystemJsonSerializer.Default.Write(buffer, moment);
+        SystemJsonSerializer.Default.Write(buffer, value);
         await kvas.Set("a", buffer.WrittenMemory.ToArray());
-        (await kvas.Get<Moment>("a")).Should().Be(moment);
+        (await kvas.Get<string>("a")).Should().Be(value);
     }
 
     [Fact]

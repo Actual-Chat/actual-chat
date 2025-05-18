@@ -13,6 +13,7 @@ public interface ISyncedState : IMutableState, IDisposable
 
 public interface ISyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : IMutableState<T>, ISyncedState
+    where T : class?
 {
     new ComputedState<T> ReadState { get; }
 }
@@ -39,6 +40,7 @@ public static class SyncedState
 
 public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : MutableState<T>, ISyncedState<T>
+    where T : class?
 {
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
@@ -319,8 +321,8 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
         internal override async Task<T> Read(CancellationToken cancellationToken)
         {
-            var valueOpt = await Kvas.TryGet<T>(Key, cancellationToken).ConfigureAwait(false);
-            if (!valueOpt.IsSome(out var value))
+            var value = await Kvas.Get<T>(Key, cancellationToken).ConfigureAwait(false);
+            if (value is null)
                 return MissingValueFactory != null
                     ? await MissingValueFactory(cancellationToken).ConfigureAwait(false)
                     : InitialValue;
