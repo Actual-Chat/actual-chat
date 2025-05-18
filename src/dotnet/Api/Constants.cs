@@ -208,13 +208,6 @@ public static partial class Constants
         public static readonly float ValidScore = 0.5f;
     }
 
-    // Diagnostics, etc.
-
-    public static class Sentry
-    {
-        public static readonly HashSet<HostKind> EnabledFor = [HostKind.MauiApp];
-    }
-
     public static class Auth
     {
         public static class Phone

@@ -71,8 +71,7 @@ public static class MauiDiagnostics
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
             // .WriteTo.TailSink(); // TODO(Frol): uncomment when you fix the underlying issue
         logging = AddPlatformLoggerSinks(logging);
-        if (Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp))
-            logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
+        logging = logging.WriteTo.Sentry(ConfigureSentrySerilog); // NOTE(AY): This slows down the startup by ~30ms or so
         return logging.CreateLogger();
     }
 
