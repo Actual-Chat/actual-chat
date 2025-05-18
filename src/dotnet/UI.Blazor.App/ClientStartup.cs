@@ -161,8 +161,11 @@ public static class ClientStartup
         CoreSerializerAndRpcSetup.Configure(false);
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
+#if !DEBUG
+        RpcDefaultDelegates.CallTracerFactory = _ => null; // No call tracing in release builds
+#endif
         RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto();
-        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
+        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connecting
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };
