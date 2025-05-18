@@ -2,6 +2,8 @@ using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Components.SideNav;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -24,6 +26,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
                 WarmupByteSerializer();
                 WarmupNewtonsoftJsonSerializer();
                 WarmupSystemJsonSerializer();
+                WarmupTileRelated();
             });
         _ = Task.Run(() => {
             var markup = "**b** *i* @`a`a:chatId:1 http://google.com `code`\r\n```cs\r\ncode\r\n```";
@@ -127,6 +130,16 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 
     private static void WarmupSystemJsonSerializer()
     {
+        Warmup(default(char));
+        Warmup(default(bool?));
+        Warmup(Symbol.Empty);
+        Warmup(default(JsonElement));
+        Warmup(default(JSCallResultType));
+        Warmup(default(ElementReference));
+        Warmup(default(SideNavSide));
+        Warmup(default(VirtualListEdge));
+        Warmup(KeyValuePair.Create("", new List<string>()));
+        Warmup(KeyValuePair.Create(default(Tune), new TuneInfo([])));
         Warmup(new VirtualListRenderState {
             RenderIndex = 1,
             Query = new VirtualListDataQuery(new Range<string>("1", "2"), new Range<double>(), new Range<int>()),
@@ -137,6 +150,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             HasVeryLastItem = true,
             ScrollToKey = "1",
         });
+        return;
 
         static void Warmup<T>(T instance) {
 #pragma warning disable IL2026
@@ -145,5 +159,12 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             s.Read<T>(json);
 #pragma warning restore IL2026
         }
+    }
+
+    private static void WarmupTileRelated()
+    {
+        var buffer = ArrayBuffer<Tile<long>>.Lease(true);
+        buffer.Release();
+        // Add more methods related to Tile<long> based on ChatUI code
     }
 }
