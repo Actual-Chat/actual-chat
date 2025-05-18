@@ -99,7 +99,7 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatPageMap> GetPage(
+    public async Task<ChatPageMap> GetPage(
         Session session,
         ChatId chatId,
         ConversationId[] expandedConversationIds,
