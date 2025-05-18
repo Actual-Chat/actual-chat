@@ -64,22 +64,28 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         List<string> sConversationIds;
         if (offset >= 0)
             sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.StartEntryLid >= idTileStart)
+                .Where(c => c.ChatId == chatId && c.EndEntryLid >= idTileStart)
                 .OrderBy(c => c.StartEntryLid)
-                .Skip(offset)
-                .Take(limit)
+                .Take(offset + limit)
                 .Select(c => c.Id)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
         else {
             var firstMatchedConversationSid = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.StartEntryLid < idTileStart)
+                .Where(c => c.ChatId == chatId && c.EndEntryLid < idTileStart)
                 .OrderByDescending(c => c.StartEntryLid)
                 .Skip(-offset)
                 .Select(c => c.Id)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
+            if (string.IsNullOrEmpty(firstMatchedConversationSid))
+                firstMatchedConversationSid = await dbContext.Conversations
+                    .Where(c => c.ChatId == chatId && c.EndEntryLid >= idTileStart)
+                    .OrderBy(c => c.StartEntryLid)
+                    .Select(c => c.Id)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
             if (string.IsNullOrEmpty(firstMatchedConversationSid))
                 sConversationIds = [];
             else {

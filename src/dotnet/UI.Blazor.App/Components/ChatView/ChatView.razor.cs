@@ -451,7 +451,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => new ChatDataQuery(
                 secondLayer.GetTile(keyRange.Start).Start,
                 (int)secondLayer.GetTile(query.MoveRange.Start).Start,
-                ChatUI.LoadLimit),
+                query.ExpectedCount ?? ChatUI.LoadLimit),
         };
 
         // If we are scrolling somewhere within idRange, let's extend the range to scrollAnchor & nearby entries.

@@ -1811,9 +1811,6 @@ export class VirtualList {
         //     return this.lastQuery; // Debug helper
 
         const itemSize = this.statistics.itemSize;
-        const responseFulfillmentRatio = rs.beforeCount !== null && rs.afterCount !== null
-            ? 1 // We know count precisely
-            : this.statistics.responseFulfillmentRatio;
         const viewport = this.viewport;
         const alreadyLoaded = this.itemRange;
         if (!viewport || !alreadyLoaded)
@@ -1889,8 +1886,8 @@ export class VirtualList {
         }
         const keyRange = new Range(firstItem.key, lastItem.key);
 
-        let moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize / responseFulfillmentRatio);
-        let moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize / responseFulfillmentRatio);
+        let moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize);
+        let moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize);
         // Adjust moveRange based on default edge and viewport proximity
         if (this.defaultEdge === VirtualListEdge.End) {
             const isNearEnd = viewport.end >= this.itemRange.end - viewportSize * 0.1;
