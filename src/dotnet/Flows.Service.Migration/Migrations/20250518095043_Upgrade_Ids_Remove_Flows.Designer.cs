@@ -3,6 +3,7 @@ using System;
 using ActualChat.Flows.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Flows.Migrations
 {
     [DbContext(typeof(FlowsDbContext))]
-    partial class FlowsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250518095043_Upgrade_Ids_Remove_Flows")]
+    partial class Upgrade_Ids_Remove_Flows
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
