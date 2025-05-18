@@ -100,10 +100,11 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
     private static void WarmupByteSerializer()
     {
 #pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
-        var chatId = Constants.Chat.AnnouncementsChatId;
         var userId = Constants.User.Walle.UserId;
+        var chatId = Constants.Chat.AnnouncementsChatId;
         var authorId = AuthorId.New(chatId, 1L);
         var account = new AccountFull(new User(userId.Value, "User"), 1);
+        Warmup(PlaceId.New());
         Warmup(new Chat.Chat(chatId) { Rules = new AuthorRules(chatId, new AuthorFull(userId, authorId), account) });
         Warmup(new UserLanguageSettings() {
             Primary = Languages.English,
