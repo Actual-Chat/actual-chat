@@ -67,7 +67,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver, shard, coordinator, logger);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
-                new MLSearch_TriggerChatIndexingCompletion(ChatId.None), CancellationToken.None));
+                new MLSearch_SignalChatIndexingCompletion(ChatId.None), CancellationToken.None));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         _ = initializer.OnRun(InactiveShardIndex2, CancellationToken.None);
         await Assert.ThrowsAsync<NotFoundException<ChatIndexInitializerShard>>(
             async () => await initializer.PostAsync(
-                new MLSearch_TriggerChatIndexingCompletion(ChatId.None), CancellationToken.None));
+                new MLSearch_SignalChatIndexingCompletion(ChatId.None), CancellationToken.None));
     }
 
     [Theory]
@@ -106,7 +106,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         var shard = new Mock<IChatIndexInitializerShard>(MockBehavior.Loose);
         shard
             .Setup(x => x.PostAsync(
-                It.IsAny<MLSearch_TriggerChatIndexingCompletion>(),
+                It.IsAny<MLSearch_SignalChatIndexingCompletion>(),
                 It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask)
             .Verifiable();
@@ -118,13 +118,13 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             _ = initializer.OnRun(shardId, CancellationToken.None);
         }
 
-        var completionEvt = new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option));
+        var completionEvt = new MLSearch_SignalChatIndexingCompletion(new ChatId(Generate.Option));
         var cancellationToken = new CancellationTokenSource().Token;
 
         await initializer.PostAsync(completionEvt, cancellationToken);
 
         shard.Verify(ms => ms.PostAsync(
-            It.Is<MLSearch_TriggerChatIndexingCompletion>(evt => evt==completionEvt),
+            It.Is<MLSearch_SignalChatIndexingCompletion>(evt => evt==completionEvt),
             It.Is<CancellationToken>(token => token==cancellationToken)
         ), Times.Once());
     }

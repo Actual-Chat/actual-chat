@@ -83,7 +83,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         var useTask = initializerShard.UseAsync(cancellationSource.Token);
 
         // Trigger job completion event
-        var completionEvt = new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option));
+        var completionEvt = new MLSearch_SignalChatIndexingCompletion(new ChatId(Generate.Option));
         await initializerShard.PostAsync(completionEvt);
 
         // Wait for all flows to start
@@ -110,7 +110,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
                 It.Is<CancellationToken>(x => x == cancellationSource.Token)));
         mockCompleteJob
             .Verify(handler => handler(
-                It.Is<MLSearch_TriggerChatIndexingCompletion>(x => x == completionEvt),
+                It.Is<MLSearch_SignalChatIndexingCompletion>(x => x == completionEvt),
                 It.Is<ChatIndexInitializerShard.SharedState>(x => states.Add(x) || true)));
         mockUpdateCursor
             .Verify(handler => handler(
@@ -151,13 +151,13 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         };
 
         var postTasks = Enumerable.Range(0, maxBufferCapacity)
-            .Select(_ => initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option))).AsTask())
+            .Select(_ => initializerShard.PostAsync(new MLSearch_SignalChatIndexingCompletion(new ChatId(Generate.Option))).AsTask())
             .ToArray();
         // Ensure all posts up to buffer capacity are completed
         await Task.WhenAll(postTasks).WaitAsync(TimeSpan.FromSeconds(1));
 
         // Initiate over capacity Post call
-        var overCapacityPostTask = initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option)));
+        var overCapacityPostTask = initializerShard.PostAsync(new MLSearch_SignalChatIndexingCompletion(new ChatId(Generate.Option)));
         Assert.False(overCapacityPostTask.IsCompleted);
 
         // Prepare using of shard
@@ -204,12 +204,12 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
     }
 
     private static Mock<ChatIndexInitializerShard.CompleteJobHandler> MockCompleteJobHandler(
-        Action<MLSearch_TriggerChatIndexingCompletion, ChatIndexInitializerShard.SharedState>? onCall = null
+        Action<MLSearch_SignalChatIndexingCompletion, ChatIndexInitializerShard.SharedState>? onCall = null
     )
     {
         var mock = new Mock<ChatIndexInitializerShard.CompleteJobHandler>(MockBehavior.Loose);
         mock.Setup(handler => handler(
-                It.IsAny<MLSearch_TriggerChatIndexingCompletion>(),
+                It.IsAny<MLSearch_SignalChatIndexingCompletion>(),
                 It.IsAny<ChatIndexInitializerShard.SharedState>()))
             .Callback(onCall ?? ((_, _) => {}));
         return mock;

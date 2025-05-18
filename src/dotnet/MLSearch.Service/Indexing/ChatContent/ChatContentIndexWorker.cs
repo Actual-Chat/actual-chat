@@ -12,7 +12,8 @@ internal sealed class ChatContentIndexWorker(
     ICursorStates<ChatContentCursor> cursorStates,
     IChatInfoIndexer chatInfoIndexer,
     IChatContentIndexerFactory indexerFactory,
-    IQueues queues
+    IQueues queues,
+    ILogger<ChatContentIndexWorker> log
 ) : IChatContentIndexWorker
 {
     private const string IndexChatInfoActivityName = $"IndexChatInfo@{nameof(ChatContentIndexWorker)}";
@@ -34,8 +35,9 @@ internal sealed class ChatContentIndexWorker(
         ICursorStates<ChatContentCursor> cursorStates,
         IChatInfoIndexer chatInfoIndexer,
         IChatContentIndexerFactory indexerFactory,
-        IQueues queues
-    ) : this(chatUpdateLoader, cursorStates, chatInfoIndexer, indexerFactory, queues)
+        IQueues queues,
+        ILogger<ChatContentIndexWorker> log
+    ) : this(chatUpdateLoader, cursorStates, chatInfoIndexer, indexerFactory, queues, log)
     {
         FlushInterval = flushInterval;
         MaxEventCount = maxEventCount;
@@ -45,6 +47,8 @@ internal sealed class ChatContentIndexWorker(
     {
         var eventCount = 0;
         var chatId = job.ChatId;
+
+        log.LogInformation("SMIDX: Begin semantic indexing of chat {}.", chatId);
 
         using (ActivitySource.StartActivity(IndexChatInfoActivityName, ActivityKind.Internal)) {
             await chatInfoIndexer.IndexAsync(chatId, cancellationToken).ConfigureAwait(false);
@@ -66,12 +70,12 @@ internal sealed class ChatContentIndexWorker(
             await foreach (var entry in GetUpdatedEntriesAsync(chatId, cursor, cancellationToken).ConfigureAwait(false)) {
                 await indexer.ApplyAsync(entry, cancellationToken).ConfigureAwait(false);
                 if (++eventCount % FlushInterval == 0) {
-                    applyActivity?.SetTag(NumOfAppliedEventsTag, FlushInterval);
-                    applyActivity?.Dispose();
-                    applyActivity = null;
-
                     await FlushAsync().ConfigureAwait(false);
 
+                    applyActivity?
+                        .SetTag(NumOfAppliedEventsTag, FlushInterval)
+                        .SetStatus(ActivityStatusCode.Ok)
+                        .Dispose();
                     applyActivity = ActivitySource.StartActivity(ApplyActivityName, ActivityKind.Internal);
                 }
                 if (eventCount == MaxEventCount) {
@@ -79,18 +83,34 @@ internal sealed class ChatContentIndexWorker(
                 }
             }
 
-            applyActivity?.SetTag(NumOfAppliedEventsTag, eventCount % FlushInterval);
+            var remainingEventCount = eventCount % FlushInterval;
+            if (remainingEventCount > 0) {
+                await FlushAsync().ConfigureAwait(false);
+                _ = applyActivity?
+                    .SetTag(NumOfAppliedEventsTag, remainingEventCount)
+                    .SetStatus(ActivityStatusCode.Ok);
+            }
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _ = applyActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
         }
         finally {
             applyActivity?.Dispose();
         }
-        await FlushAsync().ConfigureAwait(false);
 
         if (eventCount == MaxEventCount) {
+            log.LogInformation("SMIDX: Rescheduling of semantic indexing of chat {}.", chatId);
             await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
+            var continuationNotification = new MLSearch_SignalChatIndexingContinuation(chatId);
+            await queues.Enqueue(continuationNotification, cancellationToken).ConfigureAwait(false);
         }
         else if (!cancellationToken.IsCancellationRequested) {
-            var completionNotification = new MLSearch_TriggerChatIndexingCompletion(chatId);
+            log.LogInformation("SMIDX: Semantic indexing of chat {} is completed.", chatId);
+            var completionNotification = new MLSearch_SignalChatIndexingCompletion(chatId);
             await queues.Enqueue(completionNotification, cancellationToken).ConfigureAwait(false);
         }
         return;

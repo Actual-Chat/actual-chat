@@ -4,7 +4,8 @@ namespace ActualChat.MLSearch.UnitTests;
 
 public static class LogMock
 {
-    public static Mock<ILogger<T>> Create<T>() {
+    public static Mock<ILogger<T>> Create<T>()
+    {
         var logger = new Mock<ILogger<T>>(MockBehavior.Loose);
         logger
             .Setup(GetLogMethodExpression<T>())
@@ -12,21 +13,17 @@ public static class LogMock
         return logger;
     }
 
+    private static readonly Expression<Func<LogLevel, bool>> anyLogLevel = level => true;
+
     public static Expression<Action<ILogger<T>>> GetLogMethodExpression<T>(LogLevel? level = default)
     {
-        if (level.HasValue) {
-            return (ILogger<T> x) => x.Log(
-                It.Is<LogLevel>(lvl => lvl==level),
-                It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
-                It.IsAny<Exception?>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>());
-        }
+        var logLevelCheck = level is null ? anyLogLevel : lvl => lvl == level;
         return (ILogger<T> x) => x.Log(
-            It.IsAny<LogLevel>(),
+            It.Is(logLevelCheck),
             It.IsAny<EventId>(),
             It.IsAny<It.IsAnyType>(),
             It.IsAny<Exception?>(),
-            It.IsAny<Func<It.IsAnyType, Exception?, string>>());
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+        );
     }
 }

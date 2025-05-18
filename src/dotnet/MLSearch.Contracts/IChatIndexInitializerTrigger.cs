@@ -11,7 +11,10 @@ public static class ChatIndexInitializerShardKey
 public interface IChatIndexInitializerTrigger: IComputeService, IBackendService
 {
     [CommandHandler]
-    Task OnCommand(MLSearch_TriggerChatIndexingCompletion e, CancellationToken cancellationToken);
+    Task OnContinuation(MLSearch_SignalChatIndexingContinuation e, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnCompletion(MLSearch_SignalChatIndexingCompletion e, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -21,7 +24,17 @@ public interface IChatIndexInitializerTrigger: IComputeService, IBackendService
 /// <param name="Id">Identifier of a chat where initialization is completed.</param>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record MLSearch_TriggerChatIndexingCompletion(
+public sealed partial record MLSearch_SignalChatIndexingCompletion(
+    [property: DataMember, MemoryPackOrder(0)] ChatId Id
+) : IBackendCommand, IHasId<ChatId>, IHasShardKey<string>, ICommand<Unit>
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public string ShardKey => ChatIndexInitializerShardKey.Value;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record MLSearch_SignalChatIndexingContinuation(
     [property: DataMember, MemoryPackOrder(0)] ChatId Id
 ) : IBackendCommand, IHasId<ChatId>, IHasShardKey<string>, ICommand<Unit>
 {

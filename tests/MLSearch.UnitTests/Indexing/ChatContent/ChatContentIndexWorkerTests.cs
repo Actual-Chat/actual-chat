@@ -21,7 +21,8 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             Mock.Of<ICursorStates<ChatContentCursor>>(MockBehavior.Loose),
             Mock.Of<IChatInfoIndexer>(MockBehavior.Loose),
             Mock.Of<IChatContentIndexerFactory>(MockBehavior.Loose),
-            Mock.Of<IQueues>(MockBehavior.Loose)
+            Mock.Of<IQueues>(MockBehavior.Loose),
+            LogMock.Create<ChatContentIndexWorker>().Object
         );
 
         Assert.Equal(flushInterval, contentIndexWorker.FlushInterval);
@@ -34,34 +35,37 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
     public async Task ExecuteAsyncAlwaysCallsChatInfoIndexer(IndexingKind indexingKind)
     {
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
-        updateLoader
+        _ = updateLoader
             .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(AsyncEnumerable.Empty<ChatEntry>());
 
         var cursor = new ChatContentCursor(77, 88);
         var cursorStates = new Mock<ICursorStates<ChatContentCursor>>(MockBehavior.Loose);
-        cursorStates
+        _ = cursorStates
             .Setup(x => x.LoadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cursor);
 
         var chatInfoIndexer = new Mock<IChatInfoIndexer>(MockBehavior.Loose);
-        chatInfoIndexer
+        _ = chatInfoIndexer
             .Setup(i => i.IndexAsync(It.IsAny<ChatId>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>(MockBehavior.Loose);
-        contentIndexerFactory
+        _ = contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
             .Returns(Task.FromResult(Mock.Of<IChatContentIndexer>(MockBehavior.Loose)));
 
         var queues = QueuesMock.Create();
+
+        var log = LogMock.Create<ChatContentIndexWorker>();
 
         var contentIndexWorker = new ChatContentIndexWorker(
             updateLoader.Object,
             cursorStates.Object,
             chatInfoIndexer.Object,
             contentIndexerFactory.Object,
-            queues.Object
+            queues.Object,
+            log.Object
         );
 
         var chatId = new ChatId(Generate.Option);
@@ -97,36 +101,39 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
     public async Task ExecuteAsyncCreatesAndInitializesChatContentIndexer()
     {
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
-        updateLoader
+        _ = updateLoader
             .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(AsyncEnumerable.Empty<ChatEntry>());
 
         var cursor = new ChatContentCursor(77, 88);
         var cursorStates = new Mock<ICursorStates<ChatContentCursor>>(MockBehavior.Loose);
-        cursorStates
+        _ = cursorStates
             .Setup(x => x.LoadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cursor);
 
         var chatInfoIndexer = new Mock<IChatInfoIndexer>(MockBehavior.Loose);
 
         var contentIndexer = new Mock<IChatContentIndexer>(MockBehavior.Loose);
-        contentIndexer
+        _ = contentIndexer
             .Setup(x => x.InitAsync(It.IsAny<ChatContentCursor>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>(MockBehavior.Loose);
-        contentIndexerFactory
+        _ = contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
             .Returns(Task.FromResult(contentIndexer.Object));
 
         var queues = QueuesMock.Create();
+
+        var log = LogMock.Create<ChatContentIndexWorker>();
 
         var contentIndexWorker = new ChatContentIndexWorker(
             updateLoader.Object,
             cursorStates.Object,
             chatInfoIndexer.Object,
             contentIndexerFactory.Object,
-            queues.Object
+            queues.Object,
+            log.Object
         );
 
         var chatId = new ChatId(Generate.Option);
@@ -151,7 +158,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var chatId = new ChatId(Generate.Option);
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
-        updateLoader
+        _ = updateLoader
             .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(updates.ToAsyncEnumerable());
 
@@ -160,7 +167,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
 
         var appliedEntries = new List<ChatEntry>();
         var contentIndexer = new Mock<IChatContentIndexer>(MockBehavior.Loose);
-        contentIndexer
+        _ = contentIndexer
             .Setup(x => x.ApplyAsync(It.IsAny<ChatEntry>(), It.IsAny<CancellationToken>()))
             .Returns<ChatEntry, CancellationToken>((entry, _) => {
                 appliedEntries.Add(entry);
@@ -168,18 +175,21 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             });
 
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>(MockBehavior.Loose);
-        contentIndexerFactory
+        _ = contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
             .Returns(Task.FromResult(contentIndexer.Object));
 
         var queues = QueuesMock.Create();
+
+        var log = LogMock.Create<ChatContentIndexWorker>();
 
         var contentIndexWorker = new ChatContentIndexWorker(
             updateLoader.Object,
             cursorStates.Object,
             chatInfoIndexer.Object,
             contentIndexerFactory.Object,
-            queues.Object
+            queues.Object,
+            log.Object
         ) {
             MaxEventCount = updateCount + 1,
             FlushInterval = updateCount + 1
@@ -207,12 +217,12 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var chatId = new ChatId(Generate.Option);
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
-        updateLoader
+        _ = updateLoader
             .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(updates.ToAsyncEnumerable());
 
         var cursorStates = new Mock<ICursorStates<ChatContentCursor>>(MockBehavior.Loose);
-        cursorStates
+        _ = cursorStates
             .Setup(x => x.SaveAsync(It.IsAny<string>(), It.IsAny<ChatContentCursor>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -220,16 +230,18 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
 
         var cursor = new ChatContentCursor(839470, 98237);
         var contentIndexer = new Mock<IChatContentIndexer>(MockBehavior.Loose);
-        contentIndexer
+        _ = contentIndexer
             .Setup(x => x.FlushAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(cursor));
 
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>(MockBehavior.Loose);
-        contentIndexerFactory
+        _ = contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
             .Returns(Task.FromResult(contentIndexer.Object));
 
         var queues = QueuesMock.Create();
+
+        var log = LogMock.Create<ChatContentIndexWorker>();
 
         const int flushInterval = 33;
         var contentIndexWorker = new ChatContentIndexWorker(
@@ -237,7 +249,8 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             cursorStates.Object,
             chatInfoIndexer.Object,
             contentIndexerFactory.Object,
-            queues.Object
+            queues.Object,
+            log.Object
         ) {
             MaxEventCount = int.MaxValue,
             FlushInterval = flushInterval
@@ -248,7 +261,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var job = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatContent);
         await contentIndexWorker.ExecuteAsync(job, cancellationSource.Token);
 
-        var flushCount = (updateCount / flushInterval) + 1;
+        var flushCount = (updateCount + flushInterval - 1) / flushInterval;
 
         contentIndexer.Verify(x => x.FlushAsync(
             It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
@@ -271,7 +284,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var chatId = new ChatId(Generate.Option);
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
-        updateLoader
+        _ = updateLoader
             .Setup(x => x.LoadChatUpdatesAsync(It.IsAny<ChatId>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns(updates.ToAsyncEnumerable());
 
@@ -279,27 +292,30 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         var chatInfoIndexer = new Mock<IChatInfoIndexer>(MockBehavior.Loose);
 
         var contentIndexer = new Mock<IChatContentIndexer>(MockBehavior.Loose);
-        contentIndexer
+        _ = contentIndexer
             .Setup(x => x.ApplyAsync(It.IsAny<ChatEntry>(), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
 
         var contentIndexerFactory = new Mock<IChatContentIndexerFactory>(MockBehavior.Loose);
-        contentIndexerFactory
+        _ = contentIndexerFactory
             .Setup(f => f.Create(It.IsAny<ChatId>()))
             .Returns(Task.FromResult(contentIndexer.Object));
 
-        QueuedCommand? command = null;
+        var commands = new List<QueuedCommand>();
         var queues = QueuesMock.Create((cmd, _) => {
-            command = cmd;
+            commands.Add(cmd);
             return Task.CompletedTask;
         });
+
+        var log = LogMock.Create<ChatContentIndexWorker>();
 
         var contentIndexWorker = new ChatContentIndexWorker(
             updateLoader.Object,
             cursorStates.Object,
             chatInfoIndexer.Object,
             contentIndexerFactory.Object,
-            queues.Object
+            queues.Object,
+            log.Object
         ) {
             MaxEventCount = maxUpdateCount,
         };
@@ -314,13 +330,15 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
         ), Times.Exactly(Math.Min(updateCount, maxUpdateCount)));
 
-        Assert.NotNull(command);
+        Assert.NotEmpty(commands);
         if (updateCount < maxUpdateCount) {
-            Assert.IsType<MLSearch_TriggerChatIndexingCompletion>(command.UntypedCommand);
-            Assert.Equal(chatId, ((MLSearch_TriggerChatIndexingCompletion)command.UntypedCommand).Id);
+            var completionEvent = Assert.IsType<MLSearch_SignalChatIndexingCompletion>(commands[0].UntypedCommand);
+            Assert.Equal(chatId, completionEvent.Id);
         }
         else {
-            Assert.Equal(job, command.UntypedCommand);
+            Assert.Equal(2, commands.Count);
+            Assert.Contains(commands, cmd => cmd.UntypedCommand is MLSearch_TriggerChatIndexing evt && evt.Id == (chatId, IndexingKind.ChatContent));
+            Assert.Contains(commands, cmd => cmd.UntypedCommand is MLSearch_SignalChatIndexingContinuation evt && evt.Id == chatId);
         }
     }
 
