@@ -71,7 +71,11 @@ public static class MauiDiagnostics
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
             // .WriteTo.TailSink(); // TODO(Frol): uncomment when you fix the underlying issue
         logging = AddPlatformLoggerSinks(logging);
-        logging = logging.WriteTo.Sentry(ConfigureSentrySerilog); // NOTE(AY): This slows down the startup by ~30ms or so
+        // TODO(AY): ConfigureSentrySerilog takes ~30-50ms!
+        // That's mostly it's SentryOptions static .ctor, so it makes sense
+        // to inject a buffering sink that switches to pass-through when
+        // the startup is completed.
+        logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
         return logging.CreateLogger();
     }
 
@@ -110,7 +114,8 @@ public static class MauiDiagnostics
     private static void ConfigureSentrySerilog(SentrySerilogOptions options)
     {
         options.ConfigureForApp(true);
-        // We'll initialize the SDK later after app is loaded.
+
+        // We initialize the SDK later after the app is loaded.
         options.InitializeSdk = false;
 
         // Set defaults for options that are different for MAUI.
