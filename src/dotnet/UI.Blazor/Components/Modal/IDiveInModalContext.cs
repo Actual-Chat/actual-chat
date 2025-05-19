@@ -2,7 +2,7 @@
 
 public interface IDiveInModalContext
 {
-    public IDictionary<string, object> DataBag { get; }
+    public MutablePropertyBag Items { get; }
 
     void StepIn(DiveInDialogPage pageDescriptor);
     void Close();

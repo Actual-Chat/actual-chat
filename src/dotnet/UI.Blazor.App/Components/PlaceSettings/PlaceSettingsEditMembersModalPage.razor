@@ -4,7 +4,7 @@
 @{
     var m = State.Value;
     Context.Title = $"{m.MemberCount} members";
-    Context.ModalDataBag.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
+    Context.ContextItems.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
 <TileItem Click="@OnInviteClick">
@@ -71,7 +71,7 @@
         => new() {
             InitialValue = new ComputedModel {
                 // Try to use stored members count to avoid header title blinking.
-                MemberCount = Context.ModalDataBag.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), 1),
+                MemberCount = Context.ContextItems.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), 1),
             },
             Category = GetStateCategory(GetType()),
         };

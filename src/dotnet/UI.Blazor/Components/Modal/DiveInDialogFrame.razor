@@ -81,7 +81,7 @@
             Modal.Close();
     }
 
-    IDictionary<string, object> IDiveInModalContext.DataBag { get; } = new Dictionary<string, object>(StringComparer.Ordinal);
+    MutablePropertyBag IDiveInModalContext.Items { get; } = new();
 
     void IDiveInModalContext.Close()
         => OnClose();

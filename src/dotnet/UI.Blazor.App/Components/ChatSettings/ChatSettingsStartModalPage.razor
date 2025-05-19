@@ -13,7 +13,7 @@
     if (_form == null)
         return;
 
-    Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
+    Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isPlaceChat = m.IsPlace;
     var publicChatLabel = !isPlaceChat ? "Public" : "Place";
     var isThread = m.Chat.Id.IsThread;
@@ -178,9 +178,8 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        const string formBagKey = "form";
-        _form = Context.PageDataBag.Get<FormModel>(formBagKey);
-        if (_form != null)
+        _form = Context.Items.KeylessGet<FormModel>();
+        if (_form is not null)
             return;
 
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
@@ -193,7 +192,7 @@
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         if (_placeId is not null)
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
-        Context.PageDataBag.Set(formBagKey, _form);
+        Context.Items.KeylessSet(_form);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

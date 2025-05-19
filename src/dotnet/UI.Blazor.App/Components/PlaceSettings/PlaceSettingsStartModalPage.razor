@@ -9,7 +9,7 @@
         return;
     }
 
-    Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
+    Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isOwner = m.IsOwner;
     var status = m.Place.IsPublic ? "Public" : "Private";
 }

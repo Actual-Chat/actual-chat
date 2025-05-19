@@ -13,7 +13,7 @@
         return;
 
     Context.Title = "Place Type";
-    Context.ModalDataBag.Set(nameof(PlaceSettingsOwnerModalPage.ComputedModel.Place.IsPublic), m.IsPublic);
+    Context.ContextItems.Set(nameof(PlaceSettingsOwnerModalPage.ComputedModel.Place.IsPublic), m.IsPublic);
     var canEditProperties = m.Place.Rules.CanEditProperties();
 }
 

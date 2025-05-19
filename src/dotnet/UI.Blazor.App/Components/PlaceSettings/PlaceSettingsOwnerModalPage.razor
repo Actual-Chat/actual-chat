@@ -12,7 +12,7 @@
     if (_form == null)
         return;
 
-    Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
+    Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var canEditMembers = m.Place.Rules.CanEditMembers();
     var isOwner = m.IsOwner;
 }
@@ -163,9 +163,8 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        const string formBagKey = "form";
-        _form = Context.PageDataBag.Get<FormModel>(formBagKey);
-        if (_form != null)
+        _form = Context.Items.KeylessGet<FormModel>();
+        if (_form is not null)
             return;
 
         var place = await Places.Get(Session, PlaceId, default).Require();
@@ -176,7 +175,7 @@
             Background = place.Background?.ToPicture(),
             ImageUploadUrl = $"/api/chat-media/{place.Id.RootChatId}/upload",
         };
-        Context.PageDataBag.Set(formBagKey, _form);
+        Context.Items.KeylessSet(_form);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
