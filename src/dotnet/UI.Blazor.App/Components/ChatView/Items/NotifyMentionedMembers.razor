@@ -36,7 +36,7 @@
             }
 
             var mentionIndexCls = "mention-" + i;
-            <AuthorBadgeTemplate AuthorSid="@authorId.Value">
+            <AuthorBadgeTemplate AuthorId="@authorId">
                 <div class="mention-markup mention-markup-valid @mentionIndexCls">
                     <div class="truncate">
                         @(context?.Author?.Avatar.Name ?? "")

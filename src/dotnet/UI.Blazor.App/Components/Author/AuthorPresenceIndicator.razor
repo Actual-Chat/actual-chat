@@ -9,10 +9,9 @@
     private IAuthors Authors => Hub.Authors;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
-    private AuthorId? AuthorId { get; set; }
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
-    [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
+    [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
 
     public override async ValueTask DisposeAsync() {
@@ -21,13 +20,8 @@
         ChatRecordingActivity = null;
     }
 
-    protected override void OnInitialized()
-        // Set AuthorId here to have actual AuthorId value in GetStateOptions.
-        => AuthorId = AuthorId.ParseNullable(AuthorSid);
-
     protected override void OnParametersSet()
     {
-        AuthorId = AuthorId.ParseNullable(AuthorSid);
         ChatRecordingActivity?.Dispose();
         ChatRecordingActivity = null;
     }

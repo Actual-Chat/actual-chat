@@ -13,7 +13,7 @@
         @if (m.PeerAccount is { } peerAccount) {
             <div class="c-truncated-text">
                 <span>Say "Hi" to</span>
-                <AccountName UserSid="@peerAccount.Id.Value"/>
+                <AccountName UserId="@peerAccount.Id"/>
                 <span>!</span>
             </div>
         } else {

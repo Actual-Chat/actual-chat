@@ -28,7 +28,7 @@
             @foreach (var authorId in authorIds) {
                 <AuthorBadge
                     @key="@authorId"
-                    AuthorSid="@authorId.Value"
+                    AuthorId="@authorId"
                     ShowPresence="true"
                     ShowPresenceText="true"
                     Click="@_onClickCallback"/>
@@ -53,7 +53,7 @@
                     <Virtualize Items="@authorIds" Context="authorId" ItemSize="@m.ItemSize" OverscanCount="5">
                         <AuthorBadge
                             @key="@authorId"
-                            AuthorSid="@authorId.Value"
+                            AuthorId="@authorId"
                             ShowPresence="true"
                             ShowPresenceText="true"
                             Click="@_onClickCallback"/>

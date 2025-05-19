@@ -25,7 +25,7 @@
             <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
         } else {
             <AuthorCircle
-                AuthorSid="@entry.AuthorId.Value"
+                AuthorId="@entry.AuthorId"
                 Size="SquareSize.Size9"/>
         }
     </div>
@@ -34,7 +34,7 @@
             <div class="c-top">
                 @if (author != null) {
                     <div class="c-author-header">
-                        <AuthorName AuthorSid="@author.Id.Value" Class="chat-message-author-name"/>
+                        <AuthorName AuthorId="@author.Id" Class="chat-message-author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     </div>
                 }

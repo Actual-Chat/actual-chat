@@ -31,7 +31,7 @@
                         </div>
                         @if (m.PeerId is { } otherUserId) {
                             <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
-                            <AccountName UserSid="@otherUserId.Value"/>
+                            <AccountName UserId="@otherUserId"/>
                         } else if (m.CanJoinWithGuestAccount) {
                             <span class="inline-flex mx-2 items-center">or</span>
                             <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>

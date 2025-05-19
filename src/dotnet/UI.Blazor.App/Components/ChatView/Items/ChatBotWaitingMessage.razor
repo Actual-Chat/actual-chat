@@ -10,12 +10,12 @@
     <div class="chat-message group">
         <div class="c-author-badge">
             <ChatMessageAuthorCircle
-                AuthorSid="@_botId.Value"
+                AuthorId="@_botId"
                 Click="@_onClickCallback"/>
         </div>
         <div class="c-content">
             <div class="c-author-header">
-                <AuthorName AuthorSid="@_botId.Value" Class="chat-message-author-name"/>
+                <AuthorName AuthorId="@_botId" Class="chat-message-author-name"/>
                 <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@Clocks.SystemClock.Now"/>
             </div>
 

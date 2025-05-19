@@ -44,11 +44,11 @@
         @foreach (var (chatEntry, markup) in m.Entries) {
             <div class="c-message-wrapper">
                 <AuthorCircle
-                    AuthorSid="@chatEntry.AuthorId.Value"
+                    AuthorId="@chatEntry.AuthorId"
                     Size="SquareSize.Size8" />
                 <div class="c-content">
                     <div class="c-info">
-                        <AuthorName AuthorSid="@chatEntry.AuthorId.Value" Class="chat-message-author-name"/>
+                        <AuthorName AuthorId="@chatEntry.AuthorId" Class="chat-message-author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@chatEntry.BeginsAt"/>
                     </div>
                     <span class="c-message">
@@ -63,7 +63,7 @@
     <div class="c-footer">
         <div class="c-author-list">
             @foreach (var authorId in topAuthorIds) {
-                <AuthorCircle AuthorSid="@authorId.Value" Size="@SquareSize.Size6"/>
+                <AuthorCircle AuthorId="@authorId" Size="@SquareSize.Size6"/>
             }
             @if (extraAuthorCount > 0) {
                 <div class="author-incut ai-extra">+@extraAuthorCount</div>

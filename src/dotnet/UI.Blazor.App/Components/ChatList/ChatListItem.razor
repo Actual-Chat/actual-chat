@@ -44,7 +44,7 @@
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="c-name">
                                 <AuthorName
-                                    AuthorSid="@(m.LastAuthorId?.Value ?? "")"
+                                    AuthorId="@m.LastAuthorId"
                                     ShowDetailsOnClick="false"
                                     ShowAsOwn="true"/>
                             </span>

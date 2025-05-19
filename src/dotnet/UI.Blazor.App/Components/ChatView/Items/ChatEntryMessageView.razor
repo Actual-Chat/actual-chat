@@ -93,7 +93,7 @@
         <div class="c-author-badge">
             @if (showAuthorBadge) {
                 <ChatMessageAuthorCircle
-                    AuthorSid="@entry.AuthorId.Value"
+                    AuthorId="@entry.AuthorId"
                     Click="@_onClickCallback"/>
             } else if (showTime) {
                 var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
@@ -105,7 +105,7 @@
         <div class="c-content">
             @if (showAuthor) {
                 <div class="c-author-header">
-                    <AuthorName AuthorSid="@entry.AuthorId.Value" Class="chat-message-author-name"/>
+                    <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name"/>
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>

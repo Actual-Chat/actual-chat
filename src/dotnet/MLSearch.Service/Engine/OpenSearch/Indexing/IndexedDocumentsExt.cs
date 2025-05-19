@@ -30,7 +30,6 @@ internal static class IndexedDocumentsExt
         IReadOnlyCollection<IndexedGroup> updatedDocuments,
         IReadOnlyCollection<ChatId> deleted,
         CancellationToken cancellationToken = default)
-        // TODO(AY): IndexedGroup.Id is ChatId?, which violates the constraint for Save - this must be fixed
         => indexedDocuments.Save(x => x.GroupIndexName, updatedDocuments, deleted, cancellationToken);
 
     public static Task SaveUsers(

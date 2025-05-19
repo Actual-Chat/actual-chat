@@ -15,7 +15,7 @@
             break;
         }
         case { Kind: ChatKind.Peer } when ShowLastSeen:
-            <AuthorPresenceText AuthorSid="@m.AuthorSid"/>
+            <AuthorPresenceText AuthorId="@m.AuthorId"/>
             break;
         case { Kind: ChatKind.Peer }:
             @m.Status
@@ -119,7 +119,7 @@
                 return new() {
                     Status = status,
                     BadgeClass = badgeClass,
-                    AuthorSid = anotherAuthorId.Value,
+                    AuthorId = anotherAuthorId,
                 };
         }
     }
@@ -131,7 +131,7 @@
 
         public string Status { get; init; } = "";
         public string BadgeClass { get; init; } = "";
-        public string AuthorSid { get; init; } = "";
+        public AuthorId? AuthorId { get; init; }
         public Place? Place { get; init; }
     }
 }

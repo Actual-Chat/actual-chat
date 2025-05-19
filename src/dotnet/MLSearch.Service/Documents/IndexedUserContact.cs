@@ -10,7 +10,7 @@ public class IndexedUserContact : IHasId<ContactId>, IHasRoutingKey<ContactId>, 
     public string Name { get; init; } = "";
     public string ExternalContactName { get; init; } = "";
 
-    // TODO(AY): Verify this
+    // TODO(AY -> Frol): Verify this
     public JoinField? ContactToUser => OtherUserId is { } otherUserId
         ? JoinField.Link<IndexedUserContact, IndexedUser>(new IndexedUser(otherUserId))
         : null;

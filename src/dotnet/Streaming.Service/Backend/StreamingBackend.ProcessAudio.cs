@@ -112,7 +112,7 @@ public partial class StreamingBackend
             $"{nameof(TranscribeAudio)} failed",
             CancellationToken.None);
 
-        // TODO(AY): We should make sure finalization happens no matter what (later)!
+        // TODO(AY): We should make sure the finalization happens no matter what (later)!
         // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
 
         if (publishAudioTask != null)
@@ -121,7 +121,7 @@ public partial class StreamingBackend
             ? await audioEntryTask.ConfigureAwait(false)
             : null;
 
-        // Close open audio segment when the duration become available
+        // Close an open audio segment when the duration becomes available
         await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
         openSegment.Close(openSegment.Source.Duration);
         var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);

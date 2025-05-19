@@ -15,7 +15,7 @@
             @if (chatInfo.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                 <AuthorName
                     Class="contact-view-last-text-author"
-                    AuthorSid="@lastTextEntry.AuthorId.Value"
+                    AuthorId="@lastTextEntry.AuthorId"
                     ShowDetailsOnClick="false"/>
                 <span>:</span>
             }

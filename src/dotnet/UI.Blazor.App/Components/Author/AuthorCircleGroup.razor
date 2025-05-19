@@ -1,14 +1,14 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 @{
-    var authorSids = AuthorSids;
-    if (authorSids.Count == 0)
+    var authorIds = AuthorIds ?? [];
+    if (authorIds.Count == 0)
         return;
 
     var avatarSize = SquareSize.Size7;
     var size = "w-7 h-7";
     var backSize = "w-8 h-8";
-    var maxLength = MaxIconCount > authorSids.Count ? authorSids.Count : MaxIconCount;
+    var maxLength = MaxIconCount > authorIds.Count ? authorIds.Count : MaxIconCount;
     var groupCls = IsListening ? "" : "non-active";
 }
 
@@ -20,7 +20,7 @@
                 <div class="@backSize @lastAuthorCls author-circle-group-item"></div>
             }
 
-            if (authorSids.Count > MaxIconCount) {
+            if (authorIds.Count > MaxIconCount) {
                 <div class="@backSize author-circle-group-item last" style="z-index: @(maxLength + 1);"></div>
             }
         }
@@ -29,19 +29,19 @@
         @{
             var zIndex = 10;
             for (var i = 0; i < maxLength; i++) {
-                var authorSid = authorSids[i];
+                var authorId = authorIds[i];
                 var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
                 <div class="@size @lastAuthorCls author-circle-group-item" style="z-index: @zIndex;">
-                    <AuthorCircle AuthorSid="@authorSid" Size="@avatarSize"/>
+                    <AuthorCircle AuthorId="@authorId" Size="@avatarSize"/>
                 </div>
                 zIndex--;
             }
 
-            if (authorSids.Count > MaxIconCount) {
+            if (authorIds.Count > MaxIconCount) {
                 <div class="@size author-circle-group-item last">
                     @{
-                        var avatarText = authorSids.Count < 11
-                            ? "+" + (authorSids.Count - MaxIconCount)
+                        var avatarText = authorIds.Count < 11
+                            ? "+" + (authorIds.Count - MaxIconCount)
                             : "...";
                     }
                     <AvatarText Size="@avatarSize" Text="@avatarText"/>
@@ -58,5 +58,5 @@
     [Parameter] public bool IsListening { get; set; }
 
     [Parameter, ParameterComparer(typeof(ByItemParameterComparer))]
-    public List<string> AuthorSids { get; set; } = [];
+    public IReadOnlyList<AuthorId>? AuthorIds { get; set; }
 }

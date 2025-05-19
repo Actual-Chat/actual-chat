@@ -20,7 +20,7 @@
                 @if (mention.MentionId.PrincipalId is AuthorId authorId) {
                     <AuthorCircle
                         @key="@authorId"
-                        AuthorSid="@authorId.Value"
+                        AuthorId="@authorId"
                         Size="SquareSize.Size7"/>
                 } else {
                     var pictureUrl = UrlMapper.PicturePreview128Url(mention.Picture);

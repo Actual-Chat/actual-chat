@@ -3,7 +3,6 @@ namespace ActualChat.MLSearch.Documents;
 [StructLayout(LayoutKind.Auto)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
 public readonly record struct ChatSliceEntry(
-    // TODO(AY): Serialization(Id) + maybe replace to string?
-    TextEntryId Id,
+    TextEntryId Id, // NOTE(AY): JSON representation of XxxId is still a string
     long LocalId,
     long Version);

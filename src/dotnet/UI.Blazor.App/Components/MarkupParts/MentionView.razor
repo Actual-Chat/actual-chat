@@ -13,7 +13,7 @@
             : "Has not read";
 }
 
-<AuthorBadgeTemplate AuthorSid="@(_authorId?.Value ?? "")">
+<AuthorBadgeTemplate AuthorId="@_authorId">
     @if (context?.Author is not { } author) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;

@@ -1,4 +1,3 @@
-using ActualChat.Contacts;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -6,20 +5,10 @@ namespace ActualChat.UI.Blazor.App.Components;
 public abstract class AuthorBadgeBase : ComputedStateComponent<AppUIHub, AuthorBadgeBase.Model?>
 {
     protected IAuthors Authors => Hub.Authors;
-    protected IContacts Contacts => Hub.Contacts;
     protected AuthorUI AuthorUI => Hub.AuthorUI;
 
-    protected AuthorId? AuthorId { get; private set; }
-    protected ChatId? ChatId => AuthorId?.ChatId;
-
     // TODO(AY): Use AuthorId instead
-    [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
-
-    protected override void OnInitialized()
-        => AuthorId = AuthorId.ParseNullable(AuthorSid);
-
-    protected override void OnParametersSet()
-        => AuthorId = AuthorId.ParseNullable(AuthorSid);
+    [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
     {

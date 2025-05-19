@@ -62,7 +62,7 @@
             Class="c-authors"
             MaxIconCount="4"
             Size="@size"
-            AuthorSids="@m.AuthorSids"
+            AuthorIds="@m.AuthorIds"
             IsListening="true"/>
 
         @* Speed Selector *@
@@ -110,13 +110,13 @@
 
         var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
-        var authorSids = new HashSet<string>();
+        var authorIds = new HashSet<AuthorId>();
         Moment? playingAt = null;
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
                 var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
-                authorSids.Add(authorId.Value);
+                authorIds.Add(authorId);
             }
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken).ConfigureAwait(false);
             if (actualPlaybackState == null)
@@ -132,7 +132,7 @@
                 IsPaused = isPaused,
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != selectedChatId,
-                AuthorSids = authorSids.ToList(),
+                AuthorIds = authorIds.ToList(),
             };
 
         var canUseLastState = lastState is not null
@@ -203,7 +203,7 @@
         public string ChatTitle { get; init; } = "";
         public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
-        public List<string> AuthorSids { get; init; } = [];
+        public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
 
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);

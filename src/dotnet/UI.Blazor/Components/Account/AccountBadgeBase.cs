@@ -6,12 +6,7 @@ public abstract class AccountBadgeBase : ComputedStateComponent<UIHub, AccountBa
 {
     private IAccounts Accounts => Hub.Accounts;
 
-    [Parameter, EditorRequired] public string UserSid { get; set; } = "";
-
-    protected UserId? UserId { get; private set; }
-
-    protected override void OnParametersSet()
-        => UserId = UserId.Parse(UserSid);
+    [Parameter, EditorRequired] public UserId? UserId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

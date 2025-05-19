@@ -31,7 +31,6 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
         => new (ChatEntryId.Parse(Id), Version) {
             Languages = Languages.IsNullOrEmpty()
                 ? []
-                // TODO(AY): Serialization(Language[])
                 : JsonSerializer.Deserialize<Language[]>(Languages) ?? [],
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,

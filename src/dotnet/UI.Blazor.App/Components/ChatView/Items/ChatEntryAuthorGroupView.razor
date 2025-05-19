@@ -10,7 +10,7 @@
     <div class="c-left">
         @if (showAuthorBadge) {
             <ChatMessageAuthorCircle
-                AuthorSid="@Message.AuthorId.Value"
+                AuthorId="@Message.AuthorId"
                 Click="@_onClickCallback"/>
         }
     </div>
