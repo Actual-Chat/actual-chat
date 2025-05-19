@@ -175,7 +175,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             }
             var chatId = threadChat.Id;
 
-            // Create thread chat entry.
+            // Create a thread chat entry
             {
                 var textEntryId1 = TextEntryId.New(chatId, 0);
                 var textEntryAuthorId = AuthorsBackend.Remap(textEntry.AuthorId, chatId);

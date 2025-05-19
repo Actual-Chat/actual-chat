@@ -852,7 +852,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Remove mentions
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId.Value)
-                .Join(dbContext.Mentions.Where(m => m.ChatId == chatId.Value), ce => ce.LocalId, rs => rs.EntryId, (_, rs) => rs)
+                .Join(dbContext.Mentions.Where(m => m.ChatId == chatId.Value), ce => ce.LocalId, rs => rs.EntryLocalId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
             // Remove entries
@@ -1346,7 +1346,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Remove mentions
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
-                .Join(dbContext.Mentions.Where(m => m.ChatId == chatId), ce => ce.LocalId, rs => rs.EntryId, (_, rs) => rs)
+                .Join(dbContext.Mentions.Where(m => m.ChatId == chatId), ce => ce.LocalId, rs => rs.EntryLocalId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
 

@@ -5,16 +5,15 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Chat.Db;
 
 [Table("Mentions")]
-[Index(nameof(ChatId), nameof(EntryId), nameof(MentionId))]
-[Index(nameof(ChatId), nameof(MentionId), nameof(EntryId))]
+[Index(nameof(ChatId), nameof(EntryLocalId), nameof(MentionId))]
+[Index(nameof(ChatId), nameof(MentionId), nameof(EntryLocalId))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbMention : IHasId<string>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
     public string ChatId { get; set; } = "";
     public string MentionId { get; set; } = "";
-    // TODO(AY): Rename to EntryLid
-    public long EntryId { get; set; }
+    public long EntryLocalId { get; set; }
 
     public DbMention() { }
     public DbMention(Mention model) => UpdateFrom(model);
@@ -31,7 +30,7 @@ public class DbMention : IHasId<string>, IRequirementTarget
         => new() {
             Id = Id,
             MentionId = ActualChat.MentionId.Parse(MentionId),
-            EntryId = ChatEntryId.New(ActualChat.ChatId.Parse(ChatId), ChatEntryKind.Text, EntryId),
+            EntryId = ChatEntryId.New(ActualChat.ChatId.Parse(ChatId), ChatEntryKind.Text, EntryLocalId),
         };
 
     public void UpdateFrom(Mention model)
@@ -42,6 +41,6 @@ public class DbMention : IHasId<string>, IRequirementTarget
         Id = id;
         ChatId = model.ChatId.Value;
         MentionId = model.MentionId.Value;
-        EntryId = model.EntryId.LocalId;
+        EntryLocalId = model.EntryId.LocalId;
     }
 }
