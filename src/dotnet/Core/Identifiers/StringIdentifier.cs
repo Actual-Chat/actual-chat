@@ -3,11 +3,6 @@ using ActualLab.Rpc;
 
 namespace ActualChat;
 
-/* Remaining tasks:
-   - ChatId hierarchy
-   - Switch to new IDs
-*/
-
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
 public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
 {

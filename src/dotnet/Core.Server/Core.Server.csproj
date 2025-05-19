@@ -7,7 +7,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ActualLab.Core" />
     <PackageReference Include="ActualLab.Fusion.Server" />
     <PackageReference Include="Anthropic.SDK" />
     <PackageReference Include="CliWrap" />

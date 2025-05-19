@@ -2,16 +2,15 @@ using System.ComponentModel;
 using MemoryPack;
 using ActualLab.Generators;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
 
 namespace ActualChat;
 
 #pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(SymbolIdentifierJsonConverter<NodeRef>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<NodeRef>))]
-[TypeConverter(typeof(SymbolIdentifierTypeConverter<NodeRef>))]
+[JsonConverter(typeof(Internal.SymbolIdentifierJsonConverter<NodeRef>))]
+[Newtonsoft.Json.JsonConverter(typeof(Internal.SymbolIdentifierNewtonsoftJsonConverter<NodeRef>))]
+[TypeConverter(typeof(Internal.SymbolIdentifierTypeConverter<NodeRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
