@@ -131,6 +131,7 @@
     private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
     private IChats Chats => Hub.Chats;
     private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
 
     private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
@@ -221,7 +222,7 @@
         if (!isOwnMessage)
             return false;
 
-        if (chat.HasSingleAuthor)
+        if (!await ChatSupportsUnreadStatus(chat, cancellationToken).ConfigureAwait(false))
             return false;
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
@@ -235,6 +236,22 @@
         if (hasBeenRead)
             _hasBeenReadEntryId = entry.Id; // Remember that message has been read, so we don't need to recalculate it on next ComputeState cycle.
         return !hasBeenRead;
+    }
+
+    private async Task<bool> ChatSupportsUnreadStatus(Chat chat, CancellationToken cancellationToken) {
+        // NOTE(DF): move this check to ChatContext to share among all message views.
+        // ChatContext and Chat can be considered as immutable and used from any thread.
+        if (chat.HasSingleAuthor)
+            return false;
+
+        if (chat.IsAiSearchChat())
+            return false;
+
+        var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        if (authors.Length < 2)
+            return false; // It seems the current user is the only member in the chat hence it has no sense to check unread status.
+
+        return true;
     }
 
     // Nested types

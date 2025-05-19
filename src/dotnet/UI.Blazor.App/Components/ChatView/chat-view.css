@@ -308,6 +308,7 @@ body.hoverable .chat-message-quote:hover,
 .message-attachments {
     @apply relative;
     @apply flex-y gap-y-1;
+    @apply w-fit;
     @apply py-0.5 pr-2;
     @apply overflow-hidden;
 }
