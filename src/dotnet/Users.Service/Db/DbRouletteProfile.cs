@@ -15,7 +15,6 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string UserId { get; set; } = "";
-    [Column("country_code")] // TODO(AY): Rename to country
     public string Country { get; set; } = "";
     public Gender Gender { get; set; } = Gender.Undefined;
     public string Languages { get; set; } = "";

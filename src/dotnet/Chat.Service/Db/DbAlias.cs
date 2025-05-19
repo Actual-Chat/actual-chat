@@ -4,7 +4,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat.Db;
 
-[Table("UserLinks")] // TODO(AY): Rename to Aliases
+[Table("Aliases")]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAlias : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {

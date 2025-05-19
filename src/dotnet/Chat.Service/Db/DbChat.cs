@@ -23,7 +23,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Obsolete("2023.03: Use MediaId instead.")]
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
-    [Column("user_link_id")] // TODO(AY): Rename to alias_id
     public string AliasId { get; set; } = "";
 
     // Template info for embedded chats

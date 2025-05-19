@@ -18,7 +18,6 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     public string EntryId { get; set; } = "";
 
     public long Count { get; set; }
-    [Column("emoji_id")] // TODO(AY): Rename to emoji
     public string Emoji { get; set; } = "";
     public string FirstAuthorIdsJson { get; set; } = "";
 

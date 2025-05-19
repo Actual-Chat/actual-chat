@@ -12,7 +12,6 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [ConcurrencyCheck] public long Version { get; set; }
     public string AuthorId { get; set; } = "";
     public string EntryId { get; set; } = "";
-    [Column("emoji_id")] // TODO(AY): Rename to emoji
     public string Emoji { get; set; } = "";
 
     public DateTime ModifiedAt {

@@ -25,7 +25,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
     public string TimeZone { get; set; } = "";
-    [Column("user_link_id")] // TODO(AY): Rename to alias_id
     public string AliasId { get; set; } = "";
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);

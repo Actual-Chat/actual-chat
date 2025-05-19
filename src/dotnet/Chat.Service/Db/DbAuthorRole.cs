@@ -9,9 +9,9 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAuthorRole: IRequirementTarget
 {
-    [Column("AuthorId")] // TODO(AY): Rename to author_id
+    [Column("AuthorId")]
     public string DbAuthorId { get; set; } = "";
-    [Column("RoleId")] // TODO(AY): Rename to role_id
+    [Column("RoleId")]
     public string DbRoleId { get; set; } = "";
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAuthorRole>

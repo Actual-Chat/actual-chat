@@ -21,7 +21,6 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Description { get; set; } = "";
     public string MediaId { get; set; } = "";
     public string BackgroundMediaId { get; set; } = "";
-    [Column("user_link_id")] // TODO(AY): Rename to alias_id
     public string AliasId { get; set; } = "";
 
     // Permissions & Rules
