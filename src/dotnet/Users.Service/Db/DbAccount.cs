@@ -88,7 +88,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 .IsUnique();
             builder.HasIndex(a => new { a.Id, a.TimeZone });
             builder.HasIndex(a => new { a.AliasId })
-                .HasFilter("user_link_id <> ''") // TODO(AY): Rename to alias_id
+                .HasFilter("alias_id <> ''")
                 .IsUnique();
         }
     }
