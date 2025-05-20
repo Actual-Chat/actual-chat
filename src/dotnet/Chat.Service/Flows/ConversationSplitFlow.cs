@@ -63,15 +63,16 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
                 continue; // First entry in the sequence is not a reply!
 
             var lastEntry = replySequence.Entries[^1];
-            var idTileRange = IdTileStack.FirstLayer.GetTile(entryLid).Range;
-            var existingConversations = await ConversationsBackend.List(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+            var idTileRange = IdTileStack.LastLayer.GetTile(entryLid).Range;
+            var conversationTile = await ConversationsBackend.GetRangeMeta(chatId, idTileRange.Start, cancellationToken).ConfigureAwait(false);
+            var existingConversationIds = conversationTile.ConversationIds;
 
             var appendReply = new ConversationBackend_AppendReply(
                 chatId,
                 entryLid,
                 new Range<long>(firstEntry.LocalId, lastEntry.LocalId + 1)
             ) {
-                DelayUntil = existingConversations.Length == 0
+                DelayUntil = existingConversationIds.Length == 0
                     ? Host.Clocks.CoarseSystemClock.Now + (2 * Settings.ChatEntrySummarizationDelay)
                     : null,
             };

@@ -37,14 +37,11 @@ public interface IChats : IComputeService
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
-    // [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 300)]
-    Task<ChatPageMap> GetPage(
+    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 300)]
+    Task<ChatRangeMeta> GetRangeMeta(
         Session session,
         ChatId chatId,
-        ConversationId[] expandedConversationIds,
         long idTileStart,
-        int offset,
-        int limit,
         CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]

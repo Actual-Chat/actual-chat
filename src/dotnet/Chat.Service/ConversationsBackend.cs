@@ -31,24 +31,40 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<ConversationId[]> List(
+    public virtual async Task<ConversationRangeMeta> GetRangeMeta(
         ChatId chatId,
-        Range<long> idTileRange,
+        long idTileStart,
         CancellationToken cancellationToken)
     {
+        var idTile = IdTileStack.LastLayer.AssertIsTileStart(idTileStart);
+        var idTileRange = idTile.Range;
+
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var sConversationIds = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId && c.StartEntryLid <= idTileRange.End && c.EndEntryLid >= idTileRange.Start)
-            .Select(c => c.Id)
-            .OrderBy(c => c)
+        var conversationRanges = await dbContext.Conversations
+            .Where(c => c.ChatId == chatId && c.StartEntryLid < idTileRange.End && c.EndEntryLid >= idTileRange.Start)
+            .OrderBy(c => c.StartEntryLid)
+            .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        var previousConversationRange = await dbContext.Conversations
+            .Where(c => c.ChatId == chatId && c.EndEntryLid < idTileRange.Start)
+            .OrderByDescending(c => c.StartEntryLid)
+            .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var nextConversationRange = await dbContext.Conversations
+            .Where(c => c.ChatId == chatId && c.StartEntryLid >= idTileRange.End)
+            .OrderBy(c => c.StartEntryLid)
+            .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
 
-        return sConversationIds
-            .Select(s => new ConversationId(s, ParseOrNone.Option))
-            .ToArray();
+        return new ConversationRangeMeta(chatId,
+            conversationRanges.ToArray(),
+            previousConversationRange,
+            nextConversationRange);
     }
 
     public async Task<ConversationId[]> GetPage(
@@ -112,13 +128,25 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var (conversationId, _, change) = command;
         var chatId = conversationId.ChatId;
+        var chatSid = chatId.Value;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             var invConversation = context.Operation.Items.KeylessGet<Conversation>();
             if (invConversation != null) {
                 _ = Get(invConversation.Id, default);
-                foreach (var idTile in IdTileStack.FirstLayer.GetCoveringTiles(invConversation.EntryRange))
-                    _ = List(chatId, idTile.Range, default);
+                foreach (var idTile in IdTileStack.LastLayer.GetCoveringTiles(invConversation.EntryRange))
+                    _ = GetRangeMeta(chatId, idTile.Range.Start, default);
+                var previousConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.PreviousConversationRange));
+                var nextConversationId = context.Operation.Items.Get<long>(nameof(ConversationRangeMeta.NextConversationRange));
+                if (previousConversationId != default) {
+                    var previousIdTile = IdTileStack.LastLayer.GetTile(previousConversationId);
+                    _ = GetRangeMeta(chatId, previousIdTile.Range.Start, default);
+                }
+                if (nextConversationId != default) {
+                    var nextIdTile = IdTileStack.LastLayer.GetTile(nextConversationId);
+                    _ = GetRangeMeta(chatId, nextIdTile.Range.Start, default);
+                }
+
             }
             return null!;
         }
@@ -142,7 +170,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var startEntryLid = conversationId.StartEntryLid;
             var endEntryLid = change.Create.Value.EndEntryLid;
             var sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Where(c => c.ChatId == chatSid && c.StartEntryLid < endEntryLid && c.EndEntryLid >= startEntryLid)
                 .Select(c => c.Id)
                 .OrderBy(c => c)
                 .ToHashSetAsync(cancellationToken)
@@ -157,6 +185,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             conversation = ApplyDiff(conversation, update);
             dbConversation = new DbConversation(conversation);
             dbContext.Add(dbConversation);
+
+            await StorePreviousAndNextConversationIds(startEntryLid, endEntryLid).ConfigureAwait(false);
         }
         else if (change.IsUpdate(out update)) {
             // TODO(AK): too many version mismatch errors
@@ -174,7 +204,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var startEntryLid = conversationId.StartEntryLid;
             var endEntryLid = change.Update.Value.EndEntryLid;
             var sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.StartEntryLid <= endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Where(c => c.ChatId == chatSid && c.StartEntryLid < endEntryLid && c.EndEntryLid >= startEntryLid)
                 .Select(c => c.Id)
                 .OrderBy(c => c)
                 .ToHashSetAsync(cancellationToken)
@@ -184,11 +214,17 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Where(c => sConversationIds.Contains(c.Id))
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            await StorePreviousAndNextConversationIds(startEntryLid, endEntryLid).ConfigureAwait(false);
         }
         else if (change.IsRemove()) {
             dbConversation.Require();
+            var startEntryLid = dbConversation.StartEntryLid;
+            var endEntryLid = dbConversation.EndEntryLid;
 
             dbContext.Remove(dbConversation);
+
+            await StorePreviousAndNextConversationIds(startEntryLid, endEntryLid).ConfigureAwait(false);
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         conversation = dbConversation.Require().ToModel();
@@ -214,6 +250,28 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 throw StandardError.Constraint("Conversation message count should be greater than zero.");
 
             return newConversation;
+        }
+
+        async Task StorePreviousAndNextConversationIds(long startEntryLid, long? endEntryLid)
+        {
+            var previousConversationIdTask = dbContext.Conversations
+                .Where(c => c.ChatId == chatSid && c.EndEntryLid < startEntryLid)
+                .OrderByDescending(c => c.StartEntryLid)
+                .Select(c => c.StartEntryLid)
+                .FirstOrDefaultAsync(cancellationToken);
+            var nextConversationIdTask = dbContext.Conversations
+                .Where(c => c.ChatId == chatSid && c.StartEntryLid >= endEntryLid)
+                .OrderBy(c => c.StartEntryLid)
+                .Select(c => c.StartEntryLid)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            await Task.WhenAll(previousConversationIdTask, previousConversationIdTask).ConfigureAwait(false);
+            var previousConversationId = await previousConversationIdTask.ConfigureAwait(false);
+            var nextConversationId = await nextConversationIdTask.ConfigureAwait(false);
+            if (previousConversationId != 0)
+                context.Operation.Items.Set(nameof(ConversationRangeMeta.PreviousConversationRange), previousConversationId);
+            if (nextConversationId != 0)
+                context.Operation.Items.Set(nameof(ConversationRangeMeta.NextConversationRange), nextConversationId);
         }
     }
 
@@ -297,8 +355,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (delay > TimeSpan.Zero)
             throw StandardError.Postpone(delay.Value);
 
-        var existingConversations = await List(chatId, IdTileStack.FirstLayer.GetTile(entryLid).Range, cancellationToken)
+        var conversationTile = IdTileStack.LastLayer.GetTile(entryLid);
+        var conversationRangeMeta = await GetRangeMeta(chatId, conversationTile.Range.Start, cancellationToken)
             .ConfigureAwait(false);
+        var existingConversations = conversationRangeMeta.ConversationIds;
         if (existingConversations.Length == 0) {
             // Skip the reply as the conversation is not found - entry group was too small for summarization
             Log.LogInformation("Skipping reply as the conversation for {ChatId} and {EntryLid} is not found", chatId, entryLid);
@@ -333,7 +393,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Private methods
-
 
     private async Task<IReadOnlyCollection<TextEntry>> GetTextEntries(ChatId chatId, Range<long>[] entryIdRanges, CancellationToken cancellationToken)
     {

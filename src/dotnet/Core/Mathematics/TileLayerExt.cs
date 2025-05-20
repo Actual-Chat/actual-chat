@@ -1,3 +1,5 @@
+using ActualLab.Mathematics.Internal;
+
 namespace ActualChat.Mathematics;
 
 public static class TileLayerExt
@@ -8,5 +10,14 @@ public static class TileLayerExt
              idTile.Start < idRange.End;
              idTile = idTile.Next())
             yield return idTile;
+    }
+
+    public static Tile<long> AssertIsTileStart(this TileLayer<long> tileLayer, long tileStart)
+    {
+        var tile = tileLayer.GetTile(tileStart);
+        if (tile.Start != tileStart)
+            throw Errors.InvalidTileBoundaries(nameof(tileStart));
+
+        return tile;
     }
 }
