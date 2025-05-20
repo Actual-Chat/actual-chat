@@ -1,14 +1,14 @@
 /* image line */
 .message-attachments .message-image-attachments {
-    @apply w-full;
+    @apply w-fit;
 }
 .image-line {
     @apply flex-x gap-x-px;
     @apply max-w-96;
     @apply overflow-hidden;
 }
-.message-image-attachments.one-row .image-line {
-    @apply w-fit;
+.message-image-attachments.one-row .image-line:not(.one-image) {
+    @apply w-full h-full;
 }
 .message-image-attachments .image-line:first-child {
     @apply rounded-t-xl;
@@ -66,7 +66,7 @@ body.hoverable .image-line .image-item:hover {
     @apply h-40 md:h-48;
 }
 .one-row .image-line.one-image {
-    @apply h-full;
+    @apply h-full w-fit;
 }
 .one-row .image-line.one-image.sm-sm {
     @apply max-h-96;
@@ -124,10 +124,14 @@ body.hoverable .image-line .image-item:hover {
 /* File Attachment */
 .file-attachment {
     @apply gap-x-2;
-    @apply max-w-80;
+    @apply min-w-64 max-w-80;
     @apply p-1 pr-4;
-    @apply rounded-full border border-message-hover;
+    @apply rounded-full border border-separator;
     @apply bg-01;
+}
+body.hoverable .file-attachment:hover,
+.touch-capable .file-attachment:active {
+    filter: brightness(1.1);
 }
 .file-attachment .c-file-icon {
     @apply relative;

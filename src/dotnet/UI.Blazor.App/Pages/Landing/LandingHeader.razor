@@ -70,14 +70,16 @@
                     </div>
                     <div class="c-btn-group">
                         <div class="w-4"></div>
-                        <Button
-                            Click="@WhyUsClick"
-                            Class="btn-text btn-transparent why-us unhovered">Why us
-                        </Button>
-                        <Button
-                            Click="@PricingClick"
-                            Class="btn-text btn-transparent unhovered">Why now
-                        </Button>
+                        @if (!HostInfo.HostKind.IsMauiApp()) {
+                            <Button
+                                Click="@WhyUsClick"
+                                Class="btn-text btn-transparent why-us unhovered">Why us
+                            </Button>
+                            <Button
+                                Click="@PricingClick"
+                                Class="btn-text btn-transparent unhovered">Why now
+                            </Button>
+                        }
                         <Button
                             Click="@(_ => History.NavigateTo(Links.Docs))"
                             Class="btn-text btn-transparent unhovered">Docs
@@ -99,14 +101,16 @@
                     </div>
                     <div class="c-btn-group">
                         <div class="w-4"></div>
-                        <Button
-                            Click="@WhyUsClick"
-                            Class="btn-text btn-transparent why-us unhovered">Why us
-                        </Button>
-                        <Button
-                            Click="@PricingClick"
-                            Class="btn-text btn-transparent unhovered">Why now
-                        </Button>
+                        @if (!HostInfo.HostKind.IsMauiApp()) {
+                            <Button
+                                Click="@WhyUsClick"
+                                Class="btn-text btn-transparent why-us unhovered">Why us
+                            </Button>
+                            <Button
+                                Click="@PricingClick"
+                                Class="btn-text btn-transparent unhovered">Why now
+                            </Button>
+                        }
                         <Button
                             Click="@(_ => History.NavigateTo(Links.Docs))"
                             Class="btn-text btn-transparent unhovered">Docs
