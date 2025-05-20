@@ -419,7 +419,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         // DebugLog?.LogDebug("GetChatDataQuery: {ChatId}, {Query}, {OldData}, {Anchor}, {IdRange}", ChatId, query, oldData.KeyRange.Format(), scrollAnchor, chatIdRange.Format());
         // var firstLayer = ChatUI.IdTileStack.Layers[0];
-        var secondLayer = ChatUI.IdTileStack.Layers[1];
+        var secondLayer = ChatUI.IdTileStack.LastLayer;
         // var minTileSize = ChatUI.IdTileStack.MinTileSize;
         // var chatIdRangeEndPlus = chatIdRange.End + minTileSize;
         var firstItem = oldData.FirstItem;

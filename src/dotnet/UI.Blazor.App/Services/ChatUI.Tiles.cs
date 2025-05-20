@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -8,8 +9,8 @@ public partial class ChatUI
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
-    public static readonly TileStack<long> ConversationTileStack = Constants.Chat.ConversationTileStack;
-    public static readonly int SecondTileSize = (int)IdTileStack.Layers[1].TileSize; // 20
+    public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
+    public static readonly int SecondTileSize = (int)IdTileStack.LastLayer.TileSize; // 20
 
     private IImmutableSet<ConversationId> LastExpandedConversations { get; set; } =
         ImmutableHashSet<ConversationId>.Empty;
@@ -45,17 +46,31 @@ public partial class ChatUI
                     LoadLimit);
             }
         }
-        DebugLog?.LogDebug("Chats.GetPage: {ChatId} {DataQuery}", chatId, dataQuery);
-        var chatPage = await Chats.GetPage(Session,
-                chatId,
-                expandedConversations.ToArray(),
-                dataQuery.IdTileStart,
-                dataQuery.Offset,
-                dataQuery.Limit,
-                cancellationToken)
-            .ConfigureAwait(false);
 
-        var idTiles = GetIdTilesToLoad(chatPage);
+        var idTileStart = ServerIdTileStack.LastLayer.GetTile(dataQuery.IdTileStart).Start;
+        var chatRangeMeta = await Chats.GetRangeMeta(Session, chatId, idTileStart, cancellationToken).ConfigureAwait(false);
+        var chatRangeMetaList = new List<ChatRangeMeta> { chatRangeMeta };
+        List<Range<long>> idTiles;
+        while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, expandedConversations, out idTiles)) {
+            var prevIdTileStart = chatRangeMetaList[0].PreviousIdTileStart;
+            var nextIdTileStart = chatRangeMetaList[^1].NextIdTileStart;
+            var prevChatRangeMetaTask = prevIdTileStart.HasValue
+                ? Chats.GetRangeMeta(Session, chatId, prevIdTileStart.Value, cancellationToken)
+                : Task.FromResult<ChatRangeMeta?>(null)!;
+            var nextChatRangeMetaTask = nextIdTileStart.HasValue
+                ? Chats.GetRangeMeta(Session, chatId, nextIdTileStart.Value, cancellationToken)
+                : Task.FromResult<ChatRangeMeta?>(null)!;
+            await Task.WhenAll(prevChatRangeMetaTask, nextChatRangeMetaTask).ConfigureAwait(false);
+            var prevChatRangeMeta = await prevChatRangeMetaTask.ConfigureAwait(false);
+            var nextChatRangeMeta = await nextChatRangeMetaTask.ConfigureAwait(false);
+            if (prevChatRangeMeta == null! && nextChatRangeMeta == null!)
+                break;
+
+            if (prevChatRangeMeta != null)
+                chatRangeMetaList.Insert(0, prevChatRangeMeta);
+            if (nextChatRangeMeta != null!)
+                chatRangeMetaList.Add(nextChatRangeMeta);
+        }
         var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
         var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
@@ -122,14 +137,120 @@ public partial class ChatUI
         var groupedTiles = GroupExpandedConversations(groupedItems);
         return groupedTiles;
 
-        List<Range<long>> GetIdTilesToLoad(ChatPageMap page)
-            => page.EntryIdTileRanges
-                .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
-                .Concat(page.ConversationIdTileRanges.Select(r => IdTileStack.FirstLayer.GetTile(r.Start)))
-                .Select(t => t.Range)
-                .Distinct()
-                .OrderBy(r => r.Start)
+        bool TryGetIdTilesToLoad(
+            ChatDataQuery dataQuery1,
+            IList<ChatRangeMeta> chatRangeMeta1,
+            IImmutableSet<ConversationId> expandedConversations1,
+            out List<Range<long>> idTiles1)
+        {
+            var hasPreviousIdTile = chatRangeMeta1[0].PreviousIdTileStart.HasValue;
+            var hasNextIdTile = chatRangeMeta1[^1].NextIdTileStart.HasValue;
+            var entryIdRanges = chatRangeMeta1.SelectMany(m => m.EntryIdRanges);
+            var conversationIdRanges = chatRangeMeta1.SelectMany(m => m.ConversationIdRanges);
+
+            var excludedRanges = conversationIdRanges
+                .Where(r => !expandedConversations1.Contains(new ConversationId(chatId, r.Start, AssumeValid.Option)))
                 .ToList();
+
+            var merged = entryIdRanges
+                .Merge(excludedRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
+                .ToList();
+
+            var startEntryLid = 0L;
+            var before = 0;
+            var after = 0;
+            var resultIdRanges = new List<Range<long>>();
+            foreach (var (entryRange, conversationRange) in merged) {
+                var hasEntryRange = !entryRange.IsEmpty;
+                var hasConversationRange = !conversationRange.IsEmpty;
+                if (hasEntryRange && hasConversationRange) {
+                    var (l,r) = entryRange.Subtract(conversationRange);
+                    if (!l.IsEmpty)
+                        resultIdRanges.Add(l);
+                    if (!r.IsEmpty)
+                        resultIdRanges.Add(r);
+                }
+                else if (hasEntryRange)
+                    resultIdRanges.Add(entryRange);
+                else
+                   resultIdRanges.Add(new Range<long>(conversationRange.Start, conversationRange.Start + 1)); // Add Start range for the conversation
+            }
+            var (queryStart, offset, limit) = dataQuery1;
+            var entryIdRangesSpan = resultIdRanges.AsSpan();
+            var index = entryIdRangesSpan.BinarySearch(r => r.End > queryStart);
+            if (index >= 0) {
+                var beforeRanges = entryIdRangesSpan[..index];
+                var afterRanges = index >= entryIdRangesSpan.Length - 1 ? [] : entryIdRangesSpan[(index + 1)..];
+                var indexRange = entryIdRangesSpan[index];
+                var (l,r) = indexRange.Split(queryStart);
+                before += (int)l.Size();
+                after += (int)r.Size();
+                if (offset < 0) {
+                    if (before >= -offset)
+                        startEntryLid = l.End + offset;
+                }
+                else {
+                    if (after >= offset)
+                        startEntryLid = r.Start + offset;
+                }
+
+                foreach (var range in beforeRanges) {
+                    var size = (int)range.Size();
+                    if (startEntryLid == 0L)
+                        if (offset < 0)
+                            if (before + size >= -offset)
+                                startEntryLid = range.Start + size + (before + offset);
+                    before += size;
+                }
+                foreach (var range in afterRanges) {
+                    var size = (int)range.Size();
+                    if (startEntryLid == 0L)
+                        if (offset < 0)
+                            startEntryLid = entryIdRangesSpan[0].Start;
+                        else {
+                            if (after + size >= offset)
+                                startEntryLid = range.Start + size + (after - offset);
+                        }
+                    after += size;
+                }
+            }
+            else
+                foreach (var range in entryIdRangesSpan)
+                    before += (int)range.Size();
+
+            idTiles1 = [];
+            var currentLimit = 0;
+            var lastIdRangeStart = 0L;
+            foreach (var idRange in resultIdRanges) {
+                if (idRange.End <= startEntryLid)
+                    continue; // Skip ranges before the start entry lid
+
+                if (idRange.Start <= startEntryLid) {
+                    var range = new Range<long>(startEntryLid, Math.Min(startEntryLid + limit, idRange.End));
+                    var size = (int)range.Size();
+                    currentLimit += size;
+                    idTiles1.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(range).Select(t => t.Range).SkipWhile(r => r.Start == lastIdRangeStart));
+                }
+                else {
+                    if (currentLimit >= limit)
+                        break; // Stop if we reached the limit
+
+                    var range = idRange;
+                    var size = (int)range.Size();
+                    if (currentLimit + size >= limit)
+                        range = new Range<long>(idRange.Start, idRange.Start + limit - currentLimit);
+
+                    currentLimit += size;
+                    idTiles1.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(range).Select(t => t.Range).SkipWhile(r => r.Start == lastIdRangeStart));
+                }
+                lastIdRangeStart = idTiles1[^1].Start;
+            }
+
+            if (offset < 0)
+                return (before >= -offset || !hasPreviousIdTile) && (after >= limit || !hasNextIdTile);
+
+            return after >= offset + limit || !hasNextIdTile;
+        }
     }
 
     [ComputeMethod]
@@ -162,9 +283,7 @@ public partial class ChatUI
         var conversations = Array.Empty<Conversation>();
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         if (showConversations) {
-            var conversationIdTile =
-                ConversationTileStack.LastLayer
-                    .GetTile(idRange.Start); // Get largest tile that contains the requested range
+            var conversationIdTile = ServerIdTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);

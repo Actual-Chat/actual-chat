@@ -226,7 +226,7 @@ public partial class ChatUI
                                 ? lastReadEntryLid
                                 : chatInfo.News.TextEntryIdRange.End;
 
-                            var secondLayer = IdTileStack.Layers[1];
+                            var secondLayer = IdTileStack.LastLayer;
                             var idTileStart = secondLayer.GetTile(prefetchNearTo).Start;
                             var chatDataQuery = new ChatDataQuery(idTileStart, -HalfLoadLimit, LoadLimit);
                             _ = GetChatItems(chatId, chatDataQuery, lastReadEntryLid, cancellationToken);

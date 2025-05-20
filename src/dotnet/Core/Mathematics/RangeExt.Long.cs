@@ -74,6 +74,14 @@ public static partial class RangeExt
             : ((range.Start, intersection.Start), (intersection.End, range.End));
     }
 
+    public static (Range<long>, Range<long>) Split(this Range<long> range, long splitAt)
+    {
+        if (range.Start > splitAt || range.End < splitAt)
+            throw StandardError.Constraint($"Split point is outside the range. Range={range}. SplitAt={splitAt}.");
+
+        return ((range.Start, splitAt), (splitAt, range.End));
+    }
+
     public static Range<long> ExpandToTiles(this Range<long> range, TileLayer<long> tiles)
     {
         var startTile = tiles.GetTile(range.Start);

@@ -38,6 +38,12 @@ public interface IChatsBackend : IComputeService, IBackendService
         bool includeRemoved,
         CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ChatEntryRangeMeta> GetRangeMeta(
+        ChatId chatId,
+        long idTileStart,
+        CancellationToken cancellationToken);
+
     // Note that it returns (firstId, lastId + 1) range!
     [ComputeMethod]
     Task<Range<long>> GetIdRange(
