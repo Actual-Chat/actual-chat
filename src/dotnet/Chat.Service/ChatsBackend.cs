@@ -414,7 +414,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 && e.LocalId < idTileRange.Start
                 && !e.IsRemoved)
             .OrderByDescending(e => e.LocalId)
-            .Select(e => e.LocalId)
+            .Select(e => (long?)e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -424,7 +424,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 && e.LocalId >= idTileRange.End
                 && !e.IsRemoved)
             .OrderBy(e => e.LocalId)
-            .Select(e => e.LocalId)
+            .Select(e => (long?)e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 

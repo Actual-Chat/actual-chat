@@ -16,7 +16,7 @@ public partial class ChatUI
             AsyncChain.From(ResetHighlightedEntry),
             AsyncChain.From(PushKeepAwakeState),
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
-            AsyncChain.From(PrefetchChatTails),
+            // AsyncChain.From(PrefetchChatTails),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (

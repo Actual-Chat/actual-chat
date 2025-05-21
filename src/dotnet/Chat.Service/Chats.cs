@@ -124,7 +124,7 @@ public class Chats(IServiceProvider services) : IChats
         entryIdRanges.AddRange(entryRangeMeta.EntryRanges);
         conversationIdRanges.AddRange(conversationRangeMeta.ConversationRanges);
         minCount += EstimateMinimumCount(entryRangeMeta, conversationRangeMeta);
-        var hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || !chatIdRange.Contains(new Range<long>(start, end));
+        var hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(start, end).Contains(chatIdRange);
 
         var previousEntryRangeMeta = entryRangeMeta;
         var previousConversationRangeMeta = conversationRangeMeta;
@@ -160,8 +160,7 @@ public class Chats(IServiceProvider services) : IChats
                 entryIdRanges.AddRange(previousEntryRangeMeta.EntryRanges);
                 conversationIdRanges.AddRange(previousConversationRangeMeta.ConversationRanges);
                 minCount += EstimateMinimumCount(previousEntryRangeMeta, previousConversationRangeMeta);
-                hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize
-                    || !chatIdRange.Contains(new Range<long>(start, end));
+                hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(start, end).Contains(chatIdRange);
                 if (hasFulfilled)
                     break;
             }
@@ -179,8 +178,10 @@ public class Chats(IServiceProvider services) : IChats
             entryIdRanges.AddRange(nextEntryRangeMeta.EntryRanges);
             conversationIdRanges.AddRange(nextConversationRangeMeta.ConversationRanges);
             minCount += EstimateMinimumCount(nextEntryRangeMeta, nextConversationRangeMeta);
-            hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || !chatIdRange.Contains(new Range<long>(start, end));
+            hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(start, end).Contains(chatIdRange);
         }
+        previousId = Math.Max(previousEntryRangeMeta.PreviousEntryId ?? 0, (previousConversationRangeMeta.PreviousConversationRange?.End ?? 1) - 1);
+        nextId = Math.Min(nextEntryRangeMeta.NextEntryId ?? long.MaxValue, nextConversationRangeMeta.NextConversationRange?.Start ?? long.MaxValue);
         entryIdRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
         conversationIdRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
 

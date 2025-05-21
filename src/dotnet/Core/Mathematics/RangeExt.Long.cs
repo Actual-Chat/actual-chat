@@ -76,8 +76,11 @@ public static partial class RangeExt
 
     public static (Range<long>, Range<long>) Split(this Range<long> range, long splitAt)
     {
-        if (range.Start > splitAt || range.End < splitAt)
-            throw StandardError.Constraint($"Split point is outside the range. Range={range}. SplitAt={splitAt}.");
+        if (range.Start > splitAt)
+            return ((range.Start, range.Start), range);
+
+        if (range.End < splitAt)
+            return (range, (range.End, range.End));
 
         return ((range.Start, splitAt), (splitAt, range.End));
     }
