@@ -218,9 +218,10 @@ public partial class ChatUI
                 foreach (var range in entryIdRangesSpan)
                     before += (int)range.Size();
 
-            idTiles1 = [];
+
             var currentLimit = 0;
             var lastIdRangeStart = 0L;
+            var resultTiles = new List<Range<long>>();
             foreach (var idRange in resultIdRanges) {
                 if (idRange.End <= startEntryLid)
                     continue; // Skip ranges before the start entry lid
@@ -229,7 +230,7 @@ public partial class ChatUI
                     var range = new Range<long>(startEntryLid, Math.Min(startEntryLid + limit, idRange.End));
                     var size = (int)range.Size();
                     currentLimit += size;
-                    idTiles1.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(range).Select(t => t.Range).SkipWhile(r => r.Start == lastIdRangeStart));
+                    resultTiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(range).Select(t => t.Range).SkipWhile(r => r.Start == lastIdRangeStart));
                 }
                 else {
                     if (currentLimit >= limit)
@@ -241,11 +242,15 @@ public partial class ChatUI
                         range = new Range<long>(idRange.Start, idRange.Start + limit - currentLimit);
 
                     currentLimit += size;
-                    idTiles1.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(range).Select(t => t.Range).SkipWhile(r => r.Start == lastIdRangeStart));
+                    resultTiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(range).Select(t => t.Range).SkipWhile(r => r.Start == lastIdRangeStart));
                 }
-                lastIdRangeStart = idTiles1[^1].Start;
+                lastIdRangeStart = resultTiles[^1].Start;
             }
 
+            idTiles1 = resultTiles
+                .Distinct()
+                .OrderBy(r => r.Start)
+                .ToList();
             if (offset < 0)
                 return (before >= -offset || !hasPreviousIdTile) && (after >= limit || !hasNextIdTile);
 

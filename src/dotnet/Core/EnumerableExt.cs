@@ -68,38 +68,70 @@ public static class EnumerableExt
         using var leftEnumerator = left.GetEnumerator();
         using var rightEnumerator = right.GetEnumerator();
 
+        // Build lists to store matching elements with the same comparison value
+        var leftMatches = new List<TLeft>();
+        var rightMatches = new List<TRight>();
+
         var leftHasNext = leftEnumerator.MoveNext();
         var rightHasNext = rightEnumerator.MoveNext();
 
         while (leftHasNext && rightHasNext) {
             var comparison = comparer(leftEnumerator.Current, rightEnumerator.Current);
             if (comparison < 0) {
+                // Left is smaller, yield it and move left forward
                 yield return (leftEnumerator.Current, default);
-
                 leftHasNext = leftEnumerator.MoveNext();
             }
             else if (comparison > 0) {
+                // Right is smaller, yield it and move right forward
                 yield return (default, rightEnumerator.Current);
-
                 rightHasNext = rightEnumerator.MoveNext();
             }
             else {
-                yield return (leftEnumerator.Current, rightEnumerator.Current);
+                // Elements match (comparer returned 0)
+                // Collect all matching elements from both sides
+                leftMatches.Clear();
+                rightMatches.Clear();
 
+                // Collect current and all subsequent left elements that match
+                TLeft currentLeft = leftEnumerator.Current;
+                leftMatches.Add(currentLeft);
                 leftHasNext = leftEnumerator.MoveNext();
+
+                // Check if there are more left elements with the same comparison value
+                while (leftHasNext && comparer(leftEnumerator.Current, rightEnumerator.Current) == 0) {
+                    leftMatches.Add(leftEnumerator.Current);
+                    leftHasNext = leftEnumerator.MoveNext();
+                }
+
+                // Collect current and all subsequent right elements that match
+                TRight currentRight = rightEnumerator.Current;
+                rightMatches.Add(currentRight);
                 rightHasNext = rightEnumerator.MoveNext();
+
+                // Check if there are more right elements that match the original left element
+                while (rightHasNext && comparer(currentLeft, rightEnumerator.Current) == 0) {
+                    rightMatches.Add(rightEnumerator.Current);
+                    rightHasNext = rightEnumerator.MoveNext();
+                }
+
+                // Create all combinations of matches
+                // This ensures that all duplicates are properly paired
+                foreach (var leftItem in leftMatches)
+                foreach (var rightItem in rightMatches)
+                    yield return (leftItem, rightItem);
             }
         }
 
+        // Process any remaining elements in the left sequence
         while (leftHasNext) {
             yield return (leftEnumerator.Current, default);
-
             leftHasNext = leftEnumerator.MoveNext();
         }
 
+        // Process any remaining elements in the right sequence
         while (rightHasNext) {
             yield return (default, rightEnumerator.Current);
-
             rightHasNext = rightEnumerator.MoveNext();
         }
     }

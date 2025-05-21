@@ -51,13 +51,13 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var previousConversationRange = await dbContext.Conversations
             .Where(c => c.ChatId == chatId && c.EndEntryLid < idTileRange.Start)
             .OrderByDescending(c => c.StartEntryLid)
-            .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
+            .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         var nextConversationRange = await dbContext.Conversations
             .Where(c => c.ChatId == chatId && c.StartEntryLid >= idTileRange.End)
             .OrderBy(c => c.StartEntryLid)
-            .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
+            .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -67,59 +67,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             nextConversationRange);
     }
 
-    public async Task<ConversationId[]> GetPage(
-        ChatId chatId,
-        long idTileStart,
-        int offset,
-        int limit,
-        CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        List<string> sConversationIds;
-        if (offset >= 0)
-            sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.EndEntryLid >= idTileStart)
-                .OrderBy(c => c.StartEntryLid)
-                .Take(offset + limit)
-                .Select(c => c.Id)
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-        else {
-            var firstMatchedConversationSid = await dbContext.Conversations
-                .Where(c => c.ChatId == chatId && c.EndEntryLid < idTileStart)
-                .OrderByDescending(c => c.StartEntryLid)
-                .Skip(-offset)
-                .Select(c => c.Id)
-                .FirstOrDefaultAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            if (string.IsNullOrEmpty(firstMatchedConversationSid))
-                firstMatchedConversationSid = await dbContext.Conversations
-                    .Where(c => c.ChatId == chatId && c.EndEntryLid >= idTileStart)
-                    .OrderBy(c => c.StartEntryLid)
-                    .Select(c => c.Id)
-                    .FirstOrDefaultAsync(cancellationToken)
-                    .ConfigureAwait(false);
-            if (string.IsNullOrEmpty(firstMatchedConversationSid))
-                sConversationIds = [];
-            else {
-                var firstMatchedConversationId = new ConversationId(firstMatchedConversationSid, ParseOrNone.Option);
-                sConversationIds = await dbContext.Conversations
-                    .Where(c => c.ChatId == chatId && c.StartEntryLid >= firstMatchedConversationId.StartEntryLid)
-                    .OrderBy(c => c.StartEntryLid)
-                    .Take(limit)
-                    .Select(c => c.Id)
-                    .ToListAsync(cancellationToken)
-                    .ConfigureAwait(false);
-            }
-        }
-
-        return sConversationIds
-            .Select(s => new ConversationId(s, ParseOrNone.Option))
-            .ToArray();
-    }
 
     // Commands
 
@@ -385,7 +332,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .GroupBy(a => a.AuthorId)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
-                .ToArray()
+                .ToArray(),
         };
         var change = Change.Update(diff);
         var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);

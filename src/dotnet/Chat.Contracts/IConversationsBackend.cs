@@ -13,9 +13,6 @@ public interface IConversationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ConversationRangeMeta> GetRangeMeta(ChatId chatId, long idTileStart, CancellationToken cancellationToken);
 
-    // Not a compute method
-    Task<ConversationId[]> GetPage(ChatId chatId, long idTileStart, int offset, int limit, CancellationToken cancellationToken);
-
     // Commands
 
     [CommandHandler]
