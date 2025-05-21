@@ -9,7 +9,7 @@ public static class ContactOperations
         this IWebTester tester,
         Account owner,
         params Account[] others)
-        => others.Select(x => CreatePeerContact(tester, owner, x)).Collect();
+        => others.Select(x => CreatePeerContact(tester, owner, x)).Collect(Environment.ProcessorCount / 2);
 
     public static Task<Contact> CreatePeerContact(
         this IWebTester tester,

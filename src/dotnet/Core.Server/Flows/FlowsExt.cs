@@ -1,5 +1,6 @@
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.Flows;
 
@@ -47,23 +48,6 @@ public static class FlowsExt
                 maxLastRunIn,
                 tag,
                 delay,
-                cancellationToken)
-            .ConfigureAwait(false);
-
-    public static async Task<TFlow?> GetAndResume<TFlow>(
-        this IFlows flows,
-        string arguments,
-        string tag,
-        Moment? delayUntil = null,
-        CancellationToken cancellationToken = default)
-        where TFlow : Flow
-        => (TFlow?)await flows.GetAndSendEvent(typeof(TFlow),
-                arguments,
-                (id, now) => new FlowResumeEvent(id,
-                    false,
-                    tag,
-                    null,
-                    delayUntil),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -124,17 +108,24 @@ public static class FlowsExt
         var queues = services.Queues();
         var clocks = services.Clocks();
         var log = services.LogFor<IFlows>();
+        var debugLog = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
         var flowId = flows.GetFlowId(flowType, arguments);
         var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
         if (flow is null) {
-            log.LogInformation("`{Id}`.GetAndResume: skip resume because the flow was not found", flowId);
+            log.LogInformation("`{Id}`.GetAndSendEvent: skipped because the flow was not found", flowId);
             return null;
         }
 
         var now = clocks.SystemClock.Now;
         var flowEvent = eventFactory(flowId, now);
         await queues.Enqueue(flowEvent, cancellationToken).ConfigureAwait(false);
+        debugLog?.LogDebug(
+            "`{Id}`.GetAndSendEvent: sent {Event} with delayUntil='{Delay}' and maxLastRunAt='{MaxLastRunAt}'",
+            flowId,
+            flowEvent.GetType().Name,
+            (flowEvent as IDelayed)?.DelayUntil,
+            (flowEvent as FlowResumeEvent)?.MaxLastRunAt);
         return flow;
     }
 

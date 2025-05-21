@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
@@ -9,7 +10,8 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class PlaceContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<SlowAppHostFixture>(fixture, @out)
 {
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     private string UniquePart { get; } = UniqueNames.Prefix();
 
@@ -51,7 +53,7 @@ public class PlaceContactIndexingStressTest(SlowAppHostFixture fixture, ITestOut
     // Private methods
 
     private Task<Place[]> CreatePlaces(int count, string prefix)
-        => Enumerable.Range(1, count).Select(i => CreatePlace($"{prefix} {i}")).Collect(Environment.ProcessorCount);
+        => Enumerable.Range(1, count).Select(i => CreatePlace($"{prefix} {i}")).Collect(Environment.ProcessorCount / 2);
 
     private Task<Place> CreatePlace(string title)
         => Tester.CreatePlace(false, $"{title} {UniquePart}");

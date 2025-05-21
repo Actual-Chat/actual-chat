@@ -151,7 +151,7 @@ public static class ChatOperations
                 => tester.AuthorsBackend
                     .GetByUserId(chatId, userId, RequestedAuthorKind.Full, CancellationToken.None)
                     .Require())
-            .Collect(CancellationToken.None);
+            .Collect(Environment.ProcessorCount / 2);
     }
 
     public static Task LeaveChat(this IWebTester tester, ChatId chatId)

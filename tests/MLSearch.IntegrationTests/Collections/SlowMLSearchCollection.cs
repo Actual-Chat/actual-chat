@@ -8,7 +8,7 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class SlowMLSearchCollection : ICollectionFixture<SlowAppHostFixture>;
 
 public class SlowAppHostFixture(IMessageSink messageSink)
-    : Testing.Host.AppHostFixture("slow_ml_search", messageSink, TestAppHostOptions.Default with {
+    : Testing.Host.AppHostFixture("ml_search_slow", messageSink, TestAppHostOptions.Default with {
         ConfigureHost = (__, cfg) => {
             _ = cfg.AddInMemory<MLSearchSettings>((x => x.IsEnabled, "true"),
                 (x => x.IsInitialIndexingDisabled, "true"),

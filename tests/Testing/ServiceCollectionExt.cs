@@ -58,7 +58,7 @@ public static class ServiceCollectionExt
                     new TestOutputHelperAccessorWrapper(outputAccessor),
                     new XUnitLoggerOptions() {
                         Filter = (_, _) => true,
-                        TimestampFormat = "ss:fff",
+                        TimestampFormat = "mm:ss.fff",
                     }));
 #pragma warning restore CS0618
         });

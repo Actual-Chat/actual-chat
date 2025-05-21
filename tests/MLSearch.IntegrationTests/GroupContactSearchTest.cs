@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using static ActualChat.Testing.Host.Assertion.AssertOptionsExt;
@@ -8,7 +9,8 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
     private string UniquePart { get; } = UniqueNames.Prefix();
 
     protected override async Task DisposeAsync()
