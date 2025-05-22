@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Step;
+@if (CurrentStep != this) {
+    return;
+}
+
+<div class="onboarding-tutorial tutorial-4">
+    <img draggable="false" src="/dist/images/onboarding/tutorial-4.svg" alt="Tutorial slide #4">
+    <div class="c-title">
+        <p>
+            Chats connect,
+        </p>
+        <p>
+            Places create communities.
+        </p>
+    </div>
+    <p class="c-description">
+        Connect with like-minded people by joining a Place.
+    </p>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+
+    [Parameter] public EventCallback OnVerifyClick { get; set; }
+
+    public override bool CanSkip => true;
+
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsOnBoardingStep4Completed;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsOnBoardingStep4Completed = true });
+
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
+
+    protected override ValueTask OnSkip()
+        => ValueTask.CompletedTask;
+
+    protected override Task<bool> Save()
+        => Task.FromResult(true);
+}

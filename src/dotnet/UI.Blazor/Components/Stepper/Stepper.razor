@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="stepper">
+<div class="stepper @Class">
     <CascadingValue Value="@this" IsFixed="true">
         @if (Header != null) {
             <div class="stepper-header">
@@ -19,12 +19,12 @@
                 </div>
             }
             <div class="stepper-filler"></div>
-            @if (Footer != null) {
-                <div class="stepper-footer">
-                    @Footer.Invoke(this)
-                </div>
-            }
         </div>
+        @if (Footer != null) {
+            <div class="stepper-footer">
+                @Footer.Invoke(this)
+            </div>
+        }
     </CascadingValue>
 </div>
 
@@ -37,6 +37,7 @@
     [Parameter] public RenderFragment<Stepper>? Steps { get; set; }
     [Parameter] public RenderFragment<Stepper>? Filler { get; set; }
     [Parameter] public EventCallback<bool> CurrentStepChanged { get; set; }
+    [Parameter] public string Class { get; set; } = "";
 
     public int StepCount => _steps.Count;
     public int LastStepIndex => Math.Max(0, _steps.Count - 1);
@@ -73,6 +74,9 @@
 
     public ValueTask<bool> MoveBack()
         => Move(-1);
+
+    public async ValueTask MoveTo(int offset)
+        => await Move(offset);
 
     private async ValueTask<bool> Move(int offset) {
         if (_currentStep == null)

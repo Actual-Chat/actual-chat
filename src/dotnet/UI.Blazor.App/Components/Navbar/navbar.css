@@ -122,8 +122,9 @@ body.hoverable .navbar-item:hover,
     @apply bg-hover;
     @apply cursor-pointer;
 }
-.navbar-item:has(.navbar-item-content:active) {
-    @apply bg-transparent border-x border-transparent;
+.navbar-item:active,
+.navbar-item:hover:active {
+    filter: brightness(1.2);
 }
 .navbar-item.active {
     @apply bg-selected;

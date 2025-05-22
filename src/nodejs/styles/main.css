@@ -168,7 +168,7 @@ body.narrow .layout-header > .c-content.selection-header {
 
 .layout-footer {
     @apply sticky bottom-0;
-    @apply flex-none flex-y z-10;
+    @apply flex-none flex-y items-center z-10;
     @apply w-full min-h-footer;
     @apply overflow-visible;
     @apply shadow-none;
@@ -177,8 +177,8 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 
 .layout-subfooter {
-    @apply flex-none flex-y;
-    @apply w-full;
+    @apply flex-none flex-y self-center;
+    @apply w-full lg:max-w-192;
     @apply overflow-visible;
 }
 
@@ -318,7 +318,7 @@ body.narrow .layout-header > .c-content.selection-header {
 
 .page-with-header-and-footer .layout-body-wrapper > .c-container {
     @apply relative flex-1 -flex-y;
-    @apply h-full lg:max-w-192;
+    @apply h-full;
     @apply overflow-hidden;
 }
 

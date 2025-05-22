@@ -3,6 +3,33 @@ import {css, html, LitElement} from "lit";
 
 @customElement('loading-cat-svg')
 class LoadingCatSvg extends LitElement {
+    static styles = [css`
+        :host {
+        }
+        @keyframes twinkle {
+            0%, 100% {
+                filter: blur(2px) opacity(0);
+            }
+            50% {
+                filter: blur(0px) opacity(1);
+            }
+        }
+        .twinkle-star {
+            transform: scale(0.8);
+            animation: twinkle 5s infinite ease-in-out;
+        }
+        .twinkle-star.delayed {
+            filter: blur(2px) opacity(0);
+        }
+        .star-1 { animation-delay: 0.5s; }
+        .star-2 { animation-delay: 1.75s; }
+        .star-3 { animation-delay: 3.0s; }
+        .star-4 { animation-delay: 4.25s; }
+        .star-5 { animation-delay: 1.0s; }
+        .star-6 { animation-delay: 3.5s; }
+        .star-7 { animation-delay: 1.0s; }
+        .star-8 { animation-delay: 3.5s; }
+    `];
     protected render(): unknown {
         return html`
             <svg width="165" height="257" viewBox="0 0 165 257" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -10,17 +37,53 @@ class LoadingCatSvg extends LitElement {
                 <path d="M89.6 48.9V0.3C87.2 0.1 84.9 0 82.5 0C44.9 0 13.1 25.2 3.2 59.6H78.8C84.7 59.6 89.6 54.8 89.6 48.9Z" fill="url(#paint1_linear_20922_59374)"/>
                 <path d="M104.3 85.1V162C139.3 152.4 165 120.5 165 82.5C165 79.8 164.9 77 164.6 74.4H115C109.1 74.3 104.3 79.2 104.3 85.1Z" fill="url(#paint2_linear_20922_59374)"/>
                 <path d="M78.8 74.3H0.4C0.1 77 0 79.7 0 82.5C0 128 36.9 165 82.5 165C84.9 165 87.3 164.9 89.6 164.7V85.1C89.6 79.2 84.7 74.3 78.8 74.3Z" fill="url(#paint3_linear_20922_59374)"/>
-                <g clip-path="url(#clip0_20922_59374)">
-                    <path d="M46.5 36L43.2 29.9L37 26.5L43.1 23.2L46.5 17L49.9 23.1L56 26.5L49.9 29.9L46.5 36Z" fill="var(--loading-cat-stars)"/>
+                <g clip-path="url(#clip0_20922_59374)"
+                   style="transform: translate(0, 26px) scale(0.6);"
+                   class="star-1 twinkle-star">
+                    <path d="M46.5 36L43.2 29.9L37 26.5L43.1 23.2L46.5 17L49.9 23.1L56 26.5L49.9 29.9L46.5 36Z"
+                          fill="var(--loading-cat-stars)"/>
                 </g>
-                <g clip-path="url(#clip1_20922_59374)">
+                <g clip-path="url(#clip0_20922_59374)"
+                    style="transform: translate(50px, 0) scale(0.6);"
+                    class="star-2 twinkle-star delayed">
+                    <path
+                        d="M46.5 36L43.2 29.9L37 26.5L43.1 23.2L46.5 17L49.9 23.1L56 26.5L49.9 29.9L46.5 36Z"
+                        fill="var(--loading-cat-stars)"
+                    />
+                </g>
+                <g clip-path="url(#clip1_20922_59374)"
+                   style="transform: translate(6px, -6px) scale(0.6);"
+                   class="star-3 twinkle-star">
                     <path d="M67.5 55L64.2 48.9L58 45.5L64.1 42.2L67.5 36L70.9 42.1L77 45.5L70.9 48.9L67.5 55Z" fill="var(--loading-cat-stars)"/>
                 </g>
-                <g clip-path="url(#clip2_20922_59374)">
-                    <path d="M138.5 53L135.2 46.9L129 43.5L135.1 40.2L138.5 34L141.9 40.1L148 43.5L141.9 46.9L138.5 53Z" fill="var(--loading-cat-stars)"/>
+                <g clip-path="url(#clip1_20922_59374)"
+                   style="transform: translate(28px, 18px) scale(0.6);"
+                   class="star-4 twinkle-star delayed">
+                    <path d="M67.5 55L64.2 48.9L58 45.5L64.1 42.2L67.5 36L70.9 42.1L77 45.5L70.9 48.9L67.5 55Z" fill="var(--loading-cat-stars)"/>
                 </g>
-                <g clip-path="url(#clip3_20922_59374)">
-                    <path d="M120.5 106L117.2 99.9L111 96.5L117.1 93.2L120.5 87L123.9 93.1L130 96.5L123.9 99.9L120.5 106Z" fill="var(--loading-cat-stars)"/>
+                <g clip-path="url(#clip2_20922_59374)"
+                   style="transform: translate(32px, -6px) scale(0.6);"
+                   class="star-5 twinkle-star">
+                    <path d="M138.5 53L135.2 46.9L129 43.5L135.1 40.2L138.5 34L141.9 40.1L148 43.5L141.9 46.9L138.5 53Z"
+                          fill="var(--loading-cat-stars)"/>
+                </g>
+                <g clip-path="url(#clip2_20922_59374)"
+                   style="transform: translate(54px, 20px) scale(0.6);"
+                   class="star-6 twinkle-star delayed">
+                    <path d="M138.5 53L135.2 46.9L129 43.5L135.1 40.2L138.5 34L141.9 40.1L148 43.5L141.9 46.9L138.5 53Z"
+                          fill="var(--loading-cat-stars)"/>
+                </g>
+                <g clip-path="url(#clip3_20922_59374)"
+                   style="transform: translate(54px, 30px) scale(0.6);"
+                   class="star-7 twinkle-star">
+                    <path d="M120.5 106L117.2 99.9L111 96.5L117.1 93.2L120.5 87L123.9 93.1L130 96.5L123.9 99.9L120.5 106Z"
+                          fill="var(--loading-cat-stars)"/>
+                </g>
+                <g clip-path="url(#clip3_20922_59374)"
+                   style="transform: translate(74px, 46px) scale(0.6);"
+                   class="star-8 twinkle-star delayed">
+                    <path d="M120.5 106L117.2 99.9L111 96.5L117.1 93.2L120.5 87L123.9 93.1L130 96.5L123.9 99.9L120.5 106Z"
+                          fill="var(--loading-cat-stars)"/>
                 </g>
                 <path d="M133.75 145.6V136.1L130.25 131.1L124.75 129.1L117.75 134.1V148.6L123.25 165.6L132.25 181.1L139.75 194.1L143.75 208.1L141.25 222.1L135.75 230.6L126.75 236.1L114.75 238.1L101.25 236.1L88.75 230.6L99.25 225.6L105.75 222.1L114.75 213.6L120.25 204.1L121.25 191.1L117.75 182.1L112.25 174.6L103.75 168.6L105.75 160.1V148.6L101.25 131.1L95.75 119.1L87.25 111.6L92.25 104.6L93.75 95.0996V87.0996L92.25 81.5996L93.75 74.5996V66.0996L90.25 58.5996L87.25 61.0996L82.75 62.5996L79.75 67.5996L74.75 66.0996L67.25 64.5996H59.25L53.75 66.0996L48.75 61.0996L42.75 58.5996L40.75 64.5996L38.75 73.5996L41.75 81.5996L38.75 87.0996V95.0996L40.75 102.1L45.75 110.1L40.75 116.1L34.75 124.6L29.75 138.6L27.75 152.1L29.75 168.6L19.25 177.6L13.75 188.6L15.25 205.6L23.75 218.1L35.75 225.6L53.25 232.6H65.25L73.75 240.6L88.75 248.6L102.75 254.6H117.75L131.75 251.6L142.75 245.1L151.75 236.1L157.25 222.1L159.25 207.1L155.25 191.1L151.75 182.1L146.25 171.6L139.75 161.6L135.75 152.1L133.75 145.6Z" fill="url(#paint4_linear_20922_59374)"/>
                 <path d="M93.8002 162.9C110.7 169.2 122.3 181.6 122.3 195.8C122.3 211.3 108.6 224.6 89.2002 230.2" stroke="var(--loading-cat-lines-1)" stroke-width="3.0734" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
