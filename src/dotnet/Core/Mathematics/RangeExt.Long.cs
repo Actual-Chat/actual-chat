@@ -118,4 +118,10 @@ public static partial class RangeExt
             long.Parse(startMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture),
             long.Parse(endMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture));
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Range<long> EnsureNonEmpty(this Range<long> range)
+        => range.IsEmpty
+            ? new Range<long>(range.Start, range.End + 1)
+            : range;
 }

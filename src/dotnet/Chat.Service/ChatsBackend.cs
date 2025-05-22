@@ -527,13 +527,21 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 var hasConversationRange = !conversationRange.IsEmpty;
 
                 // If we start processing a NEW entryRange, flush the pending right-hand side
-                if (hasEntryRange && entryRange != currentEntryRange) {
-                    AddRangeCount(pendingRight ?? default);
-                    pendingRight = null;
-                    currentEntryRange = entryRange;
+                var conversationStartRange = new Range<long>(conversationRange.Start, conversationRange.Start + 1);
+                if (hasEntryRange) {
+                    if (entryRange == currentEntryRange && hasConversationRange) {
+                        var (l, r) = (pendingRight ?? default).Subtract(conversationRange);
+                        AddRangeCount(l);
+                        AddRangeCount(conversationStartRange);
+                        pendingRight = r;
+                    }
+                    else {
+                        AddRangeCount(pendingRight ?? default);
+                        pendingRight = null;
+                        currentEntryRange = entryRange;
+                    }
                 }
 
-                var conversationStartRange = new Range<long>(conversationRange.Start, conversationRange.Start + 1);
                 if (hasEntryRange && hasConversationRange) {
                     if (entryRange.Contains(conversationRange))
                         AddRangeCount(conversationStartRange);

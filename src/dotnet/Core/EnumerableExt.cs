@@ -197,13 +197,33 @@ public static class EnumerableExt
 
         // Process any remaining elements in the left sequence
         while (leftHasNext) {
-            yield return (leftEnumerator.Current, default);
+            var lValue = leftEnumerator.Current;
+            var leftKey = leftKeySelector(lValue);
+            rightMatches.RemoveAll(rm => {
+                var rmKey = rightKeySelector(rm);
+                return keyComparer.Compare(leftKey, rmKey) != 0;
+            });
+            if (rightMatches.Count > 0)
+                foreach (var rightItem in rightMatches)
+                    yield return (lValue, rightItem);
+            else
+                yield return (leftEnumerator.Current, default);
             leftHasNext = leftEnumerator.MoveNext();
         }
 
         // Process any remaining elements in the right sequence
         while (rightHasNext) {
-            yield return (default, rightEnumerator.Current);
+            var rValue = rightEnumerator.Current;
+            var rightKey = rightKeySelector(rValue);
+            leftMatches.RemoveAll(lm => {
+                var lmKey = leftKeySelector(lm);
+                return keyComparer.Compare(lmKey, rightKey) != 0;
+            });
+            if (leftMatches.Count > 0)
+                foreach (var leftItem in leftMatches)
+                    yield return (leftItem, rValue);
+            else
+                yield return (default, rightEnumerator.Current);
             rightHasNext = rightEnumerator.MoveNext();
         }
     }

@@ -423,7 +423,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ? firstItem != null
                 ? new Range<long>(firstItem.Id, lastItem!.Id + 1)
                 : chatIdRange
-            : query.KeyRange.ToLongRange(true);
+            : query.KeyRange.ToLongRange(true).EnsureNonEmpty();
         var dataQuery = (!query.IsNone, firstItem != null) switch {
             // Align the query params with the second tile layer
 
