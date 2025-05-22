@@ -124,4 +124,24 @@ public static partial class RangeExt
         => range.IsEmpty
             ? new Range<long>(range.Start, range.End + 1)
             : range;
+
+    public static IEnumerable<Range<long>> MergeAdjacentRanges(this IEnumerable<Range<long>> ranges)
+    {
+        var previous = default(Range<long>);
+        foreach (var current in ranges) {
+            if (previous.IsEmpty) {
+                previous = current;
+                continue;
+            }
+
+            if (previous.End >= current.Start)
+                previous = new Range<long>(previous.Start, Math.Max(previous.End, current.End));
+            else {
+                yield return previous;
+                previous = current;
+            }
+        }
+        if (!previous.IsEmpty)
+            yield return previous;
+    }
 }
