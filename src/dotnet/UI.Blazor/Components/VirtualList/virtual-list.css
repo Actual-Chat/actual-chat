@@ -1,5 +1,5 @@
 ﻿.virtual-list {
-    @apply flex;
+    @apply flex items-center;
     height: 100%;
     overflow-y: scroll;
     -ms-overflow-style: none;
@@ -23,6 +23,7 @@
 
 .virtual-list > .c-wrapper {
     @apply relative w-full shrink-0 min-h-full;
+    @apply lg:max-w-192;
     overflow-anchor: none;
 }
 

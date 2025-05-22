@@ -31,16 +31,6 @@
     background: rgba(0,0,0,.5);
     backdrop-filter: blur(2px) opacity(.8) brightness(.8);
 }
-.reconnect-overlay > .c-circle-blur {
-    @apply absolute z-0;
-    @apply rounded-full;
-    filter: blur(16px);
-    top: calc(50vh - var(--reconnect-overlay-blur-size)/2);
-    left: calc(50vw - var(--reconnect-overlay-blur-size)/2);
-    width: var(--reconnect-overlay-blur-size);
-    height: var(--reconnect-overlay-blur-size);
-    background: var(--background-01);
-}
 .reconnect-overlay > .c-circle {
     @apply flex-y items-center justify-center gap-y-2;
     @apply bg-transparent;
