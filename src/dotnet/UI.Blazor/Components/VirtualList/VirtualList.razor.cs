@@ -124,9 +124,15 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     protected override bool ShouldRender()
-        => !Data.IsSimilarTo(LastData) // Data changed
+    {
+        var shouldRender = !Data.IsSimilarTo(LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
-            || LastReportedItemVisibility.VisibleKeys.Count == 0; // OR there are no visible items
+            || LastReportedItemVisibility.VisibleKeys.Count == 0;
+        if (JSRef != null! && !shouldRender)
+            _ = JSRef.InvokeVoidAsync("renderSkipped");
+
+        return shouldRender; // OR there are no visible items
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
