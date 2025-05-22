@@ -1750,11 +1750,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     cancellationToken)
                 .ConfigureAwait(false);
             if (splitFlow == null) // Recreate flow if it was removed
-                await Flows.StartOrReset<ConversationSplitFlow>(chat.Id.Value,
-                        timeSinceEnded + Settings.ChatEntrySummarizationDelay,
-                        nameof(OnTextEntryChangedEvent),
-                        cancellationToken)
-                    .ConfigureAwait(false);
+                await Flows.GetOrStart<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
         }
     }
 
