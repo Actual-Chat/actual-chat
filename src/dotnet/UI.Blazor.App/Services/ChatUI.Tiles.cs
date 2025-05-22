@@ -194,13 +194,21 @@ public partial class ChatUI
                 var hasConversationRange = !conversationRange.IsEmpty;
 
                 // If we start processing a NEW entryRange, flush the pending right-hand side
-                if (hasEntryRange && entryRange != currentEntryRange) {
-                    AddRange(resultIdRanges, pendingRight ?? default);
-                    pendingRight = null;
-                    currentEntryRange = entryRange;
+                var conversationStartRange = new Range<long>(conversationRange.Start, conversationRange.Start + 1);
+                if (hasEntryRange) {
+                    if (entryRange == currentEntryRange && hasConversationRange) {
+                        var (l, r) = (pendingRight ?? default).Subtract(conversationRange);
+                        AddRange(resultIdRanges, l);
+                        AddRange(resultIdRanges, conversationStartRange);
+                        pendingRight = r;
+                    }
+                    else {
+                        AddRange(resultIdRanges, pendingRight ?? default);
+                        pendingRight = null;
+                        currentEntryRange = entryRange;
+                    }
                 }
 
-                var conversationStartRange = new Range<long>(conversationRange.Start, conversationRange.Start + 1);
                 if (hasEntryRange && hasConversationRange) {
                     if (entryRange.Contains(conversationRange))
                         AddRange(resultIdRanges, conversationStartRange);

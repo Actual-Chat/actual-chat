@@ -199,6 +199,50 @@ public class EnumerableExtTest
     }
 
     [Fact]
+    public void Merge_LongRanges_ShouldReturnMatchedPairsForLastRight()
+    {
+        const string left = """
+            [
+                {"Start":885,"End":892},
+                {"Start":893,"End":980},
+                {"Start":981,"End":1000},
+                {"Start":1001,"End":1024},
+                {"Start":1213,"End":1225},
+                {"Start":1226,"End":1234},
+                {"Start":1235,"End":1236},
+                {"Start":1238,"End":1264}
+            ]
+            """;
+
+        const string right = """
+             [
+                {"Start":711,"End":892},
+                {"Start":966,"End":1236}
+             ]
+             """;
+
+        var leftRanges = JsonSerializer.Deserialize<Range<long>[]>(left);
+        var rightRanges = JsonSerializer.Deserialize<Range<long>[]>(right);
+        var result = leftRanges.Merge(
+                rightRanges,
+                l => l,
+                r => r,
+                (l, r) => l.IntersectWith(r).IsEmpty ? (int)(l.Start - r.Start) : 0)
+            .ToList();
+        /*result.Should().Equal([
+            (new Range<long>(885, 892), new Range<long>(711, 892)),
+            (new Range<long>(893, 980), new Range<long>(711, 892)),
+            (new Range<long>(981, 1000), new Range<long>(966, 1236)),
+            (new Range<long>(1001, 1024), new Range<long>(966, 1236)),
+            (new Range<long>(1213, 1225), new Range<long>(966, 1236)),
+            (new Range<long>(1226, 1234), new Range<long>(966, 1236)),
+            (new Range<long>(1235, 1236), new Range<long>(966, 1236)),
+            (new Range<long>(1238, 1264), new Range<long>()),
+
+        ]);*/
+    }
+
+    [Fact]
     public void Merge_LongRanges_ReducedTest()
     {
         const string left = """
