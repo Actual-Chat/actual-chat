@@ -117,6 +117,7 @@
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="Seq.Extensions.Logging" Version="8.0.0" />
   </ItemGroup>
 
   <!-- All other packages -->

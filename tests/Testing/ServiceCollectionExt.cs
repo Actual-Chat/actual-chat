@@ -50,6 +50,8 @@ public static class ServiceCollectionExt
             // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);
             // logging.AddFilter(LogFilter);
             logging.AddDebug();
+            if (!TestRunnerInfo.IsBuildAgent())
+                logging.AddSeq();
             // XUnit logging requires weird setup b/c otherwise it filters out
             // everything below LogLevel.Information
             logging.AddProvider(
