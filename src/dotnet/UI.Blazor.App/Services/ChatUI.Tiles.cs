@@ -48,18 +48,21 @@ public partial class ChatUI
             }
         }
 
-        var metaIdTileStart = ServerIdTileStack.LastLayer.GetTile(dataQuery.ExistingIdRange.Start).Start;
-        var chatRangeMeta = await Chats.GetRangeMeta(Session, chatId, metaIdTileStart, cancellationToken).ConfigureAwait(false);
-        var chatRangeMetaList = new List<ChatRangeMeta> { chatRangeMeta };
+        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange);
+        var chatRangeMetaList = (await metaIdTiles
+            .Select(metaIdTile => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false))
+            .ToList();
         List<Range<long>> idTiles;
         while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, expandedConversations, out idTiles)) {
             var prevIdTileStart = chatRangeMetaList[0].PreviousIdTileStart;
             var nextIdTileStart = chatRangeMetaList[^1].NextIdTileStart;
             var prevChatRangeMetaTask = prevIdTileStart.HasValue
-                ? Chats.GetRangeMeta(Session, chatId, prevIdTileStart.Value, cancellationToken)
+                ? Chats.GetChatRangeMeta(Session, chatId, prevIdTileStart.Value, cancellationToken)
                 : Task.FromResult<ChatRangeMeta?>(null)!;
             var nextChatRangeMetaTask = nextIdTileStart.HasValue
-                ? Chats.GetRangeMeta(Session, chatId, nextIdTileStart.Value, cancellationToken)
+                ? Chats.GetChatRangeMeta(Session, chatId, nextIdTileStart.Value, cancellationToken)
                 : Task.FromResult<ChatRangeMeta?>(null)!;
             await Task.WhenAll(prevChatRangeMetaTask, nextChatRangeMetaTask).ConfigureAwait(false);
             var prevChatRangeMeta = await prevChatRangeMetaTask.ConfigureAwait(false);
