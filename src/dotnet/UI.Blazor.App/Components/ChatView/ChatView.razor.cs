@@ -334,9 +334,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             renderedData,
             nav,
             chatIdRange);
-        // var originalLoadBefore = dataQuery.LoadBefore;
-        // var originalLoadAfter = dataQuery.LoadAfter;
-        if (dataQuery.IdTileStart + dataQuery.Offset + dataQuery.Limit + ChatUI.HalfLoadLimit >= chatIdRange.End)
+        if (dataQuery.ExistingIdRange.Start + dataQuery.StartOffset + dataQuery.EndOffset + ChatUI.HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
@@ -356,9 +354,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return VirtualListData<ChatMessage>.None;
 
         var items = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
-        // var itemCount = items.Sum(item => item is IVirtualListGroup group ? group.Count : 1);
-        // var isQueryFulfilled = query.ExpectedCount > itemCount / 2;
-        // var isLoadLimitReached = itemCount >= ChatUI.LoadLimit;
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -418,126 +413,60 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Range<long> chatIdRange)
     {
         // DebugLog?.LogDebug("GetChatDataQuery: {ChatId}, {Query}, {OldData}, {Anchor}, {IdRange}", ChatId, query, oldData.KeyRange.Format(), scrollAnchor, chatIdRange.Format());
-        // var firstLayer = ChatUI.IdTileStack.Layers[0];
+        var firstLayer = ChatUI.IdTileStack.FirstLayer;
         var secondLayer = ChatUI.IdTileStack.LastLayer;
         // var minTileSize = ChatUI.IdTileStack.MinTileSize;
         // var chatIdRangeEndPlus = chatIdRange.End + minTileSize;
         var firstItem = oldData.FirstItem;
-        // var lastItem = oldData.LastItem;
-        var keyRange = query.IsNone ? default : query.KeyRange.ToLongRange(true);
+        var lastItem = oldData.LastItem;
+        var keyRange = query.IsNone
+            ? firstItem != null
+                ? new Range<long>(firstItem.Id, lastItem!.Id + 1)
+                : chatIdRange
+            : query.KeyRange.ToLongRange(true);
         var dataQuery = (!query.IsNone, firstItem != null) switch {
             // Align the query params with the second tile layer
 
             // No query, no data -> initial load
             (false, false) => new ChatDataQuery(
-                secondLayer.GetTile(chatIdRange.End - 1).Start,
+                secondLayer.GetTile(chatIdRange.End - firstLayer.TileSize).Range,
                 -ChatUI.HalfLoadLimit,
-                ChatUI.LoadLimit),
+                ChatUI.HalfLoadLimit),
 
             // No query, there is old data, and we are at the end of the list
             (false, true) when oldData.HasVeryLastItem
                 => new ChatDataQuery(
-                    secondLayer.GetTile(chatIdRange.End - 1).Start,
+                    secondLayer.GetTile(chatIdRange.End - firstLayer.TileSize).Range,
                     -ChatUI.HalfLoadLimit,
-                    ChatUI.LoadLimit),
+                    ChatUI.HalfLoadLimit),
 
             // No query, but there is old data -> retaining it
             (false, true) => new ChatDataQuery(
-                secondLayer.GetTile(firstItem!.Id).Start,
+                keyRange,
                 0,
-                ChatUI.LoadLimit),
+                ChatUI.HalfLoadLimit),
 
             // Query is there, so data is irrelevant
             _ => new ChatDataQuery(
-                secondLayer.GetTile(keyRange.Start).Start,
-                (int)secondLayer.GetTile(query.MoveRange.Start).Start,
-                query.ExpectedCount ?? ChatUI.LoadLimit),
+                keyRange,
+                query.MoveRange.Start,
+                query.MoveRange.End),
         };
 
         // If we are scrolling somewhere within idRange, let's extend the range to scrollAnchor & nearby entries.
         if (scrollAnchor != null && chatIdRange.Contains(scrollAnchor.EntryLid))
             dataQuery = new ChatDataQuery(
-                secondLayer.GetTile(scrollAnchor.EntryLid).Start,
+                secondLayer.GetTile(scrollAnchor.EntryLid).Range,
                 -ChatUI.HalfLoadLimit,
                 ChatUI.LoadLimit);
 
-        var hasVeryFirstItem = dataQuery.IdTileStart + dataQuery.Offset <= chatIdRange.Start;
-        var hasVeryLastItem = dataQuery.IdTileStart + dataQuery.Offset + dataQuery.Limit >= chatIdRange.End;
+        var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
+        var hasVeryLastItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset + dataQuery.EndOffset >= chatIdRange.End;
 
         return dataQuery with {
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
         };
-        //
-        // var hasVeryFirstItem = range.Start <= chatIdRange.Start;
-        // var hasVeryLastItem = range.End >= chatIdRange.End;
-
-        // var range = (!query.IsNone, firstItem != null) switch {
-        //     // No query, no data -> initial load
-        //     (false, false) => new Range<long>(
-        //         secondLayer.GetTile(chatIdRange.End - ChatUI.LoadLimit).Start,
-        //         secondLayer.GetTile(chatIdRangeEndPlus).End).IntersectWith(new Range<long>(chatIdRange.Start,
-        //         long.MaxValue)),
-        //
-        //     // No query, there is old data, and we are at the end of the list
-        //     (false, true) when oldData.HasVeryLastItem
-        //         => new Range<long>(Math.Max(firstItem!.Id, itemVisibility.MinEntryLid - ChatUI.HalfLoadLimit), lastItem!.Id + 1)
-        //             .ExpandToTiles(firstLayer),
-        //
-        //     // No query, but there is old data -> retaining it
-        //     (false, true) => new Range<long>(firstItem!.Id, lastItem!.Id),
-        //
-        //     // Query is there, so data is irrelevant
-        //     _ => keyRange.Move(query.MoveRange),
-        // };
-        //
-        // // Check whether the range is out of the chatIdRange
-        // if (chatIdRange.IntersectWith(range).IsEmpty) {
-        //     if (range.Start > chatIdRange.End)
-        //         range = new Range<long>(chatIdRange.End - ChatUI.LoadLimit, chatIdRangeEndPlus);
-        //     else if (range.End < chatIdRange.Start)
-        //         range = new Range<long>(chatIdRange.Start, chatIdRange.Start + ChatUI.LoadLimit);
-        // }
-        //
-        // // If we are scrolling somewhere within idRange, let's extend the range to scrollAnchor & nearby entries.
-        // if (scrollAnchor is { } vScrollAnchor && chatIdRange.Contains(vScrollAnchor.EntryLid)) {
-        //     var scrollAnchorRange = new Range<long>(
-        //         vScrollAnchor.EntryLid - ChatUI.LoadLimit,
-        //         vScrollAnchor.EntryLid + ChatUI.HalfLoadLimit);
-        //     range = scrollAnchorRange.Overlaps(range)
-        //         ? range.MinMaxWith(scrollAnchorRange)
-        //         : scrollAnchorRange;
-        // }
-        // range = range.MoveEnd(1); // tiles excludes the end element
-        //
-        // // Fix queryRange start
-        // if (range.Start < chatIdRange.Start)
-        //     range = new Range<long>(chatIdRange.Start, range.End);
-        // // Fix queryRange end + subscribe to the next new tile
-        // if (range.End >= chatIdRange.End - minTileSize)
-        //     range = new Range<long>(range.Start, chatIdRangeEndPlus);
-        //
-        // // Expand queryRange to tile boundaries
-        // range = range.ExpandToTiles(ChatUI.IdTileStack.FirstLayer);
-        // var hasVeryFirstItem = range.Start <= chatIdRange.Start;
-        // var hasVeryLastItem = range.End >= chatIdRange.End;
-        // return (query.IsNone
-        //     ? new ChatDataQuery(range)
-        //     : FromKeyRange()) with {
-        //     HasVeryFirstItem = hasVeryFirstItem,
-        //     HasVeryLastItem = hasVeryLastItem,
-        // };
-        //
-        // ChatDataQuery FromKeyRange()
-        // {
-        //     var intersected = range.IntersectWith(keyRange);
-        //     if (intersected.IsEmpty)
-        //         return new ChatDataQuery(range);
-        //
-        //     var loadBefore = (int)(intersected.Start - range.Start).Clamp(0, int.MaxValue);
-        //     var loadAfter = (int)(range.End - intersected.End).Clamp(0, int.MaxValue);
-        //     return new ChatDataQuery(intersected, loadBefore, loadAfter);
-        // }
     }
 
     // Helpers

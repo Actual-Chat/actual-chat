@@ -1885,19 +1885,8 @@ export class VirtualList {
                 lastItem = orderedItems[orderedItems.length - 1];
         }
         const keyRange = new Range(firstItem.key, lastItem.key);
-
-        let moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize);
-        let moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize);
-        // Adjust moveRange based on default edge and viewport proximity
-        if (this.defaultEdge === VirtualListEdge.End) {
-            const isNearEnd = viewport.end >= this.itemRange.end - viewportSize * 0.1;
-            if (isNearEnd)
-                moveRangeStart = Math.max(moveRangeStart, 0); // Prevent loading items before
-        } else if (this.defaultEdge === VirtualListEdge.Start) {
-            const isNearStart = viewport.start <= this.itemRange.start + viewportSize * 0.1;
-            if (isNearStart)
-                moveRangeEnd = Math.min(moveRangeEnd, 0); // Prevent loading items after
-        }
+        const moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize);
+        const moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize);
         const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);

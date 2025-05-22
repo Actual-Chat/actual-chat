@@ -1,5 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Users;
+using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.Chat;
 
@@ -107,6 +108,7 @@ public class Chats(IServiceProvider services) : IChats
         Log.LogInformation("GetPage: '{ChatId}' {IdTileStart}", chatId, idTileStart);
         var tile = ServerIdTileStack.LastLayer.AssertIsTileStart(idTileStart);
 
+        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         Range<long> chatIdRange;
         using (Computed.BeginIsolation())
             chatIdRange = await Backend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
@@ -218,8 +220,8 @@ public class Chats(IServiceProvider services) : IChats
 
         return new ChatRangeMeta(
             new Range<long>(start, end),
-            mergedEntryIdRanges.ToArray(),
-            mergedConversationIdRanges.ToArray(),
+            mergedEntryIdRanges.EnsureMonotonic(RangeExt.LongRangeComparer).ToArray(),
+            mergedConversationIdRanges.EnsureMonotonic(RangeExt.LongRangeComparer).ToArray(),
             minCount,
             previousId == 0 ? null : ServerIdTileStack.LastLayer.GetTile(previousId).Start,
             nextId == long.MaxValue ? null : ServerIdTileStack.LastLayer.GetTile(nextId).Start);

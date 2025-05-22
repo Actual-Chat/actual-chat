@@ -60,59 +60,131 @@ public static class EnumerableExt
         return (matched?.ToArray() ?? [], notMatched?.ToArray() ?? []);
     }
 
-    public static IEnumerable<(TLeft? Left, TRight? Right)> Merge<TLeft, TRight>(
+    public static IEnumerable<(T? Left, T? Right)> Merge<T>(
+        this IEnumerable<T> left,
+        IEnumerable<T> right)
+        => left.Merge(right, x => x, x => x);
+
+    public static IEnumerable<(T? Left, T? Right)> Merge<T>(
+        this IEnumerable<T> left,
+        IEnumerable<T> right,
+        Comparison<T> keyComparer)
+        => left.Merge(right, x => x, x => x, Comparer<T>.Create(keyComparer));
+
+    public static IEnumerable<(T? Left, T? Right)> Merge<T>(
+        this IEnumerable<T> left,
+        IEnumerable<T> right,
+        IComparer<T> keyComparer)
+        => left.Merge(right, x => x, x => x, keyComparer);
+
+    public static IEnumerable<(TLeft? Left, TRight? Right)> Merge<TLeft, TRight, TKey>(
         this IEnumerable<TLeft> left,
         IEnumerable<TRight> right,
-        Func<TLeft, TRight, int> comparer)
+        Func<TLeft, TKey> leftKeySelector,
+        Func<TRight, TKey> rightKeySelector,
+        Comparison<TKey> keyComparer)
+        => left.Merge(right, leftKeySelector, rightKeySelector, Comparer<TKey>.Create(keyComparer));
+
+    public static IEnumerable<(TLeft? Left, TRight? Right)> Merge<TLeft, TRight, TKey>(
+        this IEnumerable<TLeft> left,
+        IEnumerable<TRight> right,
+        Func<TLeft, TKey> leftKeySelector,
+        Func<TRight, TKey> rightKeySelector,
+        IComparer<TKey>? keyComparer = null)
     {
+        keyComparer ??= Comparer<TKey>.Default;
         using var leftEnumerator = left.GetEnumerator();
         using var rightEnumerator = right.GetEnumerator();
-
-        // Build lists to store matching elements with the same comparison value
-        var leftMatches = new List<TLeft>();
-        var rightMatches = new List<TRight>();
 
         var leftHasNext = leftEnumerator.MoveNext();
         var rightHasNext = rightEnumerator.MoveNext();
 
+        // Keep track of items that are matching
+        var leftMatches = new List<TLeft>();
+        var rightMatches = new List<TRight>();
+
         while (leftHasNext && rightHasNext) {
-            var comparison = comparer(leftEnumerator.Current, rightEnumerator.Current);
+            var leftKey = leftKeySelector(leftEnumerator.Current);
+            var rightKey = rightKeySelector(rightEnumerator.Current);
+            var comparison = keyComparer.Compare(leftKey, rightKey);
+
             if (comparison < 0) {
-                // Left is smaller, yield it and move left forward
-                yield return (leftEnumerator.Current, default);
+                leftMatches.Clear();
+                rightMatches.RemoveAll(rm => {
+                    var rmKey = rightKeySelector(rm);
+                    return keyComparer.Compare(leftKey, rmKey) != 0;
+                });
+                if (rightMatches.Count > 0) {
+                    leftMatches.Add(leftEnumerator.Current);
+                    foreach (var leftItem in leftMatches)
+                    foreach (var rightItem in rightMatches)
+                        yield return (leftItem, rightItem);
+                }
+                else
+                    yield return (leftEnumerator.Current, default);
                 leftHasNext = leftEnumerator.MoveNext();
             }
             else if (comparison > 0) {
-                // Right is smaller, yield it and move right forward
-                yield return (default, rightEnumerator.Current);
+                rightMatches.Clear();
+                leftMatches.RemoveAll(lm => {
+                    var lmKey = leftKeySelector(lm);
+                    return keyComparer.Compare(lmKey, rightKey) != 0;
+                });
+                if (leftMatches.Count > 0) {
+                    rightMatches.Add(rightEnumerator.Current);
+                    foreach (var leftItem in leftMatches)
+                    foreach (var rightItem in rightMatches)
+                        yield return (leftItem, rightItem);
+                }
+                else
+                    yield return (default, rightEnumerator.Current);
                 rightHasNext = rightEnumerator.MoveNext();
             }
             else {
-                // Elements match (comparer returned 0)
-                // Collect all matching elements from both sides
-                leftMatches.Clear();
-                rightMatches.Clear();
+                // Keys match, collect all matching elements
+                leftMatches.RemoveAll(lm => {
+                    var lmKey = leftKeySelector(lm);
+                    return keyComparer.Compare(lmKey, rightKey) != 0;
+                });
+                rightMatches.RemoveAll(rm => {
+                    var rmKey = rightKeySelector(rm);
+                    return keyComparer.Compare(leftKey, rmKey) != 0;
+                });
 
-                // Collect current and all subsequent left elements that match
-                TLeft currentLeft = leftEnumerator.Current;
-                leftMatches.Add(currentLeft);
+                // Store the matching key
+                var matchingKey = leftKey;
+
+                // Collect current and all subsequent left elements with the same key
+                leftMatches.Add(leftEnumerator.Current);
                 leftHasNext = leftEnumerator.MoveNext();
 
-                // Check if there are more left elements with the same comparison value
-                while (leftHasNext && comparer(leftEnumerator.Current, rightEnumerator.Current) == 0) {
-                    leftMatches.Add(leftEnumerator.Current);
-                    leftHasNext = leftEnumerator.MoveNext();
+                // Add all subsequent left elements with the same key
+                while (leftHasNext) {
+                    var nextLeftKey = leftKeySelector(leftEnumerator.Current);
+                    if (keyComparer.Compare(matchingKey, nextLeftKey) == 0)
+                    {
+                        leftMatches.Add(leftEnumerator.Current);
+                        leftHasNext = leftEnumerator.MoveNext();
+                    }
+                    else
+                        break;
                 }
 
-                // Collect current and all subsequent right elements that match
-                TRight currentRight = rightEnumerator.Current;
-                rightMatches.Add(currentRight);
+                // Collect current and all subsequent right elements with the same key
+                rightMatches.Add(rightEnumerator.Current);
                 rightHasNext = rightEnumerator.MoveNext();
 
-                // Check if there are more right elements that match the original left element
-                while (rightHasNext && comparer(currentLeft, rightEnumerator.Current) == 0) {
-                    rightMatches.Add(rightEnumerator.Current);
-                    rightHasNext = rightEnumerator.MoveNext();
+                // Add all subsequent right elements with the same key
+                while (rightHasNext)
+                {
+                    var nextRightKey = rightKeySelector(rightEnumerator.Current);
+                    if (keyComparer.Compare(matchingKey, nextRightKey) == 0)
+                    {
+                        rightMatches.Add(rightEnumerator.Current);
+                        rightHasNext = rightEnumerator.MoveNext();
+                    }
+                    else
+                        break;
                 }
 
                 // Create all combinations of matches
@@ -198,6 +270,39 @@ public static class EnumerableExt
         var arrays = await task.ConfigureAwait(false);
         return arrays.SelectMany(x => x).ToList();
     }
+
+    /// <summary>
+    /// Ensures a sequence is strictly increasing by removing duplicates and any items less than or equal to previous ones
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the sequence</typeparam>
+    /// <param name="source">The source sequence</param>
+    /// <param name="comparer">Custom comparer (optional). If null, defaults to <c>Comparer.Default</c> </param>
+    /// <returns>A strictly increasing sequence</returns>
+    public static IEnumerable<T> EnsureMonotonic<T>(this IEnumerable<T> source, IComparer<T>? comparer = null)
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+
+        comparer ??= Comparer<T>.Default;
+
+        using var enumerator = source.GetEnumerator();
+        if (!enumerator.MoveNext())
+            yield break;
+
+        var last = enumerator.Current;
+        yield return last;
+
+        while (enumerator.MoveNext()) {
+            var current = enumerator.Current;
+            if (comparer.Compare(current, last) <= 0)
+                continue;
+
+            last = current;
+            yield return current;
+        }
+    }
+
+    // Nested types
 
     private static IEnumerable<T> ShuffleIterator<T>(this IEnumerable<T> source, Random random)
     {
