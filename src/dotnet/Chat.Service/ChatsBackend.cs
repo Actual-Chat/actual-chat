@@ -599,9 +599,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 && e.Kind == ChatEntryKind.Text
                 && e.LocalId < idTileRange.Start
                 && !e.IsRemoved)
-            .OrderByDescending(e => e.LocalId)
-            .Select(e => (long?)e.LocalId)
-            .FirstOrDefaultAsync(cancellationToken)
+            .MaxAsync(e => (long?)e.LocalId, cancellationToken)
             .ConfigureAwait(false);
 
         var nextEntryId = await dbContext.ChatEntries
@@ -609,9 +607,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 && e.Kind == ChatEntryKind.Text
                 && e.LocalId >= idTileRange.End
                 && !e.IsRemoved)
-            .OrderBy(e => e.LocalId)
-            .Select(e => (long?)e.LocalId)
-            .FirstOrDefaultAsync(cancellationToken)
+            .MinAsync(e => (long?)e.LocalId, cancellationToken)
             .ConfigureAwait(false);
 
         var entryRanges = new List<Range<long>>();
