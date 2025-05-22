@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Server;
 using ActualChat.Chat;
+using ActualChat.Kvas;
 using ActualChat.Notification;
 using ActualChat.Search;
 using ActualChat.Users;
@@ -41,6 +42,8 @@ public class BlazorTester : TestContext, IWebTester
     public IAuthBackend AuthBackend => field ??= AppServices.GetRequiredService<IAuthBackend>();
     [field: AllowNull, MaybeNull]
     public INotificationsBackend NotificationsBackend  => field ??= AppServices.GetRequiredService<INotificationsBackend>();
+    [field: AllowNull, MaybeNull]
+    public AccountSettings AccountSettings => field ??= ScopedAppServices.AccountSettings();
     public Session Session { get; }
     [field: AllowNull, MaybeNull]
     public UrlMapper UrlMapper => field ??= AppServices.UrlMapper();

@@ -160,8 +160,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-header-control-panel:empty {
     @apply hidden;
 }
-.chat-header-control-panel .translation-btn,
-body.hoverable .chat-header-control-panel .translation-btn:hover {
+.chat-header-control-panel .translation-btn.on {
     @apply text-primary;
 }
 

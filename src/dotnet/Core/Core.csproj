@@ -28,8 +28,4 @@
     <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Maybe\" />
-  </ItemGroup>
-
 </Project>

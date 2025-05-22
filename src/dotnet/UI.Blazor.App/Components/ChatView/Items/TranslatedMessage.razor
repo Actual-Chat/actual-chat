@@ -33,7 +33,6 @@
         };
     }
 
-
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
         var renderedEntry = _rendered?.Entry ?? message.Entry;

@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, TranslationSubHeader.Model?>
 @{
-    if (State.IsInitial(out var m) || m is null)
+    if (!State.IsSet(out var m))
         return;
 }
 
@@ -14,7 +14,7 @@
         <div class="c-center">
             <div class="c-text">
                 Translate to
-                <span class="c-language">@m.TargetLanguage.Title</span>
+                <span class="c-language" @onclick="@OnLanguageClick">@m.TargetLanguage.Title</span>
             </div>
             <div class="c-toggle" @onclick="@OnToggleClick">
                 <Toggle IsChecked="@m.IsOn"/>
@@ -22,8 +22,8 @@
         </div>
 
         <div class="c-right">
-            <HeaderButton Click="@OnClick">
-                <i class="icon-more-vertical"></i>
+            <HeaderButton Click="@OnHideClick">
+                <i class="icon-close-fill"></i>
             </HeaderButton>
         </div>
     </div>
@@ -40,8 +40,8 @@
         if (!isIncompleteUIEnabled)
             return null;
 
-        var mustSuggest = await TranslationUI.MustSuggest(chat.Id, cancellationToken).ConfigureAwait(false);
-        if (!mustSuggest)
+        var isVisible = await TranslationUI.IsSubHeaderVisible(chat.Id, cancellationToken).ConfigureAwait(false);
+        if (!isVisible)
             return null;
 
         var isOn = await TranslationUI.IsOn(chat.Id, cancellationToken).ConfigureAwait(false);
@@ -54,10 +54,15 @@
             ? TranslationUI.SetIsOn(m.Chat.Id, !m.IsOn)
             : Task.CompletedTask;
 
-    private void OnClick() {
-        if (State.Value is { } m)
-            ModalUI.Show(new TranslationSettingsModal.Model(m.Chat.Id));
-    }
+    private Task OnHideClick()
+        => State.Value is { } m
+            ? TranslationUI.SetIsSubHeaderVisible(m.Chat.Id, false)
+            : Task.CompletedTask;
+
+    private Task OnLanguageClick()
+        =>  State.Value is { } m
+            ? ModalUI.Show(new TranslationTargetLanguageModal.Model(State.Value.Chat.Id))
+            : Task.CompletedTask;
 
     // Nested types
 
