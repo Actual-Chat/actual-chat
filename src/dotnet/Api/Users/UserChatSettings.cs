@@ -20,4 +20,5 @@ public sealed partial record UserChatSettings
     [DataMember, MemoryPackOrder(5)] public bool? MustTranslate { get; init; }
     [DataMember, MemoryPackOrder(6), LegacyLanguageFormatter(true)]
     public Language? TranslationTargetLanguage { get; init; }
+    [DataMember, MemoryPackOrder(7)] public bool? IsTranslationSubHeaderVisible { get; set; }
 }

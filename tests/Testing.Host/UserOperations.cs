@@ -31,6 +31,12 @@ public static class UserOperations
     public static Task<AccountFull> SignInAsBobAdmin(this IWebTester tester)
         => tester.SignIn(NewAdmin());
 
+    public static Task<AccountFull> SignInAsUniqueBobAdmin(this IWebTester tester)
+    {
+        var googleId = UniqueNames.GoogleId();
+        return tester.SignIn(NewAdmin(email: $"bob.admin.{googleId}@actual.chat", googleId: googleId));
+    }
+
 
     public static User NewAdmin(string name = "BobAdmin", string email = "bob@actual.chat", string googleId = "123")
         => new User("", name)

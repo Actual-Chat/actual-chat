@@ -30,6 +30,9 @@ public static class UniqueNames
     public static Phone Phone(string countryCode = "1")
         => ActualChat.Phone.New(countryCode, Rng.Next(11 - countryCode.Length));
 
+    public static string GoogleId()
+        => Rng.Next(5);
+
     public static string Email(string prefix, string domain = "actual.chat")
         => $"{prefix}.{Rsg.Next()}@{domain}";
 }

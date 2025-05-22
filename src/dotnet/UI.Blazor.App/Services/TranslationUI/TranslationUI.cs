@@ -14,6 +14,35 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     private IStreamClient StreamClient => Hub.StreamClient;
 
     [ComputeMethod]
+    public virtual async Task<bool> IsGlobeVisible(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var isOn = await IsOn(chatId, cancellationToken).ConfigureAwait(false);
+        if (isOn is not null)
+            return true;
+
+        var isSubHeaderVisible = await GetSubHeaderVisibility(chatId, cancellationToken).ConfigureAwait(false);
+        if (isSubHeaderVisible != null)
+            return true;
+
+        return await MustSuggest(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsSubHeaderVisible(ChatId chatId, CancellationToken cancellationToken = default) {
+        if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var isVisible = await GetSubHeaderVisibility(chatId, cancellationToken).ConfigureAwait(false);
+        if (isVisible != null)
+            return isVisible.Value;
+
+        return await MustSuggest(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
     public virtual async Task<bool?> IsOn(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
@@ -36,10 +65,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (entry.IsSystemEntry || (entry.Content.IsNullOrEmpty() && !entry.IsStreaming) || entry.Id.Kind is not ChatEntryKind.Text)
             return false;
 
-        var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor.Id == entry.AuthorId)
-            return false;
-
         if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
@@ -47,25 +72,17 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> MustSuggest(ChatId chatId, CancellationToken cancellationToken = default){
-        var isOn = await IsOn(chatId, cancellationToken).ConfigureAwait(false);
-        if (isOn != null)
-            return false;
-
-        var itemVisibility = await ChatUI.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
-        if (itemVisibility.IsEmpty || itemVisibility.ChatId != chatId)
-            return false;
-
-        var items = await itemVisibility.VisibleEntryIds.Select(id => IsForeignEntry(id, cancellationToken))
-            .Collect(1, cancellationToken)
-            .ConfigureAwait(false);
-        return items.Any(x => x);
-    }
-
-    [ComputeMethod]
     public virtual async Task<bool> IsForeignEntry(TextEntryId entryId, CancellationToken cancellationToken = default)
     {
         var session = Session;
+        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry is null)
+            return false;
+
+        var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor.Id == entry.AuthorId)
+            return false;
+
         var entryLanguage = await Translations.GetLanguage(session, entryId, cancellationToken).ConfigureAwait(false);
         if (entryLanguage == null)
             return false;
@@ -103,6 +120,19 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
    }
 
    [ComputeMethod]
+   protected virtual async Task<bool> MustSuggest(ChatId chatId, CancellationToken cancellationToken)
+   {
+       var itemVisibility = await ChatUI.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
+       if (itemVisibility.IsEmpty || itemVisibility.ChatId != chatId)
+           return false;
+
+       var items = await itemVisibility.VisibleEntryIds.Select(id => IsForeignEntry(id, cancellationToken))
+           .Collect(1, cancellationToken)
+           .ConfigureAwait(false);
+       return items.Any(x => x);
+   }
+
+   [ComputeMethod]
    protected virtual async Task<Symbol> GetTranscriptionStreamId(ChatEntry entry, CancellationToken cancellationToken)
    {
        if (entry.IsStreaming)
@@ -116,9 +146,18 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
        return translation.StreamId;
    }
 
+   public Task SetIsSubHeaderVisible(ChatId chatId, bool isVisible, CancellationToken cancellationToken = default)
+       => AccountSettings.UpdateUserChatSettings(chatId, x => x with { IsTranslationSubHeaderVisible = isVisible }, cancellationToken);
+
    public Task SetIsOn(ChatId chatId, bool? value, CancellationToken cancellationToken = default)
         => AccountSettings.UpdateUserChatSettings(chatId, x => x with { MustTranslate = value }, cancellationToken);
 
    public Task SetTargetLanguage(ChatId chatId, Language? language, CancellationToken cancellationToken = default)
         => AccountSettings.UpdateUserChatSettings(chatId, x => x with { TranslationTargetLanguage = language }, cancellationToken);
+
+   private async Task<bool?> GetSubHeaderVisibility(ChatId chatId, CancellationToken cancellationToken)
+   {
+       var settings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+       return settings.IsTranslationSubHeaderVisible;
+   }
 }
