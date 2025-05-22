@@ -16,7 +16,7 @@ public partial class ChatUI
             AsyncChain.From(ResetHighlightedEntry),
             AsyncChain.From(PushKeepAwakeState),
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
-            // AsyncChain.From(PrefetchChatTails),
+            AsyncChain.From(PrefetchChatTails),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -227,9 +227,9 @@ public partial class ChatUI
                                 : chatInfo.News.TextEntryIdRange.End;
 
                             var secondLayer = IdTileStack.LastLayer;
-                            var idTileStart = secondLayer.GetTile(prefetchNearTo).Start;
-                            var chatDataQuery = new ChatDataQuery(idTileStart, -HalfLoadLimit, LoadLimit);
-                            _ = GetChatItems(chatId, chatDataQuery, lastReadEntryLid, cancellationToken);
+                            var idTile = secondLayer.GetTile(prefetchNearTo).Range;
+                            var chatDataQuery = new ChatDataQuery(idTile, -HalfLoadLimit, LoadLimit);
+                            _ = GetChatItems(chatId, chatDataQuery, lastReadEntryLid, changeToken);
                         }
                     },
                     changeToken);

@@ -8,6 +8,8 @@ public static partial class RangeExt
     private static partial Regex FirstDigitsRegexFactory();
     private static readonly Regex FirstDigitsRegex = FirstDigitsRegexFactory();
 
+    public static readonly Comparer<Range<long>> LongRangeComparer = Comparer<Range<long>>.Create((a, b) => a.Start.CompareTo(b.Start));
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> Move(this Range<long> range, long startOffset, long endOffset)
         => new (range.Start + startOffset, range.End + endOffset);

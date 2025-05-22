@@ -1277,20 +1277,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid)
         {
-            var previousEntryIdTask = dbContext.ChatEntries
+            var previousEntryId = await dbContext.ChatEntries
                 .Where(c => c.ChatId == chatSid && c.Kind == ChatEntryKind.Text && !c.IsRemoved && c.LocalId < localEntryLid)
                 .OrderByDescending(c => c.LocalId)
                 .Select(c => c.LocalId)
-                .FirstOrDefaultAsync(cancellationToken);
-            var nextEntryIdTask = dbContext.ChatEntries
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var nextEntryId = await dbContext.ChatEntries
                 .Where(c => c.ChatId == chatSid && c.Kind == ChatEntryKind.Text && !c.IsRemoved && c.LocalId > localEntryLid)
                 .OrderBy(c => c.LocalId)
                 .Select(c => c.LocalId)
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
 
-            await Task.WhenAll(previousEntryIdTask, nextEntryIdTask).ConfigureAwait(false);
-            var previousEntryId = await previousEntryIdTask.ConfigureAwait(false);
-            var nextEntryId = await nextEntryIdTask.ConfigureAwait(false);
             if (previousEntryId != 0)
                 context.Operation.Items.Set(nameof(ChatEntryRangeMeta.PreviousEntryId), previousEntryId);
             if (nextEntryId != 0)
