@@ -284,6 +284,68 @@ public class EnumerableExtTest
         ]);
     }
 
+    [Fact]
+    public void MergeAdjacentRanges_Test()
+    {
+        // Test empty sequence
+        Array.Empty<Range<long>>().MergeAdjacentRanges().Should().BeEmpty();
+
+        // Test single range
+        new[] { new Range<long>(1, 5) }
+            .MergeAdjacentRanges()
+            .Should()
+            .Equal(new Range<long>(1, 5));
+
+        // Test non-overlapping ranges
+        new[]
+            {
+                new Range<long>(1, 3),
+                new Range<long>(5, 7),
+                new Range<long>(9, 11)
+            }.MergeAdjacentRanges()
+            .Should()
+            .Equal(
+                new Range<long>(1, 3),
+                new Range<long>(5, 7),
+                new Range<long>(9, 11)
+            );
+
+        // Test adjacent ranges
+        new[]
+            {
+                new Range<long>(1, 3),
+                new Range<long>(3, 5),
+                new Range<long>(5, 7)
+            }.MergeAdjacentRanges()
+            .Should()
+            .Equal(new Range<long>(1, 7));
+
+        // Test overlapping ranges
+        new[]
+            {
+                new Range<long>(1, 4),
+                new Range<long>(2, 6),
+                new Range<long>(5, 8)
+            }.MergeAdjacentRanges()
+            .Should()
+            .Equal(new Range<long>(1, 8));
+
+        // Test mixed adjacent and overlapping ranges
+        new[]
+            {
+                new Range<long>(1, 2),
+                new Range<long>(3, 5),
+                new Range<long>(4, 7),
+                new Range<long>(9, 11)
+            }.MergeAdjacentRanges()
+            .Should()
+            .Equal(
+                new Range<long>(1, 2),
+                new Range<long>(3, 7),
+                new Range<long>(9, 11)
+            );
+    }
+
     private static IReadOnlyList<(int? Left, int? Right)> Merge(
         IEnumerable<int> left,
         IEnumerable<int> right)

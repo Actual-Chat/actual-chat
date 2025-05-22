@@ -85,6 +85,28 @@ public static class EnumerableExt
         Comparison<TKey> keyComparer)
         => left.Merge(right, leftKeySelector, rightKeySelector, Comparer<TKey>.Create(keyComparer));
 
+    /// <summary>
+    /// Performs a full outer join between two ordered sequences based on matching keys.
+    /// </summary>
+    /// <typeparam name="TLeft">The type of elements in the left sequence.</typeparam>
+    /// <typeparam name="TRight">The type of elements in the right sequence.</typeparam>
+    /// <typeparam name="TKey">The type of keys used for matching elements.</typeparam>
+    /// <param name="left">The left sequence to join. Must be ordered by the key returned by <paramref name="leftKeySelector"/>.</param>
+    /// <param name="right">The right sequence to join. Must be ordered by the key returned by <paramref name="rightKeySelector"/>.</param>
+    /// <param name="leftKeySelector">A function to extract the join key from each element of the left sequence.</param>
+    /// <param name="rightKeySelector">A function to extract the join key from each element of the right sequence.</param>
+    /// <param name="keyComparer">An optional comparer for the keys. If null, the default comparer for <typeparamref name="TKey"/> is used.</param>
+    /// <returns>
+    /// A sequence of tuples where:
+    /// - Matching elements are paired together (all possible combinations if multiple elements have the same key)
+    /// - Elements with no match are paired with <see langword="default"/> on the other side
+    /// </returns>
+    /// <remarks>
+    /// This method assumes both input sequences are already ordered by their respective keys.
+    /// For efficiency, it performs a single pass through both sequences, matching elements as it goes.
+    /// The method handles cases where multiple elements in each sequence have the same key by creating
+    /// all possible combinations of matches (Cartesian product).
+    /// </remarks>
     public static IEnumerable<(TLeft? Left, TRight? Right)> Merge<TLeft, TRight, TKey>(
         this IEnumerable<TLeft> left,
         IEnumerable<TRight> right,
@@ -100,8 +122,8 @@ public static class EnumerableExt
         var rightHasNext = rightEnumerator.MoveNext();
 
         // Keep track of items that are matching
-        var leftMatches = new List<TLeft>();
-        var rightMatches = new List<TRight>();
+        var leftMatches = new List<TLeft>(4);
+        var rightMatches = new List<TRight>(4);
 
         while (leftHasNext && rightHasNext) {
             var leftKey = leftKeySelector(leftEnumerator.Current);

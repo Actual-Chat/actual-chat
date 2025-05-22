@@ -474,34 +474,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Merge adjacent entryIdRanges into a new collection
         // to avoid duplicates and reduce the number of ranges
-        var mergedEntryIdRanges = new List<Range<long>>();
-        if (entryIdRanges.Count > 0) {
-            var current = entryIdRanges[0];
-            for (int i = 1; i < entryIdRanges.Count; i++) {
-                var next = entryIdRanges[i];
-                if (current.End >= next.Start)
-                    current = new Range<long>(current.Start, Math.Max(current.End, next.End));
-                else {
-                    mergedEntryIdRanges.Add(current);
-                    current = next;
-                }
-            }
-            mergedEntryIdRanges.Add(current);
-        }
+        var mergedEntryIdRanges = entryIdRanges
+            .MergeAdjacentRanges()
+            .ToList();
 
         // Deduplicate conversationIdRanges by Start into a new collection
-        var mergedConversationIdRanges = new List<Range<long>>();
-        if (conversationIdRanges.Count > 0) {
-            var current = conversationIdRanges[0];
-            for (int i = 1; i < conversationIdRanges.Count; i++) {
-                var next = conversationIdRanges[i];
-                if (current.Start != next.Start) {
-                    mergedConversationIdRanges.Add(current);
-                    current = next;
-                }
-            }
-            mergedConversationIdRanges.Add(current);
-        }
+        var mergedConversationIdRanges = conversationIdRanges
+            .EnsureMonotonic(RangeExt.LongRangeComparer)
+            .ToList();
 
         return new ChatRangeMeta(
             new Range<long>(start, end),
