@@ -14,19 +14,8 @@ public sealed partial record FlowResumeEvent(
     [property: DataMember(Order = 12), MemoryPackOrder(12)] Moment? DelayUntil = null
 ) : IFlowControlEvent, IDelayed
 {
-    private bool PrintMembers(StringBuilder builder)
-    {
-        builder.Append(nameof(FlowResumeEvent));
-        if (IsHardResume)
-            builder.Append(nameof(IsHardResume)).Append(" = true");
-        if (Tag != null)
-            builder.Append($", '{Tag}'");
-        if (DelayUntil != null)
-            builder.Append($", {nameof(DelayUntil)} = {DelayUntil}");
-        if (MaxLastRunAt != null)
-            builder.Append($", {nameof(MaxLastRunAt)} = {MaxLastRunAt}");
-        return true;
-    }
+    public override string ToString()
+        => $"{nameof(FlowResumeEvent)}(`{FlowId}`{(IsHardResume ? $", {nameof(IsHardResume)} = true" : "")}{(Tag != null ? $", '{Tag}'" : "")}{(DelayUntil != null ? $", {nameof(DelayUntil)} = {DelayUntil}" : "")}{(MaxLastRunAt != null ? $", {nameof(MaxLastRunAt)} = {MaxLastRunAt}" : "")})";
 
     public Symbol GetNextStep(Flow flow)
     {
