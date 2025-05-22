@@ -228,30 +228,53 @@ public class Chats(IServiceProvider services) : IChats
 
         int EstimateMinimumCount(ChatEntryRangeMeta entryRangeMeta1, ConversationRangeMeta conversationRangeMeta1)
         {
+            var count = 0;
+            var lastRange = new Range<long>(0, 0);
             var merged = entryRangeMeta1.EntryRanges
                 .Merge(conversationRangeMeta1.ConversationRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
                 .ToList();
 
+            Range<long>? pendingRight = null; // right part of the current entryRange
+            Range<long> currentEntryRange = default;
+
             foreach (var (entryRange, conversationRange) in merged) {
                 var hasEntryRange = !entryRange.IsEmpty;
                 var hasConversationRange = !conversationRange.IsEmpty;
+
+                // If we start processing a NEW entryRange, flush the pending right-hand side
+                if (hasEntryRange && entryRange != currentEntryRange) {
+                    AddRangeCount(pendingRight ?? default);
+                    pendingRight = null;
+                    currentEntryRange = entryRange;
+                }
+
+                var conversationStartRange = new Range<long>(conversationRange.Start, conversationRange.Start + 1);
                 if (hasEntryRange && hasConversationRange) {
-                    // We do not check expanded conversations here, so we provide the min count estimate if all conversations are collapsed
-                    var (l,r) = entryRange.Subtract(conversationRange);
-                    var lSize = (int)l.Size();
-                    var rSize = (int)r.Size();
-                    minCount += lSize;
-                    minCount += rSize;
-                    if (lSize > 0)
-                        minCount++; // Add 1 for the conversation
+                    if (entryRange.Contains(conversationRange))
+                        AddRangeCount(conversationStartRange);
+                    else {
+                        var (l, r) = entryRange.Subtract(conversationRange);
+                        AddRangeCount(l);
+                        AddRangeCount(conversationStartRange);
+                        pendingRight = r;
+                    }
                 }
                 else if (hasEntryRange)
-                    minCount += (int)entryRange.Size();
-                else
-                    minCount++; // Add 1 for the conversation
+                    AddRangeCount(entryRange);
+                else if (hasConversationRange)
+                    AddRangeCount(conversationStartRange);
             }
+            AddRangeCount(pendingRight ?? default);
+            return count;
 
-            return minCount;
+            void AddRangeCount(Range<long> range)
+            {
+                if (lastRange.End > range.Start)
+                    return;
+
+                count += (int)range.Size();
+                lastRange = range;
+            }
         }
     }
 
