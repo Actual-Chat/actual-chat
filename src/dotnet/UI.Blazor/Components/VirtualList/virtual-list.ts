@@ -316,6 +316,15 @@ export class VirtualList {
         };
     }
 
+    /** Called by blazor */
+    public renderSkipped(): void {
+        debugLog?.log(`renderSkipped()`);
+        this.renderStartedAt = null;
+        this.renderCompletedAt = Date.now();
+        this.whenRequestDataCompleted?.resolve(undefined);
+        this.whenRequestDataCompleted = null;
+    }
+
     private get isRendering(): boolean {
         return !!this.renderStartedAt;
     }
