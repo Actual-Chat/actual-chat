@@ -197,20 +197,15 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         async Task StorePreviousAndNextConversationIds(long startEntryLid, long? endEntryLid)
         {
-            var previousConversationIdTask = dbContext.Conversations
+            var previousConversationId = await dbContext.Conversations
                 .Where(c => c.ChatId == chatId.Value && c.EndEntryLid < startEntryLid)
-                .OrderByDescending(c => c.StartEntryLid)
-                .Select(c => c.StartEntryLid)
-                .FirstOrDefaultAsync(cancellationToken);
-            var nextConversationIdTask = dbContext.Conversations
+                .MaxAsync(c => c.StartEntryLid, cancellationToken)
+                .ConfigureAwait(false);
+            var nextConversationId = await dbContext.Conversations
                 .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= endEntryLid)
-                .OrderBy(c => c.StartEntryLid)
-                .Select(c => c.StartEntryLid)
-                .FirstOrDefaultAsync(cancellationToken);
+                .MinAsync(c => c.StartEntryLid, cancellationToken)
+                .ConfigureAwait(false);
 
-            await Task.WhenAll(previousConversationIdTask, previousConversationIdTask).ConfigureAwait(false);
-            var previousConversationId = await previousConversationIdTask.ConfigureAwait(false);
-            var nextConversationId = await nextConversationIdTask.ConfigureAwait(false);
             if (previousConversationId != 0)
                 context.Operation.Items.Set(nameof(ConversationRangeMeta.PreviousConversationRange), previousConversationId);
             if (nextConversationId != 0)
