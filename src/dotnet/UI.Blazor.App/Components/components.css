@@ -74,6 +74,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 
 .writable-chat-footer {
     @apply relative;
+    @apply w-full lg:max-w-192;
     @apply bg-post-panel md:bg-transparent;
 }
 

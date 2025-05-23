@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Step;
+@if (CurrentStep != this) {
+    return;
+}
+
+<div class="onboarding-tutorial tutorial-1">
+    <img draggable="false" src="/dist/images/onboarding/tutorial-1.svg" alt="Tutorial slide #1">
+    <div class="c-title">
+        <p>
+            To speak or to text?
+        </p>
+        <p>
+            Choose both
+        </p>
+    </div>
+    <p class="c-description">
+        Watch your words come to life as you talk - anything is transcribed and instantly available.
+    </p>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+
+    [Parameter] public EventCallback OnVerifyClick { get; set; }
+
+    public override bool CanSkip => true;
+
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsOnBoardingStep1Completed;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsOnBoardingStep1Completed = true });
+
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
+
+    protected override ValueTask OnSkip()
+        => ValueTask.CompletedTask;
+
+    protected override Task<bool> Save()
+        => Task.FromResult(true);
+}

@@ -1,6 +1,10 @@
 .onboarding-modal.modal-frame {
+    @apply md:w-88 lg:w-96 2xl:w-96;
     @apply p-0;
     @apply text-01;
+}
+.stepper.onboarding-stepper {
+    @apply md:h-192;
 }
 .step-tiles {
     @apply mt-6 flex-y gap-y-4;
@@ -21,7 +25,11 @@
 .step-tile-subtitle {
     @apply text-03 text-caption-2;
 }
+.onboarding-modal .stepper-footer {
+    @apply sticky bottom-0;
+}
 .onboarding-modal .stepper-footer .btn-group {
+    @apply justify-center;
     @apply max-w-none md:max-w-none;
 }
 .onboarding-modal .stepper-footer .btn-group .btn {
@@ -109,4 +117,99 @@ body.narrow .stepper-image-filler {
 .stepper-image-filler img {
     @apply max-h-full;
     transform: scaleX(-1);
+}
+
+.stepper:has(.onboarding-tutorial) {
+    @apply px-8;
+    @apply overflow-hidden;
+    @apply text-white;
+    background: radial-gradient(152.59% 69.81% at 42.78% 125.88%, #FF3880 0%, #0036A3 100%);
+}
+.stepper:has(.onboarding-tutorial) .stepper-header {
+    @apply hidden;
+}
+.stepper-body:has(.onboarding-tutorial) {
+    @apply justify-end;
+    @apply overflow-y-auto;
+    mask-image: linear-gradient(to top, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 2rem);
+}
+.stepper-body:has(.onboarding-tutorial.tutorial-4) {
+    @apply justify-between;
+}
+.stepper-body:has(.onboarding-tutorial) .stepper-filler {
+    @apply hidden;
+}
+.stepper-content:has(.onboarding-tutorial) {
+    scrollbar-width: none;
+}
+.onboarding-stepper .stepper-content {
+    @apply pb-4;
+    @apply overflow-y-auto overflow-x-hidden;
+}
+.onboarding-tutorial {
+    @apply flex-y gap-y-4;
+}
+.onboarding-tutorial .c-title > p {
+    @apply text-3.5xl font-semibold leading-8;
+    font-size: clamp(1.5rem, 2.5vw, 1.75rem);
+    line-height: clamp(1.5rem, 2.5vw, 1.75rem);
+}
+.onboarding-tutorial .c-description {
+    @apply text-headline-7 font-light leading-5;
+    font-size: clamp(1rem, 1.75vw, 1.375rem);
+    line-height: clamp(1rem, 1.75vw, 1.375rem);
+}
+.tutorial-btn-wrapper {
+    @apply relative;
+    @apply flex-none flex items-center justify-center;
+    @apply w-14 h-14;
+    @apply rounded-full border border-[var(--white-30)];
+}
+
+.tutorial-btn-wrapper .tutorial-btn {
+    @apply flex-none flex items-center justify-center;
+    @apply w-12 h-12;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-white;
+    @apply text-[var(--blue-30)];
+    box-shadow: 0 4px 9px 0 rgba(41, 112, 255, 0.29);
+}
+.tutorial-btn-wrapper.step-4 .tutorial-btn {
+    @apply bg-[var(--magenta-60)];
+    @apply text-white;
+}
+.tutorial-btn-wrapper .tutorial-btn::before {
+    @apply content-empty;
+    @apply absolute;
+    @apply w-14 h-14;
+    @apply rounded-full border-2 border-transparent;
+    border-top-color: var(--magenta-60);
+    transform: rotate(45deg);
+}
+.tutorial-btn-wrapper.step-2 .tutorial-btn::before {
+    border-right-color: var(--magenta-60);
+}
+.tutorial-btn-wrapper.step-3 .tutorial-btn::before {
+    border-right-color: var(--magenta-60);
+    border-bottom-color: var(--magenta-60);
+}
+.tutorial-btn-wrapper.step-4 .tutorial-btn::before {
+    border-color: var(--magenta-60);
+}
+
+.stepper-skip-filler {
+    @apply flex items-center justify-end;
+    @apply h-10;
+    @apply pr-1;
+}
+.stepper-skip-filler .btn-h {
+    @apply absolute top-2;
+    @apply text-white;
+}
+body.hoverable .stepper-skip-filler .btn-h:hover {
+    @apply text-white;
+}
+.onboarding-stepper:has(.onboarding-tutorial) .stepper-footer {
+    @apply pt-4;
 }

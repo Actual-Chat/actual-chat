@@ -1,4 +1,6 @@
 using ActualChat.Kvas;
+using CommunityToolkit.HighPerformance;
+using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -8,8 +10,8 @@ public partial class ChatUI
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
 
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
-    public static readonly TileStack<long> ConversationTileStack = Constants.Chat.ConversationTileStack;
-    public static readonly int SecondTileSize = (int)IdTileStack.Layers[1].TileSize; // 20
+    public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
+    public static readonly int SecondTileSize = (int)IdTileStack.LastLayer.TileSize; // 20
 
     private IImmutableSet<ConversationId> LastExpandedConversations { get; set; } =
         ImmutableHashSet<ConversationId>.Empty;
@@ -29,105 +31,118 @@ public partial class ChatUI
             return [];
 
         var showConversations = chat.IsSummarized ?? false;
-        IImmutableSet<ConversationId> expandedConversations = ImmutableHashSet<ConversationId>.Empty;
+        IImmutableSet<ConversationId> expandedConversations = [];
         if (showConversations) {
             expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
             var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
-                .OrderByDescending(c => dataQuery.IdRange.Contains(c.StartEntryLid))
+                .OrderBy(c => c.StartEntryLid)
                 .ToList();
             LastExpandedConversations = expandedConversations;
             if (changedExpand.Count > 0) {
                 // Adjust data query to load tiles around expanded conversation entries
-                var conversationId = changedExpand[0];
-                var conversation = await Conversations.Get(Session, conversationId, cancellationToken)
-                    .ConfigureAwait(false);
-                var isExpanded = expandedConversations.Contains(conversationId);
-                var loadBefore = isExpanded ? HalfLoadLimit : SecondTileSize;
-                var loadAfter = isExpanded ? 0 : HalfLoadLimit + SecondTileSize;
-                var keyRange = new Range<long>(
-                    Math.Min(dataQuery.IdRange.Start, conversationId.StartEntryLid),
-                    Math.Max(dataQuery.IdRange.End, conversation.Require().EndEntryLid));
-                dataQuery = new ChatDataQuery(keyRange, loadBefore, loadAfter);
+                var conversationId = changedExpand.FirstOrDefault();
+                dataQuery = new ChatDataQuery(
+                    IdTileStack.LastLayer.GetTile(conversationId.StartEntryLid).Range,
+                    -HalfLoadLimit,
+                    HalfLoadLimit);
             }
         }
 
-        var originalLoadBefore = dataQuery.LoadBefore;
-        var originalLoadAfter = dataQuery.LoadAfter;
+        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange);
+        var chatRangeMetaList = (await metaIdTiles
+            .Select(metaIdTile => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false))
+            .ToList();
+        List<Range<long>> idTiles;
+        while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, expandedConversations, out idTiles)) {
+            var prevIdTileStart = chatRangeMetaList[0].PreviousIdTileStart;
+            var nextIdTileStart = chatRangeMetaList[^1].NextIdTileStart;
+            var prevChatRangeMetaTask = prevIdTileStart.HasValue
+                ? Chats.GetChatRangeMeta(Session, chatId, prevIdTileStart.Value, cancellationToken)
+                : Task.FromResult<ChatRangeMeta?>(null)!;
+            var nextChatRangeMetaTask = nextIdTileStart.HasValue
+                ? Chats.GetChatRangeMeta(Session, chatId, nextIdTileStart.Value, cancellationToken)
+                : Task.FromResult<ChatRangeMeta?>(null)!;
+            await Task.WhenAll(prevChatRangeMetaTask, nextChatRangeMetaTask).ConfigureAwait(false);
+            var prevChatRangeMeta = await prevChatRangeMetaTask.ConfigureAwait(false);
+            var nextChatRangeMeta = await nextChatRangeMetaTask.ConfigureAwait(false);
+            if (prevChatRangeMeta == null! && nextChatRangeMeta == null!)
+                break;
+
+            if (prevChatRangeMeta != null)
+                chatRangeMetaList.Insert(0, prevChatRangeMeta);
+            if (nextChatRangeMeta != null!)
+                chatRangeMetaList.Add(nextChatRangeMeta);
+        }
+
+        // Prefetch tiles for the loaded id ranges
+        {
+            var prefetchEntriesTask = idTiles
+                .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
+                .Select(t => t.Range)
+                .EnsureMonotonic(RangeExt.LongRangeComparer)
+                .Select(r => Chats.GetTile(Session, chatId, ChatEntryKind.Text, r, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+            var prefetchConversationsTask = showConversations
+                ? idTiles
+                    .Select(r => ServerIdTileStack.LastLayer.GetTile(r.Start).Range)
+                    .EnsureMonotonic(RangeExt.LongRangeComparer)
+                    .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
+                    .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                : Task.CompletedTask;
+            var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
+            await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
+        }
+
         var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        while (true) {
-            var idTiles = GetIdTilesToLoad(dataQuery);
-            var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
-            var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
-            foreach (var idTile in idTiles) {
-                var lastReadEntryLid = shownReadyEntryLid;
-                if (lastReadEntryLid < idTile.Range.Start)
-                    lastReadEntryLid = 0;
-                else if (shownReadyEntryLid >= idTile.Range.End - 1)
-                    lastReadEntryLid = long.MaxValue;
-                var tile = await GetTile(
-                        chatId,
-                        chat.Rules.Author?.Id,
-                        idTile.Range,
-                        showConversations,
-                        expandedConversations,
-                        prevMessage,
-                        lastReadEntryLid,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-                if (tile.Items.Count == 0)
-                    continue;
-
-                if (expandedConversations.Count > alreadyAddedConversationHeaders.Count) {
-                    // Find conversation headers
-                    var filteredItems = tile.Items
-                        .Where(chatMessage => chatMessage is not ConversationHeader conversationHeader
-                            || alreadyAddedConversationHeaders.Add(conversationHeader.Conversation!.Id))
-                        .ToList();
-                    if (filteredItems.Count != tile.Items.Count)
-                        tile = tile with { Items = filteredItems };
-                }
-                else if (alreadyAddedConversationHeaders.Count > 0)
-                    // Skip first conversation header if already added
-                    if (tile.Items[0] is ConversationHeader conversationHeader
-                        && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation!.Id))
-                        tile = tile with { Items = tile.Items.Skip(1).ToList() };
-
-                if (tile.Items.Count == 0)
-                    continue;
-
-                if (tile.Items[0].Equals(prevMessage)) {
-                    // Skip first item if it's the same as previous tile - e.g. large conversation that spans across multiple tiles
-                    tile = tile with { Items = tile.Items.Skip(1).ToList() };
-                    if (tile.Items.Count == 0)
-                        continue;
-                }
-
-                tiles.Add(tile);
-                prevMessage = tile.Items[^1];
-#if false
-        // Uncomment for debugging:
-        DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
-            idTile.Range.Format(), isUnread, lastReadEntryLidArg);
-        foreach (var item in tile.Items)
-            DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
-#endif
-            }
-            if (originalLoadBefore == 0 && originalLoadAfter == 0)
-                break;
-
-            var expandedDataQuery = await ExpandDataQuery(chatId,
-                    dataQuery,
-                    originalLoadBefore,
-                    originalLoadAfter,
-                    tiles.SelectMany(t => t.Items),
+        var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
+        var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
+        foreach (var idTile in idTiles) {
+            var lastReadEntryLid = shownReadyEntryLid;
+            if (lastReadEntryLid < idTile.Start)
+                lastReadEntryLid = 0;
+            else if (shownReadyEntryLid >= idTile.End - 1)
+                lastReadEntryLid = long.MaxValue;
+            var tile = await GetTile(
+                    chatId,
+                    chat.Rules.Author?.Id,
+                    idTile,
+                    showConversations,
+                    expandedConversations,
+                    prevMessage,
+                    lastReadEntryLid,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (expandedDataQuery == null)
-                break;
+            if (tile.Items.Count == 0)
+                continue;
 
-            dataQuery = expandedDataQuery;
-            tiles.Clear();
+            if (expandedConversations.Count > alreadyAddedConversationHeaders.Count) {
+                // Find conversation headers
+                var filteredItems = tile.Items
+                    .Where(chatMessage => chatMessage is not ConversationHeader conversationHeader
+                        || alreadyAddedConversationHeaders.Add(conversationHeader.Conversation!.Id))
+                    .ToList();
+                if (filteredItems.Count != tile.Items.Count)
+                    tile = tile with { Items = filteredItems };
+            }
+            else if (alreadyAddedConversationHeaders.Count > 0)
+                // Skip the first conversation header if already added
+                if (tile.Items[0] is ConversationHeader conversationHeader
+                    && alreadyAddedConversationHeaders.Contains(conversationHeader.Conversation!.Id))
+                    tile = tile with { Items = tile.Items.Skip(1).ToList() };
+            if (tile.Items.Count == 0)
+                continue;
+
+            if (tile.Items[0].Equals(prevMessage)) {
+                // Skip the first item if it's the same as the previous tile - e.g., a large conversation that spans across multiple t
+                tile = tile with { Items = tile.Items.Skip(1).ToList() };
+                if (tile.Items.Count == 0)
+                    continue;
+            }
+            tiles.Add(tile);
+            prevMessage = tile.Items[^1];
         }
 
         // Fix NextMessage reference for cached tiles
@@ -145,6 +160,114 @@ public partial class ChatUI
 
         var groupedTiles = GroupExpandedConversations(groupedItems);
         return groupedTiles;
+
+        bool TryGetIdTilesToLoad(
+            ChatDataQuery dataQuery1,
+            IList<ChatRangeMeta> chatRangeMeta1,
+            IImmutableSet<ConversationId> expandedConversations1,
+            out List<Range<long>> idTiles1)
+        {
+            var hasPreviousIdTile = chatRangeMeta1[0].PreviousIdTileStart.HasValue;
+            var hasNextIdTile = chatRangeMeta1[^1].NextIdTileStart.HasValue;
+            var entryIdRanges = chatRangeMeta1
+                .SelectMany(m => m.EntryIdRanges)
+                .EnsureMonotonic(RangeExt.LongRangeComparer);
+            var conversationIdRanges = chatRangeMeta1
+                .SelectMany(m => m.ConversationIdRanges)
+                .EnsureMonotonic(RangeExt.LongRangeComparer);
+
+            var excludedRanges = conversationIdRanges
+                .Where(r => !expandedConversations1.Contains(ConversationId.New(chatId, r.Start)))
+                .ToList();
+
+            var merged = entryIdRanges
+                .Merge(excludedRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
+                .ToList();
+
+            var resultIdRanges = new List<Range<long>>();
+
+            Range<long>? pendingRight = null; // right part of the current entryRange
+            Range<long> currentEntryRange = default;
+
+            foreach (var (entryRange, conversationRange) in merged) {
+                var hasEntryRange = !entryRange.IsEmpty;
+                var hasConversationRange = !conversationRange.IsEmpty;
+
+                // If we start processing a NEW entryRange, flush the pending right-hand side
+                var conversationStartRange = new Range<long>(conversationRange.Start, conversationRange.Start + 1);
+                if (hasEntryRange) {
+                    if (entryRange == currentEntryRange && hasConversationRange) {
+                        var (l, r) = (pendingRight ?? default).Subtract(conversationRange);
+                        AddRange(resultIdRanges, l);
+                        AddRange(resultIdRanges, conversationStartRange);
+                        pendingRight = r;
+                    }
+                    else {
+                        AddRange(resultIdRanges, pendingRight ?? default);
+                        pendingRight = null;
+                        currentEntryRange = entryRange;
+                    }
+                }
+
+                if (hasEntryRange && hasConversationRange) {
+                    if (entryRange.Contains(conversationRange))
+                        AddRange(resultIdRanges, conversationStartRange);
+                    else {
+                        var (l, r) = entryRange.Subtract(conversationRange);
+                        AddRange(resultIdRanges, l);
+                        AddRange(resultIdRanges, conversationStartRange);
+                        pendingRight = r;
+                    }
+                }
+                else if (hasEntryRange)
+                    AddRange(resultIdRanges, entryRange);
+                else if (hasConversationRange)
+                    AddRange(resultIdRanges, conversationStartRange);
+            }
+            AddRange(resultIdRanges, pendingRight ?? default);
+
+            var resultIdRangesSpan = resultIdRanges.AsSpan();
+            var startIdWithOffset = GetIdWithOffset(
+                resultIdRangesSpan,
+                dataQuery1.ExistingIdRange.Start,
+                dataQuery1.StartOffset);
+
+            var endIdWithOffset = GetIdWithOffset(
+                resultIdRangesSpan,
+                dataQuery1.ExistingIdRange.End,
+                dataQuery1.EndOffset);
+
+            var hasFulfilledStart = (startIdWithOffset != null && HasOffsetReached(dataQuery1.StartOffset, startIdWithOffset.Value.ActualOffset)) || !hasPreviousIdTile;
+            var hasFulfilledEnd = (endIdWithOffset != null && HasOffsetReached(dataQuery1.EndOffset, endIdWithOffset.Value.ActualOffset)) || !hasNextIdTile;
+            var startEntryLid = startIdWithOffset?.Id ?? 0L;
+            var endEntryLid = endIdWithOffset?.Id ?? long.MaxValue;
+            idTiles1 = resultIdRanges
+                .SkipWhile(r => r.End <= startEntryLid)
+                .TakeWhile(r => r.Start <= endEntryLid)
+                .SelectMany(r => IdTileStack.LastLayer.GetCoveringTiles(r).Select(t => t.Range))
+                .SkipWhile(r => r.End <= startEntryLid)
+                .TakeWhile(r => r.Start <= endEntryLid)
+                .EnsureMonotonic(RangeExt.LongRangeComparer)
+                .ToList();
+
+            return hasFulfilledStart && hasFulfilledEnd;
+
+            static void AddRange(List<Range<long>> list, Range<long> range)
+            {
+                if (range.IsEmpty)
+                    return;
+
+                if (list.Count == 0 || list[^1].End <= range.Start)
+                    list.Add(range);
+            }
+
+            static bool HasOffsetReached(long offset, long actualOffset)
+            {
+                if (offset < 0)
+                    return actualOffset <= offset;
+                return actualOffset >= offset;
+            }
+        }
     }
 
     [ComputeMethod]
@@ -153,48 +276,7 @@ public partial class ChatUI
         CancellationToken cancellationToken = default)
         => Chats.GetEntry(Session, id, cancellationToken);
 
-    public async Task<ChatDataQuery?> ExpandDataQuery(
-        ChatId chatId,
-        ChatDataQuery dataQuery,
-        int originalLoadBefore,
-        int originalLoadAfter,
-        IEnumerable<ChatMessage> items,
-        CancellationToken cancellationToken)
-    {
-        var (beforeCount, afterCount) = GetLoadedBeforeAndAfterCounts(dataQuery, items);
-        var hasBeforeOrAfter = originalLoadBefore > 0 || originalLoadAfter > 0;
-        var beforeFulfilled = hasBeforeOrAfter && beforeCount >= originalLoadBefore / 2;
-        var afterFulfilled = hasBeforeOrAfter && afterCount >= originalLoadAfter / 2;
-        if (beforeFulfilled && afterFulfilled)
-            return null;
-
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
-            .ConfigureAwait(false);
-        var hasVeryFirstItem = chatIdRange.Start >= dataQuery.Start;
-        var hasVeryLastItem = chatIdRange.End <= dataQuery.End;
-        if (hasVeryFirstItem && hasVeryLastItem)
-            return null;
-
-        if (beforeFulfilled && hasVeryLastItem)
-            return null;
-
-        if (afterFulfilled && hasVeryFirstItem)
-            return null;
-
-        // Expand load limits and reset tiles if we need to load more just to fulfill one side
-        var expandedLoadBefore = hasVeryFirstItem || beforeFulfilled
-            ? dataQuery.LoadBefore
-            : Math.Max(dataQuery.LoadBefore * 4, HalfLoadLimit);
-        var expandedLoadAfter = hasVeryLastItem || afterFulfilled
-            ? dataQuery.LoadAfter
-            : Math.Max(dataQuery.LoadAfter * 4, HalfLoadLimit);
-        return new ChatDataQuery(dataQuery.IdRange, expandedLoadBefore, expandedLoadAfter) {
-            HasVeryFirstItem = hasVeryFirstItem,
-            HasVeryLastItem = hasVeryLastItem,
-        };
-    }
-
-    // NOTE: Please don't add excessive computed dependencies without a real reason - it might rerender whole chat view content
+    // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     protected virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
@@ -218,9 +300,7 @@ public partial class ChatUI
         var conversations = Array.Empty<Conversation>();
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         if (showConversations) {
-            var conversationIdTile =
-                ConversationTileStack.LastLayer
-                    .GetTile(idRange.Start); // Get the largest tile that contains the requested range
+            var conversationIdTile = ServerIdTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
@@ -275,7 +355,8 @@ public partial class ChatUI
 
         var messages = new List<ChatMessage>(entries.Count);
         var items = entries.Merge(conversations.Where(c => !expandedConversations.Contains(c.Id)),
-            (entry, conversation) => (int)(entry.Id.LocalId - conversation.Id.StartEntryLid));
+            e => e.LocalId,
+            c => c.Id.StartEntryLid);
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
@@ -501,123 +582,36 @@ public partial class ChatUI
         }
     }
 
-    private (int, int) GetLoadedBeforeAndAfterCounts(ChatDataQuery dataQuery, IEnumerable<ChatMessage> items)
-    {
-        var before = 0;
-        var after = 0;
-        foreach (var item in items)
-            if (item is IVirtualListGroup<ChatMessage> group)
-                foreach (var nestedItem in group.Items)
-                    UpdateCounts(nestedItem);
-            else
-                UpdateCounts(item);
-        return (before, after);
-
-        void UpdateCounts(ChatMessage item)
-        {
-            if (item.Id < dataQuery.IdRange.Start)
-                before++;
-            else if (item.Id > dataQuery.IdRange.End)
-                after++;
-        }
-    }
-
-    private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
-    {
-        if (idRange.IsEmptyOrNegative)
-            return Task.CompletedTask;
-
+    private Task PrefetchChatInfo(ChatId chatId, CancellationToken cancellationToken)
         // DebugLog?.LogDebug("PrefetchTiles: {ChatId} {IdRange}", chatId, idRange);
+        => BackgroundTask.Run(async () => {
+                // We are making following calls during chat view rendering:
+                // IChats.Get:3
+                // IChats.GetIdRange:4
+                // IChats.GetRules:3
+                // IAuthors.ListAuthorIds:3
+                // IAuthors.GetPresence:4
+                // IRoles.ListOwnerIds:3
+                // IReactions.ListSummaries:3
+                // IAuthors.Get:4
+                var chatTask = Chats.Get(Session, chatId, cancellationToken);
+                var idRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
+                var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
+                var authorsTask = Authors.ListAuthorIds(Session, chatId, cancellationToken);
+                var isEmptyTask = IsEmpty(chatId, cancellationToken);
 
-        return BackgroundTask.Run(async () => {
-            // We are making the following calls during chat view rendering:
-            // IChats.Get:3
-            // IChats.GetTile:3
-            // IChats.GetIdRange:4
-            // IChats.GetRules:3
-            // IAuthors.ListAuthorIds:3
-            // IAuthors.GetPresence:4
-            // IRoles.ListOwnerIds:3
-            // IReactions.ListSummaries:3
-            // IAuthors.Get:4
-            var chatTask = Chats.Get(Session, chatId, cancellationToken);
-            var idRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
-            var rulesTask = Chats.GetRules(Session, chatId, cancellationToken);
-            var authorsTask = Authors.ListAuthorIds(Session, chatId, cancellationToken);
-            var isEmptyTask = IsEmpty(chatId, cancellationToken);
-            var tilesTask = IdTileStack.FirstLayer
-                .GetCoveringTiles(idRange)
-                .Select(x => Chats.GetTile(Session,
-                    chatId,
-                    ChatEntryKind.Text,
-                    x.Range,
-                    cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken);
-
-            var tiles = await tilesTask.ConfigureAwait(false);
-
-            // prefetch authors
-            await tiles
-                .SelectMany(t => t.Entries)
-                .Select(e => e.AuthorId)
-                .Distinct()
-                .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken)
-                .ConfigureAwait(false);
-            await Task.WhenAll(chatTask,
-                    idRangeTask,
-                    rulesTask,
-                    authorsTask,
-                    isEmptyTask,
-                    tilesTask)
-                .ConfigureAwait(false);
-        },
-        Log,
-        "Error prefetching chat tiles.",
-        CancellationToken.None);
-    }
+                await Task.WhenAll(chatTask,
+                        idRangeTask,
+                        rulesTask,
+                        authorsTask,
+                        isEmptyTask)
+                    .ConfigureAwait(false);
+            },
+            Log,
+            "Error prefetching chat tiles.",
+            CancellationToken.None);
 
     // Private methods
-
-    private Tile<long>[] GetIdTilesToLoad(ChatDataQuery dataQuery)
-    {
-        // DebugLog?.LogDebug("GetIdTilesToLoad: {ChatDataQuery}", dataQuery);
-        var idRangeToLoad = new Range<long>(dataQuery.Start, dataQuery.End);
-        var firstLayer = IdTileStack.FirstLayer;
-        var secondLayer = IdTileStack.Layers[1];
-        var tiles = ArrayBuffer<Tile<long>>.Lease(true);
-        try {
-            // Hot range assumes a high probability of changes - so close to the end of the chat messages
-            var hotRangeTiles = dataQuery.HasVeryLastItem
-                ? firstLayer.GetCoveringTiles(new Range<long>(idRangeToLoad.End - secondLayer.TileSize,
-                    idRangeToLoad.End + firstLayer.TileSize))
-                : [];
-            var hotRange = hotRangeTiles.Length > 0
-                ? new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End)
-                : default;
-            if (!idRangeToLoad
-                    .Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond the existing chat id range
-                hotRange = default;
-
-            var coldRange = hotRange.IsEmpty
-                ? idRangeToLoad
-                : new Range<long>(secondLayer.GetTile(idRangeToLoad.Start).Start, hotRange.Start);
-
-            // Load the second layer stack to improve reuse if large tiles
-            tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
-            var lastColdRange = tiles.Count > 0
-                ? tiles[^1].Range
-                : default;
-            tiles.AddRange(firstLayer.GetCoveringTiles(hotRange).SkipWhile(hr => hr.Range.Overlaps(lastColdRange)));
-            var result = tiles.ToArray();
-            // if (result.DistinctBy(x => x.Range).Count() != result.Length)
-            //     Debugger.Break();
-            return result;
-        }
-        finally {
-            tiles.Release();
-        }
-    }
 
     private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
     {
@@ -659,5 +653,89 @@ public partial class ChatUI
 
         var prevEndsAt = prevEntry.EndsAt ?? prevEntry.BeginsAt;
         return entry.BeginsAt - prevEndsAt >= BlockStartTimeGap;
+    }
+
+    private static (long Id, int ActualOffset)? GetIdWithOffset(ReadOnlySpan<Range<long>> ranges, long anchorId, int requestedOffset)
+    {
+        if (requestedOffset == 0)
+            return (anchorId, 0);
+
+        var isForward = requestedOffset > 0;
+        var index = ranges.BinarySearch(r => r.End > anchorId);
+        if (index < 0)
+            return isForward
+                ? null
+                : (ranges[^1].End - 1, Sum(ranges));
+
+        var remaining = Math.Abs((long)requestedOffset);
+        var travelled = 0L;
+
+        var currentId = anchorId;
+        while (remaining > 0) {
+            var r = ranges[index];
+
+            if (isForward) {
+                // start position inside this range
+                var begin = Math.Max(r.Start, currentId + 1);
+                var capacity = r.End - begin;
+
+                if (capacity <= 0) {
+                    if (++index >= ranges.Length)
+                        break;
+
+                    continue;
+                }
+
+                if (remaining <= capacity) {
+                    currentId = begin + remaining - 1;
+                    travelled += remaining;
+                    remaining = 0;
+                }
+                else {
+                    currentId = r.End - 1; // last item of this range
+                    travelled += capacity;
+                    remaining -= capacity;
+                    if (++index >= ranges.Length)
+                        break;
+                }
+            }
+            else {
+                var end = Math.Min(r.End - 1, currentId - 1);
+                var capacity = end - r.Start + 1;
+
+                if (capacity <= 0) {
+                    if (--index < 0)
+                        break;
+
+                    continue;
+                }
+
+                if (remaining <= capacity) {
+                    currentId = end - remaining + 1;
+                    travelled += remaining;
+                    remaining = 0;
+                }
+                else {
+                    currentId = r.Start;
+                    travelled += capacity;
+                    remaining -= capacity;
+                    if (--index < 0)
+                        break;
+                }
+            }
+        }
+
+        int actualOffset = (int)(isForward ? travelled : -travelled);
+        return (currentId, actualOffset);
+
+        int Sum(ReadOnlySpan<Range<long>> ranges1)
+        {
+            var sum = 0;
+            foreach (var range in ranges1) {
+                var size = (int)range.Size();
+                sum += size;
+            }
+            return sum;
+        }
     }
 }

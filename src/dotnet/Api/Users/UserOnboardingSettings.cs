@@ -24,6 +24,10 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(9)] public bool IsTimeZoneStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(10)] public bool IsDataCollectionStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(11)] public bool IsChatRouletteStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(12)] public bool IsOnBoardingStep1Completed { get; init; }
+    [DataMember, MemoryPackOrder(13)] public bool IsOnBoardingStep2Completed { get; init; }
+    [DataMember, MemoryPackOrder(14)] public bool IsOnBoardingStep3Completed { get; init; }
+    [DataMember, MemoryPackOrder(15)] public bool IsOnBoardingStep4Completed { get; init; }
 
     public bool HasUncompletedSteps(bool enableChatRouletteUI)
     {
@@ -34,6 +38,10 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
             IsVerifyEmailStepCompleted: true,
             IsTimeZoneStepCompleted: true,
             IsDataCollectionStepCompleted: true,
+            IsOnBoardingStep1Completed: true,
+            IsOnBoardingStep2Completed: true,
+            IsOnBoardingStep3Completed: true,
+            IsOnBoardingStep4Completed: true,
         };
         if (!areAllFeatureIndependentStepsCompleted)
             return true;

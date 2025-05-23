@@ -3,6 +3,51 @@ import {css, html, LitElement} from "lit";
 
 @customElement('empty-search-chat-svg')
 class EmptySearchChatSvg extends LitElement {
+    static styles = [css`
+        :host {
+        }
+        @keyframes wink {
+            0%, 45%, 55%, 100% {
+                transform: translate(0, 0);
+            }
+            50% {
+                transform: translate(0, 5px);
+            }
+        }
+        @keyframes star-pulse {
+            0%, 40%, 60%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.25);
+            }
+        }
+        @keyframes rotating-shadow {
+            0%, 100% {
+                transform: translate(-2px, 0px);
+            }
+            25% {
+                transform: translate(0px, 1px);
+            }
+            50% {
+                transform: translate(2px, 0px);
+            }
+            75% {
+                transform: translate(0px, -1px);
+            }
+        }
+        .left-eye {
+            animation: wink 4s ease-in-out infinite;
+        }
+        .medal-star {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: star-pulse 1.5s ease-in-out infinite;
+        }
+        .cat-shadow {
+            animation: rotating-shadow 2s linear infinite;
+        }
+    `];
     protected render(): unknown {
         return html`
             <svg width="166" height="222" viewBox="0 0 166 222" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,10 +84,10 @@ class EmptySearchChatSvg extends LitElement {
                 <path d="M55.83 97.83C55.83 97.83 82.5001 108.5 114.5 96C116.36 95.42 107 89.5 107 89.5C87.5001 99 58.66 90.66 58.66 90.66" stroke="var(--search-cat-border)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M118.15 35.2904C118.15 35.2904 122.93 30.3104 131.34 31.3104C141.1 32.4704 145.37 39.0104 145.37 46.4604C145.37 53.9104 139.94 58.4004 141.35 74.3104C142.672 89.2259 141.647 106.523 124.903 114.552" stroke="var(--search-cat-border)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M66 60H61V65H66V60Z" fill="var(--search-cat-paws)"/>
-                <path d="M71 55H66V60H71V55Z" fill="var(--search-cat-paws)"/>
+                <path d="M71 55H66V60H71V55Z" fill="var(--search-cat-paws)" class="left-eye"/>
                 <path d="M76 60H71V65H76V60Z" fill="var(--search-cat-paws)"/>
                 <path d="M94 60H89V65H94V60Z" fill="var(--search-cat-paws)"/>
-                <path d="M99 55H94V60H99V55Z" fill="var(--search-cat-paws)"/>
+                <path d="M99 55H94V60H99V55Z" fill="var(--search-cat-paws)" class="left-eye"/>
                 <path d="M104 60H99V65H104V60Z" fill="var(--search-cat-paws)"/>
                 <path d="M85 68H80V73H85V68Z" fill="var(--search-cat-paws)"/>
                 <path d="M62.14 137.65C62.14 137.65 62.15 132.83 56.21 129.69" stroke="var(--search-cat-border)" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round"/>
@@ -60,9 +105,9 @@ class EmptySearchChatSvg extends LitElement {
                 <path d="M100.5 107C106 115.5 111 134.5 95 169" stroke="var(--search-cat-chest)" stroke-width="8" stroke-linecap="round"/>
                 <path d="M84.65 123.9C90.5208 123.9 95.28 119.14 95.28 113.27C95.28 107.399 90.5208 102.64 84.65 102.64C78.7792 102.64 74.02 107.399 74.02 113.27C74.02 119.14 78.7792 123.9 84.65 123.9Z" fill="var(--search-cat-paws)" stroke="var(--search-cat-border)" stroke-width="3" stroke-miterlimit="10"/>
                 <ellipse cx="80.5644" cy="10.5279" rx="2.39081" ry="2.64932" transform="rotate(50.7287 80.5644 10.5279)" fill="var(--search-cat-paws)"/>
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M92.9738 112.047C89.6342 112.01 86.9349 109.322 86.9066 106C86.8782 109.322 84.1789 112.01 80.8393 112.047C84.1789 112.083 86.8783 114.771 86.9066 118.093C86.9349 114.771 89.6342 112.083 92.9738 112.047Z" fill="var(--search-cat-border)"/>
+                <path class="medal-star" fill-rule="evenodd" clip-rule="evenodd" d="M92.9738 112.047C89.6342 112.01 86.9349 109.322 86.9066 106C86.8782 109.322 84.1789 112.01 80.8393 112.047C84.1789 112.083 86.8783 114.771 86.9066 118.093C86.9349 114.771 89.6342 112.083 92.9738 112.047Z" fill="var(--search-cat-border)"/>
                 <path fill-rule="evenodd" clip-rule="evenodd" d="M78.0007 117.263C79.9108 117.263 81.4624 115.729 81.49 113.825C81.5175 115.729 83.0691 117.263 84.9792 117.263C83.0691 117.263 81.5175 118.798 81.49 120.701C81.4624 118.798 79.9108 117.263 78.0008 117.263M78.0007 117.263L78.0004 117.263L78.0007 117.263Z" fill="var(--search-cat-border)"/>
-                <path d="M84 212C96.1493 212 106 208.866 106 205C106 201.134 96.1493 198 84 198C71.8507 198 62 201.134 62 205C62 208.866 71.8507 212 84 212Z" fill="var(--search-cat-shadow)"/>
+                <path class="cat-shadow" d="M84 212C96.1493 212 106 208.866 106 205C106 201.134 96.1493 198 84 198C71.8507 198 62 201.134 62 205C62 208.866 71.8507 212 84 212Z" fill="var(--search-cat-shadow)"/>
                 <defs>
                     <linearGradient id="paint0_linear_20263_769562" x1="77.0667" y1="19" x2="86.4343" y2="16.2458" gradientUnits="userSpaceOnUse">
                         <stop offset="0" stop-color="#E5E5FA"/>

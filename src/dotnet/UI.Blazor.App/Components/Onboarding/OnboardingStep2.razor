@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Step;
+@if (CurrentStep != this) {
+    return;
+}
+
+<div class="onboarding-tutorial tutorial-2">
+    <img draggable="false" src="/dist/images/onboarding/tutorial-2.svg" alt="Tutorial slide #2">
+    <div class="c-title">
+        <p>
+            Read or replay
+        </p>
+        <p>
+            anything
+        </p>
+    </div>
+    <p class="c-description">
+        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
+    </p>
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+
+    [Parameter] public EventCallback OnVerifyClick { get; set; }
+
+    public override bool CanSkip => true;
+
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsOnBoardingStep2Completed;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsOnBoardingStep2Completed = true });
+
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
+
+    protected override ValueTask OnSkip()
+        => ValueTask.CompletedTask;
+
+    protected override Task<bool> Save()
+        => Task.FromResult(true);
+}

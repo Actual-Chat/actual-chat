@@ -2,9 +2,8 @@
     @apply z-10;
     @apply absolute inset-0;
     @apply hidden;
-    @apply opacity-0;
     @apply -translate-y-full;
-    @apply duration-300 delay-0;
+    @apply duration-300 delay-0 ease-in-out;
     transition-behavior: allow-discrete;
     transition-property: display, opacity, transform;
 }
@@ -12,9 +11,8 @@
     @apply flex-y;
     @apply opacity-100;
     @apply translate-y-0;
-    @apply duration-300 delay-300;
+    @apply delay-300;
     @starting-style {
-        opacity: 0;
         transform: translateY(-100%);
     }
 }

@@ -1,15 +1,20 @@
 using ActualChat.Contacts;
 using ActualChat.Users;
+using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.Chat;
 
 public class Chats(IServiceProvider services) : IChats
 {
+    public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
+    public static readonly TileStack<long> ViewIdTileStack = Constants.Chat.ViewIdTileStack;
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
     [field: AllowNull, MaybeNull]
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
+    private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -88,6 +93,17 @@ public class Chats(IServiceProvider services) : IChats
     {
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await Backend.GetTile(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(
+        Session session,
+        ChatId chatId,
+        long idTileStart,
+        CancellationToken cancellationToken)
+    {
+        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        return await Backend.GetChatRangeMeta(chatId, idTileStart, cancellationToken).ConfigureAwait(false);
     }
 
     // Note that it returns (firstId, lastId + 1) range!

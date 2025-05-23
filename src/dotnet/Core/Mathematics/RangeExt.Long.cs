@@ -8,6 +8,8 @@ public static partial class RangeExt
     private static partial Regex FirstDigitsRegexFactory();
     private static readonly Regex FirstDigitsRegex = FirstDigitsRegexFactory();
 
+    public static readonly Comparer<Range<long>> LongRangeComparer = Comparer<Range<long>>.Create((a, b) => a.Start.CompareTo(b.Start));
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Range<long> Move(this Range<long> range, long startOffset, long endOffset)
         => new (range.Start + startOffset, range.End + endOffset);
@@ -74,6 +76,17 @@ public static partial class RangeExt
             : ((range.Start, intersection.Start), (intersection.End, range.End));
     }
 
+    public static (Range<long>, Range<long>) Split(this Range<long> range, long splitAt)
+    {
+        if (range.Start > splitAt)
+            return ((range.Start, range.Start), range);
+
+        if (range.End < splitAt)
+            return (range, (range.End, range.End));
+
+        return ((range.Start, splitAt), (splitAt, range.End));
+    }
+
     public static Range<long> ExpandToTiles(this Range<long> range, TileLayer<long> tiles)
     {
         var startTile = tiles.GetTile(range.Start);
@@ -104,5 +117,31 @@ public static partial class RangeExt
         return new Range<long>(
             long.Parse(startMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture),
             long.Parse(endMatch.Value, NumberStyles.Integer, CultureInfo.InvariantCulture));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Range<long> EnsureNonEmpty(this Range<long> range)
+        => range.IsEmpty
+            ? new Range<long>(range.Start, range.End + 1)
+            : range;
+
+    public static IEnumerable<Range<long>> MergeAdjacentRanges(this IEnumerable<Range<long>> ranges)
+    {
+        var previous = default(Range<long>);
+        foreach (var current in ranges) {
+            if (previous.IsEmpty) {
+                previous = current;
+                continue;
+            }
+
+            if (previous.End >= current.Start)
+                previous = new Range<long>(previous.Start, Math.Max(previous.End, current.End));
+            else {
+                yield return previous;
+                previous = current;
+            }
+        }
+        if (!previous.IsEmpty)
+            yield return previous;
     }
 }

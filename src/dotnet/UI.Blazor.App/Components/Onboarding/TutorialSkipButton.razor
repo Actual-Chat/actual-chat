@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var cls = Stepper.CurrentStep switch {
+        OnboardingStep2 => "step-2",
+        OnboardingStep3 => "step-3",
+        OnboardingStep4 => "step-4",
+        _ => "",
+    };
+}
+
+<div class="tutorial-btn-wrapper @cls">
+    <button type="button" class="tutorial-btn" @onclick="@Click">
+        <i class="icon-arrow-right text-2xl"></i>
+    </button>
+</div>
+
+@code {
+    [Parameter] public Stepper Stepper { get; set; } = null!;
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+}

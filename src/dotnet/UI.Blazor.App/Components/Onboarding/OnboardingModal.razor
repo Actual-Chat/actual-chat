@@ -14,19 +14,35 @@
 
 <DialogFrame
     Class="onboarding-modal"
-    HasHeader="false">
+    HasHeader="false"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged">
+    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged" Class="onboarding-stepper">
         <Filler>
             @if (stepper.CurrentStep is PhoneStep) {
                 <div class="stepper-image-filler">
                     <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="">
+                </div>
+            } else if (stepper.CurrentStep is OnboardingStep1 or OnboardingStep2 or OnboardingStep3) {
+                var offset = stepper.CurrentStep switch {
+                    OnboardingStep2 => 3,
+                    OnboardingStep3 => 2,
+                    _ => 4,
+                };
+                <div class="stepper-skip-filler">
+                    <HeaderButton Click="@(_ => OnMove(stepper, offset))">
+                        Skip
+                    </HeaderButton>
                 </div>
             } else {
                 <div class="stepper-filler"></div>
             }
         </Filler>
         <Steps>
+            <OnboardingStep1/>
+            <OnboardingStep2/>
+            <OnboardingStep3/>
+            <OnboardingStep4/>
             <PhoneStep Account="m.AccountFull" OnVerifyClick="@(() => OnNext(stepper))"/>
             <EmailStep Account="m.AccountFull"/>
             <TimeZoneStep Account="m.AccountFull"/>
@@ -55,44 +71,52 @@
         <Footer>
             <div class="btn-group">
                 @if (stepper.CanSkip) {
-                    <Button
-                        Class="btn-cancel"
-                        Click="@(() => OnSkip(stepper))">
-                        @stepper.SkipTitle
-                    </Button>
+                    if (stepper.CurrentStep is OnboardingStep1 or OnboardingStep2 or OnboardingStep3 or OnboardingStep4) {
+                        <TutorialSkipButton Stepper="@stepper" Click="@(() => OnSkip(stepper))"/>
+                    } else {
+                        <Button
+                            Class="btn-cancel"
+                            Click="@(() => OnSkip(stepper))">
+                            @stepper.SkipTitle
+                        </Button>
+                    }
                 }
-                @if (stepper.CurrentStep is PhoneStep) {
-                    <Button
-                        Class="btn-primary"
-                        ButtonRef="@_nextButtonRef"
-                        Click="@(() => OnSkip(stepper))">
-                        <span>@stepper.NextTitle</span>
-                    </Button>
-                } else {
-                    <Button
-                        Class="btn-primary"
-                        ButtonRef="@_nextButtonRef"
-                        IsDisabled="@(!_canMoveForward)"
-                        Click="@(() => OnNext(stepper))">
-                        @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
+                @if (stepper.CurrentStep is not (OnboardingStep1 or OnboardingStep2 or OnboardingStep3 or OnboardingStep4)) {
+                    @if (stepper.CurrentStep is PhoneStep) {
+                        <Button
+                            Class="btn-primary"
+                            ButtonRef="@_nextButtonRef"
+                            Click="@(() => OnSkip(stepper))">
                             <span>@stepper.NextTitle</span>
-                        } else if (stepper.IsLastStep) {
-                            <span>Start messaging</span>
-                        } else if (stepper.CanMoveForward) {
-                            <span>@stepper.NextTitle</span>
-                        } else {
-                            Modal.Close(true);
-                        }
-                    </Button>
+                        </Button>
+                    } else {
+                        <Button
+                            Class="btn-primary"
+                            ButtonRef="@_nextButtonRef"
+                            IsDisabled="@(!_canMoveForward)"
+                            Click="@(() => OnNext(stepper))">
+                            @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
+                                <span>@stepper.NextTitle</span>
+                            } else if (stepper.IsLastStep) {
+                                <span>Start messaging</span>
+                            } else if (stepper.CanMoveForward) {
+                                <span>@stepper.NextTitle</span>
+                            } else {
+                                Modal.Close(true);
+                            }
+                        </Button>
+                    }
                 }
             </div>
-            <div class="flex w-full justify-center mt-6">
-                <LineProgress
-                    StepCount="stepper.StepCount"
-                    CurrentStepIndex="stepper.CurrentStepIndex"
-                    Decoration="LineProgress.LineProgressDecoration.Blue">
-                </LineProgress>
-            </div>
+            @if (stepper.CurrentStep is not (OnboardingStep1 or OnboardingStep2 or OnboardingStep3 or OnboardingStep4)) {
+                <div class="flex w-full justify-center mt-6">
+                    <LineProgress
+                        StepCount="@(stepper.StepCount - 4)"
+                        CurrentStepIndex="@(stepper.CurrentStepIndex - 4)"
+                        Decoration="LineProgress.LineProgressDecoration.Blue">
+                    </LineProgress>
+                </div>
+            }
         </Footer>
     </Stepper>
     </Body>
@@ -116,6 +140,11 @@
             IsDataCollectionConfigured = isDataCollectionConfigured,
             EnableChatRouletteUI = enableChatRouletteUI,
         };
+    }
+
+    private async Task OnMove(Stepper stepper, int offset) {
+        await stepper.MoveTo(offset);
+        _canMoveForward = true;
     }
 
     private async Task OnSkip(Stepper stepper) {
