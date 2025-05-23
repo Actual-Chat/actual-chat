@@ -656,6 +656,9 @@ public partial class ChatUI
 
     private static (long Id, int ActualOffset)? GetIdWithOffset(ReadOnlySpan<Range<long>> ranges, long anchorId, int requestedOffset)
     {
+        if (ranges.IsEmpty)
+            return null;
+
         if (requestedOffset == 0)
             return (anchorId, 0);
 

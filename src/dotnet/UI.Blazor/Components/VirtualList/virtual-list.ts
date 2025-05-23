@@ -1821,14 +1821,23 @@ export class VirtualList {
 
         const itemSize = this.statistics.itemSize;
         const viewport = this.viewport;
-        const alreadyLoaded = this.itemRange;
-        if (!viewport || !alreadyLoaded)
-            return this.lastQuery;
-
         if (this.hasUnmeasuredItems) { // Let's wait for measurement to complete first
             fastRaf(() => this.measureItems());
             return this.lastQuery;
         }
+        const orderedItems = [...this.orderedItems];
+        if (orderedItems.length == 0) // No entries -> nothing to "align" the query to
+            return this.lastQuery;
+
+        if (orderedItems.some(item => item.range == null)) {
+            this.itemRange = null;
+            this.ensureItemRangeCalculated();
+        }
+
+        const alreadyLoaded = this.itemRange;
+        if (!viewport || !alreadyLoaded)
+            return this.lastQuery;
+
         if (rs.hasVeryFirstItem && rs.hasVeryLastItem)
             return this.lastQuery; // We have already loaded all data
 
@@ -1857,19 +1866,10 @@ export class VirtualList {
             loadEnd = alreadyLoaded.end;
 
         const loadZone = new NumberRange(loadStart, loadEnd);
-        const orderedItems = [...this.orderedItems];
-        if (orderedItems.length == 0) // No entries -> nothing to "align" the query to
-            return this.lastQuery;
-
         if (alreadyLoaded.contains(loadZone)) {
             // debug helper
             // console.warn('already!', viewport, alreadyLoaded, loadZone);
             return this.lastQuery;
-        }
-
-        if (orderedItems.some(item => item.range == null)) {
-            this.itemRange = null;
-            this.ensureItemRangeCalculated();
         }
 
         const lastKey = orderedItems[orderedItems.length - 1].key;
@@ -1894,8 +1894,8 @@ export class VirtualList {
                 lastItem = orderedItems[orderedItems.length - 1];
         }
         const keyRange = new Range(firstItem.key, lastItem.key);
-        const moveRangeStart = Math.ceil((loadZone.start - firstItem.range.start) / itemSize);
-        const moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize);
+        const moveRangeStart = Math.floor((loadZone.start - firstItem.range.start) / itemSize / 5) * 5; // round to 5 to prevent too many requests
+        const moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize / 5) * 5; // round to 5 to prevent too many requests
         const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);
