@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatDescription.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatDescription.Model>
 @{
     var m = State.Value;
 }
@@ -31,12 +31,12 @@
         </div>
         <div class="c-bottom">
             @{
-                var matchInterests = m.ChatRouletteInfo.OwnProfile.Preferences.Preferences.Interests;
+                var matchInterests = m.ChatRouletteInfo.OwnProfile?.Preferences.Preferences.Interests ?? [];
             }
             @foreach (var interest in preferences.Interests) {
                 var match = matchInterests.Contains(interest);
                 <div class="cr-badge @(match ? "selected" : "")">
-                    <span>@(Interests.GetTitle(interest))</span>
+                    <span>@interest.Title</span>
                 </div>
             }
         </div>
@@ -44,13 +44,9 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private IRoulette Roulette => Hub.Roulette;
-    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -63,8 +59,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isPeerChat = Chat.Id.IsPeerChat(out var peerChatId);
-        if (isPeerChat)
+        if (Chat.Id is PeerChatId peerChatId)
             return await GetPeerChatModel(peerChatId, cancellationToken);
 
         var isChatRoulette = Chat.IsChatRoulette();
@@ -79,8 +74,8 @@
     private async Task<Model> GetPeerChatModel(PeerChatId peerChatId, CancellationToken cancellationToken) {
         var chat = Chat;
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var peerAccountId = peerChatId.AnotherUserIdOrDefault(ownAccount.Id);
-        if (peerAccountId.IsNone)
+        var peerAccountId = peerChatId.AnotherUserIdOrNull(ownAccount.Id);
+        if (peerAccountId is null)
             return Model.Loading;
 
         var ownUserId = ownAccount.Id;
@@ -115,10 +110,12 @@
         if (chatRouletteProfiles is null)
             return null;
 
-        if (chatRouletteProfiles.PeerProfile.Id.IsEmpty)
+        var peerProfile = chatRouletteProfiles.PeerProfile;
+        var ownProfile = chatRouletteProfiles.OwnProfile;
+        if (peerProfile is null || ownProfile is null)
             return null;
 
-        return new ChatRouletteInfo(chatRouletteProfiles.PeerProfile, chatRouletteProfiles.OwnProfile);
+        return new ChatRouletteInfo(peerProfile, chatRouletteProfiles.OwnProfile);
     }
 
     // Nested types
@@ -131,5 +128,5 @@
         public ChatRouletteInfo? ChatRouletteInfo { get; init; }
     }
 
-    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile OwnProfile);
+    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile? OwnProfile);
 }

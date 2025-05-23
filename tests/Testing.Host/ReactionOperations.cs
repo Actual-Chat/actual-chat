@@ -5,8 +5,13 @@ namespace ActualChat.Testing.Host;
 public static class ReactionOperations
 {
     public static Task React(this IWebClientTester tester, TextEntryId entryId, Emoji emoji)
-        => tester.Commander.Call(new Reactions_React(tester.Session, new Reaction {
+    {
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
+            AuthorId = null!,
             EntryId = entryId,
-            EmojiId = emoji,
-        }));
+            Emoji = emoji,
+        };
+        return tester.Commander.Call(new Reactions_React(tester.Session, reaction));
+    }
 }

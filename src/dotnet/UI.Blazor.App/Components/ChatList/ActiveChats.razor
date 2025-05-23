@@ -1,10 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ActiveChats.Model>
+@inherits ComputedStateComponent<AppUIHub, List<Chat>>
 @{
-    var m = State.Value;
     DebugLog?.LogDebug("Rendered: {List}", ChatListKind.Active);
-
-    if (m.IsLoading || m.Chats.Count == 0)
+    if (State.IsInitial(out var chats) || chats.Count == 0)
         return;
 }
 
@@ -13,15 +11,13 @@
     <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
 
     <div class="chat-list chat-list-active">
-        @foreach(var chat in m.Chats) {
+        @foreach(var chat in chats) {
             <ChatListItem ListKind="@ChatListKind.Active" Chat="@chat"/>
         }
     </div>
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     [field: AllowNull, MaybeNull]
@@ -34,13 +30,7 @@
     protected override void OnParametersSet()
         => DebugLog?.LogDebug("OnParametersSet: {List}", ChatListKind.Active);
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(GetType()),
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<List<Chat>> ComputeState(CancellationToken cancellationToken) {
         DebugLog?.LogDebug("-> ComputeState: {List}", ChatListKind.Active);
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
@@ -50,15 +40,6 @@
             .SkipNullItems()
             .ToList();
         DebugLog?.LogDebug("<- ComputeState: {List}", ChatListKind.Active);
-        return new(chats);
-    }
-
-    // Nested types
-
-    public sealed record Model(
-        IReadOnlyList<Chat> Chats,
-        bool IsLoading = false
-    ) {
-        public static readonly Model Loading = new(ImmutableList<Chat>.Empty, true);
+        return chats;
     }
 }

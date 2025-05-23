@@ -1,5 +1,5 @@
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="flex md:hidden items-center cursor-pointer min-h-14">
     <HeaderButton Click="OnClick" Class="md:!hidden transparent">
@@ -8,8 +8,6 @@
 </div>
 
 @code {
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-
     private void OnClick()
         => PanelsUI.Left.SetIsVisible(true);
 }

@@ -13,8 +13,8 @@
             : "Has not read";
 }
 
-<AuthorBadgeTemplate AuthorSid="@_authorId">
-    @if (context.Author.Id.IsNone) {
+<AuthorBadgeTemplate AuthorId="@_authorId">
+    @if (context?.Author is not { } author) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
@@ -23,24 +23,19 @@
         class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "") @cls cursor-pointer"
         data-tooltip="@tooltip"
         data-tooltip-position="@FloatingPosition.Top.ToPositionString()"
-        @onclick="@(_ => AuthorUI.Show(_authorId))">
+        @onclick="@(_ => AuthorUI.Show(author.Id))">
         <div class="truncate">
-            @context.Author.Avatar.Name
+            @author.Avatar.Name
         </div>
     </div>
 </AuthorBadgeTemplate>
 
 @code {
-    private AuthorId _authorId;
+    private AuthorId? _authorId;
     private bool? _hasRead;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private IChats Chats => Hub.Chats;
-    private AuthorUI AuthorUI => Hub.AuthorUI;
-
     protected override void OnParametersSet()
-        => Markup.Id.IsAuthor(out _authorId);
+        => _authorId = Markup.Id.PrincipalId as AuthorId;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -67,5 +62,6 @@
     }
 
     // Nested types
-    public record Model(bool? HasRead);
+
+    public sealed record Model(bool? HasRead);
 }

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<MessageHoverMenuNewContent.Model>
+@inherits ComputedStateComponent<AppUIHub, MessageHoverMenuNewContent.Model>
 @{
     var m = State.Value;
     var topOffsetClass = IsSystem || MessageWithAuthor ? "small-offset" : "";
@@ -8,7 +8,7 @@
 <div class="hover-menu-wrapper @topOffsetClass">
     <div class="message-hover-menu-new">
         <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
-            <EmojiIcon Id="@Emoji.ThumbsUp.Id" Class="w-5 h-5"/>
+            <EmojiIcon Emoji="@Emojis.ThumbsUp" Class="w-5 h-5"/>
         </ButtonRound>
         @if (m.CanReply && !IsSystem) {
             <ButtonRound
@@ -24,7 +24,7 @@
         }
         <ButtonRound
             Class="btn-xs btn-transparent"
-            data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, IsSystem.ToString(), "", "").ToString())"
+            data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, IsSystem.ToString(), "", "").ToString())"
             data-menu-trigger="@MenuTrigger.Primary"
             data-menu-placement="@(FloatingPosition.LeftStart.ToPositionString())">
             <i class="icon-more-vertical text-xl text-icon-01"></i>
@@ -33,12 +33,8 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private UICommander UICommander => Hub.UICommander();
-    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }
@@ -61,13 +57,16 @@
     }
 
     private Task Reply(ChatEntry chatEntry)
-        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
+        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, (TextEntryId)chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
-        return UICommander.Run(new Reactions_React(Session, new Reaction {
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
+            AuthorId = null!,
             EntryId = Entry.Id.ToTextEntryId(),
-            EmojiId = Emoji.ThumbsUp,
-        }));
+            Emoji = Emojis.ThumbsUp,
+        };
+        return UICommander.Run(new Reactions_React(Session, reaction));
     }
 
     // Nested types

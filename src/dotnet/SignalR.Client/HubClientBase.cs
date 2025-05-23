@@ -43,13 +43,13 @@ public abstract class HubClientBase : IDisposable
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Messages are marked as preserved.")]
     protected virtual async Task<HubConnection> Connect(CancellationToken cancellationToken)
     {
-        var hubUri = Services.UrlMapper().GetHubUrl(HubUrl);
+        var hubUri = new Uri(HubUrl, UriKind.Absolute);
         var builder = new HubConnectionBuilder()
             .WithUrl(hubUri, options => {
                 options.SkipNegotiation = true;
                 options.Transports = HttpTransportType.WebSockets;
             });
-        if (Constants.DebugMode.SignalR)
+        if (CoreConstants.DebugMode.SignalR)
             builder.AddJsonProtocol();
         else
             builder.AddMessagePackProtocol();

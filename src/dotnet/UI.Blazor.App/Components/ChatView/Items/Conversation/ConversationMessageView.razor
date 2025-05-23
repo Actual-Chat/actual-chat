@@ -42,7 +42,7 @@
     private ConversationMessage? _lastMessage;
     private ChatEntry _fakeEntry = null!;
 
-    private ChatUIHub Hub => ChatContext.Hub;
+    private AppUIHub Hub => ChatContext.Hub;
     private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
@@ -56,7 +56,7 @@
             return;
 
         var conversation = Message.Conversation!;
-        var chatEntryId = new ChatEntryId(conversation.Id.ChatId, ChatEntryKind.Text, conversation.Id.StartEntryLid, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
         _descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);

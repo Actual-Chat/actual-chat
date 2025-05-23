@@ -1,11 +1,16 @@
-using System.Text;
+using ActualLab.Fusion.Blazor;
 using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public sealed record MarkupSeq(params Markup[] Items) : Markup
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed class MarkupSeq : Markup
 {
-    public MarkupSeq() : this([]) { }
+    public Markup[] Items { get; }
+
+    // ReSharper disable once ConvertToPrimaryConstructor
+    public MarkupSeq(params Markup[] items)
+        => Items = items;
 
     public override string Format()
     {
@@ -41,7 +46,7 @@ public sealed record MarkupSeq(params Markup[] Items) : Markup
             } else if (lastPlainText == null) {
                 lastPlainText = pt;
             } else {
-                lastPlainText = lastPlainText with { Text = lastPlainText.Text + pt.Text };
+                lastPlainText = new PlainTextMarkup(lastPlainText.Text + pt.Text);
                 isSimplified = true;
             }
         }
@@ -55,13 +60,5 @@ public sealed record MarkupSeq(params Markup[] Items) : Markup
             1 => items[0],
             _ => new MarkupSeq(items.ToArray()),
         };
-    }
-
-    protected override bool PrintMembers(StringBuilder builder)
-    {
-        builder.Append("Items = [");
-        builder.Append(Items.ToDelimitedString());
-        builder.Append(']');
-        return true;
     }
 }

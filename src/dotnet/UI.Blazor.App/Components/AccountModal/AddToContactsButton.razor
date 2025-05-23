@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<AddToContactsButton.Model>
+@inherits ComputedStateComponent<AppUIHub, AddToContactsButton.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -18,12 +18,8 @@
 }
 
 @code {
-    private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
-    private UICommander UICommander => Hub.UICommander();
     private AuthorUI AuthorUI => Hub.AuthorUI;
-
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
 
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
 
@@ -37,7 +33,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var authorId = Author.Id;
         var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
-        if (peerChatId == PeerChatId.None)
+        if (peerChatId is null)
             return new ();
 
         var contact = await Contacts.GetForChat(Session, peerChatId, cancellationToken).ConfigureAwait(false);

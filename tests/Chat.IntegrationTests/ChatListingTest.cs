@@ -28,7 +28,7 @@ public class ChatListingTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         // act
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellationToken = cts.Token;
-        var retrieved = await ChatsBackend.Batch(now, ChatId.None, batchSize, cancellationToken)
+        var retrieved = await ChatsBackend.Batch(now, null, batchSize, cancellationToken)
             .ToApiArrayAsync(cancellationToken)
             .Flatten();
 

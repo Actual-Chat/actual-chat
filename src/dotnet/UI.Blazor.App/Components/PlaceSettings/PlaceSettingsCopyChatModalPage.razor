@@ -1,13 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <CopyChatFromListToPlaceModalContent OnChatClick="@OnCopyChatClick"/>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private PlaceId PlaceId { get; set; }
+    private PlaceId PlaceId { get; set; } = null!;
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
@@ -16,7 +15,7 @@
 
     private Task OnCopyChatClick(ChatId chatId) {
         return CopyChatToPlaceUI.CopyChat(Hub,
-            ChatId.Parse(chatId),
+            chatId,
             PlaceId,
             StateHasChanged,
             (_) => {

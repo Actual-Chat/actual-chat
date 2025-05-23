@@ -28,14 +28,13 @@ public partial class EntryIndexingMasterFlow
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(IndexingFlowCursor<ChatId>? cursor, CancellationToken cancellationToken)
     {
-        cursor ??= new (ChatId.None, 0);
-        return await ChatsBackend.ListChanged(new ChangedChatsQuery {
-                    MinVersion = cursor.LastUpdatedVersion,
-                    MaxVersion = MaxVersion,
-                    LastId = cursor.LastUpdatedId,
-                    Limit = BatchSize,
-                },
-                cancellationToken)
-            .ConfigureAwait(false);
+        cursor ??= new(null, 0);
+        var query = new ChangedChatsQuery {
+            LastId = cursor.LastUpdatedId,
+            Limit = BatchSize,
+            MinVersion = cursor.LastUpdatedVersion,
+            MaxVersion = MaxVersion,
+        };
+        return await ChatsBackend.ListChanged(query, cancellationToken).ConfigureAwait(false);
     }
 }

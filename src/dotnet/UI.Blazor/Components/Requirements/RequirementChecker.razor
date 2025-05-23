@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<FailedRequirementSet>
+@inherits ComputedStateComponent<UIHub, FailedRequirementSet>
 @{
     var m = State.Value;
 }
@@ -8,11 +8,11 @@
 </CascadingValue>
 
 @code {
+    private readonly MutableDictionary<RequirementComponent, Unit> _requirements = new();
     private EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
-    private MutableDictionary<RequirementComponent, Unit> _requirements = new();
 
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private ILogger<RequirementChecker> Log { get; init; } = null!;
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public RenderFragment Success { get; set; } = null!;
     [Parameter, EditorRequired] public RenderFragment<FailedRequirementSet> Failure { get; set; } = null!;

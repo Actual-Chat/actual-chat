@@ -5,8 +5,8 @@ using AndroidX.Core.App;
 
 namespace ActualChat.App.Maui;
 
-public record ChatAttentionRequest(
-    Symbol ChatId,
+public sealed record ChatAttentionRequest(
+    ChatId ChatId,
     long ChatPosition,
     DateTime CreatedOnUtc,
     string Title,
@@ -20,7 +20,6 @@ public class ChatAttentionService
     private const int MaxNotificationCount = 4;
 
     private static readonly Lock ClassSyncObject = new ();
-    private static ChatAttentionService? _instance;
     public static readonly string AlarmActionPrefix = Context.PackageName + ".ChatAttention.";
     private static readonly string AlarmAction = AlarmActionPrefix + "Alarm";
     private static readonly string SnoozeAction = AlarmActionPrefix + "Snooze";
@@ -29,26 +28,27 @@ public class ChatAttentionService
     private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
 
     private readonly Lock _syncObject = new();
-    private AlarmManager? _alarmManager;
     private Option<State?> _cachedState = Option<State?>.None;
     private bool _isInitialized;
 
     private static Context Context => Platform.AppContext;
     private static DateTime UtcNow => DateTime.UtcNow;
 
-    private AlarmManager AlarmManager => _alarmManager ??= (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
+    [field: AllowNull, MaybeNull]
+    private AlarmManager AlarmManager => field ??= (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
 
+    [field: AllowNull, MaybeNull]
     public static ChatAttentionService Instance {
         get {
             lock (ClassSyncObject) {
-                if (_instance == null) {
-                     _instance = new ChatAttentionService();
-                     ChatUI.OnReadPositionUpdated += tuple => {
-                         var (chatId, entryLid) = tuple;
-                         _instance.Clear(chatId.Value, entryLid);
+                if (field == null) {
+                     field = new ChatAttentionService();
+                     ChatUI.OnReadPositionUpdated += arg => {
+                         var (chatId, entryLid) = arg;
+                         field.Clear(chatId, entryLid);
                      };
                 }
-                return _instance;
+                return field;
             }
         }
     }
@@ -68,7 +68,7 @@ public class ChatAttentionService
     public void Ask(ChatAttentionRequest request)
         => DispatchOnNonMainThread(() => AskInternal(request));
 
-    public void Clear(Symbol chatId, long chatPosition)
+    public void Clear(ChatId chatId, long chatPosition)
         => DispatchOnNonMainThread(() => ClearInternal(chatId, chatPosition));
 
     public void OnHandleIntent(Intent intent)
@@ -100,7 +100,7 @@ public class ChatAttentionService
         DoJob(state);
     }
 
-    private void ClearInternal(Symbol chatId, long chatPosition)
+    private void ClearInternal(ChatId chatId, long chatPosition)
     {
         var originalState = GetPersistedState();
         var state = originalState;
@@ -241,15 +241,12 @@ public class ChatAttentionService
             notificationManager.Notify(NotificationTag, id, notification);
     }
 
-    private static PendingIntent? CreateViewChatAction(string? link, string? sChatId)
+    private static PendingIntent? CreateViewChatAction(string? link, ChatId? chatId)
     {
-        if (!ChatId.TryParse(sChatId, out var chatId))
-            chatId = ChatId.None;
-
         string? sUri = null;
         if (!link.IsNullOrEmpty())
             sUri = link;
-        else if (!chatId.IsNone)
+        else if (chatId is not null)
             sUri = Links.Chat(chatId);
 
         var intent = NotificationHelper.CreateViewIntent(Context, sUri);
@@ -269,10 +266,10 @@ public class ChatAttentionService
             .SetOngoing(true)
             .SetGroup(NotificationGroupKey)
             .SetPriority((int)NotificationPriority.High)
-            .SetCategory(Android.App.Notification.CategoryReminder);
+            .SetCategory(Android.App.Notification.CategoryReminder)!;
         // Intent that will be called for when tapping on the notification
         if (contentIntent != null)
-            builder.SetContentIntent(contentIntent);
+            builder = builder.SetContentIntent(contentIntent)!;
         return builder;
     }
 
@@ -341,7 +338,7 @@ public class ChatAttentionService
 
         public bool HasRequest() => Requests.Length > 0;
 
-        public ChatAttentionRequest? GetRequest(Symbol chatId)
-            => Requests.FirstOrDefault(r => r.ChatId.Equals(chatId));
+        public ChatAttentionRequest? GetRequest(ChatId chatId)
+            => Requests.FirstOrDefault(r => r.ChatId == chatId);
     }
 }

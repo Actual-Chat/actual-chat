@@ -11,9 +11,9 @@ public sealed partial record ThreadContact(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
-    public static readonly Requirement<Contact> MustExist = Requirement.New(
-        (Contact? c) => c is { Id.IsNone: false },
-        new(() => StandardError.NotFound<Contact>()));
+    public static readonly Requirement<ThreadContact> MustExist = Requirement.New(
+        (ThreadContact? c) => c?.Id is not null,
+        new(() => StandardError.NotFound<ThreadContact>()));
 
     [DataMember, MemoryPackOrder(2)] public Moment TouchedAt { get; init; }
     [DataMember, MemoryPackOrder(3)] public bool IsPinned { get; init; }

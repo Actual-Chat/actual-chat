@@ -2,7 +2,8 @@
 
 public abstract class ModalStepRef : IHasId<Symbol>
 {
-    private readonly TaskCompletionSource<bool> _whenClosedSource = TaskCompletionSourceExt.New<bool>();
+    private readonly AsyncTaskMethodBuilder<bool> _whenClosedSource = AsyncTaskMethodBuilderExt.New<bool>();
+
     public abstract Symbol Id { get; }
     public Task<bool> WhenClosed => _whenClosedSource.Task;
 

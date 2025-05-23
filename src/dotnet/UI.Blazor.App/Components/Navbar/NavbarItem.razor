@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @implements IDisposable
 @{
     var activeClass = IsSelected ? "active" : "inactive";
@@ -29,11 +30,6 @@
 
 @code {
     private bool _isCurrent;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private History History => Hub.History;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
-    private TuneUI TuneUI => Hub.TuneUI;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsSelected { get; set; }

@@ -113,7 +113,7 @@ public class TranslatedTranscripts : ProcessorBase
     }
 
     private static StreamId GetTranslatedStreamId(StreamId streamId, Language language)
-        => new (streamId.NodeRef, $"{streamId.LocalId}{language.Value.OrdinalReplace("-", "")}");
+        => StreamId.New(streamId.NodeRef, $"{streamId.LocalId}{language.Value.OrdinalReplace("-", "")}");
 
     private Task CreateTranslation(
         TranslationId translationId,
@@ -125,7 +125,7 @@ public class TranslatedTranscripts : ProcessorBase
         var cmd = new TranslationsBackend_Change(translationId,
             null,
             Change.Create(new Translation(translationId) {
-                StreamId = streamId,
+                StreamId = streamId.Value,
                 Content = translatedText,
                 TargetLanguage = translationId.Language,
             }));

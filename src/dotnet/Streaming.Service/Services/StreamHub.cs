@@ -32,7 +32,7 @@ public class StreamHub(IServiceProvider services) : Hub
         TimeSpan skipTo,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var stream = await Backend.GetAudio(new StreamId(streamId), skipTo, cancellationToken).ConfigureAwait(false);
+        var stream = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
         if (stream == null)
             yield break;
 
@@ -44,7 +44,7 @@ public class StreamHub(IServiceProvider services) : Hub
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var stream = await Backend.GetTranscript(new StreamId(streamId), cancellationToken).ConfigureAwait(false);
+        var stream = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
         if (stream == null)
             yield break;
 
@@ -70,16 +70,16 @@ public class StreamHub(IServiceProvider services) : Hub
 
     public async Task ProcessAudio(
         string sessionToken,
-        string chatId,
-        string repliedChatEntryId,
+        string? chatId,
+        string? repliedEntryId,
         double clientStartOffset,
         int preSkip,
         IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
-        var chatIdTyped = new ChatId(chatId);
-        var repliedChatEntryIdTyped = new ChatEntryId(repliedChatEntryId);
+        var chatIdTyped = ChatId.Parse(chatId);
+        var repliedEntryIdTyped = TextEntryId.ParseNullable(repliedEntryId);
         var httpContext = Context.GetHttpContext()!;
         var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
 
@@ -95,8 +95,8 @@ public class StreamHub(IServiceProvider services) : Hub
         }
 
         var nodeRef = _preferOwnNode ? MeshWatcher.OwnNode.Ref : nodes.GetRandom().Ref;
-        var streamId = new StreamId(nodeRef, Generate.Option);
-        var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedChatEntryIdTyped);
+        var streamId = StreamId.New(nodeRef);
+        var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);
         var frames = audioStream
             .Select((packet, i) => new AudioFrame {

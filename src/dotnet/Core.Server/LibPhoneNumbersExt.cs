@@ -11,10 +11,10 @@ public class PhoneParser
     public PhoneNumberUtil PhoneNumberUtil { get; }
     public string? Region { get; }
 
-    public Phone Parse(string source)
+    public Phone? ParseNullable(string source)
         => PhoneNumberExt.TryParse(PhoneNumberUtil, source, Region, out var phoneNumber)
             ? phoneNumber.ToPhone()
-            : Phone.None;
+            : null;
 
     public static PhoneParser ForRegion(string? region, PhoneNumberUtil? phoneNumberUtil = null)
         => new(region, phoneNumberUtil);
@@ -38,10 +38,9 @@ public static class PhoneNumberExt
 {
     private static readonly HashSet<char> AllowedStartChars = ['+', '(', '-'];
     public static Phone ToPhone(this PhoneNumber phoneNumber)
-        => new(
+        => Phone.New(
             phoneNumber.CountryCode.Format(),
-            phoneNumber.NationalNumber.Format(),
-            AssumeValid.Option);
+            phoneNumber.NationalNumber.Format());
 
     public static bool TryParse(string source, string? region, [NotNullWhen(true)] out PhoneNumber? phoneNumber)
         => TryParse(PhoneNumberUtil.GetInstance(), source, region, out phoneNumber);
@@ -67,17 +66,17 @@ public static class PhoneNumberExt
 
 public static class PhoneExt
 {
-    public static Phone Parse(string source, string? region)
-        => TryParse(source, region, out var phone) ? phone : default;
+    public static Phone? ParseNullable(string source, string? region)
+        => TryParse(source, region, out var phone) ? phone : null;
 
-    public static bool TryParse(string source, string? region, out Phone phone)
+    public static bool TryParse(string source, string? region, [NotNullWhen(true)] out Phone? phone)
     {
         if (PhoneNumberExt.TryParse(source, region, out var phoneNumber)) {
             phone = phoneNumber.ToPhone();
             return true;
         }
 
-        phone = default;
+        phone = null;
         return false;
     }
 }

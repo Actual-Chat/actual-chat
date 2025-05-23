@@ -46,13 +46,13 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
 
     public Notification ToModel()
     {
-        var chatId = new ChatId(ChatId, ParseOrNone.Option);
-        var entryId = TextEntryLocalId is { } localId && !chatId.IsNone
-            ? new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option)
+        var chatId = ActualChat.ChatId.ParseNullable(ChatId);
+        var entryId = TextEntryLocalId is { } localId && chatId is not null
+            ? TextEntryId.New(chatId, localId)
             : default;
-        var authorId = new AuthorId(AuthorId, ParseOrNone.Option);
+        var authorId = ActualChat.AuthorId.ParseNullable(AuthorId);
 
-        return new Notification(new NotificationId(Id), Version) {
+        return new Notification(NotificationId.Parse(Id), Version) {
             Title = Title,
             Content = Content,
             IconUrl = IconUrl,
@@ -60,11 +60,11 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
             SentAt = SentAt,
             HandledAt = HandledAt.ToMoment(),
             Option = Kind switch {
-                NotificationKind.Invitation => new ChatNotificationOption(chatId),
-                NotificationKind.Message => new ChatEntryNotificationOption(entryId, authorId),
-                NotificationKind.Reply => new ChatEntryNotificationOption(entryId, authorId),
-                NotificationKind.Reaction => new ChatEntryNotificationOption(entryId, authorId),
-                NotificationKind.GetAttention => new GetAttentionNotificationOption(chatId, authorId, entryId.LocalId),
+                NotificationKind.Invitation => new ChatNotificationOption(chatId!),
+                NotificationKind.Message => new ChatEntryNotificationOption(entryId!, authorId!),
+                NotificationKind.Reply => new ChatEntryNotificationOption(entryId!, authorId!),
+                NotificationKind.Reaction => new ChatEntryNotificationOption(entryId!, authorId!),
+                NotificationKind.Attention => new GetAttentionNotificationOption(chatId!, authorId!, entryId?.LocalId ?? 0),
                 _ => throw new ArgumentOutOfRangeException(),
             },
         };
@@ -73,7 +73,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     public void UpdateFrom(Notification model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
         long? textEntryLocalId = null;
@@ -91,15 +91,15 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
             authorSid = getAttentionNotification.CallerId.Value.NullIfEmpty();
         }
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
-        UserId = model.UserId;
+        UserId = model.UserId.Value;
         Kind = model.Kind;
         SimilarityKey = model.SimilarityKey;
         Title = model.Title;
         Content = model.Content;
         IconUrl = model.IconUrl;
-        ChatId = model.ChatId;
+        ChatId = model.ChatId?.Value;
         TextEntryLocalId = textEntryLocalId;
         AuthorId = authorSid;
         CreatedAt = model.CreatedAt;

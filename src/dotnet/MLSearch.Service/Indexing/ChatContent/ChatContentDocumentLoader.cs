@@ -47,7 +47,7 @@ internal class ChatContentDocumentLoader(
     {
         var query = new SearchQuery {
             Filters = [
-                new EqualityFilter<string>(_chatIdField, chatId),
+                new EqualityFilter<string>(_chatIdField, chatId.Value),
                 new Int64RangeFilter(_chatEntryLocalIdField, null, new RangeBound<long>(cursor.LastEntryLocalId, true)),
             ],
             SortStatements = [

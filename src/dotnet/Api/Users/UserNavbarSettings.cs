@@ -8,8 +8,10 @@ public sealed partial record UserNavbarSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserNavbarSettings);
 
-    [DataMember, MemoryPackOrder(1)] private ApiArray<ChatId> LegacyPinnedChats { get; init; }
-    [DataMember, MemoryPackOrder(2)] private ApiArray<PlaceId> LegacyPlacesOrder { get; init; }
+    [DataMember, MemoryPackOrder(1), MemoryPackInclude]
+    private ApiArray<ChatId> LegacyPinnedChats { get; init; }
+    [DataMember, MemoryPackOrder(2), MemoryPackInclude]
+    private ApiArray<PlaceId> LegacyPlacesOrder { get; init; }
 
     [DataMember, MemoryPackOrder(0)] public string Origin { get; init; } = "";
 

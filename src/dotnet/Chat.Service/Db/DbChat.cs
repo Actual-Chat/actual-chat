@@ -11,8 +11,6 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
-
     public DbChat() { }
     public DbChat(Chat model) => UpdateFrom(model);
 
@@ -25,7 +23,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Obsolete("2023.03: Use MediaId instead.")]
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
-    public string UserLinkId { get; set; } = "";
+    public string AliasId { get; set; } = "";
 
     // Template info for embedded chats
     public bool IsTemplate { get; set; }
@@ -42,25 +40,22 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool? IsSummarized { get; set; }
 
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public Chat ToModel()
-    {
-        var chatId = new ChatId(Id);
-        ChatId? templateId = TemplateId.IsNullOrEmpty()
-            ? (ChatId?)null
-            : new ChatId(TemplateId);
-        return new (chatId, Version) {
+        => new(ChatId.Parse(Id), Version) {
             Title = Title,
             Description = Description,
             CreatedAt = CreatedAt,
             IsTemplate = IsTemplate,
-            TemplateId = templateId,
+            TemplateId = TemplateId.IsNullOrEmpty()
+                ? null
+                : ChatId.Parse(TemplateId),
             TemplatedForUserId = TemplatedForUserId.IsNullOrEmpty()
                 ? null
-                : new UserId(TemplatedForUserId),
+                : UserId.Parse(TemplatedForUserId),
             IsPublic = IsPublic,
             IsArchived = IsArchived,
             AllowGuestAuthors = AllowGuestAuthors,
@@ -68,26 +63,25 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             SystemTag = SystemTag.IsNullOrEmpty()
                 ? Symbol.Empty
                 : new Symbol(SystemTag),
-            MediaId = new MediaId(MediaId),
-            UserLinkId = new UserLinkId(UserLinkId),
+            MediaId = ActualChat.MediaId.ParseNullable(MediaId),
+            AliasId = ActualChat.AliasId.ParseNullable(AliasId),
             IsSummarized = IsSummarized,
         };
-    }
 
     public void UpdateFrom(Chat model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
         Title = model.Title;
         Description = model.Description;
         CreatedAt = model.CreatedAt;
         IsTemplate = model.IsTemplate;
-        TemplateId = model.TemplateId;
-        TemplatedForUserId = model.TemplatedForUserId;
+        TemplateId = model.TemplateId?.Value;
+        TemplatedForUserId = model.TemplatedForUserId?.Value;
         IsPublic = model.IsPublic;
         IsArchived = model.IsArchived;
         AllowGuestAuthors = model.AllowGuestAuthors;
@@ -96,9 +90,9 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ? null
             : model.SystemTag.Value;
         Kind = model.Kind;
-        MediaId = model.MediaId;
-        IsPlaceRootChat = model.Id.IsPlaceRootChat;
-        UserLinkId = model.UserLinkId.Value;
+        MediaId = model.MediaId?.Value ?? "";
+        IsPlaceRootChat = model.Id is PlaceChatId { IsRoot: true };
+        AliasId = model.AliasId?.NormalizedValue ?? "";
         IsSummarized = model.IsSummarized;
     }
 }

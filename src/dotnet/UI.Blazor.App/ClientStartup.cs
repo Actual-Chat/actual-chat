@@ -2,7 +2,6 @@ using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Module;
-using ActualChat.Serialization;
 using ActualChat.UI.Blazor.App.Components.ChatRoulette;
 using ActualChat.UI.Blazor.App.Components.Discover;
 using ActualChat.UI.Blazor.App.Components.PlaceInfo;
@@ -51,7 +50,8 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HeadOutlet))]
     // Diffs
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ObjectDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(StringDiffHandler))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NullableDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
@@ -94,7 +94,7 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminUserInvitesPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AuthTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedChatPage))]
+    // [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedChatPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserInvitePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UnavailablePage))]
@@ -158,11 +158,14 @@ public static class ClientStartup
         }
 
         // Rpc & Fusion defaults
-        CoreSerializerAndRpcStartup.Configure(false);
+        CoreSerializerAndRpcSetup.Configure(false);
         RpcDefaults.Mode = RpcMode.Client;
         FusionDefaults.Mode = FusionMode.Client;
+#if !DEBUG
+        RpcDefaultDelegates.CallTracerFactory = _ => null; // No call tracing in release builds
+#endif
         RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto();
-        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connect
+        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connecting
         RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
             TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
         };
@@ -170,7 +173,7 @@ public static class ClientStartup
 #if DEBUG
         if (Constants.DebugMode.LogAnyThrownException)
             FirstChanceExceptionLogger.Use();
-        if (OSInfo.IsWebAssembly && Constants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
+        if (OSInfo.IsWebAssembly && CoreConstants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
             RemoteComputeServiceInterceptor.Options.Default = new() {
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };

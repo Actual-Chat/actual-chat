@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.Search;
-using Cysharp.Text;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
@@ -115,7 +114,7 @@ public static partial class HighlightsConverter
         var plainHighlight = highlight.OrdinalReplace(PreTag, "").OrdinalReplace(PostTag, "");
         var offset = 0;
         if (!OrdinalEquals(plain, plainHighlight)) {
-            plainHighlight = ZString.Concat(SkippedPartReplacement, plainHighlight, SkippedPartReplacement);
+            plainHighlight = string.Concat(SkippedPartReplacement, plainHighlight, SkippedPartReplacement);
             offset = SkippedPartReplacement.Length;
         }
         var searchMatchParts = FindRanges(highlight)

@@ -1,6 +1,5 @@
-@using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<List<AvatarFull>>
+@inherits ComputedStateComponent<AppUIHub, List<AvatarFull>>
 @{
     var avatars = State.Value;
 }
@@ -43,16 +42,12 @@
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-
-    private ChatId ChatId => Chat?.Id ?? ChatId.None;
+    private IAvatars Avatars => Hub.Avatars;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
-    [Parameter] public Chat? Chat { get; set; } = null;
+    [Parameter] public Chat? Chat { get; set; }
+
+    private ChatId? ChatId => Chat?.Id;
 
     protected override ComputedState<List<AvatarFull>>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

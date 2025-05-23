@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatActivities.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatActivities.Model>
 @{
     var m = State.Value;
     var size = SquareSize.Size8;
@@ -10,7 +10,7 @@
     MaxIconCount="@MaxIconCount"
     Size="@size"
     IsListening="@IsListening"
-    AuthorSids="@m.RecordingAuthorSids" />
+    AuthorIds="@m.RecordingAuthorIds" />
 
 @* !!! For testing ChatActivityPanel only *@
 @* <AuthorCircleGroupTest *@
@@ -20,8 +20,6 @@
 @*      Size="@size" /> *@
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private IAuthors Authors => Hub.Authors;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
@@ -39,7 +37,7 @@
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = Chat.Id.IsNone ? null
+        ChatRecordingActivity = Chat?.Id is null ? null
             : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
@@ -57,9 +55,7 @@
 
         var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
         return new() {
-            RecordingAuthorSids = authorIds
-                .Select(id => id.Value)
-                .ToList(),
+            RecordingAuthorIds = authorIds.Select(id => id).ToList(),
         };
     }
 
@@ -68,6 +64,6 @@
     public sealed class Model {
         public static readonly Model None = new();
 
-        public List<string> RecordingAuthorSids { get; init; } = [];
+        public IReadOnlyList<AuthorId> RecordingAuthorIds { get; init; } = [];
     }
 }

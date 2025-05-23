@@ -6,24 +6,32 @@ namespace ActualChat.UI.Blazor.UnitTests;
 
 public class AppActivityTest: TestBase
 {
-    private ServiceProvider Services { get; }
+    private IServiceProvider Services { get; }
+    private IServiceProvider ScopedServices { get; }
 
     public AppActivityTest(ITestOutputHelper @out) : base(@out)
-        => Services = new ServiceCollection()
+    {
+        var hostInfo = new HostInfo {
+            HostKind = HostKind.MauiApp,
+            AppKind = AppKind.Ios,
+            Environment = Environments.Development,
+            BaseUrl = "https://local.actual.chat",
+            IsTested = true,
+        };
+        Services = new ServiceCollection()
             .AddTestLogging(Out)
-            .AddSingleton(_ => new HostInfo {
-                HostKind = HostKind.MauiApp,
-                AppKind = AppKind.Ios,
-                Environment = Environments.Development,
-                IsTested = true,
-            })
-            .AddSingleton<UIHub>()
-            .AddAlias<Hub, UIHub>()
+            .AddSingleton(_ => hostInfo)
+            .AddSingleton(c => new Features(c))
+            .AddSingleton(_ => new UrlMapper(hostInfo))
+            .AddScoped<UIHub>()
             .AddSingleton<BackgroundStateTracker, MauiBackgroundStateTracker>()
-            .AddFusion()
-            .AddService<AppActivity, TestAppActivity>()
-            .Services
+            .AddFusion(fusion => {
+                fusion.AddBlazor();
+                fusion.AddService<AppActivity, TestAppActivity>();
+            })
             .BuildServiceProvider();
+        ScopedServices = Services.CreateScope().ServiceProvider;
+    }
 
     [Fact]
     public async Task BasicTest()
@@ -32,7 +40,7 @@ public class AppActivityTest: TestBase
         var backgroundStateTracker = (MauiBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
         backgroundStateTracker.IsBackground.Value.Should().BeFalse();
 
-        var appActivity = (TestAppActivity)Services.GetRequiredService<AppActivity>();
+        var appActivity = (TestAppActivity)ScopedServices.GetRequiredService<AppActivity>();
         appActivity.Start();
         appActivity.State.Value.Should().Be(ActivityState.Foreground);
 
@@ -55,7 +63,7 @@ public class AppActivityTest: TestBase
         var log = Services.LogFor(GetType());
         var backgroundStateTracker = (MauiBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
         backgroundStateTracker.IsBackground.Value.Should().BeFalse();
-        var appActivity = (TestAppActivity)Services.GetRequiredService<AppActivity>();
+        var appActivity = (TestAppActivity)ScopedServices.GetRequiredService<AppActivity>();
         appActivity.Start();
 
         using var cts = new CancellationTokenSource();
@@ -72,7 +80,6 @@ public class AppActivityTest: TestBase
             for (int i = 0; i < 10; i++) {
                 await Task.Delay(random.Next(10,200), cts.Token);
                 appActivity.SetIsActiveInBackground(random.Next(2) == 1);
-
             }
         }, cts.Token);
 
@@ -97,7 +104,7 @@ public class AppActivityTest: TestBase
 public class TestAppActivity(UIHub hub) : AppActivity(hub)
 {
     private readonly MutableState<bool> _mustBeBackgroundActive
-        = hub.StateFactory().NewMutable<bool>();
+        = hub.StateFactory.NewMutable<bool>();
 
     [ComputeMethod]
     protected override async Task<bool> MustBeBackgroundActive(CancellationToken cancellationToken)

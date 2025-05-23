@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatListTabUnreadCount.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatListTabUnreadCount.Model>
 @{
     var m = State.Value;
     _rendered = m;
@@ -14,9 +14,8 @@
 @code {
     private Model? _rendered;
 
-    [Inject] private ChatUI ChatUI  { get; init; } = null!;
-    [Inject] private ChatListUI ChatListUI  { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
     [Parameter, EditorRequired] public PlaceChatListSettings PlaceChatListSettings { get; set; } = null!;
     [Parameter, EditorRequired] public ChatListFilter ChatListFilter { get; set; } = ChatListFilter.None;

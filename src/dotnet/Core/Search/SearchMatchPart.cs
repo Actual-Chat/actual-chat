@@ -3,8 +3,8 @@ using MemoryPack;
 namespace ActualChat.Search;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record SearchMatchPart(
+[DataContract, MemoryPackable] // Unmanaged struct -> MemoryPackOrder doesn't matter
+public readonly partial record struct SearchMatchPart(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Range<int> Range,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank)
 {

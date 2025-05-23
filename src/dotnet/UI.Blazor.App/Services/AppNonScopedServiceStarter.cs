@@ -2,6 +2,8 @@ using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Components.SideNav;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -15,7 +17,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
     [field: AllowNull, MaybeNull]
-    private Tracer Tracer => field ??= Services.Tracer(GetType());
+    private Tracer Tracer => field ??= Services.TracerFor(GetType());
 
     public static void WarmupStaticServices(HostInfo hostInfo)
     {
@@ -24,6 +26,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
                 WarmupByteSerializer();
                 WarmupNewtonsoftJsonSerializer();
                 WarmupSystemJsonSerializer();
+                WarmupTileRelated();
             });
         _ = Task.Run(() => {
             var markup = "**b** *i* @`a`a:chatId:1 http://google.com `code`\r\n```cs\r\ncode\r\n```";
@@ -68,12 +71,12 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         using var _1 = Tracer.Region();
         // Start preloading top contacts
         // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
-        // because we don't know selected place yet.
+        // because we don't know the selected place yet.
         var localSettings = Services.LocalSettings();
-        var selectedChatIdOption = await localSettings.TryGet<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
-        var selectedPlaceId = PlaceId.None;
-        if (selectedChatIdOption.IsSome(out var selectedChatId))
-            selectedPlaceId = selectedChatId.PlaceId;
+        var selectedChatId = await localSettings.Get<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
+        var selectedPlaceId = (PlaceId?)null;
+        if (selectedChatId is not null)
+            selectedPlaceId = (selectedChatId as PlaceChatId)?.PlaceId;
         Tracer.Point($"-- {nameof(PreloadContactListData)}.{nameof(PlaceId)}: '{selectedPlaceId}'");
         var contacts = Services.GetRequiredService<IContacts>();
         var contactIds = await contacts.ListIds(session, selectedPlaceId, cancellationToken).ConfigureAwait(false);
@@ -97,12 +100,16 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
     private static void WarmupByteSerializer()
     {
 #pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
-        var chatId = Constants.Chat.AnnouncementsChatId;
         var userId = Constants.User.Walle.UserId;
-        var authorId = new AuthorId(chatId, 1L, AssumeValid.Option);
-        var account = new AccountFull(new User(userId, "User"), 1);
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        var authorId = AuthorId.New(chatId, 1L);
+        var account = new AccountFull(new User(userId.Value, "User"), 1);
+        Warmup(PlaceId.New());
         Warmup(new Chat.Chat(chatId) { Rules = new AuthorRules(chatId, new AuthorFull(userId, authorId), account) });
-        Warmup(new UserLanguageSettings() { Primary = Languages.English, Secondary = Languages.German });
+        Warmup(new UserLanguageSettings() {
+            Primary = Languages.English,
+            Secondary = Languages.German,
+        });
         Warmup(new UserOnboardingSettings());
         Warmup(new LocalOnboardingSettings());
         Warmup(new UserBubbleSettings() { ReadBubbles = ["test"] });
@@ -124,6 +131,16 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 
     private static void WarmupSystemJsonSerializer()
     {
+        Warmup(default(char));
+        Warmup(default(bool?));
+        Warmup(Symbol.Empty);
+        Warmup(default(JsonElement));
+        Warmup(default(JSCallResultType));
+        Warmup(default(ElementReference));
+        Warmup(default(SideNavSide));
+        Warmup(default(VirtualListEdge));
+        Warmup(KeyValuePair.Create("", new List<string>()));
+        Warmup(KeyValuePair.Create(default(Tune), new TuneInfo([])));
         Warmup(new VirtualListRenderState {
             RenderIndex = 1,
             Query = new VirtualListDataQuery(new Range<string>("1", "2"), new Range<double>(), new Range<int>()),
@@ -134,6 +151,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             HasVeryLastItem = true,
             ScrollToKey = "1",
         });
+        return;
 
         static void Warmup<T>(T instance) {
 #pragma warning disable IL2026
@@ -142,5 +160,12 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             s.Read<T>(json);
 #pragma warning restore IL2026
         }
+    }
+
+    private static void WarmupTileRelated()
+    {
+        var buffer = ArrayBuffer<Tile<long>>.Lease(true);
+        buffer.Release();
+        // Add more methods related to Tile<long> based on ChatUI code
     }
 }

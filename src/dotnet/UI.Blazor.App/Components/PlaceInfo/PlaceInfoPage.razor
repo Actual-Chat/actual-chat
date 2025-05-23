@@ -1,71 +1,79 @@
 @page "/place/{PlaceSid}"
-@inherits ComputedStateComponent<PlaceInfoPage.Model>
+@inherits ComputedStateComponent<AppUIHub, PlaceInfoPage.Model?>
 @layout ListViewLayout
 @{
     var m = _rendered = State.Value;
+    if (m is null) {
+        <chat-view-skeleton count="15" />
+        return;
+    }
+
     var place = m.Place;
-    // Log.LogDebug("Rendered for #{PlaceId}", chat.Id);
 }
-@if (ReferenceEquals(place, SpecialPlace.Loading)) {
-    <chat-view-skeleton count="15" />
+
+@if (place is null) {
+    if (m == Model.NoPlaceSelected) {
+        <div class="no-chat-body">
+            Select a place.
+        </div>
+    } else {
+        <ChatNotFound ShowSignIn="@false" Target="@ChatNotFound.TargetKind.Place" />
+    }
     return;
 }
-@if (ReferenceEquals(place, SpecialPlace.NoPlaceSelected)) {
-    <div class="no-chat-body">
-        Select a place.
-    </div>
-} else if (ReferenceEquals(place, SpecialPlace.Unavailable)) {
-    <ChatNotFound ShowSignIn="@false" Target="@ChatNotFound.TargetKind.Place" />
-} else {
-    <PlaceInfo PlaceId="@m.Place.Id" />
-}
+
+<PlaceInfo PlaceId="@place.Id" />
 
 @code {
-    private ILogger? _log;
     private Model? _rendered;
 
-    [Inject] protected ChatUIHub Hub { get; init; } = null!;
-    protected Session Session => Hub.Session();
-    protected IPlaces Places => Hub.Places;
-    protected ILogger Log => _log ??= Hub.LogFor(GetType());
+    private IPlaces Places => Hub.Places;
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string? PlaceSid { get; set; }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = !PlaceSid.IsNullOrEmpty() ? Model.Loading : new Model(SpecialPlace.NoPlaceSelected),
-            Category = GetStateCategory(GetType()),
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var placeSid = PlaceSid;
-
-        if (placeSid.IsNullOrEmpty())
-            return new Model(SpecialPlace.NoPlaceSelected);
-
-        if (!PlaceId.TryParse(placeSid, out var placeId))
-            return Model.Unavailable;
-
-        try {
-            var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
-            return place is not null ? new Model(place) : Model.Unavailable;
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to get Place #{PlaceId}", placeId);
-            this.NotifyStateHasChanged();
-            return Model.Unavailable;
-        }
-    }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_rendered, null)
             || State.HasError
             || State.Value != _rendered;
 
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => new() {
+            InitialValue = PlaceSid.IsNullOrEmpty()
+                ? Model.NoPlaceSelected
+                : null, // Loading
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var placeSid = PlaceSid;
+        if (placeSid.IsNullOrEmpty())
+            return Model.NoPlaceSelected;
+
+        if (!PlaceId.TryParse(placeSid, out var placeId))
+            return Model.Unavailable;
+
+        try {
+            var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+            return place is not null
+                ? new Model(place)
+                : Model.Unavailable;
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to get Place #{PlaceId}", placeId);
+            return Model.Unavailable;
+        }
+    }
+
     // Nested types
 
-    public sealed record Model(Place Place) {
-        public static Model Loading = new (SpecialPlace.Loading);
-        public static Model Unavailable = new (SpecialPlace.Unavailable);
+    public sealed record Model(Place? Place) {
+        public static readonly Model Unavailable = new((Place?)null);
+        public static readonly Model NoPlaceSelected = new((Place?)null);
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

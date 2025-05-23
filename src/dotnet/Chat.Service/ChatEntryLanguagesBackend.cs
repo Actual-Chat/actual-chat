@@ -21,7 +21,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<ChatEntryLanguage?> GetLanguage(ChatEntryId id, CancellationToken cancellationToken)
     {
-        var dbEntryLanguage = await EntryLanguageEntityResolver.Get(id, cancellationToken).ConfigureAwait(false);
+        var dbEntryLanguage = await EntryLanguageEntityResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         return dbEntryLanguage?.ToModel();
     }
 
@@ -95,12 +95,12 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 
         await Lock(dbContext, id, cancellationToken).ConfigureAwait(false);
         var dbEntryLanguage = await dbContext.ChatEntryLanguages
-            .FirstOrDefaultAsync(x => x.Id == command.Id, cancellationToken)
+            .FirstOrDefaultAsync(x => x.Id == command.Id.Value, cancellationToken)
             .ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
         if (dbEntryLanguage == null) {
             dbEntryLanguage = new () {
-                Id = id,
+                Id = id.Value,
                 CreatedAt = now,
                 ModifiedAt = now,
                 Version = VersionGenerator.NextVersion(),
@@ -149,7 +149,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 
             await LockShared(dbContext, id, cancellationToken).ConfigureAwait(false);
             var dbChatEntryLanguage = await dbContext.ChatEntryLanguages
-                .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+                .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
             var existing = dbChatEntryLanguage?.ToModel();
             var now = Clocks.SystemClock.Now;

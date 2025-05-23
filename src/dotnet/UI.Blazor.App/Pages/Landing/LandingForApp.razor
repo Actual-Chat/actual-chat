@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<AppUIHub, AccountFull?>
 @{
     var account = State.Value;
 }
@@ -6,11 +6,11 @@
 <div @ref="Ref" class="landing theme-light" xmlns="http://www.w3.org/1999/html">
     <LandingLeftMenu @ref="LandingLeftMenuRef" />
 
-    <LandingHeader Click="@OnMenuHandleClick"/>
+    <LandingHeader Account="@account" Click="@OnMenuHandleClick"/>
 
     <LandingPage Class="page-1">
         <LandingPage1
-            IsGuest="@account.IsGuestOrNone"
+            IsGuest="@account.IsGuestOrNull()"
             SignInClick="@SignIn"
             ShowVideoClick="@OnShowVideoClick"/>
     </LandingPage>
@@ -21,31 +21,27 @@
     protected ElementReference Ref { get; set; }
     protected LandingLeftMenu? LandingLeftMenuRef { get; set; }
 
-    [Inject] protected UIHub Hub { get; init; } = null!;
-    protected AccountUI AccountUI => Hub.AccountUI;
-    protected ModalUI ModalUI => Hub.ModalUI;
-
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         await base.DisposeAsync();
     }
 
-    protected override ComputedState<AccountFull>.Options GetStateOptions()
+    protected override ComputedState<AccountFull?>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.Use(cancellationToken);
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken)!;
 
-    protected virtual Task SignIn()
+    protected Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
 
-    protected virtual Task OnShowVideoClick()
+    protected Task OnShowVideoClick()
         => ModalUI.Show(new LandingVideoModal.Model());
 
-    protected virtual void OnMenuHandleClick()
+    protected void OnMenuHandleClick()
         => LandingLeftMenuRef?.Open();
 }

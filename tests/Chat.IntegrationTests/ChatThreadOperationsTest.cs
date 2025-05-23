@@ -49,7 +49,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         await TestExt.When(async () => {
             var availableThreads = await chatThreads.ListIdsForChat(session, parentChat.Id, cancellationToken);
             availableThreads.Should().HaveCount(1);
-            availableThreads[0].Id.Should().Be(chat.Id);
+            availableThreads[0].Should().Be(chat.Id);
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -106,12 +106,12 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         await TestExt.When(async () => {
             var availableThreads = await chatThreads.ListIdsForChat(session, parentChat.Id, cancellationToken);
             availableThreads.Should().HaveCount(2);
-            availableThreads[0].Id.Should().Be(chat2.Id);
-            availableThreads[1].Id.Should().Be(chat1.Id);
+            availableThreads[0].Should().Be(chat2.Id);
+            availableThreads[1].Should().Be(chat1.Id);
 
             var availableThreads2 = await chatThreads.ListIdsForChat(session, chat1.Id, cancellationToken);
             availableThreads2.Should().HaveCount(1);
-            availableThreads2[0].Id.Should().Be(chat2.Id);
+            availableThreads2[0].Should().Be(chat2.Id);
         }, TimeSpan.FromSeconds(10));
     }
 

@@ -7,7 +7,7 @@ public sealed class FocusUI(UIHub hub)
     private static readonly string JSFocusMethod = $"{BlazorUICoreModule.ImportName}.FocusUI.focus";
     private static readonly string JSBlurMethod = $"{BlazorUICoreModule.ImportName}.FocusUI.blur";
 
-    private IJSRuntime JS => hub.JSRuntime();
+    private IJSRuntime JS => hub.JS;
 
     public ValueTask Focus(ElementReference targetRef)
         => JS.InvokeVoidAsync(JSFocusMethod, targetRef);

@@ -13,20 +13,16 @@ public enum AutoNavigationReason
     SignOut = 100,
 }
 
-public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
+public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
-    protected History History => Hub.History;
-    protected AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
-    protected Dispatcher Dispatcher => Hub.Dispatcher;
-
-    public Task<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken = default)
+    public Task<LocalUrl> GetAutoNavigationUrl()
         => Dispatcher.InvokeAsync(async () => {
             if (_autoNavigationCandidates == null)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
-            var defaultUrl = await GetDefaultAutoNavigationUrl().ConfigureAwait(false);
+            var defaultUrl = GetDefaultAutoNavigationUrl();
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}. Default url: {{DefaultUrl}}", defaultUrl);
 
             if (HostInfo.HostKind.IsApp()) {
@@ -73,13 +69,13 @@ public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        if (CircuitContext.WhenInitialized.IsCompleted)
+        if (Hub.WhenInitialized.IsCompleted)
             return Dispatcher.CheckAccess()
                 ? NavigateTo(url, reason)
                 : Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
 
         return Task.Run(async () => {
-            await CircuitContext.WhenInitialized.ConfigureAwait(false);
+            await Hub.WhenInitialized.ConfigureAwait(false);
             await Dispatcher.InvokeAsync(() => NavigateTo(url, reason)).ConfigureAwait(false);
         });
     }
@@ -93,32 +89,32 @@ public class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
             return History.NavigateTo(url);
         }
 
-        // Initial navigation haven't happened yet
+        // Initial navigation hasn't happened yet
         Log.LogInformation("+ NavigateTo({Url}, {Reason})", url, reason);
         _autoNavigationCandidates.Add((url, reason));
         return Task.CompletedTask;
     }
 
-    // Protected methods
+    // Private methods
 
-    protected virtual async ValueTask<LocalUrl> GetDefaultAutoNavigationUrl()
+    private LocalUrl GetDefaultAutoNavigationUrl()
     {
         var currentUrl = History.LocalUrl;
         if (!currentUrl.IsHome() && !currentUrl.IsChatRoot())
             return currentUrl;
 
-        // You're at "/" or "/chat" URL
-        try {
-            var accountUI = Hub.AccountUI;
-            await accountUI.WhenLoaded.WaitAsync(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
-            var ownAccount = accountUI.OwnAccount.Value;
-            return ownAccount.IsGuestOrNone
-                ? currentUrl
-                : Links.Chats; // You're signed in - so we redirect you to /chats/
-        }
-        catch (TimeoutException) {
+        // We're at "/" or "/chat" URL
+        var accountUI = Hub.AccountUI;
+        if (!accountUI.WhenReady.IsCompleted) {
+            // Technically, it's impossible to land here: AppScopedServiceStarter.PrepareFirstRender
+            // awaits for AccountUI to be ready before calling GetAutoNavigationUrl (and thus this method).
             return currentUrl;
         }
+
+        var ownAccount = accountUI.OwnAccount.Value;
+        return ownAccount.IsGuest
+            ? currentUrl
+            : Links.Chats; // We're signed in - so we redirect you to /chats/
     }
 
     private bool TryGetLocalUrl(string url, out LocalUrl localUrl)

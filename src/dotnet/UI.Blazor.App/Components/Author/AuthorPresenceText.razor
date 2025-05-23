@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AuthorPresenceText.Model>
+@inherits ComputedStateComponent<AppUIHub, AuthorPresenceText.Model>
 @{
     var m = State.Value;
 }
@@ -7,15 +7,12 @@
 @PresenceFragments.PresenceText((m.Presence, m.LastCheckIn))
 
 @code {
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IAuthors Authors { get; init; } = null!;
-    [Inject] protected ChatActivity ChatActivity { get; init; } = null!;
+    private IAuthors Authors => Hub.Authors;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
 
-    protected AuthorId AuthorId { get; private set; }
-    protected ChatId ChatId => AuthorId.ChatId;
-    protected IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
-    [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
+    [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
 
     public override async ValueTask DisposeAsync() {
@@ -24,20 +21,15 @@
         ChatRecordingActivity = null;
     }
 
-    protected override void OnInitialized()
-        // Set AuthorId here in order to have actual AuthorId value in GetStateOptions.
-        => AuthorId = new AuthorId(AuthorSid);
-
     protected override void OnParametersSet()
     {
-        AuthorId = new AuthorId(AuthorSid);
         ChatRecordingActivity?.Dispose();
         ChatRecordingActivity = null;
     }
 
     protected override async Task OnParametersSetAsync() {
-        if (ShowRecording && !ChatId.IsNone)
-            ChatRecordingActivity = await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None);
+        if (ShowRecording && AuthorId is not null)
+            ChatRecordingActivity = await ChatActivity.GetStreamingActivity(AuthorId.ChatId, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
@@ -50,16 +42,15 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var authorId = AuthorId;
-        var chatId = authorId.ChatId;
-
-        if (authorId.IsNone)
+        if (authorId is null)
             return Model.None;
 
+        var chatId = authorId.ChatId;
         var streamingActivity = ShowRecording && ChatRecordingActivity != null
             ? ChatRecordingActivity
             : null;
 
-        // Code below doesn't use any component prop, so we can use .ConfigureAwait(false)
+        // The code below doesn't use any component prop, so we can use .ConfigureAwait(false)
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (streamingActivity != null) {
             var isStreaming = await streamingActivity.IsAuthorStreaming(authorId, cancellationToken).ConfigureAwait(false);

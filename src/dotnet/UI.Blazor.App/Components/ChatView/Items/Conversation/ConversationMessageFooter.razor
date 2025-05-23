@@ -11,7 +11,7 @@
         <div class="c-content">
             <div class="c-author-list">
                 @foreach (var authorId in firstAuthors) {
-                    <AuthorCircle AuthorSid="@authorId.Value" Size="@SquareSize.Size6"/>
+                    <AuthorCircle AuthorId="@authorId" Size="@SquareSize.Size6"/>
                 }
                 @if (extraAuthorCount > 0) {
                     <div class="author-incut ai-extra">+@extraAuthorCount</div>

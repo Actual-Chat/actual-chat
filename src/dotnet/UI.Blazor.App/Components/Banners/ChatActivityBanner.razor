@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<Banner IsVisible="@true" Severity="BannerSeverity.Default" Class="chat-activity-banner subheader">
+    <Icon></Icon>
+    <Body>
+    <ChatActivityPanel Chat="@Chat"/>
+    </Body>
+</Banner>
+
+@code {
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = Chat?.Id is null ? null
+            : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
+        await base.OnParametersSetAsync();
+    }
+}

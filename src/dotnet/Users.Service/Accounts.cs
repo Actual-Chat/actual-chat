@@ -16,17 +16,15 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         UserId userId;
-        if (user == null) {
+        if (user != null)
+            userId = UserId.Parse(user.Id);
+        else {
             var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-            if (sessionInfo == null)
-                throw StandardError.NotFound<Session>();
+            if (sessionInfo?.GetGuestId() is not { } guestId)
+                throw StandardError.Internal("Invalid session or GuestId is not set.");
 
-            userId = sessionInfo.GetGuestId();
-            if (!userId.IsGuest)
-                throw StandardError.Internal("GuestId is not set.");
+            userId = guestId;
         }
-        else
-            userId = new UserId(user.Id);
 
         var account = await Backend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
         return account;

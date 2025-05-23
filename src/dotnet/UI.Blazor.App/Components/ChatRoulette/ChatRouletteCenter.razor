@@ -1,19 +1,18 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Roulette
-@using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<ChatRouletteCenter.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatRouletteCenter.Model?>
 @{
     var m = State.Value;
-    if (ReferenceEquals(m, Model.Loading))
+    if (m is null)
         return;
 
     var candidates = m.ChatCandidates;
-    var profile = m.Profile;
+    var profile = m.OwnProfile;
 }
 
 <div class="cr-center">
     @if (m.SearchState == SearchState.Completed) {
-        @if (candidates.IsEmpty) {
+        @if (candidates.Count == 0) {
             <div class="cr-main-title">No people found to chat. Try to change filter criteria.</div>
         } else {
             <div class="cr-main-title">Here are some people ready to chat:</div>
@@ -28,7 +27,7 @@
     else if (m.SearchState == SearchState.Started) {
         <div class="cr-main-title">Search is in progress...</div>
     } else {
-        @if (profile.IsNone || profile.Preferences.Preferences.IsEmpty) {
+        @if (profile is null || profile.Preferences.Preferences.IsEmpty) {
             <div class="cr-main-title">Select and fill in chat roulette profile or create a new one.</div>
         } else if (!m.SearchCriteria.IsSufficientForFiltering) {
             <div class="cr-main-title">Check search filter.</div>
@@ -40,22 +39,9 @@
 </div>
 
 @code {
-    [Inject] ChatUIHub Hub { get; init; } = null!;
-    private AccountUI AccountUI => Hub.AccountUI;
-    private IAvatars Avatars => Hub.Avatars;
-    private IRoulette Roulette => Hub.Roulette;
-    private Session Session => Hub.Session();
     private RouletteUI RouletteUI => Hub.RouletteUI;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var selectedProfile = await RouletteUI.SelectedProfile.Use(cancellationToken).ConfigureAwait(false);
         var searchCriteria = await RouletteUI.SearchCriteria.Use(cancellationToken).ConfigureAwait(false);
         var search = await RouletteUI.ActiveSearch.Use(cancellationToken).ConfigureAwait(false);
@@ -64,12 +50,12 @@
                 SearchState = search.IsCompleted ? SearchState.Completed : SearchState.Started,
                 ChatCandidates = search.Results,
                 SearchCriteria = search.Request.Criteria,
-                Profile = selectedProfile,
+                OwnProfile = selectedProfile,
             };
         }
 
         return new Model {
-            Profile = selectedProfile,
+            OwnProfile = selectedProfile,
             SearchCriteria = searchCriteria
         };
     }
@@ -77,14 +63,18 @@
     private void OnStartChatClick(Profile ownProfile, Profile peerProfile)
         => _ = RouletteUI.StartChat(ownProfile.Id, peerProfile.Id);
 
+    // Nested types
+
     public enum SearchState { None, Started, Completed }
 
-    public record Model {
-        public static readonly Model Loading = new ();
-
-        public Profile Profile { get; init; } = Profile.None;
+    public sealed record Model {
+        public required Profile OwnProfile { get; init; }
         public SearchState SearchState { get; init; } = SearchState.None;
         public Preferences SearchCriteria { get; init; } = Preferences.Empty;
-        public ImmutableArray<ChatCandidate> ChatCandidates { get; init; } = ImmutableArray<ChatCandidate>.Empty;
+        public IReadOnlyList<ChatCandidate> ChatCandidates { get; init; } = [];
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

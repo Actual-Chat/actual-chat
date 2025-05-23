@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<MessageMenuPlay.Model>
+@inherits ComputedStateComponent<AppUIHub, MessageMenuPlay.Model>
 @{
     var m = State.Value;
     var canPlay = m.CanPlay;
@@ -44,15 +44,14 @@
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    private IChats Chats => Hub.Chats;
+    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
 
     [Parameter] public ChatEntry Entry { get; set; } = null!;
-    [Parameter] public bool IsMenu { get; set; } = false;
+    [Parameter] public bool IsMenu { get; set; }
 
-    private ILogger? _log;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -94,7 +93,7 @@
             }
         }
         if (!playingAt.HasValue && !ReferenceEquals(lastState, Model.NotPlaying)) {
-            // Try to keep last state to avoid blinking
+            // Try to keep the last state to avoid blinking
             if (lastState.CanPlay == canPlay)
                 return lastState;
         }
@@ -112,7 +111,7 @@
     private async Task OnPlay() {
         var entry = Entry;
         var chatId = entry.ChatId;
-        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryLid ?? -1, AssumeValid.Option);
+        var audioEntryId = AudioEntryId.New(chatId, entry.AudioEntryLid ?? -1);
         var audioEntry = await Chats.GetEntry(Session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);

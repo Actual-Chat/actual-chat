@@ -1,5 +1,4 @@
 using ActualChat.Invite;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -13,43 +12,36 @@ public partial class EditChatTypeModalPage
     private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
     private bool _isAdmin;
-    private PlaceId _placeId;
+    private PlaceId? _placeId;
     private Place? _place;
     private bool _isPlaceWelcomeChat;
-    private ElementReference _userLinkTextBoxRef;
-    private string _userLinkLocalPrefix = "";
-    private string _copyUserLinkFormatString = "";
-    private Action<ElementReference> _setUserLinkCopySource = null!;
-    private bool _placeUserLinkRequiredFirst;
+    private ElementReference _aliasTextBoxRef;
+    private string _aliasLocalPrefix = "";
+    private string _copyAliasFormatString = "";
+    private Action<ElementReference> _setAliasCopySource = null!;
+    private bool _isPlaceAliasRequired;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
     private IInvites Invites => Hub.Invites;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private UICommander UICommander => Hub.UICommander();
-    private Features Features => Hub.Features();
-    private MomentClockSet Clocks => Hub.Clocks();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
-    private ChatId ChatId { get; set; }
+
+    private ChatId ChatId { get; set; } = null!;
 
     protected override void OnInitialized()
     {
         ChatId = Context.GetModel<ChatId>();
         Context.Title = "Chat settings";
         Context.Class = "edit-chat-type";
-        if (ChatId.IsPeerChat(out _))
+        if (ChatId.Kind == ChatKind.Peer)
             throw StandardError.NotSupported("Peer chat is not supported.");
 
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.Buttons = [DialogButtonInfo.CancelButton, _submitButtonInfo];
-        _setUserLinkCopySource = c => {
-            _userLinkTextBoxRef = c;
+        _setAliasCopySource = c => {
+            _aliasTextBoxRef = c;
             StateHasChanged();
         };
     }
@@ -57,51 +49,44 @@ public partial class EditChatTypeModalPage
     protected override async Task OnInitializedAsync()
     {
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
-        var chat = await Chats.Get(Session, ChatId, default).Require();
-        _placeId = chat.Id.PlaceChatId.PlaceId;
-        if (!_placeId.IsNone) {
+        var chat = await Chats.Get(Session, ChatId, CancellationToken.None).Require();
+        _placeId = (chat.Id as PlaceChatId)?.PlaceId;
+        if (_placeId is not null) {
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
-            _place = await Places.Get(Session, _placeId, default).Require().ConfigureAwait(false);
-            if (_place.IsPublic && !_place.UserLinkId.IsNone)
-                _userLinkLocalPrefix = Links.ChatUserLinkPrefix + _place.UserLinkId + Links.Separator + Links.UserLinkPrefix;
+            _place = await Places.Get(Session, _placeId, CancellationToken.None).Require().ConfigureAwait(false);
+            if (_place.IsPublic && _place.AliasId is not null)
+                _aliasLocalPrefix = $"{Links.ChatAliasPrefix}{_place.AliasId.Value}{Links.Separator}{Links.AliasPrefix}";
             else
-                _placeUserLinkRequiredFirst = true;
+                _isPlaceAliasRequired = true;
         }
         else
-            _userLinkLocalPrefix = Links.ChatUserLinkPrefix;
+            _aliasLocalPrefix = Links.ChatAliasPrefix;
 
-        if (!_userLinkLocalPrefix.IsNullOrEmpty())
-            _copyUserLinkFormatString = UrlMapper.ToAbsolute(_userLinkLocalPrefix) + "{0}";
+        if (!_aliasLocalPrefix.IsNullOrEmpty())
+            _copyAliasFormatString = UrlMapper.ToAbsolute(_aliasLocalPrefix) + "{0}";
 
         _form = new FormModel(ComponentIdGenerator) {
             IsPublic = chat.IsPublic,
-            UserLinkId = chat.UserLinkId.Value,
-            CurrentUserLinkId = chat.UserLinkId.Value,
+            AliasId = chat.AliasId?.Value ?? "",
+            CurrentAliasId = chat.AliasId?.Value ?? "",
             IsTemplate = chat.IsTemplate,
             AllowGuestAuthors = chat.AllowGuestAuthors,
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
         };
         if (_place is not null && !_place.Rules.CanApplyPublicChatType())
             _form.IsPublic = false;
-        if (_userLinkLocalPrefix.IsNullOrEmpty()) // User links are not allowed.
-            _form.UserLinkId = UserLinkId.None.Value;
+        if (_aliasLocalPrefix.IsNullOrEmpty()) // Aliases are not allowed
+            _form.AliasId = "";
 
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
-            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.UserLinkId))
+            if (OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.AliasId))
                 || OrdinalEquals(e.FieldIdentifier.FieldName, nameof(_form.IsPublic)))
             {
-                _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualUserLinkId)));
+                _editContext.NotifyFieldChanged(_editContext.Field(nameof(_form.ActualAliasId)));
             }
         };
     }
-
-    protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = ComputedModel.Loading,
-                Category = GetStateCategory(t),
-            });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken)
     {
@@ -153,11 +138,11 @@ public partial class EditChatTypeModalPage
 
     private async Task<bool> Save()
     {
-        var chat = await Chats.Get(Session, ChatId, default).Require().ConfigureAwait(false);
-        var isPlaceChat = chat.Id.IsPlaceChat;
+        var chat = await Chats.Get(Session, ChatId, CancellationToken.None).Require().ConfigureAwait(false);
+        var isPlaceChat = chat.Id.Kind is ChatKind.Place;
         var newChat = chat with {
             IsPublic = _form!.IsPublic,
-            UserLinkId = _form!.IsPublic ? UserLinkId.ParseOrNone(_form.UserLinkId) : UserLinkId.None,
+            AliasId = _form!.IsPublic ? AliasId.ParseNullable(_form.AliasId) : null,
             AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
             AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
         };
@@ -203,18 +188,18 @@ public partial class EditChatTypeModalPage
 
     public sealed class FormModel
     {
-        public string UserLinkId { get; set; } = "";
+        public string AliasId { get; set; } = "";
         public bool IsPublic { get; set; }
         public bool IsTemplate { get; set; }
         public bool AllowGuestAuthors { get; set; }
         public bool AllowAnonymousAuthors { get; set; }
 
-        public string CurrentUserLinkId { get; set; } = "";
-        [UserLinkId]
-        public string ActualUserLinkId => IsPublic ? UserLinkId : ActualChat.UserLinkId.None.Value;
+        public string CurrentAliasId { get; set; } = "";
+        [AliasId]
+        public string ActualAliasId => IsPublic ? AliasId : "";
 
         public string FormId { get; }
-        public string UserLinkIdFormId { get; }
+        public string AliasIdFormId { get; }
         public string IsPublicFormId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
@@ -225,7 +210,7 @@ public partial class EditChatTypeModalPage
         public FormModel(ComponentIdGenerator componentIdGenerator)
         {
             FormId = componentIdGenerator.Next("new-chat-form");
-            UserLinkIdFormId = $"{FormId}-user-link-id";
+            AliasIdFormId = $"{FormId}-alias-id";
             IsPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = IsPublicFormId + "-true";
             IsPublicFalseFormId = IsPublicFormId + "-false";
@@ -238,8 +223,6 @@ public partial class EditChatTypeModalPage
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public sealed record ComputedModel
     {
-        public static readonly ComputedModel Loading = new ();
-
         public Chat.Chat? Chat { get; init; }
         public List<Invite.Invite> Invites { get; init; } = [];
         public bool AllowEditIsTemplate { get; init; }

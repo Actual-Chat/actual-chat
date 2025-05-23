@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Events
-@inherits ComputedStateComponent<LeftChatSearchInput.Model>
+@inherits ComputedStateComponent<AppUIHub, LeftChatSearchInput.Model>
 <OnUIEvent TEvent="SearchClearedEvent" Handler="OnSearchCleared" />
-
 @{
     var m = State.Value;
     var cls = m.IsOpen ? "open" : "closed";
@@ -47,11 +46,9 @@
 </div>
 
 @code {
-    TextInput? _inputRef = null;
+    TextInput? _inputRef;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
-    private Features Features => Hub.Features();
 
     [Parameter] public Place? Place { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search";
@@ -74,7 +71,7 @@
         var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)
                      || await SearchUI.IsShowRecentOn.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI =  await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        var initialText = SearchUI.Text.ValueOrDefault ?? ""; // intentionally avoid recompute
+        var initialText = SearchUI.Text.Value; // .Value instead of .Use() is intentional here (AY: why?)
         return new Model(isOpen, enableIncompleteUI, initialText);
     }
 
@@ -82,7 +79,7 @@
         if (!openPanel)
             Cancel();
         SearchUI.ShowRecent(openPanel);
-        SearchUI.PlaceId.Value = Place?.Id ?? PlaceId.None;
+        SearchUI.PlaceId.Value = Place?.Id;
         StateHasChanged();
     }
 
@@ -90,7 +87,7 @@
         => _inputRef?.Focus();
 
     private void OnSearchInputTextChanged(string text) {
-        SearchUI.PlaceId.Value = Place?.Id ?? PlaceId.None;
+        SearchUI.PlaceId.Value = Place?.Id;
         SearchUI.Text.Value = text;
     }
 

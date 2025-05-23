@@ -1,6 +1,5 @@
 ﻿using ActualChat.Diagnostics;
 using ActualChat.Hosting;
-using ActualChat.Permissions;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
@@ -19,32 +18,33 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
     private readonly MutableState<AudioRecorderState> _state;
     private SessionTokens? _sessionTokens;
-    private MicrophonePermissionHandler? _microphonePermission;
-    private ILogger? _log;
 
     private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
     private IJSObjectReference _jsRef = null!;
     private Activity? _recordingActivity;
 
-    private ChatUIHub Hub { get; }
-    private HostInfo HostInfo => Hub.HostInfo();
+    private AppUIHub Hub { get; }
+    private HostInfo HostInfo => Hub.HostInfo;
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
-    private MomentClockSet Clocks => Hub.Clocks();
-    private IJSRuntime JS => Hub.JSRuntime();
+    private MomentClockSet Clocks => Hub.Clocks;
+    private IJSRuntime JS => Hub.JS;
     private TuneUI TuneUI => Hub.TuneUI;
-    private ILogger Log => _log ??= Hub.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
 
+    [field: AllowNull, MaybeNull]
     public MicrophonePermissionHandler MicrophonePermission
-        => _microphonePermission ??= Hub.GetRequiredService<MicrophonePermissionHandler>();
+        => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     public IState<AudioRecorderState> State => _state;
     public Task WhenInitialized { get; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorder))]
-    public AudioRecorder(ChatUIHub hub)
+    public AudioRecorder(AppUIHub hub)
     {
         Hub = hub;
-        _state = Hub.StateFactory().NewMutable(
+        _state = Hub.StateFactory.NewMutable(
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         WhenInitialized = Initialize();
@@ -69,14 +69,11 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     public async Task StartRecording(
         ChatId chatId,
-        ChatEntryId repliedChatEntryId,
+        ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
     {
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var audioInitializer = Hub.GetRequiredService<AudioInitializer>();
+        var audioInitializer = Hub.Services.GetRequiredService<AudioInitializer>();
         await audioInitializer.WhenInitialized.ConfigureAwait(false);
 
         using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
@@ -87,12 +84,12 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             if (state.IsRecording)
                 return; // Already started
         }
-        else if (!state.ChatId.IsNone)
+        else if (state.ChatId is not null)
             await StopRecordingUnsafe();
 
         var sessionToken = "";
         if (HostInfo.HostKind.IsApp()) {
-            var sessionTokens = _sessionTokens ??= Hub.GetRequiredService<SessionTokens>();
+            var sessionTokens = _sessionTokens ??= Hub.Services.GetRequiredService<SessionTokens>();
             var secureToken = await sessionTokens.Get(cancellationToken).ConfigureAwait(false);
             sessionToken = secureToken.Token;
         }
@@ -114,7 +111,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         catch (Exception e) when (e is not AudioRecorderException) {
             if (e is OperationCanceledException)
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                DebugLog?.LogDebug($"{StartRecording} is cancelled");
+                DebugLog?.LogDebug($"{nameof(StartRecording)} is cancelled");
             else
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 Log.LogError(e,$"{nameof(StartRecording)} failed");
@@ -164,7 +161,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public bool IsRecording(string chatId)
     {
         var state = State.Value;
-        if (!string.Equals(state.ChatId, chatId, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(state.ChatId?.Value, chatId, StringComparison.OrdinalIgnoreCase))
             return false; // Not recording
 
         return state.IsRecording;
@@ -175,9 +172,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public void OnRecordingStateChange(bool isRecording, bool isSignalDetected, bool isConnected, bool isVoiceActive)
     {
         var state = State.Value;
-        if (state.ChatId.IsNone) {
+        if (state.ChatId is null) {
             if (isRecording)
-                throw StandardError.Internal("Something is off: OnRecordingStateChange() is called with active microphone, but ChatId.IsNone == true.");
+                throw StandardError.Internal(
+                    "Something is off: OnRecordingStateChange() is called with active microphone, but ChatId.IsNone == true.");
 
             isVoiceActive = false;
         }
@@ -224,7 +222,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private async Task<bool> StopRecordingUnsafe()
     {
         var chatId = State.Value.ChatId;
-        if (chatId.IsNone || _jsRef == null!)
+        if (chatId is null || _jsRef == null!)
             return true; // Nothing to do
 
         // This method should reliably stop the recording, so we don't use normal cancellation here
@@ -295,7 +293,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     {
         var currentState = State.Value;
         var (_, isRecording, isSignalDetected, isConnected, isVoiceActive) = currentState;
-        UpdateState(AudioRecorderState.Idle with {
+        UpdateState(new AudioRecorderState(null) {
             IsRecording = isRecording,
             IsSignalDetected = isSignalDetected,
             IsConnected = isConnected,

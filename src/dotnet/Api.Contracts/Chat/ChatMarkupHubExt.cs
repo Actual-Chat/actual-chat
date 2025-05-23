@@ -1,5 +1,3 @@
-using Cysharp.Text;
-
 namespace ActualChat.Chat;
 
 public static class ChatMarkupHubExt
@@ -117,13 +115,13 @@ public static class ChatMarkupHubExt
             (0, 0, _) => fileText,
             (0, _, 0) => videoText,
             (_, 0, 0) => imageText,
-            (_, _, 0) => ZString.Concat(imageText, " and ", videoText),
-            (_, 0, _) => ZString.Concat(imageText, " and ", fileText),
-            (0, _, _) => ZString.Concat(videoText, " and ", fileText),
-            _ => ZString.Concat(imageText, ", ", videoText, ", and ", fileText),
+            (_, _, 0) => string.Concat(imageText, " and ", videoText),
+            (_, 0, _) => string.Concat(imageText, " and ", fileText),
+            (0, _, _) => string.Concat(videoText, " and ", fileText),
+            _ => string.Concat(imageText, ", ", videoText, ", and ", fileText),
         };
         var preamble = consumer is MarkupConsumer.ReactionNotification ? "your " : "Sent ";
-        return new PlainTextMarkup(ZString.Concat(preamble, text));
+        return new PlainTextMarkup(string.Concat(preamble, text));
 
         string GetImageText()
             => imageCount switch {

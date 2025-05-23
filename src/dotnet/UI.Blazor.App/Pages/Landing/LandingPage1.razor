@@ -87,7 +87,7 @@
 
 @code {
     [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
+    private HostInfo HostInfo => Hub.HostInfo;
     private History History => Hub.History;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

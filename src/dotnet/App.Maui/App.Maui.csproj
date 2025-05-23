@@ -15,7 +15,7 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>9.0.60</MauiVersion>
+    <MauiVersion>9.0.70</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
@@ -104,8 +104,6 @@
     <!-- A few more packages should be referenced transitively in this case -->
     <PackageReference Include="CommunityToolkit.HighPerformance" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
@@ -152,6 +150,7 @@
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
     <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Common.Java8" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime" />
@@ -261,6 +260,8 @@
     <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
     <!-- Disabled for now - no meaningful changes to startup time -->
     <EnableLLVM>false</EnableLLVM>
+    <!-- -50ms to startup time: -->
+    <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
 
     <!-- Runtime -->
     <!-- android-env.txt contains MONO_GC_PARAMS, so this has no effect:
@@ -268,9 +269,6 @@
     -->
     <!-- When true, fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
     <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
-    -->
-    <!-- Has no effect:
-    <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
     -->
 
     <!-- Preloading:
@@ -396,10 +394,6 @@
   </PropertyGroup>
 
   <!-- Windows build properties -->
-
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
-  </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Debug'">
     <!-- <WindowsPackageType>None</WindowsPackageType>-->

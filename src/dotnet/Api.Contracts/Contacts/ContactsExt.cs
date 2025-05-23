@@ -8,12 +8,12 @@ public static class ContactsExt
         this IContacts contacts,
         Session session,
         CancellationToken cancellationToken)
-        => contacts.ListContacts(session, PlaceId.None, c => c.Account != null, cancellationToken);
+        => contacts.ListContacts(session, null, c => c.Account != null, cancellationToken);
 
     public static async ValueTask<List<Contact>> ListContacts(
         this IContacts contacts,
         Session session,
-        PlaceId placeId,
+        PlaceId? placeId,
         Func<Contact, bool>? filter,
         CancellationToken cancellationToken)
     {

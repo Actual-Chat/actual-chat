@@ -28,7 +28,7 @@ public class ChatUsagesBackend(IServiceProvider services)
         if (chatSids.Count > RecencyListLimit)
             _ = Commander.Call(new ChatUsagesBackend_PurgeRecencyList(userId, kind, RecencyListLimit), default);
 
-        var chatIds = chatSids.Select(c => new ChatId(c)).ToArray();
+        var chatIds = chatSids.Select(ChatId.Parse).ToArray();
         return chatIds;
     }
 
@@ -57,9 +57,9 @@ public class ChatUsagesBackend(IServiceProvider services)
         if (dbChatRecency == null) {
             dbChatRecency = new DbChatUsage {
                 Id = id,
-                UserId = userId,
+                UserId = userId.Value,
                 Kind = kind,
-                ChatId = chatId,
+                ChatId = chatId.Value,
                 AccessedAt = accessTime
             };
             dbContext.Add(dbChatRecency);
@@ -115,7 +115,7 @@ public class ChatUsagesBackend(IServiceProvider services)
 
         ChatUsageListKind? listKind = null;
         var chatId = entry.ChatId;
-        if (chatId.IsPeerChat(out _))
+        if (chatId.Kind == ChatKind.Peer)
             listKind = ChatUsageListKind.PeerChatsWroteTo;
         else {
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);

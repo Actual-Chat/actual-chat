@@ -64,7 +64,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             queues.Object
         );
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var cancellationSource = new CancellationTokenSource();
 
         var job = new MLSearch_TriggerChatIndexing(chatId, indexingKind);
@@ -129,7 +129,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
             queues.Object
         );
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var cancellationSource = new CancellationTokenSource();
 
         var job = new MLSearch_TriggerChatIndexing(chatId, IndexingKind.ChatContent);
@@ -148,7 +148,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
     public async Task ExecuteAsyncSendsAllUpdatedEntriesToContentIndexer()
     {
         const int updateCount = 101;
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
         updateLoader
@@ -204,7 +204,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
     [InlineData(999)]
     public async Task ExecuteAsyncFlushesChangesPeriodicallyAndInTheEnd(int updateCount)
     {
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
         updateLoader
@@ -255,7 +255,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
         ), Times.Exactly(flushCount));
 
         cursorStates.Verify(x => x.SaveAsync(
-            It.Is<string>(key => key == chatId),
+            It.Is<string>(key => key == chatId.Value),
             It.Is<ChatContentCursor>(c => c == cursor),
             It.Is<CancellationToken>(ct => ct == cancellationSource.Token)
         ), Times.Exactly(flushCount));
@@ -268,7 +268,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
     public async Task ExecuteAsyncDoNotProcessMoreThanMaxAmountOfChanges(int updateCount)
     {
         const int maxUpdateCount = 101;
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var updates = GenerateUpdates(chatId, updateCount);
         var updateLoader = new Mock<IChatContentUpdateLoader>(MockBehavior.Loose);
         updateLoader
@@ -326,7 +326,7 @@ public class ChatContentIndexWorkerTests(ITestOutputHelper @out) : TestBase(@out
 
     private IReadOnlyCollection<ChatEntry> GenerateUpdates(ChatId chatId, int updateCount)
         => [.. Enumerable.Range(1, updateCount).Select(id => {
-            var (entryId, content) = (new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option), $"Content #{id}");
+            var (entryId, content) = (TextEntryId.New(chatId, id), $"Content #{id}");
             return new ChatEntry(entryId, id +  100) {
                 Content = content,
             };

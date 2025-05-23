@@ -22,7 +22,7 @@ public class LeftPanel : IDisposable
         Owner = owner;
         Hub = owner.Hub;
 
-        var stateFactory = Hub.StateFactory();
+        var stateFactory = Hub.StateFactory;
         _isVisible = stateFactory.NewMutable(true, StateCategories.Get(GetType(), nameof(IsVisible)));
         _canBeHidden = stateFactory.NewComputed(
             new ComputedState<bool>.Options() {

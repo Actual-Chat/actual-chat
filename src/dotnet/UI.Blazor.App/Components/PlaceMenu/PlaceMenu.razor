@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits Menu<AppUIHub>
 
 <MenuEntry
     Class="important-item"
@@ -35,23 +35,18 @@
 }
 
 @code {
-    private PlaceId _placeId;
+    private PlaceId _placeId = null!;
     private bool _isOwner;
     private bool _canLeave;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
-    private ModalUI ModalUI => Hub.ModalUI;
     private ChatUI ChatUI => Hub.ChatUI;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var placeSid ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-        _placeId = new PlaceId(placeSid);
+        _placeId = PlaceId.Parse(placeSid);
         var session = Session;
         var place = await Places.Get(session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;

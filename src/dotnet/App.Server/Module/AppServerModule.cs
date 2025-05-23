@@ -117,7 +117,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(WebApp).Assembly) // UI.Blazor.AppPack
                 .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
-                .AddAdditionalAssemblies(typeof(ChatUIHub).Assembly); // UI.Blazor.App
+                .AddAdditionalAssemblies(typeof(AppUIHub).Assembly); // UI.Blazor.App
         }
         app.MapRpcWebSocketServer();
         if (HostInfo.HasRole(HostRole.Api)) {

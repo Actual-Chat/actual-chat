@@ -16,27 +16,25 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public static readonly TimeSpan SlowUpdateDelay = TimeSpan.FromMilliseconds(100);
 
     private readonly CancellationTokenSource _disposeTokenSource;
-    private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenInitializedSource = AsyncTaskMethodBuilderExt.New();
 
+    // ReSharper disable once NotAccessedField.Local
     private Task _updateReadStateTask = null!;
-    private SharedResourcePool<Symbol, SyncedState<ReadPosition>>.Lease _readPositionLease = null!;
+    private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? _readPositionLease;
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<Navigation?> _nextNavigation = null!;
     private ChatContext _chatContext = null!;
 
-    private ChatUIHub Hub { get; set; }
-    private Session Session => Hub.Session();
-    private ICommander Commander => Hub.Commander();
+    private AppUIHub Hub { get; set; }
+    private Session Session => Hub.Session;
+    private ICommander Commander => Hub.Commander;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
-    private Media.IMediaLinkPreviews MediaLinkPreviews => Hub.MediaLinkPreviews;
     private IAuthors Authors => Hub.Authors;
     private NavigationManager Nav => Hub.Nav;
     private History History => Hub.History;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-    private StateFactory StateFactory => Hub.StateFactory();
-    private Dispatcher Dispatcher => Hub.Dispatcher;
+    private StateFactory StateFactory => Hub.StateFactory;
     private CancellationToken DisposeToken { get; }
 
     [field: AllowNull] [field: MaybeNull]
@@ -44,18 +42,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
-    public IState<ReadPosition> ReadPosition => _readPositionLease.Resource;
+    public IState<ReadPosition> ReadPosition {
+        get {
+            if (_readPositionLease is null)
+                throw StandardError.Constraint("Accessed too early. Read position is not available yet.");
+            return _readPositionLease.Resource;
+        }
+    }
     public IState<long> ShownReadEntryLid => _shownReadEntryLid;
-
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    [Parameter] [EditorRequired]
-    public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter, EditorRequired]
+    public ChatId ChatId { get; set; } = null!;
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
-    public ChatView(ChatUIHub hub)
+    public ChatView(AppUIHub hub)
     {
         Hub = hub;
         _disposeTokenSource = new CancellationTokenSource();
@@ -142,10 +145,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     }
 
     public override string ToString()
-    {
-        var chatId = ChatId;
-        return chatId.IsNone ? "ChatView" : $"ChatView #{chatId}";
-    }
+        => $"ChatView #{ChatId}";
 
     // Event handlers
 
@@ -166,7 +166,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    var uri = localUrl.ToAbsolute(Hub.UrlMapper()).ToUri();
+                    var uri = localUrl.ToAbsolute(Hub.UrlMapper).ToUri();
                     var uriWithoutMsgId = uri.DropQueryItem(Links.ChatEntryLidQueryParameterName).PathAndQuery;
                     _ = History.NavigateTo(uriWithoutMsgId, true);
                 }
@@ -219,27 +219,24 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private async Task UpdateReadState(CancellationToken cancellationToken)
     {
         var chatId = ChatId;
-        if (chatId.IsNone)
-            return;
-
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;
 
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var authorId = author?.Id ?? AuthorId.None;
+        var authorId = author?.Id;
         var chatIdRange = await Chats
             .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
 
-        // Getting very last chat entry
+        // Getting the very last chat entry
         var chatNews = await Chats.GetNews(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var chatIdGap = new Range<long>(chatNews.TextEntryIdRange.End, chatIdRange.End);
+        var chatIdGap = new Range<long>(chatNews?.TextEntryIdRange.End ?? 0, chatIdRange.End);
         var lastEntry = await entryReader.ReadReverse(chatIdGap, cancellationToken)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        lastEntry ??= chatNews.LastTextEntry;
+        lastEntry ??= chatNews?.LastTextEntry;
         var lastEntryLid = lastEntry?.LocalId ?? 0;
 
         // Observing new entries
@@ -279,9 +276,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         CancellationToken cancellationToken)
     {
         var chatId = ChatId;
-        if (chatId.IsNone)
-            return VirtualListData<ChatMessage>.None;
-
         var startedAt = CpuTimestamp.Now;
         await WhenInitialized;
 
@@ -357,7 +351,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessage>([ChatMessage.Welcome(ChatId, chat.IsAiSearchChat())]) {
+                return new VirtualListData<ChatMessage>([ChatMessage.Welcome(chatId, chat.IsAiSearchChat())]) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
@@ -383,7 +377,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 // TODO(AK): Implement highlighting of conversations
                 ChatUI.HighlightEntry(
-                    new ChatEntryId(chatId, ChatEntryKind.Text, navChatMessage.Id, AssumeValid.Option),
+                    TextEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
         if (items.Count != 0) {
@@ -473,10 +467,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private long UpdateReadPosition(long readEntryLid)
     {
-        var readPosition = _readPositionLease.Resource;
+        var readPosition = ReadPosition;
         readEntryLid = Math.Max(readPosition.Value.EntryLid, readEntryLid);
         if (readPosition.Value.EntryLid < readEntryLid)
-            readPosition.Value = new ReadPosition(ChatId, readEntryLid);
+            ((IMutableState<ReadPosition>)readPosition).Value = new ReadPosition(ChatId, readEntryLid);
         return readEntryLid;
     }
 
@@ -535,7 +529,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void UpdateGroupChatUsageList()
     {
         var chatId = ChatId;
-        if (chatId.IsNone || chatId.Kind == ChatKind.Peer)
+        if (chatId.Kind == ChatKind.Peer)
             return;
 
         _ = BackgroundTask.Run(async () => {

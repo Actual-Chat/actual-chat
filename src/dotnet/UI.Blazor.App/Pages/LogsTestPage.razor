@@ -1,14 +1,12 @@
 @page "/test/logs"
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>User Logs</MainHeader>
 <LogView/>
 
 @code {
-    [Inject] protected UIHub Hub { get; init; } = null!;
     private NavbarUI NavbarUI => Hub.NavbarUI;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
 
     protected override void OnInitialized() {
         base.OnInitialized();

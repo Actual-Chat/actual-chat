@@ -43,10 +43,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         await using var _ = renderer.ConfigureAwait(false);
         var mjml = await renderer.RenderComponent<Digest>(parameters).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
-        var mjmlOptions = new MjmlOptions {
-            Minify = true,
-            Beautify = false,
-        };
+        var mjmlOptions = new MjmlOptions { Beautify = false };
         var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
 
         await EmailSender.Send(
@@ -69,7 +66,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         var unreadChats = new List<DigestParameters.DigestChat>();
         var accountSettings = ServerKvasBackend.GetUserClient(account.Id);
         var contactIds = await ContactsBackend
-            .ListIdsForSearch(account.Id, null, true, cancellationToken)
+            .ListIdsForSearch(account.Id, ContactSubset.All(), true, cancellationToken)
             .ConfigureAwait(false);
         foreach (var contactId in contactIds) {
             var digestChat = await GetDigestChat(contactId).ConfigureAwait(false);
@@ -117,7 +114,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             if (chat is null)
                 return default;
 
-            if (chat.Id.IsPlaceRootChat)
+            if (chat.Id is PlaceChatId { IsRoot: true })
                 return default;
 
             var messages = await ChatsBackend

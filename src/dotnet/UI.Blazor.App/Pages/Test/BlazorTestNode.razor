@@ -1,3 +1,4 @@
+@inherits ComponentBase<AppUIHub>
 @{
     Log.LogWarning("Render: {Name}", Name);
 }
@@ -11,7 +12,8 @@
 @code {
     private string[] _children = [];
 
-    [Inject] private ILogger<BlazorTestNode> Log { get; init; } = null!;
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public double ChildProbability { get; set; } = 1;

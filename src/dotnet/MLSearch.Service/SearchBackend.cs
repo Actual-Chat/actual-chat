@@ -161,7 +161,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         Task UpdateIndexedChatContacts()
         {
-            if (chat.Id.Kind == ChatKind.Peer || chat.Id.IsPlaceRootChat)
+            if (chat.Id.Kind == ChatKind.Peer || chat.Id is PlaceChatId { IsRoot: true })
                 return Task.CompletedTask;
 
             // NOTE: we don't have any other chance to process removed items
@@ -172,9 +172,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
 
         Task StartIndexingEntries()
-            => chat.Id.IsPlaceRootChat || changeKind != ChangeKind.Create
+            => changeKind != ChangeKind.Create || chat.Id is PlaceChatId { IsRoot: true }
                 ? Task.CompletedTask
-                : Flows.GetOrStart<EntryIndexingFlow>(chat.Id, cancellationToken);
+                : Flows.GetOrStart<EntryIndexingFlow>(chat.Id.Value, cancellationToken);
     }
 
     // [EventHandler]
@@ -212,7 +212,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         Task UpdateIndexedEntries()
             => entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text
                 ? Task.CompletedTask
-                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId, "TextEntry changed", cancellationToken);
+                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, "TextEntry changed", cancellationToken);
     }
 
     // [EventHandler]
@@ -224,8 +224,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         var (contact, _, changeKind) = eventCommand;
         return UpdateIndexedUserContacts();
 
-        Task UpdateIndexedUserContacts()
-        {
+        Task UpdateIndexedUserContacts() {
             if (contact.Kind != ContactKind.User)
                 return Task.CompletedTask;
 
@@ -276,7 +275,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             => descriptor.HasParent<IndexedUser>(p => p.Query(q => q.Match(m => m.Field(x => x.PlaceIds).Query(query.PlaceId.Value))));
 
         QueryContainer FilterByOwner(QueryContainerDescriptor<IndexedUserContact> qc)
-            => qc.Match(m => m.Field(x => x.OwnerId).Query(userId));
+            => qc.Match(m => m.Field(x => x.OwnerId).Query(userId.Value));
 
         QueryContainer FilterByName(QueryContainerDescriptor<IndexedUserContact> descriptor)
             => descriptor.Bool(b
@@ -341,11 +340,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 .MustNot(qc => qc.HasChild<IndexedUserContact>(c => c.Query(q => q.MatchAll())));
 
         ContactSearchResult ToSearchResult(IHit<IndexedUser> hit)
-        {
-            var peerChatId = new PeerChatId(userId, hit.Source!.Id);
-            var contactId = new ContactId(userId, peerChatId.ToChatId());
-            return new ContactSearchResult(contactId, hit.GetSearchMatch());
-        }
+            => new(ContactId.NewUser(userId, hit.Source.Id), hit.GetSearchMatch());
     }
 
     private async Task<ContactSearchResultPage> FindGroups(
@@ -353,14 +348,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         ContactSearchQuery query,
         CancellationToken cancellationToken)
     {
-        var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, query.PlaceId, cancellationToken).ConfigureAwait(false);
+        var contactSubset = query.PlaceId is not null ? ContactSubset.Place(query.PlaceId) : ContactSubset.All();
+        var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, contactSubset, cancellationToken).ConfigureAwait(false);
         if (ownGroupContactIds.Length == 0 && query.Own)
             return ContactSearchResultPage.Empty;
 
         var ownGroupIds = ownGroupContactIds.Select(x => x.ChatId).ToList();
         var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedGroup>(s
-                        => s.Index(OpenSearchNames.GroupIndexName)
+            await OpenSearchClient.SearchAsync<IndexedGroup>(
+                    s => s.Index(OpenSearchNames.GroupIndexName)
                             .From(query.Skip)
                             .Size(query.Limit)
                             .Query(qq => qq.Bool(ConfigureQuery))
@@ -392,7 +388,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                         : q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds)));
 
         ContactSearchResult ToSearchResult(IHit<IndexedGroup> hit)
-            => new (new ContactId(userId, hit.Source!.Id), hit.GetSearchMatch());
+            => new(ContactId.NewAny(userId, hit.Source.Id), hit.GetSearchMatch());
     }
 
     private async Task<ContactSearchResultPage> FindPlaces(
@@ -436,7 +432,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                     : q => q.Terms(t => t.Field(x => x.Id).Terms(ownPlaceIds)));
 
         ContactSearchResult ToSearchResult(IHit<IndexedPlace> hit)
-            => new (new ContactId(userId, hit.Source!.Id.ToRootChatId()), hit.GetSearchMatch());
+            => new(ContactId.NewAny(userId, hit.Source.Id.RootChatId), hit.GetSearchMatch());
     }
 
     private async Task<EntrySearchResultPage> FindEntriesInOpenSearch(
@@ -484,11 +480,12 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         async Task<List<ChatId>> ListChatIds()
         {
-            if (!query.ChatId.IsNone)
+            if (query.ChatId is not null)
                 return [query.ChatId];
 
-            var contactIds = await ContactsBackend.ListIdsForSearch(userId, query.PlaceId, true, cancellationToken).ConfigureAwait(false);
-            if (query.PlaceId is not { IsNone: false } placeId)
+            var contactSubset = query.PlaceId is not null ? ContactSubset.Place(query.PlaceId) : ContactSubset.All();
+            var contactIds = await ContactsBackend.ListIdsForSearch(userId, contactSubset, true, cancellationToken).ConfigureAwait(false);
+            if (query.PlaceId is not { } placeId)
                 return contactIds.Select(x => x.ChatId).ToList();
 
             // TODO: move this logic inside ListIdsForSearch

@@ -10,16 +10,13 @@ public static class VirtualList
     public static bool IsNonFirstRender = false;
 }
 
-public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
+public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
     where TItem : class, IVirtualListItem
 {
-    private VirtualListData<TItem>? _initialData = null;
-
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
+    private VirtualListData<TItem>? _initialData;
 
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= CircuitContext.Services.LogFor(GetType());
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -137,7 +134,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         VirtualList.IsNonFirstRender = true;
-        if (CircuitContext.IsPrerendering)
+        if (CircuitHub.IsPrerendering)
             return;
 
         if (firstRender) {

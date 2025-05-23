@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<RecorderToggle.Model>
+@inherits ComputedStateComponent<AppUIHub, RecorderToggle.Model>
 @{
     var m = State.Value;
     _animator.State = m.IsRecordingHere;
@@ -13,7 +13,8 @@
         (false, _, _) => (false, "", false),
         (_, false, _) => (true, "Starting recording...", false),
         (_, _, false) => (true, "Reconnecting...", false),
-        _ => (true , $"Recording - {language.Title}", true), // (true, true, true) => ...
+        // (true, true, true) => ...
+        _ => (true , language == null ? "Recording" : $"Recording - {language.Title}", true),
     };
     // start endless animation when auto hide is not needed
     var hasNoAnimation = _tooltipAnimator.AnimationEndsAt > _tooltipAnimator.Clock.Now + TimeSpan.FromDays(1);
@@ -89,28 +90,32 @@
 
 @code {
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.RecorderToggle.init";
+    private readonly TaskSerializer _taskSerializer = new();
     private OnOffAnimator _animator = null!;
     private ComponentAnimator _tooltipAnimator = null!;
-    private Language _oldRecordingLanguage = Language.None;
-    private TaskSerializer _taskSerializer = new();
+    private Language? _oldRecordingLanguage;
     private CpuTimestamp _lastActionAt;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private SearchUI SearchUI => Hub.SearchUI;
-    private IJSRuntime JS => Hub.JSRuntime();
 
-    private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
-    private bool IsRecordingHere => !Chat.Id.IsNone && RecordingChatId == Chat.Id;
-    private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
-    private bool IsPushToTalk { get; set; } = false;
+    private ChatId? RecordingChatId {
+        get {
+            var activeChats = ActiveChatsUI.ActiveChats.Value;
+            var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
+            return recordingChat?.ChatId;
+        }
+    }
+    private bool IsRecordingHere => ChatId is not null && RecordingChatId == ChatId;
+    private bool IsPushToTalk { get; set; }
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    private ChatId? ChatId => (ChatId?)Chat.Id;
 
     protected override void OnInitialized() {
         _animator = new (this, TimeSpan.FromMilliseconds(300));
@@ -134,14 +139,14 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
+            static t => new ComputedState<Model>.Options {
                 InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
+        var chatId = ChatId;
         // Locals captured, ConfigureAwait(false) below is fine
 
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
@@ -153,7 +158,6 @@
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
         return new (
-            Chat,
             language,
             isRecordingHere,
             recorderState.IsRecording,
@@ -186,11 +190,12 @@
         if (!IsValidAction())
             return;
 
-        var chatId = Chat.Id;
+        var chatId = ChatId;
         _ = _taskSerializer.Enqueue(async cancellationToken => {
             // .ConfigureAwait(false) is fine here
-            if (chatId.IsNone || RecordingChatId == chatId)
+            if (chatId is null || RecordingChatId == chatId)
                 return;
+
             if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
                 return;
 
@@ -206,8 +211,8 @@
         IsPushToTalk = false;
         _ = _taskSerializer.Enqueue(async _ => {
             // .ConfigureAwait(false) is fine here
-            if (!RecordingChatId.IsNone)
-                await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(false);
+            if (RecordingChatId is not null)
+                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
         }, mustAbortPreviousTasks: true);
     }
 
@@ -222,14 +227,13 @@
     // Nested types
 
     public sealed record Model(
-        Chat Chat,
-        Language Language,
+        Language? Language,
         bool IsRecordingHere = false,
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool? HasMicrophonePermission = null,
         bool IsTransitioning = false
     ) {
-        public static readonly Model Loading = new(SpecialChat.Loading, Language.None, default, false, true, false);
+        public static readonly Model Loading = new(null, default, false, true, false);
     }
 }

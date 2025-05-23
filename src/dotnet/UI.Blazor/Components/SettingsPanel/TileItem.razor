@@ -43,8 +43,9 @@
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     protected override void OnParametersSet() {
-        _resolvedAdditionalAttributes = BlazorAttributesBuilder
-            .New(AdditionalAttributes)
-            .AddOnClick(this, Click).Result;
+        _resolvedAdditionalAttributes = AttributeMapBuilder
+            .From(AdditionalAttributes)
+            .OnClick(this, Click)
+            .Map;
     }
 }

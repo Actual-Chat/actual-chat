@@ -18,10 +18,41 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbAlias", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("TargetId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("target_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_aliases");
+
+                    b.ToTable("aliases");
+                });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbAuthor", b =>
                 {
@@ -122,6 +153,11 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
+                    b.Property<string>("AliasId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("alias_id");
+
                     b.Property<bool>("AllowAnonymousAuthors")
                         .HasColumnType("boolean")
                         .HasColumnName("allow_anonymous_authors");
@@ -192,11 +228,6 @@ namespace ActualChat.Chat.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
-
-                    b.Property<string>("UserLinkId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_link_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -627,9 +658,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("chat_id")
                         .UseCollation("C");
 
-                    b.Property<long>("EntryId")
+                    b.Property<long>("EntryLocalId")
                         .HasColumnType("bigint")
-                        .HasColumnName("entry_id");
+                        .HasColumnName("entry_local_id");
 
                     b.Property<string>("MentionId")
                         .IsRequired()
@@ -640,11 +671,11 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Id")
                         .HasName("pk_mentions");
 
-                    b.HasIndex("ChatId", "EntryId", "MentionId")
-                        .HasDatabaseName("ix_mentions_chat_id_entry_id_mention_id");
+                    b.HasIndex("ChatId", "EntryLocalId", "MentionId")
+                        .HasDatabaseName("ix_mentions_chat_id_entry_local_id_mention_id");
 
-                    b.HasIndex("ChatId", "MentionId", "EntryId")
-                        .HasDatabaseName("ix_mentions_chat_id_mention_id_entry_id");
+                    b.HasIndex("ChatId", "MentionId", "EntryLocalId")
+                        .HasDatabaseName("ix_mentions_chat_id_mention_id_entry_local_id");
 
                     b.ToTable("mentions");
                 });
@@ -654,6 +685,11 @@ namespace ActualChat.Chat.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text")
                         .HasColumnName("id");
+
+                    b.Property<string>("AliasId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("alias_id");
 
                     b.Property<string>("BackgroundMediaId")
                         .IsRequired()
@@ -682,11 +718,6 @@ namespace ActualChat.Chat.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
-
-                    b.Property<string>("UserLinkId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_link_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -718,10 +749,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("author_id")
                         .UseCollation("C");
 
-                    b.Property<string>("EmojiId")
+                    b.Property<string>("Emoji")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("emoji_id");
+                        .HasColumnName("emoji");
 
                     b.Property<string>("EntryId")
                         .IsRequired()
@@ -755,10 +786,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("count");
 
-                    b.Property<string>("EmojiId")
+                    b.Property<string>("Emoji")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("emoji_id");
+                        .HasColumnName("emoji");
 
                     b.Property<string>("EntryId")
                         .IsRequired()
@@ -997,37 +1028,6 @@ namespace ActualChat.Chat.Migrations
                         .HasName("pk_translations");
 
                     b.ToTable("translations");
-                });
-
-            modelBuilder.Entity("ActualChat.Chat.Db.DbUserLink", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("integer")
-                        .HasColumnName("kind");
-
-                    b.Property<string>("TargetId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("target_id");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_user_links");
-
-                    b.ToTable("user_links");
                 });
 
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>

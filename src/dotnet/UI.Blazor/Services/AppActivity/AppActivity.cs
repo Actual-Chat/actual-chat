@@ -1,13 +1,13 @@
 ﻿namespace ActualChat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public abstract partial class AppActivity : ScopedWorkerBase<UIHub>, IComputeService
+public abstract partial class AppActivity : UIWorkerBase<UIHub>, IComputeService
 {
     private readonly MutableState<ActivityState> _state;
-    private BackgroundStateTracker? _backgroundStateTracker;
 
+    [field: AllowNull, MaybeNull]
     protected BackgroundStateTracker BackgroundStateTracker
-        => _backgroundStateTracker ??= Services.GetRequiredService<BackgroundStateTracker>();
+        => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
     public IState<ActivityState> State => _state;
 

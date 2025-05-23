@@ -22,25 +22,22 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         var context = CommandContext.GetCurrent();
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = context.Operation.Items.KeylessGet<SessionInfo>(); // Set by default command handler
-        if (sessionInfo == null)
-            throw StandardError.Internal("No SessionInfo in operation's items.");
-
-        var userId = new UserId(sessionInfo.UserId);
+        var sessionInfo = context.Operation.Items.KeylessGet<SessionInfo>().Require(); // Set by default command handler
+        var userId = UserId.Parse(sessionInfo.UserId);
         if (Invalidation.IsActive) {
             if (context.Operation.Items.KeylessGet<UserNameChangedTag>() != null)
-                _ = AuthBackend.GetUser(DbShard.Single, userId, default);
+                _ = AuthBackend.GetUser(DbShard.Single, userId.Value, default);
             return;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
+        var dbUser = await DbUsers.Get(dbContext, userId.Value, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
 
-        // Let's try to fix auto-generated user name here
+        // Let's try to fix the auto-generated username here
         var newName = UserNamer.NormalizeName(dbUser.Name);
         if (!OrdinalEquals(newName, dbUser.Name)) {
             context.Operation.Items.KeylessSet(new UserNameChangedTag());

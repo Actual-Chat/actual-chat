@@ -3,7 +3,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
@@ -13,12 +13,11 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     private readonly MutableState<PlaybackState?> _playbackState;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private TuneUI TuneUI => Hub.TuneUI;
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
-    public ChatPlayers(ChatUIHub hub) : base(hub)
-        => _playbackState = hub.StateFactory().NewMutable(
+    public ChatPlayers(AppUIHub hub) : base(hub)
+        => _playbackState = hub.StateFactory.NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
 
@@ -166,9 +165,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
     private ChatPlayer GetOrCreate(ChatId chatId, ChatPlayerKind playerKind)
     {
         StopToken.ThrowIfCancellationRequested();
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         ChatPlayer newPlayer;
         lock (Lock) {
             var player = _players.GetValueOrDefault((chatId, playerKind));
@@ -188,9 +184,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private async Task Close(ChatId chatId, ChatPlayerKind playerKind)
     {
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         ChatPlayer? player;
         lock (Lock) {
             player = _players.GetValueOrDefault((chatId, playerKind));
@@ -205,8 +198,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private Task<Task> ResumeRealtimePlayback(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNone)
-            return Task.FromResult(Task.CompletedTask);
         var player = GetOrCreate(chatId, ChatPlayerKind.Realtime);
         var whenPlaying = player.WhenPlaying;
         return whenPlaying is { IsCompleted: false }
@@ -225,8 +216,6 @@ public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotify
 
     private Task<Task> StartHistoricalPlayback(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
     {
-        if (chatId.IsNone)
-            return Task.FromResult(Task.CompletedTask);
         var player = GetOrCreate(chatId, ChatPlayerKind.Historical);
         return player.Start(startAt, cancellationToken);
     }

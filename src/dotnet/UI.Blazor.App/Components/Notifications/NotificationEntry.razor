@@ -1,14 +1,12 @@
-@using ActualChat.Notification
 @using System.Timers
 @using Timer = System.Timers.Timer
 @using Notification = ActualChat.Notification.Notification
-@inherits ComputedStateComponent<NotificationEntry.Model>
+@inherits ComputedStateComponent<AppUIHub, NotificationEntry.Model>
 @implements IDisposable
 @{
     var model = State.Value;
     var title = model.Title;
     var content = model.Content;
-    var authorId = model.AuthorId;
 }
 
 <div class="notification shadow-md bg-01 text-primary-content"
@@ -37,10 +35,6 @@
     private bool _isClosed;
     private bool _isClosing;
     private Timer? _closingTimer;
-
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private INotifications Notifications { get; set; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; set; } = null!;
 
     [Parameter] public Notification Notification { get; set; } = null!;
     [Parameter] public EventCallback Closed { get; set; }
@@ -75,17 +69,15 @@
         var notification = Notification;
         var chatId = notification.ChatId;
         var entryId = notification.EntryId;
-        var authorId = notification.AuthorId;
 
-        if (!chatId.IsNone) {
+        if (chatId is null) {
             // TODO(AK): Unread message counter
         }
         return Task.FromResult<Model>(new() {
             Title = notification.Title,
             Content = notification.Content,
-            NavigateToUrl = chatId.IsNone ? null
-                : Links.Chat(chatId, entryId.LocalId).ToAbsolute(UrlMapper),
-            AuthorId = authorId,
+            NavigateToUrl = chatId is null ? null
+                : Links.Chat(chatId, entryId?.LocalId ?? 0).ToAbsolute(UrlMapper),
         });
     }
 
@@ -119,8 +111,8 @@
             : $"animation: fadein {AnimationTime.Value.TotalMilliseconds}ms ease-in;";
     }
 
-    private async void OnCloseTimer(object? sender, ElapsedEventArgs e) {
-        await InvokeAsync(async () => {
+    private void OnCloseTimer(object? sender, ElapsedEventArgs e) {
+        _ = InvokeAsync(async () => {
             await Close();
         });
     }
@@ -133,6 +125,9 @@
         public string Title { get; init; } = "";
         public string Content { get; init; } = "";
         public string? NavigateToUrl { get; init; }
-        public Symbol AuthorId { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
+public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 {
     private static readonly SemaphoreSlim Lock = new (1);
     private readonly SyncedState<UserOnboardingSettings> _userSettings;
@@ -12,19 +12,17 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
 
-    private AccountUI AccountUI => Hub.AccountUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
 
     public IState<UserOnboardingSettings> UserSettings => _userSettings;
     public new IState<LocalOnboardingSettings> LocalSettings => _localSettings;
     public Task WhenLocalSettingsRead => _localSettings.WhenRead;
 
-    public OnboardingUI(ChatUIHub hub) : base(hub)
+    public OnboardingUI(AppUIHub hub) : base(hub)
     {
-        var stateFactory = hub.StateFactory();
-        var accountSettings = hub.AccountSettings();
-        var localSettings = hub.LocalSettings();
+        var stateFactory = hub.StateFactory;
+        var accountSettings = hub.AccountSettings;
+        var localSettings = hub.LocalSettings;
         var type = GetType();
         _userSettings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (accountSettings, UserOnboardingSettings.KvasKey) {
@@ -58,7 +56,8 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
             // We give it 5 seconds to complete, otherwise it won't be shown
             using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             try {
-                shouldBeShown = await ShouldBeShown(cts.Token).ConfigureAwait(true);
+                shouldBeShown = await ShouldBeShown(cts.Token)
+                    .ConfigureAwait(true); // true is required here!
             }
             catch (OperationCanceledException) { }
             finally {
@@ -69,7 +68,9 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
             if (!shouldBeShown)
                 return false;
 
-            _lastModalRef = await ModalUI.Show(new OnboardingModal.Model(), CancellationToken.None).ConfigureAwait(false);
+            _lastModalRef = await ModalUI
+                .Show(new OnboardingModal.Model(), CancellationToken.None)
+                .ConfigureAwait(false); // Ok (pre-exit)
             return true;
         }
         finally {
@@ -88,9 +89,9 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
     private async Task<bool> ShouldBeShown(CancellationToken cancellationToken)
     {
         // Wait for sign-in
-        await AccountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await AccountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         await AccountUI.OwnAccount.Computed
-            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .When(x => !x.IsGuest, cancellationToken)
             .ConfigureAwait(false);
 
         // Wait when settings are read & synchronized
@@ -111,7 +112,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
 
         if (!_localSettings.Value.IsPermissionsStepCompleted) {
             // Fix IsPermissionsStepCompleted based on actual permissions:
-            // we don't want to show "Required permissions" screen if they're already granted
+            // we don't want to show the "Required permissions" screen if they're already granted
             var permissionsStepModel = await PermissionStepModel.New(Services, cancellationToken).ConfigureAwait(false);
             if (permissionsStepModel.SkipEverything) {
                 permissionsStepModel.MarkCompleted();

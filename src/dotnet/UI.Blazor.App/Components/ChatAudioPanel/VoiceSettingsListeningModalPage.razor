@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<VoiceSettingsListeningModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, VoiceSettingsListeningModalPage.ComputedModel>
 @{
     var m = State.Value;
     var mode = m.ListeningMode;
@@ -26,13 +26,9 @@
 </FormBlock>
 
 @code {
-    [Inject] public ChatUIHub Hub { get; set; } = null!;
-
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private ChatId ChatId { get; set; }
-
-    private AccountSettings AccountSettings => Hub.AccountSettings();
+    private ChatId ChatId { get; set; } = null!;
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();

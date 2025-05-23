@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 
 <MenuEntry
     Icon="icon-close"
@@ -8,7 +8,7 @@
 </MenuEntry>
 
 @code {
-    [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 

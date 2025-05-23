@@ -4,7 +4,7 @@ public static class ArrayExt
 {
     // TryGetValue
 
-    public static bool TryGetValue<T>(this T[] array, T item, out T? foundItem)
+    public static bool TryGetValue<T>(this T[] array, T item, [NotNullWhen(true)] out T? foundItem)
     {
         var index = Array.IndexOf(array, item);
         if (index < 0) {
@@ -12,7 +12,7 @@ public static class ArrayExt
             return false;
         }
 
-        foundItem = array[index];
+        foundItem = array[index]!;
         return true;
     }
 

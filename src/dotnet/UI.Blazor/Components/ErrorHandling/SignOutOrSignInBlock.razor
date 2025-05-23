@@ -1,0 +1,28 @@
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+@inherits FusionComponentBase<UIHub>
+@{
+    var account = Account;
+    if (account is null)
+        return;
+
+    if (account.IsGuest) {
+        <SignInBlock/>
+        return;
+    }
+}
+
+<SignInLayout>
+    <h1 class="text-02">Welcome to Actual Chat, @account.Name!</h1>
+    <p class="text-02 my-5">
+        @ChildContent
+    </p>
+    <div class="mt-5">
+        <SignOutButton/>
+    </div>
+</SignInLayout>
+
+@code {
+    [Parameter, EditorRequired] public AccountFull? Account { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

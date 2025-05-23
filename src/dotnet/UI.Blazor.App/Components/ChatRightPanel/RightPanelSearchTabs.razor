@@ -47,5 +47,6 @@
 </TabPanel>
 
 @code {
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    // TODO(DF): review usages
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 }

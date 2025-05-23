@@ -2,14 +2,26 @@
 @using ActualChat.UI.Blazor.Events
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<AuthorModal.Model>
-@inherits ComputedStateComponent<AuthorModal.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, AuthorModal.ComputedModel?>
 @{
     var m = State.Value;
+    if (m is null)
+        return;
+
+    if (m.Author is not { } author) {
+        // No author = we need to close the modal
+        if (!_isAutoClosed) {
+            _isAutoClosed = true;
+            Modal.Close();
+        }
+        return;
+    }
+
     var cls = "author-modal modal-sm";
     var title = "User profile";
     if (m.IsOwnAuthor)
         title = "Your profile";
-    else if (m.Author.IsAnonymous)
+    else if (author.IsAnonymous)
         title = "Anonymous profile";
     else
         cls += " wide-dialog-buttons";
@@ -21,10 +33,10 @@
     EventCallback onEditClick = default;
     if (!m.IsChatRoulette) {
         if (m.IsOwnAuthor) {
-            if (!m.Author.IsAnonymous)
+            if (!author.IsAnonymous)
                 onEditClick = EventCallback.Factory.Create(this, OnSettingsClick);
         } else if (m.PeerChatContact is not null && m.PeerChatContact.IsStored()) {
-            onEditClick = EventCallback.Factory.Create(this, OnEditPeerContact);
+            onEditClick = EventCallback.Factory.Create(this, _ => OnEditPeerContactClick(m.PeerChatContact));
         }
     }
 }
@@ -32,12 +44,12 @@
 <DialogFrame Title="@title" Class="@cls" HasCloseButton="true">
     <Body>
     <AuthorModalHeader
-        Author="m.Author"
+        Author="author"
         IsOwn="m.IsOwnAuthor"
         OnEditClick="@onEditClick"/>
     <FormBlock>
         <AuthorModalContent
-            Author="@m.Author"
+            Author="@author"
             IsOwn="@m.IsOwnAuthor"
             UsePlaceSettingsToEditMember="@m.UsePlaceSettingsToEditMember"
             EditMemberModel="@m.EditMemberModel"/>
@@ -45,7 +57,7 @@
     </Body>
     <Buttons>
         @if (m.IsOwnAuthor) {
-            if (!m.Author.IsAnonymous) {
+            if (!author.IsAnonymous) {
                 if (!m.IsChatRoulette) {
                     <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
                         <Icon><i class="icon-sync text-lg"></i></Icon>
@@ -55,7 +67,7 @@
                     <Button Class="btn-modal" Click="OnCancel">Close</Button>
                 }
             } else {
-                <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">
+                <Button Class="btn-modal" Click="@(_ => OnEditAvatarClick(author))">
                     <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
                     <Title>Edit avatar</Title>
                 </Button>
@@ -64,11 +76,11 @@
                     <Title>Reveal</Title>
                 </Button>
             }
-        } else if (m.Author.IsAnonymous) {
+        } else if (author.IsAnonymous) {
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                var authorName = m.Author.Avatar.Name;
+                var authorName = author?.Avatar.Name ?? "";
                 if (!m.OnlyAnonymousChatAllowed) {
                     if (_anonymousChat) {
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
@@ -145,19 +157,13 @@
 </DialogFrame>
 
 @code {
+    private bool _isAutoClosed;
     private bool _anonymousChat;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
     private AuthorUI AuthorUI => Hub.AuthorUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private UICommander UICommander => Hub.UICommander();
-    private UIEventHub UIEventHub => Hub.UIEventHub();
-    private Features Features => Hub.Features();
 
     private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
     private ChatId ChatId => AuthorId.ChatId; // Shortcut
@@ -165,18 +171,9 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = ComputedModel.Loading,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ComputedModel?> ComputeState(CancellationToken cancellationToken) {
         var authorId = AuthorId;
         var chatId = ChatId;
-        if (authorId.IsNone)
-            return ComputedModel.None;
 
         var session = Session;
         var author = await Authors.Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
@@ -188,8 +185,8 @@
         var account = await Authors.GetAccount(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
         Contact? peerChatContact = null;
-        if (!peerChatId.IsNone)
-            peerChatContact = await Contacts.GetForChat(session, peerChatId.ToChatId(), cancellationToken).ConfigureAwait(false);
+        if (peerChatId is not null)
+            peerChatContact = await Contacts.GetForChat(session, peerChatId, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
         var onlyAnonymousChatAllowed = chat is { Kind: ChatKind.Peer };
@@ -260,27 +257,26 @@
         _ = UIEventHub.Publish(new ShowSettingsEvent());
     }
 
-    private void OnEditAvatarClicked(Author author) {
+    private void OnEditAvatarClick(Author author) {
         Modal.Close();
         _ = ModalUI.Show(new OwnAvatarEditorModal.Model(author.Avatar.Id, author.ChatId, "Edit avatar"));
     }
 
-    private void OnEditPeerContact() {
+    private void OnEditPeerContactClick(Contact contact) {
         Modal.Close();
-        _ = ModalUI.Show(new PeerContactEditorModal.Model(State.Value.PeerChatContact!.Id));
+        _ = ModalUI.Show(new PeerContactEditorModal.Model(contact.Id));
     }
 
     // Nested types
 
     public sealed record ComputedModel {
-        public static readonly ComputedModel None = new() { Author = Author.None };
-        public static readonly ComputedModel Loading = new() { Author = Author.Loading }; // Should differ by ref. from None
+        public static readonly ComputedModel None = new();
 
-        public Author Author { get; init; } = null!;
+        public Author? Author { get; init; }
         public Account? Account { get; init; }
         public bool IsOwnAuthor { get; init; }
-        public PeerChatId PeerChatId { get; init; }
-        public bool CanStartPeerChat => !PeerChatId.IsNone;
+        public PeerChatId? PeerChatId { get; init; }
+        public bool CanStartPeerChat => PeerChatId is not null;
         public Contact? PeerChatContact { get; init; }
         public bool OnlyAnonymousChatAllowed { get; init; }
         public EditChatMemberModel? EditMemberModel { get; init; }

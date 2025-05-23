@@ -3,15 +3,15 @@
 @{
     var m = State.Value;
     var badgeContent = ShowPresence
-        ? @<AuthorPresenceIndicator AuthorSid="@AuthorSid" ShowRecording="true"/>
+        ? @<AuthorPresenceIndicator AuthorId="@AuthorId" ShowRecording="true"/>
         : (RenderFragment?)null;
     var statusContent = ShowPresenceText
-        ? @<AuthorPresenceText AuthorSid="@AuthorSid" ShowRecording="true"/>
+        ? @<AuthorPresenceText AuthorId="@AuthorId" ShowRecording="true"/>
         : (RenderFragment?)null;
 }
 
 <AvatarBadge
-    Avatar="@m.Author.Avatar"
+    Avatar="@m?.Author?.Avatar"
     Size="@Size"
     NameClass="@NameClass"
     StatusText="@StatusText"

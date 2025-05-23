@@ -2,24 +2,27 @@
 @inherits AuthorBadgeBase
 @{
     var m = State.Value;
-    var author = m.Author;
-    var showAsYou = m.IsOwn && ShowAsYou;
+    var author = m?.Author;
+    var isOwn = ShowAsOwn && (m?.IsOwn ?? false);
     var onClick = ShowDetailsOnClick
-        ? EventCallback.Factory.Create<MouseEventArgs>(this, _ => AuthorUI.Show(author.Id))
+        ? EventCallback.Factory.Create<MouseEventArgs>(this, _ => {
+            if (author is not null)
+                AuthorUI.Show(author.Id);
+        })
         : Click;
 }
 
 <AvatarName
-    Avatar="@author.Avatar"
+    Avatar="@author?.Avatar"
     Class="@Class"
-    IsAnonymous="@author.IsAnonymous"
-    ShowAsYou="@showAsYou"
+    IsAnonymous="@(author?.IsAnonymous ?? false)"
+    IsOwn="@isOwn"
     Click="@onClick"/>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
-    [Parameter] public bool ShowAsYou { get; set; }
+    [Parameter] public bool ShowAsOwn { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {

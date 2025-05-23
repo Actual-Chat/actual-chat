@@ -10,8 +10,8 @@ public class BlazorWebViewApp
     private static Task? _startupTask;
     private static ILogger? _log; // Otherwise, Rider assumes we're referencing it from elsewhere
     // ReSharper disable once InconsistentNaming
-    private static readonly TaskCompletionSource<BlazorWebViewApp> _currentSource =
-        TaskCompletionSourceExt.New<BlazorWebViewApp>();
+    private static readonly AsyncTaskMethodBuilder<BlazorWebViewApp> _currentSource
+        = AsyncTaskMethodBuilderExt.New<BlazorWebViewApp>();
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<BlazorWebViewApp>();
 
     [field: AllowNull, MaybeNull]

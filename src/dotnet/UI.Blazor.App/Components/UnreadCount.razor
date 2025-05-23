@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @implements IDisposable
 @{
     _lastRenderTime = Clock.Now;
@@ -23,8 +23,6 @@
 @code {
     private Moment _lastRenderTime;
     private CancellationTokenSource? _cancelRenderDelayCts;
-
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [Parameter, EditorRequired] public Trimmed<int> Value { get; set; }
     [Parameter] public bool HasMentions { get; set; }

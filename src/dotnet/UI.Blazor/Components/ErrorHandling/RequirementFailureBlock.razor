@@ -1,12 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using ActualChat.Hosting
-@using ActualChat.UI.Blazor.Services
-@inherits FusionComponentBase
+@inherits FusionComponentBase<UIHub>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "UI types are expected to be untrimmed.")]
 @{
-    var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
+    var needsSignIn = Account is not null && Failures.Items.Any(x => x.Value is INotFoundException);
     if (needsSignIn) {
         _ = History.NavigateTo(Links.Home);
         return;
@@ -26,12 +24,7 @@
 </LayoutView>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-
     [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
     [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;
-    [Parameter, EditorRequired] public AccountFull Account { get; set; } = AccountFull.Loading;
+    [Parameter, EditorRequired] public AccountFull? Account { get; set; }
 }

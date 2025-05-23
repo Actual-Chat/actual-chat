@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<LandingLeftMenuContent.Model>
+@inherits ComputedStateComponent<AppUIHub, LandingLeftMenuContent.Model>
 @{
     var m = State.Value;
     var account = m.Account;
@@ -16,7 +16,7 @@
     </div>
 </div>
 <div class="menu-content">
-    @if (account.IsGuestOrNone) {
+    @if (account.IsGuest) {
         <Button Class="btn-transparent sign-in-btn" Click="SignIn">
             <Icon><i class="icon-log-in text-2xl"></i></Icon>
             <Title>Sign in</Title>
@@ -27,7 +27,7 @@
             Home
         </Button>
     }
-    @if (!account.IsGuestOrNone) {
+    @if (!account.IsGuest) {
         <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Chats))">
             Go to Chats
         </Button>
@@ -61,12 +61,6 @@
 </div>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private AccountUI AccountUI => Hub.AccountUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private History History => Hub.History;
-    private Features Features => Hub.Features();
-
     // Use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
     // ReSharper disable once RedundantNameQualifier
     [Parameter] public  ActualChat.UI.Blazor.App.Pages.Landing.LandingLeftMenu Owner { get; set; } = null!;

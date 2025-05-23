@@ -1,30 +1,29 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits Menu<AppUIHub>
 
 <ul>
     @foreach (var authorId in _firstAuthorIds) {
         <li class="reaction-authors-menu-item">
-            <AuthorBadge AuthorSid="@authorId" Size="SquareSize.Size5"/>
-            <EmojiIcon Id="@_emoji" Class="reaction-authors-menu-item-emoji"/>
+            <AuthorBadge AuthorId="@authorId" Size="SquareSize.Size5"/>
+            <EmojiIcon Emoji="@_emoji" Class="reaction-authors-menu-item-emoji"/>
         </li>
     }
 </ul>
 
 @code {
-    private string _emoji = "";
+    private Emoji? _emoji;
     private ImmutableList<AuthorId> _firstAuthorIds = ImmutableList<AuthorId>.Empty;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IReactions Reactions => Hub.Reactions;
 
     protected override async Task OnParametersSetAsync() {
-        if (Arguments is not [ var sEntryId, var emoji ])
+        if (Arguments is not [ var sEntryId, var emojiId ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-        var entryId = new TextEntryId(sEntryId);
+        var emoji = Emoji.Parse(emojiId);
+        var entryId = TextEntryId.Parse(sEntryId);
         var summaries = await Reactions.ListSummaries(Session, entryId, CancellationToken.None).ConfigureAwait(false);
-        var summary = summaries.FirstOrDefault(x => x.EmojiId == emoji);
+        var summary = summaries.FirstOrDefault(x => x.Emoji == emoji);
 
         _emoji = emoji;
         _firstAuthorIds = summary?.FirstAuthorIds ?? ImmutableList<AuthorId>.Empty;

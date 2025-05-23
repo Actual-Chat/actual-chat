@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.ComponentModel.DataAnnotations
-@inherits Step;
+@inherits SimpleStep<AppUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -53,11 +53,7 @@
     private bool _showVerificationStatus;
     private bool? _isVerified;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 

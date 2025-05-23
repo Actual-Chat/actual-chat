@@ -8,7 +8,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
     private ChatAudioUI ChatAudioUI { get; }
 
-    public RealtimeChatPlayer(ChatUIHub hub, ChatId chatId)
+    public RealtimeChatPlayer(AppUIHub hub, ChatId chatId)
         : base(hub, chatId)
     {
         ChatAudioUI = Hub.ChatAudioUI;

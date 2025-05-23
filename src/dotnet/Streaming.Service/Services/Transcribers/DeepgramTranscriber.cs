@@ -53,7 +53,7 @@ public partial class DeepgramTranscriber : ITranscriber
         CancellationToken cancellationToken = default)
     {
         var transcriptState = new DeepgramTranscribeState(audioSource, output);
-        var whenCompletedSource = TaskCompletionSourceExt.New();
+        var whenCompletedSource = AsyncTaskMethodBuilderExt.New();
         Exception? error = null;
         try {
             using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -70,8 +70,28 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
-            var language = options.Language.ToDeepgram();
-            var model = options.Language.IsEnglish() ? "nova-3" : "nova-2";
+            var nova3Languages = new HashSet<Language> {
+                Languages.English,
+                Languages.EnglishIN,
+                Languages.EnglishUK,
+                Languages.German,
+                Languages.French,
+                Languages.FrenchCA,
+                Languages.Spanish,
+                Languages.SpanishMX,
+                Languages.SpanishUS,
+                Languages.Portuguese,
+                Languages.PortugueseBR,
+                Languages.Japanese,
+                Languages.Hindi,
+                Languages.Dutch,
+                Languages.Italian,
+                Languages.Russian,
+            };
+            var model = nova3Languages.Contains(options.Language) ? "nova-3" : "nova-2";
+            var language = OrdinalEquals(model, "nova-3")
+                ? "multi"
+                : options.Language.ToDeepgram();
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,
@@ -160,7 +180,7 @@ public partial class DeepgramTranscriber : ITranscriber
 
     private void ProcessResponse(
         DeepgramTranscribeState state,
-        TaskCompletionSource whenCompletedSource,
+        AsyncTaskMethodBuilder whenCompletedSource,
         ResultResponse result,
         TranscriptionOptions options)
     {

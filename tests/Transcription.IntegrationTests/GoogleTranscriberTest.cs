@@ -39,7 +39,7 @@ public class GoogleTranscriberTest(
         var services = CreateServices();
         var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
-            Language = "ru-RU",
+            Language = Language.Parse("ru-RU"),
         };
         var audio = await GetAudio(fileName, withDelay: withDelay);
 
@@ -61,7 +61,7 @@ public class GoogleTranscriberTest(
 
         var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();
         foreach (var t in transcripts)
-            Out.WriteLine("{0}: {1}", string.Join(", ", t.Languages), t);
+            Out.WriteLine("{0}: {1}", t.Languages.ToDelimitedString(), t);
     }
 
     [Fact(Skip = "Depends on Google API")]
@@ -72,7 +72,7 @@ public class GoogleTranscriberTest(
         var services = CreateServices();
         var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
-            Language = "ru-RU",
+            Language = Language.Parse("ru-RU"),
         };
         var audio = await GetAudio(fileName);
         var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();

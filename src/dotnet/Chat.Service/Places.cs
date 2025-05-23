@@ -21,8 +21,7 @@ public class Places(IServiceProvider services) : IPlaces
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
+        ArgumentNullException.ThrowIfNull(placeId);
 
         var place = await PlacesBackend.Get(placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)
@@ -42,25 +41,23 @@ public class Places(IServiceProvider services) : IPlaces
         PlaceId placeId,
         CancellationToken cancellationToken)
     {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
+        ArgumentNullException.ThrowIfNull(placeId);
 
-        // NOTE: Should we eliminate public GetRules method and always get rules from Place instance?
-        var placeRootChatRules = await Chats.GetRules(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        // NOTE: Should we eliminate the public GetRules method and always get rules from the Place instance?
+        var placeRootChatRules = await Chats.GetRules(session, placeId.RootChatId, cancellationToken).ConfigureAwait(false);
         return ToPlaceRules(placeRootChatRules, placeId);
     }
 
-    public virtual async Task<ChatId> GetWelcomeChatId(
+    public virtual async Task<PlaceChatId?> GetWelcomeChatId(
         Session session,
         PlaceId placeId,
         CancellationToken cancellationToken)
     {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
+        ArgumentNullException.ThrowIfNull(placeId);
 
         var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)
-            return ChatId.None;
+            return null;
 
         var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
         var chats = await chatIds
@@ -68,48 +65,48 @@ public class Places(IServiceProvider services) : IPlaces
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        // TODO(DF): make it possible to configure Welcome Chat
+        // TODO(DF): Make it possible to change Welcome Chat
         var welcomeChat = chats.SkipNullItems().FirstOrDefault(c => OrdinalEquals(Constants.Chat.SystemTags.Welcome, c.SystemTag))
             ?? chats.SkipNullItems().MinBy(c => c.CreatedAt);
-        return welcomeChat?.Id ?? ChatId.None;
+        return welcomeChat?.Id as PlaceChatId;
     }
 
     public virtual async Task<UserId[]> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
-        ThrowIfNone(placeId);
-        return await Authors.ListUserIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(placeId);
+        return await Authors.ListUserIds(session, placeId.RootChatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<AuthorId[]> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
-        ThrowIfNone(placeId);
-        return await Authors.ListAuthorIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(placeId);
+        return await Authors.ListAuthorIds(session, placeId.RootChatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<AuthorId[]> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
-        ThrowIfNone(placeId);
-        return await Roles.ListOwnerIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(placeId);
+        return await Roles.ListOwnerIds(session, placeId.RootChatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<AuthorFull?> GetOwn(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {
-        ThrowIfNone(placeId);
-        return await Authors.GetOwn(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(placeId);
+        return await Authors.GetOwn(session, placeId.RootChatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<Author?> Get(Session session, PlaceId placeId, AuthorId authorId, CancellationToken cancellationToken)
     {
-        ThrowIfNone(placeId);
+        ArgumentNullException.ThrowIfNull(placeId);
         ThrowIfDoesNotBelongToPlace(placeId, authorId);
-        return await Authors.Get(session, placeId.ToRootChatId(), authorId, cancellationToken).ConfigureAwait(false);
+        return await Authors.Get(session, placeId.RootChatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
     {
         var (session, placeId, expectedVersion, placeChange) = command;
 
-        var place = placeId.IsNone ? null
+        var place = placeId is null ? null
             : await Get(session, placeId, cancellationToken).ConfigureAwait(false);
 
         var changePlaceCommand = new PlacesBackend_Change(placeId, expectedVersion, placeChange.RequireValid());
@@ -133,14 +130,14 @@ public class Places(IServiceProvider services) : IPlaces
     public virtual async Task OnJoin(Places_Join command, CancellationToken cancellationToken)
     {
         var (session, placeId, avatarId) = command;
-        var joinCommand = new Authors_Join(session, placeId.ToRootChatId(), avatarId);
+        var joinCommand = new Authors_Join(session, placeId.RootChatId, avatarId);
         await Commander.Call(joinCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnInvite(Places_Invite command, CancellationToken cancellationToken)
     {
         var (session, placeId, userIds) = command;
-        var inviteCommand = new Authors_Invite(session, placeId.ToRootChatId(), userIds);
+        var inviteCommand = new Authors_Invite(session, placeId.RootChatId, userIds);
         await Commander.Call(inviteCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -186,7 +183,7 @@ public class Places(IServiceProvider services) : IPlaces
             return;
 
         place.Rules.Require(PlacePermissions.Leave);
-        var leaveCommand = new Authors_Leave(session, placeId.ToRootChatId());
+        var leaveCommand = new Authors_Leave(session, placeId.RootChatId);
         await Commander.Call(leaveCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -195,24 +192,18 @@ public class Places(IServiceProvider services) : IPlaces
         var placePermissions = (PlacePermissions)(int)authorRules.Permissions;
         if ((placePermissions & PlacePermissions.Owner) == 0) // Only Owners can invite so far.
             placePermissions &= ~PlacePermissions.Invite;
-        return new (placeId, authorRules.Author, authorRules.Account, placePermissions);
-    }
-
-    private static void ThrowIfNone(PlaceId placeId)
-    {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
+        return new(placeId, authorRules.Author, authorRules.Account, placePermissions);
     }
 
     private static void ThrowIfDoesNotBelongToPlace(PlaceId placeId, AuthorId authorId)
     {
-        if (!authorId.ChatId.PlaceChatId.IsRoot || authorId.ChatId.PlaceChatId.PlaceId != placeId)
+        if (authorId.ChatId is not PlaceChatId placeChatId || placeChatId.PlaceId != placeId)
             throw new ArgumentOutOfRangeException(nameof(authorId));
     }
 
     private static void ThrowIfNonPlaceRootChatAuthor(AuthorId authorId)
     {
-        if (!authorId.ChatId.PlaceChatId.IsRoot)
+        if (authorId.ChatId is not PlaceChatId { IsRoot: true })
             throw new ArgumentOutOfRangeException(nameof(authorId));
     }
 }

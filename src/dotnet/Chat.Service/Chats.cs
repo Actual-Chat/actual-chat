@@ -31,14 +31,11 @@ public class Chats(IServiceProvider services) : IChats
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.Kind == ChatKind.Peer) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            var contactId = new ContactId(account.Id, chatId, ParseOrNone.Option);
-            if (contactId.IsNone)
+            ContactId.TryParse(ContactId.Format(account.Id, chatId), out var contactId);
+            if (contactId is null)
                 return null;
 
             var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
@@ -58,8 +55,8 @@ public class Chats(IServiceProvider services) : IChats
             if (chat == null)
                 return null;
 
-            if (chatId is { IsPlaceChat: true, IsPlaceRootChat: false }) {
-                var place = await Places.Get(session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (chatId is PlaceChatId { IsRoot: false } placeChatId) {
+                var place = await Places.Get(session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
                 if (place == null)
                     return null;
             }
@@ -72,8 +69,8 @@ public class Chats(IServiceProvider services) : IChats
         chat = chat with { Rules = rules };
         if (chat.IsChatRoulette()) {
             var ownAuthorId = chat.Rules.Author.Require().Id;
-            var anotherAuthorId = new AuthorId(chatId, ownAuthorId.LocalId == 1 ? 2 : 1, AssumeValid.Option);
-            var anotherAuthor = await AuthorsBackend.Get(chatId, anotherAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            var anotherAuthorId = AuthorId.New(chatId, ownAuthorId.LocalId == 1 ? 2 : 1);
+            var anotherAuthor = await AuthorsBackend.Get(chatId, anotherAuthorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (anotherAuthor is not null) {
                 var avatar = anotherAuthor.Avatar;
                 chat = chat with {
@@ -142,14 +139,14 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatNews> GetNews(
+    public virtual async Task<ChatNews?> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false); // Make sure we can read the chat
         if (chat == null)
-            return default;
+            return null;
 
         return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
     }
@@ -180,17 +177,17 @@ public class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatId> GetForwardChatReplacement(
+    public virtual async Task<ChatId?> GetForwardChatReplacement(
         Session session,
         ChatId sourceChatId,
         CancellationToken cancellationToken)
     {
         var chatId = await Backend.GetForwardChatReplacement(sourceChatId, cancellationToken).ConfigureAwait(false);
-        if (chatId.IsNone)
-            return ChatId.None;
+        if (chatId is null)
+            return null;
 
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        return chat?.Id ?? ChatId.None;
+        return chat?.Id;
     }
 
     // [ComputeMethod]
@@ -219,15 +216,15 @@ public class Chats(IServiceProvider services) : IChats
         if (!mentionIds.Contains(mentionId)) // Validate given mention id is used in the chat entry.
             return false;
 
-        if (!mentionId.IsUser(out var userId) && mentionId.IsAuthor(out var authorId)) {
-            var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        var userId = mentionId.PrincipalId as UserId;
+        if (mentionId.PrincipalId is AuthorId authorId) {
+            var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (author is not null)
                 userId = author.UserId;
         }
-        if (userId.IsNone)
+        if (userId is null)
             return false;
-
-        if (userId == chat.Rules.Account.Id)
+        if (userId == chat.Rules.Account?.Id)
             return true; // Mention refers to the chat entry author.
 
         var readPosition = await ChatPositionsBackend.Get(userId, chatId, ChatPositionKind.Read, cancellationToken).ConfigureAwait(false);
@@ -247,7 +244,7 @@ public class Chats(IServiceProvider services) : IChats
     public virtual async Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken)
     {
         var (session, chatId, expectedVersion, change) = command;
-        var chat = chatId.IsNone ? null
+        var chat = chatId is null ? null
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());
@@ -257,10 +254,11 @@ public class Chats(IServiceProvider services) : IChats
             changeCommand = changeCommand with {
                 OwnerId = account.Id,
             };
-            var placeId = chatDiff1.PlaceId ?? PlaceId.None;
+            var placeId = chatDiff1.PlaceId;
             await ValidatePlaceChatChangeConstraints(placeId, chatDiff1).ConfigureAwait(false);
         }
         else {
+            chatId.Require();
             if (chatId.IsThread) {
                 if (change.IsUpdate(out var chatDiff2)) {
                     chat.Require().Rules.Permissions.Require(ChatPermissions.EditProperties);
@@ -281,7 +279,7 @@ public class Chats(IServiceProvider services) : IChats
                 chat.Require().Rules.Permissions.Require(requiredPermissions);
 
                 if (change.IsUpdate(out var chatDiff2))
-                    await ValidatePlaceChatChangeConstraints(chat.Id.PlaceId, chatDiff2).ConfigureAwait(false);
+                    await ValidatePlaceChatChangeConstraints((chat.Id as PlaceChatId)?.PlaceId, chatDiff2).ConfigureAwait(false);
             }
         }
 
@@ -293,24 +291,24 @@ public class Chats(IServiceProvider services) : IChats
         void ValidateThreadChatChangeConstraints(ChatDiff chatDiff)
         {
             var isReadOnlyProperty = chatDiff.IsPublic.HasValue
-                || chatDiff.PlaceId.HasValue
+                || chatDiff.PlaceId is not null
                 || chatDiff.IsTemplate.HasValue
                 || chatDiff.TemplateId.HasValue
                 || chatDiff.TemplatedForUserId.HasValue
                 || chatDiff.Kind.HasValue
                 || chatDiff.IsArchived.HasValue
-                || chatDiff.MediaId.HasValue
+                || chatDiff.MediaId is not null
                 || chatDiff.SystemTag.HasValue
-                || chatDiff.UserLinkId.HasValue
+                || chatDiff.AliasId is not null
                 || chatDiff.AllowAnonymousAuthors.HasValue
                 || chatDiff.AllowGuestAuthors.HasValue;
             if (isReadOnlyProperty)
                 throw StandardError.Constraint("It's allowed to change only Title or Description for the thread.");
         }
 
-        async Task ValidatePlaceChatChangeConstraints(PlaceId placeId, ChatDiff chatDiff)
+        async Task ValidatePlaceChatChangeConstraints(PlaceId? placeId, ChatDiff chatDiff)
         {
-            if (placeId.IsNone)
+            if (placeId is null)
                 return;
 
             var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
@@ -346,7 +344,7 @@ public class Chats(IServiceProvider services) : IChats
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
             // Update
-            var textEntryId = new TextEntryId(chatId, vLocalId, AssumeValid.Option);
+            var textEntryId = TextEntryId.New(chatId, vLocalId);
             textEntry = await this
                 .GetEntry(session,textEntryId, cancellationToken)
                 .Require(ChatEntry.MustNotBeRemoved)
@@ -357,7 +355,7 @@ public class Chats(IServiceProvider services) : IChats
                 throw StandardError.Unauthorized("You can edit only your own messages.");
             if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryLid.HasValue)
                 throw StandardError.Constraint("Only text messages can be edited.");
-            if (!textEntry.ForwardedChatEntryId.IsNone && !OrdinalEquals(command.Text, textEntry.Content))
+            if (textEntry.ForwardedChatEntryId is not null && !OrdinalEquals(command.Text, textEntry.Content))
                 throw StandardError.Constraint("Forwarded messages cannot be edited.");
             if (repliedEntryLid.IsSome(out var v) && textEntry.RepliedEntryLid != v)
                 throw StandardError.Constraint("Replied entry Id cannot be changed.");
@@ -373,7 +371,7 @@ public class Chats(IServiceProvider services) : IChats
         }
         else {
             // Create
-            var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
+            var textEntryId = TextEntryId.New(chatId, 0);
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 textEntryId,
                 null,
@@ -402,7 +400,7 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+        var textEntryId = TextEntryId.New(chatId, localId);
         await RemoveTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
     }
 
@@ -414,7 +412,7 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+        var textEntryId = TextEntryId.New(chatId, localId);
         await RestoreTextEntry(session,
                 chat,
                 textEntryId,
@@ -432,7 +430,7 @@ public class Chats(IServiceProvider services) : IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         foreach (var localId in localIds) {
-            var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+            var textEntryId = TextEntryId.New(chatId, localId);
             await RemoveTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -446,7 +444,7 @@ public class Chats(IServiceProvider services) : IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         foreach (var localId in localIds) {
-            var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+            var textEntryId = TextEntryId.New(chatId, localId);
             await RestoreTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -465,7 +463,7 @@ public class Chats(IServiceProvider services) : IChats
 
         var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
         var templateAuthors = await templateAuthorIds
-            .Select(aId => AuthorsBackend.Get(templateChatId, aId, AuthorsBackend_GetAuthorOption.Full, cancellationToken))
+            .Select(aId => AuthorsBackend.Get(templateChatId, aId, RequestedAuthorKind.Full, cancellationToken))
             .Collect(4, cancellationToken) // NOTE(AY): Why 4? AK, please add comment
             .ConfigureAwait(false);
         var authorRoles = await templateAuthorIds
@@ -483,8 +481,7 @@ public class Chats(IServiceProvider services) : IChats
 
         // clone template chat
         var cloneCommand = new ChatsBackend_Change(
-            ChatId.None,
-            null,
+            null, null,
             new Change<ChatDiff> {
                 Create = new ChatDiff {
                     Title = templateChat.Title,
@@ -498,7 +495,7 @@ public class Chats(IServiceProvider services) : IChats
                     AllowGuestAuthors = true,
                 },
             },
-            templateAuthors.Single(a => a?.Id == templateOwner.AuthorId)?.UserId ?? UserId.None // Owner is mandatory
+            templateAuthors.Single(a => a?.Id == templateOwner.AuthorId)?.UserId // Owner is mandatory
         );
 
         var cloned = await Commander.Call(cloneCommand, true, cancellationToken).ConfigureAwait(false);
@@ -509,7 +506,7 @@ public class Chats(IServiceProvider services) : IChats
         foreach (var templateAuthor in templateAuthors.Where(ta => ta != null)) {
             var cloneAuthorCommand = new AuthorsBackend_Upsert(
                 chatId,
-                AuthorId.None,
+                null,
                 templateAuthor!.UserId,
                 ExpectedVersion: null,
                 new AuthorDiff {
@@ -537,7 +534,7 @@ public class Chats(IServiceProvider services) : IChats
             .ToList();
 
         foreach (var (role, roleAuthorIds) in roleAuthors) {
-            var createOwnersRoleCmd = new RolesBackend_Change(cloned.Id, default, null, new() {
+            var createOwnersRoleCmd = new RolesBackend_Change(cloned.Id, null, null, new() {
                 Create = new RoleDiff {
                     Picture = role.Picture,
                     Name = role.Name,
@@ -571,7 +568,7 @@ public class Chats(IServiceProvider services) : IChats
         }
         var createAuthorCommand = new AuthorsBackend_Upsert(
             chatId,
-            AuthorId.None,
+            null,
             account.Id,
             ExpectedVersion: null,
             new AuthorDiff {
@@ -607,21 +604,19 @@ public class Chats(IServiceProvider services) : IChats
                 var forwardedChatTitle = chatEntry.ForwardedChatTitle.IsNullOrEmpty()
                     ? chat.Title
                     : chatEntry.ForwardedChatTitle;
-                var forwardedChatEntryId = chatEntry.ForwardedChatEntryId.IsNone
-                    ? chatEntry.ChatId.IsPeerChat(out _)
-                        ? ChatEntryId.None
+                var forwardedChatEntryId = chatEntry.ForwardedChatEntryId is null
+                    ? chatEntry.ChatId.Kind == ChatKind.Peer
+                        ? null
                         : chatEntry.Id
-                    : chatEntry.ForwardedChatEntryId.ChatId.IsPeerChat(out _)
-                        ? ChatEntryId.None
+                    : chatEntry.ForwardedChatEntryId.ChatId.Kind == ChatKind.Peer
+                        ? null
                         : chatEntry.ForwardedChatEntryId;
                 var forwardedChatEntryBeginsAt = chatEntry.ForwardedChatEntryBeginsAt ?? chatEntry.BeginsAt;
-                var forwardedAuthorId = chatEntry.ForwardedAuthorId.IsNone
-                    ? chatEntry.AuthorId
-                    : chatEntry.ForwardedAuthorId;
+                var forwardedAuthorId = chatEntry.ForwardedAuthorId ?? chatEntry.AuthorId;
                 string? forwardedAuthorName = chatEntry.ForwardedAuthorName;
                 if (forwardedAuthorName.IsNullOrEmpty()) {
                     var forwardedAuthor = await AuthorsBackend
-                        .Get(forwardedAuthorId.ChatId, forwardedAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                        .Get(forwardedAuthorId.ChatId, forwardedAuthorId, RequestedAuthorKind.Full, cancellationToken)
                         .ConfigureAwait(false);
                     forwardedAuthorName = forwardedAuthor!.Avatar.Name;
                 }
@@ -657,7 +652,7 @@ public class Chats(IServiceProvider services) : IChats
             sourceChatId, chat, correlationId);
         if (chat.Id.Kind != ChatKind.Group && chat.Id.Kind != ChatKind.Place)
             throw StandardError.Constraint("Only group or place chats can be copied to a Place.");
-        if (chat.Id.Kind == ChatKind.Place && chat.Id.PlaceId == placeId)
+        if (chat.Id is PlaceChatId placeChatId1 && placeChatId1.PlaceId == placeId)
             throw StandardError.Constraint("Can't copy place chat to the same Place.");
         if (!chat.Rules.IsOwner())
             throw StandardError.Constraint("You must be the Owner of this chat to perform the migration.");
@@ -665,9 +660,11 @@ public class Chats(IServiceProvider services) : IChats
         if (!place.Rules.IsOwner())
             throw StandardError.Constraint("You should be place owner to perform 'copy chat to place' operation.");
 
-        var localChatId = sourceChatId.IsPlaceChat ? sourceChatId.PlaceChatId.LocalChatId : sourceChatId.Id;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, localChatId));
-        var newChatId = (ChatId)placeChatId;
+        var localChatId = sourceChatId is PlaceChatId sourcePlaceChatId
+            ? sourcePlaceChatId.LocalChatId
+            : sourceChatId.Value;
+        var newChatId = PlaceChatId.Parse(PlaceChatId.Format(placeId, localChatId));
+
         {
             var backendCmd = new ChatBackend_CopyChat(sourceChatId, placeId, correlationId);
             var result = await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
@@ -679,7 +676,7 @@ public class Chats(IServiceProvider services) : IChats
             var author = await Authors.GetOwn(session, newChatId, cancellationToken).ConfigureAwait(false);
             if (author != null) {
                 var userId = author.UserId;
-                var contactId = new ContactId(userId, newChatId, AssumeValid.Option);
+                var contactId = ContactId.NewAny(userId, newChatId);
                 var contact = await ContactsBackend.Get(userId, contactId, cancellationToken).ConfigureAwait(false);
                 if (!contact.IsStored()) {
                     var change = new Change<Contact> { Create = new Contact(contactId) };
@@ -756,18 +753,17 @@ public class Chats(IServiceProvider services) : IChats
     {
         var (session, newChatId, sourceChatId) = command;
 
-        if (!newChatId.IsPlaceChat)
-            throw StandardError.Constraint("New chat id should be a place chat id.");
-
-        var localChatId = sourceChatId.IsPlaceChat ? sourceChatId.PlaceChatId.LocalChatId : sourceChatId.Id;
-        if (newChatId.PlaceChatId.LocalChatId != localChatId)
+        var localChatId = sourceChatId is PlaceChatId sourcePlaceChatId
+            ? ChatId.Parse(sourcePlaceChatId.LocalChatId)
+            : sourceChatId;
+        if (!OrdinalEquals(newChatId.LocalChatId, localChatId.Value))
             throw StandardError.Constraint("New chat is seems not a copy of provided source chat.");
 
         var newChat = await Get(session, newChatId, cancellationToken).Require().ConfigureAwait(false);
         if (!newChat.Rules.IsOwner())
             throw StandardError.Constraint("You must be the Owner of this chat to perform this operation.");
 
-        var place = await Places.Get(session, newChat.Id.PlaceId, cancellationToken).Require().ConfigureAwait(false);
+        var place = await Places.Get(session, newChatId.PlaceId, cancellationToken).Require().ConfigureAwait(false);
         if (!place.Rules.IsOwner())
             throw StandardError.Constraint("You must be a chat's place owner to perform this operation.");
 
@@ -819,12 +815,12 @@ public class Chats(IServiceProvider services) : IChats
         var positions = statBackend.TopReadPositions;
         var top2AuthorReadPositions = (await positions
                 .Select(async c => {
-                    var authorId = AuthorId.None;
+                    var authorId = (AuthorId?)null;
                     using (var _ = Computed.BeginIsolation()) {
                         // Do not capture dependency, we just need an author id
                         var author = await AuthorsBackend.GetByUserId(chatId,
                                 c.UserId,
-                                AuthorsBackend_GetAuthorOption.Full,
+                                RequestedAuthorKind.Full,
                                 cancellationToken)
                             .ConfigureAwait(false);
                         if (author != null)
@@ -834,7 +830,8 @@ public class Chats(IServiceProvider services) : IChats
                 })
                 .Collect(cancellationToken)
                 .ConfigureAwait(false))
-            .Select(c => new AuthorReadPosition(c.AuthorId, c.EntryLid))
+            .Where(c => c.AuthorId != null)
+            .Select(c => new AuthorReadPosition(c.AuthorId!, c.EntryLid))
             .ToArray();
 
         return new ReadPositionsStat(chatId, statBackend.StartTrackingEntryLid, top2AuthorReadPositions);
@@ -849,10 +846,10 @@ public class Chats(IServiceProvider services) : IChats
         // NOTE(DF): PrincipalId seems to be legacy stuff. Now we have userId even for guest users.
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
-            return new PrincipalId(author.Id, AssumeValid.Option);
+            return author.Id;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return new PrincipalId(account.Id, AssumeValid.Option);
+        return account.Id;
     }
 
     private async Task RemoveTextEntry(
@@ -875,7 +872,7 @@ public class Chats(IServiceProvider services) : IChats
 
         await Remove(textEntryId).ConfigureAwait(false);
         if (textEntry.AudioEntryLid is { } audioEntryLid) {
-            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, audioEntryLid, AssumeValid.Option);
+            var audioEntryId = AudioEntryId.New(chat.Id, audioEntryLid);
             await Remove(audioEntryId).ConfigureAwait(false);
         }
         return;
@@ -904,7 +901,7 @@ public class Chats(IServiceProvider services) : IChats
 
         await Restore(textEntryId).ConfigureAwait(false);
         if (textEntry.AudioEntryLid is { } audioEntryLid) {
-            var audioEntryId = new ChatEntryId(chat.Id, ChatEntryKind.Audio, audioEntryLid, AssumeValid.Option);
+            var audioEntryId = AudioEntryId.New(chat.Id, audioEntryLid);
             await Restore(audioEntryId).ConfigureAwait(false);
         }
         return;

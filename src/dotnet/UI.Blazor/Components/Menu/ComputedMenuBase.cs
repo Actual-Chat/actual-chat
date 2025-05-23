@@ -1,8 +1,9 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class ComputedMenuBase<TState> : ComputedStateComponent<TState>, IMenu
+public abstract class ComputedMenuBase<THub, TState> : ComputedStateComponent<THub, TState>, IMenu
+    where THub : UIHub
 {
-    private readonly TaskCompletionSource _whenClosedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenClosedSource = AsyncTaskMethodBuilderExt.New();
 
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string[] Arguments { get; set; } = [];
@@ -23,6 +24,6 @@ public abstract class ComputedMenuBase<TState> : ComputedStateComponent<TState>,
 
     protected async Task NavigateTo(string url) {
         await WhenClosed;
-        await Host.History.NavigateTo(url);
+        await History.NavigateTo(url);
     }
 }

@@ -4,11 +4,21 @@
     var url = Markup.Url;
 }
 
-@if (_isRenderedAsLocal)
+@if (_linkRenderMode is LinkRenderMode.LinkPreview)
     return;
 
+@if (_linkRenderMode is LinkRenderMode.Local) {
+    <a class="@cls" href="@_hrefUrl"
+       @onclick="@OnNavigateClick"
+       @onclick:preventDefault="true"
+       data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, url, ""))">
+        @url
+    </a>
+    return;
+}
+
 <a class="@cls" href="@_hrefUrl" target="_blank"
-   data-menu="@(MenuRef.New<MessageMenu>(Entry.Id, bool.FalseString, url, ""))">
+   data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, url, ""))">
     @url
 </a>
 
@@ -19,9 +29,9 @@
     }.ToDictionary(x => x, x => $"url-markup url-markup-{x.ToString().ToLowerInvariant()}");
 
     private string _hrefUrl = "";
-    private bool _isRenderedAsLocal;
+    private LocalUrl? _localUrl;
+    private LinkRenderMode _linkRenderMode = LinkRenderMode.Default;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private LinkPreviewUI LinkPreviewUI => Hub.LinkPreviewUI;
 
     protected override async Task OnParametersSetAsync() {
@@ -29,11 +39,37 @@
         _hrefUrl = url;
         switch (Markup.Kind) {
             case UrlMarkupKind.Www:
-                _isRenderedAsLocal = await LinkPreviewUI.IsRenderedAsLocal(Markup.Url, CancellationToken.None);
+                var isRenderedAsLocal = await LinkPreviewUI.IsRenderedAsLocal(url, CancellationToken.None);
+                if (isRenderedAsLocal)
+                    _linkRenderMode = LinkRenderMode.LinkPreview;
+                else {
+                    _localUrl = TryGetLocalUrl(url);
+                    if (_localUrl is not null)
+                        _linkRenderMode = LinkRenderMode.Local;
+                }
                 break;
             case UrlMarkupKind.Email:
                 _hrefUrl = url.OrdinalStartsWith("mailto:") ? url : "mailto:" + url;
                 break;
         }
+    }
+
+    private LocalUrl? TryGetLocalUrl(string url)
+    {
+        url = url.EnsureSuffix("/");
+        if (url.OrdinalStartsWith(Nav.BaseUri))
+            return new LocalUrl(Nav.ToBaseRelativePath(url));
+        if (url.OrdinalStartsWith(UrlMapper.BaseUrl))
+            return new LocalUrl(UrlMapper.ToBaseRelativePath(url));
+        return null;
+    }
+
+    private enum LinkRenderMode { Default, LinkPreview, Local }
+
+    private void OnNavigateClick() {
+        if (_localUrl is null)
+            return;
+
+        _ = History.NavigateTo(_localUrl.Value);
     }
 }

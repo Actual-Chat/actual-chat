@@ -9,11 +9,8 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public const int MaxUnreadCount = 1000;
     public const int MaxLastTextEntryContentLength = 100;
 
-    public static readonly ChatInfo None = new(SpecialContact.Unavailable);
-    public static readonly ChatInfo Loading = new(SpecialContact.Loading);
-
-    public ChatNews News { get; init; }
     public UserChatSettings UserSettings { get; init; } = UserChatSettings.Default;
+    public ChatNews? News { get; init; }
     public Mention? LastMention { get; init; }
     public Chat.Chat? LastThread { get; init; }
     public Author? LastThreadCreator { get; init; }
@@ -26,7 +23,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     // Shortcuts
     public ChatId Id => Contact.Id.ChatId;
     public Chat.Chat Chat => Contact.Chat;
-    public ChatEntry? LastTextEntry => News.LastTextEntry;
+    public ChatEntry? LastTextEntry => News?.LastTextEntry;
     public bool IsThreadStartEntry => LastTextEntry?.IsThreadStartEntry == true;
 
     // Computed

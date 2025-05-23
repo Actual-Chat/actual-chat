@@ -69,7 +69,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
         var data = new NotificationData(message.MessageId ?? "", dataRaw);
 
-        if (data.NotificationKind == NotificationKind.GetAttention
+        if (data.NotificationKind == NotificationKind.Attention
             && ShowGetAttentionNotification(data, message.SentTime))
             return;
 
@@ -78,7 +78,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
         if (AndroidUtils.IsAppForeground() ?? false) {
             var chatId = data.ChatId;
-            if (!chatId.IsNone && TryGetScopedServices(out var scopedServices)) {
+            if (chatId is not null && TryGetScopedServices(out var scopedServices)) {
                 var history = scopedServices.GetRequiredService<History>();
                 if (history.LocalUrl.IsChat(out var currentChatId) && currentChatId == chatId) {
                     Log.LogDebug("OnMessageReceived: notification in the current chat #{ChatId}", chatId);
@@ -96,10 +96,11 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         long messageSentTime)
     {
         var chatId = data.ChatId;
-        if (chatId.IsNone) {
+        if (chatId is null) {
             Log.LogWarning("Can't show get-attention notification. Invalid ChatId. Ref messageId: '{MessageId}'", data.MessageId);
             return false;
         }
+
         var sentTime = new Moment(messageSentTime * 10_000).ToDateTime();
         var title = data.Title ?? "";
         var separatorIndex = title.IndexOf('@');

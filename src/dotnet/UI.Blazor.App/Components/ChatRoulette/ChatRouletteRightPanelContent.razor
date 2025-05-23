@@ -1,7 +1,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Roulette
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatRouletteRightPanelContent.Model?>
+@inherits ComputedStateComponent<AppUIHub, ChatRouletteRightPanelContent.Model?>
 @{
     #pragma warning disable IL2091
     var m = State.Value;
@@ -18,13 +18,13 @@
 
         <div class="c-center">
             <FormBlock>
-                <FormSection For="() => _form.CountryCode"
-                             InputId="@_form.CountryCodeFieldId"
+                <FormSection For="() => _form.CountryId"
+                             InputId="@_form.CountryIdFieldId"
                              Label="Choose country"
                              IsLabelInsideInput="true">
-                    <InputSelect @bind-Value="@_form.CountryCode">
-                        @foreach (var country in RouletteUI.CountryOptions) {
-                            <option value="@country.Code">@country.Title</option>
+                    <InputSelect @bind-Value="@_form.CountryId">
+                        @foreach (var country in RouletteUI.Countries) {
+                            <option value="@country.Value">@country.Title</option>
                         }
                     </InputSelect>
                 </FormSection>
@@ -67,10 +67,7 @@
     private Form? _formRef = null!;
     private FormModel _form = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
     private RouletteUI RouletteUI => Hub.RouletteUI;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
     protected override Task OnInitializedAsync() {
         MustRenderAfterEvent = true;
@@ -92,7 +89,7 @@
 
     private void OnSubmit() {
         var preferences = new Preferences {
-            Country = Country.ParseOrNone(_form.CountryCode),
+            Country = Country.Parse(_form.CountryId),
             Gender = _form.Gender,
             Languages = _form.Languages.ToArray(),
             Interests = _form.Interests.ToArray(),
@@ -101,26 +98,26 @@
     }
 
     private bool HasFilterChanged(FormModel form, Preferences searchFilter) {
-        if (form.CountryCode != searchFilter.Country.Code)
+        if (!OrdinalEquals(form.CountryId, searchFilter.Country.Value))
             return true;
 
         if (form.Gender != searchFilter.Gender)
             return true;
 
-        if (!Enumerable.SequenceEqual(form.Languages, searchFilter.Languages))
+        if (!form.Languages.SequenceEqual(searchFilter.Languages))
             return true;
 
-        if (!Enumerable.SequenceEqual(form.Interests, searchFilter.Interests))
+        if (!form.Interests.SequenceEqual(searchFilter.Interests))
             return true;
 
         return false;
     }
 
     private void FillInForm(FormModel form, Preferences searchCriteria) {
-        form.CountryCode = searchCriteria.Country.Code;
+        form.CountryId = searchCriteria.Country.Value;
         form.Gender = searchCriteria.Gender;
-        form.Languages = searchCriteria.Languages.ToImmutableArray();
-        form.Interests = searchCriteria.Interests.ToImmutableArray();
+        form.Languages = searchCriteria.Languages;
+        form.Interests = searchCriteria.Interests;
         form.CopyToBase();
     }
 
@@ -128,19 +125,17 @@
     public record Model;
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
-    public sealed class FormModel : FormModel<FormModel> {
-        public string CountryCode { get; set; } = "";
-        public string CountryCodeFieldId { get; set; } = "";
+    public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
+        : FormModel<FormModel>("search-filter", componentIdGenerator)
+    {
+        public string CountryId { get; set; } = "";
+        public string CountryIdFieldId { get; set; } = "";
         [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
-        public ImmutableArray<Language> Languages { get; set; } = ImmutableArray<Language>.Empty;
+        public IReadOnlyList<Language> Languages { get; set; } = [];
         public string LanguagesFieldId { get; set; } = "";
-        public Gender Gender { get; set; } = Gender.NotSpecified;
+        public Gender Gender { get; set; } = Gender.Undefined;
         public string GenderFieldId { get; set; } = "";
-        public ImmutableArray<Interest> Interests { get; set; } = ImmutableArray<Interest>.Empty;
+        public IReadOnlyList<Interest> Interests { get; set; } = [];
         public string InterestsFieldId { get; set; } = "";
-
-        public FormModel(ComponentIdGenerator? componentIdGenerator)
-            : base("search-filter", componentIdGenerator) {
-        }
     }
 }

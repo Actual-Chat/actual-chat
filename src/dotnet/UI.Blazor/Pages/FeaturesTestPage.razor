@@ -1,7 +1,6 @@
 @page "/test/features"
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.Hosting
-@inherits ComputedStateComponent<FeaturesTestPage.Model>
+@inherits ComputedStateComponent<UIHub, FeaturesTestPage.Model>
 @{
     var m = State.Value;
 }
@@ -15,9 +14,6 @@
 <p>Environment: @(m.Environment)</p>
 
 @code {
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {

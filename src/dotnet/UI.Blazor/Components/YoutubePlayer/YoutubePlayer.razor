@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <iframe
     @ref="@Ref"
@@ -15,8 +16,6 @@
     private DotNetObjectReference<YoutubePlayer> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
-
-    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter, EditorRequired] public string VideoUrl { get; set; } = null!;
 

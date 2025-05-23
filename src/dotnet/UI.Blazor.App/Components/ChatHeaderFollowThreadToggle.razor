@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isFollowing = State.Value;
     var iconCls = isFollowing ? "icon-eye" : "icon-eye-off";
@@ -13,13 +13,9 @@
 </HeaderButton>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Parameter, EditorRequired] public ChatId ThreadChatId { get; set; } = null!;
 
-    [Parameter, EditorRequired] public ChatId ThreadChatId { get; set; } = ChatId.None;
-
-    private Session Session => Hub.Session();
     private IChatThreads ChatThreads => Hub.ChatThreads;
-    private UICommander UICommander => Hub.UICommander();
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
         => ChatThreads.GetThreadFollowStatus(Session, ThreadChatId, cancellationToken);

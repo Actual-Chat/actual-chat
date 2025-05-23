@@ -2,7 +2,6 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.Permissions;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Pages.Test;
@@ -36,7 +35,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
-        services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper(), c.GetRequiredService<ReloadUI>()));
+        services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper, c.GetRequiredService<ReloadUI>()));
         services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
         services.AddScoped<IMediaMetadataUI>(_ => new MediaMetadataUI());

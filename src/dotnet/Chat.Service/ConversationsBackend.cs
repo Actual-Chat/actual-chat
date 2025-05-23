@@ -22,10 +22,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken)
     {
-        if (conversationId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(conversationId));
+        ArgumentNullException.ThrowIfNull(conversationId);
 
-        var dbChat = await DbChatResolver.Get(conversationId, cancellationToken).ConfigureAwait(false);
+        var dbChat = await DbChatResolver.Get(conversationId.Value, cancellationToken).ConfigureAwait(false);
         var chat = dbChat?.ToModel();
         return chat;
     }
@@ -43,19 +42,19 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var __ = dbContext.ConfigureAwait(false);
 
         var conversationRanges = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId && c.StartEntryLid < idTileRange.End && c.EndEntryLid >= idTileRange.Start)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid < idTileRange.End && c.EndEntryLid >= idTileRange.Start)
             .OrderBy(c => c.StartEntryLid)
             .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var previousConversationRange = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId && c.EndEntryLid < idTileRange.Start)
+            .Where(c => c.ChatId == chatId.Value && c.EndEntryLid < idTileRange.Start)
             .OrderByDescending(c => c.StartEntryLid)
             .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         var nextConversationRange = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId && c.StartEntryLid >= idTileRange.End)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= idTileRange.End)
             .OrderBy(c => c.StartEntryLid)
             .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
@@ -67,7 +66,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             nextConversationRange);
     }
 
-
     // Commands
 
     // [CommandHandler]
@@ -75,7 +73,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var (conversationId, _, change) = command;
         var chatId = conversationId.ChatId;
-        var chatSid = chatId.Value;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             var invConversation = context.Operation.Items.KeylessGet<Conversation>();
@@ -93,7 +90,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                     var nextIdTile = IdTileStack.LastLayer.GetTile(nextConversationId);
                     _ = GetRangeMeta(chatId, nextIdTile.Range.Start, default);
                 }
-
             }
             return null!;
         }
@@ -105,7 +101,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         await dbContext.Conversations.Lock(conversationId, cancellationToken).ConfigureAwait(false);
 
         var dbConversation = await dbContext.Conversations
-            .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
+            .FirstOrDefaultAsync(c => c.Id == conversationId.Value, cancellationToken)
             .ConfigureAwait(false);
         var oldConversation = dbConversation?.ToModel();
         Conversation conversation;
@@ -117,7 +113,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var startEntryLid = conversationId.StartEntryLid;
             var endEntryLid = change.Create.Value.EndEntryLid;
             var sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatSid && c.StartEntryLid < endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.StartEntryLid < endEntryLid && c.EndEntryLid >= startEntryLid)
                 .Select(c => c.Id)
                 .OrderBy(c => c)
                 .ToHashSetAsync(cancellationToken)
@@ -151,12 +147,12 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var startEntryLid = conversationId.StartEntryLid;
             var endEntryLid = change.Update.Value.EndEntryLid;
             var sConversationIds = await dbContext.Conversations
-                .Where(c => c.ChatId == chatSid && c.StartEntryLid < endEntryLid && c.EndEntryLid >= startEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.StartEntryLid < endEntryLid && c.EndEntryLid >= startEntryLid)
                 .Select(c => c.Id)
                 .OrderBy(c => c)
                 .ToHashSetAsync(cancellationToken)
                 .ConfigureAwait(false);
-            sConversationIds.Remove(conversationId);
+            sConversationIds.Remove(conversationId.Value);
             await dbContext.Conversations
                 .Where(c => sConversationIds.Contains(c.Id))
                 .ExecuteDeleteAsync(cancellationToken)
@@ -202,12 +198,12 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task StorePreviousAndNextConversationIds(long startEntryLid, long? endEntryLid)
         {
             var previousConversationIdTask = dbContext.Conversations
-                .Where(c => c.ChatId == chatSid && c.EndEntryLid < startEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.EndEntryLid < startEntryLid)
                 .OrderByDescending(c => c.StartEntryLid)
                 .Select(c => c.StartEntryLid)
                 .FirstOrDefaultAsync(cancellationToken);
             var nextConversationIdTask = dbContext.Conversations
-                .Where(c => c.ChatId == chatSid && c.StartEntryLid >= endEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= endEntryLid)
                 .OrderBy(c => c.StartEntryLid)
                 .Select(c => c.StartEntryLid)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -241,7 +237,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var startEntryLid = entryIdRanges[0].Start;
         var endEntryLid = entryIdRanges[^1].End - 1;
-        var conversationId = new ConversationId(chatId, startEntryLid, AssumeValid.Option);
+        var conversationId = ConversationId.New(chatId, startEntryLid);
         var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         var expectedVersion = existingConversation?.Version;
         var entries = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
@@ -295,7 +291,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return null!; // No invalidation there as we call other commands
+            return null!; // This handler makes changes only via nested commands
 
         var (chatId, entryLid, replyIdRange) = command;
         var delay = command.DelayUntil - Clocks.SystemClock.Now;
@@ -307,7 +303,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
         var existingConversations = conversationRangeMeta.ConversationIds;
         if (existingConversations.Length == 0) {
-            // Skip the reply as the conversation is not found - entry group was too small for summarization
+            // Skip the reply as the conversation is not found - the entry group was too small for summarization
             Log.LogInformation("Skipping reply as the conversation for {ChatId} and {EntryLid} is not found", chatId, entryLid);
             return null;
         }

@@ -86,7 +86,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
             sb.Append('[');
             sb.Append(authorName);
             sb.Append("] @");
-            var mentionId = new MentionId(authorId, AssumeValid.Option);
+            var mentionId = MentionId.NewAuthor(authorId);
             sb.Append(mentionId.Value);
         }
         return sb.ToString();

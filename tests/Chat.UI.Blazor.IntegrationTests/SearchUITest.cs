@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
 using ActualChat.UI.Blazor.App;
@@ -12,9 +13,10 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<SearchAppHostFixture>(fixture, @out)
 {
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
     private string UniquePart { get; } = UniqueNames.Prefix();
-    private SearchUI SearchUI => Tester.ScopedAppServices.ChatUIHub().SearchUI;
+    private SearchUI SearchUI => Tester.ScopedAppServices.AppUIHub().SearchUI;
 
     protected override async Task DisposeAsync()
     {

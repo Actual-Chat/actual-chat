@@ -28,7 +28,7 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
     public DbChatEntryLanguage(ChatEntryLanguage model) => UpdateFrom(model);
 
     public ChatEntryLanguage ToModel()
-        => new (new ChatEntryId(Id), Version) {
+        => new (ChatEntryId.Parse(Id), Version) {
             Languages = Languages.IsNullOrEmpty()
                 ? []
                 : JsonSerializer.Deserialize<Language[]>(Languages) ?? [],
@@ -38,10 +38,10 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
 
     public void UpdateFrom(ChatEntryLanguage model)
     {
-        this.RequireSameOrEmptyId(model.Id);
+        this.RequireSameOrEmptyId(model.Id.Value);
         model.RequireSomeVersion();
 
-        Id = model.Id;
+        Id = model.Id.Value;
         Version = model.Version;
         Languages = model.Languages.Length != 0
             ? JsonSerializer.Serialize(model.Languages)

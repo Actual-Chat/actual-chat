@@ -1,11 +1,11 @@
 ﻿@using System.ComponentModel.DataAnnotations
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 @{
 #pragma warning disable IL2091
 
-    var isPlaceChat = !PlaceId.IsNone;
-    var canChangeChatType = PlaceId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
+    var isPlaceChat = PlaceId is not null;
+    var canChangeChatType = PlaceId is null || _place != null && _place.Rules.CanApplyPublicChatType();
     var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
     var publicChatHint = !isPlaceChat ?
         "Anyone can join this chat by navigating to its URL" :
@@ -77,7 +77,7 @@
             </TileItem>
         </InputRadioGroup>
     </FormBlock>
-    @if (PlaceId.IsNone) {
+    @if (PlaceId is null) {
         <FormBlock>
             @if (_isAdmin && _form.IsPublic) {
                 <TileItem Class="field-allow-guest clickable" Click="OnAllowGuestAuthorsClick">
@@ -139,11 +139,8 @@
     private bool _isAdmin;
     private Place? _place;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public Action<Chat> ChatCreated { get; set; } = null!;
     [Parameter, EditorRequired] public Action Cancelled { get; set; } = null!;
@@ -154,8 +151,8 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        if (!PlaceId.IsNone) {
-            _place = await Hub.Places.Get(Hub.Session(), PlaceId, default).Require().ConfigureAwait(false);
+        if (PlaceId is not null) {
+            _place = await Hub.Places.Get(Hub.Session, PlaceId, default).Require().ConfigureAwait(false);
             if (!_place.Rules.CanApplyPublicChatType())
                 _form.IsPublic = false;
         }
@@ -168,13 +165,13 @@
 
     private void OnAllowGuestAuthorsClick()
     {
-        _form!.AllowGuestAuthors = !_form.AllowGuestAuthors;
+        _form.AllowGuestAuthors = !_form.AllowGuestAuthors;
         StateHasChanged();
     }
 
     private void OnAllowAnonymousAuthorsClick()
     {
-        _form!.AllowAnonymousAuthors = !_form.AllowAnonymousAuthors;
+        _form.AllowAnonymousAuthors = !_form.AllowAnonymousAuthors;
         StateHasChanged();
     }
 
@@ -182,19 +179,19 @@
         if (!_formRef.IsValid)
             return;
         try {
-            var command = new Chats_Change(Hub.Session(), default, null, new() {
+            var command = new Chats_Change(Hub.Session, null, null, new() {
                 Create = new ChatDiff {
                     Title = _form.Title,
                     Description = _form.Description,
                     Kind = null,
                     IsPublic = _form.IsPublic,
                     MediaId = _form.Picture?.MediaContent?.MediaId,
-                    AllowGuestAuthors = PlaceId.IsNone ? _form.AllowGuestAuthors : null,
-                    AllowAnonymousAuthors = PlaceId.IsNone ? _form.AllowAnonymousAuthors : null,
+                    AllowGuestAuthors = PlaceId is null ? _form.AllowGuestAuthors : null,
+                    AllowAnonymousAuthors = PlaceId is null ? _form.AllowAnonymousAuthors : null,
                     PlaceId = PlaceId
                 },
             });
-            var (chat, createChatError) = await Hub.UICommander().Run(command, CancellationToken.None);
+            var (chat, createChatError) = await Hub.UICommander.Run(command, CancellationToken.None);
             if (createChatError != null)
                 return;
 

@@ -2,19 +2,11 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase.Model>
+public abstract class AccountBadgeBase : ComputedStateComponent<UIHub, AccountBadgeBase.Model>
 {
-    [Inject] private UIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
 
-    protected UserId UserId { get; private set; }
-
-    [Parameter, EditorRequired] public string UserSid { get; set; } = "";
-
-    protected override void OnParametersSet()
-        => UserId = new UserId(UserSid);
+    [Parameter, EditorRequired] public UserId? UserId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -25,7 +17,7 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userId = UserId;
-        if (userId.IsNone)
+        if (userId is null)
             return Model.None;
 
         var account = await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);
@@ -36,8 +28,12 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
 
     // Nested types
 
-    public sealed record Model(Account Account) {
-        public static readonly Model None = new(Account.None);
-        public static readonly Model Loading = new(Account.Loading); // Should differ by ref. from None
+    public sealed record Model(Account? Account = null) {
+        public static readonly Model None = new();
+        public static readonly Model Loading = new();
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

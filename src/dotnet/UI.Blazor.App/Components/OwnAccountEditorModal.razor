@@ -1,8 +1,10 @@
 @using System.ComponentModel.DataAnnotations
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<OwnAccountEditorModal.Model>
 @{
-    if (ReferenceEquals(_account, AccountFull.Loading) || _form == null!)
+    if (_account == null! || _form == null!)
         return;
+
     // TODO(FC): show verify by sms on phone change
     var phone = _form.ParsedPhone;
     var isPhoneVerified = _account.HasVerifiedPhone();
@@ -33,32 +35,32 @@
                     ClearButton="true"/>
             </FormSection>
 
-            <FormSection Class="form-section-user-link"
-                         For="() => _form.UserLinkId"
-                         InputId="@_form.UserLinkIdFormId"
+            <FormSection Class="form-section-alias"
+                         For="() => _form.AliasId"
+                         InputId="@_form.AliasIdFormId"
                          Label="User link"
                          IsLabelInsideInput="true">
                 <ValidationMessage>
-                    <UserLinkValidationMessage
-                        For="@(() => _form.UserLinkId)"
-                        Kind="@UserLinkValidationMessage.UserLinkKind.AccountLink"
-                        CurrentUserLinkId="@_form.CurrentUserLinkId"
-                        GetUserLinkIdFunc="@(() => _form.UserLinkId)"/>
+                    <AliasValidationMessage
+                        For="@(() => _form.AliasId)"
+                        Scope="@AliasValidationMessage.AliasScope.Account"
+                        CurrentAliasId="@_form.CurrentAliasId"
+                        AliasIdReader="@(() => _form.AliasId)"/>
                 </ValidationMessage>
                 <ChildContent>
                     <TextBox
-                        Id="@_form.UserLinkIdFormId"
-                        Prefix="@_userLinkLocalPrefix"
-                        @bind-Value="@_form.UserLinkId"
-                        InputRefCreated="@_setUserLinkCopySource" />
+                        Id="@_form.AliasIdFormId"
+                        Prefix="@Links.UserAliasPrefix"
+                        @bind-Value="@_form.AliasId"
+                        InputRefCreated="@_aliasTextBoxRefSetter" />
                 </ChildContent>
                 <Right>
-                    @if (!_copyUserLinkFormatString.IsNullOrEmpty() && !_userLinkTextBoxRef.Id.IsNullOrEmpty()) {
+                    @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
                         <CopyToClipboard
                             ButtonClass="btn-transparent"
                             Text=""
-                            CopyTextSourceRef="@_userLinkTextBoxRef"
-                            CopyTextFormatString="@_copyUserLinkFormatString"/>
+                            CopyTextSourceRef="@_aliasTextBoxRef"
+                            CopyTextFormatString="@_copyAliasFormatString"/>
                     }
                 </Right>
             </FormSection>
@@ -81,15 +83,15 @@
                         disabled="@isPhoneVerified"/>
                 </ChildContent>
                 <Right>
-                    @if (phone.IsValid) {
+                    @if (phone != null) {
                         <VerificationStatus IsVerified="isPhoneVerified"/>
                     }
                 </Right>
             </FormSection>
 
-            @if (phone.IsValid && !isPhoneVerified) {
+            @if (phone != null && !isPhoneVerified) {
                 <PhoneVerifier
-                    Phone="@phone.Value"
+                    Phone="@phone"
                     Class="my-3"
                     Verified="OnPhoneVerified"/>
             }
@@ -154,49 +156,43 @@
     private readonly string _defaultPhoneValue = PhoneCodes.Default.DisplayCode;
     private Form _formRef = null!;
     private FormModel _form = null!;
-    private AccountFull _account = AccountFull.Loading;
+    private AccountFull _account = null!;
     private AsyncDataAnnotationsValidator _validator = null!;
-    private ElementReference _userLinkTextBoxRef;
-    private string _userLinkLocalPrefix = "";
-    private string _copyUserLinkFormatString = "";
-    private Action<ElementReference> _setUserLinkCopySource = null!;
+    private ElementReference _aliasTextBoxRef;
+    private string _copyAliasFormatString = "";
+    private Action<ElementReference> _aliasTextBoxRefSetter = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private IPhones Phones { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
+    private IPhones Phones => Hub.Phones;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        _setUserLinkCopySource = c => {
-            _userLinkTextBoxRef = c;
+    protected override Task OnInitializedAsync() {
+        _aliasTextBoxRefSetter = c => {
+            _aliasTextBoxRef = c;
             StateHasChanged();
         };
-        _userLinkLocalPrefix = Links.AccountUserLinkPrefix;
-        _copyUserLinkFormatString = UrlMapper.ToAbsolute(_userLinkLocalPrefix) + "{0}";
+        _copyAliasFormatString = UrlMapper.ToAbsolute(Links.UserAliasPrefix) + "{0}";
 
+        _account = AccountUI.OwnAccount.Value;
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        _account = await Hub.Accounts.GetOwn(Session, default);
         _form.Name = _account.Name;
         _form.Email = _account.Email.NullIfEmpty();
-        _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : "";
+        _form.Phone = _account.Phone?.ToReadable() ?? "";
         _form.ParsedPhone = _account.Phone;
-        _form.UserLinkId = _form.CurrentUserLinkId = _account.UserLinkId.Value;
-
+        _form.AliasId = _form.CurrentAliasId = _account.AliasId?.Value ?? "";
         _form.CopyToBase();
+        return Task.CompletedTask;
     }
 
-    private async void OnSave() {
+    private async Task OnSave() {
         if (!await _validator.Validate())
             return;
 
         var account = await Hub.Accounts.GetOwn(Session, default);
         var phone = _form.ParsedPhone = await Phones.Parse(_form.Phone, default);
         if (phone != account.Phone) {
-            if (!phone.IsValid)
+            if (phone != null)
                 return;
         }
 
@@ -205,10 +201,10 @@
             account with {
                 Name = _form.Name,
                 Phone = phone,
-                UserLinkId = UserLinkId.ParseOrNone(_form.UserLinkId),
+                AliasId = AliasId.ParseNullable(_form.AliasId),
             },
             account.Version);
-        var (_, error) = await Hub.UICommander().Run(updateAccountCommand);
+        var (_, error) = await Hub.UICommander.Run(updateAccountCommand);
         if (error != null)
             return;
 
@@ -245,12 +241,12 @@
         [EmailAddress] public string? Email { get; set; }
         public string EmailFieldId { get; set; } = "";
         [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = "";
-        public Phone ParsedPhone { get; set; }
+        public Phone? ParsedPhone { get; set; }
         public string PhoneFieldId { get; set; } = "";
-        [UserLinkId]
-        public string UserLinkId { get; set; } = "";
-        public string CurrentUserLinkId { get; set; } = "";
-        public string UserLinkIdFormId { get; set; } = "";
+        [AliasId]
+        public string AliasId { get; set; } = "";
+        public string CurrentAliasId { get; set; } = "";
+        public string AliasIdFormId { get; set; } = "";
     }
 
     public sealed record Model {

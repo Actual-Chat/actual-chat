@@ -17,12 +17,12 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
         }
     }
 
-    public ChatId ChatId {
+    public ChatId? ChatId {
         get {
-            data.TryGetValue(Constants.Notification.MessageDataKeys.ChatId, out var sChatId);
-            var chatId = new ChatId(sChatId, ParseOrNone.Option);
-            if (chatId.IsNone && !sChatId.IsNullOrEmpty())
-                Log.LogWarning("Invalid ChatId: '{ChatId}'", sChatId);
+            data.TryGetValue(Constants.Notification.MessageDataKeys.ChatId, out var chatSid);
+            var chatId = ChatId.TryParse(chatSid, allowNull: true);
+            if (chatId is null && !chatSid.IsNullOrEmpty())
+                Log.LogWarning("Invalid ChatId: '{ChatId}'", chatSid);
             return chatId;
         }
     }

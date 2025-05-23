@@ -1,8 +1,7 @@
 @using ActualChat.Invite
-@using ActualChat.UI.Blazor.Services
-@using Cysharp.Text
 @using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 @if (Invites.Count > 0) {
     @foreach (var invite in Invites) {
@@ -42,12 +41,6 @@
 }
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private ShareUI ShareUI => Hub.ShareUI;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private UICommander UICommander => Hub.UICommander();
-    private Session Session => Hub.Session();
-
     [Parameter, EditorRequired] public List<Invite> Invites { get; set; } = [];
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
     [Parameter] public bool AllowRevoke { get; set; }
@@ -82,21 +75,23 @@
             }
             case ChatInviteOption chatDetails: {
                 // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
-                var chats = Hub.GetRequiredService<IChats>();
+                var chats = Hub.Services.GetRequiredService<IChats>();
                 var chatId = chatDetails.ChatId;
                 var chat = await chats.Get(Session, chatId, default);
                 if (chat == null || !chat.CanInvite())
                     return;
 
                 Place? place = null;
-                if (!chatId.PlaceChatId.IsNone) {
-                    var places = Hub.GetRequiredService<IPlaces>();
-                    place = await places.Get(Session, chatId.PlaceChatId.PlaceId, default).ConfigureAwait(false);
+                if (chatId is PlaceChatId placeChatId) {
+                    var places = Hub.Services.GetRequiredService<IPlaces>();
+                    place = await places.Get(Session, placeChatId.PlaceId, default).ConfigureAwait(false);
                     if (place is null)
                         return; // We should be able to get chat's place. Return if it's not like that.
                 }
 
-                var targetTitle = place is null ? chat.Title : ZString.Concat(place.Title, "/", chat.Title);
+                var targetTitle = place is null
+                    ? chat.Title
+                    : string.Concat(place.Title, "/", chat.Title);
                 var title = "Share private chat join link";
                 var text = $"\"{targetTitle}\" on Actual Chat";
                 var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
@@ -108,7 +103,7 @@
                 return;
             }
             case PlaceInviteOption placeDetails: {
-                var places = Hub.GetRequiredService<IPlaces>();
+                var places = Hub.Services.GetRequiredService<IPlaces>();
                 var place = await places.Get(Session, placeDetails.PlaceId, default);
                 if (place == null || !place.Rules.CanInvite())
                     return;

@@ -30,14 +30,15 @@ public static class ChatContentArranger2Utils
 
     public static IReadOnlyDictionary<AuthorNick, AuthorFull> CreateAuthors(IEnumerable<EntryProto> messages)
     {
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var authors = new Dictionary<AuthorNick, AuthorFull>();
         foreach (var msg in messages) {
             var authorNick = msg.Author;
             if (!authors.TryGetValue(authorNick, out var author)) {
-                var authorId = new AuthorId(chatId, authors.Count + 1, AssumeValid.Option);
+                var authorId = AuthorId.New(chatId, authors.Count + 1);
                 var avatarId = AvatarIdGenerator.Next();
-                author = new AuthorFull(authorId, 1) {
+                var userId = UserId.New();
+                author = new AuthorFull(userId, authorId, 1) {
                     AvatarId = avatarId,
                     Avatar = new Avatar(avatarId, 1) {
                         Name = authorNick.ToString()
@@ -56,9 +57,9 @@ public static class ChatContentArranger2Utils
             .Setup(c => c.Get(
                 It.IsAny<ChatId>(),
                 It.IsAny<AuthorId>(),
-                It.IsAny<AuthorsBackend_GetAuthorOption>(),
+                It.IsAny<RequestedAuthorKind>(),
                 It.IsAny<CancellationToken>()))
-            .Returns<ChatId, AuthorId, AuthorsBackend_GetAuthorOption, CancellationToken>((_, aId, _, _) => {
+            .Returns<ChatId, AuthorId, RequestedAuthorKind, CancellationToken>((_, aId, _, _) => {
                 var author = authors.FirstOrDefault(x => x.Id == aId);
                 return Task.FromResult(author);
             });
@@ -67,7 +68,7 @@ public static class ChatContentArranger2Utils
 
     public static IEnumerable<ChatEntry> CreateEntries(IEnumerable<EntryProto> messages, IReadOnlyDictionary<AuthorNick, AuthorFull> authors)
     {
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var localId = 1L;
         var version = DateTime.Now.Ticks;
         var beginsAt = new DateTime(2024, 5, 1, 13, 0 ,0);
@@ -81,7 +82,7 @@ public static class ChatContentArranger2Utils
             if (!authors.TryGetValue(authorNick, out var author))
                 throw StandardError.Constraint("No author");
 
-            var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId++, AssumeValid.Option);
+            var entryId = TextEntryId.New(chatId, localId++);
             yield return new ChatEntry(entryId, version++) {
                 BeginsAt = beginsAt,
                 AuthorId = author.Id,

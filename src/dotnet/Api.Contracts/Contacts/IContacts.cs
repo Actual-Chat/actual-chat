@@ -14,7 +14,7 @@ public interface IContacts : IComputeService
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
     Task<PlaceId[]> ListPlaceIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
-    Task<ContactId[]> ListIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<ContactId[]> ListIds(Session session, PlaceId? placeId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);

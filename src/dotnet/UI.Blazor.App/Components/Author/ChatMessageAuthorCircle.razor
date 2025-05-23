@@ -6,11 +6,11 @@
 
 <div class="avatar-badge">
     <AvatarCircle
-        Avatar="@m.Author.Avatar"
+        Avatar="@m?.Author?.Avatar"
         Size="SquareSize.Size9"
         Click="@_onClickCallback">
         <BadgeContent>
-            <AuthorPresenceIndicator AuthorSid="@AuthorSid" ShowRecording="true" />
+            <AuthorPresenceIndicator AuthorId="@AuthorId" ShowRecording="true" />
         </BadgeContent>
     </AvatarCircle>
 </div>

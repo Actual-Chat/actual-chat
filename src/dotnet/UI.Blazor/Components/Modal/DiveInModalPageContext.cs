@@ -8,8 +8,8 @@ public class DiveInModalPageContext
     private readonly DiveInDialogPage _page;
 
     public object? Model => _page.Model;
-    public IDictionary<string, object> PageDataBag { get; } = new Dictionary<string, object>(StringComparer.Ordinal);
-    public IDictionary<string, object> ModalDataBag => _modalContext.DataBag;
+    public MutablePropertyBag Items { get; } = new();
+    public MutablePropertyBag ContextItems => _modalContext.Items;
 
     public string Title {
         get;

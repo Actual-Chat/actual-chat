@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <UITimer Period="@TickPeriod" Tick="@OnTick"/>
 @{
@@ -46,8 +47,6 @@
     private TimeSpan TickPeriod => MustReloadSilently
         ? FastTickPeriod
         : _reloadAt.HasValue ? SlowTickPeriod : TimeSpan.Zero;
-
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     // Use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
     // ReSharper disable once RedundantNameQualifier

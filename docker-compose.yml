@@ -96,3 +96,11 @@ services:
       - "4222"
       - "-c"
       - "/etc/nats/nats-server.conf"
+  seq:
+    image: datalust/seq
+    ports:
+      - "8081:80"
+      - "5341:5341"
+    environment:
+      - ACCEPT_EULA=Y
+#    restart: unless-stopped

@@ -1,9 +1,9 @@
-@inherits ComputedStateComponent<UserLanguageSettings>
+@inherits ComputedStateComponent<AppUIHub, UserLanguageSettings>
 @{
     var m = State.Value;
-    var text = m.Primary.ShortTitle.Value.ToSentenceCase();
+    var text = m.Primary.ShortTitle.ToSentenceCase();
     if (m.Secondary is { } secondary)
-        text += ", " + secondary.ShortTitle.Value.ToSentenceCase();
+        text += ", " + secondary.ShortTitle.ToSentenceCase();
 }
 
 <div class="text-primary text-sm">
@@ -11,7 +11,7 @@
 </div>
 
 @code{
-    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
 
     protected override ComputedState<UserLanguageSettings>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

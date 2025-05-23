@@ -1,8 +1,8 @@
-@inherits ComputedStateComponent<SelectionHeader.Model>
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, SelectionHeader.Model?>
 @{
     var m = State.Value;
-    if (m.Selection.Count == 0) {
+    if (m is null || m.Selection.Count == 0) {
         _ = StopHandleEscape();
         return;
     }
@@ -10,7 +10,7 @@
     StartHandleEscape();
 }
 
-<SelectionHost Selected="@m.Selection.First()" />
+<SelectionHost Selected="@m.Selection.First().Value" />
 
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">
@@ -105,8 +105,6 @@
 @code {
     private Task<IAsyncDisposable>? _escapistSubscriptionTask;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private SelectionUI SelectionUI => Hub.SelectionUI;
@@ -119,18 +117,17 @@
         await StopHandleEscape();
     }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
+            static t => new ComputedState<Model?>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var selection = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
         if (selection.IsEmpty)
-            return Model.None;
+            return null;
 
         var chatId = selection.First().ChatId;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -164,7 +161,7 @@
             }
         }
 
-        return new() {
+        return new Model {
             Selection = selection,
             CanDelete = canDelete,
         };
@@ -192,11 +189,11 @@
     // Nested types
 
     public sealed record Model {
-        public static Model None { get; } = new() {
-            Selection = ImmutableHashSet<ChatEntryId>.Empty,
-        };
-
-        public ImmutableHashSet<ChatEntryId> Selection { get; init; } = null!;
+        public required ImmutableHashSet<ChatEntryId> Selection { get; init; }
         public bool CanDelete { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

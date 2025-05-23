@@ -69,7 +69,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
 
         var author = await authors.EnsureJoined(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
-        var id = new ChatEntryId(TestChatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
+        var id = AudioEntryId.New(TestChatId, 0);
         var entry = new ChatEntry(id) {
             AuthorId = author.Id,
             Content = "",
@@ -93,7 +93,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             }));
         entry = await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
 
-        entry.StreamId.Should().Be(Symbol.Empty);
+        entry.StreamId.IsNullOrEmpty().Should().BeTrue();
         entry.EndsAt.Should().Be(endsAt);
     }
 }

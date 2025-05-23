@@ -2,27 +2,23 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <div class="gender-selector cr-badge-selector c-content">
-    @foreach (var option in _options) {
-        var isSelected = option == Gender;
-        var onclickHandler = !isSelected ? EventCallback.Factory.Create(this, () => Select(option)) : default;
+    @foreach (var gender in All) {
+        var isSelected = gender == Gender;
+        var onclickHandler = !isSelected ? EventCallback.Factory.Create(this, () => Select(gender)) : default;
         var cls = isSelected ? "selected" : "clickable";
-        <div class="cr-badge profile-badge @cls" @onclick="@onclickHandler">@GetTitle(option)</div>
+        <div class="cr-badge profile-badge @cls" @onclick="@onclickHandler">@GetTitle(gender)</div>
     }
 </div>
 
 @code {
-    private readonly ImmutableArray<Gender> _options = ImmutableArray<Gender>.Empty
-        .Add(Gender.NotSpecified)
-        .Add(Gender.Male)
-        .Add(Gender.Female)
-        .Add(Gender.Other);
+    private static readonly Gender[] All = [Gender.Undefined, Gender.Male, Gender.Female, Gender.Other];
 
-    [Parameter] public Gender Gender { get; set; } = Gender.NotSpecified;
+    [Parameter] public Gender Gender { get; set; } = Gender.Undefined;
     [Parameter] public EventCallback<Gender> GenderChanged { get; set; }
 
     private static string GetTitle(Gender gender) =>
         gender switch {
-            Gender.NotSpecified => "Not Specified",
+            Gender.Undefined => "Unspecified",
             Gender.Male => "Male",
             Gender.Female => "Female",
             Gender.Other => "Other",

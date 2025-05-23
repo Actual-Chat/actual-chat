@@ -48,9 +48,9 @@
 </section>
 
 @code {
+    private readonly EventHandler<ValidationStateChangedEventArgs>? _validationStateChangedHandler;
     private EditContext? _previousEditContext;
     private Expression<Func<TValue>>? _previousFieldAccessor;
-    private EventHandler<ValidationStateChangedEventArgs>? _validationStateChangedHandler;
     private FieldIdentifier _fieldIdentifier;
 
     public FormSection()

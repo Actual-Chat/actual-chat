@@ -1,4 +1,4 @@
-using ActualChat.Permissions;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App;
 
@@ -7,7 +7,7 @@ public class WebContactsPermissionHandler : ContactsPermissionHandler
     public WebContactsPermissionHandler(UIHub hub, bool mustStart = true)
         : base(hub, false)
     {
-        // We don't need expiration period - no contacts on Web
+        // We don't need an expiration period - no contacts on Web
         ExpirationPeriod = null;
         if (mustStart)
             this.Start();

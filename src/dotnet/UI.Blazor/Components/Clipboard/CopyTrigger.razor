@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
 @implements IAsyncDisposable
-@inherits FusionComponentBase
+@inherits FusionComponentBase<UIHub>
 
 <div @ref="_ref"
      class="@Class copy-trigger"
@@ -13,8 +12,6 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.CopyTrigger.create";
-
-    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private ElementReference _ref;
     private IJSObjectReference _jsRef = null!;

@@ -1,12 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
 @using ActualChat.Transcription
-@inherits ComputedStateComponent<TranscriptionEngineSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, TranscriptionEngineSettings.Model>
 @{
-#pragma warning disable IL2091
+    #pragma warning disable IL2091
 
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.Loading))
+    if (State.IsInitial(out var m))
         return;
 
     _formModel.FromModel(m);
@@ -50,21 +49,10 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private AccountSettings AccountSettings => Hub.AccountSettings();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
     protected override void OnInitialized() {
         _formModel = new (ComponentIdGenerator);
         _formModel.EngineChanged += OnEngineChanged;
     }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.GetUserTranscriptionEngineSettings(cancellationToken).ConfigureAwait(false);
@@ -112,7 +100,5 @@
 
     // Nested types
 
-    public sealed record Model(TranscriptionEngine Engine) {
-        public static readonly Model Loading = new(TranscriptionEngine.Google);
-    }
+    public sealed record Model(TranscriptionEngine Engine);
 }

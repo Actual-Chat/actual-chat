@@ -14,7 +14,7 @@ public class ExternalContactHashes(IAccounts accounts, IExternalContactHashesBac
         if (!account.IsActive())
             return default;
 
-        return await backend.Get(new UserDeviceId(account.Id, deviceId), cancellationToken).ConfigureAwait(false);
+        return await backend.Get(UserDeviceId.New(account.Id, deviceId), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -28,7 +28,7 @@ public class ExternalContactHashes(IAccounts accounts, IExternalContactHashesBac
             return null;
 
         deviceId.Require();
-        var changeCommand = new ExternalContactHashesBackend_Change(new UserDeviceId(account.Id, deviceId), expectedVersion, change);
+        var changeCommand = new ExternalContactHashesBackend_Change(UserDeviceId.New(account.Id, deviceId), expectedVersion, change);
         return await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

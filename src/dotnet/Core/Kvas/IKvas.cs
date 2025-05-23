@@ -1,6 +1,6 @@
 namespace ActualChat.Kvas;
 
-public interface IKvas
+public interface IKvas : IHasServices
 {
     ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default);
 

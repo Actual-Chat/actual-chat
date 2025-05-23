@@ -1,14 +1,23 @@
 @using ActualChat.Hosting
 @using ActualChat.Security
 @using ActualChat.UI.Blazor.App.Pages.Landing
+@inherits ComponentBase<UIHub>
 @implements IRootComponent
 @{
-    if (!UIHub.IsInteractive) {
+    if (!Hub.IsInteractive) {
         <LandingForWeb/>
         return;
     }
-    if (!_readyToRender)
+
+    if (!_readyToFullyRender) {
+        // We render fake AppRouter here to enable the navigation interception
+        <AppRouter AppAssembly="@BaseUIAssembly" AdditionalAssemblies="@OtherUIAssemblies">
+            <Found></Found>
+            <NotFound></NotFound>
+        </AppRouter>
         return;
+    }
+
     if (_simulatedCrashError != null)
         throw _simulatedCrashError;
 }
@@ -18,14 +27,14 @@
 
     <RequirementChecker>
         <Success>
-            <TweakedRouter AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
+            <AppRouter AppAssembly="@BaseUIAssembly" AdditionalAssemblies="@OtherUIAssemblies">
                 <Found Context="routeData">
                     <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
                 </Found>
                 <NotFound>
                     <PageNotFoundBlock/>
                 </NotFound>
-            </TweakedRouter>
+            </AppRouter>
         </Success>
         <Failure Context="failures">
             <ErrorBlock Failures="@failures"/>
@@ -34,29 +43,26 @@
 </ScreenSizeProvider>
 
 @code {
-    private static Assembly UIAssembly { get; } = typeof(AppBase).Assembly;
-    private static Assembly[] UIModuleAssemblies { get; set; } = null!;
+    public static readonly Assembly BaseUIAssembly = typeof(AppBase).Assembly;
+    public static Assembly[] OtherUIAssemblies = null!;
 
-    private bool _readyToRender;
+    private bool _readyToFullyRender;
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
-    private readonly TaskCompletionSource _whenFirstRendered = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenFirstRendered = AsyncTaskMethodBuilderExt.New();
 
-    [Inject] protected INavigationInterception NavigationInterception { get; init; } = null!;
-    [Inject] protected UIHub UIHub { get; init; } = null!;
-    protected IServiceProvider Services => UIHub.Services;
-    protected HostInfo HostInfo => UIHub.HostInfo();
-    protected ISessionResolver SessionResolver => UIHub.SessionResolver;
-    protected AppBlazorCircuitContext CircuitContext => UIHub.CircuitContext;
-    protected ModuleHost ModuleHost => UIHub.ModuleHost;
+    [field: AllowNull, MaybeNull]
+    protected INavigationInterception NavigationInterception
+        => field ??= Hub.Services.GetRequiredService<INavigationInterception>();
+    protected ISessionResolver SessionResolver => Hub.SessionResolver;
 
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
     [field: AllowNull, MaybeNull]
     protected AppScopedServiceStarter AppScopedServiceStarter => field ??= Services.GetRequiredService<AppScopedServiceStarter>();
     [field: AllowNull, MaybeNull]
-    protected Tracer Tracer => field ??= UIHub.Tracer();
+    protected Tracer Tracer => field ??= Hub.Tracer;
     [field: AllowNull, MaybeNull]
-    protected ILogger Log => field ??= UIHub.LogFor(GetType());
+    protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";
@@ -67,15 +73,15 @@
 
     protected override void OnInitialized() {
         Log.LogWarning("OnInitialized, Hash: {Hash}", GetHashCode());
-        if (CircuitContext.IsInteractive)
-            CircuitContext.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
+        if (IsInteractive)
+            Hub.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
     }
 
     protected override async Task OnInitializedAsync() {
         using var _1 = Tracer.Region();
 
         var hostKind = HostInfo.HostKind;
-        var sessionHash = SessionHash; // It's passed directly only in WASM app
+        var sessionHash = SessionHash; // It's passed directly only in the WASM app
         if (hostKind.IsServer()) {
             var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
             var session = secureTokensBackend.ParseSessionToken(SessionToken);
@@ -85,36 +91,22 @@
         else if (hostKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
         }
-        if (!UIHub.IsInteractive)
+        if (!Hub.IsInteractive)
             return;
 
-        // Navigation has changed in Blazor Web apps.
-        // Router component enables navigation interception for such an app in its OnAfterRenderAsync method.
-        // https://github.com/dotnet/aspnetcore/blob/a2e367760e2e4f52861767461833a12782192a19/src/Components/Components/src/Routing/Router.cs#L328
-        // When it's enabled, we can receive LocationChanged event as before with HistoryEntryState filled in;
-        // otherwise HistoryEntryState is always null.
-        // Since we don't render a Router component before History is initialized, we need to enable interception manually.
-        Log.LogInformation("Before checking _whenFirstRendered={IsRendered}", _whenFirstRendered.Task.IsCompleted);
-        await _whenFirstRendered.Task.ConfigureAwait(true); // Continue on the Blazor context.
-        Log.LogInformation("After checking _whenFirstRendered");
-        // I am not sure if it should be done both on server and wasm.
-        if (!hostKind.IsMauiApp())
-            await NavigationInterception.EnableNavigationInterceptionAsync().ConfigureAwait(true); // Continue on the Blazor context.
-        var prepareFirstRenderTask = AppScopedServiceStarter.PrepareFirstRender(sessionHash);
-        if (ReferenceEquals(UIModuleAssemblies, null)) {
-            // Evaluate UIModuleAssemblies (just once - it's a static member)
-            var uiModuleAssemblies = new HashSet<Assembly>();
-            foreach (var module in ModuleHost.Modules) {
-                if (module.IsUsed && module is IBlazorUIModule)
-                    uiModuleAssemblies.Add(module.GetType().Assembly);
-            }
-            uiModuleAssemblies.Remove(UIAssembly);
-            UIModuleAssemblies = uiModuleAssemblies.ToArray();
-        }
-        await prepareFirstRenderTask;
-        _readyToRender = true;
+        // The Router component enables navigation interception in its OnAfterRenderAsync method:
+        // - https://github.com/dotnet/aspnetcore/blob/a2e367760e2e4f52861767461833a12782192a19/src/Components/Components/src/Routing/Router.cs#L328
+        // When it is enabled, we can receive the LocationChanged event with HistoryEntryState filled in;
+        // otherwise, HistoryEntryState is always null.
+        // That's why we need to wait for the AppRouter component to be rendered here.
+        await _whenFirstRendered.Task;
+        if (!hostKind.IsMauiApp()) // TODO(AY,DF): Check if we need this in WASM?
+            await NavigationInterception.EnableNavigationInterceptionAsync();
+
+        await AppScopedServiceStarter.PrepareFirstRender(sessionHash);
+        _readyToFullyRender = true;
         _shouldRender = true;
-        _ = AppScopedServiceStarter.AfterFirstRender(CircuitContext.StopToken);
+        _ = AppScopedServiceStarter.AfterFirstRender(Hub.StopToken);
     }
 
     public void SimulateCrash(Exception error) {
@@ -125,12 +117,12 @@
 
     protected override bool ShouldRender() {
         var shouldRender = _shouldRender;
-        _shouldRender = false;
+        _shouldRender = false; // We don't want to render again until we set it to true again
         return shouldRender;
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        if (_whenFirstRendered.TrySetResult())
-            Log.LogInformation("OnAfterRender");
+        if (firstRender)
+            _whenFirstRendered.TrySetResult();
     }
 }

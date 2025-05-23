@@ -1,18 +1,15 @@
 using ActualChat.Contacts;
-using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService
+public class ContactSync(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
 {
     private const int BatchSize = 100;
     private static readonly RandomTimeSpan BatchInterval = TimeSpan.FromSeconds(1).ToRandom(0.1);
 
-    [field: AllowNull, MaybeNull]
-    private AccountUI AccountUI => field ??= Services.GetRequiredService<AccountUI>();
     [field: AllowNull, MaybeNull]
     private IExternalContacts ExternalContacts => field ??= Services.GetRequiredService<IExternalContacts>();
     [field: AllowNull, MaybeNull]
@@ -39,7 +36,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
             return;
 
         var cAccount = await AccountUI.OwnAccount.Computed
-            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .When(x => !x.IsGuest, cancellationToken)
             .ConfigureAwait(false);
         var account = cAccount.Value;
         var abortCts = cancellationToken.CreateLinkedTokenSource();
@@ -47,7 +44,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
         Task whenSynced;
         try {
             whenSynced = Sync(account, abortToken);
-            var whenSignedOut = cAccount.When(x => x.IsGuestOrNone || x.Id != account.Id, abortToken);
+            var whenSignedOut = cAccount.When(x => x.IsGuest || x.Id != account.Id, abortToken);
             await Task.WhenAny(whenSynced, whenSignedOut).ConfigureAwait(false);
         }
         finally {
@@ -81,7 +78,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
         // The logic here implies that it's going to retry sync in case we somehow didn't get
         // to this point.
 
-        var rootHash = existingRootHash ?? new ExternalContactsHash(new UserDeviceId(account.Id, DeviceContacts.DeviceId));
+        var rootHash = existingRootHash ?? new ExternalContactsHash(UserDeviceId.New(account.Id, DeviceContacts.DeviceId));
         rootHash = rootHash with { Hash = deviceRootHash };
         var changeHashCmd = new ExternalContactHashes_Change(Session,
             DeviceContacts.DeviceId,

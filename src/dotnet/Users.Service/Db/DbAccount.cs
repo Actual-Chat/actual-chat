@@ -11,7 +11,6 @@ namespace ActualChat.Users.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime _createdAt;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
@@ -26,36 +25,36 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
     public string TimeZone { get; set; } = "";
-    public string UserLinkId { get; set; } = "";
+    public string AliasId { get; set; } = "";
     public DateTime CreatedAt {
-        get => _createdAt.DefaultKind(DateTimeKind.Utc);
-        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+        get => field.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public AccountFull ToModel(User user)
     {
-        if (user.Id != Id)
+        if (!OrdinalEquals(user.Id, Id))
             throw new ArgumentOutOfRangeException(nameof(user));
 
         return new(user, Version) {
             Status = Status,
             Email = Email,
             IsEmailVerified = IsEmailVerified,
-            Phone = new Phone(Phone),
+            Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
             SyncContacts = SyncContacts,
             Name = Name,
             Username = Username,
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
-            UserLinkId = new UserLinkId(UserLinkId),
+            AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
         };
     }
 
     public void UpdateFrom(AccountFull model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
         var name = model.Name;
@@ -63,10 +62,10 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (!model.LastName.IsNullOrEmpty())
             name = $"{name} {model.LastName}";
 #pragma warning restore CS0618 // Type or member is obsolete
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
         Status = model.Status;
-        Phone = model.Phone;
+        Phone = model.Phone?.Value ?? "";
         SyncContacts = model.SyncContacts;
         Email = model.Email;
         IsEmailVerified = model.IsEmailVerified;
@@ -75,7 +74,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;
         TimeZone = model.TimeZone;
-        UserLinkId = model.UserLinkId.Value;
+        AliasId = model.AliasId?.NormalizedValue ?? "";
         if (!model.Username.IsNullOrEmpty())
             UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }
@@ -88,8 +87,8 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 .HasFilter("username_normalized is not null")
                 .IsUnique();
             builder.HasIndex(a => new { a.Id, a.TimeZone });
-            builder.HasIndex(a => new { a.UserLinkId })
-                .HasFilter("user_link_id <> ''")
+            builder.HasIndex(a => new { a.AliasId })
+                .HasFilter("alias_id <> ''")
                 .IsUnique();
         }
     }

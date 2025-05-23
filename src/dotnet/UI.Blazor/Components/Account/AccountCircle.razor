@@ -3,12 +3,12 @@
 @{
     var m = State.Value;
     var badgeContent = ShowPresence
-        ? @<AccountPresenceIndicator UserSid="@UserId"/>
+        ? @<AccountPresenceIndicator UserId="@UserId"/>
         : (RenderFragment?)null;
 }
 
 <AvatarCircle
-    Avatar="@m.Account.Avatar"
+    Avatar="@m.Account?.Avatar"
     Size="@Size"
     IsBlurred="@IsBlurred"
     BadgeContent="@badgeContent" />

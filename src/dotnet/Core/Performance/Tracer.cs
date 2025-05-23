@@ -26,7 +26,7 @@ public sealed class Tracer
     public Tracer this[string name] {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => IsEnabled
-            ? new (ZString.Concat(Name, '.', name), _isEnabled, Writer, _startedAt)
+            ? new(string.Concat(Name, ".", name), _isEnabled, Writer, _startedAt)
             : None;
     }
 

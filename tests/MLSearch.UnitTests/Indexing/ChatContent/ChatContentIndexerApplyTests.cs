@@ -11,8 +11,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public async Task ApplyMethodThrowsOnEntryFromAnotherChat()
     {
-        var chatId = new ChatId(Generate.Option);
-        var otherChatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
+        var otherChatId = GroupChatId.New();
 
         var chats = Mock.Of<IChatsBackend>(MockBehavior.Loose);
         var docLoader = new Mock<IChatContentDocumentLoader>(MockBehavior.Loose);
@@ -25,7 +25,7 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
 
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
 
-        var otherChatEntryId = new ChatEntryId(otherChatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var otherChatEntryId = TextEntryId.New(otherChatId, 2);
         var otherChatEntry = new ChatEntry(otherChatEntryId) {
             Content = "Some irrelevant message.",
         };
@@ -47,10 +47,10 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
         var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
 
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 2);
         var chatEntry = new ChatEntry(chatEntryId) {
             Content = "Some fresh message.",
         };
@@ -73,10 +73,10 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
         var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
 
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 2);
         var chatEntry = new ChatEntry(chatEntryId) {
             Content = "Some fresh message.",
         };
@@ -104,10 +104,10 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
         var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
 
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 2);
         var chatEntry = new ChatEntry(chatEntryId) {
             Content = "Some fresh message.",
         };
@@ -133,11 +133,11 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
         var sink = Mock.Of<ISink<ChatSlice, string>>(MockBehavior.Loose);
         var contentArranger = Mock.Of<IChatContentArranger>(MockBehavior.Loose);
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var contentIndexer = new ChatContentIndexer(chatId, chats, docLoader.Object, docMapper, contentArranger, sink);
 
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
-        var removedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 202, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 2);
+        var removedEntryId = TextEntryId.New(chatId, 202);
         var chatEntry = new ChatEntry(chatEntryId) {
             Content = "Some fresh message.",
         };
@@ -367,8 +367,8 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     [MemberData(nameof(EntryMappings))]
     public async Task ApplyingRemoveEventProperlyUpdatesUnderlyingIndex(EntryToDocMap entryToDocMap)
     {
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var chatEntryId = TextEntryId.New(chatId, 2);
         var chatEntry = new ChatEntry(chatEntryId) {
             IsRemoved = true,
         };
@@ -471,10 +471,10 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
     private const int UniqueStartOffset = 757;
     private const int UniqueEndOffset = 979;
 
-    private ChatSlice[] GenerateExistingDocsForEntry(ChatEntryId chatEntryId, EntryToDocMap entryToDocMap)
+    private ChatSlice[] GenerateExistingDocsForEntry(TextEntryId entryId, EntryToDocMap entryToDocMap)
     {
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
-        var chatId = chatEntryId.ChatId;
+        var authorId = (PrincipalId)UserId.New();
+        var chatId = entryId.ChatId;
         var numDocs = entryToDocMap.NumDocs;
 
         // Slice Entry content
@@ -496,15 +496,15 @@ public class ChatContentIndexerApplyTests(ITestOutputHelper @out) : TestBase(@ou
             var entries = new List<ChatSliceEntry>();
             var sbContent = new StringBuilder();
             if (isFirstDoc && !entryToDocMap.IsFirst) {
-                var firstEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+                var firstEntryId = TextEntryId.New(chatId, 1);
                 entries.Add(new ChatSliceEntry(firstEntryId, 1, 1));
                 sbContent.AppendLine(FirstEntryContent);
             }
-            entries.Add(new ChatSliceEntry(chatEntryId, 1, 1));
+            entries.Add(new ChatSliceEntry(entryId, 1, 1));
             sbContent.Append(contentSlices[doc]);
             var sliceEnd = sliceStart + contentSlices[doc].Length;
             if (isLastDoc && !entryToDocMap.IsLast) {
-                var lastEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 3, AssumeValid.Option);
+                var lastEntryId = TextEntryId.New(chatId, 3);
                 entries.Add(new ChatSliceEntry(lastEntryId, 1, 1));
                 sbContent.AppendLine(LastEntryContent);
             }

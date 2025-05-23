@@ -17,7 +17,7 @@ public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGra
         if (graph is null)
             return CrawledLink.None;
 
-        var mediaId = MediaId.None;
+        var mediaId = (MediaId?)null;
         try {
             mediaId = await imageGrabber.GetOrGrab(graph.ImageUrl, cancellationToken).ConfigureAwait(false);
         }

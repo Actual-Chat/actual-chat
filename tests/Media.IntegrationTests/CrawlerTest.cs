@@ -29,7 +29,7 @@ public class CrawlerTest(AppHostFixture fixture, ITestOutputHelper @out)
         var meta2 = await sut.Crawl(url, CancellationToken.None);
 
         // assert
-        meta.PreviewMediaId.LocalId.Should().Be("Uv2NmtPVQJIu5C079WYUgcX2OMHocEu7GA60NljCb38");
+        meta.PreviewMediaId!.LocalId.Should().Be("Uv2NmtPVQJIu5C079WYUgcX2OMHocEu7GA60NljCb38");
         meta.OpenGraph.Title.Should().Be("Title 1");
         meta.OpenGraph.Description.Should().Be("Description 1");
         meta2.Should().Be(meta);
@@ -53,7 +53,7 @@ public class CrawlerTest(AppHostFixture fixture, ITestOutputHelper @out)
         var meta2 = await sut.Crawl(url2, CancellationToken.None);
 
         // assert
-        meta.PreviewMediaId.LocalId.Should().Be("Uv2NmtPVQJIu5C079WYUgcX2OMHocEu7GA60NljCb38");
+        meta.PreviewMediaId!.LocalId.Should().Be("Uv2NmtPVQJIu5C079WYUgcX2OMHocEu7GA60NljCb38");
         meta2.PreviewMediaId.Should().Be(meta.PreviewMediaId);
         meta.OpenGraph.Title.Should().Be("Title 1");
         meta.OpenGraph.Description.Should().Be("Description 1");
@@ -76,7 +76,7 @@ public class CrawlerTest(AppHostFixture fixture, ITestOutputHelper @out)
         var meta = await sut.Crawl(url, CancellationToken.None);
 
         // assert
-        meta.PreviewMediaId.Should().Be(MediaId.None);
+        meta.PreviewMediaId.Should().BeNull();
         meta.OpenGraph.Title.Should().Be("Title 1");
         meta.OpenGraph.Description.Should().Be("Description 1");
     }

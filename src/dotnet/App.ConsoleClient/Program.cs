@@ -1,13 +1,12 @@
 using ActualChat.Chat;
 using ActualChat.Hosting;
 using ActualChat.Module;
-using ActualChat.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
 using static System.Console;
 
-CoreSerializerAndRpcStartup.Configure(true);
+CoreSerializerAndRpcSetup.Configure(true);
 
 var cancellationTokenSource = new CancellationTokenSource();
 var cancellationToken = cancellationTokenSource.Token;
@@ -21,7 +20,7 @@ var chats = services.GetRequiredService<IChats>();
 var authors = services.GetRequiredService<IAuthors>();
 
 var session = new Session(GetArgument("s", "session", "your Session ID"));
-var chatId = new ChatId(GetArgument("c", "chatId", "Chat ID to watch"));
+var chatId = ChatId.Parse(GetArgument("c", "chatId", "Chat ID to watch"));
 
 var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
 if (chat == null)
@@ -30,7 +29,7 @@ if (chat == null)
 WriteLine($"Observing '{chat.Title}'...");
 var chatNews = await chats.GetNews(session, chatId, cancellationToken).ConfigureAwait(false);
 var reader = new ChatEntryReader(chats, session, chatId, ChatEntryKind.Text);
-var entries = reader.Observe(chatNews.LastTextEntry?.Id.LocalId ?? 0, cancellationToken);
+var entries = reader.Observe(chatNews?.LastTextEntry?.Id.LocalId ?? 0, cancellationToken);
 await foreach (var entry in entries.ConfigureAwait(false)) {
     var e = entry;
     if (entry.IsStreaming) {

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
@@ -9,7 +10,8 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     private string UniquePart { get; } = UniqueNames.Prefix();
 
@@ -142,15 +144,15 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var people = await Tester.CreateUserContacts(bob, places, UniquePart);
 
         // act
-        var allPlaceEntries = new List<(PlaceId PlaceId, ChatEntry Entry)>();
+        var allPlaceEntries = new List<(PlaceId? PlaceId, ChatEntry Entry)>();
         var aliceEntries = await CreateEntries(groups.Joined(), "Let's go outside");
-        allPlaceEntries.AddRange(aliceEntries.Select(x => (x.ChatId.PlaceId, x)));
+        allPlaceEntries.AddRange(aliceEntries.Select(x => ((x.ChatId as PlaceChatId)?.PlaceId, x)));
         await CreateEntries(groups.OtherPrivate(), "Let's go - this entry must not be found");
         await Tester.SignIn(bob);
         var bobEntries = await CreateEntries(groups.Joined(), "Let's go");
-        allPlaceEntries.AddRange(bobEntries.Select(x => (x.ChatId.PlaceId, x)));
+        allPlaceEntries.AddRange(bobEntries.Select(x => ((x.ChatId as PlaceChatId)?.PlaceId, x)));
         foreach (var userContact in people) {
-            var entry = await CreateEntry(new PeerChatId(bob.Id, userContact.Value.Id), "Let's go - in peer chat");
+            var entry = await CreateEntry(PeerChatId.New(bob.Id, userContact.Value.Id), "Let's go - in peer chat");
             if (userContact.Key.PlaceKey is { } placeKey) {
                 var place = places[placeKey];
                 allPlaceEntries.Add((place.Id, entry));
@@ -232,7 +234,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     private Task<EntrySearchResult[]> Find(
         string criteria,
         PlaceId? placeId = null,
-        ChatId chatId = default,
+        ChatId chatId = null!,
         int expected = 1)
         => TestsExt.When(async () => {
                 var results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);

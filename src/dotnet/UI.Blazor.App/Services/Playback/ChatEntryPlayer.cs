@@ -7,13 +7,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class ChatEntryPlayer : ProcessorBase
 {
-    private ChatUIHub Hub { get; }
+    private AppUIHub Hub { get; }
     private IStreamClient StreamClient => Hub.StreamClient;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private AudioDownloader AudioDownloader => Hub.AudioDownloader;
     private AudioInitializer AudioInitializer => Hub.AudioInitializer;
-    private MomentClockSet Clocks => Hub.Clocks();
-    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private MomentClockSet Clocks => Hub.Clocks;
+    private UrlMapper UrlMapper => Hub.UrlMapper;
     private ILogger Log { get; }
 
     private HashSet<Task> EntryPlaybackTasks { get; } = new();
@@ -22,7 +22,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
     public Playback Playback { get; }
 
     public ChatEntryPlayer(
-        ChatUIHub hub,
+        AppUIHub hub,
         ChatId chatId,
         Playback playback,
         CancellationToken cancellationToken)
@@ -125,8 +125,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         var audioTask = StreamClient.GetAudio(audioEntry.StreamId, skipTo, cancellationToken);
-        var chatTask = Hub.Chats.Get(Hub.Session(), audioEntry.ChatId, cancellationToken);
-        var authorTask = Hub.Authors.Get(Hub.Session(), audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
+        var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);
+        var authorTask = Hub.Authors.Get(Hub.Session, audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
         await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
         var audio = await audioTask.ConfigureAwait(false);
         var chat = await chatTask.ConfigureAwait(false);
@@ -144,8 +144,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
             if (!recorderState.IsRecording || recorderState.ChatId != audioEntry.ChatId)
                 return;
 
-            var ownAuthor = await Hub.Authors.GetOwn(Hub.Session(), audioEntry.ChatId, cancellationToken).ConfigureAwait(false);
-            if (audioEntry.AuthorId != (ownAuthor?.Id ?? AuthorId.None))
+            var ownAuthor = await Hub.Authors.GetOwn(Hub.Session, audioEntry.ChatId, cancellationToken).ConfigureAwait(false);
+            // TODO(DF): review change
+            if (ownAuthor is null || audioEntry.AuthorId != ownAuthor.Id)
                 _ = AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
@@ -159,8 +160,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
     {
         var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry);
         var audioTask = AudioDownloader.Download(audioBlobUrl, skipTo, cancellationToken);
-        var chatTask = Hub.Chats.Get(Hub.Session(), audioEntry.ChatId, cancellationToken);
-        var authorTask = Hub.Authors.Get(Hub.Session(), audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
+        var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);
+        var authorTask = Hub.Authors.Get(Hub.Session, audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
         await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
         var audio = await audioTask.ConfigureAwait(false);
         var chat = await chatTask.ConfigureAwait(false);

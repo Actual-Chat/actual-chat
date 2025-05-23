@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatMemberCounter.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatMemberCounter.Model>
 @{
     var m = State.Value;
     if (m.MemberCount == 0)
@@ -39,13 +39,10 @@
 }
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

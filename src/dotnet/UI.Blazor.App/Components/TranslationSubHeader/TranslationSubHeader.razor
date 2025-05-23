@@ -1,9 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<TranslationSubHeader.Model>
-
+@inherits ComputedStateComponent<AppUIHub, TranslationSubHeader.Model?>
 @{
-    var m = State.Value;
-    if (!m.IsVisible)
+    if (State.IsInitial(out var m) || m is null)
         return;
 }
 
@@ -32,44 +30,39 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Features Features => Hub.Features();
-    private ModalUI ModalUI => Hub.ModalUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options {
-                InitialValue = Model.None,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var isIncompleteUIEnabled = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         if (!isIncompleteUIEnabled)
-            return Model.None;
+            return null;
 
         var mustSuggest = await TranslationUI.MustSuggest(chat.Id, cancellationToken).ConfigureAwait(false);
         if (!mustSuggest)
-            return Model.None;
+            return null;
 
         var isOn = await TranslationUI.IsOn(chat.Id, cancellationToken).ConfigureAwait(false);
         var targetLanguage = await TranslationUI.GetTargetLanguage(chat.Id, cancellationToken).ConfigureAwait(false);
-        return new(true, isOn ?? false,  targetLanguage, chat);
+        return new(isOn ?? false, targetLanguage, chat);
     }
 
     private Task OnToggleClick()
-        => TranslationUI.SetIsOn(State.Value.Chat.Id, !State.Value.IsOn);
+        => State.Value is { } m
+            ? TranslationUI.SetIsOn(m.Chat.Id, !m.IsOn)
+            : Task.CompletedTask;
 
-    private void OnClick()
-        => ModalUI.Show(new TranslationSettingsModal.Model(State.Value.Chat.Id));
+    private void OnClick() {
+        if (State.Value is { } m)
+            ModalUI.Show(new TranslationSettingsModal.Model(m.Chat.Id));
+    }
 
     // Nested types
 
-    public sealed record Model(bool IsVisible, bool IsOn, Language TargetLanguage, Chat Chat) {
-        public static readonly Model None = new(false, false, Language.None, null!);
-    }
+    public sealed record Model(
+        bool IsOn,
+        Language TargetLanguage,
+        Chat Chat);
 }

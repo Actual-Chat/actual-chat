@@ -1,21 +1,21 @@
 using ActualChat.Logging;
+using ActualChat.Users;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
+public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
 {
     private const string IsEnabledKvasKey = $"{nameof(LogUI)}_{nameof(IsEnabled)}";
     private static readonly string OwnLogCategory = $"{typeof(LogUI).Namespace}.{nameof(LogUI)}";
     private static readonly TileStack<long> IdTileStack = Constants.TileStacks.Long5To80;
     private readonly Lock _lock = new();
+    private readonly AsyncTaskMethodBuilder _whenReady = AsyncTaskMethodBuilderExt.New();
     private RingBuffer<LogEntry> _events = new(10_000);
-    private readonly TaskCompletionSource _whenReady = new();
     private long _entryIdGenerator = 1;
     private MutableState<bool>? _isEnabled;
 
     private LogSinks LogSinks => Hub.LogSinks;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     public static ILogger? DiagLog { get; set; }
     public IMutableState<bool> IsEnabled => _isEnabled!;
@@ -30,7 +30,7 @@ public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, I
         //         Category = StateCategories.Get(GetType(), nameof(IsEnabled)),
         //         UpdateDelayer = FixedDelayer.NextTick,
         //     });
-        _isEnabled = Hub.StateFactory().NewMutable<bool>();
+        _isEnabled = Hub.StateFactory.NewMutable<bool>();
         Hub.RegisterDisposable(_isEnabled);
         Hub.RegisterDisposable(() => LogSinks.Remove(this));
         Hub.RegisterDisposable(() => _whenReady.TrySetException(new ObjectDisposedException("LogUI is disposed")));
@@ -152,7 +152,9 @@ public class LogUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService, I
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var cAccount = await AccountUI.OwnAccount.Computed.When(x => !x.IsGuestOrNone, cancellationToken).ConfigureAwait(false);
+        var cAccount = await AccountUI.OwnAccount.Computed
+            .When(x => !x.IsGuestOrNull(), cancellationToken)
+            .ConfigureAwait(false);
         if (!cAccount.Value.IsAdmin)
             return;
 

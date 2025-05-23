@@ -6,7 +6,8 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 [CollectionDefinition(nameof(SearchUICollection))]
 public class SearchUICollection : ICollectionFixture<SearchAppHostFixture>;
 
-public class SearchAppHostFixture(IMessageSink messageSink) : AppHostFixture("search-ui",
+public class SearchAppHostFixture(IMessageSink messageSink) : AppHostFixture(
+    "search-ui",
     messageSink,
     TestAppHostOptions.Default with {
         ConfigureHost = (_, cfg) => {

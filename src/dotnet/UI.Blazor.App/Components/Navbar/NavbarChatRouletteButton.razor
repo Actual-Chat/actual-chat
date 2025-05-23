@@ -1,9 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NavbarChatRouletteButton.Model>
+@inherits ComputedStateComponent<AppUIHub, bool>
 @{
-    var m = State.Value;
-    var isVisible = m.IsVisible;
-    if (!isVisible)
+    if (!State.Value)
         return;
 
     var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
@@ -34,26 +32,10 @@
 </NavbarGroupSelectionButton>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
-
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options {
-                InitialValue = new Model(false),
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chatRouletteContacts = await Hub.Contacts.ListIds(Session, Constants.Place.ChatRouletteId, cancellationToken).ConfigureAwait(false);
-        var isVisible = chatRouletteContacts.Length > 0;
-        return new Model(isVisible);
+        return chatRouletteContacts.Length > 0;
     }
-
-    // Nested types
-
-    public sealed record Model(bool IsVisible);
 }

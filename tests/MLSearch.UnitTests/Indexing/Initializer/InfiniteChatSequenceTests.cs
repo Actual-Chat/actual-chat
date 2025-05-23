@@ -85,7 +85,7 @@ public class InfiniteChatSequenceTests
     {
         var batch = new Chat.Chat[query.Limit];
         for (var i = 0; i < query.Limit; i++) {
-            var chatId = new ChatId(Generate.Option);
+            var chatId = GroupChatId.New();
             batch[i] = new Chat.Chat(chatId, query.MinVersion + i + 1);
         }
         return Task.FromResult(batch.ToArray());
@@ -276,7 +276,7 @@ public class InfiniteChatSequenceTests
     public async Task LoadMethodReceivesVersionAndIdOfTheLastSeenChat()
     {
         const long version = 1;
-        var (lastSeenId, lastSeenVersion) = (ChatId.None, version);
+        var (lastSeenId, lastSeenVersion) = ((ChatId?)null, version);
         var chats = new Mock<IChatsBackend>(MockBehavior.Loose);
         var allChecksPassed = true;
         var batchCount = 0;

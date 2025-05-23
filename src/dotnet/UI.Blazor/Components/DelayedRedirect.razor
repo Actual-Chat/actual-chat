@@ -1,4 +1,4 @@
-@using ActualChat.UI.Blazor.Services
+@inherits ComponentBase<UIHub>
 @implements IDisposable
 
 <span class="delayed-redirect">
@@ -12,10 +12,6 @@
     private Task? _delayTask;
     private Moment _redirectAt;
     private DisplayUrl _url;
-
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
 
     [Parameter, EditorRequired] public string To { get; set; } = "";
     [Parameter] public TimeSpan Delay { get; set; } = TimeSpan.FromSeconds(3);

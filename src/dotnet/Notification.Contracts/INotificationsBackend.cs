@@ -131,7 +131,7 @@ public sealed partial record NotificationsBackend_NotifyMembers(
 public sealed partial record NotificationsBackend_NotifyMentionedMembers(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
     [property: DataMember, MemoryPackOrder(1)] TextEntryId TextEntryId,
-    [property: DataMember, MemoryPackOrder(2)] ImmutableArray<UserId> UserIds
+    [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

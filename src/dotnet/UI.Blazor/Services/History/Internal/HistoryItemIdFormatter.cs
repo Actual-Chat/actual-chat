@@ -1,5 +1,3 @@
-using Cysharp.Text;
-
 namespace ActualChat.UI.Blazor.Services.Internal;
 
 public sealed record HistoryItemIdFormatter(string Prefix)
@@ -9,7 +7,7 @@ public sealed record HistoryItemIdFormatter(string Prefix)
     { }
 
     public string Format(long id)
-        => ZString.Concat(Prefix, id);
+        => string.Concat(Prefix, id.ToInvariantString());
 
     public long? Parse(string? value)
     {

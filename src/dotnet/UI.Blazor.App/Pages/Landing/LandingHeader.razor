@@ -1,7 +1,7 @@
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<AccountFull>
+@inherits FusionComponentBase<AppUIHub>
 @{
-    var account = State.Value;
+    var account = Account;
 }
 
 @* Header *@
@@ -39,7 +39,7 @@
             </div>
         </div>
         <div class="c-right">
-            @if (account.IsGuestOrNone) {
+            @if (account.IsGuestOrNull()) {
                 <ButtonRound Class="signin-button btn-sm" Click="@(SignIn)">
                     <i class="icon-log-in text-xl"></i>
                 </ButtonRound>
@@ -119,7 +119,7 @@
                 </div>
             </div>
             <div class="c-btn-group">
-                @if (account.IsGuestOrNone) {
+                @if (account.IsGuestOrNull()) {
                     <button class="signin-button-group items-center lg-icon" @onclick="@SignIn">
                         <span class="font-medium">Sign in</span>
                         <i class="icon-monitor text-2xl font-thin"></i>
@@ -148,27 +148,13 @@
 </div>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private AccountUI AccountUI => Hub.AccountUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private History History => Hub.History;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter, EditorRequired] public AccountFull? Account { get; set; }
     [Parameter] public EventCallback PricingClick { get; set; }
     [Parameter] public EventCallback DownloadClick { get; set; }
     [Parameter] public EventCallback BackToMainPageClick { get; set; }
     [Parameter] public EventCallback WhyUsClick { get; set; }
     [Parameter] public EventCallback Click { get; set; }
-
-    protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() {
-            InitialValue = AccountUI.OwnAccount.Value,
-            Category = GetStateCategory(GetType()),
-        };
-
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.Use(cancellationToken);
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());

@@ -1,8 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<Banners.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, Banners.ComputedModel>
 @{
     var m = State.Value;
-    var hasChat = !Chat.Id.IsNone;
+    var chatId = Chat?.Id;
+    var hasChat = chatId is not null;
 }
 
 <ReconnectBanner/>
@@ -22,12 +23,10 @@
 @code {
     private const int MaxCount = 2;
 
-    [Inject] ChatUIHub Hub { get; init; } = null!;
     private BannerUI BannerUI => Hub.BannerUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class ThemeUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub)
+public class ThemeUI(UIHub hub) : UIWorkerBase<UIHub>(hub)
 {
     private static readonly string JSThemeClassName = "window.Theme";
     private static readonly string JSSetMethod = $"{JSThemeClassName}.set";
@@ -10,8 +10,6 @@ public class ThemeUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub)
     [field: AllowNull, MaybeNull]
     private IEnumerable<Action<ThemeInfo>> ThemeHandlers =>
         field ??= Services.GetRequiredService<IEnumerable<Action<ThemeInfo>>>();
-    [field: AllowNull, MaybeNull]
-    private IJSRuntime JS => field ??= Services.JSRuntime();
 
     public IState<ThemeInfo> State => BrowserInfo.ThemeInfo;
     public Task WhenReady => BrowserInfo.WhenReady;

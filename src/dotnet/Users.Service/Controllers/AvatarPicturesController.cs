@@ -45,8 +45,8 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         if (file.Length > Constants.Attachments.AvatarPictureFileSizeLimit)
             return BadRequest("Image is too big.");
 
-        var mediaId = new MediaId(account.Id, Generate.Option);
-        var mediaIdHash = mediaId.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
+        var mediaId = MediaId.New(account.Id.Value);
+        var mediaIdHash = mediaId.Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
         var media = new Media.Media(mediaId) {
             ContentId = $"media/{mediaIdHash}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
             FileName = file.FileName,

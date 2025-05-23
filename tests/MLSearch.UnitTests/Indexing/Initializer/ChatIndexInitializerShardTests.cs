@@ -23,7 +23,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
             new ChatIndexInitializerShard.RetrySettings(399,
                 RetryDelaySeq.Exp(0.2, 10),
                 TransiencyResolvers.PreferTransient);
-        var chatToIndexId = new ChatId(Generate.Option);
+        var chatToIndexId = GroupChatId.New();
         const int chatToIndexVersion = 999;
         const int maxConcurrency = 555;
 
@@ -83,7 +83,7 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         var useTask = initializerShard.UseAsync(cancellationSource.Token);
 
         // Trigger job completion event
-        var completionEvt = new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option));
+        var completionEvt = new MLSearch_TriggerChatIndexingCompletion(GroupChatId.New());
         await initializerShard.PostAsync(completionEvt);
 
         // Wait for all flows to start
@@ -151,13 +151,13 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         };
 
         var postTasks = Enumerable.Range(0, maxBufferCapacity)
-            .Select(_ => initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option))).AsTask())
+            .Select(_ => initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(GroupChatId.New())).AsTask())
             .ToArray();
         // Ensure all posts up to buffer capacity are completed
         await Task.WhenAll(postTasks).WaitAsync(TimeSpan.FromSeconds(1));
 
         // Initiate over capacity Post call
-        var overCapacityPostTask = initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(new ChatId(Generate.Option)));
+        var overCapacityPostTask = initializerShard.PostAsync(new MLSearch_TriggerChatIndexingCompletion(GroupChatId.New()));
         Assert.False(overCapacityPostTask.IsCompleted);
 
         // Prepare using of shard

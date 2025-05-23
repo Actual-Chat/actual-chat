@@ -1,7 +1,6 @@
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
-@using ActualChat.UI.Blazor.App.Services
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<RecordingTroubleshooterModal.Model>
 @{
     GuideType type;
@@ -92,9 +91,10 @@
 </DialogFrame>
 
 @code {
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    [field: AllowNull, MaybeNull]
+    private IRecordingPermissionRequester RecordingPermissionRequester
+        => field ??= Hub.Services.GetRequiredService<IRecordingPermissionRequester>();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;

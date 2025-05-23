@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 
 <div class="ai-search-panel">
     <div class="c-content">
@@ -45,17 +45,13 @@
     private IChatMarkupHub _chatMarkupHub = null!;
     // TODO(DF): review SearchPanel usages. Seems it's no longer used.
     // private SearchPanel? _searchPanelRef;
-    private ChatId _chatId = ChatId.None;
 
-    [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override void OnInitialized() {
-        _chatId = Chat.Id;
         _chatMarkupHub = ChatMarkupHubFactory[Constants.Chat.DefaultChatId];
     }
 
@@ -70,7 +66,7 @@
         if (ScreenSize.IsNarrow()) {
             Hub.PanelsUI.Right.SetIsVisible(false);
         }
-        Hub.ChatUI.EnableSearch(ChatId.None);
+        Hub.ChatUI.EnableSearch(null);
     }
 
     private async Task OnSetMarkupClick()

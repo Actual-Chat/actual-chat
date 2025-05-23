@@ -1,10 +1,9 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<EditChatTypeModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, EditChatTypeModalPage.ComputedModel>
 @{
 #pragma warning disable IL2091
 
-    var m = State.Value;
-    if (ReferenceEquals(m, ComputedModel.Loading))
+    if (State.IsInitial(out var m))
         return;
 
     if (m.Chat == null || !m.Chat.Rules.CanEditProperties()) {
@@ -15,8 +14,9 @@
         return;
 
     Context.Title = "Chat Type";
-    var isPlaceChat = !_placeId.IsNone;
-    var canChangeChatType = _placeId.IsNone || _place != null && (_place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat);
+    var isPlaceChat = _placeId is not null;
+    var canChangeChatType = _placeId is null
+        || _place is not null && _place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat;
     var publicChatLabel = !isPlaceChat ? "Public chat" : "Place chat";
     var publicChatHint = !isPlaceChat ?
         "Anyone can join this chat by navigating to its URL" :
@@ -59,41 +59,41 @@
 
     @if (_form.IsPublic) {
         <FormBlock Class="with-input-radio first last">
-            <TileItem Class="field-chat-user-link-id unhovered">
+            <TileItem Class="field-chat-alias-id unhovered">
                 <Icon>
                     <i class="icon-link-2"></i>
                 </Icon>
                 <Content>
-                    <FormSection For="() => _form.ActualUserLinkId"
-                                 InputId="@_form.UserLinkIdFormId"
-                                 Label="User link"
+                    <FormSection For="() => _form.ActualAliasId"
+                                 InputId="@_form.AliasIdFormId"
+                                 Label="Custom link"
                                  IsLabelInsideInput="true">
                         <ValidationMessage>
-                            @if (_placeUserLinkRequiredFirst) {
-                                <PlaceUserLinkRequiredValidationMessage/>
+                            @if (_isPlaceAliasRequired) {
+                                <PlaceAliasRequiredValidationMessage/>
                             } else {
-                                <UserLinkValidationMessage
-                                    For="@(() => _form.ActualUserLinkId)"
-                                    Kind="@UserLinkValidationMessage.UserLinkKind.ChatLink(_placeId)"
-                                    CurrentUserLinkId="@_form.CurrentUserLinkId"
-                                    GetUserLinkIdFunc="@(() => _form.ActualUserLinkId)"/>
+                                <AliasValidationMessage
+                                    For="@(() => _form.ActualAliasId)"
+                                    Scope="@AliasValidationMessage.AliasScope.Chat(_placeId)"
+                                    CurrentAliasId="@_form.CurrentAliasId"
+                                    AliasIdReader="@(() => _form.ActualAliasId)"/>
                             }
                         </ValidationMessage>
                         <ChildContent>
                             <TextBox
-                                Id="@_form.UserLinkIdFormId"
-                                Prefix="@_userLinkLocalPrefix"
-                                @bind-Value="@_form.UserLinkId"
-                                InputRefCreated="@_setUserLinkCopySource"
-                                readonly="@(_userLinkLocalPrefix.IsNullOrEmpty())"/>
+                                Id="@_form.AliasIdFormId"
+                                Prefix="@_aliasLocalPrefix"
+                                @bind-Value="@_form.AliasId"
+                                InputRefCreated="@_setAliasCopySource"
+                                readonly="@(_aliasLocalPrefix.IsNullOrEmpty())"/>
                         </ChildContent>
                     </FormSection>
-                    @if (!_copyUserLinkFormatString.IsNullOrEmpty() && !_userLinkTextBoxRef.Id.IsNullOrEmpty()) {
+                    @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
                         <CopyToClipboard
                             ButtonClass="btn-transparent"
                             Text=""
-                            CopyTextSourceRef="@_userLinkTextBoxRef"
-                            CopyTextFormatString="@_copyUserLinkFormatString"/>
+                            CopyTextSourceRef="@_aliasTextBoxRef"
+                            CopyTextFormatString="@_copyAliasFormatString"/>
                     }
                 </Content>
             </TileItem>

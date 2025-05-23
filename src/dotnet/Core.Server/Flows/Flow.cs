@@ -77,7 +77,7 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
             if (!Event.IsHandled) {
                 var error = Errors.UnhandledEvent(GetType(), Step, evt.GetType());
                 Log.LogError(error,
-                    "`{Id}`.HandleEvent @ '{Step}': unhandled event '{EventType}'",
+                    "`{Id}`.ProcessEvent @ '{Step}': unhandled event '{EventType}'",
                     Id, Step, evt.GetType().GetName());
                 throw error;
             }

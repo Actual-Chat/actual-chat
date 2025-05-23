@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Hosting
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<NotificationsPermissionBanner.Model>
+@inherits ComputedStateComponent<AppUIHub, NotificationsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -36,23 +36,16 @@
 
 
 @code {
-    private StoredState<Moment> _dismissedAt = null!;
+    private StoredState<Box<Moment>> _dismissedAt = null!;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private Session Session => Hub.Session();
-    private LocalSettings LocalSettings => Hub.LocalSettings();
-    private MomentClockSet Clocks => Hub.Clocks();
+    private INotificationsPermission NotificationsPermission => Hub.Services.GetRequiredService<INotificationsPermission>();
     private NotificationUI NotificationUI => Hub.NotificationUI;
-    private UICommander UICommander => Hub.UICommander();
-    private IJSRuntime JS => Hub.JSRuntime();
-    [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override void OnInitialized()
-        => _dismissedAt = StateFactory.NewKvasStored<Moment>(
-            new(LocalSettings, "Permissions.Notifications.DismissedAt"));
+        => _dismissedAt = StateFactory.NewKvasStored<Box<Moment>>(
+            new(LocalSettings, "Permissions.Notifications.DismissedAt") {
+                InitialValue = Box.New(default(Moment)),
+            });
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -76,7 +69,7 @@
 
         // NOTE(AY): We intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
         var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
-        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
+        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt.Value;
         var isDismissed = dismissPeriod < Constants.Notification.PermissionRequestDismissPeriod;
         return new(permissionState, isDismissed);
     }
@@ -84,7 +77,7 @@
     // Event handlers
 
     private void OnDismiss()
-        => _dismissedAt.Value = Clocks.SystemClock.Now;
+        => _dismissedAt.Value = Box.New(Clocks.SystemClock.Now);
 
     private void OnConfigureClick()
         => NotificationsPermission.Request();

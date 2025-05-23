@@ -23,10 +23,6 @@ public static class ServiceProviderExt
         => services.GetRequiredService<Session>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static UrlMapper UrlMapper(this IServiceProvider services)
-        => services.GetRequiredService<UrlMapper>();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IHttpClientFactory HttpClientFactory(this IServiceProvider services)
         => services.GetRequiredService<IHttpClientFactory>();
 

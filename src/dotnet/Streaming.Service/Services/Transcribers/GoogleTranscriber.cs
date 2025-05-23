@@ -333,7 +333,9 @@ public partial class GoogleTranscriber : ITranscriber
                 return;
             }
 
-        Language[] languages = Language.TryParse(result.LanguageCode, out var language) ? [language] : [];
+        var languages = Language.TryParse(result.LanguageCode, out var language)
+            ? new [] {language}
+            : [];
         if (languages.Length == 0)
             languages = [options.Language];
         state.Append(suffix, endTime, languages, appendToUnstable).MakeStable(isFinal);

@@ -46,22 +46,22 @@ internal sealed class ChatContentIndexWorker(
         var eventCount = 0;
         var chatId = job.ChatId;
 
-        using (ActivitySource.StartActivity(IndexChatInfoActivityName, ActivityKind.Internal)) {
+        // ReSharper disable once ExplicitCallerInfoArgument
+        using (ActivitySource.StartActivity(IndexChatInfoActivityName))
             await chatInfoIndexer.IndexAsync(chatId, cancellationToken).ConfigureAwait(false);
-        }
 
         if (job.IndexingKind == IndexingKind.ChatInfo)
             return;
 
-        var cursor = await LoadCursorAsync(chatId, cancellationToken).ConfigureAwait(false);
-
+        var cursor = await LoadCursorAsync(chatId).ConfigureAwait(false);
         var indexer = await indexerFactory.Create(chatId).ConfigureAwait(false);
 
-        using (ActivitySource.StartActivity(InitIndexerActivityName, ActivityKind.Internal)) {
+        // ReSharper disable once ExplicitCallerInfoArgument
+        using (ActivitySource.StartActivity(InitIndexerActivityName))
             await indexer.InitAsync(cursor, cancellationToken).ConfigureAwait(false);
-        }
 
-        var applyActivity = ActivitySource.StartActivity(ApplyActivityName, ActivityKind.Internal);
+        // ReSharper disable once ExplicitCallerInfoArgument
+        var applyActivity = ActivitySource.StartActivity(ApplyActivityName);
         try {
             await foreach (var entry in GetUpdatedEntriesAsync(chatId, cursor, cancellationToken).ConfigureAwait(false)) {
                 await indexer.ApplyAsync(entry, cancellationToken).ConfigureAwait(false);
@@ -70,9 +70,10 @@ internal sealed class ChatContentIndexWorker(
                     applyActivity?.Dispose();
                     applyActivity = null;
 
-                    await FlushAsync().ConfigureAwait(false);
+                    await FlushAsync(chatId).ConfigureAwait(false);
 
-                    applyActivity = ActivitySource.StartActivity(ApplyActivityName, ActivityKind.Internal);
+                    // ReSharper disable once ExplicitCallerInfoArgument
+                    applyActivity = ActivitySource.StartActivity(ApplyActivityName);
                 }
                 if (eventCount == MaxEventCount) {
                     break;
@@ -84,7 +85,7 @@ internal sealed class ChatContentIndexWorker(
         finally {
             applyActivity?.Dispose();
         }
-        await FlushAsync().ConfigureAwait(false);
+        await FlushAsync(chatId).ConfigureAwait(false);
 
         if (eventCount == MaxEventCount) {
             await queues.Enqueue(job, cancellationToken).ConfigureAwait(false);
@@ -95,18 +96,20 @@ internal sealed class ChatContentIndexWorker(
         }
         return;
 
-        async Task<ChatContentCursor> LoadCursorAsync(ChatId chatId, CancellationToken cancellationToken)
+        async Task<ChatContentCursor> LoadCursorAsync(ChatId chatId1)
         {
-            using var _ = ActivitySource.StartActivity(LoadCursorActivityName, ActivityKind.Internal);
-            return await cursorStates.LoadAsync(chatId, cancellationToken).ConfigureAwait(false) ?? new(0, 0);
+            // ReSharper disable once ExplicitCallerInfoArgument
+            using var _ = ActivitySource.StartActivity(LoadCursorActivityName);
+            return await cursorStates.LoadAsync(chatId1.Value, cancellationToken).ConfigureAwait(false) ?? new(0, 0);
         }
 
-        async Task FlushAsync()
+        async Task FlushAsync(ChatId chatId1)
         {
-            using var _ = ActivitySource.StartActivity(FlushActivityName, ActivityKind.Internal);
+            // ReSharper disable once ExplicitCallerInfoArgument
+            using var _ = ActivitySource.StartActivity(FlushActivityName);
 
             var newCursor = await indexer.FlushAsync(cancellationToken).ConfigureAwait(false);
-            await cursorStates.SaveAsync(chatId, newCursor, cancellationToken).ConfigureAwait(false);
+            await cursorStates.SaveAsync(chatId1.Value, newCursor, cancellationToken).ConfigureAwait(false);
         }
     }
 

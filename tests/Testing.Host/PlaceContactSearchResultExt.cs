@@ -27,5 +27,5 @@ public static class PlaceContactSearchResultExt
         => BuildSearchResult(userId, place.Id, place.Title, uniquePart, searchMatchPartRanges);
 
     public static ContactSearchResult BuildSearchResult(this UserId ownerId, PlaceId placeId, string title, string uniquePart = "", Range<int>[]? searchMatchPartRanges = null)
-        => new (new ContactId(ownerId, placeId.ToRootChatId()), searchMatchPartRanges.BuildSearchMatch(title, uniquePart));
+        => new (ContactId.NewPlace(ownerId, placeId), searchMatchPartRanges.BuildSearchMatch(title, uniquePart));
 }

@@ -9,7 +9,7 @@ public sealed class HistoryStepRef : IHasId<Symbol>, IHistoryStepRefImpl
 {
     private static long _lastId;
 
-    private readonly TaskCompletionSource _whenClosedSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenClosedSource = AsyncTaskMethodBuilderExt.New();
 
     public Symbol Id { get; }
     public string Descriptor { get; }

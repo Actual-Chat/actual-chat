@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NavigateToUnreadOrEnd.Model>
+@inherits ComputedStateComponent<AppUIHub, NavigateToUnreadOrEnd.Model?>
 @{
     var m = State.Value;
-    if (ReferenceEquals(m, Model.None))
+    if (m is null)
         return;
 
     _animator.State = m.IsVisible;
@@ -28,14 +28,11 @@
     private ShowHideAnimator _animator = null!;
     private Moment _lastClickAt;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
-    private Moment CpuNow => Hub.Clocks().CpuClock.Now;
+    private Moment CpuNow => Hub.Clocks.CpuClock.Now;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = ChatId.None;
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
@@ -47,21 +44,20 @@
         return base.DisposeAsync();
     }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
+            static t => new ComputedState<Model?>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatView = ChatView;
         var chatId = ChatId;
-        var oldState = State;
+        var oldState = State.Value;
 
-        if (chatId.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
-            return Model.None;
+        if (!await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
+            return null;
 
         var lastEntryId = await GetLastTextEntryLid(cancellationToken).ConfigureAwait(false);
         if (lastEntryId == 0)
@@ -72,8 +68,8 @@
         if (itemVisibility.IsEndAnchorVisible)
             return Model.Invisible;
 
-        // Delay showing the button for the first time
-        if (ReferenceEquals(oldState.Value, Model.None)) {
+        // Delay showing the button on the very first render
+        if (oldState is null) {
             await chatView.ReadPosition.Computed.WhenSynchronized(cancellationToken).ConfigureAwait(false);
             var timeout = itemVisibility == ChatViewItemVisibility.Empty
                 ? TimeSpan.FromSeconds(1)
@@ -95,16 +91,14 @@
         var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken).ConfigureAwait(false);
         return new(true, lastEntryId, canScrollToUnread ? readEntryLid : null, unreadCount);
 
-        async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken1)
-        {
+        async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken1) {
             var chatNews = await Chats.GetNews(Session, chatId, cancellationToken1).ConfigureAwait(false);
-            return chatNews.LastTextEntry?.LocalId ?? 0;
+            return chatNews?.LastTextEntry?.LocalId ?? 0;
         }
     }
 
     private void OnClick() {
-        var m = State.Value;
-        if (!m.IsVisible)
+        if (State.Value is not { IsVisible: true } m)
             return;
 
         // Item visibility updates with a delay, so we want to make sure
@@ -126,8 +120,12 @@
         long? ReadEntryLid,
         Trimmed<int> UnreadCount)
     {
-        public static readonly Model None = new(false, default, default, default);
         public static readonly Model Invisible = new(false, default, default, default);
         public static readonly Model InvisibleToVisible = new(false, default, default, default);
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+
     }
 }

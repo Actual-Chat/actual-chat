@@ -10,7 +10,7 @@ public sealed class ImageLinkHandler(ImageGrabber imageGrabber, ILogger<ImageLin
 
     public async Task<CrawledLink> Handle(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var mediaId = MediaId.None;
+        var mediaId = (MediaId?)null;
         try {
             mediaId = await imageGrabber.GetOrGrab(response.RequestMessage!.RequestUri!.AbsoluteUri, cancellationToken).ConfigureAwait(false);
         }

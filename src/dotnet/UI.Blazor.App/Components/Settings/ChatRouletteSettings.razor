@@ -1,5 +1,5 @@
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatRouletteSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatRouletteSettings.Model>
 @{
     #pragma warning disable IL2091
     var m = State.Value;
@@ -22,13 +22,7 @@
 </Tile>
 
 @code {
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
-    private AccountUI AccountUI => Hub.AccountUI;
-    private UICommander UICommander => Hub.UICommander();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.Loading };

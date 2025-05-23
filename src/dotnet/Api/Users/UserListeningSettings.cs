@@ -8,12 +8,13 @@ public sealed partial record UserListeningSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserListeningSettings);
 
-    [DataMember, MemoryPackOrder(0)] private ApiArray<ChatId> LegacyAlwaysListenedChatIds { get; init; }
+    [DataMember, MemoryPackOrder(0), MemoryPackInclude]
+    private ApiArray<ChatId> LegacyAlwaysListenedChatIds { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId[] AlwaysListenedChatIds {
+    public IReadOnlyList<ChatId> AlwaysListenedChatIds {
         get => LegacyAlwaysListenedChatIds.Items;
-        init => LegacyAlwaysListenedChatIds = ApiArray.New(value);
+        init => LegacyAlwaysListenedChatIds = ApiArray.New(value.ToArray());
     }
 
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";

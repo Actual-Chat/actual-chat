@@ -1,48 +1,46 @@
 @page "/u"
 @page "/u/{PageRoute}"
+@inherits ComponentBase<AppUIHub>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
-    private History History => Hub.History;
-    private IUserLinks UserLinks => Hub.UserLinks;
+    private IAliases Aliases => Hub.Aliases;
 
     [Parameter] public string? PageRoute { get; set; }
 
     protected override async Task OnParametersSetAsync() {
         var userId = await GetUserIdFromPageRoute(PageRoute, default);
-        if (userId.IsGuestOrNone) {
-            _ = History.NavigateTo(Links.NotFound);
+        if (userId.IsGuestOrNull()) {
+            _ = History.NavigateTo(Links.NotFound, true);
             return;
         }
 
         var ownAccount = await Accounts.GetOwn(Session, default);
         var account = await Accounts.Get(Session, userId, default);
-        if (account == null || account.IsGuestOrNone) {
-            _ = History.NavigateTo(Links.NotFound);
+        if (account == null || account.IsGuestOrNull()) {
+            _ = History.NavigateTo(Links.NotFound, true);
             return;
         }
 
         if (ownAccount.Id == account.Id) { // Own account
-            _ = History.NavigateTo(Links.Chats);
+            _ = History.NavigateTo(Links.Chats, true);
             return;
         }
 
-        var chatId = new PeerChatId(ownAccount.Id, account.Id);
-        _ = History.NavigateTo(Links.Chat(chatId));
+        var chatId = PeerChatId.New(ownAccount.Id, account.Id);
+        _ = History.NavigateTo(Links.Chat(chatId), true);
     }
 
-    private async Task<UserId> GetUserIdFromPageRoute(string? pageRoute, CancellationToken cancellationToken) {
+    private async Task<UserId?> GetUserIdFromPageRoute(string? pageRoute, CancellationToken cancellationToken) {
         if (pageRoute.IsNullOrEmpty())
-            return UserId.None;
+            return null;
 
-        if (!pageRoute.StartsWith(Links.UserLinkPrefix))
-            return UserId.ParseOrNone(pageRoute);
+        if (!pageRoute.StartsWith(Links.AliasPrefix))
+            return UserId.TryParse(pageRoute);
 
-        if (!UserLinkId.TryParse(pageRoute.Substring(1), out var userLinkId))
-            return UserId.None;
+        if (!AliasId.TryParse(pageRoute.Substring(1), out var aliasId))
+            return null;
 
-        return await UserLinks.GetUserIdByUserLink(userLinkId, cancellationToken).ConfigureAwait(false);
+        return await Aliases.GetUserIdByAlias(aliasId, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class MarkupView : MarkupViewBase<Markup>
+public sealed class MarkupView : MarkupViewBase<Markup>
 {
-    [Inject] private TypeMapper<IMarkupView> ViewResolver { get; init; } = null!;
+    [field: AllowNull, MaybeNull]
+    private TypeMapper<IMarkupView> ViewResolver => field ??= Hub.Services.GetRequiredService<TypeMapper<IMarkupView>>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupViewBase<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputedMarkupViewBase<,>))]

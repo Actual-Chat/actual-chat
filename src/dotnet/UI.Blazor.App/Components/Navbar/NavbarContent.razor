@@ -1,14 +1,14 @@
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits OwnAccountComponentBase
+@inherits OwnAccountComponentBase<AppUIHub>
 @{
     var m = State.Value;
-    var placeId = PlaceId.None;
+    PlaceId? placeId = null;
     // Default to chats if no group is selected
     var isChats = NavbarUI.SelectedGroupId == NavbarGroupIds.Chats || NavbarUI.SelectedGroupId.IsNullOrEmpty() || NavbarUI.IsPlaceSelected(out placeId);
     if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId)) {
         isChats = true;
-        placeId = pinnedChatId.PlaceId;
+        placeId = (pinnedChatId as PlaceChatId)?.PlaceId;
     }
     var isTestPages = NavbarUI.SelectedGroupId == NavbarGroupIds.TestPages;
     var cls = isChats ? "navbar-chats" : "navbar-pages";
@@ -64,10 +64,10 @@
 </div>
 
 @code {
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-
     private EventHandler<NavbarGroupChangedEventArgs> _navbarUIOnSelectedGroupChanged = null!;
+
+    [field: AllowNull, MaybeNull]
+    private NavbarUI NavbarUI => field ??= Hub.Services.GetRequiredService<NavbarUI>();
 
     protected override void OnInitialized() {
         _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;

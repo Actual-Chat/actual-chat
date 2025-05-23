@@ -7,10 +7,6 @@ public static class ServiceProviderExt
         => services.GetRequiredService<UIHub>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static UIEventHub UIEventHub(this IServiceProvider services)
-        => services.GetRequiredService<UIEventHub>();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IJSRuntime JSRuntime(this IServiceProvider services)
         => services.GetRequiredService<IJSRuntime>();
 }

@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isVisible = State.Value;
     var cls = ScreenSize.IsNarrow() ? "btn-sm" : "";
@@ -22,8 +22,6 @@
 }
 
 @code {
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public EventCallback Click { get; set; }

@@ -16,17 +16,19 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private readonly ValidationMessageStore _messages;
 
     private UIHub Hub { get; }
-    private ILogger Log { get; }
+    private IServiceProvider Services => Hub.Services;
     private ValidationModelStore ValidationModelStore { get; }
     private AsyncValidator AsyncValidator { get; }
+    private ILogger Log { get; }
 
     public EditContextAsyncValidator(EditContext editContext, UIHub hub)
     {
         _editContext = editContext ?? throw new ArgumentNullException(nameof(editContext));
         _messages = new ValidationMessageStore(_editContext);
         Hub = hub;
-        ValidationModelStore = hub.GetRequiredService<ValidationModelStore>();
-        AsyncValidator = hub.GetRequiredService<AsyncValidator>();
+
+        ValidationModelStore = Services.GetRequiredService<ValidationModelStore>();
+        AsyncValidator = Services.GetRequiredService<AsyncValidator>();
         Log = hub.LogFor(GetType());
 
         _editContext.OnFieldChanged += OnFieldChanged;
@@ -71,7 +73,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private async Task ValidateProperty(FieldIdentifier fieldIdentifier, CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        var validationContext = new ValidationContext(_editContext.Model, Hub, null) {
+        var validationContext = new ValidationContext(_editContext.Model, Services, null) {
             MemberName = fieldIdentifier.FieldName,
         };
         var ctx = ValidationModelStore.Get(validationContext);
@@ -92,7 +94,7 @@ public sealed class EditContextAsyncValidator : WorkerBase
     private async Task<bool> ValidateAll(CancellationToken cancellationToken)
     {
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        var validationContext = new ValidationContext(_editContext.Model, Hub, null);
+        var validationContext = new ValidationContext(_editContext.Model, Services, null);
         _messages.Clear();
         var validationResults = new List<ValidationResult>();
         Validator.TryValidateObject(_editContext.Model, validationContext, validationResults, true);

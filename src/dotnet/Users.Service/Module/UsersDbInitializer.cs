@@ -33,7 +33,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         => await EnsureUserExists(
                 new InternalUserInfo(Constants.User.Sherlock.UserId, Constants.User.Sherlock.Name) {
                     AvatarBio = Constants.User.Sherlock.Name,
-                    AvatarMediaId = Constants.User.Sherlock.MediaId
+                    AvatarMediaId = Constants.User.Sherlock.MediaId,
                 },
                 cancellationToken)
             .ConfigureAwait(false);
@@ -50,7 +50,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
     private async Task EnsureTestBotsExist(CancellationToken cancellationToken)
     {
-        var account = await GetInternalAccount(new UserId("testbot0"), cancellationToken).ConfigureAwait(false);
+        var account = await GetInternalAccount(UserId.Parse("testbot0"), cancellationToken).ConfigureAwait(false);
         if (account != null)
             return;
 
@@ -58,7 +58,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         var accounts = await Enumerable
             .Range(0, Constants.User.TestBotCount)
             .Select(async i => {
-                var id = new UserId($"testbot{i}");
+                var id = UserId.Parse($"testbot{i}");
                 var name = $"Robo {RandomNameGenerator.Default.Generate()}";
                 Log.LogInformation("+ {UserId}: {UserName}", id, name);
                 return await AddInternalAccount(new (id, name), cancellationToken).ConfigureAwait(false);
@@ -70,39 +70,39 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
     private async Task EnsureTestUsersExist(CancellationToken cancellationToken)
     {
-        var account = await GetInternalAccount(new UserId("alberte"), cancellationToken).ConfigureAwait(false);
+        var account = await GetInternalAccount(UserId.Parse("alberte"), cancellationToken).ConfigureAwait(false);
         if (account != null)
             return;
 
         // TODO: test user icons
         InternalUserInfo[] testUsers = [
-            new (new ("alberte"),
+            new (UserId.Parse("alberte"),
                 "",
                 "Albert",
                 "Einstein",
                 "1-2345678901",
                 "albert.einstein@actual.chat"),
-            new (new ("spongebob"),
+            new (UserId.Parse("spongebob"),
                 "",
                 "SpongeBob",
                 "SquarePants ",
                 "1-2345678902",
                 "spongebob@actual.chat"),
-            new (new ("pelepele"),
+            new (UserId.Parse("pelepele"),
                 "pele",
                 "Edson Arantes",
                 "do Nascimento ",
                 "1-2345678903",
                 "pele@actual.chat",
                 "Pelé"),
-            new (new ("jalalrumi"),
+            new (UserId.Parse("jalalrumi"),
                 "rumi",
                 "Jalāl al-Dīn Muḥammad",
                 "Rumi",
                 "1-2345678904",
                 "rumi@actual.chat",
                 "Jalāl al-Dīn Muḥammad Rūmī جلال‌الدین محمّد رومی"),
-            new (new ("ntesla"),
+            new (UserId.Parse("ntesla"),
                 "tesla",
                 "Nikola",
                 "Tesla ",
@@ -135,17 +135,17 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
 
         var isAdmin = userId == Constants.User.Admin.UserId;
-        var userIdentity = new UserIdentity("internal", userId);
+        var userIdentity = new UserIdentity("internal", userId.Value);
 
         // Create & sign in the user
         var session = Session.New();
-        var user = new User(userId, userName).WithIdentity(userIdentity);
+        var user = new User(userId.Value, userName).WithIdentity(userIdentity);
         if (!userInfo.FirstName.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.GivenName, userInfo.FirstName);
         if (!userInfo.LastName.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.Surname, userInfo.LastName);
         if (!userInfo.Phone.IsNullOrEmpty())
-            user = user.WithPhone(new (userInfo.Phone));
+            user = user.WithPhone(Phone.Parse(userInfo.Phone));
         if (!userInfo.Email.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.Email, userInfo.Email);
         var signInCommand = new AuthBackend_SignIn(session, user, userIdentity);
@@ -166,7 +166,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         var avatarBio = userInfo.AvatarBio.NullIfEmpty() ?? $"I'm just a {userName} test bot";
         var avatarMediaId = userInfo.AvatarMediaId;
         string avatarPictureUrl = "";
-        if (avatarMediaId.IsNone)
+        if (avatarMediaId == null)
             avatarPictureUrl = userInfo.AvatarPictureUrl.NullIfEmpty() ??
                 $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
 
@@ -214,7 +214,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             return;
 
         var avatar = account.Avatar;
-        if (!avatar.MediaId.IsNone && OrdinalEquals(avatar.Bio, Constants.User.Sherlock.Name))
+        if (avatar.MediaId != null && OrdinalEquals(avatar.Bio, Constants.User.Sherlock.Name))
             return;
 
         //using var dbContext = dbInitializer.CreateDbContext(true);
@@ -240,7 +240,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         string AvatarName = "")
     {
         public string AvatarBio { get; init; } = "";
-        public MediaId AvatarMediaId { get; init; } = MediaId.None;
+        public MediaId? AvatarMediaId { get; init; }
         public string AvatarPictureUrl { get; init; } = "";
 
         public string UserNameOrDefault => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLowerInvariant()}_{LastName.ToLowerInvariant()}";

@@ -10,14 +10,15 @@ public partial class MentionSearchResult : SearchResult
     public Picture Picture { get; }
 
     [IgnoreDataMember, MemoryPackIgnore]
-    public MentionId MentionId => new (Id);
+    [field: AllowNull, MaybeNull]
+    public MentionId MentionId => field ??= MentionId.Parse(Id);
+
+    public MentionSearchResult(MentionId id, SearchMatch searchMatch, Picture picture)
+        : base(id.Value, searchMatch)
+        => Picture = picture;
 
     [MemoryPackConstructor]
     private MentionSearchResult(string id, SearchMatch searchMatch, Picture picture)
-        : base(id, searchMatch)
-        => Picture = picture;
-
-    public MentionSearchResult(MentionId id, SearchMatch searchMatch, Picture picture)
         : base(id, searchMatch)
         => Picture = picture;
 }

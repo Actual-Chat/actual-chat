@@ -21,7 +21,7 @@ public class DbGrabStatus : IHasId<string>, IRequirementTarget
 
     public GrabStatus ToModel()
         => new (new Symbol(Id)) {
-            Success = Success,
+            IsSuccessful = Success,
             ModifiedAt = ModifiedAt,
             Version = Version,
         };

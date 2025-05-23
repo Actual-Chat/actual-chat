@@ -1,9 +1,11 @@
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Role(
     [property: DataMember, MemoryPackOrder(0)] RoleId Id, // Corresponds to DbRole.Id
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
@@ -20,7 +22,7 @@ public sealed partial record Role(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public long LocalId => Id.LocalId;
 
-    private Role() : this(RoleId.None) { }
+    private Role() : this(null!) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public Role(string picture, ChatPermissions permissions, string name, SystemRole systemRole, RoleId id, long version = 0)
@@ -47,6 +49,10 @@ public sealed partial record Role(
             role = role with { Permissions = permissions };
         return role;
     }
+
+    // This record relies on referential equality
+    public bool Equals(Role? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

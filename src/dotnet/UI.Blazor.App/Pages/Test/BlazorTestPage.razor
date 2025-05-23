@@ -1,4 +1,5 @@
 @page "/test/blazor"
+@inherits ComponentBase<AppUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 
@@ -31,7 +32,9 @@
     private int _counter;
     private ImmutableList<string> _output = ImmutableList<string>.Empty;
 
-    [Inject] private ILogger<BlazorTestPage> Log { get; init; } = null!;
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+
     [Inject] private IWebViewCrasher WebViewCrasher { get; init; } = null!;
 
     protected override Task OnInitializedAsync() {

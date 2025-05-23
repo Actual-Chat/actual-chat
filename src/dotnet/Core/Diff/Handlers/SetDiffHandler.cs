@@ -1,9 +1,9 @@
 namespace ActualChat.Diff.Handlers;
 
-public class SetDiffHandler<
+public sealed class SetDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TSet,
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TItem> : DiffHandlerBase<TSet,
-    SetDiff<TSet, TItem>>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TItem>
+    : DiffHandlerBase<TSet, SetDiff<TSet, TItem>>
     where TSet : IReadOnlyCollection<TItem>
 {
     private readonly Type _setType;
@@ -36,6 +36,8 @@ public class SetDiffHandler<
             return _setType.IsArray
                 ? (TSet)(object)target.ToArray()
                 : (TSet)_setType.CreateInstance(target);
+        if (_setGenericType == typeof(IReadOnlyList<>))
+            return (TSet)(object)target.ToArray();
         if (_setGenericType == typeof(ImmutableArray<>))
             return (TSet)(object)ImmutableArray.Create(target);
         if (_setGenericType == typeof(ImmutableList<>))

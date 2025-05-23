@@ -102,7 +102,7 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
         return this;
     }
 
-    public Task Expire()
+    private Task Expire()
     {
         if (ExpiresAt == default)
             throw StandardError.StateTransition("ExpiresAt is not set.");

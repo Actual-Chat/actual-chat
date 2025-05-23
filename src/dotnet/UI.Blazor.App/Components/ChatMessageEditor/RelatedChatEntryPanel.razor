@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<RelatedChatEntryPanel.Model?>
+@inherits ComputedStateComponent<AppUIHub, RelatedChatEntryPanel.Model?>
 @{
     var m = State.Value;
     if (m == null)
@@ -11,18 +11,16 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
+        var relatedChatEntry = await ChatEditorUI.RelatedEntryRef.Use(cancellationToken).ConfigureAwait(false);
         if (relatedChatEntry is not { } vRelatedChatEntry)
             return null;
 
-        var entryId = vRelatedChatEntry.Id;
+        var entryId = vRelatedChatEntry.EntryId;
         var chatId = entryId.ChatId;
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var entry = await Chats.GetEntry(Session, entryId, cancellationToken).ConfigureAwait(false);

@@ -5,17 +5,14 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDisposable
+public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";
     private readonly SyncedState<UserLanguageSettings> _settings;
 
-    private TuneUI TuneUI => Hub.TuneUI;
-    private IJSRuntime JS => Hub.JSRuntime();
-
     public IState<UserLanguageSettings> Settings => _settings;
 
-    public LanguageUI(ChatUIHub hub) : base(hub)
+    public LanguageUI(AppUIHub hub) : base(hub)
         => _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
                 InitialValue = new UserLanguageSettings(),
@@ -28,26 +25,25 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
         => _settings.Dispose();
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlySet<Language>> ListSpoken(CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<Language>> ListSpokenLanguages(CancellationToken cancellationToken)
     {
         var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
-        return settings.ToList().ToHashSet();
+        return settings.AllSpoken;
     }
 
     [ComputeMethod]
-    public virtual async Task<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<Language> GetChatLanguage(ChatId? chatId, CancellationToken cancellationToken = default)
     {
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        var userChatSettings = chatId is not null
+                ? await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false)
+                : UserChatSettings.Default;
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language, CancellationToken cancellationToken = default)
     {
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        var settings = Settings.Value;
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        var oldLanguage = userChatSettings.Language.Or(settings.Primary);
-        language = language.Or(oldLanguage);
         if (language == userChatSettings.Language)
             return language;
 
@@ -83,8 +79,8 @@ public class LanguageUI : ScopedServiceBase<ChatUIHub>, IComputeService, IDispos
         var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return languages
-            .Select(x => new Language(x, ParseOrNone.Option))
-            .Where(x => !x.IsNone)
+            .Select(s => Language.TryParse(s, true))
+            .SkipNullItems()
             .Distinct()
             .ToList();
     }

@@ -36,7 +36,7 @@
     private Moment CpuNow => Clocks.CpuClock.Now;
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private MomentClockSet Clocks => Hub.Clocks();
+    private MomentClockSet Clocks => Hub.Clocks;
     private History History => Hub.History;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());

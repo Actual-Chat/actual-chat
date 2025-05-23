@@ -20,8 +20,8 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
         list1.Should().BeEmpty();
 
-        var chatId1 = new ChatId(Generate.Option);
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId1 = GroupChatId.New();
+        var chatId2 = GroupChatId.New();
 
         await commander.Call(new ChatUsages_RegisterUsage(session, ChatUsageListKind.PeerChatsWroteTo, chatId1));
         list1 = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
@@ -63,8 +63,8 @@ public class ChatUsagesTest(AppHostFixture fixture, ITestOutputHelper @out)
         var commander = tester.Commander;
         var session = tester.Session;
 
-        var chatId1 = new ChatId(Generate.Option);
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId1 = GroupChatId.New();
+        var chatId2 = GroupChatId.New();
         const ChatUsageListKind listKind = ChatUsageListKind.ViewedGroupChats;
 
         await commander.Call(new ChatUsages_RegisterUsage(session, listKind, chatId1));

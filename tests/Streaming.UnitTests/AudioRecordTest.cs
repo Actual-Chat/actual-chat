@@ -6,8 +6,8 @@ public class AudioRecordTest
     public void SessionPropertyTest()
     {
         var nodeRef = new NodeRef(Generate.Option);
-        var streamId = new StreamId(nodeRef, Generate.Option);
-        var r = new AudioRecord(streamId, null!, new ChatId("chatId"), 0, ChatEntryId.None);
+        var streamId = StreamId.New(nodeRef);
+        var r = new AudioRecord(streamId, null!, GroupChatId.Parse("chatId"), 0, null);
         r.Session.Should().BeNull();
         r = r with { Session = new Session("1234567890abcdef") };
         r.Session.Should().Be(r.Session);

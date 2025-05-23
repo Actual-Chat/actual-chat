@@ -1,11 +1,11 @@
-@inherits ComputedStateComponent<ChatHeader.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatHeader.Model>
 @{
     var m = State.Value;
     var chat = Chat;
     var searchCls = ScreenSize.IsNarrow() ? "btn-sm" : "";
     if (m.IsSearchMode)
         searchCls += " on";
-    var isThread = chat.Id.IsThread;
+    var isThread = chat?.Id.IsThread ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
 }
 
@@ -23,35 +23,45 @@
         </HeaderButton>
     }
     <div class="chat-header-center" @onclick="@OnToggleRightPanelClick">
-        @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
-            @if (!ReferenceEquals(chat, SpecialChat.Unavailable)) {
-                <ChatIcon Chat="@chat"/>
-            }
+        @if (chat is not null) {
+            <ChatIcon Chat="@chat"/>
             <div class="chat-header-title">
                 <div class="c-title-wrapper">
                     <div class="c-title">
                         @chat.Title
                     </div>
+                    @if (ScreenSize.IsNarrow() && chat.Kind != ChatKind.Peer) {
+                        <StatusBadge Chat="@chat" ShowOnlyIcon="true"/>
+                    }
                 </div>
                 <div class="c-info">
-                    @if (chat.Rules.CanJoin()) {
-                        @if (!chat.Id.IsPeerChat(out _)) {
-                            <ChatMemberCounter ChatId="@Chat.Id"/>
+                    @if (chat.Kind != ChatKind.Peer) {
+                        @if (chat.Rules.CanJoin()) {
+                            <ChatMemberCounter ChatId="@chat.Id"/>
                         }
                     }
-                    @if (chat.Id.IsPeerChat(out _)) {
+                    else { // chat.Kind == ChatKind.Peer
                         <StatusBadge Chat="@chat" IsColorful="@false"/>
                     }
                 </div>
             </div>
             @if (!ScreenSize.IsNarrow()) {
-                <ChatActivityPanel Chat="@Chat"/>
+                <ChatActivityPanel Chat="@chat"/>
             }
+        } else {
+            <ChatIcon Chat="@null"/>
+            <div class="chat-header-title">
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        @NoChatTitle
+                    </div>
+                </div>
+            </div>
         }
     </div>
-    @if (!chat.Id.IsNone) {
+    @if (chat is not null) {
         <div class="chat-header-control-panel">
-            <TranslationButton ChatId="@Chat.Id"/>
+            <TranslationButton ChatId="@chat.Id"/>
             @if (m.EnableIncompleteUI) {
                 <HeaderButton Click="@OnSearchClick" Class="@searchCls">
                     <i class="icon-ai-search"></i>
@@ -68,15 +78,12 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private History History => Hub.History;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
+    [Parameter] public string NoChatTitle { get; set; } = "Loading...";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -89,7 +96,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features().IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
@@ -101,7 +108,7 @@
         => Hub.PanelsUI.Right.Toggle();
 
     private async Task OnOpenLeftPanelClick() {
-        if (Chat.Id.IsThread) {
+        if (Chat is not null && Chat.Id.IsThread) {
             var parentChatId = Chat.Id.GetThreadParent();
             var parentChatLink = Links.Chat(parentChatId);
             if (History.TryGetStepBackUrl(out var backUrl)) {

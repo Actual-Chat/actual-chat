@@ -6,20 +6,16 @@ namespace ActualChat.Users;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserBubbleSettings : IHasOrigin
 {
-    private readonly string[] _readBubbles = [];
     public const string KvasKey = nameof(UserBubbleSettings);
 
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember, MemoryPackOrder(0), MemoryPackInclude]
     private ApiArray<Symbol> LegacyReadBubbles {
-        get => _readBubbles.Select(x => new Symbol(x)).ToApiArray();
-        init => _readBubbles = value.Select(x => x.Value).ToArray(value.Count);
+        get => ReadBubbles.ToApiArray();
+        init => ReadBubbles = value.ToList();
     }
 
     [IgnoreDataMember, MemoryPackIgnore]
-    public string[] ReadBubbles {
-        get => _readBubbles;
-        init => _readBubbles = value;
-    }
+    public IReadOnlyList<Symbol> ReadBubbles { get; init; } = [];
 
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
 
@@ -28,13 +24,11 @@ public sealed partial record UserBubbleSettings : IHasOrigin
         if (bubbleRefs.Length == 0)
             return this;
 
-        var readBubbles = bubbleRefs.Aggregate(
-            ReadBubbles,
-            (bubbles, bubble) => bubbles.Contains(bubble, StringComparer.Ordinal)
-                ? bubbles
-                : bubbles.With(bubble));
-
-        return this with { ReadBubbles = readBubbles };
+        var newReadBubbles = ReadBubbles
+            .Concat(bubbleRefs.Select(x => (Symbol)x))
+            .Distinct()
+            .ToList();
+        return this with { ReadBubbles = newReadBubbles };
     }
 
     public UserBubbleSettings WithAllUnread()

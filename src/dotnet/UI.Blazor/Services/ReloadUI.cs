@@ -18,8 +18,8 @@ public class ReloadUI
     public virtual void Reload(bool clearCaches = false, bool clearLocalSettings = false)
     {
         Log.LogInformation("Reload requested");
-        var circuitContext = Services.GetRequiredService<AppBlazorCircuitContext>();
-        _ = circuitContext.WhenInitialized.ContinueWith(_ => circuitContext.Dispatcher.InvokeAsync(async () => {
+        var circuitHub = Services.GetRequiredService<CircuitHub>();
+        _ = circuitHub.WhenInitialized.ContinueWith(_ => circuitHub.Dispatcher.InvokeAsync(async () => {
             Log.LogInformation("Reloading...");
             try {
                 var hostInfo = Services.HostInfo();

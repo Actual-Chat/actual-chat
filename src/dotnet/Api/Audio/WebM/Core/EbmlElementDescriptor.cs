@@ -36,14 +36,15 @@ public class EbmlElementDescriptor
     {
         var result = 17;
         result = 37*result + Identifier.GetHashCode();
-        result = 37*result + (Name == null ? 0 : Name.OrdinalHashCode());
+        result = 37*result + (Name == null ? 0 : Name.GetOrdinalHashCode());
         result = 37*result + (Type == EbmlElementType.None ? 0 : Type.GetHashCode());
         return result;
     }
 
     public override bool Equals(object? obj)
     {
-        if (this == obj) return true;
+        if (ReferenceEquals(this, obj))
+            return true;
 
         if (obj is EbmlElementDescriptor o2)
             return Identifier.Equals(o2.Identifier)

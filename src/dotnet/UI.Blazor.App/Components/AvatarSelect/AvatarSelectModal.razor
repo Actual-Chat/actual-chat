@@ -1,12 +1,14 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<AvatarSelectModal.Model>
 @using ActualLab.Generators
-@inherits ComputedStateComponent<AvatarSelectModal.ViewModel>
+@inherits ComputedStateComponent<AppUIHub, AvatarSelectModal.ViewModel>
 @{
     var m = State.Value;
     var mode = ModalModel is RevealModel
         ? Mode.Reveal
-        : ModalModel.ChatId.IsNone ? Mode.Join : Mode.Change;
+        : ModalModel.ChatId is null
+            ? Mode.Join
+            : Mode.Change;
     var title = mode switch {
         Mode.Join =>  "Choose your avatar",
         Mode.Reveal => "Reveal yourself",
@@ -89,12 +91,9 @@
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private Avatar? _anonymous;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
     private IAuthors Authors => Hub.Authors;
     private IAvatars Avatars => Hub.Avatars;
-    private UICommander UICommander => Hub.UICommander();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -121,7 +120,7 @@
         return new (existingAvatars, selectedAvatarId, anonymous);
 
         async Task<Symbol> GetSelectedAvatarId(CancellationToken cancellationToken1) {
-            if (chatId.IsNone) {
+            if (chatId is null) {
                 var account = await Accounts.GetOwn(Session, cancellationToken1).ConfigureAwait(false);
                 return account.Avatar.Id;
             }
@@ -176,7 +175,7 @@
 
     private enum Mode { Join, Change, Reveal }
 
-    public record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
+    public record Model(ChatId? ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
     public record RevealModel(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected) : Model(ChatId, false, OnAvatarSelected);
 
     public sealed record ViewModel(AvatarFull[] Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {

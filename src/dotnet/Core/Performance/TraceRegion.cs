@@ -18,7 +18,7 @@ public readonly struct TraceRegion : IDisposable
         StartedAt = tracer.Elapsed;
         IsEnabled = Tracer.IsEnabled;
         if (logEnter && IsEnabled)
-            Tracer.Point(ZString.Concat("-> ", label), StartedAt);
+            Tracer.Point(string.Concat("-> ", label), StartedAt);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

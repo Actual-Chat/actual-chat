@@ -15,14 +15,15 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void NotificationSerializationTest()
     {
-        var d = new Notification(default, 1L) {
+        var id = NotificationId.New(UserId.New(), NotificationKind.Message, "1234");
+        var d = new Notification(id, 1L) {
             Title = "Bob @ Good chat",
             Content = "Sent an image",
             HandledAt = Moment.Now,
         };
         d.AssertPassesThroughAllSerializers();
 
-        d = new Notification(default, 1L) {
+        d = new Notification(id, 1L) {
             Title = "Bob @ Good chat",
             Content = "Sent an image",
             HandledAt = null,

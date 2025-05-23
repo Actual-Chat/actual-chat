@@ -116,10 +116,10 @@ public partial class MarkupParser : IMarkupParser
 
     // Mentions
     private static Parser<char, Markup> MentionParserFactory(string name = "") =>
-        from sid in Id
-        let id = new MentionId(sid, ParseOrNone.Option)
-        where !id.IsNone
-        select (Markup)new MentionMarkup(id, name);
+        from id in Id
+        let mentionId = MentionId.TryParse(id, true)
+        where mentionId != null
+        select (Markup)new MentionMarkup(mentionId, name);
     private static readonly Parser<char, Markup> NamedMention =
         // @`User Name`userId
         AtToken.Then(QuotedName).Then(MentionParserFactory).Debug("@`name`");
@@ -230,18 +230,18 @@ public partial class MarkupParser : IMarkupParser
         from _ in OneOf(Char('-'), Char('*'), Char('+')).Before(WhitespaceChar)
         from content in TextBlock
         from _1 in EndOfLine.Optional()
-        select (Markup)new ListItemMarkup(content, Ordered: false);
+        select (Markup)new ListItemMarkup(content);
 
     private static readonly Parser<char, Markup> OrderedListItem =
         from number in Digit.AtLeastOnceString().Before(Char('.')).Before(WhitespaceChar)
         from content in TextBlock
         from _ in EndOfLine.Optional()
-        select (Markup)new ListItemMarkup(content, Ordered: true, Order: int.Parse(number, CultureInfo.InvariantCulture));
+        select (Markup)new ListItemMarkup(content, int.Parse(number, CultureInfo.InvariantCulture));
 
     private static readonly Parser<char, Markup> ListBlock =
         SafeTryOneOf(UnorderedListItem, OrderedListItem)
             .AtLeastOnce()
-            .Select(items => (Markup)new ListMarkup(items.Select(c => (ListItemMarkup)c).ToImmutableArray()))
+            .Select(items => (Markup)new ListMarkup(items.Select(c => (ListItemMarkup)c).ToArray()))
             .Debug("<List>");
 
     // Unparsed block

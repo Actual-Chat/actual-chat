@@ -37,8 +37,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
     {
         var authorIds = JsonSerializer.Deserialize<AuthorId[]>(AuthorIds) ?? [];
 
-        return new Conversation(new ConversationId(Id), Version)
-        {
+        return new Conversation(ConversationId.Parse(Id), Version) {
             Title = Title,
             Description = Description,
             Summary = Summary,
@@ -52,11 +51,11 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
 
     public void UpdateFrom(Conversation model)
     {
-        this.RequireSameOrEmptyId(model.Id);
+        this.RequireSameOrEmptyId(model.Id.Value);
         model.RequireSomeVersion();
 
         Id = model.Id.Value;
-        ChatId = model.Id.ChatId;
+        ChatId = model.Id.ChatId.Value;
         Version = model.Version;
         Title = model.Title;
         Description = model.Description;

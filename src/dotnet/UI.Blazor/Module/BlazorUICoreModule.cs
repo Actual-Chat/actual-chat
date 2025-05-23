@@ -39,21 +39,19 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
 
-        // Replace BlazorCircuitContext w/ AppBlazorCircuitContext + expose Dispatcher
-        services.AddScoped(c => new AppBlazorCircuitContext(c));
-        services.AddTransient(c => (IDispatcherResolver)c.GetRequiredService<AppBlazorCircuitContext>());
-        services.AddTransient(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
-        services.AddTransient(c => c.GetRequiredService<AppBlazorCircuitContext>().Dispatcher);
+        // Alias UIHub -> CircuitHub, IDispatcherResolver + expose Dispatcher
+        // services.AddScoped(c => new UIHub(c)); // BlazorUIAppModule does ~this
+        services.AddAlias<CircuitHub, UIHub>(ServiceLifetime.Scoped);
+        services.AddAlias<IDispatcherResolver, UIHub>(ServiceLifetime.Scoped);
+        services.AddTransient(c => c.GetRequiredService<UIHub>().Dispatcher);
 
         // Core UI-related services
-        services.AddScoped(c => new UIHub(c));
-        services.AddAlias<Hub, UIHub>(ServiceLifetime.Scoped); // Required for PermissionHandler descendants
         if (!hostKind.IsServer())
             services.TryAddSingleton<IHostApplicationLifetime>(_ => new FakeHostApplicationLifetime());
-        services.AddScoped(c => new BrowserInit(c));
+        services.AddScoped(c => new BrowserInit(c.UIHub()));
         services.AddScoped(c => new CaptchaUI(c.UIHub()));
         services.AddScoped(c => new BrowserInfo(c.UIHub()));
-        services.AddScoped(c => new WebShareInfo(c));
+        services.AddScoped(c => new WebShareInfo(c.UIHub()));
         services.AddScoped(_ => new ComponentIdGenerator());
         services.AddScoped(_ => new RenderVars());
 
@@ -78,7 +76,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new UIEventHub(c));
 
         // UI services
-        services.AddScoped(c => new LoadingUI(c));
+        services.AddScoped(c => new LoadingUI(c.UIHub()));
         services.AddScoped(c => new ReconnectUI(c.UIHub()));
         services.AddScoped(c => new ReloadUI(c));
         if (hostKind.IsMauiApp())
@@ -155,7 +153,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         var isWasmApp = hostKind.IsWasmApp();
         var isServer = hostKind.IsServer();
 
-        services.AddScoped(c => new DebugUI(c));
+        services.AddScoped(c => new DebugUI(c.UIHub()));
 
         if (isApp) {
             services.AddSingleton(c => new TaskMonitor(c));

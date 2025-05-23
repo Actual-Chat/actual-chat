@@ -7,7 +7,7 @@
         ? "cdn.local.actual.chat"
         : baseUri.IdnHost;
     var feedbackTemplateUrl = $"https://{domain}/embedded/feedback-template";
-    var showChat = _showChat;
+    var showChat = _mustShowChat;
 }
 
 <RequireAccount MustBeAdmin="true"/>
@@ -32,13 +32,11 @@
 </div>
 
 @code {
-
-    private bool _showChat;
-
+    private bool _mustShowChat;
 
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     private void OnClick(MouseEventArgs obj) {
-        _showChat = !_showChat;
+        _mustShowChat = !_mustShowChat;
     }
 }

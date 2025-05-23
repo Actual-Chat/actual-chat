@@ -14,7 +14,7 @@ public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAu
         IAsyncEnumerable<byte[]> byteStream,
         CancellationToken cancellationToken = default)
     {
-        var headerSource = TaskCompletionSourceExt.New<ActualOpusStreamHeader>();
+        var headerSource = AsyncTaskMethodBuilderExt.New<ActualOpusStreamHeader>();
         var headerTask = headerSource.Task;
 
         // We're doing this fairly complex processing via tasks & channels only
@@ -48,7 +48,7 @@ public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAu
                         await target.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                     audioFrames.Clear();
 
-                    static void ReadHeader(ref ReadOnlySequence<byte> sequence, ref TaskCompletionSource<ActualOpusStreamHeader> headerSource)
+                    static void ReadHeader(ref ReadOnlySequence<byte> sequence, ref AsyncTaskMethodBuilder<ActualOpusStreamHeader> headerSource)
                     {
                         var header = ActualOpusStreamHeader.Parse(ref sequence);
                         headerSource.SetResult(header);

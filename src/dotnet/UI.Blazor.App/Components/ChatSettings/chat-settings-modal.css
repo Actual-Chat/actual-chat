@@ -88,39 +88,39 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply bg-hover;
 }
 
-.edit-settings-modal .form-block.with-input-radio .field-chat-user-link-id.tile-item {
+.edit-settings-modal .form-block.with-input-radio .field-chat-alias-id.tile-item {
     @apply pr-2;
 }
-.field-chat-user-link-id .tile-item-body-content {
+.field-chat-alias-id .tile-item-body-content {
     @apply relative;
 }
-.field-chat-user-link-id .tile-item-right {
+.field-chat-alias-id .tile-item-right {
     @apply hidden;
 }
-.field-chat-user-link-id section {
+.field-chat-alias-id section {
     @apply mt-0;
 }
-.field-chat-user-link-id .copy-to-clipboard {
+.field-chat-alias-id .copy-to-clipboard {
     @apply absolute top-0 right-0;
 }
-.form .field-chat-user-link-id .form-section-content .text-box {
+.form .field-chat-alias-id .form-section-content .text-box {
     @apply text-caption-4;
 }
-.form .field-chat-user-link-id .form-section-content.label-inside-input input {
+.form .field-chat-alias-id .form-section-content.label-inside-input input {
     @apply pr-8;
     @apply truncate;
 }
 
-.form.form-y .field-chat-user-link-id section .form-section-content {
+.form.form-y .field-chat-alias-id section .form-section-content {
     @apply mt-0;
 }
 
-.tile-item.field-chat-user-link-id .label-inside-input input {
+.tile-item.field-chat-alias-id .label-inside-input input {
     @apply h-6;
 }
 
-.tile-item.field-chat-user-link-id .tile-item-icon,
-.tile-item.field-chat-user-link-id .tile-item-right {
+.tile-item.field-chat-alias-id .tile-item-icon,
+.tile-item.field-chat-alias-id .tile-item-right {
     @apply my-auto;
 }
 

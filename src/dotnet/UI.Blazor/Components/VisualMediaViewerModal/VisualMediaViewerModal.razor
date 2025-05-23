@@ -1,5 +1,6 @@
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
+@inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
@@ -140,9 +141,6 @@
     private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
-
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

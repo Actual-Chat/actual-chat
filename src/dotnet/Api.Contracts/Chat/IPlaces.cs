@@ -9,7 +9,7 @@ public interface IPlaces : IComputeService
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<PlaceRules> GetRules(Session session, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
-    Task<ChatId> GetWelcomeChatId(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    Task<PlaceChatId?> GetWelcomeChatId(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<UserId[]> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
@@ -48,7 +48,7 @@ public interface IPlaces : IComputeService
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_Change(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(1)] PlaceId? PlaceId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<PlaceDiff> Change
 ) : ISessionCommand<Place>, IApiCommand;

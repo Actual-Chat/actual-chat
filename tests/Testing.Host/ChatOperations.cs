@@ -149,9 +149,9 @@ public static class ChatOperations
         return await userIds
             .Select(userId
                 => tester.AuthorsBackend
-                    .GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, CancellationToken.None)
+                    .GetByUserId(chatId, userId, RequestedAuthorKind.Full, CancellationToken.None)
                     .Require())
-            .Collect(CancellationToken.None);
+            .Collect(Environment.ProcessorCount / 2);
     }
 
     public static Task LeaveChat(this IWebTester tester, ChatId chatId)

@@ -47,10 +47,12 @@ public class AuthCommandFilters(IServiceProvider services)
 
         var session = command.Session;
         var authInfo = await Auth.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
+        var userId = UserId.ParseNullable(authInfo?.UserId);
 
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        if (authInfo != null && authInfo.IsAuthenticated())
-            context.Operation.AddEvent(new UserSignedOutEvent(session.Id, command.Force, UserId.ParseOrNone(authInfo.UserId)));
+        if (authInfo?.IsAuthenticated() == true && userId is not null) {
+            context.Operation.AddEvent(new UserSignedOutEvent(session.Id, command.Force, userId));
+        }
     }
 }

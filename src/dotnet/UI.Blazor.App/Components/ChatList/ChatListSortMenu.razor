@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits Menu<AppUIHub>
 
 <div class="sort-menu">
     <div class="c-title">
@@ -29,7 +29,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private ChatUI ChatUI => Hub.ChatUI;
 

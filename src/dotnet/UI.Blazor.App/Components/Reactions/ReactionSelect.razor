@@ -1,12 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <ul class="reaction-select">
     @foreach (var emoji in _emojis) {
         <MenuEntry
             Class="reaction-select-reaction"
-            Click="@(_ => React(emoji.Id))">
+            Click="@(_ => React(emoji))">
             <IconContent>
-                <EmojiIcon Id="@emoji.Id" Class="reaction-select-reaction-emoji"/>
+                <EmojiIcon Emoji="@emoji" Class="reaction-select-reaction-emoji"/>
             </IconContent>
         </MenuEntry>
     }
@@ -16,26 +17,22 @@
     private const int MaxReactionCount = 7;
     private Emoji[] _emojis = null!;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private TuneUI TuneUI => Hub.TuneUI;
-    private UICommander UICommander => Hub.UICommander();
-    private Features Features => Hub.Features();
-
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;
 
     protected override void OnParametersSet() {
         var skipCount = ShowDefaultReaction ? 0 : 1;
-        _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
+        _emojis = Emojis.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
     }
 
-    private Task React(Symbol emojiId) {
-        var command = new Reactions_React(Session, new Reaction {
-            EntryId = Entry.Id.ToTextEntryId(),
-            EmojiId = emojiId,
-        });
+    private Task React(Emoji emoji) {
         _ = TuneUI.Play(Tune.React);
-        return UICommander.Run(command);
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
+            AuthorId = null!,
+            EntryId = Entry.Id.ToTextEntryId(),
+            Emoji = emoji,
+        };
+        return UICommander.Run(new Reactions_React(Session, reaction));
     }
 }

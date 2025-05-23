@@ -30,7 +30,7 @@ public partial class ChatUI
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
-        var oldChatId = ChatId.None;
+        var oldChatId = (ChatId?)null;
         var changes = SelectedChatId.Computed.ChangesUntyped(cancellationToken);
         await foreach (var c in changes.ConfigureAwait(false)) {
             var cSelectedContactId = (Computed<ChatId>)c;
@@ -40,7 +40,8 @@ public partial class ChatUI
 
             DebugLog?.LogDebug("InvalidateSelectedChatDependencies: *");
             using (Invalidation.Begin()) {
-                _ = IsSelected(oldChatId);
+                if (oldChatId is not null)
+                    _ = IsSelected(oldChatId);
                 _ = IsSelected(newChatId);
             }
 
@@ -53,12 +54,12 @@ public partial class ChatUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<ChatId> GetFixedSelectedChatId(CancellationToken cancellationToken)
+    protected virtual async Task<ChatId?> GetFixedSelectedChatId(CancellationToken cancellationToken)
     {
         var chatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var fixedChatId = await FixChatId(chatId, cancellationToken).ConfigureAwait(false);
         var wasFixed = fixedChatId != chatId;
-        return wasFixed ? fixedChatId : default;
+        return wasFixed ? fixedChatId : null;
     }
 
     private async Task NavigateToFixedSelectedChat(CancellationToken cancellationToken)
@@ -67,10 +68,10 @@ public partial class ChatUI
             .Capture(() => GetFixedSelectedChatId(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         cFixedSelectedChatId = await cFixedSelectedChatId
-            .When(x => !x.IsNone, cancellationToken)
+            .When(x => x is not null, cancellationToken)
             .ConfigureAwait(false);
 
-        var link = Links.Chat(cFixedSelectedChatId.Value);
+        var link = Links.Chat(cFixedSelectedChatId.Value!);
         _ = AutoNavigationUI.DispatchNavigateTo(link, AutoNavigationReason.FixedChatId);
     }
 
@@ -101,15 +102,13 @@ public partial class ChatUI
     {
         CancellationTokenSource? cts = null;
         try {
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             var changes = HighlightedEntryId.Computed.ChangesUntyped(FixedDelayer.Get(0.1), cancellationToken);
             await foreach (var c in changes.ConfigureAwait(false)) {
-                var cHighlightedEntryId = (Computed<ChatEntryId>)c;
-                if (cHighlightedEntryId.Value.IsNone)
-                    continue;
-
+                var cHighlightedEntryId = (Computed<TextEntryId?>)c;
                 cts.CancelAndDisposeSilently();
                 var highlightedEntryId = cHighlightedEntryId.Value;
-                if (highlightedEntryId.IsNone)
+                if (highlightedEntryId is null)
                     continue; // Nothing to reset
 
                 cts = cancellationToken.CreateLinkedTokenSource();
@@ -117,7 +116,7 @@ public partial class ChatUI
                 _ = BackgroundTask.Run(async () => {
                     await Task.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
                     if (HighlightedEntryId.Value == highlightedEntryId)
-                        HighlightEntry(ChatEntryId.None, false);
+                        HighlightEntry(null, false);
                 }, CancellationToken.None);
             }
         }
@@ -128,7 +127,7 @@ public partial class ChatUI
 
     private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
     {
-        await WhenLoaded.ConfigureAwait(false);
+        await WhenReady.ConfigureAwait(false);
         _ = RestoreSelectedNavbarGroup(cancellationToken);
         _ = SynchronizeSelectedChatIds();
     }
@@ -136,16 +135,15 @@ public partial class ChatUI
     private async Task SynchronizeSelectedChatIds()
     {
         await _selectedChatIds.WhenRead.ConfigureAwait(false);
-        lock(_lock) {
-            var value = _selectedChatIds.Value;
-            if (_pendingSelectedChatIdChanges != null) {
+        lock (Lock) {
+            var selectedChatIds = _selectedChatIds.Value;
+            if (_pendingSelectedChatIds is { Count: > 0 }) {
                 // Selected chat ids are not loaded yet.
-                foreach (var chatId in _pendingSelectedChatIdChanges)
-                    value = SetItem(value, chatId);
+                foreach (var chatId in _pendingSelectedChatIds)
+                    selectedChatIds = selectedChatIds.SetItem((chatId as PlaceChatId)?.PlaceId.Value ?? "", chatId);
+                _selectedChatIds.Value = selectedChatIds;
             }
-            _pendingSelectedChatIdChanges = null;
-            if (!Equals(_selectedChatIds.Value, value))
-                _selectedChatIds.Value = value;
+            _pendingSelectedChatIds = null;
         }
     }
 
@@ -153,7 +151,7 @@ public partial class ChatUI
     {
         try {
             var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            if (selectedChatId.IsNone)
+            if (selectedChatId is null)
                 return;
 
             var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
@@ -163,9 +161,10 @@ public partial class ChatUI
             var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
             var isPlaceSelected = NavbarUI.IsPlaceSelected(out var selectedPlaceId);
             var isPeerChat = selectedChatId.Kind == ChatKind.Peer;
-            var isChatPlaceSelected = selectedChatId.IsPlaceChat
+            var selectedAsPlaceChatId = selectedChatId as PlaceChatId;
+            var isChatPlaceSelected = selectedAsPlaceChatId is not null
                 && isPlaceSelected
-                && selectedPlaceId.Equals(selectedChatId.PlaceId);
+                && Equals(selectedPlaceId, selectedAsPlaceChatId.PlaceId);
             if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
                 var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
                 if (navbarSettings.PinnedChats.Contains(selectedChatId)) {
@@ -177,10 +176,10 @@ public partial class ChatUI
                 }
             }
 
-            if (!selectedChatId.IsPlaceChat)
+            if (selectedAsPlaceChatId is null)
                 return;
 
-            var place = await Hub.Places.Get(Session, selectedChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            var place = await Hub.Places.Get(Session, selectedAsPlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place == null)
                 return;
 
@@ -203,36 +202,35 @@ public partial class ChatUI
     private async Task PrefetchChatTails(CancellationToken cancellationToken)
     {
         var visibleChatsChanges = ChatListUI.VisibleChats.Computed.Changes(cancellationToken);
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         await foreach (var cVisibleChats in visibleChatsChanges.ConfigureAwait(false)) {
             if (cVisibleChats.Value.Count == 0)
                 continue;
 
-            cts.CancelAndDisposeSilently();
-            cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var changeToken = cts.Token;
+            changeTokenSource.CancelAndDisposeSilently();
+            changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var changeToken = changeTokenSource.Token;
             var visibleChatIds = cVisibleChats.Value;
             foreach (var chatId in visibleChatIds)
                 _ = BackgroundTask.Run(async () => {
-                        var cGet = await Computed.Capture(() => Get(chatId, changeToken), changeToken).ConfigureAwait(false);
-                        var chatInfoChanges = cGet.Changes(changeToken);
-                        await foreach (var cChatInfo in chatInfoChanges.ConfigureAwait(false)) {
-                            var chatInfo = cChatInfo.Value;
-                            if (chatInfo == null)
-                                continue;
+                    var cGet = await Computed.Capture(() => Get(chatId, changeToken), changeToken).ConfigureAwait(false);
+                    var chatInfoChanges = cGet.Changes(changeToken);
+                    await foreach (var cChatInfo in chatInfoChanges.ConfigureAwait(false)) {
+                        var chatInfo = cChatInfo.Value;
+                        if (chatInfo == null)
+                            continue;
 
-                            var lastReadEntryLid = chatInfo.ReadEntryLid;
-                            var prefetchNearTo = lastReadEntryLid != 0
-                                ? lastReadEntryLid
-                                : chatInfo.News.TextEntryIdRange.End;
+                        var lastReadEntryLid = chatInfo.ReadEntryLid;
+                        var prefetchNearTo = lastReadEntryLid != 0
+                            ? lastReadEntryLid
+                            : chatInfo.News?.TextEntryIdRange.End ?? 0;
 
                             var secondLayer = IdTileStack.LastLayer;
                             var idTile = secondLayer.GetTile(prefetchNearTo).Range;
                             var chatDataQuery = new ChatDataQuery(idTile, -HalfLoadLimit, LoadLimit);
                             _ = GetChatItems(chatId, chatDataQuery, lastReadEntryLid, changeToken);
-                        }
-                    },
-                    changeToken);
+                    }
+                }, changeToken);
         }
     }
 }

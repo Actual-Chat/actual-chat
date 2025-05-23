@@ -1,6 +1,5 @@
 ﻿using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Hosting;
-using ActualChat.Permissions;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
@@ -9,14 +8,11 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
 {
-    [field: AllowNull, MaybeNull]
-    protected ModalUI ModalUI => field ??= Services.GetRequiredService<ModalUI>();
-
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiMicrophonePermissionHandler))]
     public MauiMicrophonePermissionHandler(UIHub hub, bool mustStart = true)
         : base(hub, false)
     {
-        // We don't need expiration period - AudioRecorder is able to reset cached permission in case of recording failure
+        // We don't need an expiration period - AudioRecorder is able to reset cached permission in case of recording failure
         ExpirationPeriod = null;
         if (mustStart)
             this.Start();

@@ -15,8 +15,8 @@ public sealed record FoundItem(
         EntrySearchResult entry => entry.EntryId.ChatId,
         _ => throw new ArgumentOutOfRangeException()
     };
-    public TextEntryId EntryId
-        => SearchResult is EntrySearchResult entry ? entry.EntryId : TextEntryId.None;
+    public TextEntryId? EntryId
+        => SearchResult is EntrySearchResult entry ? entry.EntryId : null;
     public SearchMatch ContactSearchMatch
         => SearchResult is ContactSearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;
     public SearchMatch MessageSearchMatch
@@ -26,8 +26,8 @@ public sealed record FoundItem(
     public LocalUrl Link => Scope switch {
         SearchScope.Groups => Links.Chat(ChatId),
         SearchScope.People => Links.Chat(ChatId),
-        SearchScope.Places => Links.PlaceInfo(ChatId.PlaceId),
-        SearchScope.Messages => Links.Chat(ChatId, EntryId.LocalId),
+        SearchScope.Places => Links.PlaceInfo(((PlaceChatId)ChatId).PlaceId),
+        SearchScope.Messages => Links.Chat(ChatId, EntryId?.LocalId ?? 0),
         _ => throw new ArgumentOutOfRangeException(nameof(Scope), Scope, null),
     };
 

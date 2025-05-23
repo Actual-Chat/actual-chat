@@ -46,8 +46,8 @@ public partial class ChatIndexInitializerShardTests
             EventCount = eventCount,
             PrevEventCount = 0,
         };
-        var chatId1 = new ChatId(Generate.Option);
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId1 = GroupChatId.New();
+        var chatId2 = GroupChatId.New();
         state.ScheduledJobs[chatId1] = (chat1Version, now);
         state.ScheduledJobs[chatId2] = (chat2Version, now);
 
@@ -91,8 +91,8 @@ public partial class ChatIndexInitializerShardTests
             EventCount = eventCount,
             PrevEventCount = 0,
         };
-        var chatId1 = new ChatId(Generate.Option);
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId1 = GroupChatId.New();
+        var chatId2 = GroupChatId.New();
         state.ScheduledJobs[chatId1] = (1, now - TimeSpan.FromSeconds(chat1Delay));
         state.ScheduledJobs[chatId2] = (1, now - TimeSpan.FromSeconds(chat2Delay));
         await state.Semaphore.WaitAsync();
@@ -130,8 +130,8 @@ public partial class ChatIndexInitializerShardTests
             EventCount = eventCount,
             PrevEventCount = 0,
         };
-        var chatId1 = new ChatId(Generate.Option);
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId1 = GroupChatId.New();
+        var chatId2 = GroupChatId.New();
         state.ScheduledJobs[chatId1] = (1, now - TimeSpan.FromSeconds(chatDelay));
         state.ScheduledJobs[chatId2] = (1, now - TimeSpan.FromSeconds(chatDelay));
         await state.Semaphore.WaitAsync();

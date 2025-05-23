@@ -33,8 +33,8 @@ public sealed class MediaUploader(Type ownerType)
 
         async Task AddMedia(string id, Resource resource)
         {
-            var mediaId = new MediaId(id);
-            var mediaIdHash = mediaId.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
+            var mediaId = MediaId.Parse(id);
+            var mediaIdHash = mediaId.Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
             var resourceStream = resource.GetStream();
             var extension = Path.GetExtension(resource.Name);
             var type = contentTypeProvider.TryGetContentType(resource.Name, out var contentType)

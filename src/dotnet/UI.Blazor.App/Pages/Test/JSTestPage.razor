@@ -1,5 +1,6 @@
 @page "/test/js"
 @using ActualChat.UI.Blazor.App.Module
+@inherits ComponentBase<AppUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
 <h2>JavaScript Test Page</h2>
@@ -32,8 +33,6 @@
 <p class="pt-4">Check out the output in JS console.</p>
 
 @code {
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
     protected override async Task OnInitializedAsync()
         => await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.JSTestPage.init");
 

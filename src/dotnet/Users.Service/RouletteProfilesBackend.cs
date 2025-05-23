@@ -27,7 +27,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
             return null;
 
         var prefs = await GetPreferences(profileId, cancellationToken).ConfigureAwait(false);
-        return new ProfileFull(avatar.UserId, profileId) {
+        return new ProfileFull {
+            Id = profileId,
+            UserId = avatar.UserId,
             Avatar = avatar.ToAvatar(),
             Preferences = prefs?.ToProfilePreferences() ?? new ProfilePreferences(profileId)
         };
@@ -35,10 +37,11 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
 
     public virtual async Task<RouletteUserSettings?> GetUserSettings(UserId userId, CancellationToken cancellationToken)
     {
-        if (userId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(userId));
+        ArgumentNullException.ThrowIfNull(userId);
 
-        var dbRouletteUserSettings = await RouletteUserSettingsResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        var dbRouletteUserSettings = await RouletteUserSettingsResolver
+            .Get(userId.Value, cancellationToken)
+            .ConfigureAwait(false);
         return dbRouletteUserSettings?.ToModel();
     }
 
@@ -69,21 +72,21 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         queryable = queryable
             .Where(c => !completedPeerProfileIds.Contains(c.Id)); // Exclude completed chats
         queryable = queryable.Where(c => usersWithEnabledChatRoulette.Contains(c.UserId));
-        if (!filter.Country.IsNotSpecified)
-            queryable = queryable.Where(c => c.CountryCode == filter.Country.Code);
-        if (filter.Gender != Gender.NotSpecified)
+        if (!filter.Country.IsUndefined)
+            queryable = queryable.Where(c => c.Country == filter.Country.Value);
+        if (filter.Gender != Gender.Undefined)
             queryable = queryable.Where(c => c.Gender == filter.Gender);
         var filterLanguageIds = filter.Languages.Select(l => l.Id.Value).ToArray();
         queryable = queryable.Where(c => filterLanguageIds.Any(l => c.Languages.Contains(l)));
         if (filter.Interests.Length > 0) {
-            var hasFlexible = filter.Interests.Any(c => Equals(c.Code, Interests.Flexible.Code));
+            var hasFlexible = filter.Interests.Any(i => i == Interests.Flexible);
             if (hasFlexible) {
                 // Flexible interest indicates that profiles with any interests will suite.
-                queryable = queryable.Where(c => c.Interests.Length > 0);
+                queryable = queryable.Where(i => i.Interests.Length > 0);
             }
             else {
-                var filterInterestCodes = filter.Interests.Select(c => c.Code).ToArray();
-                queryable = queryable.Where(c => filterInterestCodes.Any(i => c.Interests.Contains(i)));
+                var filterInterestCodes = filter.Interests.Select(i => i.Value).ToArray();
+                queryable = queryable.Where(x => filterInterestCodes.Any(i => x.Interests.Contains(i)));
             }
         }
         var candidates = await queryable.ToListAsync(cancellationToken)
@@ -119,9 +122,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        RouletteUserSettings? userSettings = null;
+        RouletteUserSettings? userSettings;
         if (change.IsCreate(out var update)) {
-            if (!update.Id.IsNone && !update.Id.Equals(id))
+            if (update.Id is not null && !update.Id.Equals(id))
                 throw StandardError.Constraint("Change settings id should be empty or match command id.");
 
             userSettings = new RouletteUserSettings(id) {
@@ -134,7 +137,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         }
         else {
             var dbUserSettings = await dbContext.RouletteUserSettings
-                .Get(id, cancellationToken)
+                .Get(id.Value, cancellationToken)
                 .ConfigureAwait(false);
             var oldUserSettings = dbUserSettings?.ToModel();
 
@@ -193,7 +196,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         }
         else {
             var dbPrefs = await dbContext.RouletteProfilePrefs
-                .Get(profileId, cancellationToken)
+                .Get(profileId.Value, cancellationToken)
                 .ConfigureAwait(false);
 
             if (change.IsUpdate(out profile)) {
@@ -232,9 +235,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var dbPrefs = new DbRouletteCompletion {
             Id = id,
             Version = VersionGenerator.NextVersion(),
-            OwnerUserId = command.OwnerUserId,
+            OwnerUserId = command.OwnerUserId.Value,
             OwnerProfileId = command.OwnerProfileId,
-            PeerUserId = command.PeerUserId,
+            PeerUserId = command.PeerUserId.Value,
             PeerProfileId = command.PeerProfileId,
             IsInitiatedByOwner = command.IsInitiatedByOwner,
             CompletedAt = command.CompletedAt,

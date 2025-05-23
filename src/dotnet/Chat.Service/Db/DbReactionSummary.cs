@@ -18,20 +18,20 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     public string EntryId { get; set; } = "";
 
     public long Count { get; set; }
-    public string EmojiId { get; set; } = "";
+    public string Emoji { get; set; } = "";
     public string FirstAuthorIdsJson { get; set; } = "";
 
     public DbReactionSummary() { }
     public DbReactionSummary(ReactionSummary model) => UpdateFrom(model);
 
-    public static string ComposeId(ChatEntryId entryId, Symbol emojiId)
+    public static string ComposeId(ChatEntryId entryId, string emojiId)
         => $"{entryId}:{emojiId}";
 
     public ReactionSummary ToModel()
         => new () {
             Id = Id,
-            EntryId = new TextEntryId(EntryId),
-            EmojiId = EmojiId,
+            EntryId = TextEntryId.Parse(EntryId),
+            Emoji = ActualChat.Emoji.Parse(Emoji),
             Count = Count,
             Version = Version,
             FirstAuthorIds = AuthorIdsSerializer.Read(FirstAuthorIdsJson),
@@ -39,13 +39,13 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
 
     public void UpdateFrom(ReactionSummary model)
     {
-        var id = ComposeId(model.EntryId, model.EmojiId);
+        var id = ComposeId(model.EntryId, model.Emoji.Value);
         this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
 
         Id = id;
-        EntryId = model.EntryId;
-        EmojiId = model.EmojiId;
+        EntryId = model.EntryId.Value;
+        Emoji = model.Emoji.Value;
         Version = model.Version;
         Count = model.Count;
         FirstAuthorIdsJson = AuthorIdsSerializer.Write(model.FirstAuthorIds);

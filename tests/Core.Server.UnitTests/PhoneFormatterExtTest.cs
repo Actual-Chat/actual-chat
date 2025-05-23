@@ -15,10 +15,11 @@ public class LibPhoneNumbersExtTest
     [InlineData("+41 (123) 456-789", "456-789", "41-456789")]
     // TODO(DF): wierd test case, do we really need to support it?
     // [InlineData("65((!111)123456", "65-111123456")]
-    public void PhoneParserTest(string ownPhone, string source, string expected)
+    public void PhoneParserTest(string ownPhone, string source, string sExpected)
     {
+        var expected = sExpected.IsNullOrEmpty() ? null : Phone.Parse(sExpected);
         var phoneParser = PhoneParser.ForOwnPhone(ownPhone);
-        phoneParser.Parse(source).Should().Be(new Phone(expected));
+        phoneParser.ParseNullable(source).Should().Be(expected);
     }
 
     [Theory]
@@ -32,5 +33,5 @@ public class LibPhoneNumbersExtTest
     // TODO(DF): wierd test case, do we really need to support it?
     // [InlineData("65((!111)123456", "65-111123456")]
     public void ParseTest(string source, string expected)
-        => PhoneExt.Parse(source, null).Should().Be(new Phone(expected));
+        => PhoneExt.ParseNullable(source, null).Should().Be(expected.IsNullOrEmpty() ? null: Phone.Parse(expected));
 }

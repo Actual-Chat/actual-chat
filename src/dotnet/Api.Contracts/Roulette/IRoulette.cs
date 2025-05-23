@@ -4,12 +4,12 @@ namespace ActualChat.Roulette;
 
 public interface IRoulette : IComputeService
 {
-    Task<ChatCandidate[]> FindChatCandidates(Session session, Symbol profileId, Preferences filter, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ChatCandidate>> FindChatCandidates(Session session, Symbol profileId, Preferences filter, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ChatRouletteProfiles?> GetProfiles(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ChatId> GetOrCreateChat(Session session, Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken);
+    Task<ChatId?> GetOrCreateChat(Session session, Symbol ownProfileId, Symbol peerProfileId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> EnableChatRouletteUI(Session session, CancellationToken cancellationToken);
 

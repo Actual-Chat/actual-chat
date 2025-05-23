@@ -50,8 +50,9 @@ public partial class SearchUI
         _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
         _isResultsNavigationOn.Value = false;
         _cached = new Cached(foundItems);
-        var messageSearchMatches = _cached.FoundItems.Where(x => x.Scope is SearchScope.Messages)
-            .ToDictionary(x => (ChatEntryId)x.EntryId, IReadOnlySet<string> (x) => x.HighlightedWords);
+        var messageSearchMatches = _cached.FoundItems
+            .Where(x => x.Scope is SearchScope.Messages)
+            .ToDictionary(x => (ChatEntryId)x.EntryId!, IReadOnlySet<string> (x) => x.HighlightedWords);
         HighlightUI.SetHighlightedWords(messageSearchMatches);
         _selectedItem.Invalidate();
         using (Invalidation.Begin())
@@ -102,7 +103,7 @@ public partial class SearchUI
             return [];
 
         var session = Session;
-        var scopes = criteria.PlaceId.IsNone
+        var scopes = criteria.PlaceId is null
             ? Scopes
             : Scopes.Where(x => x is not SearchScope.Places);
         var subgroups = ToSubgroups(scopes);

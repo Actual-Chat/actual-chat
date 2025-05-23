@@ -13,7 +13,7 @@ public interface IPlacesBackend : IComputeService, IBackendService
     Task<Place[]> ListChanged(
         long minVersion,
         long maxVersion,
-        PlaceId lastId,
+        PlaceId? lastId,
         int limit,
         CancellationToken cancellationToken);
 
@@ -26,12 +26,12 @@ public interface IPlacesBackend : IComputeService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PlacesBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(0)] PlaceId? PlaceId,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(2)] Change<PlaceDiff> Change,
-    [property: DataMember, MemoryPackOrder(3)] UserId OwnerId = default
-) : ICommand<Place>, IBackendCommand, IHasShardKey<PlaceId>
+    [property: DataMember, MemoryPackOrder(3)] UserId? OwnerId = null
+) : ICommand<Place>, IBackendCommand, IHasShardKey<PlaceId?>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public PlaceId ShardKey => PlaceId;
+    public PlaceId? ShardKey => PlaceId;
 }

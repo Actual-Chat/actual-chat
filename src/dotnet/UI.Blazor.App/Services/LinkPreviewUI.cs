@@ -1,6 +1,8 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class LinkPreviewUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), IComputeService
+public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -35,7 +37,7 @@ public class LinkPreviewUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), I
         if (chat is not null) {
             localLinkModel = localLinkModel with { Chat = chat };
             if (entryLid > 0) {
-                var textEntryId = new TextEntryId(chatId, entryLid, AssumeValid.Option);
+                var textEntryId = TextEntryId.New(chatId, entryLid);
                 var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
                 localLinkModel = localLinkModel with { Entry = entry };
                 if (entry is not null) {
@@ -45,9 +47,8 @@ public class LinkPreviewUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub), I
                 }
             }
         }
-        var placeId = chatId.PlaceChatId.PlaceId;
-        if (!placeId.IsNone) {
-            var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+        if (chatId is PlaceChatId placeChatId) {
+            var place = await Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             localLinkModel = localLinkModel with { Place = place };
         }
         return localLinkModel;

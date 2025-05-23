@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<ChatNotificationMode>
+@inherits ComputedStateComponent<AppUIHub, ChatNotificationMode>
 @{
     var m = State.Value;
 }
@@ -14,15 +14,7 @@
 @code {
     private string? _id;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private AccountSettings AccountSettings => Hub.AccountSettings();
-    private UICommander UICommander => Hub.UICommander();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
-    private bool IsLoading => !Chat.Id.IsNone;
-
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public string Label { get; set; } = "Mute notifications";
 
     protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()

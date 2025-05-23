@@ -41,7 +41,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         // arrange
         var prefix = UniqueNames.Prefix();
-        var tracer = AppHost.Services.Tracer(GetType());
+        var tracer = AppHost.Services.TracerFor(GetType());
         using var __ = tracer.Region();
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
         var accounts = new AccountFull[count];
@@ -122,14 +122,16 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         var contactIds = await ListContactIds(account, userMap.Count - 1);
         var connectedUsers = contactIds.ConvertAll(GetUser).OrderBy(x => x.Name);
-        var otherUsers = userMap.Values.Where(x => x.Id != account.Id).OrderBy(x => x.Name);
+        var otherUsers = userMap.Values.Where(x => x.Id != account.Id.Value).OrderBy(x => x.Name);
         connectedUsers.Should().BeEquivalentTo(otherUsers);
         return;
 
-        User GetUser(ContactId x)
-            => userMap[x.ChatId.IsPeerChat(out var peerChatId)
+        User GetUser(ContactId x) {
+            var userId = x.ChatId is PeerChatId peerChatId
                 ? peerChatId.UserIds.OtherThan(account.Id)
-                : throw new Exception("Peer chat contact was expected")];
+                : throw new Exception("Peer chat contact was expected");
+            return userMap[userId];
+        }
     }
 
     private async Task<List<ContactId>> ListContactIds(AccountFull account, int expectedCount)
@@ -145,12 +147,14 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
     private async Task<List<ContactId>> ListContactIds()
     {
-        var ids = await _contacts.ListIds(_tester.Session, PlaceId.None, CancellationToken.None);
-        return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
+        var ids = await _contacts.ListIds(_tester.Session, null, CancellationToken.None);
+        return ids
+            .Where(x => x.ChatId.Kind == ChatKind.Peer)
+            .ToList();
     }
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
-        => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));
+        => new (ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol deviceId, string prefix, int i)
         => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(prefix, i)).WithEmail(BuildEmail(prefix, i));
@@ -171,7 +175,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         => $"user-{prefix}-{i:00000}";
 
     private static Phone BuildPhone(string prefix, int i)
-        => new ($"1-{Math.Abs(prefix.GetDjb2HashCode() % 100000):00000}{i:00000}");
+        => Phone.Parse($"1-{Math.Abs(prefix.GetDjb2HashCode() % 100000):00000}{i:00000}");
 
     private static string BuildEmail(string prefix, int i)
         => $"{prefix}.user.{i:00000}@actual.chat";

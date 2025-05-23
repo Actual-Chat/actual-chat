@@ -34,7 +34,7 @@ public static class SearchOperations
         this IWebTester tester,
         string criteria,
         PlaceId? placeId = null,
-        ChatId chatId = default,
+        ChatId? chatId = null,
         int? limit = null,
         CancellationToken cancellationToken = default)
     {

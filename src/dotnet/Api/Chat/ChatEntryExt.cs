@@ -2,9 +2,9 @@
 
 public static class ChatEntryExt
 {
-    public static ChatEntryId? GetRepliedChatEntryId(this ChatEntry entry)
+    public static TextEntryId? GetRepliedChatEntryId(this ChatEntry entry)
         => entry.RepliedEntryLid is { } repliedEntryLid
-            ? new ChatEntryId(entry.Id.ChatId, entry.Id.Kind, repliedEntryLid, AssumeValid.Option)
+            ? TextEntryId.New(entry.Id.ChatId, repliedEntryLid)
             : null;
 
     public static ChatEntry WithPopulatedValues(this ChatEntry entry, ChatEntry src)

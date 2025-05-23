@@ -1,6 +1,9 @@
+using ActualLab.Fusion.Blazor;
+
 namespace ActualChat.Chat;
 
-public sealed record PreformattedTextMarkup(string Text) : TextMarkup(Text)
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed class PreformattedTextMarkup(string text) : TextMarkup(text)
 {
     public static new readonly PreformattedTextMarkup Empty = new("");
 
@@ -10,4 +13,7 @@ public sealed record PreformattedTextMarkup(string Text) : TextMarkup(Text)
 
     public override string Format()
         => $"`{Text.OrdinalReplace("`", "``")}`";
+
+    public override TextMarkup WithText(string text)
+        => new PreformattedTextMarkup(text);
 }

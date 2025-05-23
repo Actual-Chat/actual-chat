@@ -4,17 +4,16 @@ using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
+public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
-    private MutableState<Moment> _lastCheckInAt;
+    private readonly MutableState<Moment> _lastCheckInAt;
 
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
-    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    private RpcHub RpcHub => Hub.RpcHub();
+    private RpcHub RpcHub => Hub.RpcHub;
     private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public AppPresenceReporter(ChatUIHub hub) : base(hub)
+    public AppPresenceReporter(AppUIHub hub) : base(hub)
         => _lastCheckInAt = StateFactory.NewMutable(
             CpuNow - Constants.Presence.OfflineTimeout,
             StateCategories.Get(GetType(), nameof(_lastCheckInAt)));

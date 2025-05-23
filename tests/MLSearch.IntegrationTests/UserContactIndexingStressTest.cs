@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
@@ -11,7 +12,8 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class UserContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<SlowAppHostFixture>(fixture, @out)
 {
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     private string UniquePart { get; } = UniqueNames.Prefix();
 

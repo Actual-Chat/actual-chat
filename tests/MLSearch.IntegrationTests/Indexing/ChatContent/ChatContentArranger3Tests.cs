@@ -2,7 +2,6 @@ using ActualChat.Chat;
 using ActualChat.Chat.ML;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Indexing.ChatContent;
-using ActualChat.MLSearch.Module;
 
 namespace ActualChat.MLSearch.IntegrationTests.Indexing.ChatContent;
 
@@ -49,7 +48,7 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
             var outDocuments = new Dictionary<SourceEntries, ChatSlice>();
             await foreach (var entrySet in result) {
                 var chatSliceMetadata = new ChatSliceMetadata {
-                    ChatEntries = entrySet.Entries.Select(c => new ChatSliceEntry(c.Id, c.LocalId, c.Version)).ToImmutableArray()
+                    ChatEntries = [..entrySet.Entries.Select(c => new ChatSliceEntry(c.Id.ToTextEntryId(), c.LocalId, c.Version))]
                 };
                 var text = await chatDialogFormatter.EntriesToText(entrySet.Entries);
                 outDocuments.Add(entrySet, new ChatSlice(chatSliceMetadata, text));
@@ -99,19 +98,14 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
         }
     }
 
-    private class DocumentLoader : IDocumentEntriesLoader
+    private class DocumentLoader(Dictionary<SourceEntries, ChatSlice> tailDocuments) : IDocumentEntriesLoader
     {
-        private readonly Dictionary<SourceEntries, ChatSlice> _tailDocuments;
-
-        public DocumentLoader(Dictionary<SourceEntries,ChatSlice> tailDocuments)
-            => _tailDocuments = tailDocuments;
-
         public ValueTask<IReadOnlyList<ChatEntry>> LoadTailEntries(ChatSlice tailDocument, CancellationToken cancellationToken)
         {
-            var chatSlice = _tailDocuments
+            var chatSlice = tailDocuments
                 .Where(c => c.Value == tailDocument)
                 .Select(c => c.Key).FirstOrDefault();
-            var result = chatSlice?.Entries ?? Array.Empty<ChatEntry>();
+            var result = chatSlice?.Entries ?? [];
             return ValueTask.FromResult(result);
         }
     }

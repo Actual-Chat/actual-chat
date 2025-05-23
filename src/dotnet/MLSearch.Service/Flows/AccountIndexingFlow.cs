@@ -29,7 +29,7 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
         CancellationToken cancellationToken)
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        cursor ??= new (UserId.None, 0);
+        cursor ??= new(null, 0);
         var batch = await AccountsBackend.ListChangedFull(
                 cursor.LastUpdatedVersion,
                 maxVersion,

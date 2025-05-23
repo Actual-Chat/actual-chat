@@ -85,7 +85,7 @@ public class ExternalContactHashesBackend(
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = UserDeviceId.Prefix(userId);
+        var idPrefix = UserDeviceId.Format(userId, "");
         // we remove contacts without invalidation since nobody else sees these contacts
         await dbContext.ExternalContactsHashes
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach

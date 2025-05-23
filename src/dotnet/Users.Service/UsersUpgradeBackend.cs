@@ -4,10 +4,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class UsersUpgradeBackend : DbServiceBase<UsersDbContext>,  IUsersUpgradeBackend
+public class UsersUpgradeBackend(IServiceProvider services)
+    : DbServiceBase<UsersDbContext>(services), IUsersUpgradeBackend
 {
-    public UsersUpgradeBackend(IServiceProvider services) : base(services) { }
-
     public async Task<ImmutableList<UserId>> ListAllUserIds(CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -18,6 +17,6 @@ public class UsersUpgradeBackend : DbServiceBase<UsersDbContext>,  IUsersUpgrade
             .Select(c => c.Id)
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
-        return userIds.Select(id => new UserId(id)).ToImmutableList();
+        return userIds.Select(UserId.Parse).ToImmutableList();
     }
 }

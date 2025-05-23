@@ -38,9 +38,8 @@ public partial class ChatUI
                 .OrderBy(c => c.StartEntryLid)
                 .ToList();
             LastExpandedConversations = expandedConversations;
-            if (changedExpand.Count > 0) {
+            if (changedExpand.FirstOrDefault() is { } conversationId) {
                 // Adjust data query to load tiles around expanded conversation entries
-                var conversationId = changedExpand.FirstOrDefault();
                 dataQuery = new ChatDataQuery(
                     IdTileStack.LastLayer.GetTile(conversationId.StartEntryLid).Range,
                     -HalfLoadLimit,
@@ -107,7 +106,7 @@ public partial class ChatUI
                 lastReadEntryLid = long.MaxValue;
             var tile = await GetTile(
                     chatId,
-                    chat.Rules.Author?.Id ?? AuthorId.None,
+                    chat.Rules.Author?.Id,
                     idTile,
                     showConversations,
                     expandedConversations,
@@ -177,7 +176,7 @@ public partial class ChatUI
                 .EnsureMonotonic(RangeExt.LongRangeComparer);
 
             var excludedRanges = conversationIdRanges
-                .Where(r => !expandedConversations1.Contains(new ConversationId(chatId, r.Start, AssumeValid.Option)))
+                .Where(r => !expandedConversations1.Contains(ConversationId.New(chatId, r.Start)))
                 .ToList();
 
             var merged = entryIdRanges
@@ -280,7 +279,7 @@ public partial class ChatUI
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     protected virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
-        AuthorId currentAuthorId,
+        AuthorId? currentAuthorId,
         Range<long> idRange,
         bool showConversations,
         IImmutableSet<ConversationId> expandedConversations,
@@ -376,9 +375,9 @@ public partial class ChatUI
                 // Ignore matched conversation
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
-                var isForward = !entry.ForwardedAuthorId.IsNone;
-                var isPrevForward = prevEntry is { ForwardedAuthorId.IsNone: false };
-                var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId.ChatId != entry.ForwardedAuthorId.ChatId;
+                var isForward = entry.ForwardedAuthorId is not null;
+                var isPrevForward = prevEntry is not null && prevEntry.ForwardedAuthorId is not null;
+                var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId?.ChatId != entry.ForwardedAuthorId?.ChatId;
                 var isForwardFromOtherAuthor = prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId;
                 var isForwardBlockStart = (isBlockStart && isForward)
                     || (isForward && (!isPrevForward || isForwardFromOtherChat));
@@ -497,7 +496,7 @@ public partial class ChatUI
                     Date = date,
                     PreviousMessage = prevMessage,
                 };
-                // Can't skip adding conversation message even if it's the same as previous message
+                // Can't skip adding a conversation message even if it's the same as previous message
                 // Note: the same conversation can be returned by different id tiles as it spans across multiple tiles
                 if (prevMessage != null)
                     prevMessage.NextMessage = message;
@@ -616,10 +615,10 @@ public partial class ChatUI
     private async Task<bool> GetShowIndexDocId(ChatId chatId, CancellationToken cancellationToken)
     {
         var account = AccountUI.OwnAccount.Value;
-        if (!account.IsAdmin || chatId.IsNone)
+        if (!account.IsAdmin)
             return false;
 
-        var chatIdListToShowIndexDocId = await Hub.AccountSettings()
+        var chatIdListToShowIndexDocId = await Hub.AccountSettings
             .Get<string>(ShowIndexDocIdChatIdsSettingsKey, cancellationToken)
             .ConfigureAwait(false);
         var chatSidsShowIndexDocId = chatIdListToShowIndexDocId?.Split(';') ?? [];

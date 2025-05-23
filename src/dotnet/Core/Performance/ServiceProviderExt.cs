@@ -6,12 +6,12 @@ public static class ServiceProviderExt
     public static Tracer Tracer(this IServiceProvider services)
         => services.GetService<Tracer>() ?? Performance.Tracer.None;
 
-    public static Tracer Tracer(this IServiceProvider services, string name)
+    public static Tracer TracerFor(this IServiceProvider services, string name)
         => services.Tracer()[name];
 
-    public static Tracer Tracer(this IServiceProvider services, Type type)
+    public static Tracer TracerFor(this IServiceProvider services, Type type)
         => services.Tracer()[type];
 
-    public static Tracer Tracer<TService>(this IServiceProvider services)
+    public static Tracer TracerFor<TService>(this IServiceProvider services)
         => services.Tracer()[typeof(TService)];
 }

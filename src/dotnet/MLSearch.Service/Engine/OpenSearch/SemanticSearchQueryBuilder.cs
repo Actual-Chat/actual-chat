@@ -214,7 +214,7 @@ internal sealed class SemanticSearchQueryBuilder(
             // Otherwise, include all public chat from the specified places (if any)
             var placeFilters = chatFilter.PlaceIds
                 .Select(placeId => new QueryContainerDescriptor<ChatSlice>()
-                    .Term(query => query.Field(PlaceIdFieldName).Value(placeId.Value)))
+                    .Term(query => query.Field(PlaceIdFieldName).Value(placeId?.Value ?? "")))
                 .ToArray();
 
             var exclusions = GetExcludedChatFilters(chatFilter.ExcludedChatIds, ChatIdFieldName);

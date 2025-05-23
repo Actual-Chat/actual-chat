@@ -4,10 +4,10 @@ public static class ChatsBackendExt
 {
     public static async ValueTask<ChatEntry?> GetEntry(
         this IChatsBackend chatsBackend,
-        ChatEntryId entryId,
+        ChatEntryId? entryId,
         CancellationToken cancellationToken = default)
     {
-        if (entryId.IsNone)
+        if (entryId is null)
             return null;
 
         var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
@@ -22,11 +22,11 @@ public static class ChatsBackendExt
 
     public static async ValueTask<ChatEntry?> GetEntry(
         this IChatsBackend chatsBackend,
-        ChatEntryId entryId,
+        ChatEntryId? entryId,
         TimeSpan waitTimeout,
         CancellationToken cancellationToken = default)
     {
-        if (entryId.IsNone)
+        if (entryId is null)
             return null;
 
         var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
@@ -55,10 +55,10 @@ public static class ChatsBackendExt
 
     public static async ValueTask<ChatEntry?> GetRemovedEntry(
         this IChatsBackend chatsBackend,
-        ChatEntryId entryId,
+        ChatEntryId? entryId,
         CancellationToken cancellationToken = default)
     {
-        if (entryId.IsNone)
+        if (entryId is null)
             return null;
 
         var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
@@ -77,11 +77,11 @@ public static class ChatsBackendExt
         bool includeRemoved = false,
         CancellationToken cancellationToken = default)
     {
-        var (chatId, entryKind) = (ChatId.None, default(ChatEntryKind?));
+        var (chatId, entryKind) = ((ChatId?)null, default(ChatEntryKind?));
         var (minId, maxId) = (long.MaxValue, long.MinValue);
         var localIds = new HashSet<long>();
         foreach (var entryId in entryIds) {
-            if (chatId == ChatId.None || entryKind is null) {
+            if (chatId is null || entryKind is null) {
                 chatId = entryId.ChatId;
                 entryKind = entryId.Kind;
             }
@@ -106,7 +106,7 @@ public static class ChatsBackendExt
         var idTiles = Constants.Chat.ServerIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(minId, maxId + 1));
         var entries = new List<ChatEntry>(localIds.Count);
         foreach (var idTile in idTiles) {
-            var tile = await chatsBackend.GetTile(chatId,
+            var tile = await chatsBackend.GetTile(chatId!,
                     entryKind.Value,
                     idTile.Range,
                     includeRemoved,
@@ -162,7 +162,7 @@ public static class ChatsBackendExt
     public static async IAsyncEnumerable<Chat[]> Batch(
         this IChatsBackend chatsBackend,
         Moment minCreatedAt,
-        ChatId lastChatId,
+        ChatId? lastChatId,
         int batchSize,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -184,28 +184,27 @@ public static class ChatsBackendExt
         this IChatsBackend chatsBackend,
         long minVersion,
         long maxVersion,
-        ChatId lastId,
+        ChatId? lastChatId,
         int batchSize,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
-            var chats = await chatsBackend.ListChanged(new ChangedChatsQuery {
-                        MinVersion = minVersion,
-                        MaxVersion = maxVersion,
-                        LastId = lastId,
-                        Limit = batchSize,
-                        ExcludePeerChats = true,
-                        ExcludePlaceRootChats = true,
-                    },
-                    cancellationToken)
-                .ConfigureAwait(false);
+            var query = new ChangedChatsQuery {
+                LastId = lastChatId,
+                Limit = batchSize,
+                MinVersion = minVersion,
+                MaxVersion = maxVersion,
+                ExcludePeerChats = true,
+                ExcludePlaceRootChats = true,
+            };
+            var chats = await chatsBackend.ListChanged(query, cancellationToken).ConfigureAwait(false);
             if (chats.Length == 0)
                 yield break;
 
             yield return chats;
 
             var last = chats[^1];
-            lastId = last.Id;
+            lastChatId = last.Id;
             minVersion = last.Version;
         }
     }

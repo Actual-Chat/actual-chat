@@ -21,7 +21,6 @@ public partial record ReadPositionsStat(
         var entryLid = chatEntryId.LocalId;
         foreach (var authorReadPosition in TopReadPositions)
             if (authorReadPosition.EntryLid >= entryLid
-                && !authorReadPosition.AuthorId.IsNone
                 && authorReadPosition.AuthorId != ownAuthorId)
                 return true;
 

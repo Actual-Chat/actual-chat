@@ -1,6 +1,6 @@
-namespace ActualChat.UI.Blazor.App.IntegrationTests;
+namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [CollectionDefinition(nameof(ChatUICollection))]
-public class ChatUICollection : ICollectionFixture<AppHostFixture>;
+public class ChatUICollection : ICollectionFixture<ChatAppHostFixture>;
 
-public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture("chat-ui", messageSink);
+public class ChatAppHostFixture(IMessageSink messageSink) : Testing.Host.AppHostFixture("chat-ui", messageSink);

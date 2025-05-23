@@ -1,8 +1,7 @@
 @page "/chat-roulette"
 @layout ListViewLayout
-
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatRoulettePage.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatRoulettePage.Model>
 @{
     var m = State.Value;
     var isRightPanelVisible = m.IsRightPanelVisible;
@@ -30,19 +29,14 @@
 @code {
     private Task _whenRenewed = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private PanelsUI PanelsUI => Hub.PanelsUI;
     private RouletteUI RouletteUI => Hub.RouletteUI;
 
-    protected override void OnInitialized() {
-        _whenRenewed = RouletteUI.ReviewState();
-    }
+    protected override void OnInitialized()
+        => _whenRenewed = RouletteUI.ReviewState();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -65,10 +59,8 @@
 
     // Nested types
 
-    public record Model {
-        public static readonly Model Loading = new () { SelectedProfile = Profile.Loading };
-
+    public sealed record Model {
         public bool IsRightPanelVisible { get; init; }
-        public Profile SelectedProfile { get; init; } = Profile.None;
+        public Profile? SelectedProfile { get; init; }
     }
 }

@@ -20,10 +20,9 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         ChatRouletteId id,
         CancellationToken cancellationToken)
     {
-        if (id.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(id));
+        ArgumentNullException.ThrowIfNull(id);
 
-        var dbChatRoulette = await DbChatRouletteResolver.Get(id, cancellationToken).ConfigureAwait(false);
+        var dbChatRoulette = await DbChatRouletteResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         return dbChatRoulette?.ToModel();
     }
 
@@ -46,7 +45,7 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
 
         var dbChatRoulette = await dbContext.ChatRoulettes.ForUpdate()
                 // ReSharper disable once AccessToModifiedClosure
-                .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+                .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
         var oldChatRoulette = dbChatRoulette?.ToModel();
         ChatRouletteFull chatRoulette;
@@ -59,13 +58,13 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             chatRoulette = DiffEngine.Patch(chatRoulette, update) with {
                 Version = VersionGenerator.NextVersion(),
             };
-            if (chatRoulette.ChatId.IsNone)
+            if (chatRoulette.ChatId is null)
                 throw StandardError.Constraint("ChatId must be provided.");
-            if (chatRoulette.UserId1.IsNone)
+            if (chatRoulette.UserId1 is null)
                 throw StandardError.Constraint("UserId1 must be provided.");
-            if (chatRoulette.UserId2.IsNone)
+            if (chatRoulette.UserId2 is null)
                 throw StandardError.Constraint("UserId2 must be provided.");
-            if (chatRoulette.InitiatedBy.IsNone)
+            if (chatRoulette.InitiatedBy is null)
                 throw StandardError.Constraint("InitiatedBy must be provided.");
             if (chatRoulette.InitiatedBy != chatRoulette.UserId1 && chatRoulette.InitiatedBy != chatRoulette.UserId2)
                 throw StandardError.Constraint("InitiatedBy must be equal to either UserId1 or UserId2.");
@@ -79,21 +78,21 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             dbChatRoulette.RequireVersion(expectedVersion);
             oldChatRoulette.Require();
 
-            if (update.ChatId.HasValue)
+            if (update.ChatId is not null)
                 throw StandardError.Constraint("ChatId can't be changed.");
-            if (update.UserId1.HasValue)
+            if (update.UserId1 is not null)
                 throw StandardError.Constraint("UserId1 can't be changed.");
-            if (update.UserId2.HasValue)
+            if (update.UserId2 is not null)
                 throw StandardError.Constraint("UserId2 can't be changed.");
-            if (update.InitiatedBy.HasValue)
+            if (update.InitiatedBy is not null)
                 throw StandardError.Constraint("InitiatedBy can't be changed.");
 
             if (update.CompletedBy.HasValue) {
-                if (!oldChatRoulette.CompletedBy.IsNone)
+                if (oldChatRoulette.CompletedBy is not null)
                     throw StandardError.Constraint("Already completed.");
-                if (update.CompletedBy.Value.IsNone)
+                if (update.CompletedBy.Value is null)
                     throw StandardError.Constraint("CompletedBy must be filled in with not none value.");
-                if (update.CompleteReason is null || update.CompleteReason == CompleteChatRouletteReason.None)
+                if (update.CompleteReason is null or CompleteChatRouletteReason.None)
                     throw StandardError.Constraint("CompleteReason should be defined on completion.");
 
                 hasCompleted = true;
@@ -152,12 +151,14 @@ public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         if (chat is null || !chat.IsChatRoulette())
             return;
 
-        var chatRouletteId = await RouletteExt.GetChatRouletteId(chat.Id, AuthorsBackend, cancellationToken).ConfigureAwait(false);
-        if (chatRouletteId.IsNone)
+        var chatRouletteId = await RouletteExt
+            .GetChatRouletteId(chat.Id, AuthorsBackend, cancellationToken)
+            .ConfigureAwait(false);
+        if (chatRouletteId is null)
             return;
 
         var chatRoulette = await GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
-        if (chatRoulette is null || !chatRoulette.CompletedBy.IsNone)
+        if (chatRoulette is null || chatRoulette.CompletedBy is not null)
             return;
 
         var diff = new ChatRouletteFullDiff {

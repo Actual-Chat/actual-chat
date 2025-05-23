@@ -1,11 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Roulette
-@inherits ComputedStateComponent<ChatRouletteProfileModal.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, ChatRouletteProfileModal.ComputedModel>
 @implements IModalView<ChatRouletteProfileModal.Model>
 @{
     var m = State.Value;
     var profiles = m.Profiles;
-    var canApply = !_selectedProfile.Id.IsEmpty && m.SelectedProfileId != _selectedProfile.Id;
+    var canApply = _selectedProfile is not null
+        && !_selectedProfile.Id.IsEmpty
+        && m.SelectedProfileId != _selectedProfile.Id;
 }
 
 <DialogFrame
@@ -18,7 +20,7 @@
             @foreach (var profile in profiles) {
                 <ChatRouletteProfileItem
                     Profile="@profile"
-                    IsSelected="@(profile.Id.Equals(_selectedProfile.Id))"
+                    IsSelected="@(profile.Id.Equals(_selectedProfile?.Id))"
                     SelectClick="@(() => SelectProfile(profile))" />
             }
             <Button Class="cr-btn" Click="@OnCreateProfileClick">
@@ -34,15 +36,11 @@
 </DialogFrame>
 
 @code {
-    private Profile _selectedProfile = null!;
+    private Profile? _selectedProfile;
 
-    [Inject] ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAvatars Avatars => Hub.Avatars;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
     private RouletteUI RouletteUI => Hub.RouletteUI;
-    private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -59,13 +57,15 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
-        var profiles = await avatarIds
+        var profiles = (await avatarIds
             .Select(id => RouletteProfiles.GetOwnProfile(Session, id, cancellationToken))
             .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
-            .ConfigureAwait(false);
+            .ConfigureAwait(false)
+            ).SkipNullItems()
+            .ToArray();
 
         var selectedProfileId = await RouletteProfiles.GetSelectedProfileId(Session, cancellationToken).ConfigureAwait(false);
-        return new ComputedModel(profiles.SkipNullItems().ToImmutableArray(), selectedProfileId);
+        return new ComputedModel(profiles, selectedProfileId);
     }
 
     private void SelectProfile(Profile profile) {
@@ -88,7 +88,7 @@
 
     public sealed record Model;
 
-    public record ComputedModel(ImmutableArray<Profile> Profiles, Symbol SelectedProfileId) {
+    public record ComputedModel(IReadOnlyList<Profile> Profiles, Symbol SelectedProfileId) {
         public static readonly ComputedModel None = new ([], default);
     }
 }

@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.ComponentModel.DataAnnotations
-@inherits Step;
+@inherits SimpleStep<AppUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -11,7 +11,7 @@
         <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
     }
     <p class="text-headline-1 mt-6">
-        Please confirm your phone number.
+        Please verify your phone number.
     </p>
     <p class="text-text-1 mt-2">
         We collect this information to help you find friends in your contacts list who are already using Actual Chat.
@@ -73,16 +73,12 @@
     private bool? _skipped;
     private AsyncDataAnnotationsValidator _validator = null!;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private IPhones Phones { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private ICaptcha Captcha { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
+    private IPhones Phones => Hub.Phones;
+    private ICaptcha Captcha => Hub.Captcha;
     private TotpUI TotpUI => Hub.TotpUI;
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
-    private UICommander UICommander => Hub.UICommander();
-    private ModalUI ModalUI => Hub.ModalUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
     [Parameter] public EventCallback OnVerifyClick { get; set; }
@@ -117,7 +113,7 @@
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, default);
         _showVerificationStatus = !account.HasVerifiedPhone();
-        if (!account.Phone.IsNone)
+        if (account.Phone != null)
             _model.Phone = account.Phone.ToReadable();
 
         await CaptchaUI.EnsureInitialized();
@@ -136,6 +132,9 @@
 
     protected override async Task<bool> Save() {
         var phone = await Phones.Parse(_model.Phone, default);
+        if (phone is null)
+            return false;
+
         var account = await Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
         var (_, error) = await UICommander.Run(command);

@@ -23,7 +23,8 @@ public class ContactGreeter(IServiceProvider services) : ActivatedWorkerBase(ser
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (var userId in dbAccounts.Select(dbAccount => new UserId(dbAccount.Id)))
+        var userIds = dbAccounts.Select(x => UserId.Parse(x.Id)).ToList();
+        foreach (var userId in userIds)
             await Commander.Call(new ContactsBackend_Greet(userId), cancellationToken).ConfigureAwait(false);
         return dbAccounts.Count == 0;
     }

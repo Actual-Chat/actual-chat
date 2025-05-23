@@ -13,12 +13,12 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         = services.GetRequiredService<IContentSaver>();
 
     // [ComputeMethod]
-    public virtual async Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken)
+    public virtual async Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken)
     {
-        if (mediaId.IsNone)
+        if (mediaId == null)
             return null;
 
-        var dbMedia = await DbMediaResolver.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        var dbMedia = await DbMediaResolver.Get(mediaId.Value, cancellationToken).ConfigureAwait(false);
         var media = dbMedia?.ToModel();
         return media;
     }
@@ -59,8 +59,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     {
         var (mediaId, change) = command;
         if (Invalidation.IsActive) {
-            if (!mediaId.IsNone)
-                _ = Get(mediaId, default);
+            _ = Get(mediaId, default);
             return default!;
         }
 
@@ -74,7 +73,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         }
         else if (change.IsRemove()) {
             var dbMedia = await dbContext.Media
-                .Get(mediaId, cancellationToken)
+                .Get(mediaId.Value, cancellationToken)
                 .ConfigureAwait(false);
             media = dbMedia?.ToModel();
             if (dbMedia != null) {
@@ -133,7 +132,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             Log.LogWarning("OnCopyChat({CorrelationId}) detected mistakenly found media ids ({Count}): {MediaIds}",
                 correlationId, mistakenlyFoundMediaIds.Count, mistakenlyFoundMediaIds.ToCommaPhrase());
 
-        var newSids = mediaIds.Select(c => new MediaId(newChatId, c.LocalId).Value).ToList();
+        var newSids = mediaIds.Select(c => MediaId.New(newChatId.Value, c.LocalId).Value).ToList();
         var newChatSid = newChatId.Value;
         var existentMediaSids = await dbContext.Media
             .Where(c => c.Id.StartsWith(newChatSid))
@@ -153,14 +152,14 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         var updateCount = 0;
 
         foreach (var dbMedia in medias) {
-            var mediaId = new MediaId(newChatId, dbMedia.LocalId);
+            var mediaId = MediaId.New(newChatId.Value, dbMedia.LocalId);
             if (existentMediaSidSet.Contains(mediaId.Value))
                 continue;
 
             var contentId = dbMedia.ContentId;
-            // Need to check if content is already exists because it can be second attempt to copy chat media
-            // and content might be already copied in previous attempt that did not finish successfully.
-            var newContentId = mediaId.ContentId(Path.GetExtension(dbMedia.ContentId));
+            // We must check if the content already exists because it can be the second attempt to copy chat media
+            // and the content might be already copied in a previous attempt, which did not finish successfully.
+            var newContentId = mediaId.GetContentId(Path.GetExtension(dbMedia.ContentId));
             if (!await ContentSaver.Exists(newContentId, cancellationToken).ConfigureAwait(false))
                 await ContentSaver.Copy(contentId, newContentId, cancellationToken).ConfigureAwait(false);
             else

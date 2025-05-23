@@ -13,9 +13,11 @@ public record ShareWithPlaceMembersOnly(PlaceId PlaceId) : IShareModalSelector
 {
     public static ShareWithPlaceMembersOnly? GetFor(Chat.Chat chat, Chat.Place? place)
     {
-        if (!chat.Id.IsPlaceChat)
+        if (chat.Id is not PlaceChatId)
+            return null;
+        if (chat.IsPublic || place?.IsPublic != false)
             return null;
 
-        return !chat.IsPublic && place?.IsPublic == false ? new ShareWithPlaceMembersOnly(place.Id) : null;
+        return new ShareWithPlaceMembersOnly(place.Id);
     }
 }

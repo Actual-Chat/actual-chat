@@ -25,23 +25,25 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
     private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
 
-    private ILogger? _log;
     private BubbleModel? _bubble;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    private ILogger Log => _log ??= CircuitContext.Services.LogFor(GetType());
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+    [field: AllowNull, MaybeNull]
+    private BubbleUI BubbleUI => field ??= Hub.BubbleUI;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    [field: AllowNull, MaybeNull]
+    private IJSRuntime JS => field ??= Hub.JS;
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
     public BubbleHost() { }
 
     protected override void OnInitialized() {
-        ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
+        BubbleUI.HostAcceptor.TrySetResult(this);
         AccountUI.Changed += OnOwnAccountChanged;
     }
 
@@ -116,7 +118,7 @@
         }
     }
 
-    private async void OnOwnAccountChanged(AccountFull account) {
+    private async void OnOwnAccountChanged(AccountFull? account) {
         try {
             _bubble = null;
             await BubbleUI.WhenReadyToShowBubbles();

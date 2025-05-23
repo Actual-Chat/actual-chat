@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
 <div class="ac-tooltip">
@@ -12,8 +13,6 @@
 
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<TooltipHost> _blazorRef = null!;
-
-    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {

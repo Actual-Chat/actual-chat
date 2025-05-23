@@ -3,11 +3,11 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed class ChatContext(ChatUIHub hub, ChatId chatId)
+public sealed class ChatContext(AppUIHub hub, ChatId chatId)
 {
     private IChatMarkupHub? _chatMarkupHub;
 
-    public ChatUIHub Hub {
+    public AppUIHub Hub {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => hub;
     }

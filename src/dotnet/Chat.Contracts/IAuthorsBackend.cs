@@ -6,9 +6,9 @@ namespace ActualChat.Chat;
 public interface IAuthorsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<AuthorFull?> Get(ChatId chatId, AuthorId authorId, AuthorsBackend_GetAuthorOption option, CancellationToken cancellationToken);
+    Task<AuthorFull?> Get(ChatId chatId, AuthorId authorId, RequestedAuthorKind authorKind, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<AuthorFull?> GetByUserId(ChatId chatId, UserId userId, AuthorsBackend_GetAuthorOption option, CancellationToken cancellationToken);
+    Task<AuthorFull?> GetByUserId(ChatId chatId, UserId userId, RequestedAuthorKind authorKind, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorId[]> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -41,8 +41,8 @@ public interface IAuthorsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_Upsert(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId,
-    [property: DataMember, MemoryPackOrder(2)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId? AuthorId,
+    [property: DataMember, MemoryPackOrder(2)] UserId? UserId,
     [property: DataMember, MemoryPackOrder(3)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(4)] AuthorDiff Diff,
     [property: DataMember, MemoryPackOrder(5)] bool DoNotNotify = false
@@ -55,17 +55,17 @@ public sealed partial record AuthorsBackend_Upsert(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_Remove(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ByChatId,
-    [property: DataMember, MemoryPackOrder(1)] AuthorId ByAuthorId,
-    [property: DataMember, MemoryPackOrder(2)] UserId ByUserId
-) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<PrincipalId>
+    [property: DataMember, MemoryPackOrder(0)] ChatId? ByChatId,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId? ByAuthorId,
+    [property: DataMember, MemoryPackOrder(2)] UserId? ByUserId
+) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<PrincipalId?>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public PrincipalId ShardKey => (!ByChatId.IsNone, !ByAuthorId.IsNone, !ByUserId.IsNone) switch {
-        (true, _, _) => new PrincipalId(new AuthorId(ByChatId, 1, AssumeValid.Option), AssumeValid.Option),
-        (_, true, _) => new PrincipalId(ByAuthorId, AssumeValid.Option),
-        (_, _, true) => new PrincipalId(ByUserId, AssumeValid.Option),
-        _ => default,
+    public PrincipalId? ShardKey => (ByChatId is not null, ByAuthorId is not null, ByUserId is not null) switch {
+        (true, _, _) => AuthorId.New(ByChatId!, 1),
+        (_, true, _) => ByAuthorId,
+        (_, _, true) => ByUserId,
+        _ => null,
     };
 }
 
@@ -83,11 +83,3 @@ public sealed partial record AuthorsBackend_CopyChat(
 }
 
 // ReSharper disable once InconsistentNaming
-public enum AuthorsBackend_GetAuthorOption
-{
-    // Gets Author as it is.
-    Raw,
-    // If chat type supposes creating author entity from multiple instances (e.g. for place chats),
-    // then author entity will be build from parts.
-    Full
-}

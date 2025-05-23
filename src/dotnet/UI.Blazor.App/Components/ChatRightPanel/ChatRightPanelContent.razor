@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatRightPanelContent.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatRightPanelContent.Model>
 @{
     var m = State.Value;
 }
@@ -48,11 +48,7 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
-    private Features Features => Hub.Features();
-    private PanelsUI PanelsUI => Hub.PanelsUI;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -60,7 +56,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(),
+                InitialValue = Model.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -68,9 +64,6 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        if (chatId.IsNone)
-            return Model.Loading;
-
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var showMemberTab = rules.CanSeeMembers() && !chat.IsAiSearchChat();

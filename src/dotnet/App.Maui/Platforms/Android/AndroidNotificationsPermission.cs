@@ -1,6 +1,7 @@
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Services;
 using Android;
 using Android.App;
 using Android.Content.PM;
@@ -8,15 +9,11 @@ using AndroidX.Core.Content;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidNotificationsPermission(UIHub hub) : INotificationsPermission
+public class AndroidNotificationsPermission(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), INotificationsPermission
 {
-    private NotificationUI? _notificationUI;
-    private SystemSettingsUI? _systemSettingsUI;
-    private ILogger? _log;
-
-    private NotificationUI NotificationUI => _notificationUI ??= hub.GetRequiredService<NotificationUI>();
-    private SystemSettingsUI SystemSettingsUI => _systemSettingsUI ??= hub.GetRequiredService<SystemSettingsUI>();
-    private ILogger Log => _log ??= hub.LogFor(GetType());
+    private NotificationUI NotificationUI => Hub.NotificationUI;
+    [field: AllowNull, MaybeNull]
+    private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
 
     public Task<bool?> IsGranted(CancellationToken cancellationToken = default)
     {
@@ -46,11 +43,12 @@ public class AndroidNotificationsPermission(UIHub hub) : INotificationsPermissio
             else
                 new AlertDialog.Builder(activity)
                     .SetTitle("Notifications permission isn't granted")!
-                    .SetMessage("""
-                                Actual Chat can notify you about new content in chats, friend requests, and other activities related to your account.
+                    .SetMessage(
+                        """
+                        Actual Chat can notify you about new content in chats, friend requests, and other activities related to your account.
 
-                                Do you want to allow Actual Chat sending notifications to this device?
-                                """)!
+                        Do you want to allow Actual Chat sending notifications to this device?
+                        """)!
                     .SetNegativeButton("Decline", (_, _) => whenCompletedSource.TrySetResult(false))!
                     .SetPositiveButton("Allow", (_, _) => RequestPermission())!
                     .Show();

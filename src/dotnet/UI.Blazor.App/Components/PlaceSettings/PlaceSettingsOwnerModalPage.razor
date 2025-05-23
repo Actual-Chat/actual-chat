@@ -1,19 +1,18 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Media
-@inherits ComputedStateComponent<PlaceSettingsOwnerModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, PlaceSettingsOwnerModalPage.ComputedModel>
 @{
-    var m = State.Value;
-    if (ReferenceEquals(m, ComputedModel.Loading))
+    if (State.IsInitial(out var m))
         return;
-
     if (m.Place == null || !m.Place.Rules.CanEditProperties()) {
         Context.Close();
         return;
     }
     if (_form == null)
         return;
-    Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
+
+    Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var canEditMembers = m.Place.Rules.CanEditMembers();
     var isOwner = m.IsOwner;
 }
@@ -149,17 +148,12 @@
     private FormModel? _form;
     private DialogButtonInfo _submitButtonInfo = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
-    private UICommander UICommander => Hub.UICommander();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private DiffEngine DiffEngine => Hub.DiffEngine;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private PlaceId PlaceId { get; set; }
+    private PlaceId PlaceId { get; set; } = null!;
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
@@ -169,9 +163,8 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        const string formBagKey = "form";
-        _form = Context.PageDataBag.Get<FormModel>(formBagKey);
-        if (_form != null)
+        _form = Context.Items.KeylessGet<FormModel>();
+        if (_form is not null)
             return;
 
         var place = await Places.Get(Session, PlaceId, default).Require();
@@ -180,15 +173,14 @@
             Description = place.Description,
             Picture = place.Picture?.ToPicture(),
             Background = place.Background?.ToPicture(),
-            ImageUploadUrl = $"/api/chat-media/{place.Id.ToRootChatId()}/upload",
+            ImageUploadUrl = $"/api/chat-media/{place.Id.RootChatId}/upload",
         };
-        Context.PageDataBag.Set(formBagKey, _form);
+        Context.Items.KeylessSet(_form);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = ComputedModel.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -241,8 +233,8 @@
         var newPlace = place with {
             Title = _form!.Title,
             Description = _form!.Description,
-            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
-            BackgroundMediaId = _form.Background?.MediaContent?.MediaId ?? MediaId.None,
+            MediaId = _form.Picture?.MediaContent?.MediaId,
+            BackgroundMediaId = _form.Background?.MediaContent?.MediaId,
         };
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
@@ -286,8 +278,6 @@
     }
 
     public sealed record ComputedModel {
-        public static readonly ComputedModel Loading = new();
-
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
         public bool IsOwner { get; init; }

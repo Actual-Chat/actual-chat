@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Kvas
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<UIHub, bool>
 @{
     if (State.Value)
         return;
@@ -31,23 +30,21 @@
 </div>
 
 @code {
-    private StoredState<bool> _isDismissed = null!;
-
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private LocalSettings LocalSettings => Hub.LocalSettings();
-    private ModalUI ModalUI => Hub.ModalUI;
+    private StoredState<Box<bool>> _isDismissed = null!;
 
     [Parameter] public bool CanBeClosed { get; set; } = true;
 
     protected override void OnInitialized()
-        => _isDismissed = StateFactory.NewKvasStored<bool>(new(LocalSettings, "DownloadAppBanner_Dismissed"));
+        => _isDismissed = StateFactory.NewKvasStored<Box<bool>>(
+            new(LocalSettings, "DownloadAppBanner.IsDismissed") {
+                InitialValue = Box.New(false),
+            });
 
     private void OnDownload()
         => ModalUI.Show(new DownloadAppModal.Model());
 
     private void OnClose()
-        => _isDismissed.Value = true;
+        => _isDismissed.Value = Box.New(true);
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() {
@@ -62,6 +59,7 @@
             return false;
 
         await _isDismissed.WhenRead.ConfigureAwait(false);
-        return await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
+        var box = await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
+        return box.Value;
     }
 }

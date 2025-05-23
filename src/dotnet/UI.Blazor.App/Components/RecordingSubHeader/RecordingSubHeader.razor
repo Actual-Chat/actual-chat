@@ -1,8 +1,7 @@
-@inherits ComputedStateComponent<RecordingSubHeader.Model>
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, RecordingSubHeader.Model?>
 @{
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.NotRecording))
+    if (State.IsInitial(out var m) || m is null)
         return;
 
     var recordingElsewhereCls = m.RecordingChat != null ? "recording-elsewhere" : "";
@@ -46,27 +45,22 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private IAccounts Accounts => Hub.Accounts;
     private IChats Chats => Hub.Chats;
-    private IAuthors Authors => Hub.Authors;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.NotRecording,
+            static t => new ComputedState<Model?>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var recordingChat = await GetRecordingElsewhereChat(cancellationToken).ConfigureAwait(false);
         var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken).ConfigureAwait(false);
         if (recordingChat == null && stopRecordingAt == null)
-            return Model.NotRecording;
+            return null;
 
         return new() {
             RecordingChat = recordingChat,
@@ -78,7 +72,7 @@
     private async Task<Chat?> GetRecordingElsewhereChat(CancellationToken cancellationToken)
     {
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
-        if (recordingChatId.IsNone)
+        if (recordingChatId is null)
             return null;
 
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
@@ -94,10 +88,12 @@
     // Nested types
 
     public sealed record Model {
-        public static readonly Model NotRecording = new();
-
         public Chat? RecordingChat { get; init; }
         public string? RecordingChatUrl { get; init; }
         public Moment? StopRecordingAt { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

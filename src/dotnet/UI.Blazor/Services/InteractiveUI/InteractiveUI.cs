@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
+public class InteractiveUI : UIServiceBase<UIHub>, IInteractiveUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.InteractiveUI.init";
 
@@ -11,12 +11,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
     private readonly MutableState<bool> _isInteractive;
     private readonly MutableState<ActiveDemandModel?> _activeDemand;
 
-    // Services
-    private ModalUI ModalUI => Hub.ModalUI;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
-    private IJSRuntime JS => Hub.JSRuntime();
-
-    public IState<bool> IsInteractive => _isInteractive;
+    public new IState<bool> IsInteractive => _isInteractive;
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ActiveDemandModel?> ActiveDemand => _activeDemand;
     public Task WhenReady { get; }
@@ -72,7 +67,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
                 activeDemand = new ActiveDemandModel(
                     ImmutableList.Create(operation),
                     modalRefTask,
-                    TaskCompletionSourceExt.New());
+                    AsyncTaskMethodBuilderExt.New());
                 _activeDemand.Value = activeDemand;
             }
             else {
@@ -121,7 +116,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
     public sealed record ActiveDemandModel(
         ImmutableList<string> Operations,
         Task<ModalRef> WhenModalRef,
-        TaskCompletionSource WhenConfirmedSource)
+        AsyncTaskMethodBuilder WhenConfirmedSource)
     {
         public Task WhenConfirmed => WhenConfirmedSource.Task;
     }

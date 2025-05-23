@@ -27,17 +27,19 @@ public partial class AccountUI
             if (error != null || newAccount == null!)
                 continue;
 
-            if (!TrySetOwnAccount(newAccount, out var oldAccount))
+            if (!TryChangeAccount(newAccount, out var oldAccount))
                 continue;
-
-            Log.LogInformation("Account changed to: {Account}", newAccount);
+            if (oldAccount is null) {
+                MarkReady();
+                continue; // Very first account change
+            }
             if (oldAccount.Id == newAccount.Id)
                 continue; // Only account properties have changed
 
+            Log.LogInformation("Account is changed to: {Account}", newAccount);
             _lastChangedAt.Value = CpuClock.Now;
-            var circuitContext = CircuitContext;
-            await circuitContext.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-            await circuitContext.Dispatcher
+            await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await Hub.Dispatcher
                 .InvokeSafeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount), Log)
                 .ConfigureAwait(false);
         }
@@ -45,28 +47,35 @@ public partial class AccountUI
 
     // Private methods
 
-    private bool TrySetOwnAccount(AccountFull account, out AccountFull oldAccount)
+    private void MarkReady()
     {
-        oldAccount = _ownAccount.Value;
-        var isChanged = !ReferenceEquals(oldAccount, account);
-        if (isChanged)
-            _ownAccount.Value = account;
-        _whenLoadedSource.TrySetResult();
-        return isChanged;
+        if (_whenReadySource.TrySetResult())
+            // ReSharper disable once ExplicitCallerInfoArgument
+            Tracer.Point("AccountUI is ready");
     }
 
-    private void ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
+    private bool TryChangeAccount(AccountFull account, out AccountFull? oldAccount)
+    {
+        oldAccount = _ownAccount.Value;
+        if (oldAccount == account)
+            return false;
+
+        _ownAccount.Value = account;
+        return true;
+    }
+
+    private void ProcessOwnAccountChange(AccountFull? account, AccountFull? oldAccount)
     {
         Changed?.Invoke(account);
-        if (account.IsGuestOrNone) {
+        if (account.IsGuestOrNull()) {
             // We're signed out now
-            if (!oldAccount.IsGuestOrNone)
+            if (!oldAccount.IsGuestOrNull())
                 ReloadUI.Reload(true, true); // And were signed in -> it's a sign-out
             return;
         }
 
         // We're signed in now
-        if (!oldAccount.IsGuestOrNone) {
+        if (!oldAccount.IsGuestOrNull()) {
             // And were signed in -> it's an account change
             ReloadUI.Reload(true, true);
             return;
@@ -78,7 +87,7 @@ public partial class AccountUI
     private async Task StartOnSignedInWorkflow()
     {
         DebugLog?.LogInformation("Starting OnSignedInWorkflow");
-        await PostponeOnSignedInWorkflow().ConfigureAwait(true); // Continue on Blazor UI Context.
+        await PostponeOnSignedInWorkflow().ConfigureAwait(true);
 
         // We were signed out -> it's a sign-in
         _ = OnboardingUI.TryShow();

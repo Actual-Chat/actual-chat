@@ -1,7 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Kvas
 @using ActualChat.Roulette
-@inherits Step;
+@inherits SimpleStep<AppUIHub>;
 
 @if (CurrentStep != this) {
     return;
@@ -37,15 +36,9 @@
     private Profile? _profile;
     private bool _hasLoaded;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IAccounts Accounts => Hub.Accounts;
-    private IAvatars Avatars => Hub.Avatars;
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
-    private UICommander UICommander => Hub.UICommander();
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
-    private AccountSettings AccountSettings => Hub.AccountSettings();
 
     public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsChatRouletteStepCompleted;
 
@@ -80,17 +73,13 @@
         if (profile.Preferences.Preferences.IsEmpty) {
             var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
             var primaryLanguage = languages.Primary;
-            if (primaryLanguage.IsNone)
-                return null;
-
             var preferences = profile.Preferences.Preferences;
             preferences = preferences with {
                 Interests = [Interests.Flexible]
             };
-            if (!primaryLanguage.IsNone)
-                preferences = preferences with {
-                    Languages = [primaryLanguage]
-                };
+            preferences = preferences with {
+                Languages = [primaryLanguage]
+            };
             profile = profile with {
                 Preferences = profile.Preferences with {
                     Preferences = preferences

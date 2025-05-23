@@ -11,11 +11,8 @@ public sealed partial record AvatarFull(
     long Version = 0) : Avatar(Id, Version)
 {
     public static new readonly Requirement<AvatarFull> MustExist = Requirement.New(
-        (AvatarFull? a) => a is { Id.IsEmpty : false },
+        (AvatarFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Avatar>()));
-
-    public static new readonly AvatarFull None = new( UserId.None,Symbol.Empty, 0);
-    public static new readonly AvatarFull Loading = new(UserId.None, Symbol.Empty, -1); // Should differ by ref. from None
 
     [DataMember, MemoryPackOrder(8)] public bool IsAnonymous { get; init; }
 

@@ -4,10 +4,8 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
-    public static readonly int ActiveItemCountWhenLoading = 0;
-    public static readonly int AllItemCountWhenLoading = 14;
     public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;
     public static readonly int LoadLimit = ChatTileStack.Layers[1].TileSize * 2; // 40
     public static readonly int HalfLoadLimit = LoadLimit / 2;
@@ -17,7 +15,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private readonly MutableState<bool> _isSelectedChatUnlisted;
     private readonly MutableState<ImmutableHashSet<ChatId>> _visibleChats;
-    private readonly ConcurrentDictionary<PlaceId, LazySlim<PlaceId, ChatListUI, PlaceChatListSettings>> _placeChatLists = new();
+    private readonly ConcurrentDictionary<Option<PlaceId>, LazySlim<Option<PlaceId>, ChatListUI, PlaceChatListSettings>> _placeChatLists = new();
 
     private ComputedState<Trimmed<int>>? _unreadChatCount;
     private ComputedState<ChatInfo?>? _notesChat;
@@ -25,12 +23,9 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
-    private AccountUI AccountUI => Hub.AccountUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private TuneUI TuneUI => Hub.TuneUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    private UICommander UICommander => Hub.UICommander();
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
 #pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
@@ -42,7 +37,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public ChatListUI(ChatUIHub hub) : base(hub)
+    public ChatListUI(AppUIHub hub) : base(hub)
     {
         var type = GetType();
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
@@ -66,39 +61,39 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         this.Start();
     }
 
-    public PlaceChatListSettings GetPlaceChatListSettings(PlaceId placeId)
-        => _placeChatLists.GetOrAdd(placeId,
+    public PlaceChatListSettings GetPlaceChatListSettings(PlaceId? placeId)
+        => _placeChatLists.GetOrAdd(placeId is not null ? Option.Some(placeId) : Option<PlaceId>.None,
             static (placeId1, self) =>
-                Constants.Place.ChatRouletteId.Equals(placeId1)
-                    ? new PlaceChatListSettings(placeId1, self.Hub, false)
-                    : new PlaceChatListSettings(placeId1, self.Hub, true),
+                Constants.Place.ChatRouletteId.Equals(placeId1.ValueOrDefault)
+                    ? new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, false)
+                    : new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, true),
             this);
 
     [ComputeMethod]
-    public virtual async Task<int> GetCount(PlaceId placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
+    public virtual async Task<int> GetCount(PlaceId? placeId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
         var chatById = await ListUnordered(placeId, chatListSettings.Filter, cancellationToken).ConfigureAwait(false);
         return chatById.Count;
     }
 
     [ComputeMethod]
-    public virtual async Task<int> IndexOf(PlaceId placeId, ChatId chatId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
+    public virtual async Task<int> IndexOf(PlaceId? placeId, ChatId chatId, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
         var items = await List(placeId, chatListSettings, cancellationToken).ConfigureAwait(false);
         return items.FirstIndexOf(x => x.Id == chatId);
     }
 
     [ComputeMethod(InvalidationDelay = 0.6)]
-    public virtual async Task<Trimmed<int>> GetUnreadChatCount(PlaceId placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
+    public virtual async Task<Trimmed<int>> GetUnreadChatCount(PlaceId? placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
     {
         var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         return chatById.Select(c => c.Value).UnreadChatCount();
     }
 
     [ComputeMethod(InvalidationDelay = 0.6)]
-    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId placeId, CancellationToken cancellationToken = default)
+    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId? placeId, CancellationToken cancellationToken = default)
     {
-        var filter = placeId == PlaceId.None ? ChatListFilter.None : ChatListFilter.Groups;
+        var filter = placeId is null ? ChatListFilter.None : ChatListFilter.Groups;
         var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         return chatById.Select(c => c.Value).UnmutedUnreadChatCount();
     }
@@ -106,7 +101,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListActive(CancellationToken cancellationToken = default)
     {
-        await ActiveChatsUI.WhenLoaded.ConfigureAwait(true); // No need for .ConfigureAwait(false) here
+        await ActiveChatsUI.WhenReady.ConfigureAwait(true); // No need for .ConfigureAwait(false) here
 
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
@@ -120,7 +115,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> List(
-        PlaceId placeId,
+        PlaceId? placeId,
         ChatListSettings settings,
         CancellationToken cancellationToken = default)
     {
@@ -134,23 +129,20 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     public virtual Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListPeopleOnly(
         CancellationToken cancellationToken = default)
-        => ListUnordered(PlaceId.None, ChatListFilter.People, cancellationToken);
+        => ListUnordered(null, ChatListFilter.People, cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListMembersOnly(
         PlaceId placeId, CancellationToken cancellationToken)
     {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
-
         DebugLog?.LogDebug("-> ListMembersOnly({PlaceId})", placeId);
         var startedAt = CpuTimestamp.Now;
         var placeUsers = await Places.ListUserIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var owner = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+
         var chatIds = placeUsers
             .Where(userId => userId != owner.Id)
-            .Select(userId => (ChatId)new PeerChatId(owner.Id, userId));
-
+            .Select(userId => PeerChatId.New(owner.Id, userId));
         var chatResults = await chatIds
             .Select(chatId => ChatUI.Get(chatId, cancellationToken))
             .CollectResults(ApiConstants.Concurrency.High, cancellationToken)
@@ -158,6 +150,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         var chatById = chatResults.Select(x => x.ValueOrDefault)
             .SkipNullItems()
             .ToDictionary(c => c.Id);
+
         DebugLog?.LogDebug(
             "<- ListMembersOnly({PlaceId}): {Count} items, {Duration}",
             placeId, chatById.Count, startedAt.Elapsed.ToShortString());
@@ -175,24 +168,24 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnordered(
-        PlaceId placeId,
+        PlaceId? placeId,
         CancellationToken cancellationToken = default)
     {
         using var gracefulCts = cancellationToken.CreateDelayedTokenSource(HeavyTaskCancellationDelay);
-        cancellationToken = gracefulCts.Token;
-        var chatById = await ListUnorderedRaw(placeId, cancellationToken).ConfigureAwait(false);
-        chatById = await AddUnlistedSelectedChat(chatById, cancellationToken).ConfigureAwait(false);
+        var cancellationToken2 = gracefulCts.Token;
+        var chatById = await ListUnorderedRaw(placeId, cancellationToken2).ConfigureAwait(false);
+        chatById = await AddUnlistedSelectedChat(chatById, cancellationToken2).ConfigureAwait(false);
         return chatById;
     }
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnordered(
-        PlaceId placeId,
+        PlaceId? placeId,
         ChatListFilter filter,
         CancellationToken cancellationToken = default)
     {
         IReadOnlyDictionary<ChatId, ChatInfo> chatById;
-        if (!placeId.IsNone && filter == ChatListFilter.People)
+        if (placeId is not null && filter == ChatListFilter.People)
             chatById = await ListMembersOnly(placeId, cancellationToken).ConfigureAwait(false);
         else
             chatById = await ListUnordered(placeId, cancellationToken).ConfigureAwait(false);
@@ -203,7 +196,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     [ComputeMethod]
     public virtual async Task<VirtualListTile<ChatListItemModel>> GetTile(
-        PlaceId placeId, Tile<int> indexTile, ChatListSettings chatListSettings, CancellationToken cancellationToken)
+        PlaceId? placeId, Tile<int> indexTile, ChatListSettings chatListSettings, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("GetTile: -> {PlaceId}, {Indexes}, {Settings}", placeId, indexTile, chatListSettings);
         var longRange = indexTile.Range.AsLongRange();
@@ -235,9 +228,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public ValueTask Unpin(ChatId chatId) => SetPinState(chatId, false);
     public async ValueTask SetPinState(ChatId chatId, bool mustPin)
     {
-        if (chatId.IsNone)
-            return;
-
         var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(false);
         if (contact.IsPinned == mustPin)
             return;
@@ -269,21 +259,22 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     {
         var result = new Dictionary<ChatId, ChatInfo>();
         var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
-        var extendedPlaceIds = new List<PlaceId> { PlaceId.None };
+        var extendedPlaceIds = new List<PlaceId?> { null };
         extendedPlaceIds.AddRange(placeIds);
 
         using var gracefulCts = cancellationToken.CreateDelayedTokenSource(HeavyTaskCancellationDelay);
-        cancellationToken = gracefulCts.Token;
+        var cancellationToken2 = gracefulCts.Token;
         foreach (var placeId in extendedPlaceIds) {
-            var chatById = await ListUnorderedRaw(placeId, cancellationToken).ConfigureAwait(false);
-            result.AddRange(placeId.IsNone ? chatById : chatById.Where(c => c.Key.PeerChatId.IsNone));
+            var chatById = await ListUnorderedRaw(placeId, cancellationToken2).ConfigureAwait(false);
+            result.AddRange(placeId is null ? chatById : chatById.Where(c => c.Key.Kind != ChatKind.Peer));
         }
         return result;
     }
 
     [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnorderedRaw(
-        PlaceId placeId, CancellationToken cancellationToken)
+        PlaceId? placeId,
+        CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("-> ListUnorderedRaw({PlaceId})", placeId);
         var startedAt = CpuTimestamp.Now;
@@ -308,17 +299,19 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     protected virtual async Task<bool> IsSelectedChatUnlistedInternal(CancellationToken cancellationToken)
     {
         var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        if (!placeId.IsNone)
+        if (placeId is not null)
             return false;
 
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
+        if (selectedChatId is null)
+            return false;
         if (selectedChatId.IsThread)
             return false;
 
         using var gracefulCts = cancellationToken.CreateDelayedTokenSource(HeavyTaskCancellationDelay);
-        cancellationToken = gracefulCts.Token;
-        var chatById = await ListUnorderedRaw(PlaceId.None, cancellationToken).ConfigureAwait(false);
+        var cancellationToken2 = gracefulCts.Token;
+        var chatById = await ListUnorderedRaw(null, cancellationToken2).ConfigureAwait(false);
         return !chatById.ContainsKey(selectedChatId);
     }
 
@@ -326,7 +319,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private async Task<ChatInfo?> GetNotes(CancellationToken cancellationToken = default)
     {
-        var chatById = await ListUnorderedRaw(PlaceId.None, cancellationToken).ConfigureAwait(false);
+        var chatById = await ListUnorderedRaw(null, cancellationToken).ConfigureAwait(false);
         return chatById.Values.FirstOrDefault(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes);
     }
 
@@ -337,11 +330,11 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             return chatById;
 
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (selectedChatId.IsPlaceChat)
+        if (selectedChatId?.Kind == ChatKind.Place)
             return chatById;
 
         selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
-        var selectedChat = selectedChatId.IsNone
+        var selectedChat = selectedChatId is null
             ? null
             : await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
         if (selectedChat != null)

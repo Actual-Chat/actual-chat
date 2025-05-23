@@ -12,7 +12,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatNews> GetNews(
+    Task<ChatNews?> GetNews(
         ChatId chatId,
         CancellationToken cancellationToken);
 
@@ -63,11 +63,11 @@ public interface IChatsBackend : IComputeService, IBackendService
 
     [ComputeMethod]
     Task<ChatId[]> GetPublicChatIdsFor(
-        PlaceId placeId,
+        PlaceId? placeId,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatId[]> ListPlaceChatIds(
+    Task<PlaceChatId[]> ListPlaceChatIds(
         PlaceId placeId,
         CancellationToken cancellationToken);
 
@@ -75,7 +75,7 @@ public interface IChatsBackend : IComputeService, IBackendService
 
     Task<Chat[]> List(
         Moment minCreatedAt,
-        ChatId lastChatId,
+        ChatId? lastChatId,
         int limit,
         CancellationToken cancellationToken);
 
@@ -98,13 +98,13 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatId> GetForwardChatReplacement(ChatId sourceChatId, CancellationToken cancellationToken);
+    Task<ChatId?> GetForwardChatReplacement(ChatId sourceChatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ReadPositionsStatBackend?> GetReadPositionsStat(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<PlaceChatId> GetPlaceChatIdByUserLink(PlaceId placeId, UserLinkId userLinkId, CancellationToken cancellationToken);
+    Task<PlaceChatId?> GetPlaceChatIdByAlias(PlaceId placeId, AliasId aliasId, CancellationToken cancellationToken);
 
     // Commands
 
@@ -152,14 +152,14 @@ public sealed partial record ChatsBackend_CreateAttachments(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(0)] ChatId? ChatId,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(2)] Change<ChatDiff> Change,
-    [property: DataMember, MemoryPackOrder(3)] UserId OwnerId = default
-) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+    [property: DataMember, MemoryPackOrder(3)] UserId? OwnerId = null
+) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId?>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => ChatId;
+    public ChatId? ShardKey => ChatId;
 }
 
 [Obsolete("2024.01: Replaced with ChatsBackend_ChangeEntry.")]
@@ -168,10 +168,10 @@ public sealed partial record ChatsBackend_Change(
 public sealed partial record ChatsBackend_UpsertEntry(
     [property: DataMember, MemoryPackOrder(0)] ChatEntry Entry,
     [property: DataMember, MemoryPackOrder(1)] bool HasAttachments = false
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatEntryId>
+) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId ShardKey => Entry.Id;
+    public ChatId ShardKey => Entry.Id.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -180,10 +180,10 @@ public sealed partial record ChatsBackend_ChangeEntry(
     [property: DataMember, MemoryPackOrder(0)] ChatEntryId ChatEntryId,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(2)] Change<ChatEntryDiff> Change
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatEntryId>
+) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId ShardKey => ChatEntryId;
+    public ChatId ShardKey => ChatEntryId.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -233,7 +233,7 @@ public sealed partial record ChatBackend_CopyChat(
 public sealed partial record ChatBackend_CopyChatResult(
     [property: DataMember, MemoryPackOrder(0)] bool HasChanges,
     [property: DataMember, MemoryPackOrder(1)] bool HasErrors,
-    [property: DataMember, MemoryPackOrder(2)] long LastEntryId
+    [property: DataMember, MemoryPackOrder(2)] long LastProcessedEntryId
 );
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

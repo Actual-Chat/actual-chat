@@ -1,12 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<IReadOnlyList<FoundItem>>
+@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<FoundItem>>
 @{
-    var foundItems = State.ValueOrDefault;
-    if (foundItems == null)
-        // TODO: loading view
+    if (State.IsInitial(out var foundItems))
         return;
 
-    var isPlace = Place is { Id.IsNone: false };
+    var isPlace = Place?.Id is not null;
     var listCls = isPlace ? "place" : "";
 }
 
@@ -33,9 +31,7 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private SearchUI SearchUI => Hub.SearchUI;
-    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     [Parameter] public Place? Place { get; set; }
 

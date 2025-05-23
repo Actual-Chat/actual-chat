@@ -2,12 +2,10 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Media
 @using ActualLab.Generators
-@inherits ComputedStateComponent<ChatSettingsStartModalPage.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, ChatSettingsStartModalPage.ComputedModel>
 @{
-    var m = State.Value;
-    if (ReferenceEquals(m, ComputedModel.Loading))
+    if (State.IsInitial(out var m))
         return;
-
     if (m.Chat == null || !m.Chat.Rules.CanEditProperties()) {
         Context.Close();
         return;
@@ -15,7 +13,7 @@
     if (_form == null)
         return;
 
-    Context.ModalDataBag.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
+    Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isPlaceChat = m.IsPlace;
     var publicChatLabel = !isPlaceChat ? "Public" : "Place";
     var isThread = m.Chat.Id.IsThread;
@@ -156,27 +154,21 @@
     private DialogButtonInfo _submitButtonInfo = null!;
     private AvatarKind _avatarKind;
     private string? _avatarKey;
-    private PlaceId _placeId;
+    private PlaceId? _placeId;
     private bool _isPlaceWelcomeChat;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session(); // Shortcut
     private IChats Chats => Hub.Chats;
-    private ChatUI ChatUI => Hub.ChatUI;
-    private AccountUI AccountUI => Hub.AccountUI;
     private IAuthors Authors => Hub.Authors;
-    private Features Features => Hub.Features();
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-    private DiffEngine DiffEngine => Hub.DiffEngine;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private ChatId ChatId { get; set; }
+    private ChatId ChatId { get; set; } = null!;
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
         Context.Title = "Chat settings";
-        if (ChatId.IsPeerChat(out _))
+        if (ChatId is PeerChatId)
             throw StandardError.NotSupported("Peer chat is not supported.");
 
         _avatarKind = AvatarKind.Marble;
@@ -186,9 +178,8 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        const string formBagKey = "form";
-        _form = Context.PageDataBag.Get<FormModel>(formBagKey);
-        if (_form != null)
+        _form = Context.Items.KeylessGet<FormModel>();
+        if (_form is not null)
             return;
 
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
@@ -198,16 +189,15 @@
             Picture = chat.Picture?.ToPicture(),
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
-        _placeId = chat.Id.PlaceChatId.PlaceId;
-        if (!_placeId.IsNone)
+        _placeId = (chat.Id as PlaceChatId)?.PlaceId;
+        if (_placeId is not null)
             _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
-        Context.PageDataBag.Set(formBagKey, _form);
+        Context.Items.KeylessSet(_form);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = ComputedModel.Loading,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -230,8 +220,8 @@
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
         var isPublic = chat.IsPublic;
-        _placeId = chat.Id.PlaceChatId.PlaceId;
-        var isPlace = !_placeId.IsNone;
+        _placeId = (chat.Id as PlaceChatId)?.PlaceId;
+        var isPlace = _placeId is not null;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken);
 
         return new() {
@@ -286,12 +276,12 @@
         var newChat = chat with {
             Title = _form!.Title,
             Description = _form!.Description,
-            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
+            MediaId = _form.Picture?.MediaContent?.MediaId,
         };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await Hub.UICommander().Run(command);
+        await Hub.UICommander.Run(command);
     }
 
     // Nested types

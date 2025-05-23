@@ -9,10 +9,10 @@ internal static class ChatContentTestHelpers
 {
     public static ChatSlice[] CreateDocuments()
     {
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
-        var chatId = new ChatId(Generate.Option);
+        var authorId = (PrincipalId)UserId.New();
+        var chatId = GroupChatId.New();
         var entryIds = Enumerable.Range(1, 4)
-            .Select(id => new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option))
+            .Select(id => TextEntryId.New(chatId, id))
             .ToArray();
         var textItems = new [] {
             "An accident happened to my brother Jim.",
@@ -37,7 +37,7 @@ internal static class ChatContentTestHelpers
 
     public static Mock<IChatContentMapper> MockDocMapper(Action<ChatSlice> onUpdatedDoc)
     {
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var authorId = (PrincipalId)UserId.New();
         var docMapper = new Mock<IChatContentMapper>(MockBehavior.Loose);
         docMapper
             .Setup(x => x.MapAsync(
@@ -46,7 +46,7 @@ internal static class ChatContentTestHelpers
             .Returns<SourceEntries, CancellationToken>((entries, _) => {
                 var metadata = new ChatSliceMetadata(
                     [authorId],
-                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id, e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
+                    [.. entries.Entries.Select(e => new ChatSliceEntry(e.Id.ToTextEntryId(), e.LocalId, e.Version))], entries.StartOffset, entries.EndOffset,
                     [], [], [], [],
                     "en-US",
                     DateTime.Now

@@ -110,7 +110,7 @@ public class ChatContentIndexerFlushTests(ITestOutputHelper @out) : TestBase(@ou
         var delayedCursors = new List<ChatContentCursor>();
         for (var i = 0; i < NewContent.Length; i++) {
             var localId = lastId + i + 1;
-            var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
+            var entryId = TextEntryId.New(chatId, localId);
             var entry = new ChatEntry(entryId, ++version) {
                 Content = NewContent[i],
             };

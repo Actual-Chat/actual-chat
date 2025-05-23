@@ -20,7 +20,7 @@ internal sealed class ForwardPlugin(
             : throw new InvalidOperationException("Malformed conversation id detected.");
 
         var botId = Constants.User.Sherlock.GetSherlockAuthorId(chatId);
-        var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
+        var textEntryId = TextEntryId.New(chatId, 0);
         var upsertCommand = new ChatsBackend_ChangeEntry(
             textEntryId,
             null,

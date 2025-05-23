@@ -13,7 +13,7 @@ namespace ActualChat.MLSearch;
 // TODO: merge with cluster setup actions or cluster setup
 public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
 {
-    private readonly TaskCompletionSource _whenCompleted = new ();
+    private readonly TaskCompletionSource _whenCompleted = TaskCompletionSourceExt.New();
 
     [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= services.GetRequiredService<MLSearchSettings>();

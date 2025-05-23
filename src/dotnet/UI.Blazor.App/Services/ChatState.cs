@@ -3,14 +3,9 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed record ChatState(
-    ChatInfo Info,
-    ChatAudioState AudioState = default
-    ) : IHasId<ChatId>
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed record ChatState(ChatInfo Info, ChatAudioState AudioState) : IHasId<ChatId>
 {
-    public static readonly ChatState None = new(ChatInfo.None);
-    public static readonly ChatState Loading = new(ChatInfo.Loading);
-
     public bool IsSelected { get; init; }
     public Presence Presence { get; init; } = Presence.Unknown;
 
@@ -21,4 +16,8 @@ public sealed record ChatState(
     public bool IsListening => AudioState.IsListening;
     public bool IsPlayingHistorical => AudioState.IsPlayingHistorical;
     public bool IsRecording => AudioState.IsRecording;
+
+    // This record relies on referential equality
+    public bool Equals(ChatState? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

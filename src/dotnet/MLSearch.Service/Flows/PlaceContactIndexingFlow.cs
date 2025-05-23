@@ -29,16 +29,14 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Contact,
         CancellationToken cancellationToken)
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        cursor ??= new (ContactId.None, 0);
-        var batch = await ContactsBackend.ListChangedPlaceContacts(
-                new ChangedContactsQuery {
-                    MinVersion = cursor.LastUpdatedVersion,
-                    MaxVersion = maxVersion,
-                    LastId = cursor.LastUpdatedId,
-                    Limit = BatchSize,
-                },
-                cancellationToken)
-            .ConfigureAwait(false);
+        cursor ??= new(null, 0);
+        var query = new ChangedContactsQuery {
+            LastId = cursor.LastUpdatedId,
+            Limit = BatchSize,
+            MinVersion = cursor.LastUpdatedVersion,
+            MaxVersion = maxVersion,
+        };
+        var batch = await ContactsBackend.ListChangedPlaceContacts(query, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug(
             "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
             Id, batch.Length, maxVersion, cursor);

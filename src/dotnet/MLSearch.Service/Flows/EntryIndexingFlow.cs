@@ -24,17 +24,18 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
 
     protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
         => await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false)
-            && await EnsureChatInfo(new ChatId(Id.Arguments), cancellationToken).ConfigureAwait(false);
+            && await EnsureChatInfo(ChatId.Parse(Id.Arguments), cancellationToken).ConfigureAwait(false);
 
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        cursor ??= new (new ChatEntryId(new ChatId(Id.Arguments), ChatEntryKind.Text, 0, AssumeValid.Option), 0);
+        var chatId = ChatId.Parse(Id.Arguments);
+        cursor ??= new(TextEntryId.New(chatId, 0), 0);
         var batch = await ChatsBackend.ListChangedEntries(new ChangedEntriesQuery {
-                    ChatId = cursor.LastUpdatedId.ChatId,
-                    LastLocalId = cursor.LastUpdatedId.LocalId,
+                    ChatId = chatId,
+                    LastLocalId = cursor.LastUpdatedId?.LocalId ?? 0,
                     MinVersion = cursor.LastUpdatedVersion,
                     MaxVersion = maxVersion,
                     Limit = BatchSize,
@@ -51,8 +52,14 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
     {
         await WhenReady.ConfigureAwait(false);
 
-        var updated = batch.Where(x => x is { IsRemoved: false, IsSystemEntry: false }).Select(x => x.ToIndexedEntry()).ToList();
-        var removed = batch.Where(x => x is { IsRemoved: true, IsSystemEntry: false }).Select(x => x.Id.AsTextEntryId()).ToList();
+        var updated = batch
+            .Where(x => x is { IsRemoved: false, IsSystemEntry: false })
+            .Select(x => x.ToIndexedEntry())
+            .ToList();
+        var removed = batch
+            .Where(x => x is { IsRemoved: true, IsSystemEntry: false })
+            .Select(x => x.Id.ToTextEntryId())
+            .ToList();
         await IndexedDocuments.SaveEntries(updated, removed, cancellationToken).ConfigureAwait(false);
     }
 
@@ -85,10 +92,10 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         }
 
         Place? place = null;
-        if (!chat.Id.PlaceId.IsNone) {
-            place = await placesBackend.Get(chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        if (chat.Id is PlaceChatId placeChatId) {
+            place = await placesBackend.Get(placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place is null) {
-                Log.LogWarning("Unable to create chat info: place #{PlaceId} doesn't exist", chat.Id.PlaceId);
+                Log.LogWarning("Unable to create chat info: place #{PlaceId} doesn't exist", placeChatId.PlaceId);
                 return false;
             }
         }

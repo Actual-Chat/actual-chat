@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Time
-@inherits ComputedStateComponent<string>
+@inherits ComputedStateComponent<UIHub, string>
 @{
     var m = State.Value;
     if (m.IsNullOrEmpty())
@@ -10,10 +10,8 @@
 <span class="@Class">@m</span>
 
 @code {
-    private MomentClock? _clock;
-
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    private MomentClock Clock => _clock ??= Clocks.CpuClock;
+    [field: AllowNull, MaybeNull]
+    private MomentClock CpuClock => field ??= Clocks.CpuClock;
 
     [Parameter, EditorRequired] public Moment EndsAt { get; set; } // CPU time!
     [Parameter] public string Class { get; set; } = "";
@@ -28,7 +26,7 @@
             });
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
-        var remaining = (EndsAt - Clock.Now).Positive();
+        var remaining = (EndsAt - CpuClock.Now).Positive();
         var result = remaining.Format(Format);
         if (remaining > TimeSpan.Zero)
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(UpdatePeriod), true);

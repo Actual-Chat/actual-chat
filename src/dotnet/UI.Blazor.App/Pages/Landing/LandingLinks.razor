@@ -1,3 +1,4 @@
+@inherits ComponentBase<AppUIHub>
 @{
     var hideForNarrow = !IsNarrow && ScreenSize.IsNarrow() ? "!hidden" : "";
 }
@@ -47,10 +48,7 @@
 </div>
 
 @code{
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     [Parameter] public bool IsNarrow { get; set; }
     [Parameter] public bool EnableIncompleteUI { get; set; }
 

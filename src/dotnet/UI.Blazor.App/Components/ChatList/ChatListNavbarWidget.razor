@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @{
-    var showFilters = PlaceId.IsNone || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
-    var supportThreads = !PlaceId.IsNone && Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
+    var showFilters = PlaceId is null || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
+    var supportThreads = PlaceId is not null && Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
 
     RenderFragment RenderChatListTab(double order, ChatListFilter filter)
         => RenderTab(order, filter.Id.Value, filter.Title, filter);
@@ -55,7 +55,7 @@
         @if (_showThreadsList) {
             <ThreadList PlaceId="@PlaceId" />
         } else {
-            <ChatList @key="@PlaceId.Value" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
+            <ChatList @key="@(PlaceId?.Value ?? "")" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
         }
     </div>
     <div class="c-active-chats">
@@ -70,17 +70,17 @@
     private PlaceChatListSettings? _placeChatListSettings;
     private string? _tabPanelSelectedTabId;
 
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        if (PlaceId == _placeChatListSettings?.PlaceId)
+        if (_placeChatListSettings is not null && PlaceId == _placeChatListSettings.PlaceId)
             return;
 
         var placeId = PlaceId;
         var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
-        _placeChatListSettings ??= placeChatListSettings; // Ensure field is initialized before first render.
+        _placeChatListSettings ??= placeChatListSettings; // Ensure the field is initialized before the first render.
         var chatListSettings = await placeChatListSettings.Get();
         if (placeId != PlaceId)
             return; // PlaceId was changed while we were reading settings

@@ -16,21 +16,21 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         $"{BlazorUIAppModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
 
     private readonly MutableState<bool?> _permissionState;
-    private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenPermissionStateReady = AsyncTaskMethodBuilderExt.New();
     private volatile Task<string?>? _registerDeviceTask;
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private UIHub Hub { get; }
-    private HostInfo HostInfo => Hub.HostInfo();
-    private Session Session => Hub.Session();
+    private HostInfo HostInfo => Hub.HostInfo;
+    private Session Session => Hub.Session;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
 
     [field: AllowNull, MaybeNull]
-    private IDeviceTokenRetriever DeviceTokenRetriever => field ??= Hub.GetRequiredService<IDeviceTokenRetriever>();
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-    private IJSRuntime JS => Hub.JSRuntime();
+    private IDeviceTokenRetriever DeviceTokenRetriever => field ??= Hub.Services.GetRequiredService<IDeviceTokenRetriever>();
+    private UrlMapper UrlMapper => Hub.UrlMapper;
+    private IJSRuntime JS => Hub.JS;
 
     public IState<bool?> PermissionState => _permissionState;
     public Task WhenReady { get; }
@@ -40,7 +40,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     {
         Hub = hub;
 
-        var stateFactory = hub.StateFactory();
+        var stateFactory = hub.StateFactory;
         _permissionState = stateFactory.NewMutable((bool?)null, nameof(PermissionState));
         WhenReady = Initialize();
 
@@ -51,7 +51,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
             }
             else if (HostInfo.HostKind == HostKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
-                var notificationsPermission = hub.GetRequiredService<INotificationsPermission>();
+                var notificationsPermission = hub.Services.GetRequiredService<INotificationsPermission>();
                 var isGranted = await notificationsPermission.IsGranted().ConfigureAwait(false);
                 SetIsGranted(isGranted);
             }
@@ -126,7 +126,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         var deleteTokenTask = DeviceTokenRetriever.DeleteDeviceToken(cancellationToken);
         Log.LogInformation("DeregisterDevice. About to execute DeregisterDevice command");
         var command = new Notifications_DeregisterDevice(Session, deviceId);
-        var deregisterDeviceTask =  Hub.Commander().Call(command, cancellationToken);
+        var deregisterDeviceTask =  Hub.Commander.Call(command, cancellationToken);
         await Task.WhenAll(deleteTokenTask, deregisterDeviceTask).ConfigureAwait(false);
         Log.LogInformation("DeregisterDevice. DeleteDeviceToken and DeregisterDevice command are executed");
     }
@@ -171,14 +171,14 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
             _registerDeviceTask = Task.Run(async () => {
                 // Wait for sign-in
                 Log.LogInformation("-> RegisterDeviceTask has started. Waiting for loading account...");
-                await Hub.AccountUI.WhenLoaded.ConfigureAwait(false);
+                await Hub.AccountUI.WhenReady.ConfigureAwait(false);
                 for (int i = 0; i < MaxRetryCount; i++) {
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                     using var cts = parentToken.LinkWith(timeoutCts.Token);
                     var linkedToken = cts.Token;
                     try {
                         Log.LogInformation("RegisterDeviceTask. Attempt: {Attempt}/{MaxRetryCount}", i + 1, MaxRetryCount);
-                        await Hub.RpcHub().WhenClientPeerConnected(linkedToken).ConfigureAwait(false);
+                        await Hub.RpcHub.WhenClientPeerConnected(linkedToken).ConfigureAwait(false);
                         Log.LogInformation("RegisterDeviceTask. Peer has got connected");
                         deviceId ??= await DeviceTokenRetriever.GetDeviceToken(linkedToken).ConfigureAwait(false);
                         if (deviceId == null) {
@@ -187,11 +187,11 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                         }
 
                         Log.LogInformation("RegisterDeviceTask. Retrieved device token");
-                        var isGuest = Hub.AccountUI.OwnAccount.Value.IsGuestOrNone;
+                        var isGuest = Hub.AccountUI.OwnAccount.Value.IsGuest;
                         if (isGuest) {
                             Log.LogInformation("RegisterDeviceTask. Awaiting user is signed in");
                             await Hub.AccountUI.OwnAccount.Computed
-                                .When(acc => !acc.IsGuestOrNone, cts.Token)
+                                .When(acc => !acc.IsGuest, cts.Token)
                                 .ConfigureAwait(false);
                         }
 
@@ -200,7 +200,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                         else
                             Log.LogInformation("RegisterDeviceTask. About to send register command");
                         var command = new Notifications_RegisterDevice(Session, deviceId, GetDeviceType());
-                        await Hub.Commander().Call(command, linkedToken).ConfigureAwait(false);
+                        await Hub.Commander.Call(command, linkedToken).ConfigureAwait(false);
                         Log.LogInformation("RegisterDeviceTask. Register command has been executed");
                         return deviceId;
                     }

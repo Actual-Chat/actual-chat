@@ -10,7 +10,7 @@ public class MiddlePanel : IDisposable
     public MiddlePanel(PanelsUI owner)
     {
         Owner = owner;
-        _isVisible = Owner.Hub.StateFactory().NewComputed(
+        _isVisible = Owner.Hub.StateFactory.NewComputed(
             new ComputedState<bool>.Options {
                 UpdateDelayer = FixedDelayer.NoneUnsafe,
                 InitialValue = ComputeInitialIsVisible(),

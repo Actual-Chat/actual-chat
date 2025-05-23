@@ -20,19 +20,22 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
     [field: AllowNull, MaybeNull]
     private LanguageDetector Sut => field ??= Tester.AppServices.GetRequiredService<LanguageDetector>();
 
+
+
     [Fact]
     public async Task ShouldDetectLanguages()
     {
         // arrange
-        (string Text, Language[] ExpectedLanguages)[] texts = [
+        (string Text, Language?[] ExpectedLanguages)[] texts = [
             (ComplexText, [Languages.English]),
             ("Hello! Привет! Bonjour!", [Languages.English, Languages.Russian, Languages.French]),
+            ("Hello! Привет! Bonjour! Привет!", [Languages.English, Languages.Russian, Languages.French]),
             ("hello", [Languages.English]),
             ("привет", [Languages.Russian]),
-            ("```", [Language.None]),
-            ("````123```", [Language.None]),
-            ("123", [Language.None]),
-            ("0xDEADBEEF", [Language.None]),
+            ("```", []),
+            ("````123```", []),
+            ("123", []),
+            ("0xDEADBEEF", []),
             ("Hello! @#$%^&*()_+", [Languages.English]),
         ];
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10).Debuggable());

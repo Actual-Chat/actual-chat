@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<IReadOnlyList<Chat>>
+@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<Chat>>
 @{
     var chats = State.ValueOrDefault ?? [];
     if (chats.Count == 0)
@@ -14,13 +14,10 @@
 <Divider Class="mx-4 my-1.5"/>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-
     [Parameter] public Place? Place { get; set; }
 
-    private IChatUsages ChatUsages => Hub.ChatUsages;
     private IChats Chats => Hub.Chats;
-    private Session Session => Hub.Session();
+    private IChatUsages ChatUsages => Hub.ChatUsages;
 
     protected override ComputedState<IReadOnlyList<Chat>>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -43,9 +40,13 @@
             // TODO: need to filter by place id on backend side
             var placeUserIds = await Hub.Places.ListUserIds(session, place.Id, cancellationToken).ConfigureAwait(false);
             var chats = await recentIds
-                .Where(id => id.IsPeerChat(out var peerChatId)
-                             && !peerChatId.IsNone
-                             && placeUserIds.Contains(peerChatId.AnotherUserIdOrDefault(Hub.AccountUI.OwnAccount.Value.Id)))
+                .Where(id => {
+                    if (id is not PeerChatId peerChatId)
+                        return false;
+
+                    var peerUserId = peerChatId.AnotherUserIdOrNull(Hub.AccountUI.OwnAccount.Value.Id);
+                    return peerUserId is not null && placeUserIds.Contains(peerUserId);
+                })
                 .Select(id => Chats.Get(session, id, cancellationToken))
                 .Collect(ApiConstants.Concurrency.High, cancellationToken)
                 .ConfigureAwait(false);

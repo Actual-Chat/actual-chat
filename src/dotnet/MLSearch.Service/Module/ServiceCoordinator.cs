@@ -15,7 +15,7 @@ internal sealed class ServiceCoordinator(
     ILogger<ServiceCoordinator> log
 ) : WorkerBase, IServiceCoordinator
 {
-    private TaskCompletionSource _entranceGate = new();
+    private TaskCompletionSource _entranceGate = TaskCompletionSourceExt.New();
 
     public RetryDelaySeq RetryDelaySeq { get; init; } = RetryDelaySeq.Exp(0.5, 60);
     public TransiencyResolver TransiencyResolver { get; init; } = TransiencyResolvers.PreferTransient;

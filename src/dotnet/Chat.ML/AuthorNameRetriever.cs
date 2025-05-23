@@ -10,7 +10,7 @@ internal sealed class DefaultAuthorNameRetriever(IAuthorsBackend authorsBackend)
     public async Task<string> GetAuthorName(AuthorId authorId)
     {
         var author = await authorsBackend
-            .Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, default)
+            .Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, default)
             .ConfigureAwait(false);
         var authorName = author?.Avatar.Name ?? "author-" + authorId.LocalId;
         return authorName;

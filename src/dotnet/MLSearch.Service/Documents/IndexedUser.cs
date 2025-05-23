@@ -24,11 +24,10 @@ public sealed record IndexedUser(UserId Id) : IIndexedUserUpsertWithoutPlaces,
     IRequirementTarget
 {
     public string Name { get; init; } = "";
+    // ReSharper disable once TypeWithSuspiciousEqualityIsUsedInRecord.Global
     public PlaceId[] PlaceIds { get; init; } = [];
-    public JoinField ContactToUser { get; set; } = JoinField.Root<IndexedUser>();
+    public JoinField ContactToUser => JoinField.Root<IndexedUser>();
 
     public static IndexedUser ForPartialPlacesUpsert(UserId userId, params PlaceId[] placeIds)
-        => new (userId) {
-            PlaceIds = placeIds,
-        };
+        => new (userId) { PlaceIds = placeIds };
 }

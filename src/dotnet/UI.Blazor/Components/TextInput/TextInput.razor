@@ -23,7 +23,7 @@
     private DotNetObjectReference<TextInput> BlazorRef { get; set; } = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private IJSRuntime JS => Hub.JSRuntime();
+    private IJSRuntime JS => Hub.JS;
     private FocusUI FocusUI => Hub.FocusUI;
 
     [Parameter] public string Class { get; set; } = "";

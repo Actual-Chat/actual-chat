@@ -3,7 +3,8 @@ using ActualLab.Rpc;
 
 namespace ActualChat;
 
-public interface IStringIdentifier : IHasId<string>
+// ReSharper disable once PossibleInterfaceMemberAmbiguity
+public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
 {
     public string Value { get; }
     public int HashCode { get; }
@@ -13,7 +14,9 @@ public interface IStringIdentifier<TSelf> : IStringIdentifier,
     IEquatable<TSelf>, IComparable<TSelf>, IEqualityOperators<TSelf, TSelf, bool>
     where TSelf : StringIdentifier, IStringIdentifier<TSelf>
 {
-    public static abstract TSelf Parse(string s); // Must rely on TryParse
+    public static abstract TSelf Parse(string s); // Must rely on TryParse(s, out result)
+    public static abstract TSelf? ParseNullable(string? s); // Must rely on Parse(s)
+    public static abstract TSelf? TryParse(string? s, bool allowNull = false); // Must rely on TryParse(s, out result)
     public static abstract bool TryParse(string? s, [NotNullWhen(true)] out TSelf? result);
 
     int IComparable<TSelf>.CompareTo(TSelf? other)
@@ -26,6 +29,8 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     public readonly string Value = value;
     [IgnoreDataMember]
     public readonly int HashCode = value.GetHashCode(StringComparison.Ordinal);
+    [IgnoreDataMember]
+    public Symbol Id => new(Value, HashCode);
 
     // IStringIdentifier members
     string IHasId<string>.Id => Value;

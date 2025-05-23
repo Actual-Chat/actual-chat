@@ -2,16 +2,15 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class TotpUI(UIHub hub): ScopedServiceBase<UIHub>(hub), IComputeService
+public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
 {
-    private readonly IMutableState<Moment> _totpExpiresAt = hub.StateFactory().NewMutable<Moment>();
-    private UICommander UICommander => Hub.UICommander();
+    private readonly IMutableState<Moment> _totpExpiresAt = hub.StateFactory.NewMutable<Moment>();
     public IState<Moment> TotpExpiresAt => _totpExpiresAt;
 
     [ComputeMethod]
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
     {
-        var now = Hub.Clocks().ServerClock.Now;
+        var now = Hub.Clocks.ServerClock.Now;
         var expiresAt = await _totpExpiresAt.Use(cancellationToken).ConfigureAwait(false);
         var canExpire = expiresAt > now;
         if (canExpire)
@@ -20,10 +19,10 @@ public class TotpUI(UIHub hub): ScopedServiceBase<UIHub>(hub), IComputeService
         return canExpire;
     }
 
-    public async Task<bool> SendPhoneCode(TotpPurpose purpose, string phone, CancellationToken cancellationToken)
+    public async Task<bool> SendPhoneCode(TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
     {
         var cmd = purpose switch {
-            TotpPurpose.SignIn or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, new Phone(phone), purpose),
+            TotpPurpose.SignIn or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, phone, purpose),
             _ => throw new ArgumentOutOfRangeException(nameof(purpose)),
         };
         var (totpExpiresAt, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);

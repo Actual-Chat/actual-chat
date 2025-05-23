@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<MessageMenu.Model>
+@inherits ComputedMenuBase<AppUIHub, MessageMenu.Model>
 @{
     var m = State.Value;
     if (State.Value == Model.None)
@@ -20,19 +20,17 @@
     private string? _link;
     private string? _code;
     private bool _isSystem;
-    private TextEntryId _entryId;
+    private TextEntryId _entryId = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
-    private Session Session => Hub.Session();
 
     protected override void OnParametersSet() {
         if (Arguments is not [ var sEntryId, var sIsSystem, var link, var code ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _isSystem = bool.Parse(sIsSystem);
-        _entryId = new TextEntryId(sEntryId);
+        _entryId = TextEntryId.Parse(sEntryId);
         _link = link.NullIfEmpty();
         _code = code.NullIfEmpty();
     }

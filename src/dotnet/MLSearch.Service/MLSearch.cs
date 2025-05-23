@@ -13,22 +13,18 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
 
     public virtual async Task<string> GetIndexDocIdByEntryId(
         Session session,
-        ChatEntryId chatEntryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
-        if (session.Id.IsNullOrEmpty())
-            throw new ArgumentOutOfRangeException(nameof(session));
-
-        if (chatEntryId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatEntryId));
+        ArgumentNullException.ThrowIfNull(entryId);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
 
-        var chat = await Chats.Get(session, chatEntryId.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        var chat = await Chats.Get(session, entryId.ChatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.Read);
 
-        return await Backend.GetIndexDocIdByEntryId(chatEntryId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetIndexDocIdByEntryId(entryId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<MLSearchChat> OnCreate(MLSearch_CreateChat command, CancellationToken cancellationToken)
@@ -50,7 +46,7 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
             MediaId = mediaId,
             SystemTag = Constants.Chat.SystemTags.Bot,
         });
-        var chatChangeCommand = new Chats_Change(session, ChatId.None, null, chatChange);
+        var chatChangeCommand = new Chats_Change(session, null, null, chatChange);
         var chat = await Commander.Call(
             chatChangeCommand,
             isOutermost: true,

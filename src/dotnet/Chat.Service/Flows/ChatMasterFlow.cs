@@ -30,15 +30,14 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
 
     protected override async Task<IReadOnlyList<Chat>> GetBatch(IndexingFlowCursor<ChatId>? cursor, CancellationToken cancellationToken)
     {
-        cursor ??= new (ChatId.None, 0);
-        var chats = await ChatsBackend.ListChanged(new ChangedChatsQuery {
-                    MinVersion = cursor.LastUpdatedVersion,
-                    MaxVersion = MaxVersion,
-                    LastId = cursor.LastUpdatedId,
-                    Limit = BatchSize,
-                },
-                cancellationToken)
-            .ConfigureAwait(false);
+        cursor ??= new(null, 0);
+        var query = new ChangedChatsQuery {
+            LastId = cursor.LastUpdatedId,
+            Limit = BatchSize,
+            MinVersion = cursor.LastUpdatedVersion,
+            MaxVersion = MaxVersion,
+        };
+        var chats = await ChatsBackend.ListChanged(query, cancellationToken).ConfigureAwait(false);
         return chats.Where(c => c.IsSummarized ?? false).ToList();
     }
 
@@ -46,7 +45,7 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
     {
         foreach (var item in batch)
             await Host.Flows
-                .StartOrReset<ConversationSplitFlow>(item.Id, null, "ChatMasterFlow", cancellationToken)
+                .StartOrReset<ConversationSplitFlow>(item.Id.Value, null, "ChatMasterFlow", cancellationToken)
                 .ConfigureAwait(false);
     }
 

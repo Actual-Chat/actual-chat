@@ -1,12 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<OnboardingModal.Model>
-@inherits ComputedStateComponent<OnboardingModal.ViewModel>
+@inherits ComputedStateComponent<AppUIHub, OnboardingModal.ViewModel?>
 @{
     var m = State.Value;
-    if (m.AccountFull == AccountFull.Loading)
+    if (m is null)
         return;
 
-    if (m.AccountFull.IsGuestOrNone) {
+    if (m.AccountFull.IsGuest) {
         Modal.Close(true);
         return;
     }
@@ -126,22 +126,12 @@
     private readonly Mutable<ElementReference> _nextButtonRef = new();
     private bool _canMoveForward = true;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private AccountUI AccountUI => Hub.AccountUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
-    private IFeatures Features => Hub.Features();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<ViewModel>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<ViewModel>.Options() {
-                InitialValue = ViewModel.None,
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ViewModel?> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var isDataCollectionConfigured = await DataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false);
         var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
@@ -186,8 +176,6 @@
 
 
     public sealed record ViewModel {
-        public static readonly ViewModel None = new() { AccountFull = AccountFull.Loading };
-
         public AccountFull AccountFull { get; init; } = null!;
         public bool IsDataCollectionConfigured { get; init; }
         public bool EnableChatRouletteUI { get; init; }

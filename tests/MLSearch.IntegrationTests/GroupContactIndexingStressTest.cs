@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 
@@ -8,7 +9,8 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class GroupContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<SlowAppHostFixture>(fixture, @out)
 {
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     private string UniquePart { get; } = UniqueNames.Prefix();
 
@@ -50,7 +52,7 @@ public class GroupContactIndexingStressTest(SlowAppHostFixture fixture, ITestOut
     // Private methods
 
     private Task<Chat.Chat[]> CreateGroups(int count, string prefix)
-        => Enumerable.Range(1, count).Select(i => CreateGroup($"{prefix} {i}")).Collect(Environment.ProcessorCount);
+        => Enumerable.Range(1, count).Select(i => CreateGroup($"{prefix} {i}")).Collect(Environment.ProcessorCount / 2);
 
     private async Task<Chat.Chat> CreateGroup(string title)
     {

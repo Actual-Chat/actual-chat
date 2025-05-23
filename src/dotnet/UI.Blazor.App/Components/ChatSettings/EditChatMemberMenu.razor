@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<EditChatMemberModel?>
-
+@inherits ComputedMenuBase<AppUIHub, EditChatMemberModel?>
 @{
     var m = State.Value;
     if (m == null)
@@ -11,7 +10,7 @@
 <div class="edit-member-menu edit-chat-member-menu">
 
     <AuthorBadge
-        AuthorSid="@AuthorId"
+        AuthorId="@AuthorId"
         ShowPresence="true"
         StatusText="@statusText"/>
 
@@ -43,15 +42,13 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private AuthorId AuthorId { get; set; }
+    private AuthorId AuthorId { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sAuthorId ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-        AuthorId = new AuthorId(sAuthorId);
+        AuthorId = AuthorId.Parse(sAuthorId);
         await base.OnParametersSetAsync();
     }
 

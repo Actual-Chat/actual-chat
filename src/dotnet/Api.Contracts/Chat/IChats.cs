@@ -14,13 +14,13 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
-    Task<ChatNews> GetNews(
+    Task<ChatNews?> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
 
     // Note that it returns (firstId, lastId + 1) range!
-    // Client-side methods always skips entries with IsRemoved flag
+    // Client-side methods always skip entries with IsRemoved == true
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache, MinCacheDuration = 600)]
     Task<Range<long>> GetIdRange(
         Session session,
@@ -51,7 +51,7 @@ public interface IChats : IComputeService
     Task<ChatCopyState?> GetChatCopyState(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
-    Task<ChatId> GetForwardChatReplacement(Session session, ChatId sourceChatId, CancellationToken cancellationToken);
+    Task<ChatId?> GetForwardChatReplacement(Session session, ChatId sourceChatId, CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
     Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
@@ -143,8 +143,8 @@ public sealed partial record Chats_UpsertTextEntry(
 {
     [Obsolete($"2023.11: Use '{nameof(EntryAttachments)}' instead.")]
     [DataMember, MemoryPackOrder(5)] public MediaId[] Attachments { get; set; } = [];
-    [DataMember, MemoryPackOrder(6)] public ChatEntryId ForwardedChatEntryId { get; set; }
-    [DataMember, MemoryPackOrder(7)] public AuthorId ForwardedAuthorId { get; set; }
+    [DataMember, MemoryPackOrder(6)] public ChatEntryId? ForwardedChatEntryId { get; set; }
+    [DataMember, MemoryPackOrder(7)] public AuthorId? ForwardedAuthorId { get; set; }
     [DataMember, MemoryPackOrder(8)] public string? ForwardedChatTitle { get; set; }
     [DataMember, MemoryPackOrder(9)] public string? ForwardedAuthorName { get; set; }
     [DataMember, MemoryPackOrder(10)] public Moment? ForwardedChatEntryBeginsAt { get; set; }
@@ -155,7 +155,7 @@ public sealed partial record Chats_UpsertTextEntry(
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_Change(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] ChatId? ChatId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<ChatDiff> Change
 ) : ISessionCommand<Chat>, IApiCommand;
@@ -189,6 +189,6 @@ public sealed partial record Chat_CopyChatResult(
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chat_PublishCopiedChat(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatId NewChatId,
+    [property: DataMember, MemoryPackOrder(1)] PlaceChatId NewChatId,
     [property: DataMember, MemoryPackOrder(2)] ChatId SourceChatId
 ) : ISessionCommand<Unit>, IApiCommand;

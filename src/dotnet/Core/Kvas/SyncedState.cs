@@ -13,6 +13,7 @@ public interface ISyncedState : IMutableState, IDisposable
 
 public interface ISyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : IMutableState<T>, ISyncedState
+    where T : class?
 {
     new ComputedState<T> ReadState { get; }
 }
@@ -29,7 +30,8 @@ public static class SyncedState
         public static TimeSpan GracefulDisposeDelay { get; set; } = ComputedState.DefaultOptions.GracefulDisposeDelay;
     }
 
-    private static readonly string OriginPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
+    public static readonly TimeSpan MaxDiscardedWriteAge = TimeSpan.FromSeconds(15);
+    public static readonly string OriginPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     private static long _lastId;
 
     public static string NextOrigin()
@@ -38,17 +40,19 @@ public static class SyncedState
 
 public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : MutableState<T>, ISyncedState<T>
+    where T : class?
 {
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
-    private Option<T> _writingValue;
-    private Option<T> _writtenValue;
     private bool _isReading;
     private int _writeIndex;
     private volatile Task<bool>? _writeTask;
 
     private Options Settings { get; }
-    private ILogger? DebugLog => Constants.DebugMode.SyncedState ? Log : null;
+    private MomentClock CpuClock { get; }
+    [field: AllowNull, MaybeNull]
+    private Queue<Expiring<T>> RecentlyWritten => field ??= new Queue<Expiring<T>>(2); // Use only inside lock (Lock)!
+    private ILogger? DebugLog => CoreConstants.DebugMode.SyncedState ? Log : null;
 
     public CancellationToken DisposeToken { get; }
     public Task WhenFirstTimeRead => _whenFirstTimeReadSource.Task;
@@ -61,6 +65,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         : base(options, services, false)
     {
         Settings = options;
+        CpuClock = services.Clocks().CpuClock;
         _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
         if (typeof(IHasOrigin).IsAssignableFrom(typeof(T)))
@@ -124,50 +129,60 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
     protected override void OnSetSnapshot(StateSnapshot snapshot, StateSnapshot? prevSnapshot)
     {
-        if (!_isReading && !snapshot.IsInitial && snapshot.Computed.IsValueUntyped(out var value)) {
-            if (OwnOrigin != null && value is IHasOrigin hasOrigin)
-                hasOrigin.SetOrigin(OwnOrigin);
+        // This method is always called inside lock (Lock)
 
-            var writeIndex = ++_writeIndex;
-            var prevWriteTask = _writeTask;
-            _writeTask = Task.Run(() => Write((T)value!, writeIndex, prevWriteTask), CancellationToken.None);
+        if (_isReading || snapshot.IsInitial) {
+            base.OnSetSnapshot(snapshot, prevSnapshot);
+            return;
         }
+
+        var (value, error) = snapshot.Computed.Output;
+        if (error != null)
+            throw StandardError.Internal($"{GetType().GetName()} cannot be set to an error.");
+
+        if (OwnOrigin != null && value is IHasOrigin hasOrigin)
+            hasOrigin.SetOrigin(OwnOrigin);
+
         base.OnSetSnapshot(snapshot, prevSnapshot);
+        var writeIndex = ++_writeIndex;
+        var prevWriteTask = _writeTask;
+        _writeTask = LazyWrite((T)value!, writeIndex, prevWriteTask);
     }
 
-    private async Task<bool> Write(T value, int writeIndex, Task? prevWriteTask)
+    private async Task<bool> LazyWrite(T value, int writeIndex, Task? prevWriteTask)
     {
         if (prevWriteTask is { IsCompleted: false })
             await prevWriteTask.SilentAwait(false);
 
         var cancellationToken = DisposeToken;
+        var isAdded = false;
         var isLogged = false;
         while (true) {
             try {
                 lock (Lock) {
                     if (writeIndex != _writeIndex)
-                        return false; // Another write task is already started, so let it do the job
+                        return false; // Next write is queued, so we can skip this one
 
-                    _writingValue = value;
+                    if (!isAdded) {
+                        AddRecentlyWritten(value);
+                        isAdded = true;
+                    }
                 }
+                // If we're here:
+                // - prevWriteTask is completed
+                // - we are either the latest write task or we block any later write task
+                // - ultimately, we are the only task that can write now
 
                 if (!isLogged) {
                     DebugLog?.LogDebug("{State}: Write = {Value}", this, value);
                     isLogged = true;
                 }
                 await Settings.Write(value, cancellationToken).ConfigureAwait(false);
-                lock (Lock) {
-                    if (!_writingValue.HasValue)
-                        return true; // It's already read & reset
-
-                    _writtenValue = value;
-                    _writingValue = default;
-                    return true;
-                }
+                return true;
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 var delay = Settings.WriteFailureDelay.Next();
-                Log.LogError(e, $"{nameof(Write)} failed, will retry after {{Delay}}", delay.ToShortString());
+                Log.LogError(e, $"{nameof(LazyWrite)} failed, will retry after {{Delay}}", delay.ToShortString());
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -187,7 +202,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
                 var readResult = ((Computed<T>)lastReadSnapshot.Computed).ToTypedResult();
                 lock (Lock)
-                    ReadFromLock(readResult);
+                    ApplyRead(readResult);
             }
             catch (OperationCanceledException) {
                 break;
@@ -200,10 +215,12 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         }
     }
 
-    private void ReadFromLock(Result<T> result)
+    // All methods below must be called inside lock (Lock)
+
+    private void ApplyRead(Result<T> result)
     {
         if (result.IsValue(out var value)) {
-            if (IsPreviouslyWritten(value)) {
+            if (MustDiscardRead(value)) {
                 _whenFirstTimeReadSource.TrySetResult();
                 DebugLog?.LogDebug("{State}: Read: skipping previously written value", this);
                 return;
@@ -226,23 +243,48 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         }
     }
 
-    private bool IsPreviouslyWritten(T value)
+    private bool MustDiscardRead(T value)
     {
-        if (OwnOrigin != null) {
-            var hasOrigin = value as IHasOrigin; // null only if value == null
-            return hasOrigin != null && OrdinalEquals(hasOrigin.Origin, OwnOrigin);
-        }
+        if (OwnOrigin == null)
+            return IsRecentlyWritten(value, true);
 
-        if (_writtenValue.IsSome(out var writtenValue) && EqualityComparer<T>.Default.Equals(value, writtenValue)) {
-            _writtenValue = default;
-            return true;
+        var hasOrigin = value as IHasOrigin; // null only if value == null
+        return hasOrigin != null && OrdinalEquals(hasOrigin.Origin, OwnOrigin);
+    }
+
+    public void AddRecentlyWritten(T value)
+    {
+        CleanupRecentlyWritten();
+        RecentlyWritten.Enqueue(new Expiring<T>(value, CpuClock.Now + SyncedState.MaxDiscardedWriteAge));
+    }
+
+    public bool IsRecentlyWritten(T value, bool mustRemove)
+    {
+        var now = CpuClock.Now;
+        var equalityComparer = EqualityComparer<T>.Default;
+        var removeCount = 0;
+        var recentlyWritten = RecentlyWritten;
+        foreach (var item in recentlyWritten) {
+            removeCount++;
+            if (item.ExpiresAt < now)
+                continue;
+            if (equalityComparer.Equals(item.Value, value)) {
+                if (mustRemove)
+                    CleanupRecentlyWritten(removeCount);
+                return true;
+            }
         }
-        if (_writingValue.IsSome(out var writingValue) && EqualityComparer<T>.Default.Equals(value, writingValue)) {
-            _writtenValue = default;
-            _writingValue = default;
-            return true;
-        }
+        recentlyWritten.Clear();
         return false;
+    }
+
+    public void CleanupRecentlyWritten(int removeCount = 0)
+    {
+        var now = CpuClock.Now;
+        var i = 0;
+        var recentlyWritten = RecentlyWritten;
+        while (recentlyWritten.TryPeek(out var item) && (i++ < removeCount || item.ExpiresAt < now))
+            recentlyWritten.Dequeue();
     }
 
     // Nested types
@@ -279,8 +321,8 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
         internal override async Task<T> Read(CancellationToken cancellationToken)
         {
-            var valueOpt = await Kvas.TryGet<T>(Key, cancellationToken).ConfigureAwait(false);
-            if (!valueOpt.IsSome(out var value))
+            var value = await Kvas.Get<T>(Key, cancellationToken).ConfigureAwait(false);
+            if (value is null)
                 return MissingValueFactory != null
                     ? await MissingValueFactory(cancellationToken).ConfigureAwait(false)
                     : InitialValue;

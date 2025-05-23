@@ -1,17 +1,17 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<EditPlaceMemberModel?>
-
+@inherits ComputedMenuBase<AppUIHub, EditPlaceMemberModel?>
 @{
     var m = State.Value;
     if (m == null)
         return;
+
     var statusText = m.IsOwner ? "Owner" : null;
 }
 
 <div class="edit-member-menu edit-place-member-menu">
 
     <AuthorBadge
-        AuthorSid="@AuthorId"
+        AuthorId="@AuthorId"
         ShowPresence="true"
         StatusText="@statusText"/>
 
@@ -43,26 +43,24 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Chat { get; init; } = null!;
-
-    private AuthorId AuthorId { get; set; }
+    private AuthorId AuthorId { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sAuthorId ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-        AuthorId = new AuthorId(sAuthorId);
+        AuthorId = AuthorId.Parse(sAuthorId);
         await base.OnParametersSetAsync();
     }
 
     protected override Task<EditPlaceMemberModel?> ComputeState(CancellationToken cancellationToken)
-        => EditPlaceMemberCommands.ComputeState(Chat, AuthorId, cancellationToken);
+        => EditPlaceMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
 
     private Task OnRemoveFromPlaceClick(Author author)
-        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(Chat, author);
+        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(Hub, author);
 
     private async Task OnPromoteToOwnerClick(Author author) {
         await WhenClosed;
-        await EditPlaceMemberCommands.OnPromoteToOwnerClick(Chat, author);
+        await EditPlaceMemberCommands.OnPromoteToOwnerClick(Hub, author);
     }
 }

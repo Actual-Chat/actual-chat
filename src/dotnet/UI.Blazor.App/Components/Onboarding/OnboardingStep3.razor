@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits Step;
+@inherits SimpleStep<AppUIHub>;
 @if (CurrentStep != this) {
     return;
 }
@@ -20,7 +20,6 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     [Parameter] public EventCallback OnVerifyClick { get; set; }

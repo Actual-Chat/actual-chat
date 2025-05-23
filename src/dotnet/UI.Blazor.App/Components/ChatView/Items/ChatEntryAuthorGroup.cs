@@ -34,5 +34,5 @@ public class ChatEntryAuthorGroup : ChatMessage, IVirtualListGroup<ChatEntryMess
     }
 
     public override int GetHashCode()
-        => Key.GetHashCode();
+        => Key.GetOrdinalHashCode();
 }

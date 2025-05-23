@@ -1,8 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@using ActualChat.Hosting
-@using ActualChat.Permissions
-@inherits ComputedStateComponent<ContactsPermissionBanner.Model>
+@inherits ComputedStateComponent<AppUIHub, ContactsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -32,20 +30,17 @@
 }
 
 @code {
-    private StoredState<Moment> _dismissedAt = null!;
+    private StoredState<Box<Moment>> _dismissedAt = null!;
     private bool _permissionStateWasDefined;
     private bool _checkIsRequired;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private LocalSettings LocalSettings => Hub.LocalSettings();
-    private MomentClockSet Clocks => Hub.Clocks();
-    [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     protected override void OnInitialized()
-        => _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));
+        => _dismissedAt = StateFactory.NewKvasStored<Box<Moment>>(
+            new(LocalSettings, "Permissions.Contacts.DismissedAt") {
+                InitialValue = Box.New(default(Moment)),
+            });
 
     protected override async Task OnInitializedAsync()
         => await ContactsPermission.Check(CancellationToken.None);
@@ -64,7 +59,7 @@
 
         // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
         var dismissedAt = await _dismissedAt.Use(cancellationToken).ConfigureAwait(false);
-        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
+        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt.Value;
         var isDismissed = dismissPeriod < Constants.Contacts.PermissionRequestDismissPeriod;
 
         var permissionState = await ContactsPermission.Cached.Use(cancellationToken).ConfigureAwait(false);
@@ -82,7 +77,7 @@
     // Event handlers
 
     private void OnDismiss()
-        => _dismissedAt.Value = Clocks.SystemClock.Now;
+        => _dismissedAt.Value = Box.New(Clocks.SystemClock.Now);
 
     private Task OnConfigureClick(MouseEventArgs e)
         => ContactsPermission.CheckOrRequest().AsTask();

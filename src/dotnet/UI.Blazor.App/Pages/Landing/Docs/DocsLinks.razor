@@ -1,3 +1,4 @@
+@inherits ComponentBase<AppUIHub>
 @implements IDisposable
 
 @foreach(var link in _links) {
@@ -16,9 +17,6 @@
     private string _activeAnchor = "";
     private (string title, string url)[] _links = [];
     private string _pageUrl = "";
-
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
 
     [Parameter, EditorRequired] public DocsPage Page { get; set; }
 

@@ -1,6 +1,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Media
 @using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<AppUIHub>
 @implements IAttachmentListBackend
 @implements IAsyncDisposable
 @namespace ActualChat.UI.Blazor.App.Components
@@ -84,15 +85,11 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AttachmentList.create";
 
-    private readonly object _lock = new();
-    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private readonly Lock _lock = new();
+    private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
     private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
     private ElementReference FilePickerRef { get; set; }
-
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private UICommander UICommander => Hub.UICommander();
-    private IJSRuntime JS => Hub.JSRuntime();
 
     [Parameter] public EventCallback OnSendClick { get; set; }
 
@@ -128,7 +125,7 @@
     }
 
     public async Task SetSentAttachments(string[] urls) {
-        var downloader = Hub.GetRequiredService<IIncomingShareFileDownloader>();
+        var downloader = Hub.Services.GetRequiredService<IIncomingShareFileDownloader>();
         var fileNames = urls
             .Select(c => {
                 downloader.TryExtractFileName(c, out var fileName);
@@ -142,10 +139,11 @@
         var attachments = PopAttachments();
         StateHasChanged();
 
-        var entryAttachments = attachments.Where(x => x.Uploaded).Select(x => new TextEntryAttachment {
-            MediaId = x.MediaId,
-            ThumbnailMediaId = x.ThumbnailMediaId,
-        }).ToArray();
+        var entryAttachments = attachments.Where(x => x.Uploaded)
+            .Select(x => new TextEntryAttachment {
+                MediaId = x.MediaId!,
+                ThumbnailMediaId = x.ThumbnailMediaId,
+            }).ToArray();
         return new (entryAttachments, () => Rollback(attachments), InvokeClear);
 
         ImmutableList<Attachment> PopAttachments()
@@ -256,11 +254,19 @@
         }
     }
 
-    public record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default, MediaId ThumbnailMediaId = default)
+    public sealed record Attachment(
+        int Id,
+        string Url,
+        string FileName,
+        string FileType,
+        int Length,
+        int Progress = 0,
+        MediaId? MediaId = null,
+        MediaId? ThumbnailMediaId = null)
     {
         public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
         public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
         public bool Failed { get; init; }
-        public bool Uploaded => Progress == 100 && !MediaId.IsNone;
+        [MemberNotNullWhen(true, nameof(MediaId))] public bool Uploaded => Progress == 100 && MediaId != null;
     }
 }

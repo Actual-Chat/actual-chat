@@ -41,7 +41,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
     public DbExternalContact(ExternalContactFull externalContactFull) => UpdateFrom(externalContactFull);
 
     public ExternalContactFull ToModel()
-        => new(new ExternalContactId(Id), Version) {
+        => new(ExternalContactId.Parse(Id), Version) {
             CreatedAt = CreatedAt.ToMoment(),
             ModifiedAt = ModifiedAt.ToMoment(),
             DisplayName = DisplayName,
@@ -57,11 +57,12 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
 
     public void UpdateFrom(ExternalContactFull model)
     {
-        this.RequireSameOrEmptyId(model.Id);
+        var sid = model.Id.Value;
+        this.RequireSameOrEmptyId(sid);
         model.Id.Require();
         model.RequireSomeVersion();
 
-        Id = model.Id;
+        Id = sid;
         DisplayName = model.DisplayName;
         GivenName = model.GivenName;
         FamilyName = model.FamilyName;
@@ -80,7 +81,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
         var linksToAdd = links.Except(ExternalContactLinks.Select(x => x.Value), StringComparer.Ordinal).ToList();
         ExternalContactLinks.RemoveAll(x => !links.Contains(x.Value));
         ExternalContactLinks.AddRange(linksToAdd.Select(x => new DbExternalContactLink {
-            DbExternalContactId = model.Id,
+            DbExternalContactId = model.Id.Value,
             Value = x,
         }));
     }

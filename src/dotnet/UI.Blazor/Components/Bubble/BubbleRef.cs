@@ -1,19 +1,18 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public readonly struct BubbleRef
+[StructLayout(LayoutKind.Auto)]
+public readonly struct BubbleRef(
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type bubbleType)
 {
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    public Type BubbleType { get; }
+    public Type BubbleType { get; } = bubbleType;
 
     public static BubbleRef New<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TBubble>()
         where TBubble : IBubble
         => new (typeof(TBubble));
 
-    public BubbleRef([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]Type bubbleType)
-        => BubbleType = bubbleType;
-
     public override string ToString()
-        => BubbleRegistry.GetTypeId(BubbleType).Value;
+        => BubbleRegistry.GetTypeId(BubbleType);
 
     // Parse & TryParse
 

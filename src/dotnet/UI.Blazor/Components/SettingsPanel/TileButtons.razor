@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<UIHub, bool>
 @{
     var m = State.Value;
     var cls = m ? "text-primary" : "text-03 hover:text-02";
@@ -37,11 +36,7 @@
 }
 
 @code{
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-
-    [Parameter] public AvatarFull Avatar { get; set; } = AvatarFull.None;
+    [Parameter] public AvatarFull? Avatar { get; set; }
     [Parameter] public EventCallback EditClick { get; set; }
     [Parameter] public EventCallback SetDefaultClick { get; set; }
     [Parameter] public EventCallback CloseClick { get; set; }
@@ -58,6 +53,6 @@
         var defaultAvatarId = accountSettings.DefaultAvatarId;
         if (defaultAvatarId.IsEmpty)
             defaultAvatarId = accountSettings.AvatarIds.FirstOrDefault();
-        return Avatar.Id == defaultAvatarId;
+        return Avatar?.Id == defaultAvatarId;
     }
 }

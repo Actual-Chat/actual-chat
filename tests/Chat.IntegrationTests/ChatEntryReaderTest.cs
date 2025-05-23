@@ -7,7 +7,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private ChatId TestChatId { get; } = new("the-actual-one");
+    private ChatId TestChatId { get; } = ChatId.Parse("the-actual-one");
 
     [Fact(Skip = "Flaky")]
     public async Task BasicTest()
@@ -20,7 +20,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u!.Id.Should().Be(account.Id);
+        u!.Id.Should().Be(account.Id.Value);
         u.Name.Should().Be(account.User.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -101,7 +101,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u!.Id.Should().Be(account.Id);
+        u!.Id.Should().Be(account.Id.Value);
         u.Name.Should().Be(account.User.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -136,7 +136,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u!.Id.Should().Be(account.Id);
+        u!.Id.Should().Be(account.Id.Value);
         u.Name.Should().Be(account.User.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -178,7 +178,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u!.Id.Should().Be(account.Id);
+        u!.Id.Should().Be(account.Id.Value);
         u.Name.Should().Be(account.User.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -211,7 +211,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u!.Id.Should().Be(account.Id);
+        u!.Id.Should().Be(account.Id.Value);
         u.Name.Should().Be(account.User.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -256,7 +256,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u!.Id.Should().Be(account.Id);
+        u!.Id.Should().Be(account.Id.Value);
         u.Name.Should().Be(account.User.Name);
 
         var chats = services.GetRequiredService<IChats>();

@@ -22,13 +22,13 @@ public abstract class ChatPlayer : ProcessorBase
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected static bool DebugMode => Constants.DebugMode.AudioPlayback;
 
-    protected ChatUIHub Hub { get; }
-    protected Session Session => Hub.Session();
+    protected AppUIHub Hub { get; }
+    protected Session Session => Hub.Session;
     protected IChats Chats => Hub.Chats;
     protected IAuthors Authors => Hub.Authors;
     protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
-    protected MomentClockSet Clocks => Hub.Clocks();
-    protected HostInfo HostInfo => Hub.HostInfo();
+    protected MomentClockSet Clocks => Hub.Clocks;
+    protected HostInfo HostInfo => Hub.HostInfo;
 
     protected IState<TimeSpan> SleepDuration { get; }
     protected IState<TimeSpan> PauseDuration { get; }
@@ -40,7 +40,7 @@ public abstract class ChatPlayer : ProcessorBase
     public string Operation { get; protected set; } = "";
     public Task? WhenPlaying => _whenPlaying;
 
-    protected ChatPlayer(ChatUIHub hub, ChatId chatId)
+    protected ChatPlayer(AppUIHub hub, ChatId chatId)
     {
         Hub = hub;
         ChatId = chatId;

@@ -13,12 +13,23 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.JSInterop" />
-    <PackageReference Include="ActualLab.Fusion" />
-    <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
-    <PackageReference Include="ActualLab.Rpc" />
     <PackageReference Include="SauceControl.Blake2Fast" />
     <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="Ulid" />
+  </ItemGroup>
+
+  <!-- ActualLab packages - Fusion, Rpc, etc. -->
+  <ItemGroup>
+    <PackageReference Include="ActualLab.Core" />
+    <PackageReference Include="ActualLab.Interception" />
+    <PackageReference Include="ActualLab.Rpc" />
+    <PackageReference Include="ActualLab.CommandR" />
+    <PackageReference Include="ActualLab.Fusion" />
+    <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Maybe\" />
   </ItemGroup>
 
 </Project>

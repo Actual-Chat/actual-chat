@@ -1,18 +1,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<TranscriptionSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, TranscriptionSettings.Model>
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2091:GenericArgumentDoNotHaveAnnotation", Justification = "Primitive types will be preserved.")]
-
 @{
-#pragma warning disable IL2091
+    #pragma warning disable IL2091
 
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.Loading))
+    if (State.IsInitial(out var m))
         return;
 
-    var languages = m.Languages.ToList();
-    _formModel.PrimaryLanguageId = languages.GetOrDefault(0).Value;
-    _formModel.SecondaryLanguageId = languages.GetOrDefault(1).Value;
-    _formModel.TertiaryLanguageId = languages.GetOrDefault(2).Value;
+    var languages = m.Languages.AllSpoken;
+    _formModel.PrimaryLanguageId = languages.GetOrDefault(0)?.Value ?? "";
+    _formModel.SecondaryLanguageId = languages.GetOrDefault(1)?.Value ?? "";
+    _formModel.TertiaryLanguageId = languages.GetOrDefault(2)?.Value ?? "";
     var shouldDisplayTranscriberEngineSettings = m.ShouldDisplayTranscriberEngineSettings;
 }
 
@@ -84,27 +82,17 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
     protected override void OnInitialized()
         => _formModel = new FormModel(ComponentIdGenerator);
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
-
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features().IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new(languages, enableIncompleteUI);
     }
 
     private void OnLanguageChanged(int index, string languageId) {
-        var language = Language.ParseOrNone(languageId);
+        var language = languageId.IsNullOrEmpty() ? null : Language.Parse(languageId);
         var languages = State.Value.Languages;
         Hub.LanguageUI.UpdateSettings(languages.With(index, language));
         State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
@@ -130,7 +118,7 @@
         }
     }
 
-    public sealed record Model(UserLanguageSettings Languages, bool ShouldDisplayTranscriberEngineSettings) {
-        public static readonly Model Loading = new(new(), false);
-    }
+    public sealed record Model(
+        UserLanguageSettings Languages,
+        bool ShouldDisplayTranscriberEngineSettings);
 }

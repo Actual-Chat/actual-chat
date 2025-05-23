@@ -15,7 +15,7 @@ internal sealed class IndexedDocuments(
         IReadOnlyCollection<TKey>? deletedDocumentIds,
         CancellationToken cancellationToken = default)
         where TDocument : class, IHasId<TKey>, IHasRoutingKey<TKey>
-        where TKey : struct, ISymbolIdentifier<TKey>
+        where TKey : StringIdentifier, IStringIdentifier<TKey>
     {
         var updatedCount = updatedDocuments?.Count ?? 0;
         var deletedCount = deletedDocumentIds?.Count ?? 0;
@@ -43,7 +43,7 @@ internal sealed class IndexedDocuments(
         CancellationToken cancellationToken = default)
         where TPartialDocument : class, IHasId<TKey>
         where TDocument : class, TPartialDocument
-        where TKey : struct, ISymbolIdentifier<TKey>
+        where TKey : StringIdentifier
     {
         var updatedCount = updatedDocuments?.Count ?? 0;
         if (updatedCount == 0)
@@ -51,11 +51,10 @@ internal sealed class IndexedDocuments(
 
         log.LogInformation("Upserting {DocumentType} documents as {PartialDocumentType} to opensearch index #{IndexName}: {Count}", typeof(TDocument).Name, typeof(TPartialDocument).Name, indexName, updatedCount);
         var result = await openSearch
-            .BulkAsync(r
-                    => r.UpdateMany<TDocument, TPartialDocument>(updatedDocuments,
-                        (op, x) => op.Index(indexName).Upsert(x).Doc(x)),
-                cancellationToken)
-            .ConfigureAwait(false);
+            .BulkAsync(
+                r => r.UpdateMany<TDocument, TPartialDocument>(updatedDocuments, (op, x) => op.Index(indexName).Upsert(x).Doc(x)),
+                cancellationToken
+            ).ConfigureAwait(false);
         log.LogErrors(result);
         result.AssertSuccess();
     }
@@ -66,7 +65,7 @@ internal sealed class IndexedDocuments(
         IReadOnlyCollection<TKey>? deletedDocumentIds,
         CancellationToken cancellationToken = default)
         where TDocument : class, IHasId<TKey>, IHasRoutingKey<TKey>
-        where TKey : struct, ISymbolIdentifier<TKey>
+        where TKey : StringIdentifier, IStringIdentifier<TKey>
         => Save(indexNameProvider(openSearchNames), updatedDocuments, deletedDocumentIds, cancellationToken);
 
     public  Task UpsertPartially<TDocument, TPartialDocument, TKey>(
@@ -75,6 +74,6 @@ internal sealed class IndexedDocuments(
         CancellationToken cancellationToken = default)
         where TDocument : class, TPartialDocument
         where TPartialDocument : class, IHasId<TKey>
-        where TKey : struct, ISymbolIdentifier<TKey>
+        where TKey : StringIdentifier
         => UpsertPartially<TDocument, TPartialDocument, TKey>(indexNameProvider(openSearchNames), updatedDocuments, cancellationToken);
 }

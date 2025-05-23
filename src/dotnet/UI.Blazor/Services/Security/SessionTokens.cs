@@ -4,7 +4,7 @@ using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class SessionTokens(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService
+public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
 {
     public const string HeaderName = "Session";
 
@@ -12,14 +12,13 @@ public sealed class SessionTokens(UIHub hub) : ScopedWorkerBase<UIHub>(hub), ICo
 
     private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);
     private volatile SecureToken? _current;
-    private ISecureTokens? _secureTokens;
-    private DeviceAwakeUI? _deviceAwakeUI;
-    private IJSRuntime? _js;
 
-    private ISecureTokens SecureTokens => _secureTokens ??= Services.GetRequiredService<ISecureTokens>();
-    private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
-    private MomentClock ServerClock => Clocks.ServerClock;
-    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    [field: AllowNull, MaybeNull]
+    private ISecureTokens SecureTokens => field ??= Services.GetRequiredService<ISecureTokens>();
+    [field: AllowNull, MaybeNull]
+    private DeviceAwakeUI DeviceAwakeUI => field ??= Services.GetRequiredService<DeviceAwakeUI>();
+    [field: AllowNull, MaybeNull]
+    private MomentClock ServerClock => field ??= Clocks.ServerClock;
 
     public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(60);
     public TimeSpan RefreshLifespan { get; init; } = TimeSpan.FromMinutes(15);

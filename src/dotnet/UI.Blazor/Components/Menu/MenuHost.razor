@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 @implements IHasServices
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "UI types are expected to be untrimmed.")]
@@ -42,10 +43,6 @@
     private string? _jsMenuId;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
-
-    [Inject] public IServiceProvider Services { get; init; } = null!;
-    [Inject] public History History { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
@@ -190,7 +187,7 @@
         public override HistoryState? Back()
             => BackStepCount == 0 ? null : With(false);
 
-    // "With" helpers
+        // "With" helpers
 
         public OwnHistoryState With(bool isMenuShown)
             => IsMenuShown == isMenuShown ? this : this with { IsMenuShown = isMenuShown };

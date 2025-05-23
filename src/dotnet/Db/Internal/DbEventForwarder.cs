@@ -32,7 +32,7 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
         switch (value) {
         case ICommand command: {
             using var activity = DbInstruments.ActivitySource
-                .StartActivity(ProcessActivityName, ActivityKind.Internal);
+                .StartActivity(ProcessActivityName);
 
             Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
             try {

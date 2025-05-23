@@ -8,7 +8,7 @@ public class ExternalContactGenerator(int seed = 100)
 {
     private readonly Random _random = new (seed);
 
-    public ExternalContactFull NewExternalContact(UserDeviceId userDeviceId = default, int? i = null)
+    public ExternalContactFull NewExternalContact(UserDeviceId? userDeviceId = null, int? i = null)
         => new (NewId(userDeviceId)) {
             GivenName = "User",
             FamilyName = (i ?? _random.Next()).ToInvariantString(),
@@ -39,13 +39,12 @@ public class ExternalContactGenerator(int seed = 100)
 
     public UserDeviceId NewUserDeviceId()
     {
-        var deviceId = new Symbol(_random.Next().ToInvariantString("000000"));
-        var userDeviceId = new UserDeviceId(UserId.New(), deviceId);
-        return userDeviceId;
+        var deviceId = _random.Next().ToInvariantString("000000");
+        return UserDeviceId.New(UserId.New(), deviceId);
     }
 
-    public ExternalContactId NewId(UserDeviceId id = default)
-        => id.IsNone
-            ? new (NewUserDeviceId(), NewDeviceContactId())
-            : new (id, NewDeviceContactId());
+    public ExternalContactId NewId(UserDeviceId? id = null)
+        => id is null
+            ? ExternalContactId.New(NewUserDeviceId(), NewDeviceContactId())
+            : ExternalContactId.New(id, NewDeviceContactId());
 }

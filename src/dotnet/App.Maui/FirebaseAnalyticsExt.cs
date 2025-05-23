@@ -14,7 +14,7 @@ public static class FirebaseAnalyticsExt
     public static void ActivateOwnAnalyticsCollection(IServiceProvider serviceProvider)
     {
 #if IOS || ANDROID
-        _ = new Collector(serviceProvider.ChatUIHub());
+        _ = new Collector(serviceProvider.AppUIHub());
 #endif
     }
 
@@ -29,7 +29,7 @@ public static class FirebaseAnalyticsExt
         private readonly string _appKind;
         private readonly AccountUI _accountUI;
 
-        public Collector(ChatUIHub hub)
+        public Collector(AppUIHub hub)
         {
             _firebaseAnalytics = CrossFirebaseAnalytics.Current;
             _isMauiApp = Constants.HostInfo.HostKind.IsMauiApp();

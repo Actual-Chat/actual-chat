@@ -4,14 +4,12 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class DeviceAwakeUI : ScopedServiceBase<UIHub>, ISleepDurationProvider, IDeviceAwakeUIBackend
+public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDeviceAwakeUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DeviceAwakeUI.init";
 
     private readonly DotNetObjectReference<IDeviceAwakeUIBackend> _backendRef;
     private readonly MutableState<TimeSpan> _totalSleepDuration;
-
-    private IJSRuntime JS => Hub.JSRuntime();
 
     public IState<TimeSpan> TotalSleepDuration => _totalSleepDuration;
 

@@ -10,7 +10,7 @@
     <div class="c-left">
         @if (showAuthorBadge) {
             <ChatMessageAuthorCircle
-                AuthorSid="@Message.AuthorId"
+                AuthorId="@Message.AuthorId"
                 Click="@_onClickCallback"/>
         }
     </div>
@@ -27,7 +27,7 @@
 @code {
     private EventCallback<AuthorId> _onClickCallback;
 
-    private ChatUIHub Hub => ChatContext.Hub;
+    private AppUIHub Hub => ChatContext.Hub;
     private AuthorUI AuthorUI => Hub.AuthorUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;

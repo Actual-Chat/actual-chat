@@ -82,7 +82,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         // act
         await _tester.SaveExternalContacts(externalContact);
 
-        externalContact = externalContact.WithoutPhone(new ("1-234567890"))
+        externalContact = externalContact.WithoutPhone(Phone.Parse("1-234567890"))
             .WithPhone(UniqueNames.Phone())
             .WithoutEmail(UniqueNames.Email("John.White", "icloud.com"))
             .WithEmail("John.White@somedomain.com");
@@ -131,7 +131,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
-        var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
+        var externalContact = new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(jackIdentities.Phone)
             .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
@@ -158,7 +158,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var bobContacts0 = await ListContactIds(0);
-        var externalContact = new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
+        var externalContact = new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
             .WithPhone(jackIdentities.Phone)
             .WithPhone(UniqueNames.Phone())
             .WithHash(_hasher);
@@ -192,7 +192,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignInAsUniqueBob();
         var externalContact =
-            new ExternalContactFull(new ExternalContactId(new UserDeviceId(bob.Id, bobDeviceId), NewDeviceContactId()))
+            new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(bob.Id, bobDeviceId), NewDeviceContactId()))
                 .WithEmail(jackIdentities.Email)
                 .WithHash(_hasher);
 
@@ -313,12 +313,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         // assert
         var contactId = BuildContactId(bob, jack);
-        bobContacts.Should().BeEquivalentTo(new[] { contactId });
+        bobContacts.Should().BeEquivalentTo([contactId]);
 
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().Be(contactDisplayName);
+            contact1.ExternalContactName.Should().Be(contactDisplayName);
             return contact1;
         }, TimeSpan.FromSeconds(10));
     }
@@ -347,12 +347,12 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
         // assert
         var contactId = BuildContactId(bob, jack);
-        bobContacts.Should().BeEquivalentTo(new[] { contactId });
+        bobContacts.Should().BeEquivalentTo([contactId]);
 
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().Be(contactDisplayName);
+            contact1.ExternalContactName.Should().Be(contactDisplayName);
             return contact1;
         }, TimeSpan.FromSeconds(10));
 
@@ -368,7 +368,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().Be(contactDisplayName2);
+            contact1.ExternalContactName.Should().Be(contactDisplayName2);
             return contact1;
         }, TimeSpan.FromSeconds(10));
 
@@ -379,7 +379,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await ComputedTest.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
-            contact1!.ExternalContactName.Should().BeEmpty();
+            contact1.ExternalContactName.Should().BeEmpty();
             return contact1;
         }, TimeSpan.FromSeconds(10));
     }
@@ -409,12 +409,14 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
 
     private async Task<List<ContactId>> ListContactIds(Session session, CancellationToken cancellationToken = default)
     {
-        var ids = await _contacts.ListIds(session, PlaceId.None, cancellationToken);
-        return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
+        var ids = await _contacts.ListIds(session, null, cancellationToken);
+        return ids
+            .Where(x => x.ChatId.Kind == ChatKind.Peer)
+            .ToList();
     }
 
     private static ExternalContactFull NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
-        => new (new ExternalContactId(new UserDeviceId(owner.Id, ownerDeviceId), NewDeviceContactId()));
+        => new (ExternalContactId.New(UserDeviceId.New(owner.Id, ownerDeviceId), NewDeviceContactId()));
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());
@@ -423,7 +425,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => new (Guid.NewGuid().ToString());
 
     private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)
-        => ContactId.Peer(owner.Id, friendAccount.Id);
+        => ContactId.NewUser(owner.Id, friendAccount.Id);
 
     private static EquivalencyOptions<ExternalContactFull> Including(EquivalencyOptions<ExternalContactFull> o)
         => o.Including(x => x.Id).Including(x => x.Hash);

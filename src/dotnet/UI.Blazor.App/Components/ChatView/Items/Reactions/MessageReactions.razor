@@ -1,18 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<MessageReactions.Model>
+@inherits ComputedStateComponent<AppUIHub, MessageReactions.Model?>
 @{
     var m = State.Value;
+    if (m is null)
+        return;
+
 }
-@if (!m.HasReactions) {
-    return;
-}
+
 <ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
         <ReactionBadge Reaction="reaction" OwnReaction="m.OwnReaction" Entry="Entry" />
     }
 
     <li class="message-reactions-add"
-        data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id))"
+        data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id.Value))"
         data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.Right.ToPositionString())">
         <AddReactionIcon Class="message-reactions-add-icon"/>
@@ -20,50 +21,34 @@
 </ul>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private IAuthors Authors => Hub.Authors;
     private IReactions Reactions => Hub.Reactions;
-    private TuneUI TuneUI => Hub.TuneUI;
-    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(Entry.HasReactions, []),
+            InitialValue = Entry.HasReactions ? new Model([]) : null,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!Entry.Id.IsTextEntry(out var textEntryId))
-            return Model.None;
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.Id is not TextEntryId textEntryId)
+            return null;
 
         var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken).ConfigureAwait(false);
         if (summaries.Length == 0)
-            return new(false, summaries);
+            return null;
 
         var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken).ConfigureAwait(false);
-        return new(true, summaries, ownReaction);
-    }
-
-    private Task ToggleReaction(Symbol emojiId) {
-        _ = TuneUI.Play(Tune.React);
-        return UICommander.Run(new Reactions_React(Session, new Reaction {
-            EntryId = Entry.Id.ToTextEntryId(),
-            EmojiId = emojiId,
-        }));
+        return new(summaries, ownReaction);
     }
 
     // Nested types
 
     public sealed record Model(
-        bool HasReactions,
         ReactionSummary[] Reactions,
         Reaction? OwnReaction = null
-    ) {
-        public static readonly Model None = new(false, []);
-    };
+    );
 }

@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
 @using ActualChat.Media
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<IncomingShareModal.Model>
 @{
     var selectedChatIds = SelectedChatIds;
@@ -61,13 +62,12 @@
     private ContactSelector? _contactSelectorRef;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private string _comment = "";
-    private ILogger? _log;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     private ImmutableHashSet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
-
-    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -220,7 +220,7 @@
             }).ToArray(),
         };
         var chatEntry = await Services.UICommander().Call(cmd).ConfigureAwait(false);
-        var textEntryId = new TextEntryId(chatEntry.ChatId, chatEntry.LocalId, AssumeValid.Option);
+        var textEntryId = TextEntryId.New(chatEntry.ChatId, chatEntry.LocalId);
         // Add pseudo attachments to evaluate file type later
         chatEntry = chatEntry with {
             Attachments = media
@@ -228,7 +228,7 @@
                     EntryId = textEntryId,
                     MediaId = c.MediaContent.MediaId,
                     ThumbnailMediaId = c.MediaContent.ThumbnailMediaId,
-                    Media = new Media {
+                    Media = new Media(c.MediaContent.MediaId) {
                         ContentType = c.ContentType,
                     },
                 }).ToArray(),

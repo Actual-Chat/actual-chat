@@ -21,9 +21,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
     {
         // This type initializer sets all super-early defaults
 
-        // Rpc - API version
-        RpcDefaults.ApiVersion = RpcDefaults.BackendVersion = Constants.Api.Version;
-
         // Session.Factory & Validator
 #pragma warning disable CA2000
         Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(20, Alphabet.AlphaNumericDash.Symbols));
@@ -70,9 +67,6 @@ public sealed class CoreModule(IServiceProvider moduleServices)
         var isApp = hostKind.IsApp();
         var isServer = hostKind.IsServer();
 
-        // Common services
-        services.AddSingleton(c => new UrlMapper(c.HostInfo()));
-
         // IArithmetics
         services.AddTypeMapper<IArithmetics>(map => map
             .Add<double, DoubleArithmetics>()
@@ -109,7 +103,7 @@ public sealed class CoreModule(IServiceProvider moduleServices)
             });
 
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            var rpcCallLogLevel = Constants.DebugMode.RpcCalls.ApiClient && isDevelopmentInstance
+            var rpcCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiClient && isDevelopmentInstance
                 ? LogLevel.Debug
                 : LogLevel.None;
             services.AddSingleton<RpcPeerFactory>(_

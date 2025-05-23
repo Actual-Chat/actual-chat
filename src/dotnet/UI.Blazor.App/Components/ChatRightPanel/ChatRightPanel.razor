@@ -1,15 +1,17 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Components.SideNav
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<AppUIHub, bool>
 
 @{
-    var showSkeletonsOnly = Chat.Id.IsNone;
+    var showSkeletonsOnly = Chat?.Id is null;
     var isOpen = State.LastNonErrorValue;
     // Log.LogDebug("RightPanel IsOpen={IsOpen}", isOpen);
 }
 
-@if (showSkeletonsOnly && isOpen) {
-    <SkeletonRightPanel/>
+@if (showSkeletonsOnly) {
+    if (isOpen) {
+        <SkeletonRightPanel />
+    }
     return;
 }
 
@@ -21,12 +23,8 @@
 </SideNav>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private PanelsUI PanelsUI => Hub.PanelsUI;
-    private ILogger Log => Hub.LogFor<ChatRightPanel>();
-
     [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

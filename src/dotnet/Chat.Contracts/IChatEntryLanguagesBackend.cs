@@ -36,7 +36,7 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_BulkChange(
     [property: DataMember, MemoryPackOrder(0)] ChatEntryLanguageChange[] Changes
-) : ICommand<Result<ChatEntryLanguage?>[]>, IBackendCommand, IHasShardKey<ChatEntryId>
+) : ICommand<Result<ChatEntryLanguage?>[]>, IBackendCommand, IHasShardKey<ChatId>
 {
     public static ChatEntryLanguagesBackend_BulkChange Upserts(params IEnumerable<ChatEntryLanguage> languages)
         => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Upsert(x))).ToArray());
@@ -44,27 +44,27 @@ public sealed partial record ChatEntryLanguagesBackend_BulkChange(
         => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Remove(x))).ToArray());
 
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId ShardKey => Changes[0].Id;
+    public ChatId ShardKey => Changes[0].Id.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Reset(
     [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id
-) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatEntryId>
+) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId ShardKey => Id;
+    public ChatId ShardKey => Id.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_TryChange(
     [property: DataMember, MemoryPackOrder(0)] ChatEntryLanguageChange Change
-) : ICommand<Result<ChatEntryLanguage?>>, IBackendCommand, IHasShardKey<ChatEntryId>
+) : ICommand<Result<ChatEntryLanguage?>>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId ShardKey => Change.Id;
+    public ChatId ShardKey => Change.Id.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

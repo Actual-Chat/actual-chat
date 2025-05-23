@@ -5,7 +5,7 @@ namespace ActualChat.Core.UnitTests.Time;
 
 public class TimeSpanFormatExtTest
 {
-    [Fact]
+    [Fact, UseCulture("en-US")]
     public void FormatTest()
     {
         var currentCulture = Thread.CurrentThread.CurrentCulture;

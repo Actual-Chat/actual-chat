@@ -16,8 +16,8 @@ public class ChatContentCursorTests(ITestOutputHelper @out) : TestBase(@out)
     {
         const long version = 1001;
         const long localId = 20202;
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var chatEntryId = TextEntryId.New(chatId, localId);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Version = version

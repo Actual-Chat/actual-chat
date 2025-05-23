@@ -1,10 +1,11 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
+public class ActiveChatsUI : UIServiceBase<AppUIHub>
 {
     public const int MaxActiveChatCount = 3;
 
@@ -12,13 +13,12 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     private readonly StoredState<ActiveChat[]> _activeChats;
 
     private IChats Chats => Hub.Chats;
-    private UICommander UICommander => Hub.UICommander();
     private Moment CpuNow => Clocks.CpuClock.Now;
 
     public IMutableState<ActiveChat[]> ActiveChats => _activeChats;
-    public Task WhenLoaded => _activeChats.WhenRead;
+    public Task WhenReady => _activeChats.WhenRead;
 
-    public ActiveChatsUI(ChatUIHub hub) : base(hub)
+    public ActiveChatsUI(AppUIHub hub) : base(hub)
         => _activeChats = StateFactory.NewKvasStored<ActiveChat[]>(
             new (LocalSettings, nameof(ActiveChats)) {
                 InitialValue = [],
@@ -45,8 +45,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
     }
 
     public ValueTask RemoveActiveChat(ChatId chatId)
-        => chatId.IsNone ? default
-            : UpdateActiveChats(c => c.Without(chatId));
+        => UpdateActiveChats(c => c.Without(chatId).ToArray());
 
     private async ValueTask<ActiveChat[]> FixStoredActiveChats(
         ActiveChat[] activeChats,
@@ -103,14 +102,14 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
             if (newChat.IsRecording && newChat.ChatId != recordingChat.ChatId)
                 newChat = newChat with { IsRecording = false };
             if (!(newChat.IsListening || newChat.IsRecording)) // Must be active
-                newChat = default;
+                newChat = null;
             else if (!rules.CanRead()) // Must be accessible
-                newChat = default;
+                newChat = null;
 
             if (!chat.IsSameAs(newChat))
-                activeChats = newChat.IsNone
-                    ? activeChats.Without(chat)
-                    : activeChats.WithOrReplace(newChat);
+                activeChats = newChat == null
+                    ? activeChats.Without(chat).ToArray()
+                    : activeChats.WithOrReplace(newChat).ToArray();
         }
 
         // There must be no more than MaxActiveChatCount active chats
@@ -118,7 +117,7 @@ public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
             var chat = activeChats[^1];
             if (chat.IsRecording)
                 chat = activeChats[^2];
-            activeChats = activeChats.Without(chat);
+            activeChats = activeChats.Without(chat).ToArray();
         }
         return activeChats;
     }

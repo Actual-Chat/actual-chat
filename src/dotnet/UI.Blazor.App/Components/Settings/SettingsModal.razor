@@ -1,16 +1,13 @@
 @using ActualChat.Hosting
 @implements IModalView<SettingsModal.Model>
-@inherits ComputedStateComponent<SettingsModal.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, SettingsModal.ComputedModel>
 @{
     var m = State.Value;
     var account = m.AccountFull;
-    if (ReferenceEquals(account, AccountFull.Loading))
-        return;
-
-    var isGuestOrNone = account.IsGuestOrNone;
-    var showMyAccount = !isGuestOrNone;
-    var showNotifications = !isGuestOrNone && _enableIncompleteUI;
-    var showLogout = !isGuestOrNone;
+    var isGuest = account.IsGuest;
+    var showMyAccount = !isGuest;
+    var showNotifications = !isGuest && _enableIncompleteUI;
+    var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
 }
 
@@ -87,17 +84,12 @@
     private bool _enableIncompleteUI;
     private IDeveloperTools? _developerTools;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private Features Features => Hub.Features();
-    private AccountUI AccountUI => Hub.AccountUI;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        _developerTools = Hub.GetService<IDeveloperTools>();
+        _developerTools = Hub.Services.GetService<IDeveloperTools>();
         _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
     }
 

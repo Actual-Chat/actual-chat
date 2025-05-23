@@ -83,7 +83,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         await ComputedTest.When(async ct => {
             // act
-            var translation = await Translations.Get(Tester.Session, new TranslationId(entry.Id, targetLang, AssumeValid.Option), ct);
+            var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), ct);
 
             // assert
             translation.Should().NotBeNull();
@@ -120,7 +120,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         // act
         var translations = await Enumerable.Range(0, messages.Length)
-            .Select(i => WhenTranslated(entries[i].Id, Languages.Russian))
+            .Select(i => WhenTranslated((TextEntryId)entries[i].Id, Languages.Russian))
             .Collect(1);
 
         // assert
@@ -136,9 +136,9 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         }
         return;
 
-        Task<Translation> WhenTranslated(ChatEntryId id, Language language)
+        Task<Translation> WhenTranslated(TextEntryId id, Language language)
             => ComputedTest.When(
-                ct => Translations.Get(Tester.Session, new(id, language, AssumeValid.Option), ct).Require(),
+                ct => Translations.Get(Tester.Session, TranslationId.New(id, language), ct).Require(),
                 TimeSpan.FromSeconds(10));
     }
 

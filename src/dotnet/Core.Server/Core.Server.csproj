@@ -1,14 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\Api\Api.csproj" />
+    <ProjectReference Include="..\Backend\Backend.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ActualLab.Core" />
     <PackageReference Include="ActualLab.Fusion.Server" />
     <PackageReference Include="Anthropic.SDK" />
-    <PackageReference Include="Blake3" />
     <PackageReference Include="CliWrap" />
     <PackageReference Include="FFMpegCore" />
     <PackageReference Include="Google.Cloud.Storage.V1" />

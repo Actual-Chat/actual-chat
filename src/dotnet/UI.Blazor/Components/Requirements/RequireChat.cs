@@ -2,26 +2,24 @@ using ActualChat.Chat;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public class RequireChat : RequirementComponent
+public sealed class RequireChat : RequirementComponent
 {
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IChats Chats { get; init; } = null!;
-    [Inject] protected ILogger<RequireChat> Log { get; init; } = null!;
+    [field: AllowNull, MaybeNull]
+    private IChats Chats => field ??= Hub.Services.GetRequiredService<IChats>();
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
 
     public override string ToString()
-        => $"{GetType().GetName()}(ChatId = {ChatId})";
+        => $"{GetType().GetName()}(ChatId = {ChatSid})";
 
-    public override async Task<Unit> Require(CancellationToken cancellationToken)
+    public override async Task Require(CancellationToken cancellationToken)
     {
-        if (!ChatId.TryParse(ChatId, out var chatId)) {
+        if (!ChatId.TryParse(ChatSid, out var chatId)) {
             Log.LogWarning("Invalid ChatId");
             throw StandardError.Format<ChatId>();
         }
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        return default;
     }
 }

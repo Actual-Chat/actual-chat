@@ -1,6 +1,5 @@
-@using ActualChat.Kvas
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<AppSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, AppSettings.Model>
 @{
     var m = State.Value;
     var dataCollectionStatus = m.IsDataCollectionEnabled
@@ -89,16 +88,13 @@
 @code {
     private INativeAppSettings? NativeAppSettings { get; set; }
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
-    private AccountSettings AccountSettings => Hub.AccountSettings();
+    private BubbleUI BubbleUI => Hub.BubbleUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
-    private BubbleUI BubbleUI => Hub.BubbleUI;
-    private ToastUI ToastUI => Hub.ToastUI;
     private LogUI LogUI => Hub.LogUI;
+
     protected override void OnInitialized()
-        => NativeAppSettings = Hub.GetService<INativeAppSettings>();
+        => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
@@ -116,7 +112,7 @@
     }
 
     private async Task OnRestartWalkThrough() {
-        await BubbleUI.ResetSettings().ConfigureAwait(true);
+        await BubbleUI.ResetSettings();
         ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 

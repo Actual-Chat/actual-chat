@@ -8,8 +8,8 @@ public static class KvasExt
 
     public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.TryGet<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new();
+        var value = await kvas.Get<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
+        return value ?? new();
     }
 
     public static Task SetUserChatSettings(this IKvas<User> kvas, ChatId chatId, UserChatSettings value, CancellationToken cancellationToken)
@@ -26,8 +26,8 @@ public static class KvasExt
 
     public static async ValueTask<UserAvatarSettings> GetUserAvatarSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.TryGet<UserAvatarSettings>(UserAvatarSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new();
+        var value = await kvas.Get<UserAvatarSettings>(UserAvatarSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return value ?? new();
     }
 
     public static Task SetUserAvatarSettings(this IKvas<User> kvas, UserAvatarSettings value, CancellationToken cancellationToken)
@@ -37,8 +37,8 @@ public static class KvasExt
 
     public static async ValueTask<UserLanguageSettings> GetUserLanguageSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.TryGet<UserLanguageSettings>(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new();
+        var value = await kvas.Get<UserLanguageSettings>(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return value ?? new();
     }
 
     public static Task SetUserLanguageSettings(this IKvas<User> kvas, UserLanguageSettings value, CancellationToken cancellationToken)
@@ -48,8 +48,8 @@ public static class KvasExt
 
     public static async ValueTask<UserListeningSettings> GetUserListeningSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.TryGet<UserListeningSettings>(UserListeningSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new();
+        var value = await kvas.Get<UserListeningSettings>(UserListeningSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return value ?? new();
     }
 
     public static Task SetUserListeningSettings(this IKvas<User> kvas, UserListeningSettings value, CancellationToken cancellationToken)
@@ -71,8 +71,8 @@ public static class KvasExt
 
     public static async ValueTask<UserTranscriptionEngineSettings> GetUserTranscriptionEngineSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.TryGet<UserTranscriptionEngineSettings>(UserTranscriptionEngineSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new();
+        var value = await kvas.Get<UserTranscriptionEngineSettings>(UserTranscriptionEngineSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return value ?? new();
     }
 
     public static Task SetUserTranscriptionEngineSettings(this IKvas<User> kvas, UserTranscriptionEngineSettings value, CancellationToken cancellationToken)
@@ -82,8 +82,8 @@ public static class KvasExt
 
     public static async ValueTask<UserAppSettings> GetUserAppSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.TryGet<UserAppSettings>(UserAppSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new();
+        var value = await kvas.Get<UserAppSettings>(UserAppSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return value ?? new();
     }
 
     public static Task SetUserAppSettings(this IKvas<User> kvas, UserAppSettings value, CancellationToken cancellationToken)
@@ -95,9 +95,8 @@ public static class KvasExt
         this IKvas<User> kvas,
         CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.TryGet<UserEmailsSettings>(UserEmailsSettings.KvasKey, cancellationToken)
-            .ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new ();
+        var value = await kvas.Get<UserEmailsSettings>(UserEmailsSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return value ?? new();
     }
 
     public static Task SetUserEmailsSettings(

@@ -93,11 +93,11 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
 
     private static IEnumerable<ChatEntry> GetEntries(IEnumerable<string> messages)
     {
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var localId = 1L;
         var version = DateTime.Now.Ticks;
         foreach (var msg in messages) {
-            var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId++, AssumeValid.Option);
+            var entryId = TextEntryId.New(chatId, localId++);
             yield return new ChatEntry(entryId, version++) {
                 Content = msg,
             };

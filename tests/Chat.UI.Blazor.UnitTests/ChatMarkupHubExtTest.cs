@@ -1,8 +1,7 @@
-using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.AspNetCore.StaticFiles;
 
-namespace ActualChat.UI.Blazor.App.UnitTests;
+namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class ChatMarkupHubExtTest
 {
@@ -13,9 +12,9 @@ public class ChatMarkupHubExtTest
     {
         // arrange
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Content = "some text",
@@ -40,13 +39,12 @@ public class ChatMarkupHubExtTest
     {
         // arrange
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
-            Attachments = attachments.Select(Attachment)
-                .ToArray(),
+            Attachments = attachments.Select(Attachment).ToArray(),
         };
 
         // act
@@ -68,13 +66,12 @@ public class ChatMarkupHubExtTest
     {
         // arrange
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatEntryId = TextEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
-            Attachments = attachments.Select(Attachment)
-                .ToArray(),
+            Attachments = attachments.Select(Attachment).ToArray(),
         };
 
         // act
@@ -91,7 +88,7 @@ public class ChatMarkupHubExtTest
             throw StandardError.Constraint($"Failed to find content type for '{file}'.");
 
         return new TextEntryAttachment {
-            Media = new Media.Media {
+            Media = new Media.Media(null!) {
                 FileName = file,
                 ContentType = contentType,
             },

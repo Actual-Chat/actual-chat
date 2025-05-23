@@ -27,18 +27,16 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
     {
         var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        cursor ??= new (ChatId.None, 0);
-        var batch = await chatsBackend.ListChanged(
-                new () {
-                    MinVersion = cursor.LastUpdatedVersion,
-                    MaxVersion = maxVersion,
-                    LastId = cursor.LastUpdatedId,
-                    Limit = BatchSize,
-                    ExcludePeerChats = true,
-                    ExcludePlaceRootChats = true,
-                },
-                cancellationToken)
-            .ConfigureAwait(false);
+        cursor ??= new(null, 0);
+        var query = new ChangedChatsQuery() {
+            LastId = cursor.LastUpdatedId,
+            Limit = BatchSize,
+            MinVersion = cursor.LastUpdatedVersion,
+            MaxVersion = maxVersion,
+            ExcludePeerChats = true,
+            ExcludePlaceRootChats = true,
+        };
+        var batch = await chatsBackend.ListChanged(query, cancellationToken).ConfigureAwait(false);
         Log.LogDebug(
             "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
             Id, batch.Length, maxVersion, cursor);
@@ -50,7 +48,13 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
         await WhenReady.ConfigureAwait(false);
 
         var placeMap = await GetPlaceMap(batch, cancellationToken).ConfigureAwait(false);
-        var updated = batch.Select(x => x.ToIndexedGroup(placeMap.GetValueOrDefault(x.Id.PlaceId))).ToArray();
+        var updated = batch
+            .Select(c => {
+                var place = c.Id is PlaceChatId placeChatId
+                    ? placeMap.GetValueOrDefault(placeChatId.PlaceId)
+                    : null;
+                return c.ToIndexedGroup(place);
+            }).ToArray();
         await IndexedDocuments.SaveGroups(updated, [], cancellationToken).ConfigureAwait(false);
     }
 
@@ -70,10 +74,11 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
 
     private async Task<Dictionary<PlaceId, Place>> GetPlaceMap(IReadOnlyList<Chat.Chat> chats, CancellationToken cancellationToken) {
         var placesBackend = Host.Services.GetRequiredService<IPlacesBackend>();
-        var places = await chats.Where(x => x.Id.IsPlaceChat)
-            .Select(x => x.Id.PlaceId)
+        var places = await chats
+            .Select(c => (c.Id as PlaceChatId)?.PlaceId)
+            .SkipNullItems()
             .Distinct()
-            .Select(x => placesBackend.Get(x, cancellationToken))
+            .Select(placeId => placesBackend.Get(placeId, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
         return places.SkipNullItems().ToDictionary(x => x.Id);

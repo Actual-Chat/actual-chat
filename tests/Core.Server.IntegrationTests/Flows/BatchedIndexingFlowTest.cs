@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Flows;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
@@ -14,7 +15,8 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     private const int Quota = SimpleBatchedIndexingFlow.QuotaOverride;
     private static readonly TimeSpan RecheckInterval = SimpleBatchedIndexingFlow.RecheckIntervalOverride;
     private BatchedIndexingFlowTestContext<SimpleItem, ChatId> Context { get; } = fixture.AppHost.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     [Fact]
     public async Task MustHandleEmptyBatch()
@@ -100,5 +102,5 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         => Enumerable.Range(1, lastBatchSize).Select(NewItem).ToList();
 
     private SimpleItem NewItem(int i = -1)
-        => new (new ChatId(Generate.Option), $"Entry {_lid++} {(i >= 0 ? i : null)}", Tester.VersionGenerator.NextVersion());
+        => new (GroupChatId.New(), $"Entry {_lid++} {(i >= 0 ? i : null)}", Tester.VersionGenerator.NextVersion());
 }

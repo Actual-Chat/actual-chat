@@ -18,7 +18,7 @@ internal class ChatContentUpdateLoader(
         bool continueProcessing;
         do {
             // We must read all updated entries with LocalId <= lastEntryLocalId
-            // before reading next batch. Otherwise, we risk to lose some updates.
+            // before reading the next batch. Otherwise, we risk to lose some updates.
             bool continueReadUpdates;
             do {
                 var updatedEntries = await chats

@@ -5,10 +5,10 @@ namespace ActualChat.Streaming;
 
 public interface IStreamClient
 {
-    Task<AudioSource> GetAudio(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken);
-    IAsyncEnumerable<TranscriptDiff> GetTranscript(Symbol streamId, CancellationToken cancellationToken);
+    Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
+    IAsyncEnumerable<TranscriptDiff> GetTranscript(string streamId, CancellationToken cancellationToken);
     IAsyncEnumerable<TranscriptDiff> GetTranslatedTranscript(
-        Symbol streamId,
+        string streamId,
         TranslationId translationId,
         CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);

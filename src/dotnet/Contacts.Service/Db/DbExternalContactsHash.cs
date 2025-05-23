@@ -30,7 +30,7 @@ public class DbExternalContactsHash : IHasId<string>, IHasVersion<long>, IRequir
     public DbExternalContactsHash(ExternalContactsHash externalContact) => UpdateFrom(externalContact);
 
     public ExternalContactsHash ToModel()
-        => new(new UserDeviceId(Id), Version) {
+        => new(UserDeviceId.Parse(Id), Version) {
             CreatedAt = CreatedAt.ToMoment(),
             ModifiedAt = ModifiedAt.ToMoment(),
             Hash = new HashString(Hash),
@@ -38,11 +38,12 @@ public class DbExternalContactsHash : IHasId<string>, IHasVersion<long>, IRequir
 
     public void UpdateFrom(ExternalContactsHash model)
     {
-        this.RequireSameOrEmptyId(model.Id);
+        var sid = model.Id.Value;
+        this.RequireSameOrEmptyId(sid);
         model.Id.Require();
         model.RequireSomeVersion();
 
-        Id = model.Id;
+        Id = sid;
         Hash = model.Hash;
         Version = model.Version;
         CreatedAt = model.CreatedAt.ToDateTimeClamped();

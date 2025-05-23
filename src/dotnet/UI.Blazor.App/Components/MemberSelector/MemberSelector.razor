@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @implements IDisposable
 
 <SearchBox
@@ -13,7 +13,7 @@
         <div class="c-item"
              @key="@item.Account.Id.Value"
              @onclick="@(_ => OnItemClick(item))">
-            <AccountCircle UserSid="@item.Account.Id" ShowPresence="true"/>
+            <AccountCircle UserId="@item.Account.Id" ShowPresence="true"/>
             <div class="avatar-name">
                 <SearchMatchHighlighter Match="@GetMatch(item.Account.Avatar.Name)"/>
             </div>
@@ -55,7 +55,7 @@
                 <div class="c-remove">
                     <i class="icon-close c-close"></i>
                 </div>
-                <AccountCircle UserSid="@userId" Size="@SquareSize.Size5"/>
+                <AccountCircle UserId="@userId" Size="@SquareSize.Size5"/>
                 <div class="c-name">
                     @account.Avatar.Name
                 </div>
@@ -73,9 +73,6 @@
     private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
     private CancellationToken DisposeToken { get; set; }
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private StateFactory StateFactory => Hub.StateFactory();
     private IAccounts Accounts => Hub.Accounts;
 
     [Parameter] public string SearchBoxPlaceholder { get; set; } = "Whom would you like to add?";

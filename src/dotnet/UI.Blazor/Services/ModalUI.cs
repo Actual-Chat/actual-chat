@@ -1,18 +1,14 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class ModalUI(UIHub uiHub) : IHasServices, IHasAcceptor<ModalHost>
+public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
-    private readonly Acceptor<ModalHost> _hostAcceptor = new(true);
-
-    private TypeMapper<IModalView> ViewResolver { get; } = uiHub.GetRequiredService<TypeMapper<IModalView>>();
-
-    Acceptor<ModalHost> IHasAcceptor<ModalHost>.Acceptor => _hostAcceptor;
+    private TypeMapper<IModalView> ViewResolver { get; } = hub.Services.GetRequiredService<TypeMapper<IModalView>>();
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
 
-    public UIHub Hub { get; } = uiHub;
-    IServiceProvider IHasServices.Services => Hub;
-    public Task WhenReady => _hostAcceptor.WhenAccepted();
-    public ModalHost Host => _hostAcceptor.Value;
+    public TaskCompletionSource<ModalHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<ModalHost>();
+    public Task WhenReady => HostAcceptor.Task;
+    [field: AllowNull, MaybeNull]
+    public ModalHost Host => field ??= HostAcceptor.Task.RequireResult();
 
     public Task<ModalRef> Show<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TModel>

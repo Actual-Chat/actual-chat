@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<Moment>
+@inherits ComputedStateComponent<UIHub, Moment>
 @{
     var time = State.Value;
     var second = (long) time.ToDateTime().TimeOfDay.TotalSeconds;
@@ -25,7 +25,7 @@
 Content: @DateTime.Now.ToString("F")
 
 @code {
-    [Inject] private IFusionTime FusionTime { get; init; } = null!;
+    private IFusionTime FusionTime => Hub.FusionTime;
 
     protected override ComputedState<Moment>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

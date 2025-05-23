@@ -15,8 +15,8 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string UserId { get; set; } = "";
-    public string CountryCode { get; set; } = "";
-    public Gender Gender { get; set; } = Gender.NotSpecified;
+    public string Country { get; set; } = "";
+    public Gender Gender { get; set; } = Gender.Undefined;
     public string Languages { get; set; } = "";
     public string Interests { get; set; } = "";
 
@@ -25,16 +25,15 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
 
     public ProfilePreferencesFull ToModel()
     {
-        var country = CountryCode.IsNullOrEmpty() ? Country.NotSpecified : new Country(CountryCode);
-        Language[] languages =
-            Languages.IsNullOrEmpty()
-                ? []
-                : [..Languages.Split(',').Select(l => new Language(l))];
-        Interest[] interests =
-            Interests.IsNullOrEmpty()
-                ? []
-                : [..Interests.Split(',').Select(i => new Interest(i))];
-        return new ProfilePreferencesFull(new UserId(UserId), Id, Version) {
+        var country = ActualChat.Country.Parse(Country ?? "");
+        var languages = Languages.IsNullOrEmpty()
+            ? Array.Empty<Language>()
+            : [..Languages.Split(',').Select(Language.Parse)];
+        var interests = Interests.IsNullOrEmpty()
+            ? Array.Empty<Interest>()
+            : [..Interests.Split(',').Select(Interest.Parse)];
+        var userId = ActualChat.UserId.Parse(UserId);
+        return new ProfilePreferencesFull(userId, Id, Version) {
             Preferences = new Preferences {
                 Country = country,
                 Gender = Gender,
@@ -52,24 +51,22 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
 
         Id = id;
         Version = model.Version;
-        if (UserId.IsNullOrEmpty()) {
-            model.UserId.Require(nameof(ProfilePreferencesFull.UserId));
-            UserId = model.UserId;
-        }
-        else if (!model.UserId.IsNone && !Equals(UserId, model.UserId.Value))
-                throw StandardError.Constraint("UserId can't be changed.");
+        if (UserId.IsNullOrEmpty())
+            UserId = model.UserId.Value;
+        else if (!OrdinalEquals(UserId, model.UserId.Value))
+            throw StandardError.Constraint("UserId can't be changed.");
 
         var preferences = model.Preferences;
-        CountryCode = preferences.Country.Code;
+        Country = preferences.Country.Value;
         Gender = preferences.Gender;
-        Languages = string.Join(",", preferences.Languages.Select(c => c.Id.Value));
-        Interests = string.Join(",", Sort(preferences.Interests).Select(c => c.Code));
+        Languages = preferences.Languages.Select(c => c.Value).ToDelimitedString(",");
+        Interests = Sort(preferences.Interests).Select(c => c.Value).ToDelimitedString(",");
     }
 
     private IEnumerable<Interest> Sort(IEnumerable<Interest> interests)
         => interests
             .Select(c => {
-                var index = Interests.IndexOf(c.Code, StringComparison.Ordinal);
+                var index = Interests.OrdinalIndexOf(c.Value);
                 if (index < 0)
                     index = int.MaxValue;
                 return new { Interest = c, index };

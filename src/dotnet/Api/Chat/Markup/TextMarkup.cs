@@ -1,8 +1,9 @@
-using System.Text;
+using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
-public abstract record TextMarkup(string Text) : Markup
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public abstract class TextMarkup(string text) : Markup
 {
     public static TextMarkup New(TextMarkupKind kind, string text)
     {
@@ -47,16 +48,14 @@ public abstract record TextMarkup(string Text) : Markup
         }
     }
 
+    public string Text { get; } = text;
     public virtual TextMarkupKind Kind => TextMarkupKind.Unknown;
+
+    public override string ToString()
+        => $"{GetType()}({Format()}, Kind={Kind})";
 
     public override string Format()
         => Text;
 
-    protected override bool PrintMembers(StringBuilder builder)
-    {
-        builder.Append(nameof(Text)).Append(" = \"");
-        builder.Append(Text.OrdinalReplace("\"", "\\\""));
-        builder.Append('"');
-        return true; // Indicates there is no comma / tail "}" must be prefixed with space
-    }
+    public abstract TextMarkup WithText(string text);
 }

@@ -9,7 +9,7 @@
 
 <div>
     <Button Click="OnSimulateAppCrashClicked">Simulate App crash</Button>
-    @if (Hub.HostInfo().AppKind == AppKind.Android) {
+    @if (Hub.HostInfo.AppKind == AppKind.Android) {
         <Button Click="OnSimulateActivityDestroyClicked">Simulate Activity Destroy</Button>
     }
 </div>
@@ -18,10 +18,10 @@
     [Inject] private UIHub Hub { get; set; } = null!;
 
     private void OnSimulateAppCrashClicked()
-        => Hub.GetService<IMauiTestPageBackend>()?.SimulateAppCrash();
+        => Hub.Services.GetService<IMauiTestPageBackend>()?.SimulateAppCrash();
 
     private void OnSimulateActivityDestroyClicked()
-        => Hub.GetService<IMauiTestPageBackend>()?.SimulateActivityDestroy();
+        => Hub.Services.GetService<IMauiTestPageBackend>()?.SimulateActivityDestroy();
 
     public interface IMauiTestPageBackend {
         void SimulateAppCrash();

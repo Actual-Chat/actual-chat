@@ -8,7 +8,7 @@ internal sealed class WebAuth(UIHub hub) : IClientAuth
     private (string Schema, string DisplayName)[]? _cachedSchemas;
 
     private UIHub Hub { get; } = hub;
-    private IJSRuntime JS => Hub.JSRuntime();
+    private IJSRuntime JS => Hub.JS;
 
     public (string Name, string DisplayName)[] GetSchemas()
         => _cachedSchemas ??= AuthSchema.ToSchemasWithDisplayNames(AuthSchema.AllExternal);

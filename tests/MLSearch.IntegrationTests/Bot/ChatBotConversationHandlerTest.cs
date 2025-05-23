@@ -13,9 +13,9 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
     public async Task ChatBotConversationHandlerCallsTools()
     {
         // Setup
-        var chatId = new ChatId(Generate.Option);
-        var authorId = new AuthorId(chatId, 111, AssumeValid.Option);
-        var userId = new UserId("TestUser", AssumeValid.Option);
+        var chatId = GroupChatId.New();
+        var authorId = AuthorId.New(chatId, 111);
+        var userId = UserId.Parse("TestUser");
 
         var commander = MockCommander();
 
@@ -24,11 +24,9 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
             .Get(
                 It.IsAny<ChatId>(),
                 It.IsAny<AuthorId>(),
-                It.IsAny<AuthorsBackend_GetAuthorOption>(),
+                It.IsAny<RequestedAuthorKind>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult<AuthorFull?>(new AuthorFull(authorId) {
-                UserId = userId,
-            }));
+            .Returns(Task.FromResult<AuthorFull?>(new AuthorFull(userId, authorId)));
 
         var chatHistoryCache = new Mock<IChatHistoryCache>(MockBehavior.Loose);
         chatHistoryCache.Setup(x => x.GetOrSetDefault(It.IsAny<ChatId>(),It.IsAny<ChatHistory>(), It.IsAny<CancellationToken>()))
@@ -48,10 +46,10 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .Returns<string, SearchType, string, string, int, CancellationToken>(
-                (query, searchType, conversationId, userId, limit, cancellationToken)
+                (query, searchType, conversationId, userId1, limit, cancellationToken)
                     => Task.FromResult<SearchResult[]>([
                         new SearchResult { Text = $"Dumb {query} content", Link = "link1" },
-                        new SearchResult { Text = $"Expected {searchType} cotent", Link = "link2" },
+                        new SearchResult { Text = $"Expected {searchType} content", Link = "link2" },
                     ])
             );
         var forwardPlugin = Mock.Of<IForwardPlugin>(MockBehavior.Loose);
@@ -77,12 +75,12 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         // Assert
         mockSearchPlugin.Verify(
             x => x.Find(
-                It.Is<string>(x => x == "transport infrastructure"),
-                It.Is<SearchType>(x => x == SearchType.General),
-                It.Is<string>(x => x == chatId),
-                It.Is<string>(x => x == userId),
-                It.Is<int>(x => x == 5),
-                It.Is<CancellationToken>(x => x == cancellationSource.Token)),
+                It.Is<string>(c => c == "transport infrastructure"),
+                It.Is<SearchType>(c => c == SearchType.General),
+                It.Is<string>(c => c == chatId.Value),
+                It.Is<string>(c => c == userId.Value),
+                It.Is<int>(c => c == 5),
+                It.Is<CancellationToken>(c => c == cancellationSource.Token)),
             Times.Once
         );
     }
@@ -96,7 +94,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         return Kernel.CreateBuilder()
             .AddOpenAIChatCompletion(
                 apiKey: openAISettings!.ApiKey,
-                modelId: openAISettings!.ChatModel)
+                modelId: openAISettings.ChatModel)
             .Build();
     }
 
@@ -106,7 +104,7 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
         var version = DateTime.Now.Ticks;
         var entries = new List<ChatEntry>();
         foreach (var msg in messages) {
-            var entryId = new ChatEntryId(authorId.ChatId, ChatEntryKind.Text, localId++, AssumeValid.Option);
+            var entryId = TextEntryId.New(authorId.ChatId, localId++);
             entries.Add(new ChatEntry(entryId, version++) {
                 Content = msg,
                 AuthorId = authorId,

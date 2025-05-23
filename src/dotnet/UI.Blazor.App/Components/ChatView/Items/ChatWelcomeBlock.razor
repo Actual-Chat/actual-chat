@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatWelcomeBlock.Model?>
+@inherits ComputedStateComponent<AppUIHub, ChatWelcomeBlock.Model?>
 @{
     var m = State.ValueOrDefault;
     if (m == null)
@@ -77,12 +77,6 @@
         Notes,
         Contact,
     }
-
-    // Shortcuts
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private ShareUI ShareUI => Hub.ShareUI;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;

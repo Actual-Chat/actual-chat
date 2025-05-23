@@ -8,7 +8,7 @@ namespace ActualChat.Users.IntegrationTests;
 public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private ChatId TestChatId { get; } = new("the-actual-one");
+    private ChatId TestChatId { get; } = ChatId.Parse("the-actual-one");
 
     [Fact]
     public async Task DeleteOwnAccountTest()
@@ -21,7 +21,7 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
 
         var chats = services.GetRequiredService<IChats>();
         var createChatCommand = new Chats_Change(session,
-            ChatId.None,
+            null,
             null,
             new Change<ChatDiff> {
                 Create = Option.Some(new ChatDiff {

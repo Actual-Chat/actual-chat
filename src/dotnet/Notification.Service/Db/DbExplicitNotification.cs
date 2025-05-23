@@ -29,7 +29,7 @@ public class DbExplicitNotification : IHasId<string>, IHasVersion<long>, IRequir
     }
 
     public ExplicitNotification ToModel()
-        => new (new ExplicitNotificationId(Id), Version) {
+        => new (ExplicitNotificationId.Parse(Id), Version) {
             CreatedAt = CreatedAt,
             UpdatedAt = UpdatedAt,
         };
@@ -37,12 +37,12 @@ public class DbExplicitNotification : IHasId<string>, IHasVersion<long>, IRequir
     public void UpdateFrom(ExplicitNotification model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
-        UserId = model.UserId;
+        UserId = model.UserId.Value;
         Kind = model.Kind;
         SimilarityKey = model.SimilarityKey;
         CreatedAt = model.CreatedAt;

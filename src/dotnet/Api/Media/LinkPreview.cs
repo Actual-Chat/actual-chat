@@ -10,10 +10,10 @@ namespace ActualChat.Media;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; }
+    [DataMember, MemoryPackOrder(0)] public required Symbol Id { get; init; }
     [DataMember, MemoryPackOrder(8)] public long Version { get; init; }
     [DataMember, MemoryPackOrder(1)] public string Url { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)] public MediaId PreviewMediaId { get; init; }
+    [DataMember, MemoryPackOrder(2)] public MediaId? PreviewMediaId { get; init; }
     [DataMember, MemoryPackOrder(3)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public string Description { get; init; } = "";
     [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
@@ -46,7 +46,7 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IH
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsEmpty => Title.IsNullOrEmpty() && Description.IsNullOrEmpty() && PreviewMediaId.IsNone;
+    public bool IsEmpty => Title.IsNullOrEmpty() && Description.IsNullOrEmpty() && PreviewMediaId == null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsYouTubeVideo

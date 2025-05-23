@@ -1,8 +1,7 @@
 using System.ComponentModel;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
-using ActualLab.Identifiers.Internal;
 using ActualLab.Internal;
-using Cysharp.Text;
 using MemoryPack;
 
 namespace ActualChat.Flows;
@@ -104,7 +103,7 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
     // Parsing
 
     public static string Format(Symbol typeId, string arguments)
-        => typeId.IsEmpty ? "" : ZString.Concat(typeId.Value, ':', arguments);
+        => typeId.IsEmpty ? "" : string.Concat(typeId.Value, ":", arguments);
 
     public static FlowId Parse(string? s)
         => TryParse(s, out var result) ? result : throw Errors.Format<FlowId>(s);

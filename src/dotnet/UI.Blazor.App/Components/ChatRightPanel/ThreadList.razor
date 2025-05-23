@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ThreadList.Model>
-
+@inherits ComputedStateComponent<AppUIHub, ThreadList.Model>
 @{
     var m = State.Value;
 }
@@ -14,14 +13,11 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
     private IChatThreads ChatThreads => Hub.ChatThreads;
 
-    [Parameter] public ChatId ChatId { get; set; } = ChatId.None;
-    [Parameter] public PlaceId PlaceId { get; set; } = PlaceId.None;
+    [Parameter] public ChatId? ChatId { get; set; }
+    [Parameter] public PlaceId? PlaceId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -32,7 +28,7 @@
             });
 
     protected override void OnParametersSet() {
-        if (ChatId.IsNone && PlaceId.IsNone)
+        if (ChatId is null && PlaceId is null)
             throw StandardError.Constraint("ChatId or PlaceId parameter should be provided.");
     }
 
@@ -40,13 +36,13 @@
         var chatId = ChatId;
         var placeId = PlaceId;
         ChatId[] threadIds;
-        if (!ChatId.IsNone) {
+        if (chatId is not null) {
             if (chatId.Kind is not (ChatKind.Group or ChatKind.Place))
                 return Model.None;
 
             threadIds = await ChatThreads.ListIdsForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
         }
-        else if (!placeId.IsNone)
+        else if (placeId is not null)
             threadIds = await ChatThreads.ListIdsForPlace(Session, placeId, cancellationToken).ConfigureAwait(false);
         else
             return Model.None;
@@ -68,6 +64,4 @@
 
         public IReadOnlyList<Chat> ThreadChats { get; init; } = [];
     }
-
-    public record struct AuthorInfo(AuthorId Id, string Name);
 }

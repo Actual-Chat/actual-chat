@@ -2,13 +2,12 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class UserActivityUI : ScopedServiceBase<UIHub>, IUserActivityUIBackend
+public class UserActivityUI : UIServiceBase<UIHub>, IUserActivityUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.UserActivityUI.init";
 
     private readonly MutableState<Moment> _activeUntil;
 
-    private IJSRuntime JS => Hub.JSRuntime();
     private MomentClock CpuClock { get; }
     private Moment CpuNow => CpuClock.Now;
 

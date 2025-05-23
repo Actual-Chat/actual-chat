@@ -1,7 +1,6 @@
 ﻿@using ActualChat.Media;
-@using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NavbarPlaceButtons.Model>
+@inherits ComputedStateComponent<AppUIHub, NavbarPlaceButtons.Model>
 @implements ISortableListBackend
 @{
     var m = State.Value;
@@ -63,11 +62,6 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
-    private Session Session => Hub.Session();
-
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     public override async ValueTask DisposeAsync() {
@@ -96,16 +90,17 @@
         var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
 
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
-            placeIds = placeIds.With(selectedChatId.PlaceId, true);
+        var selectedPlaceChatId = selectedChatId as PlaceChatId;
+        if (selectedPlaceChatId is not null && !placeIds.Contains(selectedPlaceChatId.PlaceId))
+            placeIds = placeIds.With(selectedPlaceChatId.PlaceId, true);
 
-        var previewPlaceId = PlaceId.None;
-        if (selectedChatId.IsPlaceChat
-            && !placeIds.Contains(selectedChatId.PlaceId)) {
-            previewPlaceId = selectedChatId.PlaceId;
+        PlaceId? previewPlaceId = null;
+        if (selectedPlaceChatId is not null
+            && !placeIds.Contains(selectedPlaceChatId.PlaceId)) {
+            previewPlaceId = selectedPlaceChatId.PlaceId;
         }
 
-        var previewPlace = !previewPlaceId.IsNone
+        var previewPlace = previewPlaceId is not null
             ? await Hub.Places.Get(Session, previewPlaceId, cancellationToken).ConfigureAwait(false)
             : null;
 
@@ -123,7 +118,7 @@
 
     [JSInvokable]
     public void OnOrderChanged(string[] ids)
-        => Hub.ChatUI.SetNavbarPlacesOrder(ids.Select(c => (PlaceId)c).ToArray());
+        => Hub.ChatUI.SetNavbarPlacesOrder(ids.Select(PlaceId.Parse).ToArray());
 
     // Nested types
 

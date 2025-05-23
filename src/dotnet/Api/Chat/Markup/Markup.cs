@@ -1,6 +1,9 @@
-﻿namespace ActualChat.Chat;
+﻿using ActualLab.Fusion.Blazor;
 
-public abstract record Markup
+namespace ActualChat.Chat;
+
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public abstract class Markup
 {
     public static Markup Empty => PlainTextMarkup.Empty;
 
@@ -35,6 +38,9 @@ public abstract record Markup
             _ => new MarkupSeq(items.ToArray()),
         };
     }
+
+    public override string ToString()
+        => $"{GetType()}({Format()})";
 
     public abstract string Format();
 

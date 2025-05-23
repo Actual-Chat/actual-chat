@@ -1,3 +1,5 @@
+@inherits ComponentBase<AppUIHub>
+
 @if (NativeHostSwitcher != null) {
     <TileTopic Topic="Host"/>
     <Tile Class="host-switcher-tile">
@@ -13,8 +15,6 @@
 }
 
 @code {
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-
     private IMauiHostSwitcher? NativeHostSwitcher { get; set; }
     private IMauiLogAccessor? MauiLogAccessor { get; set; }
 

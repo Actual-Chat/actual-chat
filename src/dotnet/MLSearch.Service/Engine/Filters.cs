@@ -1,5 +1,3 @@
-
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.MLSearch.Documents;
 
@@ -35,22 +33,20 @@ internal sealed class Filters(IContactsBackend contacts) : IFilters
 
 internal sealed class ChatFilterBuilder(IContactsBackend contacts)
 {
-    public ChatFilter ChatFilter { get; } = new ChatFilter();
+    public ChatFilter ChatFilter { get; } = new ();
 
-    internal ValueTask IncludePublic(PlaceId? placeId, CancellationToken _)
+    internal ValueTask IncludePublic(ContactSubset contactSubset, CancellationToken _)
     {
-        if (placeId.HasValue) {
-            ChatFilter.PlaceIds.Add(placeId.Value);
-        }
-        else {
+        if (!contactSubset.IsAll())
+            ChatFilter.PlaceIds.Add(contactSubset.PlaceId);
+        else
             ChatFilter.IncludePublic = true;
-        }
         return ValueTask.CompletedTask;
     }
 
-    internal async ValueTask IncludePrivate(UserId userId, PlaceId? placeId, CancellationToken cancellationToken)
+    internal async ValueTask IncludePrivate(UserId userId, ContactSubset contactSubset, CancellationToken cancellationToken)
     {
-        var privateContacts = await contacts.ListIdsForSearch(userId, placeId, false, cancellationToken).ConfigureAwait(false);
+        var privateContacts = await contacts.ListIdsForSearch(userId, contactSubset, false, cancellationToken).ConfigureAwait(false);
         ChatFilter.ChatIds.UnionWith(privateContacts.Select(c => c.ChatId));
     }
 
@@ -63,8 +59,10 @@ internal sealed class ChatFilterBuilder(IContactsBackend contacts)
 
 public abstract class ChatSet(ChatSet? next)
 {
-    public ChatSet Public(PlaceId? placeId = default) => new PublicChatSet(this, placeId);
-    public ChatSet Private(UserId userId, PlaceId? placeId = default) => new PrivateChatSet(this, userId, placeId);
+    public ChatSet Public() => Public(ContactSubset.All());
+    public ChatSet Public(ContactSubset contactSubset) => new PublicChatSet(this, contactSubset);
+    public ChatSet Private(UserId userId) => Private(userId, ContactSubset.All());
+    public ChatSet Private(UserId userId, ContactSubset contactSubset) => new PrivateChatSet(this, userId, contactSubset);
     public ChatSet Exclude(IEnumerable<ChatId> exclusions) => new ExcludeChatSet(this, exclusions);
 
     internal ChatSet? Next => next;
@@ -77,16 +75,16 @@ internal sealed class EmptyChatSet() : ChatSet(null)
         => ValueTask.CompletedTask;
 }
 
-internal sealed class PublicChatSet(ChatSet next, PlaceId? placeId) : ChatSet(next)
+internal sealed class PublicChatSet(ChatSet next, ContactSubset contactSubset) : ChatSet(next)
 {
     internal override ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default)
-        => filterBuilder.IncludePublic(placeId, cancellationToken);
+        => filterBuilder.IncludePublic(contactSubset, cancellationToken);
 }
 
-internal sealed class PrivateChatSet(ChatSet next, UserId userId, PlaceId? placeId) : ChatSet(next)
+internal sealed class PrivateChatSet(ChatSet next, UserId userId, ContactSubset contactSubset) : ChatSet(next)
 {
     internal override ValueTask Apply(ChatFilterBuilder filterBuilder, CancellationToken cancellationToken = default)
-        => filterBuilder.IncludePrivate(userId, placeId, cancellationToken);
+        => filterBuilder.IncludePrivate(userId, contactSubset, cancellationToken);
 }
 
 internal sealed class ExcludeChatSet(ChatSet next, IEnumerable<ChatId> exclusions) : ChatSet(next)

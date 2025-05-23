@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<VoiceSettingsStartModalPage.ComputedModel>
+@using ActualChat.Kvas
+@inherits ComputedStateComponent<AppUIHub, VoiceSettingsStartModalPage.ComputedModel>
 @{
     var m = State.Value;
     var voiceStatus = !m.CanChangeMustStreamVoice
@@ -37,16 +38,11 @@
 </FormBlock>
 
 @code {
-    private ChatVoiceSettings? _chatVoiceSettings;
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
-    private ChatVoiceSettings ChatVoiceSettings => _chatVoiceSettings ??= new(Hub.Services, Hub.AccountSettings());
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
-    private ChatId ChatId { get; set; }
+    private ChatId ChatId { get; set; } = null!;
 
     protected override void OnInitialized() {
         ChatId = Context.GetModel<ChatId>();
@@ -65,7 +61,7 @@
         var chatId = ChatId;
         // Locals captured, ConfigureAwait(false) below is fine
 
-        var settings = await ChatVoiceSettings.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var settings = await AccountSettings.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
         var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
 
         var listeningMode = chatInfo?.UserSettings.ListeningMode ?? ListeningMode.Default;
@@ -77,7 +73,7 @@
         var voiceMode = mustStreamVoice
             ? VoiceMode.TextAndVoice
             : VoiceMode.JustText;
-        await ChatVoiceSettings.Set(Session, ChatId, voiceMode);
+        await AccountSettings.SetChatVoiceMode(ChatId, voiceMode);
     }
 
     private Task OnVoiceStreamingClick()

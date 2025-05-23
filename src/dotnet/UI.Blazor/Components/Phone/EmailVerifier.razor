@@ -1,6 +1,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 
 <div class="phone-verifier @Class">
     @if (_emailUnderVerification == Email) {
@@ -13,7 +14,7 @@
     } else {
         <div class="c-verify">
             <Button Class="btn-outline c-verify-btn" Click="OnVerifyClick">Verify</Button>
-            <p class="c-description">Please confirm your email</p>
+            <p class="c-description">Please verify your email</p>
         </div>
     }
 </div>
@@ -21,11 +22,6 @@
 @code {
     private TotpVerifier? _totpVerifier;
     private string? _emailUnderVerification;
-
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Email { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";

@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits MenuBase
+@inherits Menu<AppUIHub>
 
 @if (_message != null) {
     <MessageHoverMenuContent Message="@_message" IsSystem="@_isSystem"/>
@@ -9,8 +9,6 @@
     private ChatEntryMessage? _message;
     private bool _isSystem;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
     private IChats Chats => Hub.Chats;
 
     protected override async Task OnParametersSetAsync() {
@@ -18,7 +16,7 @@
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _isSystem = bool.Parse(sIsSystem);
-        var entryId = new TextEntryId(sEntryId);
+        var entryId = TextEntryId.Parse(sEntryId);
         var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
         _message = entry != null
             ? new ChatEntryMessage(entry)

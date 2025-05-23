@@ -5,8 +5,8 @@ using ActualLab.Fusion.Blazor;
 namespace ActualChat.Mathematics;
 
 [StructLayout(LayoutKind.Auto)]
-[ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 public readonly partial record struct Trimmed<T>
     : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>,
         IComparisonOperators<Trimmed<T>, Trimmed<T>, bool>,

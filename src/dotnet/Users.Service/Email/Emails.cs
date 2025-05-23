@@ -40,10 +40,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         await using var _ = blazorRenderer.ConfigureAwait(false);
         var mjml = await blazorRenderer.RenderComponent<EmailVerification>(parameters).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
-        var mjmlOptions = new MjmlOptions {
-            Minify = true,
-            Beautify = false,
-        };
+        var mjmlOptions = new MjmlOptions { Beautify = false };
         var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
         await EmailSender.Send(
                 "",
@@ -67,8 +64,8 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         if (Invalidation.IsActive) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation.Items.KeylessGet<UserId>();
-            if (!userId.IsNone)
-                _ = AuthBackend.GetUser(DbShard.Single, userId, cancellationToken);
+            if (userId is not null)
+                _ = AuthBackend.GetUser(DbShard.Single, userId.Value, cancellationToken);
             return default;
         }
 

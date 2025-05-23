@@ -11,7 +11,8 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private BlazorTester Tester { get; } = fixture.AppHost.NewBlazorTester(@out);
+    [field: AllowNull, MaybeNull]
+    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
     private string UniquePart { get; } = UniqueNames.Prefix();
     [field: AllowNull, MaybeNull]
     private string DeviceId => field ??= $"Device-{UniquePart}";
@@ -365,7 +366,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     // Private methods
 
     private ExternalContactFull NewExternalContact(AccountFull owner)
-        => new (new ExternalContactId(new UserDeviceId(owner.Id, DeviceId), NewDeviceContactId()));
+        => new (ExternalContactId.New(UserDeviceId.New(owner.Id, DeviceId), NewDeviceContactId()));
 
     private static Symbol NewDeviceContactId()
         => UniqueNames.Prefix();

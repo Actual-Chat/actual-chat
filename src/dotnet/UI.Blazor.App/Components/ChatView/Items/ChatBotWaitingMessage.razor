@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var m = State.Value;
     if (m == false)
@@ -10,12 +10,12 @@
     <div class="chat-message group">
         <div class="c-author-badge">
             <ChatMessageAuthorCircle
-                AuthorSid="@_botId"
+                AuthorId="@_botId"
                 Click="@_onClickCallback"/>
         </div>
         <div class="c-content">
             <div class="c-author-header">
-                <AuthorName AuthorSid="@_botId" Class="chat-message-author-name"/>
+                <AuthorName AuthorId="@_botId" Class="chat-message-author-name"/>
                 <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@Clocks.SystemClock.Now"/>
             </div>
 
@@ -32,14 +32,12 @@
 
 @code {
     private EventCallback<AuthorId> _onClickCallback;
-    private AuthorId _botId;
-    private ChatId _chatId;
+    private AuthorId _botId = null!;
+    private ChatId _chatId = null!;
 
     // Shortcuts
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private MomentClockSet Clocks => Hub.Clocks();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;

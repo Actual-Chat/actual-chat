@@ -140,7 +140,7 @@ public static class TestSearchDataGenerator
         await tester.SignIn(contactOwner);
         for (int i = 0; i < entryIndexCount; i++)
             foreach (var user in users.Where(x => x.Key.MustJoin)) {
-                var chatId = new PeerChatId(contactOwner.Id, user.Value.Id);
+                var chatId = PeerChatId.New(contactOwner.Id, user.Value.Id);
                 map[new TestEntryKey(user.Key, i)] =
                     await tester.CreateTextEntry(chatId, $"Message {GetIndexString(i)} {uniquePart}".Trim());
             }

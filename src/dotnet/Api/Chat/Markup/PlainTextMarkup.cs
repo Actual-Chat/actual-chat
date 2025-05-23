@@ -1,23 +1,14 @@
-﻿using System.Text;
+﻿using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
-public record PlainTextMarkup(string Text) : TextMarkup(Text)
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed class PlainTextMarkup(string text) : TextMarkup(text)
 {
     public static new readonly PlainTextMarkup Empty = new("");
 
     public override TextMarkupKind Kind => TextMarkupKind.Plain;
 
-    public PlainTextMarkup() : this("") { }
-
-    public override string Format()
-        => Text;
-
-    protected override bool PrintMembers(StringBuilder builder)
-    {
-        builder.Append(nameof(Text)).Append(" = \"");
-        builder.Append(Text.OrdinalReplace("\"", "\\\""));
-        builder.Append('"');
-        return true; // Indicates there is no comma / tail "}" must be prefixed with space
-    }
+    public override TextMarkup WithText(string text)
+        => new PlainTextMarkup(text);
 }

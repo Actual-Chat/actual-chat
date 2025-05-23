@@ -4,25 +4,20 @@ using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class SelectionUI : ScopedServiceBase<ChatUIHub>
+public class SelectionUI : UIServiceBase<AppUIHub>
 {
     private readonly MutableState<ImmutableHashSet<ChatEntryId>> _selection;
     private readonly MutableState<bool> _hasSelection;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private History History => Hub.History;
-    private ToastUI ToastUI => Hub.ToastUI;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
-    private UICommander UICommander => Hub.UICommander();
 
     public IState<bool> HasSelection => _hasSelection;
     public IState<ImmutableHashSet<ChatEntryId>> Selection => _selection;
 
-    public SelectionUI(ChatUIHub hub) : base(hub)
+    public SelectionUI(AppUIHub hub) : base(hub)
     {
         var type = GetType();
         _selection = StateFactory.NewMutable(
@@ -69,7 +64,7 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
 
         using var sb = ZString.CreateStringBuilder();
-        var currentAuthor = AuthorId.None;
+        AuthorId? currentAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId).ConfigureAwait(false);
             if (chatEntry == null || chatEntry.Content.IsNullOrEmpty())
@@ -79,10 +74,10 @@ public class SelectionUI : ScopedServiceBase<ChatUIHub>
                 .GetMarkup(chatEntry, MarkupConsumer.MessageView, default)
                 .ConfigureAwait(false);
 
-            if (showAuthor && currentAuthor != chatEntry.AuthorId) {
+            if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
                 if (sb.Length > 0)
                     sb.AppendLine();
-                currentAuthor = chatEntry.AuthorId;
+                currentAuthorId = chatEntry.AuthorId;
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, default).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
                 var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);

@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
 using ActualChat.Users;
@@ -24,13 +23,13 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         await Tester.SignIn(bob);
         var entry = await Tester.CreateTextEntry(chatId, "Ok!");
         await Tester.SignIn(alice);
-        await Tester.React(entry.Id.ToTextEntryId(), Emoji.RedHeart);
+        await Tester.React(entry.Id.ToTextEntryId(), Emojis.RedHeart);
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
         aliceNotification.Should()
             .BeEquivalentTo(
-                new Notification(NotificationId.None) {
+                new Notification(null!) {
                     Title = "Bob @ Good chat",
                     Content = "Ok!",
                 },
@@ -39,7 +38,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         var bobNotification = await GetNotification(bob, entry.Id);
         bobNotification.Should()
             .BeEquivalentTo(
-                new Notification(NotificationId.None) {
+                new Notification(null!) {
                     Title = "Alice @ Good chat",
                     Content = "❤️ to \"Ok!\"",
                 },
@@ -61,13 +60,13 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         var media = await Tester.Attach(chatId, TestImages.GetUploadedImage(TestImages.DefaultJpg));
         var entry = await Tester.CreateTextEntry(chatId, "", media.Id);
         await Tester.SignIn(alice);
-        await Tester.React(entry.Id.ToTextEntryId(), Emoji.RedHeart);
+        await Tester.React(entry.Id.ToTextEntryId(), Emojis.RedHeart);
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
         aliceNotification.Should()
             .BeEquivalentTo(
-                new Notification(NotificationId.None) {
+                new Notification(null!) {
                     Title = "Bob @ Good chat",
                     Content = "Sent an image",
                 },
@@ -76,7 +75,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         var bobNotification = await GetNotification(bob, entry.Id);
         bobNotification.Should()
             .BeEquivalentTo(
-                new Notification(NotificationId.None) {
+                new Notification(null!) {
                     Title = "Alice @ Good chat",
                     Content = "❤️ to your image",
                 },

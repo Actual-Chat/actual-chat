@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.Flows.Infrastructure;
 using MemoryPack;
 
@@ -14,7 +15,7 @@ public sealed partial record FlowResumeEvent(
 ) : IFlowControlEvent, IDelayed
 {
     public override string ToString()
-        => $"{nameof(FlowResumeEvent)}(`{FlowId}`{(IsHardResume ? $", {nameof(IsHardResume)} = true" : "")}{(Tag != null ? $", '{Tag}'" : "")})";
+        => $"{nameof(FlowResumeEvent)}(`{FlowId}`{(IsHardResume ? $", {nameof(IsHardResume)} = true" : "")}{(Tag != null ? $", '{Tag}'" : "")}{(DelayUntil != null ? $", {nameof(DelayUntil)} = {DelayUntil}" : "")}{(MaxLastRunAt != null ? $", {nameof(MaxLastRunAt)} = {MaxLastRunAt}" : "")})";
 
     public Symbol GetNextStep(Flow flow)
     {

@@ -6,7 +6,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public sealed class BatchedIndexingFlowTestContext<TItem, TId>(MomentClockSet clocks)
     : IndexingFlowContextBase<IReadOnlyList<TItem>>(clocks)
     where TItem : IHasVersion<long>, IHasId<TId>
-    where TId : ISymbolIdentifier
+    where TId : StringIdentifier, IStringIdentifier<TId>
 {
     private TItem? _last;
 

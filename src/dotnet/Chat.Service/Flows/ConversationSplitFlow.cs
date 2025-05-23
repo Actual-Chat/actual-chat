@@ -12,7 +12,8 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
     private const int BatchSize = 100;
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     protected override int CurrentFlowSetVersion => 1;
-    private ChatId ChatId => field != ChatId.None ? field : field = new ChatId(Id.Arguments, ParseOrNone.Option);
+    [field: AllowNull, MaybeNull]
+    private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
 
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Host.Services.GetRequiredService<ChatSettings>();

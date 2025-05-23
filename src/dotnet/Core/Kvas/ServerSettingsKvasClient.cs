@@ -2,6 +2,9 @@ namespace ActualChat.Kvas;
 
 public class ServerSettingsKvasClient(IServerSettings serverSettings, Session session) : IKvas
 {
+    [field: AllowNull, MaybeNull]
+    public IServiceProvider Services => field ??= ServerSettings.GetServices();
+
     public IServerSettings ServerSettings { get; } = serverSettings;
     public Session Session { get; } = session;
 

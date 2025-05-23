@@ -60,7 +60,7 @@ public static class TestAuthExt
             .Capture(() => accounts.GetOwn(session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         cAccount = await cAccount
-            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .When(x => !x.IsGuestOrNull(), cancellationToken)
             .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
         return cAccount.Value;
@@ -88,7 +88,7 @@ public static class TestAuthExt
             .Capture(() => accounts.GetOwn(tester.Session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         cAccount = await cAccount
-            .When(x => !x.IsGuestOrNone, cancellationToken)
+            .When(x => !x.IsGuestOrNull(), cancellationToken)
             .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
         return cAccount.Value;

@@ -52,11 +52,11 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
     [Fact]
     public async Task SemanticSearchTest()
     {
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
-        var chatId1 = new ChatId(Generate.Option);
+        var authorId = (PrincipalId)UserId.New();
+        var chatId1 = GroupChatId.New();
         var chatInfo1 = new ChatInfo(chatId1, true, false);
         var entryIds1 = Enumerable.Range(1, 5)
-            .Select(id => new ChatEntryId(chatId1, ChatEntryKind.Text, id, AssumeValid.Option))
+            .Select(id => TextEntryId.New(chatId1, id))
             .ToArray();
         var textItems1 = new [] {
             "OpenSearch supports the following models, categorized by type.",
@@ -65,10 +65,10 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
             "The sdkmanager is a command-line tool that lets you view, install, update, and uninstall packages for the Android SDK.",
             "In Barcelona, a migrant squatter was asked to leave by the property owner. He refused and threatened the home owner with a hammer.",
         };
-        var chatId2 = new ChatId(Generate.Option);
+        var chatId2 = GroupChatId.New();
         var chatInfo2 = new ChatInfo(chatId2, true, false);
         var entryIds2 = Enumerable.Range(1, 5)
-            .Select(id => new ChatEntryId(chatId2, ChatEntryKind.Text, id, AssumeValid.Option))
+            .Select(id => TextEntryId.New(chatId2, id))
             .ToArray();
         var textItems2 = new [] {
             "Language clients are forward compatible; meaning that clients support communicating with greater or equal minor versions of Elasticsearch.",
@@ -174,9 +174,9 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
 
         const int localEntryId = 111;
-        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
-        var chatId = new ChatId(Generate.Option);
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, localEntryId, AssumeValid.Option);
+        var authorId = (PrincipalId)UserId.New();
+        var chatId = GroupChatId.New();
+        var chatEntryId = TextEntryId.New(chatId, localEntryId);
 
         var metadata = new ChatSliceMetadata(
             [authorId],
@@ -203,7 +203,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
     {
         var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var document = new ChatInfo(chatId, true, true);
 
         var serializer = client.SourceSerializer;

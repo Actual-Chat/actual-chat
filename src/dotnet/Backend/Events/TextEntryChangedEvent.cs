@@ -9,8 +9,8 @@ public partial record TextEntryChangedEvent(
     [property: DataMember, MemoryPackOrder(2)] AuthorFull Author,
     [property: DataMember, MemoryPackOrder(3)] ChangeKind ChangeKind,
     [property: DataMember, MemoryPackOrder(4)] ChatEntry? OldEntry
-) : EventCommand, IHasShardKey<ChatEntryId>
+) : EventCommand, IHasShardKey<ChatId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatEntryId ShardKey => Entry.Id;
+    public ChatId ShardKey => Entry.ChatId;
 }

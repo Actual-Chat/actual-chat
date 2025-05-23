@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<(List<Language>?, Language)>
+@inherits ComputedStateComponent<AppUIHub, (IReadOnlyList<Language>?, Language)>
 @{
     var m = State.Value;
     var (languages, language) = m;
@@ -39,26 +39,24 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
     private LanguageUI LanguageUI => Hub.LanguageUI;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
-    protected override ComputedState<(List<Language>?, Language)>.Options GetStateOptions()
+    protected override ComputedState<(IReadOnlyList<Language>?, Language)>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<(List<Language>?, Language)>.Options() {
+            static t => new ComputedState<(IReadOnlyList<Language>?, Language)>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<(List<Language>?, Language)> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<(IReadOnlyList<Language>?, Language)> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
 
         var languages = await LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
-        return (languages.ToList(), language);
+        return (languages.AllSpoken, language);
     }
 
     private async Task OnClick(Language language) {

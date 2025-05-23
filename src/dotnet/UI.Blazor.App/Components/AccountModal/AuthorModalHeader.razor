@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <div class="c-header">
     <ButtonRound Click="@OnClose" Class="author-modal-close-btn close-btn btn-sm">
@@ -7,7 +8,7 @@
 
     <div class="c-top">
         <AuthorCircle
-            AuthorSid="@Author.Id"
+            AuthorId="@Author.Id"
             Size="SquareSize.SizeFull"
             IsBlurred="@true"
             IsSquare="@true" />
@@ -15,11 +16,11 @@
 
     <div class="c-center">
         <AuthorCircle
-            AuthorSid="@Author.Id"
+            AuthorId="@Author.Id"
             Size="SquareSize.Size16">
             <BadgeContent>
                 @if (!Author.IsAnonymous) {
-                    <AuthorPresenceIndicator AuthorSid="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>
+                    <AuthorPresenceIndicator AuthorId="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>
                 }
             </BadgeContent>
         </AuthorCircle>
@@ -50,7 +51,7 @@
 
     <div class="c-bottom">
         <div class="c-title">
-            <AuthorName AuthorSid="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
+            <AuthorName AuthorId="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
         @if (!_peerOwnName.IsNullOrEmpty()) {
             <span class="c-public">
@@ -69,11 +70,8 @@
     private ShareModalModel? _shareModalModel;
     private string? _peerOwnName;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
     private IAuthors Authors => Hub.Authors;
     private IAvatars Avatars => Hub.Avatars;
-    private ShareUI ShareUI => Hub.ShareUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
@@ -103,7 +101,9 @@
         if (account == null)
             return null;
 
-        return await ShareUI.GetModel(account.Id, cancellationToken).ConfigureAwait(true);
+        return await ShareUI
+            .GetModel(account.Id, cancellationToken)
+            .ConfigureAwait(false); // Ok (pre-exit)
     }
 
     private Task OnShareClick()

@@ -31,8 +31,8 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbContact(Contact contact) => UpdateFrom(contact);
 
     public Contact ToModel()
-        => new(new ContactId(Id), Version) {
-            UserId = new UserId(UserId ?? ""),
+        => new(ContactId.Parse(Id), Version) {
+            UserId = ActualChat.UserId.ParseNullable(UserId ?? ""),
             TouchedAt = TouchedAt.ToMoment(),
             IsPinned = IsPinned,
             PeerContactName = PeerContactName,
@@ -43,7 +43,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(Contact model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
         Version = model.Version;
@@ -54,17 +54,17 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (!Id.IsNullOrEmpty())
             return; // Only the above properties can be changed for already existing contacts
 
-        Id = id;
+        Id = id.Value;
         OwnerId = model.OwnerId.Value.NullIfEmpty() ?? throw StandardError.Constraint("OwnerId cannot be empty.");
-        ChatId = model.ChatId.Value.NullIfEmpty();
-        UserId = model.UserId.Value.NullIfEmpty();
-        var placeId = model.PlaceId.Value.NullIfEmpty();
+        ChatId = model.ChatId.Value;
+        UserId = model.UserId?.Value;
+        var placeId = (model.ChatId as PlaceChatId)?.PlaceId;
         if (Constants.Contact.SystemTags.ChatRoulette.Equals(model.SystemTag)) {
             if (placeId is not null)
                 throw StandardError.Constraint("PlaceId should be null for chat roulette.");
             placeId = Constants.Place.ChatRouletteId;
         }
-        PlaceId = placeId;
+        PlaceId = placeId?.Value;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>

@@ -42,5 +42,5 @@ public static class GroupContactSearchResultExt
         => BuildSearchResult(userId, chat.Id, chat.Title, uniquePart, searchMatchPartRanges);
 
     public static ContactSearchResult BuildSearchResult(this UserId ownerId, ChatId chatId, string title, string uniquePart = "", Range<int>[]? searchMatchPartRanges = null)
-        => new (new ContactId(ownerId, chatId), searchMatchPartRanges.BuildSearchMatch(title, uniquePart));
+        => new (ContactId.NewAny(ownerId, chatId), searchMatchPartRanges.BuildSearchMatch(title, uniquePart));
 }

@@ -298,9 +298,9 @@ code
     {
         var m = Parse<ListMarkup>("- line1\n- line2\n", out _);
         m.Items.Length.Should().Be(2);
-        m.Items[0].Ordered.Should().Be(false);
+        m.Items[0].Order.Should().BeNull();
         m.Items[0].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1");
-        m.Items[1].Ordered.Should().Be(false);
+        m.Items[1].Order.Should().BeNull();
         m.Items[1].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
     }
 
@@ -309,10 +309,8 @@ code
     {
         var m = Parse<ListMarkup>("1. line1\n2. line2\n", out _);
         m.Items.Length.Should().Be(2);
-        m.Items[0].Ordered.Should().Be(true);
         m.Items[0].Order.Should().Be(1);
         m.Items[0].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1");
-        m.Items[1].Ordered.Should().Be(true);
         m.Items[1].Order.Should().Be(2);
         m.Items[1].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
     }

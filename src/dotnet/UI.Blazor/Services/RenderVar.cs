@@ -1,8 +1,8 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public abstract class RenderVar(Symbol name)
+public abstract class RenderVar(string name)
 {
-    public Symbol Name { get; } = name;
+    public string Name { get; } = name;
     public abstract object UntypedValue { get; }
     public event Action<RenderVar>? Changed;
 
@@ -10,17 +10,15 @@ public abstract class RenderVar(Symbol name)
         => Changed?.Invoke(this);
 }
 
-public sealed class RenderVar<T>(Symbol name, T value) : RenderVar(name)
+public sealed class RenderVar<T>(string name, T value) : RenderVar(name)
 {
-    private T _value = value;
-
     public T Value {
-        get => _value;
+        get;
         set {
-            _value = value;
+            field = value;
             NotifyChanged();
         }
-    }
+    } = value;
 
     // ReSharper disable once HeapView.PossibleBoxingAllocation
     public override object UntypedValue => Value!;

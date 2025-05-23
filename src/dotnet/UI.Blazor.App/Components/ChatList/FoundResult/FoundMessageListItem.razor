@@ -1,9 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits ComputedRenderStateComponent<FoundMessageListItem.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, FoundMessageListItem.Model>
 @{
-    var m = State.Value;
-    if (m == Model.None)
+    if (State.IsInitial(out var m)) {
+        <ChatListItemSkeleton />
+        return;
+    }
+    if (m.ChatState is null)
         return;
 
     var chatState = m.ChatState;
@@ -12,107 +15,93 @@
         return;
 }
 
-@if (m == Model.Loading) {
-    <ChatListItemSkeleton />
-} else {
-    <NavbarItem Class="found-result message" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
-        <div class="c-content">
-            <div class="c-container">
-                <ChatIcon Chat="@chatState.Chat"/>
-                <div class="c-description">
-                    <div class="c-first-line">
-                        <span class="c-title">
-                            @chat.Title
-                        </span>
-                        @Hub.MarkupHelpers.LastEntryTime(m.Entry.BeginsAt)
+<NavbarItem Class="found-result message" IsSelected="@m.IsSelected" Url="@m.Link" @onclick="@(() => SearchUI.Select(m.Item))">
+    <div class="c-content">
+        <div class="c-container">
+            <ChatIcon Chat="@chatState.Chat"/>
+            <div class="c-description">
+                <div class="c-first-line">
+                    <span class="c-title">
+                        @chat.Title
+                    </span>
+                    @Hub.MarkupHelpers.LastEntryTime(@m.Entry.BeginsAt)
+                </div>
+                @if (chat.Kind == ChatKind.Peer) {
+                    // Peer chat message
+                    <div class="c-second-line">
+                        @if (ReferenceEquals(m.Author, m.OwnAuthor)) {
+                            <span class="c-name">
+                                <AuthorName
+                                    AuthorId="@m.Entry.AuthorId"
+                                    ShowDetailsOnClick="false"
+                                    ShowAsOwn="true"/>
+                                <span class="c-colon">:</span>
+                            </span>
+                        }
+                        <div class="c-entry">
+                            <SearchMatchHighlighter Match="@m.MessageMatch"/>
+                        </div>
                     </div>
-                    @if (chat.Kind == ChatKind.Peer) {
-                        // Peer chat message
-                        <div class="c-second-line">
-                            @if (ReferenceEquals(m.Author, m.OwnAuthor)) {
-                                <span class="c-name">
-                                    <AuthorName
-                                        AuthorSid="@m.Entry.AuthorId"
-                                        ShowDetailsOnClick="false"
-                                        ShowAsYou="true"/>
-                                    <span class="c-colon">:</span>
-                                </span>
-                            }
+                } else if (chat.Kind == ChatKind.Group) {
+                    // Group chat message
+                    <div class="c-second-line">
+                        <span class="c-name">
+                            <AuthorName
+                                AuthorId="@m.Entry.AuthorId"
+                                ShowDetailsOnClick="false"
+                                ShowAsOwn="true"/>
+                        </span>
+                    </div>
+                    <div class="c-third-line public-chat">
+                        <SearchMatchHighlighter Match="@m.MessageMatch"/>
+                    </div>
+                } else {
+                    // Place chat message
+                    @if (!IsPlace) {
+                        // Global search
+                        <div class="c-second-line message">
+                            In <span class="c-place-title">@m.Place?.Title</span>
+                        </div>
+                        <div class="c-third-line place-chat">
+                            <span class="c-name">
+                                <AuthorName
+                                    AuthorId="@m.Entry.AuthorId"
+                                    ShowDetailsOnClick="false"
+                                    ShowAsOwn="true"/>
+                            </span>
+                            <span class="c-colon">:</span>
                             <div class="c-entry">
                                 <SearchMatchHighlighter Match="@m.MessageMatch"/>
                             </div>
                         </div>
-                    } else if (chat.Kind == ChatKind.Group) {
-                        // Group chat message
+                    } else {
+                        // Search in place
                         <div class="c-second-line">
                             <span class="c-name">
                                 <AuthorName
-                                    AuthorSid="@m.Entry.AuthorId"
+                                    AuthorId="@m.Entry.AuthorId"
                                     ShowDetailsOnClick="false"
-                                    ShowAsYou="true"/>
+                                    ShowAsOwn="true"/>
                             </span>
                         </div>
                         <div class="c-third-line public-chat">
                             <SearchMatchHighlighter Match="@m.MessageMatch"/>
                         </div>
-                    } else {
-                        // Place chat message
-                        @if (!IsPlace) {
-                            // Global search
-                            <div class="c-second-line message">
-                                In <span class="c-place-title">@m.Place?.Title</span>
-                            </div>
-                            <div class="c-third-line place-chat">
-                                <span class="c-name">
-                                    <AuthorName
-                                        AuthorSid="@m.Entry.AuthorId"
-                                        ShowDetailsOnClick="false"
-                                        ShowAsYou="true"/>
-                                </span>
-                                <span class="c-colon">:</span>
-                                <div class="c-entry">
-                                    <SearchMatchHighlighter Match="@m.MessageMatch"/>
-                                </div>
-                            </div>
-                        } else {
-                            // Search in place
-                            <div class="c-second-line">
-                                <span class="c-name">
-                                    <AuthorName
-                                        AuthorSid="@m.Entry.AuthorId"
-                                        ShowDetailsOnClick="false"
-                                        ShowAsYou="true"/>
-                                </span>
-                            </div>
-                            <div class="c-third-line public-chat">
-                                <SearchMatchHighlighter Match="@m.MessageMatch"/>
-                            </div>
-                        }
                     }
-                </div>
+                }
             </div>
         </div>
-    </NavbarItem>
-}
+    </div>
+</NavbarItem>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IAuthors Authors => Hub.Authors;
+    private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
     private SearchUI SearchUI => Hub.SearchUI;
-    private IAuthors Authors => Hub.Authors;
-    private AccountUI AccountUI => Hub.AccountUI;
-    private Session Session => Hub.Session();
-    private IPlaces Places => Hub.Places;
 
     [Parameter] public FoundItem FoundItem { get; set; } = null!;
     [Parameter] public bool IsPlace { get; set; }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
-                Category = GetStateCategory(t),
-            });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
@@ -123,14 +112,14 @@
         var foundItem = FoundItem;
         var chatId = foundItem.ChatId;
         var messageMatch = foundItem.MessageSearchMatch;
-        var entryId = foundItem.EntryId;
+        var entryId = foundItem.EntryId!;
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
-        var placeId = chatId.PlaceChatId.PlaceId;
-        if (!placeId.IsNone)
+        var placeId = (chatId as PlaceChatId)?.PlaceId;
+        if (placeId is not null)
             place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
 
         var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
@@ -148,7 +137,7 @@
             Author = entryAuthorFull,
             OwnAuthor = ownAuthorFull,
             Place = place,
-            Link = Links.Chat(chatId, entry?.LocalId),
+            Link = Links.Chat(chatId, entry?.LocalId ?? 0),
             Item = foundItem,
             IsSelected = selectedFoundItem == foundItem,
         };
@@ -157,10 +146,9 @@
     // Nested types
 
     public sealed record Model {
-        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
-        public static readonly Model None = new() { ChatState = ChatState.None };
+        public static readonly Model None = new();
 
-        public ChatState ChatState { get; init; } = ChatState.None;
+        public ChatState? ChatState { get; init; }
         public SearchMatch MessageMatch { get; init; } = SearchMatch.Empty;
         public ChatEntry? Entry { get; init; }
         public AuthorFull? Author { get; init; }
@@ -169,5 +157,9 @@
         public LocalUrl Link { get; init; }
         public FoundItem Item { get; init; } = null!;
         public bool IsSelected { get; init; }
+
+        // This record relies on referential equality
+        public bool Equals(Model? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

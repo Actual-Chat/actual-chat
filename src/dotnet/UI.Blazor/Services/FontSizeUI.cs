@@ -2,7 +2,7 @@ using ActualChat.Kvas;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class FontSizeUI : ScopedServiceBase<UIHub>
+public class FontSizeUI : UIServiceBase<UIHub>
 {
     private static readonly string JSFontSizesClassName = "window.FontSizes";
     private static readonly string JSFontSizeListMethod = $"{JSFontSizesClassName}.list";
@@ -16,12 +16,12 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FontSizeUI))]
     public FontSizeUI(UIHub hub) : base(hub)
     {
-        FontSize = Hub.StateFactory().NewCustomSynced(new SyncedState<string>.CustomOptions(Reader, Writer));
+        FontSize = Hub.StateFactory.NewCustomSynced(new SyncedState<string>.CustomOptions(Reader, Writer));
         return;
 
         Task<string> Reader(CancellationToken cancellationToken)
         {
-            var js = Hub.JSRuntime();
+            var js = Hub.JS;
             return Hub.Dispatcher.InvokeAsync(()
                 => js.InvokeAsync<string>(JSFontSizeGetMethod, cancellationToken).AsTask());
         }
@@ -32,7 +32,7 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
             if (!supportedFontSizes.Contains(fontSize, StringComparer.OrdinalIgnoreCase))
                 throw StandardError.Constraint($"FontSize '{fontSize}' is not supported.");
 
-            var js = Hub.JSRuntime();
+            var js = Hub.JS;
             await Hub.Dispatcher
                 .InvokeAsync(() => js.InvokeAsync<string>(JSFontSizeSetMethod, fontSize))
                 .ConfigureAwait(false); // Ok here
@@ -44,7 +44,7 @@ public class FontSizeUI : ScopedServiceBase<UIHub>
         if (_fontSizes != null)
             return _fontSizes;
 
-        var js = Hub.JSRuntime();
+        var js = Hub.JS;
         var fontSizeMap = await js
             .InvokeAsync<Dictionary<string, string>>(JSFontSizeListMethod, cancellationToken)
             .ConfigureAwait(true); // Due to "_fontSize = ..." further

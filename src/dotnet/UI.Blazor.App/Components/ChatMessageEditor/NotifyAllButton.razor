@@ -1,6 +1,6 @@
 @using ActualChat.Notification
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<NotifyAllButton.Model>
+@inherits ComputedStateComponent<AppUIHub, NotifyAllButton.Model>
 @{
     var m = State.Value;
     if (m.IsUnavailable)
@@ -30,17 +30,10 @@
     private MarkupString MarkupTitle => (MarkupString)$"<p>Are you sure you want to alert <span class='{AlertClass}'>{AlertTarget}</span>?</p>";
     private (ChatEntry, Moment)? _lastKnownOwnUnreadEntryInfo;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private AccountUI AccountUI => Hub.AccountUI;
     private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private ToastUI ToastUI => Hub.ToastUI;
-    private UICommander UICommander => Hub.UICommander();
-    private MomentClock Clock => Hub.Clocks().SystemClock;
-    private LiveTime LiveTime => Hub.LiveTime;
+    private MomentClock Clock => Clocks.SystemClock;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
@@ -56,8 +49,8 @@
         var alertTarget = "companion";
         if (chatId.Kind is ChatKind.Peer) {
             var cls = "font-bold";
-            if (chatId.IsPeerChat(out var peerChatId)) {
-                var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account.Id);
+            if (chatId is PeerChatId peerChatId) {
+                var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account!.Id);
                 var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, default).ConfigureAwait(false);
                 if (!ReferenceEquals(anotherAuthor, null) && !string.IsNullOrEmpty(anotherAuthor.Avatar.Name))
                     alertTarget = anotherAuthor.Avatar.Name;
@@ -66,8 +59,8 @@
         }
 
         var isPublicAccessible = chat.IsPublic;
-        if (isPublicAccessible && chatId.IsPlaceChat) {
-            var place = await Places.Get(Session, chatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        if (isPublicAccessible && chatId is PlaceChatId placeChatId) {
+            var place = await Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place is { IsPublic: false })
                 isPublicAccessible = false;
         }

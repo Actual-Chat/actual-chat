@@ -1,0 +1,118 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using System.Linq.Expressions
+@inherits ComponentBase<AppUIHub>
+@implements IDisposable
+@{
+    var messages = CurrentEditContext.GetValidationMessages(_fieldIdentifier).ToList();
+    var isInvalid = messages.Any();
+    var validationCls = "";
+    var message = "";
+    if (isInvalid) {
+        validationCls = "invalid";
+        message = messages.First();
+    } else {
+        var hint = ToHint(_aliasIsAvailable);
+        if (hint != null) {
+            validationCls = hint.Class;
+            message = hint.Message;
+        }
+    }
+}
+<div class="form-section-validation @validationCls">@message</div>
+
+@code {
+    private readonly EventHandler<ValidationStateChangedEventArgs>? _validationStateChangedHandler;
+    private EditContext? _previousEditContext;
+    private Expression<Func<string>>? _previousFieldAccessor;
+    private FieldIdentifier _fieldIdentifier;
+    private bool? _aliasIsAvailable;
+
+    [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
+
+    [Parameter, EditorRequired] public Expression<Func<string>>? For { get; set; }
+    [Parameter, EditorRequired] public AliasScope Scope { get; set; } = null!;
+    [Parameter] public string CurrentAliasId { get; set; } = "";
+    [Parameter, EditorRequired] public Func<string> AliasIdReader { get; set; } = null!;
+
+    public AliasValidationMessage() {
+        _validationStateChangedHandler = (sender, eventArgs) => {
+            _ = CheckAliasAvailability();
+            StateHasChanged();
+        };
+    }
+
+    protected override void OnParametersSet() {
+        if (CurrentEditContext == null)
+            throw StandardError.Internal(
+                $"{GetType()} requires a cascading parameter " +
+                $"of type {nameof(EditContext)}. For example, you can use {GetType()} inside " +
+                $"an {nameof(EditForm)}.");
+
+        if (For == null)
+            throw StandardError.Internal($"{GetType()} requires a value for the {nameof(For)} parameter.");
+
+        if (For != _previousFieldAccessor) {
+            _fieldIdentifier = FieldIdentifier.Create(For);
+            _previousFieldAccessor = For;
+        }
+
+        if (CurrentEditContext != _previousEditContext) {
+            DetachValidationStateChangedListener();
+            CurrentEditContext.OnValidationStateChanged += _validationStateChangedHandler;
+            _previousEditContext = CurrentEditContext;
+        }
+    }
+
+    void IDisposable.Dispose() {
+        DetachValidationStateChangedListener();
+    }
+
+    private void DetachValidationStateChangedListener() {
+        if (_previousEditContext != null) {
+            _previousEditContext.OnValidationStateChanged -= _validationStateChangedHandler;
+        }
+    }
+
+    private async Task CheckAliasAvailability()
+    {
+        _aliasIsAvailable = null;
+
+        var aliasSid = AliasIdReader();
+        if (aliasSid.IsNullOrEmpty() || OrdinalEquals(aliasSid, CurrentAliasId))
+            return;
+
+        if (!AliasId.TryParse(aliasSid, out var aliasId))
+            return;
+
+        if (ReferenceEquals(Scope, AliasScope.Account)) {
+            var userId = await Hub.Aliases.GetUserIdByAlias(aliasId);
+            _aliasIsAvailable = userId is null;
+        } else if (Scope.PlaceId is null) {
+            var aliasTarget = await Hub.Aliases.GetTarget(aliasId);
+            _aliasIsAvailable = aliasTarget is null;
+        } else {
+            var placeChatId = await Hub.Aliases.GetPlaceChatIdByAlias(Scope.PlaceId, aliasId);
+            _aliasIsAvailable = placeChatId is null;
+        }
+
+        StateHasChanged();
+    }
+
+    private static FormSectionHint? ToHint(bool? aliasIsAvailableHint)
+    {
+        if (!aliasIsAvailableHint.HasValue)
+            return null;
+
+        return aliasIsAvailableHint.Value
+            ? new FormSectionHint("This link is available.", "success")
+            : new FormSectionHint("This link is already in use.", "invalid");
+    }
+
+    private record FormSectionHint(string Message, string Class = "");
+
+    public record AliasScope(PlaceId? PlaceId = null) {
+        public static readonly AliasScope Account = new();
+        public static readonly AliasScope Place = new();
+        public static AliasScope Chat(PlaceId? placeId) => new(placeId);
+    }
+}

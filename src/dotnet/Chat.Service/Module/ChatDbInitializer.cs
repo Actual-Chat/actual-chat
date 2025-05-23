@@ -132,7 +132,7 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
 
         // Get users who don't have Notes chat
         var userIds = await dbContext.Authors
-            .Where(a => a.HasLeft == false && a.IsAnonymous == false)
+            .Where(a => !a.HasLeft && !a.IsAnonymous)
             .Select(a => a.UserId)
             .Distinct()
             .Where(uid => !dbContext.Chats
@@ -147,6 +147,9 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         Log.LogInformation("There is no 'Notes' chat for some users, creating chats for them");
 
         foreach (var userId in userIds) {
+            if (userId is null)
+                continue;
+
             var createNotesChatCommand = new ChatsBackend_CreateNotesChat(UserId.Parse(userId));
             await Commander.Run(createNotesChatCommand, true, cancellationToken).ConfigureAwait(false);
         }

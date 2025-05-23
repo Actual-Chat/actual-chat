@@ -50,7 +50,7 @@
     private string _avatarKey = "";
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private UrlMapper UrlMapper => Hub.UrlMapper;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter] public string Class { get; set; } = "";

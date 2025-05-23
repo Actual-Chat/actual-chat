@@ -1,6 +1,6 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
-using ActualChat.Permissions;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -47,9 +47,9 @@ public sealed class PermissionStepModel(IServiceProvider services)
         // coz here it just doesn't have a chance to work properly due to other
         // permission requests.
         //
-        // I disabled this logic for web browser for now, coz it doesn't work anyway,
-        // and we show NotificationsPermissionBanner which allows to enable it later -
-        // which, by the way, should fallback to the same popup.
+        // I disabled this logic for the web browser for now, coz it doesn't work anyway,
+        // and we show NotificationsPermissionBanner which allows enabling it later -
+        // which, by the way, should fall back to the same popup.
     }
 
     public void MarkCompleted()

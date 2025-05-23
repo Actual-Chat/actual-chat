@@ -11,7 +11,7 @@ public sealed partial record Invite(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(2)] public Symbol CreatedBy { get; init; } = "";
+    [DataMember, MemoryPackOrder(2)] public string CreatedBy { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public Moment ExpiresOn { get; init; }
     [DataMember, MemoryPackOrder(5)] public int Remaining { get; init; }
@@ -47,7 +47,7 @@ public sealed partial record Invite(
 
     public Invite Mask()
         => this with {
-            CreatedBy = Symbol.Empty,
+            CreatedBy = "",
             ExpiresOn = default,
             Remaining = 0,
         };

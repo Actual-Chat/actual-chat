@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<Unit>
+@inherits ComputedStateComponent<AppUIHub, object?>
 @{
     var chats = Selector.Chats.Value;
     var selectedChatIds = Selector.SelectedChatIds.Value;
@@ -22,17 +22,17 @@
 @code {
     [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
 
-    protected override ComputedState<Unit>.Options GetStateOptions()
+    protected override ComputedState<object?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Unit>.Options() {
+            static t => new ComputedState<object?>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<Unit> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<object?> ComputeState(CancellationToken cancellationToken) {
         await Selector.Chats.Use(cancellationToken).ConfigureAwait(false);
         await Selector.SelectedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        return default;
+        return null;
     }
 
     private void OnContactClick(ChatId chatId)

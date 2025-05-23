@@ -2,22 +2,20 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public class RequireOtherAccount : RequirementComponent
+public sealed class RequireOtherAccount : RequirementComponent
 {
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IAccounts Accounts { get; init; } = null!;
+    private IAccounts Accounts => Hub.Accounts;
 
-    [Parameter, EditorRequired] public string UserSid { get; set; } = "";
+    [Parameter, EditorRequired] public UserId? UserId { get; set; }
     [Parameter] public bool MustNotBeGuest { get; set; }
 
     public override string ToString()
-        => $"{GetType().GetName()}(UserSid = {UserSid})";
+        => $"{GetType().GetName()}(UserId = {UserId})";
 
-    public override async Task<Unit> Require(CancellationToken cancellationToken)
+    public override async Task Require(CancellationToken cancellationToken)
     {
-        var userId = new UserId(UserSid);
+        var userId = UserId.Require();
         var account = await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);
         account.Require(MustNotBeGuest ? Account.MustNotBeGuest : Account.MustExist);
-        return default;
     }
 }

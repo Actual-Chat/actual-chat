@@ -1,7 +1,6 @@
-@inherits ComputedStateComponent<CookieSettings.Model>
+@inherits ComputedStateComponent<AppUIHub, CookieSettings.Model?>
 @{
-    var m = State.LastNonErrorValue;
-    if (ReferenceEquals(m, Model.Loading))
+    if (State.IsInitial(out var m) || m is null)
         return;
 
     if (m.AreCookiesAccepted)
@@ -42,20 +41,12 @@
 
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private OnboardingUI OnboardingUI => (OnboardingUI)Hub.OnboardingUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(GetType()),
-        };
-    }
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         if (Hub.IsPrerendering)
-            return Model.Loading;
+            return null;
 
         await OnboardingUI.WhenLocalSettingsRead.ConfigureAwait(false);
         var settings = await OnboardingUI.LocalSettings.Use(cancellationToken).ConfigureAwait(false);
@@ -77,7 +68,5 @@
 
     // Nested types
 
-    public sealed record Model(bool AreCookiesAccepted = false) {
-        public static Model Loading { get; } = new();
-    }
+    public sealed record Model(bool AreCookiesAccepted = false);
 }

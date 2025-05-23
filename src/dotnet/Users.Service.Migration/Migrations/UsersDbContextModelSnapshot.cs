@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.4")
+                .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -28,6 +28,11 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id")
                         .UseCollation("C");
+
+                    b.Property<string>("AliasId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("alias_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -69,11 +74,6 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("time_zone");
 
-                    b.Property<string>("UserLinkId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_link_id");
-
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("text")
@@ -91,13 +91,13 @@ namespace ActualChat.Users.Migrations
                     b.HasKey("Id")
                         .HasName("pk_accounts");
 
+                    b.HasIndex("AliasId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_accounts_alias_id")
+                        .HasFilter("user_link_id <> ''");
+
                     b.HasIndex("IsGreetingCompleted")
                         .HasDatabaseName("ix_accounts_is_greeting_completed");
-
-                    b.HasIndex("UserLinkId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_accounts_user_link_id")
-                        .HasFilter("user_link_id <> ''");
 
                     b.HasIndex("UsernameNormalized")
                         .IsUnique()
@@ -309,10 +309,10 @@ namespace ActualChat.Users.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
-                    b.Property<string>("CountryCode")
+                    b.Property<string>("Country")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("country_code");
+                        .HasColumnName("country");
 
                     b.Property<int>("Gender")
                         .HasColumnType("integer")

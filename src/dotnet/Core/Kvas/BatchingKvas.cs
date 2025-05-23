@@ -17,12 +17,11 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
         public RetryDelaySeq FlushRetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 5);
     }
 
-    private ILogger? _log;
-
     protected IThreadSafeLruCache<Symbol, byte[]?> ReadCache { get; }
     protected BatchProcessor<string, byte[]?> Reader { get; }
     protected LazyWriter<(string Key, byte[]? Value)> Writer { get; }
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Services.LogFor(GetType());
 
     public Options Settings { get; }
     public IServiceProvider Services { get; }

@@ -1,12 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<AppUIHub, AccountFull>
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, AccountFull.Loading))
-        return;
-
-    if (!account.IsGuestOrNone) {
+    if (!account.IsGuest) {
         <NavbarButton
             Class="settings-btn"
             ButtonClass="account-btn"
@@ -36,10 +33,6 @@
 }
 
 @code {
-    [Inject] ChatUIHub Hub { get; init; } = null!;
-    private AccountUI AccountUI => Hub.AccountUI;
-    private UIEventHub UIEventHub => Hub.UIEventHub();
-
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,

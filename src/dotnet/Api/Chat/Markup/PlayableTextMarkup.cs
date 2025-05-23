@@ -1,23 +1,30 @@
 using System.Text.RegularExpressions;
+using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
-public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) : TextMarkup(Text)
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed partial class PlayableTextMarkup : TextMarkup
 {
     private const float InfTime = 1e6f;
-
     [GeneratedRegex(@"[\S^\u200B]+[\s\u200B]+")]
     private static partial Regex WordRegexFactory();
-
     private static readonly Regex WordRegex = WordRegexFactory();
 
+    public LinearMap TimeMap { get; }
     public Range<float> TextRange => (0, Text.Length);
     public Range<float> TimeRange => (TimeMap.TryMap(0f) ?? InfTime, TimeMap.TryMap(Text.Length) ?? InfTime);
-
     [field: AllowNull, MaybeNull]
     public Word[] Words => field ??= GetWords();
 
-    public PlayableTextMarkup() : this("", default) { }
+    // ReSharper disable once ConvertToPrimaryConstructor
+    public PlayableTextMarkup(string text, LinearMap timeMap) : base(text)
+        => TimeMap = timeMap;
+
+    public override TextMarkup WithText(string text)
+        => new PlayableTextMarkup(text, TimeMap);
+
+    // Private methods
 
     private Word[] GetWords()
     {
@@ -42,6 +49,8 @@ public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) 
         }
         return words.ToArray();
     }
+
+    // Nested types
 
     public record struct Word(
         string Value,

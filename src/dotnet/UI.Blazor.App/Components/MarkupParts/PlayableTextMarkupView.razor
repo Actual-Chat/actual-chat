@@ -42,15 +42,9 @@
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
-    private SelectionUI SelectionUI => Hub.SelectionUI;
-    private HighlightUI HighlightUI => Hub.HighlightUI;
-    private IJSRuntime JS => Hub.JSRuntime();
-    private Session Session => Hub.Session();
-    private IChats Chats => Hub.Chats;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -168,7 +162,7 @@
         if (startTimeOpt is not { } startTime)
             return;
 
-        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryLid ?? -1, AssumeValid.Option);
+        var audioEntryId = AudioEntryId.New(chatId, entry.AudioEntryLid ?? -1);
         var audioEntry = await Chats.GetEntry(Session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
@@ -194,7 +188,7 @@
         var session = Services.Session();
         var chats = Services.GetRequiredService<IChats>();
 
-        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryLid ?? -1, AssumeValid.Option);
+        var audioEntryId = AudioEntryId.New(chatId, entry.AudioEntryLid ?? -1);
         var audioEntry = await chats.GetEntry(session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
@@ -248,7 +242,7 @@
         if (hasActivePlaying) {
             colorLease ??= PaletteProvider
                 .GetPalette(Entry.ChatId)
-                .RentColor(Entry.AuthorId, Entry.LocalId);
+                .RentColor(Entry.AuthorId.Value, Entry.LocalId);
         }
         else {
             if (colorLease != null) {

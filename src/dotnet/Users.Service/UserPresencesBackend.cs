@@ -30,7 +30,7 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbUserPresence = await dbContext.UserPresences
-            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken)
+            .FirstOrDefaultAsync(x => x.UserId == userId.Value, cancellationToken)
             .ConfigureAwait(false);
         return dbUserPresence?.CheckInAt.ToMoment();
     }
@@ -47,11 +47,11 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUserPresence = await dbContext.UserPresences.ForUpdate()
-            .FirstOrDefaultAsync(x => x.UserId == command.UserId, cancellationToken)
+            .FirstOrDefaultAsync(x => x.UserId == command.UserId.Value, cancellationToken)
             .ConfigureAwait(false);
         if (dbUserPresence == null) {
             dbUserPresence = new DbUserPresence {
-                UserId = command.UserId,
+                UserId = command.UserId.Value,
                 IsActive = command.IsActive,
                 CheckInAt = command.At,
             };

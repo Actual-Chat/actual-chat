@@ -1,16 +1,15 @@
 ﻿@using ActualChat.UI.Blazor.App.Pages
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @{
     var m = Model;
     var chat = Chat;
 }
 
 <div class="writable-chat-footer">
-    @if (ReferenceEquals(chat, SpecialChat.Loading)) {
-        // Render skeletons until State is computed
+    @if (m is null) {
         <chat-view-footer-skeleton/>
-    } else if (chat.Id.IsNone) {
-        <ReadOnlyChatFooter FooterText="" />
+    } else if (chat is null) {
+        <ReadOnlyChatFooter Text="" />
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor @key="@chat.Id.Value" Chat="@chat" />
@@ -30,9 +29,9 @@
                         <div class="inline-flex">
                             <SignInButton ButtonClass="w-full"/>
                         </div>
-                        @if (!m.OtherUserId.IsNone) {
+                        @if (m.PeerId is { } otherUserId) {
                             <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
-                            <AccountName UserSid="@m.OtherUserId.Id"/>
+                            <AccountName UserId="@otherUserId"/>
                         } else if (m.CanJoinWithGuestAccount) {
                             <span class="inline-flex mx-2 items-center">or</span>
                             <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
@@ -49,34 +48,31 @@
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private ModalUI ModalUI => Hub.ModalUI;
-    private UICommander UICommander => Hub.UICommander();
     private ChatUI ChatUI => Hub.ChatUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatPage.FooterModel Model { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+    [Parameter, EditorRequired] public ChatPage.FooterModel? Model { get; set; }
 
     private async Task OnJoin() {
-        var avatarSelectionRequired = Model.HasMultipleAvatars || Model.CanJoinAnonymously;
+        if (Chat?.Id is not { } chatId || Model is not { } model)
+            return;
+
+        var avatarSelectionRequired = model.HasMultipleAvatars || model.CanJoinAnonymously;
         if (!avatarSelectionRequired) {
-            var command = new Authors_Join(Session, Chat.Id);
+            var command = new Authors_Join(Session, chatId);
             await UICommander.Run(command);
             return;
         }
 
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, Model.CanJoinAnonymously, JoinWithAvatar));
+        await ModalUI.Show(new AvatarSelectModal.Model(null, model.CanJoinAnonymously, JoinWithAvatar));
+        return;
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new Authors_Join(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            var command = new Authors_Join(Session, chatId, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
             await UICommander.Run(command);
         }
     }
 
     private void OnJoinPlace(Place place)
         => _ = ChatUI.JoinPlace(place.Id);
-
-    private Task SignIn()
-        => ModalUI.Show(new SignInModal.Model());
 }

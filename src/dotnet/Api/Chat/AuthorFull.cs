@@ -1,28 +1,25 @@
-using ActualChat.Users;
+using ActualLab.Fusion.Blazor;
 using MemoryPack;
 
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record AuthorFull(AuthorId Id, long Version = 0) : Author(Id, Version)
+[ParameterComparer(typeof(ByRefParameterComparer))]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+public sealed partial record AuthorFull(
+    [property: DataMember, MemoryPackOrder(6)] UserId UserId,
+    AuthorId Id, long Version = 0
+    ) : Author(Id, Version)
 {
     public static new readonly Requirement<AuthorFull> MustExist = Requirement.New(
-        (AuthorFull? a) => a is { Id.IsNone: false },
+        (AuthorFull? a) => a?.Id is not null,
         new(() => StandardError.NotFound<Author>()));
 
-    public static new readonly AuthorFull None = new() { Avatar = Avatar.None };
-    public static new readonly AuthorFull Loading = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
-
-    [DataMember, MemoryPackOrder(6)]  public UserId UserId { get; init; }
-    [DataMember, MemoryPackOrder(7)]  public Symbol[] RoleIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(7)]  public IReadOnlyList<RoleId> RoleIds { get; init; } = [];
     [DataMember, MemoryPackOrder(10)] public bool IsPlaceAuthor { get; set; }
     [DataMember, MemoryPackOrder(9)]  public Moment CreatedAt { get; init; }
 
-    private AuthorFull() : this(default, 0) { }
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public AuthorFull(UserId userId, AuthorId id, long version = 0) : this(id, version)
-        => UserId = userId;
+    private AuthorFull() : this(null!, null!) { }
 
     // This record relies on referential equality
     public bool Equals(AuthorFull? other) => ReferenceEquals(this, other);

@@ -1,10 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<UIHub, AccountFull>
 @implements IModalView<SignInModal.Model>
 @{
-    if (!State.Value.IsGuestOrNone)
+    if (!State.Value.IsGuestOrNull())
         Modal.Close(true);
 }
 
@@ -20,9 +20,6 @@
 @code {
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private AccountUI AccountUI => Hub.AccountUI;
 
     protected override void OnInitialized() {
         AccountUI.PostponeOnSignInWorkflow(Modal.Ref.WhenClosed);

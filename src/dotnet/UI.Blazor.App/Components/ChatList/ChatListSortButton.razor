@@ -1,7 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<ChatListSortButton.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatListSortButton.Model?>
 @{
     var m = State.Value;
+    if (m is null)
+        return;
+
     var order = m.SortOrder;
 }
 
@@ -17,26 +20,26 @@
 </ButtonRound>
 
 @code {
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    [Parameter, EditorRequired] public PlaceChatListSettings? PlaceChatListSettings { get; set; }
 
-    [Parameter, EditorRequired] public PlaceChatListSettings PlaceChatListSettings { get; set; } = null!;
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model?>.Options {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            UpdateDelayer = FixedDelayer.NextTick,
-        };
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        if (PlaceChatListSettings is not { } placeChatListSettings)
+            return null;
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatListSettings = await PlaceChatListSettings.Get(cancellationToken).ConfigureAwait(false);
-        return new() { SortOrder = chatListSettings.Order };
+        var settings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
+        return new() { SortOrder = settings.Order };
     }
 
     // Nested types
 
     public sealed record Model {
-        public static readonly Model Loading = new();
-
         public ChatListOrder SortOrder { get; init; }
     }
 }

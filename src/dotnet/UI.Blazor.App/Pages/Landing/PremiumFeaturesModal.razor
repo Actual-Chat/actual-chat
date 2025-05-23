@@ -1,3 +1,4 @@
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<PremiumFeaturesModal.Model>
 
 <DialogFrame
@@ -160,10 +161,7 @@
 </DialogFrame>
 
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
-
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void DownloadClick() {

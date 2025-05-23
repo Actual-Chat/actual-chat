@@ -28,13 +28,14 @@ public partial class UserContactIndexingFlow : BatchedIndexingFlowBase<Contact, 
         CancellationToken cancellationToken)
     {
         var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        cursor ??= new (ContactId.None, 0);
-        return await ContactsBackend.ListChangedPeerContacts(new ChangedContactsQuery {
-                MinVersion = cursor.LastUpdatedVersion,
-                MaxVersion = maxVersion,
-                LastId = cursor.LastUpdatedId,
-                Limit = BatchSize,
-            },
+        cursor ??= new(null, 0);
+        var query = new ChangedContactsQuery {
+            LastId = cursor.LastUpdatedId,
+            Limit = BatchSize,
+            MinVersion = cursor.LastUpdatedVersion,
+            MaxVersion = maxVersion,
+        };
+        return await ContactsBackend.ListChangedPeerContacts(query,
             cancellationToken
             ).ConfigureAwait(false);
     }
@@ -44,7 +45,12 @@ public partial class UserContactIndexingFlow : BatchedIndexingFlowBase<Contact, 
         await WhenReady.ConfigureAwait(false);
 
         // TODO(FC): in one request
-        var indexedUsers = batch.Select(x => new IndexedUser(x.UserId)).Distinct().ToArray();
+        var indexedUsers = batch
+            .Select(c => c.UserId)
+            .SkipNullItems()
+            .Distinct()
+            .Select(userId => new IndexedUser(userId))
+            .ToArray();
         await IndexedDocuments
             .UpsertPartially<IndexedUser, IIndexedUserMinimalUpsert, UserId>(x => x.UserIndexName,
                 indexedUsers,

@@ -34,7 +34,7 @@ public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarg
             Id = new Symbol(Id),
             Version = Version,
             Url = Url,
-            PreviewMediaId = new MediaId(ThumbnailMediaId),
+            PreviewMediaId = MediaId.ParseNullable(ThumbnailMediaId),
             Title = Title,
             Description = Description,
             CreatedAt = CreatedAt,
@@ -49,7 +49,7 @@ public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarg
         Id = model.Id;
         Version = model.Version;
         Url = model.Url;
-        ThumbnailMediaId = model.PreviewMediaId;
+        ThumbnailMediaId = model.PreviewMediaId?.Value ?? "";
         Title = model.Title;
         Description = model.Description;
         CreatedAt = model.CreatedAt;

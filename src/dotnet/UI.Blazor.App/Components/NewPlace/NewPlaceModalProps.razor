@@ -1,5 +1,5 @@
 ﻿@using System.ComponentModel.DataAnnotations
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @namespace ActualChat.UI.Blazor.App.Components
 
 @{
@@ -98,9 +98,6 @@
     private FormModel _form = null!;
     private bool _isAdmin;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public Action<Place, Chat?> PlaceCreated { get; set; } = null!;
@@ -120,7 +117,7 @@
         if (!_formRef.IsValid)
             return;
         try {
-            var session = Hub.Session();
+            var session = Hub.Session;
             var createPlaceCommand = new Places_Change(session, default, default, new Change<PlaceDiff>() {
                 Create = new PlaceDiff {
                     Title = _form.Title,
@@ -130,7 +127,7 @@
                 }
             });
 
-            var (place, createPlaceError) = await Hub.UICommander().Run(createPlaceCommand, CancellationToken.None);
+            var (place, createPlaceError) = await Hub.UICommander.Run(createPlaceCommand, CancellationToken.None);
             if (createPlaceError != null)
                 return;
 
@@ -149,7 +146,7 @@
                     PlaceId = place.Id
                 },
             });
-            var (chat, _) = await Hub.UICommander().Run(createChatCommand, CancellationToken.None);
+            var (chat, _) = await Hub.UICommander.Run(createChatCommand, CancellationToken.None);
 
             PlaceCreated(place, chat);
         }

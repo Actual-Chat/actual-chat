@@ -2,21 +2,27 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public abstract class RequirementComponent : ComputedStateComponent<Unit>
+public abstract class RequirementComponent : ComputedStateComponent<UIHub, object?>
 {
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Hub.LogFor(GetType());
+
     [CascadingParameter] protected RequirementChecker? RequirementChecker { get; private set; }
 
-    public abstract Task<Unit> Require(CancellationToken cancellationToken);
+    public abstract Task Require(CancellationToken cancellationToken);
 
-    protected override ComputedState<Unit>.Options GetStateOptions()
+    protected override ComputedState<object?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Unit>.Options() {
+            static t => new ComputedState<object?>.Options() {
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected sealed override Task<Unit> ComputeState(CancellationToken cancellationToken)
-        => Require(cancellationToken);
+    protected sealed override async Task<object?> ComputeState(CancellationToken cancellationToken)
+    {
+        await Require(cancellationToken).ConfigureAwait(false);
+        return null;
+    }
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {

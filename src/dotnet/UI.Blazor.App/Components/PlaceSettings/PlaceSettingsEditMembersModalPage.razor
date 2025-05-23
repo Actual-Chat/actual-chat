@@ -1,11 +1,10 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<PlaceSettingsEditMembersModalPage.ComputedModel>
-
+@inherits ComputedStateComponent<AppUIHub, PlaceSettingsEditMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
     Context.Title = $"{m.MemberCount} members";
-    Context.ModalDataBag.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
+    Context.ContextItems.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
 <TileItem Click="@OnInviteClick">
@@ -26,12 +25,12 @@
         var statusText = FormatStatusText(isOwner, isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
         var showMenu = !(isOwn || isOwner);
-        var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId).ToString() : null;
+        var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId.Value).ToString() : null;
         <li data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <AuthorBadge
                 @key="@authorId"
-                AuthorSid="@authorId"
+                AuthorId="@authorId"
                 ShowPresence="true"
                 StatusText="@statusText" />
             @if (dataMenuAttr != null) {
@@ -51,12 +50,9 @@
 
 @code {
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private PlaceId PlaceId { get; set; }
-
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private PlaceId PlaceId { get; set; } = null!;
 
     private IPlaces Places => Hub.Places;
-    private Session Session => Hub.Session();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -75,7 +71,7 @@
         => new() {
             InitialValue = new ComputedModel {
                 // Try to use stored members count to avoid header title blinking.
-                MemberCount = Context.ModalDataBag.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), 1),
+                MemberCount = Context.ContextItems.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), 1),
             },
             Category = GetStateCategory(GetType()),
         };
@@ -97,6 +93,7 @@
             .ToList();
 
         if (_searchPhrase.IsEmpty) {
+            // ReSharper disable once ConvertToLocalFunction
             Comparison<(AuthorId, string)> comparison = (info1, info2)
                 => OrdinalCompare(info1.Item2, info2.Item2);
             authors.Sort(comparison);
@@ -137,11 +134,11 @@
         public int MemberCount { get; init; }
         public AuthorId[] AuthorIds { get; init; } = [];
         public AuthorId[] OwnerIds { get; init; } = [];
-        public AuthorId OwnAuthorId { get; init; }
+        public AuthorId? OwnAuthorId { get; init; }
 
         public bool IsOwner(AuthorId authorId)
             => OwnerIds.Contains(authorId);
         public bool IsOwn(AuthorId authorId)
-            => OwnAuthorId.Equals(authorId);
+            => OwnAuthorId is not null && Equals(OwnAuthorId, authorId);
     }
 }

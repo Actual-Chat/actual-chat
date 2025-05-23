@@ -3,7 +3,7 @@ using ActualChat.Search;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class HighlightUI(ChatUIHub uiHub) : ScopedServiceBase<ChatUIHub>(uiHub), IComputeService
+public class HighlightUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> _hits = ReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>.Empty;
 

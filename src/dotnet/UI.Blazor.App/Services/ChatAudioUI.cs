@@ -5,11 +5,11 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
+public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<NextBeepState?> _nextBeep;
-    private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
+    private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
 
     private IChats Chats => Hub.Chats;
     private ChatActivity ChatActivity => Hub.ChatActivity;
@@ -20,13 +20,9 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private InteractiveUI InteractiveUI => Hub.InteractiveUI;
     private DeviceAwakeUI DeviceAwakeUI => Hub.DeviceAwakeUI;
-    private TuneUI TuneUI => Hub.TuneUI;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
-
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
 
@@ -34,7 +30,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
-    public ChatAudioUI(ChatUIHub hub) : base(hub)
+    public ChatAudioUI(AppUIHub hub) : base(hub)
     {
         // Read entry states from other windows / devices are delayed by 1s
         var type = GetType();
@@ -53,13 +49,13 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)
     {
-        if (chatId.IsNone)
-            return Task.FromResult(ChatAudioState.None);
-
         var activeChats = ActiveChatsUI.ActiveChats.Value;
-        activeChats.TryGetValue(chatId, out var activeChat);
-        var isListening = activeChat.IsListening;
-        var isRecording = activeChat.IsRecording;
+        var isListening = false;
+        var isRecording = false;
+        if (activeChats.TryGetValue(chatId, out var activeChat)) {
+            isListening = activeChat.IsListening;
+            isRecording = activeChat.IsRecording;
+        }
         var isPlayingHistorical = ChatPlayers.PlaybackState.Value is HistoricalPlaybackState hps && hps.ChatId == chatId;
         var result = new ChatAudioState(chatId, isListening, isPlayingHistorical, isRecording);
         return Task.FromResult(result);
@@ -68,7 +64,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
     {
-        await Hub.ChatUI.WhenLoaded.ConfigureAwait(false);
+        await Hub.ChatUI.WhenReady.ConfigureAwait(false);
 
         var listeningSettings = await AccountSettings
             .GetUserListeningSettings(cancellationToken)
@@ -83,9 +79,6 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
 
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
-        if (chatId.IsNone)
-            return default;
-
         var now = CpuNow;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
             if (activeChats.TryGetValue(chatId, out var chat)) {
@@ -97,7 +90,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                     Recency = mustListen ? now : chat.Recency,
                     ListeningRecency = mustListen ? now : chat.ListeningRecency,
                 };
-                activeChats = activeChats.WithOrReplace(chat);
+                activeChats = activeChats.WithOrReplace(chat).ToArray();
             }
             else if (mustListen)
                 activeChats = activeChats.With(new ActiveChat(chatId, true, false, now, now), true);
@@ -121,23 +114,27 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
         });
 
     [ComputeMethod] // Synced
-    public virtual Task<ChatId> GetRecordingChatId()
-        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId);
+    public virtual Task<ChatId?> GetRecordingChatId()
+    {
+        var activeChats = ActiveChatsUI.ActiveChats.Value;
+        var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
+        return Task.FromResult(recordingChat?.ChatId);
+    }
 
-    public ValueTask SetRecordingChatId(ChatId chatId, bool isPushToTalk = false)
+    public ValueTask SetRecordingChatId(ChatId? chatId, bool isPushToTalk = false)
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
                 var oldRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-                if (oldRecordingChat.ChatId == chatId)
+                if (oldRecordingChat?.ChatId == chatId)
                     return activeChats;
 
                 var now = CpuNow;
-                if (chatId.IsNone) {
+                if (chatId is null) {
                     // End recording
-                    if (!oldRecordingChat.IsNone) {
+                    if (oldRecordingChat != null) {
                         activeChats = activeChats.WithOrReplace(oldRecordingChat with {
                             IsRecording = false,
                             Recency = now,
-                        });
+                        }).ToArray();
                         _ = RestoreListening(StopToken);
                         _ = TuneUI.Play(Tune.EndRecording);
                     }
@@ -147,7 +144,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                 // Begin recording
                 var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
                 var mustListen = !isPushToTalk;
-                if (chat.IsNone)
+                if (chat == null)
                     chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
                 else {
                     var isListening = mustListen || chat.IsListening;
@@ -158,15 +155,17 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                         ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
                     };
                 }
-                activeChats = activeChats.WithOrReplace(chat, true);
+                activeChats = activeChats.WithOrReplace(chat, true).ToArray();
                 // Turn off listening for all the rest chats if mustListen
                 activeChats = mustListen
                     ? activeChats.WithUpdate(
                         c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
                         c => c with { IsRecording = false, IsListening = false })
+                        .ToArray()
                     : activeChats.WithUpdate(
                         c => c.ChatId != chatId && c.IsRecording,
-                        c => c with { IsRecording = false });
+                        c => c with { IsRecording = false })
+                        .ToArray();
                 _ = TuneUI.Play(Tune.BeginRecording);
                 return activeChats;
 
@@ -175,7 +174,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                     var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(ct).ConfigureAwait(false);
                     foreach (var cid in chatIdsToListenTo) {
                         chat = activeChats.FirstOrDefault(c => c.ChatId == cid);
-                        chat = chat.IsNone
+                        chat = chat == null
                             ? new ActiveChat(cid,
                                 true,
                                 false,
@@ -185,7 +184,7 @@ public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService,
                                 IsListening = true,
                                 ListeningRecency = now,
                             };
-                        activeChats = activeChats.WithOrReplace(chat);
+                        activeChats = activeChats.WithOrReplace(chat).ToArray();
                     }
                 }
             },

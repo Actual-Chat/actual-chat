@@ -28,8 +28,11 @@ public class LanguageDetectionSerializer(IServiceProvider services)
             if (response is null || response.Languages.Count == 0)
                 return Empty(expectedCount);
 
-            var resultMap =
-                response.Languages.ToDictionary(x => x.Id, x => x.Languages.Select(Language.ParseOrNone).Distinct().ToArray());
+            var resultMap = response.Languages
+                .ToDictionary(
+                    x => x.Id,
+                    x => x.Languages.Select(v => Language.TryParse(v)).SkipNullItems().Distinct().ToArray()
+                );
             return [..Enumerable.Range(1, expectedCount).Select(i => resultMap.GetValueOrDefault(i, []))];
         }
         catch (Exception e) {

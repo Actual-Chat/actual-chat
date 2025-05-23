@@ -16,16 +16,18 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
 
         ChatListSettings chatListSettings;
         Task<int> chatIndexTask;
-        ChatId chatId;
+        ChatId? chatId;
         if (usePlaceChatListSettings) {
             var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
             chatListSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
             chatId = ChatUI.SelectedChatId.Value;
-            chatIndexTask = ChatListUI.IndexOf(placeId, chatId, chatListSettings, cancellationToken);
+            chatIndexTask = chatId is not null
+                ? ChatListUI.IndexOf(placeId, chatId, chatListSettings, cancellationToken)
+                : Task.FromResult(-1);
         }
         else {
             chatListSettings = new ChatListSettings { Order = ChatListOrder.ByAlphabet, FilterId = ChatListFilter.Groups.Id };
-            chatId = ChatId.None;
+            chatId = null;
             chatIndexTask = Task.FromResult(-1);
         }
 

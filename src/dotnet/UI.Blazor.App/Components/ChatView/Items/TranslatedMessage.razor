@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedRenderStateComponent<TranslatedMessage.Model>
+@inherits ComputedRenderStateComponent<AppUIHub, TranslatedMessage.Model>
 @{
     var m = State.Value;
     _rendered = m;
@@ -8,20 +8,19 @@
 <MarkupView Markup="@m.Markup" />
 
 @code {
-    private Model _rendered = Model.None;
-    private ChatUIHub Hub => ChatContext.Hub;
-    private ChatUI ChatUI => Hub.ChatUI;
+    private Model? _rendered;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
+    private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private ILogger Log => Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByRefParameterComparer))]
-    public Markup Markup { get; set; } = null!;
+    [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
 
     protected override bool ShouldRender()
-        => !ReferenceEquals(_rendered, State.Value)
+        => _rendered is null ||
+           !ReferenceEquals(_rendered, State.Value)
             && (_rendered.Entry.ContentHash != State.Value.Entry.ContentHash
                 || _rendered.Markup != State.Value.Markup);
 
@@ -29,7 +28,7 @@
         // Do not use cached options as we need to pass Message and Markup parameters.
         var initialData = new Model(Markup, Message.Entry);
         return new() {
-            InitialValue = initialData, // show original text immediately
+            InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
         };
     }
@@ -37,12 +36,12 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
-        var renderedEntry = _rendered.Entry.Version <= 0 ? message.Entry : _rendered.Entry;
-        var markup = _rendered.Entry.Version <= 0 ? Markup : _rendered.Markup;
+        var renderedEntry = _rendered?.Entry ?? message.Entry;
+        var markup = _rendered?.Markup ?? Markup;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
-            return _rendered;
+            return _rendered ?? new Model(markup, message.Entry);
         }
 
         if (!renderedEntry.VersionEquals(entry))
@@ -52,7 +51,7 @@
         if (!mustTranslate)
             return new(markup, entry);
 
-        var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
         if (translation is null)
             return new(markup, entry);
 
@@ -62,7 +61,5 @@
 
     // Nested types
 
-    public sealed record Model(Markup Markup, ChatEntry Entry) {
-        public static readonly Model None = new(Markup.Empty, ChatEntry.Loading);
-    }
+    public sealed record Model(Markup Markup, ChatEntry Entry);
 }

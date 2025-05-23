@@ -1,8 +1,7 @@
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<AppUIHub, AccountFull>
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, AccountFull.Loading))
-        return;
+    var readablePhone = account.Phone?.ToReadable() ?? "";
 }
 
 <Tile>
@@ -24,13 +23,13 @@
         </Caption>
     </TileItem>
 
-    @if (!account.UserLinkId.IsNone) {
+    @if (account.AliasId is { } aliasId) {
         <TileItem>
             <Icon>
                 <i class="icon-link-2 text-xl"></i>
             </Icon>
             <Content>
-                @("@" + account.UserLinkId.Value)
+                @("@" + aliasId.Value)
             </Content>
             <Caption>
                 User link
@@ -38,7 +37,7 @@
             <Right>
                 <CopyToClipboard
                     ButtonClass="btn-xs btn-transparent tile-hidden-btn"
-                    Text="@(UrlMapper.ToAbsolute(Links.AccountUserLinkPrefix + account.UserLinkId.Value))"/>
+                    Text="@(UrlMapper.ToAbsolute(Links.User(account.AliasInfo)))"/>
             </Right>
         </TileItem>
     }
@@ -64,11 +63,11 @@
             <i class="icon-phone text-xl"></i>
         </Icon>
         <Right>
-            <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@account.Phone.ToReadable()"/>
+            <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
             <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
         </Right>
         <Content>
-            @account.Phone.ToReadable()
+            @account.Phone?.ToReadable()
         </Content>
         <Caption>
             Phone
@@ -93,14 +92,6 @@
 <OwnAvatarList Account="@account"/>
 
 @code {
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private Session Session => Hub.Session();
-    private AccountUI AccountUI => Hub.AccountUI;
-    private IAvatars Avatars => Hub.Avatars;
-    private ShareUI ShareUI => Hub.ShareUI;
-    private ModalUI ModalUI => Hub.ModalUI;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
-
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,

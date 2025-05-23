@@ -6,15 +6,15 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
-[ParameterComparer(typeof(ByIdAndVersionParameterComparer<ChatId, long>))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Chat(
     [property: DataMember, MemoryPackOrder(0)] ChatId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Chat> MustExist = Requirement.New(
-        (Chat? c) => c is { Id.IsNone: false },
+        (Chat? c) => c?.Id is not null,
         new(() => StandardError.NotFound<Chat>()));
 
     public static readonly Requirement<Chat> MustBeTemplate = MustExist
@@ -24,7 +24,7 @@ public sealed partial record Chat(
 
     public static readonly Requirement<Chat> MustBePlaceRoot = MustExist
         & Requirement.New<Chat>(
-            c => c is { Id: { IsPlaceChat: true, PlaceChatId.IsRoot: true } },
+            c => c?.Id is PlaceChatId { IsRoot: true },
             new(() => StandardError.Constraint<Chat>("Place root chat is expected.")));
 
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
@@ -35,11 +35,11 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(7)] public UserId? TemplatedForUserId { get; init; }
     [DataMember, MemoryPackOrder(8)] public bool AllowGuestAuthors { get; init; }
     [DataMember, MemoryPackOrder(9)] public bool AllowAnonymousAuthors { get; init; }
-    [DataMember, MemoryPackOrder(10)] public MediaId MediaId { get; init; }
+    [DataMember, MemoryPackOrder(10)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(14)] public Symbol SystemTag { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool IsArchived { get; init; }
     [DataMember, MemoryPackOrder(16)] public string Description { get; init; } = "";
-    [DataMember, MemoryPackOrder(17)] public UserLinkId UserLinkId { get; init; } = UserLinkId.None;
+    [DataMember, MemoryPackOrder(17)] public AliasId? AliasId { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool? IsSummarized { get; init; }
 
     // Populated only on front-end
@@ -51,15 +51,19 @@ public sealed partial record Chat(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [field: AllowNull, MaybeNull]
+    public AliasInfo<ChatId> AliasInfo => field ??= new(Id, AliasId);
+
     public bool CanInvite()
         // Technically it should be:
         // => Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _) &&;
         // But since we can't manage other roles than Owner yet,
         // we let only Owners to invite people to chat.
-        => Rules.IsOwner() && Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _);
+        => Rules.IsOwner() && Rules.CanInvite() && !HasSingleAuthor && Id is not PeerChatId;
 
     public bool IsPublicPlaceChat()
-        => Kind == ChatKind.Place && !Id.PlaceChatId.IsRoot && IsPublic;
+        => IsPublic && Id is PlaceChatId { IsRoot: false };
 
     // This record relies on referential equality
     public bool Equals(Chat? other) => ReferenceEquals(this, other);
@@ -82,6 +86,6 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember, MemoryPackOrder(11)] public PlaceId? PlaceId { get; init; }
     [DataMember, MemoryPackOrder(12)] public bool? IsArchived { get; init; }
     [DataMember, MemoryPackOrder(13)] public string? Description { get; init; }
-    [DataMember, MemoryPackOrder(14)] public UserLinkId? UserLinkId { get; init; }
+    [DataMember, MemoryPackOrder(14)] public AliasId? AliasId { get; init; }
     [DataMember, MemoryPackOrder(15)] public Option<bool?> IsSummarized { get; init; }
 }

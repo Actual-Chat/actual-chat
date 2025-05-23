@@ -1,7 +1,6 @@
-using Cysharp.Text;
-
 namespace ActualChat.UI.Blazor.Components;
 
+[StructLayout(LayoutKind.Auto)]
 public readonly struct MenuRef(
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type menuType,
     params string[] arguments)
@@ -21,7 +20,7 @@ public readonly struct MenuRef(
         where TMenu : IMenu
         => new (typeof(TMenu), arguments);
 
-    public MenuRef(
+    private MenuRef(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type menuType)
         : this(menuType, []) { }
 
@@ -33,7 +32,7 @@ public readonly struct MenuRef(
             span[0] = MenuRegistry.GetTypeId(MenuType);
             for (int i = 0; i < Arguments.Length; i++)
                 span[i + 1] = Arguments[i].ToBase64();
-            return ZString.Join(Delimiter, (ReadOnlySpan<string>) span);
+            return string.Join(Delimiter, span);
         }
         finally {
             buffer.Release();
@@ -45,7 +44,6 @@ public readonly struct MenuRef(
     public static MenuRef Parse(string value)
         => TryParse(value, out var result) ? result : throw StandardError.Format<MenuRef>();
 
-    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "UI types are expected to be untrimmed.")]
     public static bool TryParse(string value, out MenuRef result)
     {
         var parts = value.Split(Delimiter);

@@ -1,8 +1,7 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.Hosting
-@using ActualChat.Security
 @using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
 <input @ref="InputRef" type="file" @attributes="InputAttributes"/>
@@ -14,10 +13,7 @@
     private DotNetObjectReference<FileUpload> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [Parameter, EditorRequired] public string UploadUrl { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }

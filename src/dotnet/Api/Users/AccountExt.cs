@@ -2,8 +2,11 @@ namespace ActualChat.Users;
 
 public static class AccountExt
 {
+    public static bool IsGuestOrNull([NotNullWhen(false)] this Account? account)
+        => account is null || account.IsGuest;
+
     public static bool IsActive([NotNullWhen(true)] this AccountFull? account)
-        => AccountFull.MustBeActive.IsSatisfied(account);
+        => account is not null && (account.Status == AccountStatus.Active || account.IsAdmin);
 
     [return: NotNullIfNotNull(nameof(account))]
     public static Account? ToAccount(this AccountFull? account)
@@ -18,7 +21,7 @@ public static class AccountExt
     }
 
     public static bool HasVerifiedPhone(this AccountFull account)
-        => account.Phone.IsValid && account.User.GetPhone() == account.Phone;
+        => account.Phone is { } phone && phone.IsNormalized() && account.User.GetPhone() == phone;
 
     public static bool HasVerifiedEmail(this AccountFull account) {
         if (account.Email.IsNullOrEmpty())

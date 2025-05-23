@@ -8,8 +8,6 @@ namespace ActualChat.Chat.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbReadPositionsStat : IHasId<string>, IHasVersion<long>
 {
-    public DbReadPositionsStat() { }
-
     [Key] public string ChatId { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
@@ -27,9 +25,9 @@ public class DbReadPositionsStat : IHasId<string>, IHasVersion<long>
     {
         var result = Array.Empty<UserReadPosition>();
         if (Top1EntryLid > 0)
-            result = result.With(new UserReadPosition(new UserId(Top1UserId), Top1EntryLid));
+            result = result.With(new UserReadPosition(UserId.Parse(Top1UserId), Top1EntryLid));
         if (Top2EntryLid > 0)
-            result = result.With(new UserReadPosition(new UserId(Top2UserId), Top2EntryLid));
+            result = result.With(new UserReadPosition(UserId.Parse(Top2UserId), Top2EntryLid));
         return result;
     }
 }

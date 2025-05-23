@@ -1,9 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatEntryMessageView.Model>
+@inherits ComputedStateComponent<AppUIHub, ChatEntryMessageView.Model?>
 @{
     var m = _rendered = State.Value;
-    var chat = m.Chat;
+    if (m?.Chat is not { } chat)
+        return;
+
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
     var entry = message.Entry;
@@ -12,7 +14,7 @@
     // Flags
     var isSystem = entry.IsSystemEntry;
     var isReply = m.RepliedEntry != null;
-    var isForward = !entry.ForwardedAuthorId.IsNone;
+    var isForward = entry.ForwardedAuthorId is not null;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
     var isBlockStart = message.Flags.HasFlag(ChatMessageFlags.BlockStart);
     var isUnreadByOthersBlockStart = m.IsUnreadByOthersBlockStart;
@@ -59,43 +61,39 @@
 }
 
 @if (isSystem) {
-    if (ReferenceEquals(entry, ChatEntry.Loading)) {
-        <string-skeleton firstWidth="2" secondWidth="4" height="6" system="true"/>
-    } else {
-        <div class="@cls"
-             data-menu="@(MenuRef.New<MessageMenu>(entry.Id, bool.TrueString, "", ""))"
-             @onmouseenter="@ShowHoverMenu"
-             @onmouseleave="@HideHoverMenu">
-            <div class="chat-message">
-                <div class="c-content">
-                    <div class="message-content">
-                        <p class="chat-message-markup">
-                            <CascadingValue Value="@entry" IsFixed="true">
-                                <MarkupView Markup="@markup"/>
-                            </CascadingValue>
-                        </p>
-                    </div>
+    <div class="@cls"
+         data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))"
+         @onmouseenter="@ShowHoverMenu"
+         @onmouseleave="@HideHoverMenu">
+        <div class="chat-message">
+            <div class="c-content">
+                <div class="message-content">
+                    <p class="chat-message-markup">
+                        <CascadingValue Value="@entry" IsFixed="true">
+                            <MarkupView Markup="@markup"/>
+                        </CascadingValue>
+                    </p>
                 </div>
-                @if (entry.HasReactions) {
-                    <MessageReactions Entry="@entry"/>
-                }
             </div>
-            <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" />
+            @if (entry.HasReactions) {
+                <MessageReactions Entry="@entry"/>
+            }
         </div>
-    }
+        <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" />
+    </div>
     return;
 }
 
 <div class="@cls"
      data-chat-entry-id="@(entry.Id)"
-     data-menu="@(MenuRef.New<MessageMenu>(entry.Id, bool.FalseString, "", ""))"
+     data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.FalseString, "", ""))"
      @onmouseenter="@ShowHoverMenu"
      @onmouseleave="@HideHoverMenu">
     <div class="chat-message group">
         <div class="c-author-badge">
             @if (showAuthorBadge) {
                 <ChatMessageAuthorCircle
-                    AuthorSid="@entry.AuthorId"
+                    AuthorId="@entry.AuthorId"
                     Click="@_onClickCallback"/>
             } else if (showTime) {
                 var timestamp = DateTimeConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
@@ -107,7 +105,7 @@
         <div class="c-content">
             @if (showAuthor) {
                 <div class="c-author-header">
-                    <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
+                    <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name"/>
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
@@ -141,7 +139,7 @@
                         var forwardedAuthorName = m.ForwardedAuthor?.Avatar.Name
                                                   ?? entry.ForwardedAuthorName.NullIfEmpty()
                                                   ?? "Unknown author";
-                        var canClick = m.ForwardedAuthor != null || !m.ForwardedChatEntryId.IsNone;
+                        var canClick = m.ForwardedAuthor != null || m.ForwardedChatEntryId is not null;
                     }
                     @if (canClick) {
                         <span class="forwarded-author-header-name message-link"
@@ -214,11 +212,11 @@
             @if (entry.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
-            @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Value.Length > 0) {
+            @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {
                 <div class="notify-mentioned-members-line"> @* Takes full line *@
                     <NotifyMentionedMembers
                         ChatContext="@ChatContext"
-                        AuthorIds="m.MentionedAuthorIds.Value"
+                        AuthorIds="m.MentionedAuthorIds"
                         ChatEntry="@Entry"/>
                 </div>
             }
@@ -245,25 +243,17 @@
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
-    private ChatUIHub Hub => ChatContext.Hub;
     private ChatId ChatId => Entry.ChatId;
-    private Session Session => Hub.Session();
-    private History History => Hub.History;
+
     private IAuthors Authors => Hub.Authors;
     private IChats Chats => Hub.Chats;
+    private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ChatUI ChatUI => Hub.ChatUI;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private ShareUI ShareUI => Hub.ShareUI;
-    private ModalUI ModalUI => Hub.ModalUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
-    private Features Features => Hub.Features();
-    private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
@@ -291,12 +281,15 @@
             || !ReferenceEquals(_renderedMessage, Message)
             || !ReferenceEquals(_renderedMarkup, _markup);
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        var initialValue = Model.None;
-        var repliedEntry = Entry.RepliedEntryLid.HasValue ? ChatEntry.Loading : null;
+    protected override ComputedState<Model?>.Options GetStateOptions() {
+        Model? initialValue = null;
+        ChatEntry? repliedEntry = null;
+        var repliedEntryId = GetRepliedEntryId(Message.Entry);
+        if (repliedEntryId is not null)
+            repliedEntry = ChatEntry.Loading(repliedEntryId);
         var isOwnMessage = Message.Flags.HasFlag(ChatMessageFlags.IsOwnMessage);
         if (isOwnMessage || repliedEntry != null) {
-            initialValue = new(SpecialChat.Loading) {
+            initialValue = new Model(null) {
                 IsOwnMessage = isOwnMessage,
                 RepliedEntry = repliedEntry,
             };
@@ -307,47 +300,47 @@
         };
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
         var previousMessage = Message.PreviousMessage as ChatEntryMessage;
         var nextMessage = Message.NextMessage as ChatEntryMessage;
         var prevEntry = previousMessage?.Entry;
         var chatId = ChatId;
         var chatMessage = Message;
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false) ?? SpecialChat.Unavailable;
-        var ownAuthor = chat.Rules.Author;
-        var ownAuthorId = chat.Rules.Author?.Id ?? AuthorId.None;
-        var isOwnMessage = entry.AuthorId == (chat.Rules.Author?.Id ?? AuthorId.None);
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = chat?.Rules.Author;
+        var ownAuthorId = chat?.Rules.Author?.Id;
+        var isOwnMessage = ownAuthorId is not null && entry.AuthorId == ownAuthorId;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
         var markup = await _markupTask.ConfigureAwait(false);
         var repliedEntry = await GetRepliedEntry(cancellationToken).ConfigureAwait(false);
         var hasAnyMentions = HasAnyMentions(markup);
-        var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
-        var isForward = !entry.ForwardedChatEntryId.IsNone;
-        ImmutableArray<AuthorId>? mentionedAuthorIds = null;
+        var isOwnAuthorMentioned = ownAuthorId is not null && IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
+        var isForward = entry.ForwardedChatEntryId is not null;
+        IReadOnlyList<AuthorId>? mentionedAuthorIds = null;
         if (isOwnMessage && hasAnyMentions && !isForward) {
             var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
             mentionedAuthorIds = mentionIds
-                .Where(c => c.Kind == PrincipalKind.Author && c.AuthorId != ownAuthorId)
-                .Select(c => c.AuthorId)
-                .ToImmutableArray();
+                .Where(c => c.Kind == PrincipalKind.Author && c.PrincipalId != ownAuthorId)
+                .Select(c => (AuthorId)c.PrincipalId)
+                .ToList();
         }
-        var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
-        var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
+        var relatedChatEntry = await ChatEditorUI.RelatedEntryRef.Use(cancellationToken).ConfigureAwait(false);
+        var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, EntryId: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken).ConfigureAwait(false);
         Chat? forwardedChat = null;
-        var forwardedChatEntryId = ChatEntryId.None;
+        ChatEntryId? forwardedChatEntryId = null;
         if (isForward) {
-            forwardedChat = await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
+            forwardedChat = await Chats.Get(Session, entry.ForwardedChatEntryId!.ChatId, cancellationToken).ConfigureAwait(false);
             if (forwardedChat != null)
                 forwardedChatEntryId = entry.ForwardedChatEntryId;
             else {
                 // Maybe chat was copied to place and removed afterward. Try to find out copied chat.
                 var replacementChatId = await Chats.GetForwardChatReplacement(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
-                if (!replacementChatId.IsNone) {
+                if (replacementChatId is not null) {
                     forwardedChat = await Chats.Get(Session, replacementChatId, cancellationToken).ConfigureAwait(false);
-                    forwardedChatEntryId = new(replacementChatId, entry.ForwardedChatEntryId.Kind, entry.ForwardedChatEntryId.LocalId, AssumeValid.Option);
+                    forwardedChatEntryId = CreateChatEntryId(entry.ForwardedChatEntryId.Kind, replacementChatId, entry.ForwardedChatEntryId.LocalId);
                 }
             }
         }
@@ -366,7 +359,9 @@
         var isSelectionStart = isSelected && !isPreviousSelected;
         var isSelectionEnd = isSelected && !isNextSelected;
 
-        var (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
+        var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
+        if (chat is not null && ownAuthorId is not null)
+            (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
         var isTranslationStreaming = await TranslationUI.IsStreaming(entry, cancellationToken).ConfigureAwait(false);
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
@@ -390,21 +385,37 @@
         return result.Equals(_rendered) ? _rendered! : result;
 
         async Task<ChatEntry?> GetRepliedEntry(CancellationToken cancellationToken1) {
-            if (Entry.RepliedEntryLid is not { } repliedEntryLocalId)
+            var repliedEntryId1 = GetRepliedEntryId(chatMessage.Entry);
+            if (repliedEntryId1 is null)
                 return null;
 
-            var messageEntry = chatMessage.Entry;
-            var repliedEntryId1 = new ChatEntryId(chatId, messageEntry.Kind, repliedEntryLocalId, AssumeValid.Option);
             var repliedEntry1 = await Chats.GetEntry(Session, repliedEntryId1, cancellationToken1).ConfigureAwait(false) ?? ChatEntry.Removed(repliedEntryId1);
             return repliedEntry1;
         }
     }
 
-    private async Task<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(Chat chat, ChatEntry entry, ChatEntry? prevEntry, AuthorId ownAuthorId, CancellationToken cancellationToken) {
+    private ChatEntryId? GetRepliedEntryId(ChatEntry entry)
+        => entry.RepliedEntryLid is not { } repliedEntryLocalId ? null : CreateChatEntryId(entry.Kind, entry.ChatId, repliedEntryLocalId);
+
+    private static ChatEntryId CreateChatEntryId(ChatEntryKind kind, ChatId chatId, long localId) {
+        return kind switch {
+            ChatEntryKind.Text => TextEntryId.New(chatId, localId),
+            ChatEntryKind.Audio => AudioEntryId.New(chatId, localId),
+            _ => throw StandardError.Constraint("Not supported"),
+        };
+    }
+
+    private async ValueTask<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(
+        Chat chat,
+        ChatEntry entry,
+        ChatEntry? prevEntry,
+        AuthorId ownAuthorId,
+        CancellationToken cancellationToken)
+    {
         if (_hasBeenRead)
             return (false, false);
 
-        var isOwnMessage = !ownAuthorId.IsNone && ownAuthorId == entry.AuthorId;
+        var isOwnMessage = ownAuthorId == entry.AuthorId;
         if (!isOwnMessage)
             return (false, false);
 
@@ -413,7 +424,7 @@
 
         var readPositionsStat = await Chats.GetReadPositionsStat(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
         var canCalculateHasRead = readPositionsStat.CanCalculateHasReadByAnotherAuthor(entry);
-        // Do not show `Unread` label for old messages (before the feature was introduced)
+        // Do not show the ` Unread ` label for old messages (before the feature was introduced)
         // until we have at least more or less good enough read positions stat.
         if (!canCalculateHasRead)
             return  (false, false);
@@ -425,7 +436,7 @@
         return (!hasBeenRead, previousHasBeenRead);
     }
 
-    private async Task<bool> ChatSupportsUnreadStatus(Chat chat, CancellationToken cancellationToken) {
+    private async ValueTask<bool> ChatSupportsUnreadStatus(Chat chat, CancellationToken cancellationToken) {
         // NOTE(DF): move this check to ChatContext to share among all message views.
         // ChatContext and Chat can be considered as immutable and used from any thread.
         if (chat.HasSingleAuthor)
@@ -441,26 +452,18 @@
         return true;
     }
 
-    private void OnQuoteClick()
-        => ChatUI.HighlightEntry(Message.Entry.Id, navigate: true);
-
     private void OnForwardedMessageHeaderClick(ChatId chatId)
         => _ = History.NavigateTo(Links.Chat(chatId));
 
-    private void OnForwardedMessageAuthorClick(ChatEntryId entryId, Author? forwardedAuthor) {
-        if (!entryId.IsNone)
-            _ = History.NavigateTo(Links.Chat(entryId));
+    private void OnForwardedMessageAuthorClick(ChatEntryId? entryId, Author? forwardedAuthor) {
+        if (entryId is not null)
+            _ = History.NavigateTo(Links.Chat(entryId.ToTextEntryId()));
         else if (forwardedAuthor != null)
             _ = AuthorUI.Show(forwardedAuthor.Id);
     }
 
     private void OnForwardedAuthorClick(Author forwardedAuthor)
         => _ = AuthorUI.Show(forwardedAuthor.Id);
-
-    private void ToggleShowMessage() {
-        if (Message.Conversation != null)
-            ChatUI.ToggleExpandConversation(Message.Conversation.Id);
-    }
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);
@@ -470,13 +473,10 @@
         AuthorId authorId,
         bool hasAnyMentions)
     {
-        if (authorId.IsNone)
-            return false;
-
         if (repliedEntry?.AuthorId == authorId)
             return true;
 
-        return hasAnyMentions && MarkupValidator.ContainsMention(new MentionId(authorId, AssumeValid.Option)).IsValid(markup);
+        return hasAnyMentions && MarkupValidator.ContainsMention(MentionId.NewAuthor(authorId)).IsValid(markup);
     }
 
     private void ShowHoverMenu() {
@@ -502,14 +502,13 @@
     }
 
     private async Task<Author?> GetForwardedAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
-        if (entry.ForwardedAuthorId.IsNone)
+        if (entry.ForwardedAuthorId is null)
             return null;
 
-        if (!entry.ForwardedChatEntryId.IsNone)
+        if (entry.ForwardedChatEntryId is not null)
             return await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken);
 
-        var isPeerChat = entry.ForwardedAuthorId.ChatId.IsPeerChat(out var peerChatId);
-        if (!isPeerChat)
+        if (entry.ForwardedAuthorId.ChatId is not PeerChatId peerChatId)
             return null;
 
         if (ownAuthor == null)
@@ -523,9 +522,10 @@
         if (forwardedUserId == ownAuthor.UserId)
             return ownAuthor; // we have forwarded the message - so let's use own author in the current chat
 
+        // TODO(DF): review code duplication
         // try to find your peer chat and author for the user who forwarded the message
-        var yourPeerChatId = new PeerChatId(forwardedUserId, ownAuthor.UserId);
-        var yourPeerAuthorId = new AuthorId(yourPeerChatId, yourPeerChatId.UserId1 == forwardedUserId ? 1 : 2, AssumeValid.Option);
+        var yourPeerChatId = PeerChatId.New(forwardedUserId, ownAuthor.UserId);
+        var yourPeerAuthorId = AuthorId.New(yourPeerChatId, yourPeerChatId.UserId1 == forwardedUserId ? 1 : 2);
         var author = await Authors.Get(Session, yourPeerChatId, yourPeerAuthorId, cancellationToken);
         return author?.Version == 0
             ? null // do not return virtual author
@@ -533,8 +533,7 @@
     }
 
     private async Task<Author?> GetForwardedPeerAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
-        var isPeerChat = entry.ForwardedAuthorId.ChatId.IsPeerChat(out var peerChatId);
-        if (!isPeerChat)
+        if (entry.ForwardedAuthorId?.ChatId is not PeerChatId peerChatId)
             return null;
 
         if (ownAuthor == null)
@@ -548,9 +547,10 @@
         if (forwardedPeerUserId == ownAuthor.UserId)
             return ownAuthor; // message has been forwarded form peer chat with us - so let's use own author in the current chat
 
+        // TODO(DF): review code duplication
         // try to find your peer chat and author for the user who was the peer of the author who forwarded the message
-        var yourPeerChatId = new PeerChatId(forwardedPeerUserId, ownAuthor.UserId);
-        var yourPeerAuthorId = new AuthorId(yourPeerChatId, yourPeerChatId.UserId1 == forwardedPeerUserId ? 1 : 2, AssumeValid.Option);
+        var yourPeerChatId = PeerChatId.New(forwardedPeerUserId, ownAuthor.UserId);
+        var yourPeerAuthorId = AuthorId.New(yourPeerChatId, yourPeerChatId.UserId1 == forwardedPeerUserId ? 1 : 2);
         var author = await Authors.Get(Session, yourPeerChatId, yourPeerAuthorId, cancellationToken);
         return author?.Version == 0
             ? null // do not return virtual author
@@ -559,9 +559,7 @@
 
     // Nested types
 
-    public sealed record Model(Chat Chat) {
-        public static readonly Model None = new(SpecialChat.Unavailable);
-
+    public sealed record Model(Chat? Chat) {
         public bool IsOwnMessage { get; init; }
         public bool IsHighlighted { get; init; }
         public bool IsReplyTarget { get; init; }
@@ -571,12 +569,12 @@
         public bool IsSelectionEnd { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
-        public ChatEntryId ForwardedChatEntryId { get; init; }
+        public ChatEntryId? ForwardedChatEntryId { get; init; }
         public Author? ForwardedAuthor { get; init; }
         public Author? ForwardedPeerAuthor { get; init; }
         public bool IsUnreadByOthers { get; init; }
         public bool IsUnreadByOthersBlockStart { get; init; }
-        public ImmutableArray<AuthorId>? MentionedAuthorIds { get; init; }
+        public IReadOnlyList<AuthorId>? MentionedAuthorIds { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool IsTranslationStreaming { get; init; }
     }

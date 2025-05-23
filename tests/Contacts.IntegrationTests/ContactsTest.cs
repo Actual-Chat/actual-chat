@@ -74,18 +74,18 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         await ComputedTest.When(async ct => {
             var expectedNonPlaceChatIds = new[] {
-                new ContactId(bob.Id, publicChatId),
-                new ContactId(bob.Id, privateChatId),
+                ContactId.NewAny(bob.Id, publicChatId),
+                ContactId.NewAny(bob.Id, privateChatId),
             };
             var expectedPublicPlaceChatIds = new[] {
-                new ContactId(bob.Id, publicPlacePublicChatId),
-                new ContactId(bob.Id, publicPlacePrivateChatId),
+                ContactId.NewAny(bob.Id, publicPlacePublicChatId),
+                ContactId.NewAny(bob.Id, publicPlacePrivateChatId),
             };
             var expectedPrivatePlaceChatIds = new[] {
-                new ContactId(bob.Id, privatePlacePublicChatId),
-                new ContactId(bob.Id, privatePlacePrivateChatId),
+                ContactId.NewAny(bob.Id, privatePlacePublicChatId),
+                ContactId.NewAny(bob.Id, privatePlacePrivateChatId),
             };
-            var contactIds = await ListIds(PlaceId.None, ct);
+            var contactIds = await ListIds(null, ct);
             contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
 
             contactIds = await ListIds(publicPlace.Id, ct);
@@ -136,18 +136,18 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         // act, assert
         await ComputedTest.When(async ct => {
             var expectedNonPlaceChatIds = new[] {
-                new ContactId(bob.Id, publicChatId),
-                new ContactId(bob.Id, privateChatId),
+                ContactId.NewAny(bob.Id, publicChatId),
+                ContactId.NewAny(bob.Id, privateChatId),
             };
             var expectedPublicPlaceChatIds = new[] {
-                new ContactId(bob.Id, publicPlacePublicChatId),
-                new ContactId(bob.Id, publicPlacePrivateChatId),
+                ContactId.NewAny(bob.Id, publicPlacePublicChatId),
+                ContactId.NewAny(bob.Id, publicPlacePrivateChatId),
             };
             var expectedPrivatePlaceChatIds = new[] {
-                new ContactId(bob.Id, privatePlacePublicChatId),
-                new ContactId(bob.Id, privatePlacePrivateChatId),
+                ContactId.NewAny(bob.Id, privatePlacePublicChatId),
+                ContactId.NewAny(bob.Id, privatePlacePrivateChatId),
             };
-            var contactIds = await ListIds(PlaceId.None, ct);
+            var contactIds = await ListIds(null, ct);
             contactIds.Should().BeEquivalentTo(expectedNonPlaceChatIds);
 
             contactIds = await ListIds(publicPlace.Id, ct);
@@ -158,9 +158,9 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(10));
     }
 
-    private async Task<List<ContactId>> ListIds(PlaceId placeId, CancellationToken cancellationToken = default)
+    private async Task<List<ContactId>> ListIds(PlaceId? placeId, CancellationToken cancellationToken = default)
     {
         var contactIds = await _contacts.ListIds(_tester.Session, placeId, cancellationToken);
-        return contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
+        return contactIds.Where(x => !x.ChatId.IsSystem).ToList();
     }
 }

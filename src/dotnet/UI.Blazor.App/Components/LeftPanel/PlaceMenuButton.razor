@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<PlaceMenuButton.Model>
+@inherits ComputedStateComponent<AppUIHub, PlaceMenuButton.Model>
 @{
     var m = State.Value;
     var canEditProperties = m.CanEditSettings;
@@ -25,7 +25,7 @@
 @if (m.ShowPlaceMenu) {
     <div class="c-right">
         <ButtonRound Class="place-plus-btn btn-sm btn-transparent"
-                     data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(m.Place.Id).ToString())"
+                     data-menu="@(MenuRef.New<LeftPanelPlaceMenu>(m.Place.Id.Value).ToString())"
                      data-menu-trigger="@MenuTrigger.Primary"
                      data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
             <i class="icon-more-vertical text-2xl"></i>
@@ -43,11 +43,8 @@
 @code {
     private EventCallback _editSettingsHandler;
 
-    [Inject] private ChatUIHub Hub { get; set; } = null!;
-    private Session Session => Hub.Session();
-    private ChatUI ChatUI => Hub.ChatUI;
     private IPlaces Places => Hub.Places;
-    private ModalUI ModalUI => Hub.ModalUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [Parameter, EditorRequired] public Place Place { get; set; } = null!;
 

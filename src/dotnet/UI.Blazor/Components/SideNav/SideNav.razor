@@ -1,6 +1,6 @@
 @using ActualChat.UI.Blazor.Module
-@using ActualChat.UI.Blazor.Components.SideNav
 @using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
 <div @ref="ElementRef" class="@_class @Class" data-side-nav="@_attribute">
@@ -12,8 +12,6 @@
 
     private string _class = "";
     private string _attribute = "";
-
-    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public SideNavSide Side { get; set; } = SideNavSide.Left;
     [Parameter] public string Class { get; set; } = "";

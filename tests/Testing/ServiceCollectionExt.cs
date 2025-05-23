@@ -28,7 +28,7 @@ public static class ServiceCollectionExt
         => AddTestLogging(services, new TestOutputHelperAccessor(output.ToSafe()));
     public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
     {
-        services.AddTracers(outputAccessor.Output.NewTracer(), useScopedTracers: true);
+        services.AddTracers(c => c.LoggerFactory().NewTracer(), useScopedTracers: true);
         services.AddLogging(logging => {
             // Overriding default logging to more test-friendly setup
             logging.ClearProviders();
@@ -50,6 +50,8 @@ public static class ServiceCollectionExt
             // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);
             // logging.AddFilter(LogFilter);
             logging.AddDebug();
+            if (!TestRunnerInfo.IsBuildAgent())
+                logging.AddSeq();
             // XUnit logging requires weird setup b/c otherwise it filters out
             // everything below LogLevel.Information
             logging.AddProvider(
@@ -58,7 +60,7 @@ public static class ServiceCollectionExt
                     new TestOutputHelperAccessorWrapper(outputAccessor),
                     new XUnitLoggerOptions() {
                         Filter = (_, _) => true,
-                        TimestampFormat = "ss:fff",
+                        TimestampFormat = "mm:ss.fff",
                     }));
 #pragma warning restore CS0618
         });

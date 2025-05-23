@@ -2,11 +2,8 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class PanelsUI : ScopedWorkerBase<UIHub>
+public partial class PanelsUI : UIWorkerBase<UIHub>
 {
-    private History History => Hub.History;
-    private Dispatcher Dispatcher => Hub.Dispatcher;
-
     public IState<ScreenSize> ScreenSize { get; }
     public LeftPanel Left { get; }
     public MiddlePanel Middle { get; }

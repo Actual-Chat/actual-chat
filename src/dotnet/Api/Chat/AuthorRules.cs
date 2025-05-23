@@ -5,17 +5,17 @@ namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record AuthorRules(
-    [property: DataMember, MemoryPackOrder(0)] Symbol ChatId,
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] AuthorFull? Author,
-    [property: DataMember, MemoryPackOrder(2)] AccountFull Account,
+    [property: DataMember, MemoryPackOrder(2)] AccountFull? Account,
     [property: DataMember, MemoryPackOrder(3)] ChatPermissions Permissions = default
     ) : IRequirementTarget
 {
     public static readonly Requirement<AuthorRules> MustExist = Requirement.New(
-        (AuthorRules? a) => a is { ChatId.IsEmpty: false },
+        (AuthorRules? a) => a?.ChatId is not null,
         new(() => StandardError.NotFound<AuthorRules>()));
 
-    public static AuthorRules None(ChatId chatId) => new(chatId, AuthorFull.None, AccountFull.None);
+    public static AuthorRules None(ChatId chatId) => new(chatId, null, null);
 
     public bool CanRead() => Permissions.Has(ChatPermissions.Read);
     public bool CanWrite() => Permissions.Has(ChatPermissions.Write);
@@ -32,4 +32,8 @@ public sealed partial record AuthorRules(
         => Permissions.Has(required);
     public void Require(ChatPermissions required)
         => Permissions.Require(required);
+
+    // This record relies on referential equality
+    public bool Equals(AuthorRules? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

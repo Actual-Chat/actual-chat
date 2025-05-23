@@ -1,6 +1,6 @@
 namespace ActualChat.Diff.Handlers;
 
-public class NullableDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, T?>(engine)
+public sealed class NullableDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, T?>(engine)
     where T : struct
 {
     public override T? Diff(T source, T target)

@@ -71,8 +71,11 @@ public static class MauiDiagnostics
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
             // .WriteTo.TailSink(); // TODO(Frol): uncomment when you fix the underlying issue
         logging = AddPlatformLoggerSinks(logging);
-        if (Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp))
-            logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
+        // TODO(AY): ConfigureSentrySerilog takes ~30-50ms!
+        // That's mostly it's SentryOptions static .ctor, so it makes sense
+        // to inject a buffering sink that switches to pass-through when
+        // the startup is completed.
+        logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
         return logging.CreateLogger();
     }
 
@@ -111,7 +114,8 @@ public static class MauiDiagnostics
     private static void ConfigureSentrySerilog(SentrySerilogOptions options)
     {
         options.ConfigureForApp(true);
-        // We'll initialize the SDK later after app is loaded.
+
+        // We initialize the SDK later after the app is loaded.
         options.InitializeSdk = false;
 
         // Set defaults for options that are different for MAUI.
@@ -159,12 +163,12 @@ public static class MauiDiagnostics
 
     private static async Task CreateSentryTraceProvider()
     {
-        // Initialize client trace provider only in development environment or for admin users.
+        // Initialize client trace provider only in the development environment or for admin users.
  #pragma warning disable CS0162 // Unreachable code detected
         if (!MauiSettings.IsDevApp) {
             var scopedServices = await WhenBlazorAppServicesReady().ConfigureAwait(false);
             var accountUI = scopedServices.GetRequiredService<AccountUI>();
-            await accountUI.WhenLoaded.ConfigureAwait(false);
+            await accountUI.WhenReady.ConfigureAwait(false);
             var ownAccount = await accountUI.OwnAccount.Use().ConfigureAwait(false);
             if (!ownAccount.IsAdmin)
                 return;

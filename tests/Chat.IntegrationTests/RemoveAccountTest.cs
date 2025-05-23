@@ -63,8 +63,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         var chats = services.GetRequiredService<IChats>();
         var createChatCommand = new Chats_Change(session,
-            ChatId.None,
-            null,
+            null, null,
             new Change<ChatDiff> {
                 Create = Option.Some(new ChatDiff {
                     Title = "TestChatToRemove",

@@ -9,6 +9,7 @@
     <CookieSettings/>
 
     <LandingHeader
+        Account="@account"
         Click="OnMenuHandleClick"
         DownloadClick="@OnDownloadButtonClick"
         BackToMainPageClick="@OnBackToMainPageButtonClick"
@@ -18,7 +19,7 @@
     @* Page 1 *@
     <LandingPage Class="page-1">
         <LandingPage1
-            IsGuest="@account.IsGuestOrNone"
+            IsGuest="@account.IsGuestOrNull()"
             SignInClick="@SignIn"
             DownloadClick="@OnDownloadButtonClick"
             ShowVideoClick="@OnShowVideoClick"/>
@@ -47,7 +48,7 @@
     @* Page 6 *@
     <LandingPage Class="page-6">
         <LandingPage6
-            IsGuest="@account.IsGuestOrNone"
+            IsGuest="@account.IsGuestOrNull()"
             PremiumFeaturesClick="@OnPremiumFeaturesClick"
             DownloadClick="@OnDownloadButtonClick"
             SignInClick="@SignIn"/>
@@ -59,8 +60,6 @@
 </div>
 
 @code {
-    private IJSRuntime JS => Hub.JSRuntime();
-
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

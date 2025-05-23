@@ -18,7 +18,7 @@ public sealed class AsyncMemoizer<T>
     {
         _source = source.GetAsyncEnumerator(cancellationToken);
         _newTargets = Channel.CreateBounded<(ChannelWriter<T>, int)>(
-            new BoundedChannelOptions(Constants.Queues.AsyncMemoizerTargetQueueSize) {
+            new BoundedChannelOptions(CoreConstants.AsyncMemoizer.TargetQueueSize) {
                 SingleReader = true,
             });
         _bufferWriter = new ArrayBufferWriter<Result<T>>(16);
@@ -181,16 +181,13 @@ public sealed class AsyncMemoizer<T>
         }
     }
 
-    private class Buffer
+    private sealed class Buffer(ReadOnlyMemory<Result<T>> items)
     {
-        private readonly TaskCompletionSource _whenOutdatedSource = TaskCompletionSourceExt.New();
+        private readonly AsyncTaskMethodBuilder _whenOutdatedSource = AsyncTaskMethodBuilderExt.New();
 
-        public ReadOnlyMemory<Result<T>> Items { get; }
+        public readonly ReadOnlyMemory<Result<T>> Items = items;
         public Task WhenOutdated => _whenOutdatedSource.Task;
         public bool IsCompleted => Items.Length > 0 && Items.Span[^1].HasError;
-
-        public Buffer(ReadOnlyMemory<Result<T>> items)
-            => Items = items;
 
         public void MarkOutdated()
             => _whenOutdatedSource.TrySetResult();
@@ -201,9 +198,8 @@ public sealed class AsyncMemoizer<T>
             CancellationToken cancellationToken)
         {
             try {
-                var items = Items;
-                for (var i = skipCount; i < items.Length; i++)
-                    await channel.WriteResultAsync(items.Span[i], cancellationToken).ConfigureAwait(false);
+                for (var i = skipCount; i < Items.Length; i++)
+                    await channel.WriteResultAsync(Items.Span[i], cancellationToken).ConfigureAwait(false);
                 return true;
             }
             catch (ChannelClosedException) {

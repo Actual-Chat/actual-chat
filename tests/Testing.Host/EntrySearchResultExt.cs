@@ -19,7 +19,7 @@ public static class EntrySearchResultExt
         => entry.Id.BuildSearchResult(entry.Content, highlightedWords, uniquePart, searchMatchRanges);
 
     public static EntrySearchResult BuildSearchResult(this ChatEntryId entryId, string highlight, IReadOnlyList<string> highlightedWords, string uniquePart, params Range<int>[] searchMatchRanges)
-        => new (entryId, searchMatchRanges.BuildSearchMatch(highlight, uniquePart)) {
+        => new (entryId.ToTextEntryId(), searchMatchRanges.BuildSearchMatch(highlight, uniquePart)) {
             HighlightedWords = highlightedWords.Append(uniquePart).Where(x => !x.IsNullOrEmpty()).ToApiSet(),
         };
 }

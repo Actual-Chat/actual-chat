@@ -30,7 +30,7 @@ public class ChatContentIndexerFactoryTests(ITestOutputHelper @out) : TestBase(@
 
         var factory = new ChatContentIndexerFactory(serviceProvider.Object);
 
-        var chatId = new ChatId(Generate.Option);
+        var chatId = GroupChatId.New();
         var indexer = await factory.Create(chatId);
         Assert.NotNull(indexer);
         Assert.Equal(chatId, indexer.ChatId);

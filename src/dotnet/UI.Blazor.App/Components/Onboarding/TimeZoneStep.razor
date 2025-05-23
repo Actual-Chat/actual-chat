@@ -1,14 +1,11 @@
-
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.ComponentModel.DataAnnotations
 @using TimeZone = ActualChat.Users.TimeZone
-@inherits Step;
-
-@if (CurrentStep != this) {
-    return;
-}
-
+@inherits SimpleStep<AppUIHub>;
 @{
+    if (CurrentStep != this)
+        return;
+
 #pragma warning disable IL2091
 }
 
@@ -55,10 +52,8 @@
     private Form? _formRef;
     private IReadOnlyCollection<TimeZone> _timeZones = [];
 
-    [Inject] private UIHub Hub { get; init; } = null!;
-    [Inject] private ITimeZones TimeZones { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    private ITimeZones TimeZones => Hub.TimeZones;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 
@@ -103,7 +98,7 @@
                 TimeZone = _model.SelectedTimeZoneId,
             },
             account.Version);
-        var (_, error) = await Hub.UICommander().Run(command);
+        var (_, error) = await Hub.UICommander.Run(command);
         return error is null;
     }
 

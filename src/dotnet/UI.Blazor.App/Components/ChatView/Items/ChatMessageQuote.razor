@@ -1,8 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase
+@inherits FusionComponentBase<AppUIHub>
 @{
     var authorNameCls = IsOwn ? "text-author-name " : "text-02 ";
     authorNameCls += "font-medium text-text-1";
+    var authorId = (AuthorId?)Entry.AuthorId; // NOTE(DF): AuthorId can be null for Loading and Removed entries
 }
 
 @if (Entry.IsRemoved) {
@@ -19,7 +20,7 @@
             <div class="c-author">
                 <AuthorName
                     ShowDetailsOnClick="false"
-                    AuthorSid="@Entry.AuthorId"
+                    AuthorId="@authorId"
                     Class="@authorNameCls"/>
             </div>
             <div class="c-text">@_text</div>
@@ -31,9 +32,8 @@
     private IChatMarkupHub _chatMarkupHub = null!;
     private string _text = "";
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private ChatUI ChatUI => Hub.ChatUI;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
@@ -48,5 +48,5 @@
     }
 
     private void OnQuoteClick()
-        => ChatUI.HighlightEntry(Entry.Id, navigate: true);
+        => ChatUI.HighlightEntry(Entry.Id.ToTextEntryId(), navigate: true);
 }

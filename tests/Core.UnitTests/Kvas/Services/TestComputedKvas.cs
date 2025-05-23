@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Kvas;
 
 namespace ActualChat.Core.UnitTests.Kvas.Services;
@@ -5,6 +6,9 @@ namespace ActualChat.Core.UnitTests.Kvas.Services;
 public class TestComputedKvas : IKvas, IComputeService
 {
     private object Lock => Storage;
+
+    [field: AllowNull, MaybeNull]
+    public IServiceProvider Services => field ??= this.GetServices();
 
     public ITestOutputHelper? Out { get; init; }
     public Dictionary<Symbol, byte[]> Storage { get; init; } = new();

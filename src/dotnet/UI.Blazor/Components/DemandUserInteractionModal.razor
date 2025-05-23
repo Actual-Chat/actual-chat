@@ -1,6 +1,6 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<string>
+@inherits ComputedStateComponent<UIHub, string>
 @implements IModalView<DemandUserInteractionModal.Model>
 @{
     var operations = State.Value;
@@ -24,13 +24,10 @@
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DemandUserInteraction.init";
     private CancellationTokenSource? _autoCloseCts;
 
-    [Inject] private UIHub Hub { get; init; } = null!;
     private InteractiveUI InteractiveUI => Hub.InteractiveUI;
-    private IJSRuntime JS => Hub.JSRuntime();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
 
     public override ValueTask DisposeAsync() {
         _autoCloseCts.CancelAndDisposeSilently();
@@ -54,8 +51,8 @@
         var activeDemand = await InteractiveUI.ActiveDemand.Use(cancellationToken).ConfigureAwait(false);
         var isInteractive = await InteractiveUI.IsInteractive.Use(cancellationToken).ConfigureAwait(false);
         if (isInteractive) {
-            // This means user clicked on something, and:
-            // - If it's "Ok", we'll close soon anyway (once event comes)
+            // This means the user clicked on something, and:
+            // - If it's "Ok", we'll close soon anyway (once the event comes)
             // - Otherwise we'll just close = cancel playback/recording demand
             _ = AutoClose();
         }

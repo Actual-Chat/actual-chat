@@ -3,12 +3,12 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class BrowserInit(IServiceProvider services)
+public sealed class BrowserInit(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
     private static readonly string JSInitFirebaseMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.initFirebase";
     private static readonly string JSIsFirebaseConfiguredMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.isFirebaseConfigured";
 
-    private readonly TaskCompletionSource _whenInitializedSource = new();
+    private readonly AsyncTaskMethodBuilder _whenInitializedSource = AsyncTaskMethodBuilderExt.New();
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 
@@ -24,9 +24,7 @@ public class BrowserInit(IServiceProvider services)
             return;
 
         try {
-            var js = services.JSRuntime();
-            await js
-                .InvokeVoidAsync("window.App.browserInit",
+            await JS.InvokeVoidAsync("window.App.browserInit",
                     hostKind.ToString(),
                     appKind.ToString(),
                     apiVersion,
@@ -37,8 +35,7 @@ public class BrowserInit(IServiceProvider services)
             _whenInitializedSource.TrySetResult();
         }
         catch (Exception e) {
-            var log = services.LogFor(GetType());
-            log.LogError(e, "An error occurred during browserInit call");
+            Log.LogError(e, "An error occurred during browserInit call");
             _whenInitializedSource.TrySetException(e);
             throw;
         }
@@ -47,15 +44,10 @@ public class BrowserInit(IServiceProvider services)
     public async Task InitFirebase(bool isAnalyticsEnabled)
     {
         try {
-            var js = services.JSRuntime();
-            await js
-                .InvokeVoidAsync(JSInitFirebaseMethod,
-                    isAnalyticsEnabled)
-                .ConfigureAwait(false);
+            await JS.InvokeVoidAsync(JSInitFirebaseMethod, isAnalyticsEnabled).ConfigureAwait(false);
         }
         catch (Exception e) {
-            var log = services.LogFor(GetType());
-            log.LogError(e, "An error occurred during InitFirebase call");
+            Log.LogError(e, "An error occurred during InitFirebase call");
             throw;
         }
     }
@@ -63,14 +55,10 @@ public class BrowserInit(IServiceProvider services)
     public async Task<bool> IsFirebaseConfigured()
     {
         try {
-            var js = services.JSRuntime();
-            return await js
-                .InvokeAsync<bool>(JSIsFirebaseConfiguredMethod)
-                .ConfigureAwait(false);
+            return await JS.InvokeAsync<bool>(JSIsFirebaseConfiguredMethod).ConfigureAwait(false);
         }
         catch (Exception e) {
-            var log = services.LogFor(GetType());
-            log.LogError(e, "An error occurred during InitFirebase call");
+            Log.LogError(e, "An error occurred during InitFirebase call");
             throw;
         }
     }

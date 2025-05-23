@@ -2,21 +2,20 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
-[StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record  SearchMatch(
+public sealed partial record SearchMatch(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank,
     SearchMatchPart[] Parts)
 {
     public static readonly SearchMatch Empty = New("");
-    private readonly SearchMatchPart[]? _parts = Parts;
 
     [DataMember(Order = 2), MemoryPackOrder(2)]
+    [field: AllowNull, MaybeNull]
     public SearchMatchPart[] Parts {
-        get => _parts ?? [];
-        init => _parts = value;
-    }
+        get => field ?? [];
+        init;
+    } = Parts;
 
     [MemoryPackIgnore]
     public IEnumerable<SearchMatchPart> PartsWithGaps {

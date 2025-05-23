@@ -1,5 +1,6 @@
 ﻿@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 
 <div class="share-button share-externally-button @Class">
     @if (MauiShare != null) {
@@ -35,17 +36,15 @@
 @code {
     private bool _canUseWebShare;
 
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
-    private UrlMapper UrlMapper => Hub.UrlMapper();
     private IMauiShare? MauiShare { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter, EditorRequired] public ShareRequest Request { get; set; }
+    [Parameter, EditorRequired] public ShareRequest Request { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        MauiShare = Hub.GetService<IMauiShare>();
+        MauiShare = Hub.Services.GetService<IMauiShare>();
         if (MauiShare == null) {
-            var webShareInfo = Hub.GetRequiredService<WebShareInfo>();
+            var webShareInfo = Hub.Services.GetRequiredService<WebShareInfo>();
             _canUseWebShare = await webShareInfo.CanShare();
         }
     }
@@ -57,7 +56,7 @@
         if (!_canUseWebShare)
             return;
 
-        await Hub.JSRuntime().InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
+        await Hub.JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
     }
 
     private Task OnMauiShareClick()

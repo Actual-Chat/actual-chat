@@ -72,14 +72,6 @@ public static class OrdinalStringExt
         => StringSegment.Compare(x, y, StringComparison.OrdinalIgnoreCase);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int OrdinalHashCode(this string? x)
-        => x?.GetHashCode(StringComparison.Ordinal) ?? 0;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int OrdinalIgnoreCaseHashCode(this string? x)
-        => x?.GetHashCode(StringComparison.OrdinalIgnoreCase) ?? 0;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int OrdinalIndexOf(this string? x, string prefix)
         => x?.IndexOf(prefix, StringComparison.Ordinal) ?? -1;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

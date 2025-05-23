@@ -3,7 +3,7 @@ using System.Text;
 using ActualChat.Contacts;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hashing;
-using ActualChat.Permissions;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using banditoth.MAUI.DeviceId.Interfaces;
 using PhoneNumbers;
@@ -40,7 +40,9 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-            var ownPhone = account.HasVerifiedPhone() ? account.Phone.ToE164() : "";
+            var ownPhone = account.HasVerifiedPhone()
+                ? account.Phone?.E164Value ?? ""
+                : "";
             var phoneParser = PhoneParser.ForOwnPhone(ownPhone);
             var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
                 .GetAllAsync(cancellationToken)
@@ -71,7 +73,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         UserId ownerId,
         PhoneParser phoneParser,
         MauiContact mauiContact)
-        => new ExternalContactFull(new ExternalContactId(new UserDeviceId(ownerId, DeviceId),
+        => new ExternalContactFull(ExternalContactId.New(UserDeviceId.New(ownerId, DeviceId),
             mauiContact.Id.Replace(':', '_'))) {
             GivenName = mauiContact.GivenName ?? "",
             DisplayName = mauiContact.DisplayName ?? "",
@@ -86,16 +88,13 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         }.WithHash(ExternalContactHasher);
 
     private static string? GetPhoneHash(ContactPhone contactPhone, PhoneParser phoneParser)
-    {
-        var phone = phoneParser.Parse(contactPhone.PhoneNumber);
-        return !phone.IsValid ? null : phone.Hash(Encoding.UTF8).SHA256().Base64();
-    }
+        => phoneParser.TryParse(contactPhone.PhoneNumber)?.Hash;
 
     private static string? GetEmailHash(ContactEmail contactEmail)
     {
         if (contactEmail.EmailAddress.IsNullOrEmpty() || !MailAddress.TryCreate(contactEmail.EmailAddress, out _))
             return null;
 
-        return contactEmail.EmailAddress.ToLowerInvariant().Hash(Encoding.UTF8).SHA256().Base64();
+        return ContactIdExt.Hash(contactEmail.EmailAddress);
     }
 }

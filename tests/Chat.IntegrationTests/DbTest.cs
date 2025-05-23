@@ -48,7 +48,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
                 break;
             }
 
-            var entryId = new ChatEntryId(chatId, entryKind, localId, AssumeValid.Option);
+            var entryId = ChatEntryId.New(chatId, entryKind, localId);
             var task = Task.Run(() => MeasureDuration(
                 () => UpdateChatEntry(dbHub, entryId, TimeSpan.FromMilliseconds(duration), default),
                  logger, $"UpdateChatEntry#{localI}({localId})"));
@@ -130,7 +130,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var dbEntries = await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId
+            .Where(e => e.ChatId == chatId.Value
                 && e.Kind == entryKind
                 && e.LocalId >= range.Start
                 && e.LocalId < range.End)
@@ -155,7 +155,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var dbEntry = await dbContext.ChatEntries.ForUpdate()
-            .Where(e => e.Id == entryId)
+            .Where(e => e.Id == entryId.Value)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         dbEntry.Require();
@@ -188,18 +188,18 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await using var dbContext = await dbHub.CreateDbContext(true, cancellationToken);
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var entry1Id = new ChatEntryId(chatId, entryKind, entry1LocalId, AssumeValid.Option);
+        var entry1Id = ChatEntryId.New(chatId, entryKind, entry1LocalId);
         var dbEntry1 = await dbContext.ChatEntries.ForUpdate()
-            .Where(e => e.Id == entry1Id)
+            .Where(e => e.Id == entry1Id.Value)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         dbEntry1.Require();
 
         await Task.Delay(1000, cancellationToken);
 
-        var entry2Id = new ChatEntryId(chatId, entryKind, entry2LocalId, AssumeValid.Option);
+        var entry2Id = ChatEntryId.New(chatId, entryKind, entry2LocalId);
         var dbEntry2 = await dbContext.ChatEntries.ForUpdate()
-            .Where(e => e.Id == entry2Id)
+            .Where(e => e.Id == entry2Id.Value)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         dbEntry2.Require();
