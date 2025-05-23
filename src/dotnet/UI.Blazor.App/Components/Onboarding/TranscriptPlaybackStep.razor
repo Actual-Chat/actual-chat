@@ -4,18 +4,18 @@
     return;
 }
 
-<div class="onboarding-tutorial tutorial-3">
-    <img draggable="false" src="/dist/images/onboarding/tutorial-3.svg" alt="Tutorial slide #3">
+<div class="onboarding-tutorial tutorial-2">
+    <img draggable="false" src="/dist/images/onboarding/tutorial-2.svg" alt="Tutorial slide #2">
     <div class="c-title">
         <p>
-            More than chats.
+            Read or replay
         </p>
         <p>
-            Explore Places
+            anything
         </p>
     </div>
     <p class="c-description">
-        A Place brings together multiple chats and a shared community, creating a hub user interaction.
+        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
     </p>
 </div>
 
@@ -26,10 +26,10 @@
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsPlacesFeatureSlideCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsTranscriptPlaybackStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsPlacesFeatureSlideCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTranscriptPlaybackStepCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);

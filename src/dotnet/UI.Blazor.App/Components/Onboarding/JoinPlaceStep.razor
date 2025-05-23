@@ -26,10 +26,10 @@
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsJoinPlaceSlideCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsJoinPlaceStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsJoinPlaceSlideCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsJoinPlaceStepCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);

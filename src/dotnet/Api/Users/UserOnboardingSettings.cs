@@ -24,10 +24,10 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(9)] public bool IsTimeZoneStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(10)] public bool IsDataCollectionStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(11)] public bool IsChatRouletteStepCompleted { get; init; }
-    [DataMember, MemoryPackOrder(12)] public bool IsSpeechTranscriptionSlideCompleted { get; init; }
-    [DataMember, MemoryPackOrder(13)] public bool IsTranscriptPlaybackSlideCompleted { get; init; }
-    [DataMember, MemoryPackOrder(14)] public bool IsPlacesFeatureSlideCompleted { get; init; }
-    [DataMember, MemoryPackOrder(15)] public bool IsJoinPlaceSlideCompleted { get; init; }
+    [DataMember, MemoryPackOrder(12)] public bool IsSpeechTranscriptionStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(13)] public bool IsTranscriptPlaybackStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(14)] public bool IsPlacesFeatureStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(15)] public bool IsJoinPlaceStepCompleted { get; init; }
 
     public bool HasUncompletedSteps(bool enableChatRouletteUI)
     {
@@ -38,10 +38,10 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
             IsVerifyEmailStepCompleted: true,
             IsTimeZoneStepCompleted: true,
             IsDataCollectionStepCompleted: true,
-            IsSpeechTranscriptionSlideCompleted: true,
-            IsTranscriptPlaybackSlideCompleted: true,
-            IsPlacesFeatureSlideCompleted: true,
-            IsJoinPlaceSlideCompleted: true,
+            IsSpeechTranscriptionStepCompleted: true,
+            IsTranscriptPlaybackStepCompleted: true,
+            IsPlacesFeatureStepCompleted: true,
+            IsJoinPlaceStepCompleted: true,
         };
         if (!areAllFeatureIndependentStepsCompleted)
             return true;
