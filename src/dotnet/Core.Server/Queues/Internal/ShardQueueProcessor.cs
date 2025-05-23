@@ -105,6 +105,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             };
             await processTask.ConfigureAwait(false);
             await MarkCompleted(shardIndex, message, queuedCommand, cancellationToken).ConfigureAwait(false);
+            DebugLog?.LogDebug("Queued {Kind} completed: {Command}", kind, queuedCommand);
             activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
         }
         catch (Exception e) when (e.GetBaseException() is PostponeException pe) {

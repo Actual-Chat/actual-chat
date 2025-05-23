@@ -62,12 +62,20 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             if (response.Error is { } error) {
-                Log.LogError("NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}",
+                Log.LogError(
+                    "NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}, {Kind} command {Command}",
                     error.Code,
                     error.ErrCode,
-                    error.Description);
+                    error.Description,
+                    queuedCommand.UntypedCommand.GetKind(),
+                    queuedCommand.UntypedCommand);
                 throw StandardError.External($"NATS write failed: Code={error.Code}, ErrCode={error.ErrCode}");
             }
+            DebugLog?.LogDebug("NATS write succeeded: {Kind} command {Command} to '{Stream}' with domain '{Domain}'",
+                queuedCommand.UntypedCommand.GetKind(),
+                queuedCommand.UntypedCommand,
+                response.Stream,
+                response.Domain);
         }
         catch (Exception e) when (e is not ExternalError) {
             Log.LogError(e, "NATS write failed");

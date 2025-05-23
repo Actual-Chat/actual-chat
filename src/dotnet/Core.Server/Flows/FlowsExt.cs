@@ -123,7 +123,7 @@ public static class FlowsExt
         debugLog?.LogDebug(
             "`{Id}`.GetAndSendEvent: sent {Event} with delayUntil='{Delay}' and maxLastRunAt='{MaxLastRunAt}'",
             flowId,
-            flowEvent.GetType().Name,
+            flowEvent,
             (flowEvent as IDelayed)?.DelayUntil,
             (flowEvent as FlowResumeEvent)?.MaxLastRunAt);
         return flow;

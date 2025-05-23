@@ -60,6 +60,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
         }
 
         LastRunAt = Clocks.SystemClock.Now;
+        Log.LogDebug("`{Id}`.OnIndex: Started and updated LastRunAt = {LastRunAt}", Id, LastRunAt);
         var (mustEnd, isTailReached, updatedCursor, processedCount) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = updatedCursor;
         var transitionKind = IndexingFlowTransitionKind.Resume;
