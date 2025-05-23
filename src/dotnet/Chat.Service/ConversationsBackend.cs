@@ -303,7 +303,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
         var existingConversations = conversationRangeMeta.ConversationIds;
         if (existingConversations.Length == 0) {
-            // Skip the reply as the conversation is not found - entry group was too small for summarization
+            // Skip the reply as the conversation is not found - the entry group was too small for summarization
             Log.LogInformation("Skipping reply as the conversation for {ChatId} and {EntryLid} is not found", chatId, entryLid);
             return null;
         }

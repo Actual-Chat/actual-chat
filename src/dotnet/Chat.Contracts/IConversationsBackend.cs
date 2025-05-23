@@ -6,7 +6,6 @@ namespace ActualChat.Chat;
 
 public interface IConversationsBackend : IComputeService, IBackendService
 {
-
     [ComputeMethod]
     Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken);
 

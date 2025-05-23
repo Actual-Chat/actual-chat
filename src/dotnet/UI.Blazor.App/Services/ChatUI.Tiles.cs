@@ -38,9 +38,8 @@ public partial class ChatUI
                 .OrderBy(c => c.StartEntryLid)
                 .ToList();
             LastExpandedConversations = expandedConversations;
-            if (changedExpand.Count > 0) {
+            if (changedExpand.FirstOrDefault() is { } conversationId) {
                 // Adjust data query to load tiles around expanded conversation entries
-                var conversationId = changedExpand.FirstOrDefault();
                 dataQuery = new ChatDataQuery(
                     IdTileStack.LastLayer.GetTile(conversationId.StartEntryLid).Range,
                     -HalfLoadLimit,
