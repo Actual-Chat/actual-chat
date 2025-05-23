@@ -4,18 +4,18 @@
     return;
 }
 
-<div class="onboarding-tutorial tutorial-2">
-    <img draggable="false" src="/dist/images/onboarding/tutorial-2.svg" alt="Tutorial slide #2">
+<div class="onboarding-tutorial tutorial-1">
+    <img draggable="false" src="/dist/images/onboarding/tutorial-1.svg" alt="Tutorial slide #1">
     <div class="c-title">
         <p>
-            Read or replay
+            To speak or to text?
         </p>
         <p>
-            anything
+            Choose both
         </p>
     </div>
     <p class="c-description">
-        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
+        Watch your words come to life as you talk - anything is transcribed and instantly available.
     </p>
 </div>
 
@@ -26,10 +26,10 @@
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsOnBoardingStep2Completed;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsSpeechTranscriptionSlideCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsOnBoardingStep2Completed = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsSpeechTranscriptionSlideCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);

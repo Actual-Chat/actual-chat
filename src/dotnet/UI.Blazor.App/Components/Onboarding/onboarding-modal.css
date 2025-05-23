@@ -213,3 +213,21 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 .onboarding-stepper:has(.onboarding-tutorial) .stepper-footer {
     @apply pt-4;
 }
+
+/* Phone verification */
+.phone-verification-modal .dialog-body {
+    @apply flex-1 flex-y;
+}
+.phone-verification-modal .dialog-body > .c-image {
+    @apply flex-1 flex-x items-center justify-center;
+}
+.phone-verification-modal .dialog-body > .c-content {
+    @apply flex-1 flex-y gap-y-4;
+    @apply p-4;
+}
+.phone-verification-modal .dialog-body > .c-content .c-title {
+    @apply font-bold text-2xl text-02;
+}
+.phone-verification-modal .dialog-body > .c-content .c-title {
+    @apply text-headline-1 text-02;
+}
