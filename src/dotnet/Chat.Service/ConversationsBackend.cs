@@ -199,11 +199,11 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         {
             var previousConversationId = await dbContext.Conversations
                 .Where(c => c.ChatId == chatId.Value && c.EndEntryLid < startEntryLid)
-                .MaxAsync(c => c.StartEntryLid, cancellationToken)
+                .MaxAsync(c => (long?)c.StartEntryLid, cancellationToken)
                 .ConfigureAwait(false);
             var nextConversationId = await dbContext.Conversations
                 .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= endEntryLid)
-                .MinAsync(c => c.StartEntryLid, cancellationToken)
+                .MinAsync(c => (long?)c.StartEntryLid, cancellationToken)
                 .ConfigureAwait(false);
 
             if (previousConversationId != 0)
