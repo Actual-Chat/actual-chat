@@ -44,7 +44,7 @@
 
 @code {
     public static readonly Assembly BaseUIAssembly = typeof(AppBase).Assembly;
-    public static Assembly[] OtherUIAssemblies = null!;
+    public static Assembly[] OtherUIAssemblies = [typeof(UIHub).Assembly];
 
     private bool _readyToFullyRender;
     private bool _shouldRender;

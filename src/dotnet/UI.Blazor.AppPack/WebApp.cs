@@ -11,7 +11,7 @@ public sealed class WebApp : AppBase
         => field ??= Services.GetRequiredService<AppNonScopedServiceStarter>();
 
     static WebApp()
-        => OtherUIAssemblies = [typeof(WebApp).Assembly];
+        => OtherUIAssemblies = [typeof(WebApp).Assembly, typeof(UIHub).Assembly];
 
     protected override Task OnInitializedAsync()
     {
