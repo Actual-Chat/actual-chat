@@ -23,10 +23,10 @@
                 <div class="stepper-image-filler">
                     <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="">
                 </div>
-            } else if (stepper.CurrentStep is OnboardingStep1 or OnboardingStep2 or OnboardingStep3) {
+            } else if (stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep) {
                 var offset = stepper.CurrentStep switch {
-                    OnboardingStep2 => 3,
-                    OnboardingStep3 => 2,
+                    TranscriptPlaybackStep => 3,
+                    PlacesFeatureStep => 2,
                     _ => 4,
                 };
                 <div class="stepper-skip-filler">
@@ -39,10 +39,10 @@
             }
         </Filler>
         <Steps>
-            <OnboardingStep1/>
-            <OnboardingStep2/>
-            <OnboardingStep3/>
-            <OnboardingStep4/>
+            <SpeechTranscriptionStep/>
+            <TranscriptPlaybackStep/>
+            <PlacesFeatureStep/>
+            <JoinPlaceStep/>
             <PhoneStep Account="m.AccountFull" OnVerifyClick="@(() => OnNext(stepper))"/>
             <EmailStep Account="m.AccountFull"/>
             <TimeZoneStep Account="m.AccountFull"/>
@@ -71,7 +71,7 @@
         <Footer>
             <div class="btn-group">
                 @if (stepper.CanSkip) {
-                    if (stepper.CurrentStep is OnboardingStep1 or OnboardingStep2 or OnboardingStep3 or OnboardingStep4) {
+                    if (stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep) {
                         <TutorialSkipButton Stepper="@stepper" Click="@(() => OnSkip(stepper))"/>
                     } else {
                         <Button
@@ -81,7 +81,7 @@
                         </Button>
                     }
                 }
-                @if (stepper.CurrentStep is not (OnboardingStep1 or OnboardingStep2 or OnboardingStep3 or OnboardingStep4)) {
+                @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
                     @if (stepper.CurrentStep is PhoneStep) {
                         <Button
                             Class="btn-primary"
@@ -108,7 +108,7 @@
                     }
                 }
             </div>
-            @if (stepper.CurrentStep is not (OnboardingStep1 or OnboardingStep2 or OnboardingStep3 or OnboardingStep4)) {
+            @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
                 <div class="flex w-full justify-center mt-6">
                     <LineProgress
                         StepCount="@(stepper.StepCount - 4)"

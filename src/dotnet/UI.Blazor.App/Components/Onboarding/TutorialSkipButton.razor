@@ -1,9 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var cls = Stepper.CurrentStep switch {
-        OnboardingStep2 => "step-2",
-        OnboardingStep3 => "step-3",
-        OnboardingStep4 => "step-4",
+        TranscriptPlaybackStep => "step-2",
+        PlacesFeatureStep => "step-3",
+        JoinPlaceStep => "step-4",
         _ => "",
     };
 }

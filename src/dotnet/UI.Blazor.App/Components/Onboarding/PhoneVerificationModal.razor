@@ -2,25 +2,24 @@
 @implements IModalView<PhoneVerificationModal.Model>
 
 <DialogFrame
-    Class="onboarding-modal"
+    Class="onboarding-modal fixed-height phone-verification-modal"
     HasHeader="true"
     Title="Phone number verification"
-    HasCloseButton="true">
+    HasCloseButton="true"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <div class="flex-1 flex-y">
-        <div class="flex-x justify-center mb-4">
+        <div class="c-image">
             <phone-verification-cat-svg/>
         </div>
-        <div class="flex-1 flex-y mx-4">
-            <div class="font-bold text-2xl text-02">Enter code</div>
-            <div class="mb-4">Please verify your phone number to enable sign-in with it and to allow your friends to find your account in their list of contacts on Actual Chat.</div>
+        <div class="c-content">
+            <div class="c-title">Enter code</div>
+            <div class="c-text">Please verify your phone number to enable sign-in with it and to allow your friends to find your account in their list of contacts on Actual Chat.</div>
             <TotpVerifier
                 Purpose="TotpPurpose.VerifyPhone"
                 Phone="@ModalModel.Phone"
                 Verified="@(_ => Complete(true))"
                 Error="@(_ => Complete(false, true))"/>
         </div>
-    </div>
     </Body>
 </DialogFrame>
 
