@@ -23,17 +23,6 @@
                 <div class="stepper-image-filler">
                     <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="">
                 </div>
-            } else if (stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep) {
-                var offset = stepper.CurrentStep switch {
-                    TranscriptPlaybackStep => 3,
-                    PlacesFeatureStep => 2,
-                    _ => 4,
-                };
-                <div class="stepper-skip-filler">
-                    <HeaderButton Click="@(_ => OnMove(stepper, offset))">
-                        Skip
-                    </HeaderButton>
-                </div>
             } else {
                 <div class="stepper-filler"></div>
             }
@@ -142,11 +131,6 @@
         };
     }
 
-    private async Task OnMove(Stepper stepper, int offset) {
-        await stepper.MoveTo(offset);
-        _canMoveForward = true;
-    }
-
     private async Task OnSkip(Stepper stepper) {
         await stepper.Skip();
         _canMoveForward = true;
@@ -163,7 +147,6 @@
 
     // Event handlers
 
-
     private void OnCurrentStepChanged(bool isCompleted) {
         if (!isCompleted)
             return;
@@ -173,7 +156,6 @@
     }
 
     // Nested types
-
 
     public sealed record ViewModel {
         public AccountFull AccountFull { get; init; } = null!;

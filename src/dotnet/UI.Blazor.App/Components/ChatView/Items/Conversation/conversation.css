@@ -200,5 +200,5 @@
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-message),
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-header),
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-footer) {
-    @apply p-2;
+    @apply px-2 my-2;
 }
