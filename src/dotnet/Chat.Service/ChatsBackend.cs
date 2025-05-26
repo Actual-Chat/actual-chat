@@ -2006,15 +2006,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, _, kind, _) = eventCommand;
-        var chat = await Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return;
 
         await Summarize().ConfigureAwait(false);
         return;
 
         async Task Summarize()
         {
+            if (!Settings.IsSummarizationEnabled)
+                return;
+
+            var chat = await Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
+            if (chat == null)
+                return;
+
             if (chat.IsSummarized == false || kind == ChangeKind.Remove)
                 return;
 
@@ -2022,7 +2026,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
             var splitFlow = await Flows.GetAndResume<ConversationSplitFlow>(chat.Id.Value,
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
-                    nameof(OnTextEntryChangedEvent),
+                    $"{nameof(OnTextEntryChangedEvent)} #{entry.Id}",
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     cancellationToken)
                 .ConfigureAwait(false);

@@ -1,4 +1,5 @@
 using ActualChat.Attributes;
+using ActualLab.CommandR.Operations;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -42,13 +43,13 @@ public sealed partial record ConversationBackend_Change(
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] Range<long>[] EntryIdRanges
-    ): ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
+    ): ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
 
     [DataMember, MemoryPackOrder(2)]
-    public Moment? DelayUntil { get; init; }
+    public Moment DelayUntil { get; init; }
 }
 
 [Queue("SummarizeQueue")]
@@ -58,11 +59,11 @@ public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] long EntryLid,
     [property: DataMember, MemoryPackOrder(2)] Range<long> ReplySequence
-) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IDelayed
+) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
 
     [DataMember, MemoryPackOrder(3)]
-    public Moment? DelayUntil { get; init; }
+    public Moment DelayUntil { get; init; }
 }

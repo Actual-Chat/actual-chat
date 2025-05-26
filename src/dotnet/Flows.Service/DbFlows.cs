@@ -58,7 +58,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     [ProxyIgnore] // Regular method!
     public virtual Task<long> OnEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken = default)
     {
-        Log.LogInformation("OnEvent: `{FlowId}` <- {Event}", flowId, evt);
+        DebugLog?.LogDebug("OnEvent: `{FlowId}` <- {Event}", flowId, evt);
         return Host.ProcessEvent(flowId, evt, cancellationToken);
     }
 

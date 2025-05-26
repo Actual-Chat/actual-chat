@@ -23,7 +23,7 @@ public class UserContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutp
         await base.DisposeAsync();
     }
 
-    [Theory(Skip = "ignored")] // TODO(FC): fix
+    [Theory]
     [InlineData(77, 0)]
     [InlineData(77, 1)]
     [InlineData(77, 10)]

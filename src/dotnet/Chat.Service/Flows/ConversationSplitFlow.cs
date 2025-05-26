@@ -75,7 +75,7 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
             ) {
                 DelayUntil = existingConversationIds.Length == 0
                     ? Host.Clocks.CoarseSystemClock.Now + (2 * Settings.ChatEntrySummarizationDelay)
-                    : null,
+                    : default,
             };
             await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
         }
