@@ -382,7 +382,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         if (items.Count != 0) {
             hasVeryFirstItem = hasVeryFirstItem || chatIdRange.Start >= items[0].Id;
-            hasVeryLastItem = hasVeryLastItem || chatIdRange.End - 1 <= items[^1].Id;
+            hasVeryLastItem = hasVeryLastItem || chatIdRange.End - 1 <= GetLastMessage(items[^1]).Id;
         }
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
@@ -398,6 +398,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return !mustScrollToEntry && result.IsSimilarTo(renderedData)
             ? renderedData
             : result;
+
+        ChatMessage GetLastMessage(ChatMessage message)
+        {
+            while (true) {
+                if (message is not IVirtualListGroup<ChatMessage> group)
+                    return message;
+
+                message = group.Items[^1];
+            }
+        }
     }
 
     private ChatDataQuery GetChatDataQuery(

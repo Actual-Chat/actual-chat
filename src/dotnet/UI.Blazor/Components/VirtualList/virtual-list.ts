@@ -932,7 +932,7 @@ export class VirtualList {
                 const pivot: Pivot = {
                     itemKey,
                     offset: Math.round(itemRect.top),
-                    range: item.range,
+                    range: item?.range,
                     time,
                     isVisible,
                     isInteractive
@@ -1282,8 +1282,11 @@ export class VirtualList {
 
                     if (offset > -endAnchorSize) {
                         // adjust item ranges
-                        scrollTopOffset = -this.resetItemRange();
-                        offset = this.itemRange.end;
+                        const resetDelta = this.resetItemRange();
+                        if (resetDelta !== null) {
+                            scrollTopOffset = -resetDelta;
+                            offset = this.itemRange.end;
+                        }
                     }
 
                     // Adjust spacer size to prevent overlap with container
@@ -1356,8 +1359,11 @@ export class VirtualList {
 
                     if (offset < 0) {
                         // adjust item ranges
-                        scrollTopOffset = -this.resetItemRange();
-                        offset = this.itemRange.start;
+                        const resetDelta = this.resetItemRange();
+                        if (resetDelta !== null) {
+                            scrollTopOffset = -resetDelta;
+                            offset = this.itemRange.start;
+                        }
                     }
 
                     // Adjust spacer size to prevent overlap with container
