@@ -38,7 +38,9 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
             ("0xDEADBEEF", []),
             ("Hello! @#$%^&*()_+", [Languages.English]),
         ];
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10).Debuggable());
+
+        var timeout = TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(20) : TimeSpan.FromSeconds(10);
+        var cts = new CancellationTokenSource(timeout.Debuggable());
         var cancellationToken = cts.Token;
 
         // act
@@ -110,7 +112,8 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
             ("Еще что-нибудь попробую специально.", [Languages.Russian])
         ];
 
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30).Debuggable());
+        var timeout = TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(30);
+        var cts = new CancellationTokenSource(timeout.Debuggable());
         var cancellationToken = cts.Token;
 
         // act
