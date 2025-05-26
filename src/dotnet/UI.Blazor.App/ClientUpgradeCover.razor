@@ -1,0 +1,23 @@
+@inherits ComputedStateComponent<bool>
+@{
+    var upgradeRequired = State.Value;
+}
+@if (!upgradeRequired) {
+    @ChildContent
+    return;
+}
+<div class="flex-y h-full bg-yellow-400">
+    <p>Current client version is not compatible with the backend.</p>
+    <p>Please upgrade when new update is available. Usually it takes max 8 hours.</p>
+</div>
+
+@code {
+    [Inject] private UIHub Hub { get; set; } = null!;
+    private UpgradeUI UpgradeUI => Hub.UpgradeUI;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public  int RenderIndex { get; set; }
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
+        => await UpgradeUI.UpgradeRequiredState.Use(cancellationToken).ConfigureAwait(false);
+}

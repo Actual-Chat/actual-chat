@@ -17,6 +17,29 @@ public class SystemProperties(IServiceProvider services)
     public virtual Task<string> GetApiVersion(CancellationToken cancellationToken)
         => ApiVersionTask;
 
+    // [ComputeMethod]
+    public virtual Task<SystemProperties_ClientCompatibility> CheckClientCompatibility(
+        string clientVersion,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(clientVersion))
+            throw new ArgumentException("", nameof(clientVersion));
+
+        clientVersion = clientVersion.TrimStart('v');
+        var clientVersionParts = clientVersion.Split(' ');
+        clientVersion = clientVersionParts[0];
+        if(!Version.TryParse(clientVersion, out var version))
+             throw new ArgumentOutOfRangeException(nameof(clientVersion));
+
+        var compatibility = SystemProperties_ClientCompatibility.Latest;
+         var apiVersion = Version.Parse(Constants.Api.StringVersion);
+         if (apiVersion.Major > version.Major)
+             compatibility = SystemProperties_ClientCompatibility.Incompatible;
+         else if (apiVersion > version)
+             compatibility = SystemProperties_ClientCompatibility.UpgradeAvailable;
+        return Task.FromResult(compatibility);
+    }
+
     // [CommandHandler]
     public virtual async Task OnInvalidateEverything(
         SystemProperties_InvalidateEverything command,

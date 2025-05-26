@@ -3,35 +3,40 @@
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @implements IRootComponent
 @{
+    _renderIndex++;
     if (!UIHub.IsInteractive) {
         <LandingForWeb/>
         return;
     }
-    if (!_readyToRender)
-        return;
-    if (_simulatedCrashError != null)
-        throw _simulatedCrashError;
 }
 
-<ScreenSizeProvider>
-    <AlwaysVisibleComponents/>
+<ClientUpgradeCover RenderIndex="@_renderIndex">
+    @{
+        if (!_readyToRender)
+            return;
+        if (_simulatedCrashError != null)
+            throw _simulatedCrashError;
+    }
+    <ScreenSizeProvider>
+        <AlwaysVisibleComponents/>
 
-    <RequirementChecker>
-        <Success>
-            <TweakedRouter AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
-                <Found Context="routeData">
-                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
-                </Found>
-                <NotFound>
-                    <PageNotFoundBlock/>
-                </NotFound>
-            </TweakedRouter>
-        </Success>
-        <Failure Context="failures">
-            <ErrorBlock Failures="@failures"/>
-        </Failure>
-    </RequirementChecker>
-</ScreenSizeProvider>
+        <RequirementChecker>
+            <Success>
+                <TweakedRouter AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
+                    <Found Context="routeData">
+                        <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
+                    </Found>
+                    <NotFound>
+                        <PageNotFoundBlock/>
+                    </NotFound>
+                </TweakedRouter>
+            </Success>
+            <Failure Context="failures">
+                <ErrorBlock Failures="@failures"/>
+            </Failure>
+        </RequirementChecker>
+    </ScreenSizeProvider>
+</ClientUpgradeCover>
 
 @code {
     private static Assembly UIAssembly { get; } = typeof(AppBase).Assembly;
@@ -39,6 +44,7 @@
 
     private bool _readyToRender;
     private bool _shouldRender;
+    private int _renderIndex;
     private Exception? _simulatedCrashError;
     private readonly TaskCompletionSource _whenFirstRendered = TaskCompletionSourceExt.New();
 
