@@ -22,12 +22,11 @@
     var endSpacerStyleDisplay = DefaultEdge == VirtualListEdge.End
         ? "flex"
         : "none";
-    var count = data.Items.Sum(item => item is IVirtualListGroup group ? group.Count : 1);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
         KeyRange = data.KeyRange,
-        Count = count,
+        Count = data.Count,
         BeforeCount = Data.BeforeCount,
         AfterCount = Data.AfterCount,
         EstimatedCount = Data.EstimatedCount,

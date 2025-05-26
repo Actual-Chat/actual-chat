@@ -243,7 +243,7 @@ public partial class ChatUI
             idTiles1 = resultIdRanges
                 .SkipWhile(r => r.End <= startEntryLid)
                 .TakeWhile(r => r.Start <= endEntryLid)
-                .SelectMany(r => IdTileStack.LastLayer.GetCoveringTiles(r).Select(t => t.Range))
+                .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r).Select(t => t.Range))
                 .SkipWhile(r => r.End <= startEntryLid)
                 .TakeWhile(r => r.Start <= endEntryLid)
                 .EnsureMonotonic(RangeExt.LongRangeComparer)

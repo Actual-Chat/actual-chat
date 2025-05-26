@@ -27,9 +27,21 @@
         }
         else if (item is ExpandedConversationMessage expandedConversationMessage) {
             foreach (var childItem in expandedConversationMessage.Items) {
-                <div @key="@childItem.Key" class="item" data-key="@childItem.Key">
-                    @RenderChatMessage!((childItem, chatContext))
-                </div>
+                @if (childItem is ConversationHeader) {
+                    <div @key="@childItem.Key" class="item expanded" data-key="@childItem.Key">
+                        @RenderChatMessage!((childItem, chatContext))
+                    </div>
+                }
+                else if (childItem.IsGroup) {
+                    <div class="group" >
+                        @RenderChatMessage!((childItem, chatContext))
+                    </div>
+                }
+                else {
+                    <div @key="@childItem.Key" class="item" data-key="@childItem.Key">
+                        @RenderChatMessage!((childItem, chatContext))
+                    </div>
+                }
             }
         }
         else if (item is ChatEntryAuthorGroup chatEntryGroup) {

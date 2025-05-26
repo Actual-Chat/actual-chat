@@ -858,6 +858,8 @@ export class VirtualList {
         this.visibilityObserver.observe(itemRef);
         itemRef.addEventListener('touchend', this.onInteractiveEvent, { passive: true });
         itemRef.addEventListener('click', this.onInteractiveEvent, { passive: true });
+        if (itemRef.classList.contains('expanded'))
+            newItem.isExpanded = true;
         return newItem;
     }
 
@@ -1545,6 +1547,7 @@ export class VirtualList {
 
         if (!cornerstoneItem?.range) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
+            console.warn(`ensureItemRangeCalculated: cornerstone item not found`, cornerstoneItemIndex);
             this.resetItemRange(true);
         }
         else {
@@ -1609,6 +1612,7 @@ export class VirtualList {
     }
 
     private resetItemRange(canUseQueryRange: boolean = false): number | null {
+        console.warn(`resetItemRange: canUseQueryRange=${canUseQueryRange}`);
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
@@ -1825,7 +1829,7 @@ export class VirtualList {
             fastRaf(() => this.measureItems());
             return this.lastQuery;
         }
-        const orderedItems = [...this.orderedItems];
+        const orderedItems = [...this.orderedItems.filter(i => !i.isExpanded)];
         if (orderedItems.length == 0) // No entries -> nothing to "align" the query to
             return this.lastQuery;
 

@@ -4,6 +4,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     where TItem : class, IVirtualListItem
 {
     public static readonly VirtualListData<TItem> None = new([]);
+    private int? _count;
 
     public bool IsNone
         => ReferenceEquals(this, None);
@@ -18,6 +19,8 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
 
     public IReadOnlyList<TItem> Items { get; } = items;
     public int Index { get; init; }
+    public int Count => _count ??= Items.Sum(CalculateCount);
+
     public int? BeforeCount { get; init; }
     public int? AfterCount { get; init; }
     public int? EstimatedCount { get; init; }
@@ -47,4 +50,15 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
             && HasVeryLastItem == other.HasVeryLastItem
             && OrdinalEquals(ScrollToKey, other.ScrollToKey)
             && Items.SequenceEqual(other.Items));
+
+
+    // Private members
+
+    private static int CalculateCount(TItem item)
+    {
+        if (item is IVirtualListGroup<TItem> group)
+            return group.Items.Sum(CalculateCount);
+
+        return 1;
+    }
 }
