@@ -1,8 +1,71 @@
 import { customElement } from 'lit/decorators.js';
-import { html, LitElement } from 'lit';
+import {css, html, LitElement} from "lit";
 
 @customElement('no-search-results-svg')
 class NoSearchResultsSvg extends LitElement {
+    static styles = [css`
+        :host {
+        }
+        @keyframes move-flower-1 {
+            0%, 100% {
+                transform: rotate(0) translate(0, 0);
+            }
+            50% {
+                transform: rotate(3deg) translate(10px, -7px);
+            }
+        }
+        @keyframes move-flower-2 {
+            0%, 100% {
+                transform: translate(0, 0);
+            }
+            50% {
+                transform: translate(3px, -1px);
+            }
+        }
+        @keyframes star-pulse {
+            0%, 40%, 60%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.25);
+            }
+        }
+        @keyframes move-dash {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        @keyframes move-dash-reverse {
+            to {
+                stroke-dashoffset: 32;
+            }
+        }
+        .moving-line {
+            stroke-dasharray: 8 8;
+            stroke-dashoffset: 16;
+            animation: move-dash 2s linear infinite;
+        }
+        .moving-line.reverse {
+            animation: move-dash-reverse 2s linear infinite;
+        }
+        .moving-flower-1 {
+            animation: move-flower-1 3s ease-in-out infinite;
+        }
+        .moving-flower-2 {
+            animation: move-flower-2 3s ease-in-out infinite;
+        }
+        .moving-flower-3 {
+            animation: move-flower-2 3s ease-in-out infinite;
+        }
+        .moving-flower-4 {
+            animation: move-flower-2 3s ease-in-out infinite;
+        }
+        .medal-star {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: star-pulse 1.5s ease-in-out infinite;
+        }
+    `];
     protected render(): unknown {
         return html`
             <svg width="198" height="234" viewBox="0 0 198 234" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -46,7 +109,7 @@ class NoSearchResultsSvg extends LitElement {
                         <path d="M56.5758 161.125C62.8929 153.748 67.6178 146.974 71.102 140.814" stroke="var(--no-results-cat-body-center)" stroke-width="8" stroke-linecap="round"/>
                         <path d="M58.8103 114.907C64.4623 116.495 70.3314 113.201 71.9193 107.549C73.5072 101.897 70.2127 96.0276 64.5607 94.4396C58.9088 92.8517 53.0397 96.1463 51.4517 101.798C49.8638 107.45 53.1584 113.319 58.8103 114.907Z" fill="var(--no-results-cat-medal)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-miterlimit="10"/>
                         <ellipse cx="85.5417" cy="4.65623" rx="2.39081" ry="2.64932" transform="rotate(66.4215 85.5417 4.65623)" fill="var(--no-results-cat-eyes)"/>
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M70.0298 105.747C66.8246 104.809 64.9531 101.49 65.8242 98.2847C64.8985 101.475 61.5726 103.333 58.3477 102.465C61.553 103.403 63.4245 106.721 62.5533 109.927C63.479 106.737 66.8049 104.879 70.0298 105.747Z" fill="var(--no-results-cat-medal-stars)"/>
+                        <path class="medal-star" fill-rule="evenodd" clip-rule="evenodd" d="M70.0298 105.747C66.8246 104.809 64.9531 101.49 65.8242 98.2847C64.8985 101.475 61.5726 103.333 58.3477 102.465C61.553 103.403 63.4245 106.721 62.5533 109.927C63.479 106.737 66.8049 104.879 70.0298 105.747Z" fill="var(--no-results-cat-medal-stars)"/>
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M54.2039 106.719C56.0428 107.236 57.9516 106.178 58.493 104.353C58.0047 106.193 59.0834 108.09 60.9222 108.607C59.0834 108.09 57.1745 109.148 56.6331 110.973C57.1215 109.133 56.0428 107.236 54.2039 106.719M54.2039 106.719L54.2036 106.719L54.2039 106.719Z" fill="var(--no-results-cat-medal-stars)"/>
                         <circle cx="107.82" cy="187.314" r="1.5" fill="var(--no-results-cat-ground-stroke)"/>
                         <path d="M72.5669 25.6496C72.877 19.3872 70.8649 14.3081 70.8649 14.3081C63.8081 12.3255 56.4909 17.2395 53.7861 26.8668C52.8088 29.516 51.1474 35.7145 52.3202 39.3145" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -65,28 +128,28 @@ class NoSearchResultsSvg extends LitElement {
                     <path d="M79.3438 138.465C79.3438 138.465 79.3338 133.645 85.2738 130.505" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round"/>
                     <path d="M73.4138 135.175C73.4138 135.175 74.1738 129.225 79.3438 127.215" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round"/>
                     <path d="M68.8338 131.584C68.8338 131.584 68.8238 126.644 74.7638 123.624" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round"/>
-                    <path d="M78.3201 198.314L75.8201 62.3145" stroke="var(--no-results-cat-body-center)" stroke-width="3" stroke-linecap="round" stroke-dasharray="16 8"/>
-                    <path d="M203.217 198.504L106.32 67.8145" stroke="var(--no-results-cat-body-center)" stroke-width="3" stroke-linecap="round" stroke-dasharray="16 8"/>
+                    <path class="moving-line reverse" d="M78.3201 198.314L75.8201 62.3145" stroke="var(--no-results-cat-body-center)" stroke-width="3" stroke-linecap="round" stroke-dasharray="16 8"/>
+                    <path class="moving-line reverse" d="M203.217 198.504L106.32 67.8145" stroke="var(--no-results-cat-body-center)" stroke-width="3" stroke-linecap="round" stroke-dasharray="16 8"/>
                     <ellipse xmlns="http://www.w3.org/2000/svg" cx="137.5" cy="199.5" rx="60.5" ry="27.5" fill="var(--no-results-cat-light-circle)"/>
-                    <path d="M119.846 147.031C123.759 147.775 131.555 151.236 131.44 159.124C127.917 160.16 120.666 159.191 119.846 147.031Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
-                    <path d="M123.198 155.363C122.396 155.154 121.577 155.635 121.368 156.437C121.16 157.239 121.641 158.058 122.443 158.266L123.198 155.363ZM142.795 198.588C143.908 192.594 144.301 183.272 141.823 174.722C139.333 166.128 133.869 158.137 123.198 155.363L122.443 158.266C131.771 160.692 136.641 167.618 138.942 175.557C141.256 183.54 140.899 192.369 139.845 198.041L142.795 198.588Z" fill="var(--no-results-cat-main-stroke)"/>
+                    <path class="moving-flower-4" d="M119.846 147.031C123.759 147.775 131.555 151.236 131.44 159.124C127.917 160.16 120.666 159.191 119.846 147.031Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
+                    <path class="moving-flower-1" d="M123.198 155.363C122.396 155.154 121.577 155.635 121.368 156.437C121.16 157.239 121.641 158.058 122.443 158.266L123.198 155.363ZM142.795 198.588C143.908 192.594 144.301 183.272 141.823 174.722C139.333 166.128 133.869 158.137 123.198 155.363L122.443 158.266C131.771 160.692 136.641 167.618 138.942 175.557C141.256 183.54 140.899 192.369 139.845 198.041L142.795 198.588Z" fill="var(--no-results-cat-main-stroke)"/>
                     <path d="M114.32 179.976C116.878 187.155 125.83 200.919 141.175 198.542C142.198 191.611 138.26 178.194 114.32 179.976Z" fill="var(--no-results-cat-flower)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
                     <path d="M153.576 181.323C153.667 186.134 151.454 196.255 141.882 198.254C139.737 194.384 139.073 185.58 153.576 181.323Z" fill="var(--no-results-cat-flower)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
-                    <path d="M117.342 157.486C119.581 160.78 125.857 166.556 133.049 163.313C132.598 159.669 128.825 153.401 117.342 157.486Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
-                    <path d="M129.092 145.843C132.185 148.352 137.412 155.093 133.574 161.986C129.98 161.229 124.053 156.941 129.092 145.843Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
+                    <path class="moving-flower-3" d="M117.342 157.486C119.581 160.78 125.857 166.556 133.049 163.313C132.598 159.669 128.825 153.401 117.342 157.486Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
+                    <path class="moving-flower-2" d="M129.092 145.843C132.185 148.352 137.412 155.093 133.574 161.986C129.98 161.229 124.053 156.941 129.092 145.843Z" fill="var(--no-results-cat-flower-leaf)" stroke="var(--no-results-cat-main-stroke)" stroke-width="3"/>
                     <circle cx="157.82" cy="195.314" r="1.5" fill="var(--no-results-cat-dot)"/>
                     <circle cx="175.82" cy="185.314" r="1.5" fill="var(--no-results-cat-dot)"/>
                     <circle cx="128.82" cy="202.314" r="1.5" fill="var(--no-results-cat-dot)"/>
-                    <circle cx="95.8201" cy="192.314" r="1.5" fill="var(--no-results-cat-dot)"/>
+                    <circle cx="98.8201" cy="192.314" r="1.5" fill="var(--no-results-cat-dot)"/>
                     <circle cx="121.82" cy="220.314" r="1.5" fill="var(--no-results-cat-dot)"/>
                     <circle cx="171.82" cy="204.314" r="1.5" fill="var(--no-results-cat-dot)"/>
                     <path d="M157.82 209.314C158.649 209.314 159.32 208.643 159.32 207.814C159.32 206.986 158.649 206.314 157.82 206.314V209.314ZM118.32 209.314H157.82V206.314H118.32V209.314Z" fill="var(--no-results-cat-dot)"/>
                     <path d="M100.32 207.814H108.32C108.32 205.814 109.22 201.814 112.82 201.814C116.42 201.814 116.987 205.814 116.82 207.814H120.32" stroke="var(--no-results-cat-main-stroke)" stroke-width="3" stroke-linecap="round"/>
-                    <path d="M103.5 144L111 174" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
-                    <path d="M94.6205 63.4141L104.88 92.586" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
-                    <path d="M91.8557 162L94.4011 192.818" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
-                    <path d="M119.656 114.243L132.604 142.325" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
-                    <path d="M152.289 157.744L166.659 185.126" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
+                    <path class="moving-line" d="M103.5 144L111 174" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
+                    <path class="moving-line" d="M94.6205 63.4141L104.88 92.586" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
+                    <path class="moving-line" d="M91.8557 162L94.4011 192.818" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
+                    <path class="moving-line" d="M119.656 114.243L132.604 142.325" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
+                    <path class="moving-line" d="M152.289 157.744L166.659 185.126" stroke="var(--no-results-cat-rays-stroke)" stroke-width="3" stroke-linecap="round"/>
                 </g>
                 <defs>
                     <linearGradient id="paint0_linear_20364_776232" x1="81.2472" y1="13.9656" x2="90.6148" y2="11.2115" gradientUnits="userSpaceOnUse">
