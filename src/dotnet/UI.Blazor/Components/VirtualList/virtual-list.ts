@@ -1545,7 +1545,19 @@ export class VirtualList {
             }
         }
 
-        if (!cornerstoneItem?.range) {
+        const isCornerstoneRangeMissing = !cornerstoneItem?.range;
+        const removedLastItem =
+            this.defaultEdge === VirtualListEdge.End &&
+            cornerstoneItemIndex === orderedItems.length - 1 &&
+            rs.hasVeryLastItem &&
+            (cornerstoneItem?.range?.end ?? 0) < -this.endAnchorSize;
+        const removedFirstItem =
+            this.defaultEdge === VirtualListEdge.Start &&
+            cornerstoneItemIndex === 0 &&
+            rs.hasVeryFirstItem &&
+            (cornerstoneItem?.range?.start ?? 0) > 0;
+        const needsRangeReset = isCornerstoneRangeMissing || removedLastItem || removedFirstItem;
+        if (needsRangeReset) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
             console.warn(`ensureItemRangeCalculated: cornerstone item not found`, cornerstoneItemIndex);
             this.resetItemRange(true);
