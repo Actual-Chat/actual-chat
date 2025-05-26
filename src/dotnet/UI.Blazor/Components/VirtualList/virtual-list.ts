@@ -1281,12 +1281,9 @@ export class VirtualList {
                     }
 
                     if (offset > -endAnchorSize) {
-                        // scroll position does not allow to show the last item
-                        scrollTopOffset = -offset;
-
                         // adjust item ranges
-                        offset = this.resetItemRange();
-                        scrollTopOffset += offset;
+                        scrollTopOffset = -this.resetItemRange();
+                        offset = this.itemRange.end;
                     }
 
                     // Adjust spacer size to prevent overlap with container
@@ -1358,12 +1355,9 @@ export class VirtualList {
                     }
 
                     if (offset < 0) {
-                        // scroll position does not allow to show the first item
-                        scrollTopOffset = offset;
-
                         // adjust item ranges
-                        offset = this.resetItemRange();
-                        scrollTopOffset -= offset;
+                        scrollTopOffset = -this.resetItemRange();
+                        offset = this.itemRange.start;
                     }
 
                     // Adjust spacer size to prevent overlap with container
@@ -1620,6 +1614,7 @@ export class VirtualList {
         if (orderedItems.length === 0)
             return null;
 
+        let rangeDelta: number | null = null;
         if (this.defaultEdge === VirtualListEdge.End) {
             const cornerstoneItemIndex = orderedItems.length - 1;
             const cornerstoneItem = orderedItems[cornerstoneItemIndex];
@@ -1658,6 +1653,9 @@ export class VirtualList {
             let prevItem = cornerstoneItem;
             for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
                 const item = orderedItems[i];
+                const oldRange = item.range;
+                if (oldRange && rangeDelta === null)
+                    rangeDelta = oldRange.start - item.size - prevItem.range.start;
                 item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
                 prevItem = item;
             }
@@ -1675,7 +1673,7 @@ export class VirtualList {
                 this.isEndKnown = rs.hasVeryLastItem;
                 this.isStartKnown = rs.hasVeryFirstItem;
             }
-            return cornerstoneItem.range.end;
+            return rangeDelta;
         }
         else {
             const cornerstoneItemIndex = 0;
@@ -1716,6 +1714,9 @@ export class VirtualList {
             let prevItem = cornerstoneItem;
             for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
                 const item = orderedItems[i];
+                const oldRange = item.range;
+                if (oldRange && rangeDelta === null)
+                    rangeDelta = item.size + prevItem.range.end - oldRange.start;
                 item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
                 prevItem = item;
             }
@@ -1733,7 +1734,7 @@ export class VirtualList {
                 this.isEndKnown = rs.hasVeryLastItem;
                 this.isStartKnown = rs.hasVeryFirstItem;
             }
-            return cornerstoneItem.range.start;
+            return rangeDelta;
         }
     }
 
