@@ -10,7 +10,7 @@ public sealed class ChatSettings
     public bool IsTranslationEnabled { get; set; }
     public TranslationSettings Translation { get; set; } = new ();
     public LanguageDetectionSettings LanguageDetection { get; set; } = new ();
-    public bool IsSummarizationEnabled => !OpenAIApiKey.IsNullOrEmpty() && !OpenAIChatModel.IsNullOrEmpty();
+    public bool IsSummarizationEnabled { get; set; }
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
     public int MinConversationWords { get; set; } = 400;
     public int MinConversationEntries { get; set; } = 3;

@@ -1,8 +1,6 @@
 using ActualChat.Concurrency;
 using ActualChat.Diagnostics;
-using ActualChat.Module;
 using ActualLab.Diagnostics;
-using Microsoft.Extensions.Primitives;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 

@@ -1,5 +1,6 @@
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
+using ActualLab.CommandR.Operations;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.Flows;
@@ -65,7 +66,7 @@ public static class FlowsExt
                 false,
                 tag,
                 now + maxLastRunIn,
-                now + delay),
+                (now + delay) ?? default),
             cancellationToken);
 
     public static async Task<TFlow?> GetAndReset<TFlow>(
@@ -124,7 +125,7 @@ public static class FlowsExt
             "`{Id}`.GetAndSendEvent: sent {Event} with delayUntil='{Delay}' and maxLastRunAt='{MaxLastRunAt}'",
             flowId,
             flowEvent,
-            (flowEvent as IDelayed)?.DelayUntil,
+            (flowEvent as IHasDelayUntil)?.DelayUntil,
             (flowEvent as FlowResumeEvent)?.MaxLastRunAt);
         return flow;
     }

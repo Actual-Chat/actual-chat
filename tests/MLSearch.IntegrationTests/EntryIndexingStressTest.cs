@@ -31,7 +31,7 @@ public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelp
         await base.DisposeAsync();
     }
 
-    [Theory(Skip = "ignored")] // TODO(FC): fix
+    [Theory]
     [InlineData(100)]
     [InlineData(1_000)]
     [InlineData(3_456)]

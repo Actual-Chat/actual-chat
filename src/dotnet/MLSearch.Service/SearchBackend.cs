@@ -212,7 +212,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         Task UpdateIndexedEntries()
             => entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text
                 ? Task.CompletedTask
-                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, "TextEntry changed", cancellationToken);
+                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, $"{nameof(OnTextEntryChangedEvent)} #{eventCommand.Entry.Id}", cancellationToken);
     }
 
     // [EventHandler]

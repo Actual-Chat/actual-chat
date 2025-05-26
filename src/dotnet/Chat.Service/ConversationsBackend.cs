@@ -222,11 +222,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             return default!; // No invalidation there as we call other commands
 
         var (chatId, entryIdRanges) = command;
-        // No invalidation there as we call other commands
-        var delay = command.DelayUntil - Clocks.SystemClock.Now;
-        if (delay > TimeSpan.Zero)
-            throw StandardError.Postpone(delay.Value);
-
         if (entryIdRanges.Length == 0)
             throw StandardError.Constraint("ConversationBackend_Summarize.EntryIdRanges should not be empty.");
 
@@ -289,10 +284,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             return null!; // This handler makes changes only via nested commands
 
         var (chatId, entryLid, replyIdRange) = command;
-        var delay = command.DelayUntil - Clocks.SystemClock.Now;
-        if (delay > TimeSpan.Zero)
-            throw StandardError.Postpone(delay.Value);
-
         var conversationTile = IdTileStack.LastLayer.GetTile(entryLid);
         var conversationRangeMeta = await GetRangeMeta(chatId, conversationTile.Range.Start, cancellationToken)
             .ConfigureAwait(false);

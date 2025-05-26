@@ -21,17 +21,17 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     private readonly ConcurrentDictionary<int, INatsJSStream> _streams = new ();
     private readonly ConcurrentDictionary<int, INatsJSConsumer> _consumers = new ();
     private readonly string _instancePrefix;
-    private NatsConnection? _connection;
 
     private IMeshLocks ActionLocks { get; }
 
+    [field: AllowNull, MaybeNull]
     private NatsConnection Connection {
         get {
-            if (_connection != null)
-                return _connection;
+            if (field != null)
+                return field;
 
             lock (Lock)
-                return _connection = Services.GetRequiredService<NatsConnection>();
+                return field = Services.GetRequiredService<NatsConnection>();
         }
     }
 
@@ -63,16 +63,18 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 .ConfigureAwait(false);
             if (response.Error is { } error) {
                 Log.LogError(
-                    "NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}, {Kind} command {Command}",
+                    "NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}, {Kind} command #{Id} {Command}",
                     error.Code,
                     error.ErrCode,
                     error.Description,
                     queuedCommand.UntypedCommand.GetKind(),
+                    queuedCommand.Id,
                     queuedCommand.UntypedCommand);
                 throw StandardError.External($"NATS write failed: Code={error.Code}, ErrCode={error.ErrCode}");
             }
-            DebugLog?.LogDebug("NATS write succeeded: {Kind} command {Command} to '{Stream}' with domain '{Domain}'",
+            DebugLog?.LogDebug("NATS write succeeded: {Kind} command #{Id} {Command} to '{Stream}' with domain '{Domain}'",
                 queuedCommand.UntypedCommand.GetKind(),
+                queuedCommand.Id,
                 queuedCommand.UntypedCommand,
                 response.Stream,
                 response.Domain);
@@ -95,6 +97,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 Filter = GetConsumerFilter(shardIndex),
             };
             tasks.Add(stream.PurgeAsync(purgeRequest, cancellationToken).AsTask());
+            DebugLog?.LogDebug("NATS purge requested for stream #{Stream}", stream.Info.Config.Name);
         }
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
@@ -128,9 +131,21 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 MaxDegreeOfParallelism = degreeOfParallelism,
                 CancellationToken = cancellationToken,
             };
+            DebugLog?.LogDebug(
+                "NATS: pulling messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
+                consumer.Info.Name,
+                consumer.Info.StreamName,
+                shardIndex);
+            var handledCount = 0;
             await Parallel
                 .ForEachAsync(messages, parallelOptions, HandleMessage)
                 .SilentAwait(false); // We swallow all exceptions here
+            DebugLog?.LogDebug(
+                "NATS: handled {Count} messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
+                handledCount,
+                consumer.Info.Name,
+                consumer.Info.StreamName,
+                shardIndex);
             continue;
 
             async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
@@ -139,6 +154,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                     // ReSharper disable once AccessToDisposedClosure
                     expiringPullCts.CancelAfter(expireIn.Next());
                     await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
+                    Interlocked.Increment(ref handledCount);
                 }
                 catch (ObjectDisposedException) {
                     // NOTE(AY): NatsQueueProcessor is sometimes disposed ~ at the very end
@@ -172,17 +188,39 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     protected override Task MarkCompleted(
         int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command,
         CancellationToken cancellationToken)
-        => message.AckAsync(new AckOpts { DoubleAck = true }, cancellationToken).AsTask();
+    {
+        DebugLog?.LogDebug("[{ShardIndex}]: Marking completed {Kind} command #{Id} {Command}",
+            shardIndex,
+            command?.UntypedCommand.GetKind(),
+            command?.Id,
+            command?.UntypedCommand);
+        return message.AckAsync(new AckOpts { DoubleAck = true }, cancellationToken).AsTask();
+    }
 
     protected override Task MarkFailed(
         int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command, Exception? exception,
         CancellationToken cancellationToken)
-        => message.NakAsync(new AckOpts { DoubleAck = true }, default, cancellationToken).AsTask();
+    {
+        DebugLog?.LogDebug(exception, "[{ShardIndex}]: Marking failed {Kind} command #{Id} {Command}",
+            shardIndex,
+            command?.UntypedCommand.GetKind(),
+            command?.Id,
+            command?.UntypedCommand);
+        return message.NakAsync(new AckOpts { DoubleAck = true }, default, cancellationToken).AsTask();
+    }
 
     protected override Task MarkPostponed(
-        int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand queuedCommand, TimeSpan delay,
+        int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand command, TimeSpan delay,
         CancellationToken cancellationToken)
-        => message.NakAsync(new AckOpts { DoubleAck = true }, delay, cancellationToken).AsTask();
+    {
+        DebugLog?.LogDebug("[{ShardIndex}]: Marking postponed {Kind} command #{Id} {Command} for {Time}",
+            shardIndex,
+            command.UntypedCommand.GetKind(),
+            command.Id,
+            command.UntypedCommand,
+            delay);
+        return message.NakAsync(new AckOpts { DoubleAck = true }, delay, cancellationToken).AsTask();
+    }
 
     // GetXxxName/Filter/Config
 
@@ -223,7 +261,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             AckWait = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
                 ? TimeSpan.FromMinutes(15)
                 : TimeSpan.FromSeconds(15),
-            MaxAckPending = 100,
+            MaxAckPending = Settings.MaxPendingCount,
             MaxBatch = 10,
             SampleFreq = "20%",
         };
@@ -249,6 +287,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         while (stream == null) {
             try {
                 try {
+                    DebugLog?.LogDebug("Attempting to get stream {Stream}", streamName);
                     stream = await context
                         .GetStreamAsync(streamName, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);

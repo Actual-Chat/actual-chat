@@ -12,6 +12,7 @@ public class SlowAppHostFixture(IMessageSink messageSink)
         ConfigureHost = (__, cfg) => {
             _ = cfg.AddInMemory<MLSearchSettings>((x => x.IsEnabled, "true"),
                 (x => x.IsInitialIndexingDisabled, "true"),
+                // (x => x.IndexingTailRecheckInterval, TestRunnerInfo.IsBuildAgent() ? "00:00:10" : "00:00:05"),
                 (x => x.ChangedEntityIndexingDelay, TestRunnerInfo.IsBuildAgent() ? "00:00:10" : "00:00:03"),
                 (x => x.IndexingFlowResumeDelay, TestRunnerInfo.IsBuildAgent() ? "00:00:03" : "00:00:01"));
         },
