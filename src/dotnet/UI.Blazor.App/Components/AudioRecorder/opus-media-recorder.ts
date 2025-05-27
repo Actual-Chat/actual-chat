@@ -73,8 +73,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private encoderWorklet: OpusEncoderWorklet & Disposable = null;
     private vadWorkletInstance: AudioWorkletNode = null;
     private vadWorklet: AudioVadWorklet & Disposable = null;
+    private recordingContextRef: AudioContextRef = null;
     private contextRef: AudioContextRef = null;
     private recording?: Disposable = null;
+    private playing?: Disposable = null;
     private chatId?: string = null;
     private onStateChanged?: RecorderStateChanged;
     private onRecordingHeartbeat?: () => void;
@@ -353,7 +355,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
             attach: attach,
             detach: _ => retry(2, () => detach()),
         }
-        this.contextRef = recordingAudioContextSource.getRef('recording', options);
+        this.recordingContextRef = recordingAudioContextSource.getRef('recording', options);
+        this.contextRef = audioContextSource.getRef('recording', { }); // No op, we just need to have a reference to the AudioContextSource to call useRef
         this.state = 'stopped';
         this.whenInitialized.resolve(undefined);
         debugLog?.log(`<- init()`);
@@ -380,8 +383,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
         debugLog?.log(`start(): whenInitialized completed`);
 
         this.state = 'recording';
-        const contextRef = this.contextRef;
-        this.recording = contextRef.use(async context => {
+        const recordingContextRef = this.recordingContextRef;
+        this.recording = recordingContextRef.use(async context => {
             try {
                 debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
                 if (this.chatId === chatId && this.stream)
@@ -441,6 +444,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
         finally {
             this.recording?.dispose();
             this.recording = null;
+            this.playing?.dispose();
+            this.playing = null;
             debugLog?.log(`<- stop()`);
         }
     }
@@ -450,7 +455,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
         await this.vadWorker?.reset();
         this.recording?.dispose();
         this.recording = null;
-        this.contextRef = null;
+        this.playing?.dispose();
+        this.playing = null;
+        this.recordingContextRef = null;
         this.encoderWorkerInstance.terminate();
         this.vadWorkerInstance.terminate();
         void this.vadWorklet?.terminate(rpcNoWait);
@@ -600,6 +607,16 @@ export class OpusMediaRecorder implements RecorderStateServer {
         try {
             this.stream = await OpusMediaRecorder.getMicrophoneStream();
             this.source = context.createMediaStreamSource(this.stream);
+            // With high probability we are going to perform playback, so we need to use audioContextSource
+            this.playing = this.contextRef.use(_ => Promise.resolve());
+            // After acquiring the stream, AudioContext might be suspended, so we need to resume it
+            if (Interactive.isAlwaysInteractive) {
+                await context.resume();
+            }
+            else if (context.state === 'suspended') {
+                await recordingAudioContextSource.interactiveResume(context);
+            }
+
             this.source.connect(this.vadWorkletInstance);
             this.source.connect(this.encoderWorkletInstance);
             debugLog?.log(`startMicrophoneStream(): microphone stream has been connected to the pipeline`);
@@ -619,6 +636,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
             this.source?.disconnect();
             this.source = null;
             this.stream = null;
+            this.playing?.dispose();
+            this.playing = null;
         }
         finally {
             await OpusMediaRecorder.stopStreamTracks(stream);

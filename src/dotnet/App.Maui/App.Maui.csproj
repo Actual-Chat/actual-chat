@@ -370,6 +370,7 @@
 
     <!--  TODO: can be removed after migrating to 9.0  -->
     <DynamicCodeSupport>true</DynamicCodeSupport>
+    <SkipStaticLibraryValidation>true</SkipStaticLibraryValidation>
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->

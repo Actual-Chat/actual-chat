@@ -84,6 +84,8 @@ export interface AudioContextSource {
     reset(): Promise<void>;
 
     updateBackgroundState(state: BackgroundState): Promise<void>;
+
+    interactiveResume(context: OverridenAudioContext): Promise<void>;
 }
 
 abstract class AudioContextSourceBase implements AudioContextSource {
@@ -163,50 +165,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
     }
 
-    // Protected methods
-
-    protected async create(shouldResume: boolean = false): Promise<AudioContext> {
-        debugLog?.log(`create`);
-        this.suspendContextDebounced.reset();
-        this.closeContextDebounced.reset();
-        this.resumeCount = 0;
-        this.interactiveResumeCount = 0;
-        // Try to create audio context early w/o waiting for user interaction.
-        // It might be in suspended state in this case.
-        const context: OverridenAudioContext = new AudioContext({
-            latencyHint: 'balanced',
-            sampleRate: this.purpose === 'playback'
-                ? AP.SAMPLE_RATE
-                : DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate for microphone stream, we will use default
-        });
-
-        if (shouldResume)
-            await this.resume(context, true);
-        try {
-            debugLog?.log(`create: loading modules`);
-            const whenWorkletsLoaded =  this.loadContextWorklets(context);
-
-            if (!Interactive.isAlwaysInteractive && !shouldResume)
-                void this.interactiveResume(context);
-
-            await whenWorkletsLoaded;
-            if (this.purpose === 'playback' && AudioContextDestinationFallback.isRequired) {
-                const destinationFallback = new AudioContextDestinationFallback(context);
-                context.destination_ = destinationFallback.destination;
-                context.destinationFallback = destinationFallback;
-            }
-            this._contextCreated$.next(context);
-
-            return context;
-        }
-        catch (e) {
-            warnLog?.log('create: failed to create', e);
-            await this.closeSilently(context);
-            throw e;
-        }
-    }
-
-    protected async interactiveResume(context: OverridenAudioContext): Promise<void> {
+    public async interactiveResume(context: OverridenAudioContext): Promise<void> {
         debugLog?.log(`interactiveResume:`, Log.ref(context));
         if (context && this.isRunning(context)) {
             debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
@@ -269,6 +228,49 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
         finally {
             handler.dispose();
+        }
+    }
+
+    // Protected methods
+
+    protected async create(shouldResume: boolean = false): Promise<AudioContext> {
+        debugLog?.log(`create`);
+        this.suspendContextDebounced.reset();
+        this.closeContextDebounced.reset();
+        this.resumeCount = 0;
+        this.interactiveResumeCount = 0;
+        // Try to create audio context early w/o waiting for user interaction.
+        // It might be in suspended state in this case.
+        const context: OverridenAudioContext = new AudioContext({
+            latencyHint: 'balanced',
+            sampleRate: this.purpose === 'playback'
+                ? AP.SAMPLE_RATE
+                : DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate for microphone stream, we will use default
+        });
+
+        if (shouldResume)
+            await this.resume(context, true);
+        try {
+            debugLog?.log(`create: loading modules`);
+            const whenWorkletsLoaded =  this.loadContextWorklets(context);
+
+            if (!Interactive.isAlwaysInteractive && !shouldResume)
+                void this.interactiveResume(context);
+
+            await whenWorkletsLoaded;
+            if (this.purpose === 'playback' && AudioContextDestinationFallback.isRequired) {
+                const destinationFallback = new AudioContextDestinationFallback(context);
+                context.destination_ = destinationFallback.destination;
+                context.destinationFallback = destinationFallback;
+            }
+            this._contextCreated$.next(context);
+
+            return context;
+        }
+        catch (e) {
+            warnLog?.log('create: failed to create', e);
+            await this.closeSilently(context);
+            throw e;
         }
     }
 
