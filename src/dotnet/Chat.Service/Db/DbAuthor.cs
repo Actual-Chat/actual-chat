@@ -37,9 +37,9 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public AuthorFull ToModel()
     {
-        var userId = ActualChat.UserId.Parse(UserId!);
+        var userId = !UserId.IsNullOrEmpty() ? ActualChat.UserId.Parse(UserId) : null;
         var authorId = AuthorId.Parse(Id);
-        var result = new AuthorFull(userId, authorId, Version) {
+        var result = new AuthorFull(userId!, authorId, Version) {
             IsAnonymous = IsAnonymous,
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
@@ -61,7 +61,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ChatId = id.ChatId.Value;
         LocalId = id.LocalId;
         IsAnonymous = model.IsAnonymous;
-        UserId = model.UserId!.Value;
+        UserId = model.UserId.Value;
         AvatarId = model.AvatarId.NullIfEmpty();
         HasLeft = model.HasLeft;
         IsPlaceAuthor = model.ChatId is PlaceChatId { IsRoot: true };
