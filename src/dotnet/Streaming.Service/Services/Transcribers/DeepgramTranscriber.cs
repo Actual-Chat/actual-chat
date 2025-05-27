@@ -70,28 +70,8 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
-            var nova3Languages = new HashSet<Language> {
-                Languages.English,
-                Languages.EnglishIN,
-                Languages.EnglishUK,
-                Languages.German,
-                Languages.French,
-                Languages.FrenchCA,
-                Languages.Spanish,
-                Languages.SpanishMX,
-                Languages.SpanishUS,
-                Languages.Portuguese,
-                Languages.PortugueseBR,
-                Languages.Japanese,
-                Languages.Hindi,
-                Languages.Dutch,
-                Languages.Italian,
-                Languages.Russian,
-            };
-            var model = nova3Languages.Contains(options.Language) ? "nova-3" : "nova-2";
-            var language = OrdinalEquals(model, "nova-3")
-                ? "multi"
-                : options.Language.ToDeepgram();
+            var language = options.Language.ToDeepgram();
+            var model = options.Language.IsAnyEnglish ? "nova-3" : "nova-2";
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,

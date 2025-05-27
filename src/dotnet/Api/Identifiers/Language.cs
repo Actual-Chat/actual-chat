@@ -34,7 +34,7 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     {
         ShortTitle = shortTitle;
         Title = title;
-        IsAnyEnglish = shortTitle.OrdinalStartsWith("en");
+        IsAnyEnglish = shortTitle.OrdinalIgnoreCaseStartsWith("en");
     }
 
     // Equality
