@@ -1,5 +1,6 @@
 using System.Buffers;
 using ActualLab.Serialization.Internal;
+using MemoryPack;
 
 namespace ActualChat.Kvas;
 
@@ -10,6 +11,8 @@ public class KvasSerializer : ByteSerializerBase
 {
     private const byte ByteFormatMarker = 0x0;
     private static readonly byte[] ByteFormatHeader = { ByteFormatMarker };
+
+    private ILogger Log { get; } = StaticLog.For<KvasSerializer>();
 
     public static KvasSerializer Default { get; set; } = new();
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "True value always can be serialized.")]
@@ -26,11 +29,18 @@ public class KvasSerializer : ByteSerializerBase
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type,
         out int readLength)
     {
-        var isText = data.Length == 0 || data.Span[0] != ByteFormatMarker;
-        var result = isText
-            ? TextSerializer.Read(data, type, out readLength)
-            : ByteSerializer.Read(data[1..], type, out readLength);
-        return result;
+        try {
+            var isText = data.Length == 0 || data.Span[0] != ByteFormatMarker;
+            var result = isText
+                ? TextSerializer.Read(data, type, out readLength)
+                : ByteSerializer.Read(data[1..], type, out readLength);
+            return result;
+        }
+        catch (MemoryPackSerializationException e) {
+            Log.LogWarning(e, "Failed to deserialize data of type {Type} with length {Length}", type, data.Length);
+            readLength = 0;
+            return null;
+        }
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Type is already marked with DynamicallyAccessedMembers.")]
