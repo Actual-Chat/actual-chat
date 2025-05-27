@@ -1284,7 +1284,8 @@ export class VirtualList {
                         // adjust item ranges
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
-                            scrollTopOffset = -resetDelta;
+                            console.warn(`restoreScrollPosition: resetItemRange`, resetDelta, offset, this.itemRange);
+                            scrollTopOffset = resetDelta;
                             offset = this.itemRange.end;
                         }
                     }
@@ -1361,7 +1362,7 @@ export class VirtualList {
                         // adjust item ranges
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
-                            scrollTopOffset = -resetDelta;
+                            scrollTopOffset = resetDelta;
                             offset = this.itemRange.start;
                         }
                     }
@@ -1559,7 +1560,6 @@ export class VirtualList {
         const needsRangeReset = isCornerstoneRangeMissing || removedLastItem || removedFirstItem;
         if (needsRangeReset) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
-            console.warn(`ensureItemRangeCalculated: cornerstone item not found`, cornerstoneItemIndex);
             this.resetItemRange(true);
         }
         else {
@@ -1624,7 +1624,6 @@ export class VirtualList {
     }
 
     private resetItemRange(canUseQueryRange: boolean = false): number | null {
-        console.warn(`resetItemRange: canUseQueryRange=${canUseQueryRange}`);
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
@@ -1672,8 +1671,8 @@ export class VirtualList {
             for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
                 const item = orderedItems[i];
                 const oldRange = item.range;
-                if (oldRange && rangeDelta === null)
-                    rangeDelta = oldRange.start - item.size - prevItem.range.start;
+                if (oldRange)
+                    rangeDelta = Math.min(prevItem.range.start - oldRange.end, rangeDelta ?? Infinity);
                 item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
                 prevItem = item;
             }
@@ -1733,8 +1732,8 @@ export class VirtualList {
             for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
                 const item = orderedItems[i];
                 const oldRange = item.range;
-                if (oldRange && rangeDelta === null)
-                    rangeDelta = item.size + prevItem.range.end - oldRange.start;
+                if (oldRange)
+                    rangeDelta = Math.max(prevItem.range.end - oldRange.start, rangeDelta ?? -Infinity);
                 item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
                 prevItem = item;
             }
