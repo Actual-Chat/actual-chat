@@ -6,8 +6,8 @@ public static class UserExt
 {
     public static string? GetEmail(this User user)
         => user.GetEmailIdentity().SchemaBoundId.NullIfEmpty();
-    public static Phone GetPhone(this User user)
-        => Phone.Parse(user.GetPhoneIdentity().SchemaBoundId);
+    public static Phone? GetPhone(this User user)
+        => Phone.TryParse(user.GetPhoneIdentity().SchemaBoundId);
 
     public static string? GetPhoneHash(this User user)
         => user.GetHashedPhoneIdentity().SchemaBoundId.NullIfEmpty();
