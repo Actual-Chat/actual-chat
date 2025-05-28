@@ -15,11 +15,12 @@ public static class KvasExt
     public static Task SetUserChatSettings(this IKvas<User> kvas, ChatId chatId, UserChatSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserChatSettings.GetKvasKey(chatId), value, cancellationToken);
 
-    public static async Task<UserChatSettings> UpdateUserChatSettings(this IKvas<User> kvas, ChatId chatId, Func<UserChatSettings, UserChatSettings> updater, CancellationToken cancellationToken)
+    public static async Task<UserChatSettings> UpdateUserChatSettings(
+        this IKvas<User> kvas, ChatId chatId, Func<UserChatSettings, UserChatSettings> updater, CancellationToken cancellationToken)
     {
-        var userChatSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        await kvas.Set(UserChatSettings.GetKvasKey(chatId), updater(userChatSettings), cancellationToken).ConfigureAwait(false);
-        return userChatSettings;
+        var settings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        await kvas.Set(UserChatSettings.GetKvasKey(chatId), updater.Invoke(settings), cancellationToken).ConfigureAwait(false);
+        return settings;
     }
 
     // UserAvatarSettings
@@ -55,16 +56,11 @@ public static class KvasExt
     public static Task SetUserListeningSettings(this IKvas<User> kvas, UserListeningSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserListeningSettings.KvasKey, value, cancellationToken);
 
-    public static async Task AddAlwaysListenedChat(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
+    public static async Task UpdateUserListeningSettings(
+        this IKvas<User> kvas, Func<UserListeningSettings, UserListeningSettings> updater, CancellationToken cancellationToken)
     {
         var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
-        await kvas.Set(UserListeningSettings.KvasKey, settings.WithAlwaysListeningChat(chatId), cancellationToken).ConfigureAwait(false);
-    }
-
-    public static async Task RemoveAlwaysListenedChat(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
-        await kvas.Set(UserListeningSettings.KvasKey, settings.WithoutAlwaysListeningChat(chatId), cancellationToken).ConfigureAwait(false);
+        await kvas.Set(UserListeningSettings.KvasKey, updater.Invoke(settings), cancellationToken).ConfigureAwait(false);
     }
 
     // TranscriptionEngineSettings
