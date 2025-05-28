@@ -19,7 +19,8 @@ public static class KvasExt
         this IKvas<User> kvas, ChatId chatId, Func<UserChatSettings, UserChatSettings> updater, CancellationToken cancellationToken)
     {
         var settings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        await kvas.Set(UserChatSettings.GetKvasKey(chatId), updater.Invoke(settings), cancellationToken).ConfigureAwait(false);
+        settings = updater.Invoke(settings);
+        await kvas.SetUserChatSettings(chatId, settings, cancellationToken).ConfigureAwait(false);
         return settings;
     }
 
@@ -56,11 +57,13 @@ public static class KvasExt
     public static Task SetUserListeningSettings(this IKvas<User> kvas, UserListeningSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserListeningSettings.KvasKey, value, cancellationToken);
 
-    public static async Task UpdateUserListeningSettings(
+    public static async Task<UserListeningSettings> UpdateUserListeningSettings(
         this IKvas<User> kvas, Func<UserListeningSettings, UserListeningSettings> updater, CancellationToken cancellationToken)
     {
         var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
-        await kvas.Set(UserListeningSettings.KvasKey, updater.Invoke(settings), cancellationToken).ConfigureAwait(false);
+        settings = updater.Invoke(settings);
+        await kvas.SetUserListeningSettings(settings, cancellationToken).ConfigureAwait(false);
+        return settings;
     }
 
     // TranscriptionEngineSettings
