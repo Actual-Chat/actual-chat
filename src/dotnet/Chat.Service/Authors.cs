@@ -336,7 +336,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         chat.Rules.Require(ChatPermissions.EditMembers);
 
         var author = await Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
-        if (author == null || !author.HasLeft)
+        if (author is not { HasLeft: true })
             return;
 
         await RestoreAuthorMembership(author, cancellationToken).ConfigureAwait(false);
@@ -351,16 +351,13 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat.IsChatRoulette())
             throw StandardError.Constraint("You can't set avatar in chat roulette.");
 
-        var targetChat = chatId is PlaceChatId placeChatId
-            ? placeChatId.RootChatId
-            : chatId;
-
-        var author = await GetOwn(session, targetChat, cancellationToken).ConfigureAwait(false);
+        var rootChatId = chatId.GetRootChatId();
+        var author = await GetOwn(session, rootChatId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.AvatarId == command.AvatarId)
             return;
 
         var authorDiff = new AuthorDiff() {
-            AvatarId = avatarId
+            AvatarId = avatarId,
         };
         if (author.IsAnonymous) {
             var avatar = await Avatars.GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
@@ -370,7 +367,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         }
 
         var upsertCommand = new AuthorsBackend_Upsert(
-            targetChat, author.Id, null, author.Version,
+            rootChatId, author.Id, null, author.Version,
             authorDiff);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }

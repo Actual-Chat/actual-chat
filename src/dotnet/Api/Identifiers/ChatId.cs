@@ -32,10 +32,11 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     public bool IsSystem => Constants.Chat.SystemChatIds.Contains(this);
     [IgnoreDataMember]
     public virtual string ShardKey => Value;
-
+    [IgnoreDataMember]
     public virtual long ThreadId => 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember]
     public bool IsThread => ThreadId > 0;
+
     public ChatId GetThreadParentOrSelf() => Kind switch {
         ChatKind.Group => ((GroupChatId)this).GetThreadParentOrSelf(),
         ChatKind.Place => ((PlaceChatId)this).GetThreadParentOrSelf(),
@@ -55,6 +56,11 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
             result = result.GetThreadParentOrSelf();
         return result;
     }
+
+    public ChatId GetRootChatId()
+        => this is PlaceChatId placeChatId
+            ? placeChatId.RootChatId
+            : this;
 
     // Factories and constructors
 
