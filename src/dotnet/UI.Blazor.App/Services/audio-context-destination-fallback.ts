@@ -12,7 +12,7 @@ export class AudioContextDestinationFallback implements Disposable {
     private aecStream: MediaStream & Disposable | null = null;
 
     // Allows to expose mediaSession metadata at the lock screen
-    public static get isRequired() { return false/*DeviceInfo.isIos*/; }
+    public static get isRequired() { return DeviceInfo.isIos; }
 
     public get destination() { return this.destinationNode; }
 

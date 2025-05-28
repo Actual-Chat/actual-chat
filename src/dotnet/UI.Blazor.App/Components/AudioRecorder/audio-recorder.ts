@@ -110,6 +110,10 @@ export class AudioRecorder {
                         return true;
                     }
                     else {
+                        // Better integration with native mobile audio pipeline - we are resetting to defaults
+                        if ('audioSession' in navigator) {
+                            navigator.audioSession['type'] = 'auto';
+                        }
                         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                         await OpusMediaRecorder.stopStreamTracks(stream);
                     }

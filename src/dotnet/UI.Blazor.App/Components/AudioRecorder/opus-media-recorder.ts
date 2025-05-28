@@ -113,6 +113,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         if ('audioSession' in navigator) {
             navigator.audioSession['type'] = 'playback';
             navigator.audioSession['type'] = 'auto'; // Hack for iOS Safari
+            navigator.audioSession['type'] = 'playback';
         }
 
         infoLog?.log('<- stopStreamTracks()');
@@ -141,7 +142,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     video: false,
                 };
             }
-
+            // Better integration with native mobile audio pipeline - we are resetting to defaults
+            if ('audioSession' in navigator) {
+                navigator.audioSession['type'] = 'auto';
+            }
 
             stream = await navigator.mediaDevices.getUserMedia(getConstraints());
             // Better integration with native mobile audio pipeline - SHOULD BE AFTER ACQUIRING THE STREAM!

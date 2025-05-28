@@ -7,6 +7,7 @@ using CoreSpotlight;
 using Firebase.CloudMessaging;
 using Foundation;
 using UIKit;
+using UserNotifications;
 using DeviceType = ActualChat.Notification.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
@@ -26,8 +27,8 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
     public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
     {
-        var settings = UIUserNotificationSettings.GetSettingsForTypes(UIUserNotificationType.Badge, null);
-        UIApplication.SharedApplication.RegisterUserNotificationSettings(settings);
+        RegisterBadgeNotifications();
+        IosAudioSessionHelper.ActivateRecordingAndBackgroundAudio();
         return base.FinishedLaunching(application, launchOptions);
     }
 
@@ -67,6 +68,20 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     }
 
     // Private methods
+
+    private static void RegisterBadgeNotifications()
+        => UNUserNotificationCenter.Current.RequestAuthorization(
+            UNAuthorizationOptions.Badge,
+            (approved, error) => {
+                if (approved)
+                    return;
+
+                // Handle the case where the user did not grant permission
+                if (error != null!)
+                    Log.LogError("Error requesting notification authorization: {Error}", error);
+                Log.LogWarning("Badge notification authorization denied");
+
+            });
 
     private static void CheckForAppLink(NSUserActivity userActivity)
     {

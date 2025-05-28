@@ -125,6 +125,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             if ('audioSession' in navigator) {
                 navigator.audioSession['type'] = 'playback';
                 navigator.audioSession['type'] = 'auto'; // Hack for iOS Safari
+                navigator.audioSession['type'] = 'playback';
             }
             resetMediaSessionMetadata();
         }
@@ -320,7 +321,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
     }
 
-    protected isRunning(context: AudioContext): boolean {
+    protected isRunning(context: OverridenAudioContext): boolean {
         // This method addresses some weird issues in how AudioContext behaves in different browsers:
         // - Chromium 110 AudioContext can be in 'running' even after
         //   calling constructor, and even without user interaction.
@@ -332,7 +333,8 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         const silenceBuffer = context['silenceBuffer'] as AudioBuffer ?? this.createSilenceBuffer(context);
         const source = context.createBufferSource();
         source.buffer = silenceBuffer;
-        source.connect(context.destination);
+        const destinationOverride = context.destination_ ?? context.destination;
+        source.connect(destinationOverride);
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         source.onended = () => source.disconnect();
