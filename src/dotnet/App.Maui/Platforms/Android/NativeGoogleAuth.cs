@@ -43,7 +43,7 @@ public sealed class NativeGoogleAuth
     public bool IsAvailable()
     {
         // TODO(DF): So far native sign in does not work when host is overriden. We need to find solution how to workaround this.
-        if (MauiSettings.HostIsOverriden)
+        if (MauiSettings.IsHostOverriden)
             return false;
 
         var statusCode = GoogleApiAvailability.Instance.IsGooglePlayServicesAvailable(Platform.AppContext);
