@@ -21,7 +21,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long LocalId { get; set; }
 
     public bool IsAnonymous { get; set; }
-    public string? UserId { get; set; } // TODO(AY): make non-nullable
+    public string UserId { get; set; } = "";
     public string? AvatarId { get; set; }
     public bool HasLeft { get; set; }
     public bool IsPlaceAuthor { get; set; }
@@ -37,7 +37,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public AuthorFull ToModel()
     {
-        var userId = !UserId.IsNullOrEmpty() ? ActualChat.UserId.Parse(UserId) : null;
+        var userId = ActualChat.UserId.Parse(UserId);
         var authorId = AuthorId.Parse(Id);
         var result = new AuthorFull(userId!, authorId, Version) {
             IsAnonymous = IsAnonymous,
