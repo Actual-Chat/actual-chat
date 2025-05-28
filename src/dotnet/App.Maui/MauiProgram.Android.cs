@@ -50,6 +50,16 @@ public static partial class MauiProgram
             android.OnCreate(OnCreate);
             android.OnPostCreate(OnPostCreate);
             android.OnResume(_ => MauiWebView.LogResume());
+            android.OnStart(_ => {
+                Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameForeground");
+                SetBackgroundState(false);
+                if (MainPage.Current is { Content: null } mainPage)
+                    MainThread.BeginInvokeOnMainThread(() => mainPage.RecreateWebView());
+            });
+            android.OnStop(_ => {
+                Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameBackground");
+                SetBackgroundState(true);
+            });
             #if false
             // NOTE(DF): MauiLivenessProbe is switched off for now.
             android.OnPause(_ => MauiLivenessProbe.CancelCheck());
@@ -106,4 +116,7 @@ public static partial class MauiProgram
         FirebaseAnalyticsImplementation.Initialize(context);
         return false;
     }
+
+    private static void SetBackgroundState(bool isBackground)
+        => MauiBackgroundStateTracker.SetBackgroundState(isBackground);
 }
