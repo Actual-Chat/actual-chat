@@ -20,8 +20,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
     public ChatKind Kind { get; set; }
-    [Obsolete("2023.03: Use MediaId instead.")]
-    public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
     public string AliasId { get; set; } = "";
 

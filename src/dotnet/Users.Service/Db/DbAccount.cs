@@ -58,10 +58,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         model.RequireSomeVersion();
 
         var name = model.Name;
- #pragma warning disable CS0618 // Type or member is obsolete
-        if (!model.LastName.IsNullOrEmpty())
-            name = $"{name} {model.LastName}";
-#pragma warning restore CS0618 // Type or member is obsolete
         Id = id.Value;
         Version = model.Version;
         Status = model.Status;

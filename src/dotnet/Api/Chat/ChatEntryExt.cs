@@ -10,9 +10,6 @@ public static class ChatEntryExt
     public static ChatEntry WithPopulatedValues(this ChatEntry entry, ChatEntry src)
         => entry with {
             Attachments = src.Attachments,
- #pragma warning disable CS0618 // Type or member is obsolete
-            LinkPreview = src.LinkPreview,
- #pragma warning restore CS0618 // Type or member is obsolete
             LinkPreviews = src.LinkPreviews,
         };
 

@@ -110,8 +110,6 @@ public interface IChatsBackend : IComputeService, IBackendService
 
     [CommandHandler]
     Task<Chat> OnChange(ChatsBackend_Change command, CancellationToken cancellationToken);
-    [CommandHandler, Obsolete("2024.01: Replaced with OnChangeEntry.")]
-    Task<ChatEntry> OnUpsertEntry(ChatsBackend_UpsertEntry command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -160,18 +158,6 @@ public sealed partial record ChatsBackend_Change(
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId? ShardKey => ChatId;
-}
-
-[Obsolete("2024.01: Replaced with ChatsBackend_ChangeEntry.")]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatsBackend_UpsertEntry(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntry Entry,
-    [property: DataMember, MemoryPackOrder(1)] bool HasAttachments = false
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatId>
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Entry.Id.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

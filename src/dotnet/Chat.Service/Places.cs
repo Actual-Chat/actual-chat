@@ -168,13 +168,6 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(promoteCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    [Obsolete($"2024.06: Use '{nameof(Places_Change)}' with Change.Remove instead.")]
-    public virtual async Task OnDelete(Places_Delete command, CancellationToken cancellationToken)
-    {
-        var placeChangeCommand = new Places_Change(command.Session, command.PlaceId, null, Change.Remove<PlaceDiff>());
-        await Commander.Call(placeChangeCommand, true, cancellationToken).ConfigureAwait(false);
-    }
-
     public virtual async Task OnLeave(Places_Leave command, CancellationToken cancellationToken)
     {
         var (session, placeId) = command;

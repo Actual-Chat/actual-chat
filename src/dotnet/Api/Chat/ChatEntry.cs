@@ -94,8 +94,6 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 26), MemoryPackIgnore] public Moment? ForwardedChatEntryBeginsAt { get; init; }
     [DataMember(Order = 27), MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember(Order = 28), MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
-    [Obsolete("2024.11 Replaced with LinkPreviewIds")]
-    [DataMember(Order = 29), MemoryPackOrder(29)] public Symbol LinkPreviewId { get; init; } = "";
     [DataMember(Order = 31), MemoryPackOrder(31)] public Symbol[] LinkPreviewIds { get; init; } = [];
     [DataMember(Order = 30), MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
     [DataMember(Order = 33), MemoryPackOrder(33)] public bool IsThreadStartEntry { get; init; }
@@ -103,8 +101,6 @@ public sealed partial record ChatEntry(
 
     // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public TextEntryAttachment[] Attachments { get; init; } = [];
-    [Obsolete("2024.11 Replaced with LinkPreviews")]
-    [DataMember(Order = 51), MemoryPackOrder(51)] public LinkPreview? LinkPreview { get; init; }
     [DataMember(Order = 52), MemoryPackOrder(52)] public LinkPreview[] LinkPreviews { get; init; } = [];
 
     // Computed
@@ -162,8 +158,6 @@ public sealed partial record ChatEntryDiff() : RecordDiff
     [DataMember, MemoryPackOrder(26)] public Option<Moment?> ForwardedChatEntryBeginsAt { get; init; }
     [DataMember, MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember, MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
-    [Obsolete("2024.11 Replaced with LinkPreviewIds")]
-    [DataMember, MemoryPackOrder(29)] public Symbol? LinkPreviewId { get; init; }
     [DataMember, MemoryPackOrder(30)] public LinkPreviewMode? LinkPreviewMode { get; init; }
     [DataMember, MemoryPackOrder(31)] public bool IsThreadStartEntry { get; init; }
     [DataMember, MemoryPackOrder(32)] public bool IsThreadEntry { get; init; }

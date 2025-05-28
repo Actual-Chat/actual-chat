@@ -48,12 +48,6 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [ComputeMethod]
-    public virtual Task<ContactId[]> ListIds(
-        Session session,
-        CancellationToken cancellationToken)
-        => ListIds(session, null, cancellationToken);
-
-    // [ComputeMethod]
     public virtual async Task<PlaceId[]> ListPlaceIds(
         Session session,
         CancellationToken cancellationToken)
@@ -121,11 +115,6 @@ public class Contacts(IServiceProvider services) : IContacts
         var touchCommand = new ContactsBackend_Touch(id);
         await Commander.Call(touchCommand, true, cancellationToken).ConfigureAwait(false);
     }
-
-    // [CommandHandler]
-    [Obsolete("2023.10: Not available for clients anymore.")]
-    public virtual Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken)
-        => Task.CompletedTask;
 
     // Protected methods
 

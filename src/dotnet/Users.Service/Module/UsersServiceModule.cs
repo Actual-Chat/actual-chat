@@ -162,10 +162,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Mobile authentication
         rpcHost.AddApi<IMobileSessions, MobileSessions>();
-#pragma warning disable CS0618
-        if (rpcHost.IsApiHost)
-            rpc.Service<IMobileAuth>().HasServer<IMobileSessions>(); // Alias of IMobileSessions
-#pragma warning restore CS0618
 
         // reCAPTCHA
         rpcHost.AddApiOrLocal<ICaptcha, Captcha>();

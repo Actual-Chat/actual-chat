@@ -1189,34 +1189,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatEntry> OnUpsertEntry(
- #pragma warning disable CS0618 // Type or member is obsolete - keep for backward compatibility for a while
-        ChatsBackend_UpsertEntry command,
- #pragma warning restore CS0618 // Type or member is obsolete
-        CancellationToken cancellationToken)
-    {
-        var entry = command.Entry;
-        var changeKind = entry.LocalId == 0
-            ? ChangeKind.Create
-            : entry.IsRemoved ? ChangeKind.Remove : ChangeKind.Update;
-
-        if (Invalidation.IsActive)
-            return null!; // This handler makes changes only via nested commands
-
-        if (HostInfo.IsDevelopmentInstance && entry.Kind == ChatEntryKind.Text && OrdinalEquals(entry.Content, "<error>"))
-            throw StandardError.Internal("Just a test error.");
-
-        var change = changeKind switch {
-            ChangeKind.Create => Change.Create(new ChatEntryDiff(entry)),
-            ChangeKind.Update => Change.Update(new ChatEntryDiff(entry)),
-            ChangeKind.Remove => Change.Remove<ChatEntryDiff>(),
-            _ => throw StandardError.Constraint<ChangeKind>($"Invalid ChangeKind: {changeKind}."),
-        };
-        var changeEntryCommand = new ChatsBackend_ChangeEntry(entry.Id, entry.Version, change);
-        return await Commander.Call(changeEntryCommand, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
     public virtual async Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken)
     {
         var change = command.Change;

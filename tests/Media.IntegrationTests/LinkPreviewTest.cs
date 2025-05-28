@@ -187,13 +187,6 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     private async Task<LinkPreview[]> GetEntryLinkPreviews(ChatEntryId entryId, params IReadOnlyList<Symbol> expectedIds)
         => await ComputedTest.When(async ct => {
             var chatEntry = await Chats.GetEntry(Session, entryId, ct).Require();
- #pragma warning disable CS0618 // Type or member is obsolete
-            chatEntry.LinkPreviewId.Should().Be(expectedIds.FirstOrDefault());
-            if (expectedIds.Count > 0)
-                chatEntry.LinkPreview.Should().NotBeNull();
-            else
-                chatEntry.LinkPreview.Should().BeNull();
- #pragma warning restore CS0618 // Type or member is obsolete
             chatEntry.LinkPreviewIds.Should().BeEquivalentTo(expectedIds);
             chatEntry.LinkPreviews.Select(x => x.Id).Should().BeEquivalentTo(expectedIds);
             return chatEntry.LinkPreviews;

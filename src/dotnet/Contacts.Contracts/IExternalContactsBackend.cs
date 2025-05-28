@@ -5,8 +5,6 @@ namespace ActualChat.Contacts;
 
 public interface IExternalContactsBackend : IComputeService, IBackendService
 {
-    [ComputeMethod, Obsolete("2024.04: Replaced with List")]
-    Task<ExternalContactFull[]> ListFull(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ExternalContactFull?> Get(ExternalContactId externalContactId, CancellationToken cancellationToken);
     [ComputeMethod]

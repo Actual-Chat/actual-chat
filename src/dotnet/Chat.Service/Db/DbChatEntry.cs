@@ -109,14 +109,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedChatEntryId = ChatEntryId.ParseNullable(ForwardedChatEntryId),
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt.ToMoment(),
             Attachments = attachmentsArray,
- #pragma warning disable CS0618 // Type or member is obsolete
-            LinkPreviewId = linkPreviewIds.FirstOrDefault(),
- #pragma warning restore CS0618 // Type or member is obsolete
             LinkPreviewIds = linkPreviewIds,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
- #pragma warning disable CS0618 // Type or member is obsolete
-            LinkPreview = linkPreviews.FirstOrDefault(),
- #pragma warning restore CS0618 // Type or member is obsolete
             LinkPreviews = linkPreviews,
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null

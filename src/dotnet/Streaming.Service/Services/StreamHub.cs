@@ -24,38 +24,15 @@ public class StreamHub(IServiceProvider services) : Hub
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
+    // Currently unused
     public static Task<string> Ping()
         => PongTask;
 
-    public async IAsyncEnumerable<byte[]> GetAudio(
-        string streamId,
-        TimeSpan skipTo,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var stream = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
-        if (stream == null)
-            yield break;
-
-        await foreach (var chunk in stream.ConfigureAwait(false))
-            yield return chunk;
-    }
-
-    public async IAsyncEnumerable<TranscriptDiff> GetTranscript(
-        string streamId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var stream = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
-        if (stream == null)
-            yield break;
-
-        await foreach (var diff in stream.ConfigureAwait(false))
-            yield return diff;
-    }
-
+    // The only method that is currently used by our JS client
     public Task ProcessAudioChunks(
         string sessionToken,
-        string chatId,
-        string repliedChatEntryId,
+        string? chatId,
+        string? repliedChatEntryId,
         double clientStartOffset,
         int preSkip,
         IAsyncEnumerable<byte[][]> audioStream)
@@ -68,7 +45,9 @@ public class StreamHub(IServiceProvider services) : Hub
             preSkip,
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
-    public async Task ProcessAudio(
+    // Private methods
+
+    private async Task ProcessAudio(
         string sessionToken,
         string? chatId,
         string? repliedEntryId,
@@ -110,24 +89,6 @@ public class StreamHub(IServiceProvider services) : Hub
             .ProcessAudio(audioRecord, preSkip, frameStream, CancellationToken.None)
             .SilentAwait(false);
     }
-
-    // Backward compatibility
-
-    [Obsolete("2024.02: Remains for backward compability.")]
-    public IAsyncEnumerable<byte[]> GetAudioStream(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
-        => GetAudio(streamId, skipTo, cancellationToken);
-
-    public IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(string streamId, CancellationToken cancellationToken)
-        => GetTranscript(streamId, cancellationToken);
-
-    [Obsolete("2024.02: Remains for backward compability.")]
-    public Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
-    {
-        AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
-        return Task.CompletedTask;
-    }
-
-    // Private methods
 
     private CancellationTokenSource NewStopTokenSource(HttpContext httpContext)
     {

@@ -19,28 +19,6 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     [field: AllowNull, MaybeNull]
     private ContactLinker ContactLinker => field ??= Services.GetRequiredService<ContactLinker>();
 
-    // [ComputeMethod]
-    [Obsolete("2024.04: Replaced with List - contact info list")]
-    public virtual async Task<ExternalContactFull[]> ListFull(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
-    {
-        ownerId.Require();
-        deviceId.Require();
-
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var idPrefix = ExternalContactId.GetFormatPrefix(UserDeviceId.New(ownerId, deviceId));
-        var dbExternalContacts = await dbContext.ExternalContacts
-            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .Include(x => x.ExternalContactLinks)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        return dbExternalContacts.OrderBy(x => x.DisplayName, StringComparer.Ordinal)
-            .Select(x => x.ToModel())
-            .ToArray();
-    }
-
     [ComputeMethod]
     public virtual async Task<ExternalContactFull?> Get(ExternalContactId externalContactId, CancellationToken cancellationToken)
     {
@@ -167,12 +145,8 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         if (Invalidation.IsActive) {
             var invUserDeviceIds = command.Changes.Select(x => x.Id.UserDeviceId).Distinct();
-            foreach (var invId in invUserDeviceIds) {
- #pragma warning disable CS0618 // Type or member is obsolete
-                _ = ListFull(invId.OwnerId, invId.DeviceId, default);
- #pragma warning restore CS0618 // Type or member is obsolete
+            foreach (var invId in invUserDeviceIds)
                 _ = List(invId, default);
-            }
             var invIds = command.Changes.Select(x => x.Id);
             foreach (var invId in invIds)
                 _ = Get(invId, default);

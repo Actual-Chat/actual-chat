@@ -331,13 +331,6 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         var attachments = command.EntryAttachments;
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (attachments.Length == 0 && command.Attachments.Length != 0)
-            attachments = command.Attachments.Select(x => new TextEntryAttachment {
-                    MediaId = x,
-                })
-                .ToArray();
-#pragma warning restore CS0618 // Type or member is obsolete
         if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 

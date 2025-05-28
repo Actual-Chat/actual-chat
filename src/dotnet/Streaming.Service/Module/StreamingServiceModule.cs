@@ -15,11 +15,11 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 {
     public void ConfigureApp(WebApplication app)
     {
-        if (HostInfo.HasRole(HostRole.Api)) {
-            // SignalR hub endpoints
-            app.MapHub<StreamHub>("/api/hub/streams");
-            app.MapHub<StreamHub>("/api/hub/audio"); // For backward compatibility!
-        }
+        if (!HostInfo.HasRole(HostRole.Api))
+            return;
+
+        // SignalR hub endpoints
+        app.MapHub<StreamHub>("/api/hub/streams");
     }
 
     protected override void InjectServices(IServiceCollection services)
