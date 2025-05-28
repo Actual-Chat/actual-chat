@@ -21,12 +21,13 @@
     protected override bool ShouldRender()
         => _rendered is null ||
            !ReferenceEquals(_rendered, State.Value)
-            && (_rendered.Entry.ContentHash != State.Value.Entry.ContentHash
-                || _rendered.Markup != State.Value.Markup);
+           && (_rendered.Entry.ContentHash != State.Value.Entry.ContentHash
+               || _rendered.Markup != State.Value.Markup
+               || _rendered.IsTranslation != State.Value.IsTranslation);
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.
-        var initialData = new Model(Markup, Message.Entry);
+        var initialData = new Model(Markup, Message.Entry, false);
         return new() {
             InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
@@ -37,28 +38,29 @@
         var message = Message;
         var renderedEntry = _rendered?.Entry ?? message.Entry;
         var markup = _rendered?.Markup ?? Markup;
+        var isRenderedTranslated = _rendered?.IsTranslation ?? false;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
-            return _rendered ?? new Model(markup, message.Entry);
+            return _rendered ?? new Model(markup, message.Entry, isRenderedTranslated);
         }
 
-        if (!renderedEntry.VersionEquals(entry))
+        if (!renderedEntry.VersionEquals(entry) || isRenderedTranslated)
             markup = MarkupParser.Parse(entry.Content);
 
         var mustTranslate = await TranslationUI.MustTranslate(entry, cancellationToken).ConfigureAwait(false);
         if (!mustTranslate)
-            return new(markup, entry);
+            return new(markup, entry, false);
 
         var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
         if (translation is null)
-            return new(markup, entry);
+            return new(markup, entry, false);
 
         var translatedMarkup = entry.HasMediaEntry ? new PlayableTextMarkup(translation.Content, translation.TimeMap) : MarkupParser.Parse(translation.Content);
-        return new (translatedMarkup, entry);
+        return new (translatedMarkup, entry, true);
     }
 
     // Nested types
 
-    public sealed record Model(Markup Markup, ChatEntry Entry);
+    public sealed record Model(Markup Markup, ChatEntry Entry, bool IsTranslation);
 }
