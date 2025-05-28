@@ -1,19 +1,19 @@
 .client-upgrade-cover {
     @apply flex-y items-center justify-center;
     @apply h-full;
-    @apply px-4 md:px-8;
+    @apply px-4 md:px-16;
     background: radial-gradient(71.69% 86.11% at 50% 111.44%, #FF3880 0%, #0036A3 100%);
 }
 .client-upgrade-cover > .c-header {
     @apply flex-none flex-x items-center justify-start gap-x-2;
-    @apply h-14 w-full;
+    @apply h-14 md:h-16 w-full;
 }
 .client-upgrade-cover > .c-header .c-icon {
     @apply w-10 h-10;
 }
 .client-upgrade-cover > .c-header .c-logo {
-    @apply h-6;
-    @apply -mt-1;
+    @apply h-6 max-w-32 md:max-w-none;
+    @apply -mt-0.5 md:-mt-2;
 }
 .client-upgrade-cover > .c-content {
     @apply flex-1 flex-y items-center justify-center gap-y-4;
