@@ -1,0 +1,49 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<bool>
+@{
+    var upgradeRequired = State.Value;
+}
+@if (!upgradeRequired) {
+    @ChildContent
+    return;
+}
+<div class="client-upgrade-cover">
+    <div class="c-header">
+        <div class="c-icon">
+            <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="">
+        </div>
+        <div class="c-logo">
+            <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="">
+        </div>
+    </div>
+    <div class="c-content">
+        <upgrade-app-cat-svg/>
+        <div class="c-title">
+            Please update the app
+        </div>
+        <div class="c-text">
+            <p>
+                To get back to all your conversations,
+            </p>
+            <p>
+                install the latest version
+            </p>
+        </div>
+        <div class="c-button">
+            <Button Class="btn-primary btn-w-full">
+                Update
+            </Button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private UIHub Hub { get; set; } = null!;
+    private UpgradeUI UpgradeUI => Hub.UpgradeUI;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public  int RenderIndex { get; set; }
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
+        => await UpgradeUI.UpgradeRequiredState.Use(cancellationToken).ConfigureAwait(false);
+}
