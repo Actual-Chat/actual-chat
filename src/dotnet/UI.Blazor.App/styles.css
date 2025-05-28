@@ -22,6 +22,7 @@
 @import './Components/ChatView/Items/Reactions/reaction-badge.css';
 @import './Components/ChatView/Items/Reactions/message-reactions.css';
 @import './Components/ChatView/chat-view.css';
+@import './Components/ClientUpgradeCover/client-upgrade-cover.css';
 @import './Components/ChatView/Navigation/navigate-to-unread-or-end.css';
 @import './Components/ChatView/Navigation/chat-view-search-results-navigator.css';
 @import './Components/ChatMessageEditor/chat-message-editor.css';
