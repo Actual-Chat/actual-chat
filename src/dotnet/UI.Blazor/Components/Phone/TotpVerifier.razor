@@ -2,11 +2,14 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
+@{
+    var address = Purpose is TotpPurpose.VerifyEmail ? Email : Phone!.ToReadable();
+}
 
 <UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
-        Enter the code we've sent to <span class="whitespace-nowrap">@(Phone.ToReadable())</span>
+        Enter the code we've sent to <span class="whitespace-nowrap">@(address)</span>
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsVerifying="@_isVerifying"/>
     @if (_totpExpiresAt is { } totpExpiresAt) {
@@ -29,7 +32,7 @@
 
     private TotpUI TotpUI => Hub.TotpUI;
 
-    [Parameter] public Phone Phone { get; set; } = null!;
+    [Parameter] public Phone? Phone { get; set; }
     [Parameter] public string Email { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public TotpPurpose Purpose { get; set; }
@@ -62,8 +65,8 @@
         _isVerifying = true;
         StateHasChanged();
         ICommand<bool> cmd = Purpose switch {
-            TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, Phone, totp),
-            TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone, totp),
+            TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
+            TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
             TotpPurpose.VerifyEmail => new Emails_VerifyEmail(Session, totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
         };
@@ -93,7 +96,7 @@
     private async Task SendTotp() {
         var codeSent = Purpose == TotpPurpose.VerifyEmail
             ? await TotpUI.SendEmailCode(CancellationToken.None)
-            : await TotpUI.SendPhoneCode(Purpose, Phone, CancellationToken.None);
+            : await TotpUI.SendPhoneCode(Purpose, Phone!, CancellationToken.None);
         if (!codeSent)
             return;
 
