@@ -95,7 +95,7 @@
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = new(AccountUI.OwnAccount.Value),
+            InitialValue = new(AccountUI.OwnAccount.Value, ModalModel.TabId),
             Category = GetStateCategory(GetType()),
         };
 
@@ -104,10 +104,9 @@
         var showDeveloperTools = _developerTools?.IsEnabled(account) ?? false;
         var tabId = ModalModel.TabId;
         var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
-        return new ComputedModel(account) {
+        return new ComputedModel(account, tabId) {
             ShowDeveloperTools = showDeveloperTools,
             EnableChatRouletteUI = enableChatRouletteUI,
-            TabId = tabId,
         };
     }
 
@@ -116,10 +115,9 @@
 
     // Nested types
 
-    public sealed record ComputedModel(AccountFull AccountFull) {
+    public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowDeveloperTools { get; init; }
         public bool EnableChatRouletteUI { get; init; }
-        public string? TabId { get; init; }
     }
 
     public sealed record Model(string? TabId = null) {
