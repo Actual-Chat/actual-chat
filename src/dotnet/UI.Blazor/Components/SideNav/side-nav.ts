@@ -414,7 +414,7 @@ class SideNavPullGesture extends Gesture {
                     if (this.state === null)
                         return;
 
-                    const dx = (isOpen === isLeft) ? coords.x : coords.x - ScreenSize.width;
+                    const dx = isOpen ? offset.x : coords.x - (isLeft ? 0 : ScreenSize.width);
                     const pdx = dx * allowedDirectionSign; // Must be positive
                     const pullRatio = clamp(pdx / (sideNav.element.clientWidth + 0.01), 0, 1);
                     const openRatio = isOpen ? 1 - pullRatio : pullRatio;

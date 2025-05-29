@@ -29,14 +29,31 @@ body.narrow .navbar-button .btn-square {
 .navbar-button:not(.selected) .left-line {
     @apply invisible;
 }
-body.hoverable .navbar-place-buttons .navbar-button:not(.selected):hover .left-line {
+body.hoverable .navbar-place-buttons .navbar-button:not(.selected):hover .left-line,
+body.hoverable .navbar-chat-buttons .navbar-button:not(.selected):hover .left-line {
     @apply visible;
 }
-body.hoverable .navbar-place-buttons .navbar-button:not(.selected):hover .left-line > .c-content {
+body.hoverable .navbar-place-buttons .navbar-button:not(.selected):hover .left-line > .c-content,
+body.hoverable .navbar-chat-buttons .navbar-button:not(.selected):hover .left-line > .c-content {
     @apply bg-05;
 }
-body.hoverable .navbar-place-buttons .navbar-button .left-line:hover {
+body.hoverable .navbar-place-buttons .navbar-button .left-line:hover,
+body.hoverable .navbar-chat-buttons .navbar-button .left-line:hover {
     @apply cursor-move;
+}
+body.hoverable .navbar-place-buttons .navbar-button .hover-zone,
+body.hoverable .navbar-chat-buttons .navbar-button .hover-zone {
+    @apply absolute left-0;
+    @apply h-full md:w-4 lg:w-6;
+    @apply hover:cursor-move;
+}
+.touch-capable .navbar-place-buttons .navbar-button .hover-zone,
+.touch-capable .navbar-chat-buttons .navbar-button .hover-zone {
+    @apply hidden;
+}
+body.hoverable .navbar-place-buttons .navbar-button:has(.hover-zone:hover) .left-line.can-move,
+body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-line.can-move {
+    transform: scale3d(2, 1.2, 1);
 }
 
 .navbar-button .badge {
