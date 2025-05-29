@@ -55,7 +55,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        return userChatSettings.MustTranslateOwnMessages ?? false;
+        return userChatSettings.MustTranslateOwnMessages ?? true;
     }
 
     [ComputeMethod]
