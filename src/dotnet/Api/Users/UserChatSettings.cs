@@ -18,6 +18,7 @@ public sealed partial record UserChatSettings
     [DataMember, MemoryPackOrder(3)] public VoiceMode VoiceMode { get; init; }
     [DataMember, MemoryPackOrder(4)] public ListeningMode ListeningMode { get; init; }
     [DataMember, MemoryPackOrder(5)] public bool? MustTranslate { get; init; }
+    [DataMember, MemoryPackOrder(8)] public bool? MustTranslateOwnMessages { get; init; }
     [DataMember, MemoryPackOrder(6), LegacyLanguageFormatter(true)]
     public Language? TranslationTargetLanguage { get; init; }
     [DataMember, MemoryPackOrder(7)] public bool? IsTranslationSubHeaderVisible { get; set; }

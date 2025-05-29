@@ -50,6 +50,15 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     [ComputeMethod]
+    public virtual async Task<bool> MustTranslateOwnMessages(
+        ChatId chatId,
+        CancellationToken cancellationToken = default)
+    {
+        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        return userChatSettings.MustTranslateOwnMessages ?? false;
+    }
+
+    [ComputeMethod]
     public virtual async Task<Language> GetTargetLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
@@ -79,9 +88,12 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (entry is null)
             return false;
 
-        var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor.Id == entry.AuthorId)
-            return false;
+        var mustTranslateOwnMessages = await MustTranslateOwnMessages(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        if (!mustTranslateOwnMessages) {
+            var ownAuthor = await AuthorUI.GetOwn(entry.ChatId, cancellationToken).ConfigureAwait(false);
+            if (ownAuthor.Id == entry.AuthorId)
+                return false;
+        }
 
         var entryLanguage = await Translations.GetLanguage(session, entryId, cancellationToken).ConfigureAwait(false);
         if (entryLanguage == null)
@@ -151,6 +163,9 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
    public Task SetIsOn(ChatId chatId, bool? value, CancellationToken cancellationToken = default)
         => AccountSettings.UpdateUserChatSettings(chatId, x => x with { MustTranslate = value }, cancellationToken);
+
+   public Task SetMustTranslateOwnMessages(ChatId chatId, bool? value, CancellationToken cancellationToken = default)
+        => AccountSettings.UpdateUserChatSettings(chatId, x => x with { MustTranslateOwnMessages = value }, cancellationToken);
 
    public Task SetTargetLanguage(ChatId chatId, Language? language, CancellationToken cancellationToken = default)
         => AccountSettings.UpdateUserChatSettings(chatId, x => x with { TranslationTargetLanguage = language }, cancellationToken);
