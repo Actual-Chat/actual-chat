@@ -3,6 +3,7 @@
 @{
     var m = State.Value;
     _rendered = m;
+    // Log.LogWarning("Rendering: {Id}: {Markup}", Message.Id, m.Markup);
 }
 
 <MarkupView Markup="@m.Markup" />
@@ -18,12 +19,15 @@
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
 
-    protected override bool ShouldRender()
-        => _rendered is null ||
-           !ReferenceEquals(_rendered, State.Value)
-           && (_rendered.Entry.ContentHash != State.Value.Entry.ContentHash
-               || _rendered.Markup != State.Value.Markup
-               || _rendered.IsTranslation != State.Value.IsTranslation);
+    protected override bool ShouldRender() {
+        var shouldRender = _rendered is null
+            || !ReferenceEquals(_rendered, State.Value)
+            && (_rendered.Entry.ContentHash != State.Value.Entry.ContentHash
+                || _rendered.Markup != State.Value.Markup
+                || _rendered.IsTranslation != State.Value.IsTranslation);
+        // Log.LogWarning("ShouldRender: {Id}: {Value}", Message.Id, shouldRender);
+        return shouldRender;
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.

@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
-@implements IAsyncDisposable
+@implements IDisposable
 @using ActualChat.Transcription
 @using ActualChat.Streaming
 
@@ -50,10 +50,8 @@
     private string ChangedText { get; set; } = "";
     private string AnimatedText { get; set; } = "";
 
-    public ValueTask DisposeAsync() {
-        RestartCts.CancelAndDisposeSilently();
-        return default;
-    }
+    public void Dispose()
+        => RestartCts.CancelAndDisposeSilently();
 
     protected override void OnParametersSet() {
         RestartCts.CancelAndDisposeSilently();

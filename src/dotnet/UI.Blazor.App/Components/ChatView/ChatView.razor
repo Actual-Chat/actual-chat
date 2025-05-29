@@ -9,7 +9,7 @@
         if (item is ChatEntryMessage message) {
             <ChatEntryMessageView ChatContext="@chatContext" Message="@message"/>
         }
-        else if(item is ThreadMessage threadMessage)
+        else if (item is ThreadMessage threadMessage)
         {
             <ThreadMessageView ChatContext="@chatContext" Message="@threadMessage" />
         }
