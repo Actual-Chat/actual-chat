@@ -56,7 +56,7 @@
 
         var languages = await LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
-        return (languages.AllSpoken, language);
+        return (languages.ListSpoken(), language);
     }
 
     private async Task OnClick(Language language) {

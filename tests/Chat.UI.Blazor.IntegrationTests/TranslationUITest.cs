@@ -42,12 +42,11 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldBeVisibleByDefaultWhenAnyForeignEntry(string sPrimary = "", string sSecondary = "")
     {
         // arrange
+        await LanguageUI.WhenReady;
         var primary = Language.ParseNullable(sPrimary);
         var secondary = Language.ParseNullable(sSecondary);
-        if (primary is not null || secondary is not null) {
-            var languageSettings = await LanguageUI.Settings.Use(CancellationToken.None);
-            LanguageUI.UpdateSettings(languageSettings with { Primary = primary!, Secondary = secondary });
-        }
+        if (primary is not null || secondary is not null)
+            LanguageUI.UpdateSettings(x => x with { Primary = primary!, Secondary = secondary });
         var (chatId, _) = await Tester.CreateChat(true);
 
         // act
@@ -76,8 +75,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotBeVisibleWhenLanguageMatchesSpoken()
     {
         // arrange
-        var languageSettings = await LanguageUI.Settings.Use(CancellationToken.None);
-        LanguageUI.UpdateSettings(languageSettings with { Primary = Languages.English, Secondary = Languages.French });
+        await LanguageUI.WhenReady;
+        LanguageUI.UpdateSettings(x => x with { Primary = Languages.English, Secondary = Languages.French });
         var (chatId, _) = await Tester.CreateChat(true);
 
         // act

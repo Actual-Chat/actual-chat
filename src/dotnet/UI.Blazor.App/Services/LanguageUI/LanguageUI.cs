@@ -11,6 +11,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     private readonly SyncedState<UserLanguageSettings> _settings;
 
     public IState<UserLanguageSettings> Settings => _settings;
+    public Task WhenReady => _settings.WhenFirstTimeRead;
 
     public LanguageUI(AppUIHub hub) : base(hub)
         => _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
@@ -25,18 +26,18 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         => _settings.Dispose();
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlyList<Language>> ListSpokenLanguages(CancellationToken cancellationToken)
+    public virtual async Task<IReadOnlyList<Language>> ListSpoken(CancellationToken cancellationToken)
     {
         var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
-        return settings.AllSpoken;
+        return settings.ListSpoken();
     }
 
     [ComputeMethod]
     public virtual async Task<Language> GetChatLanguage(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = chatId is not null
-                ? await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false)
-                : UserChatSettings.Default;
+            ? await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false)
+            : UserChatSettings.Default;
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
 
@@ -53,8 +54,11 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         return language;
     }
 
-    public void UpdateSettings(UserLanguageSettings value)
-        => _settings.Value = value;
+    public void UpdateSettings(Func<UserLanguageSettings, UserLanguageSettings> updater)
+    {
+        var settings = updater.Invoke(_settings.Value);
+        _settings.Value = settings;
+    }
 
     // Private methods
 

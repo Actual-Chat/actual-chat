@@ -87,7 +87,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (entryLanguage == null)
             return false;
 
-        var spokenLanguages = await LanguageUI.ListSpokenLanguages(cancellationToken).ConfigureAwait(false);
+        var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
         return entryLanguage.Languages.Any(x => !spokenLanguages.Contains(x));
     }
 

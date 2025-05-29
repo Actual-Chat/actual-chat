@@ -7,7 +7,7 @@
     if (State.IsInitial(out var m))
         return;
 
-    var languages = m.Languages.AllSpoken;
+    var languages = m.Languages.ListSpoken();
     _formModel.PrimaryLanguageId = languages.GetOrDefault(0)?.Value ?? "";
     _formModel.SecondaryLanguageId = languages.GetOrDefault(1)?.Value ?? "";
     _formModel.TertiaryLanguageId = languages.GetOrDefault(2)?.Value ?? "";
@@ -82,19 +82,20 @@
 @code {
     private FormModel _formModel = null!;
 
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+
     protected override void OnInitialized()
         => _formModel = new FormModel(ComponentIdGenerator);
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var languages = await LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new(languages, enableIncompleteUI);
     }
 
     private void OnLanguageChanged(int index, string languageId) {
-        var language = languageId.IsNullOrEmpty() ? null : Language.Parse(languageId);
-        var languages = State.Value.Languages;
-        Hub.LanguageUI.UpdateSettings(languages.With(index, language));
+        var language = Language.ParseNullable(languageId);
+        LanguageUI.UpdateSettings(x => x.With(index, language));
         State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 

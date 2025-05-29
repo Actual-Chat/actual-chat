@@ -22,22 +22,16 @@ public sealed partial record UserLanguageSettings : IHasOrigin
     [DataMember, MemoryPackOrder(2)]
     public string Origin { get; init; } = "";
 
-    [IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
-    public IReadOnlyList<Language> AllSpoken {
-        get {
-            if (field != null)
-                return field;
-
-            var list = new List<Language> { Primary };
-            if (Secondary is { } secondary && !list.Contains(secondary))
-                list.Add(secondary);
-            if (Tertiary is { } tertiary && !list.Contains(tertiary))
-                list.Add(tertiary);
-            if (list.Count == 0)
-                list.Add(Languages.Main);
-            return field = list.ToArray();
-        }
+    public List<Language> ListSpoken()
+    {
+        var result = new List<Language> { Primary };
+        if (Secondary is { } secondary && !result.Contains(secondary))
+            result.Add(secondary);
+        if (Tertiary is { } tertiary && !result.Contains(tertiary))
+            result.Add(tertiary);
+        if (result.Count == 0)
+            result.Add(Languages.Main);
+        return result;
     }
 
     public UserLanguageSettings With(int index, Language? language)
@@ -45,7 +39,7 @@ public sealed partial record UserLanguageSettings : IHasOrigin
         if (index is < 0 or > 2)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        var languages = AllSpoken.ToList();
+        var languages = ListSpoken();
         if (index < languages.Count)
             languages[index] = language!;
         else if (language != null)

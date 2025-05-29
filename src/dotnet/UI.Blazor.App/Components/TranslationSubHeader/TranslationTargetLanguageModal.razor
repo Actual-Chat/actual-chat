@@ -32,7 +32,7 @@
 
     protected override async Task<ComputedModel?> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
-        var languages = await LanguageUI.ListSpokenLanguages(cancellationToken).ConfigureAwait(false);
+        var languages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
         var targetLanguage = await TranslationUI.GetTargetLanguage(chatId, cancellationToken).ConfigureAwait(false);
         return new(languages, targetLanguage, chatId);
     }
