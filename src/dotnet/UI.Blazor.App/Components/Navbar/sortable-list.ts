@@ -36,7 +36,7 @@ export class SortableList {
             };
         }
         else {
-            options.handle = '.left-line';
+            options.handle = '.left-line, .hover-zone';
         }
         // Don't use HTML5 DnD on Windows clients.
         if (BrowserInfo.hostKind == 'MauiApp' && BrowserInfo.appKind == 'Windows')
