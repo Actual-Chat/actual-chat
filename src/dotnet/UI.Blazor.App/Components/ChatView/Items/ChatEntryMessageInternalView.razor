@@ -1,0 +1,206 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<AppUIHub, ChatEntryMessageInternalView.Model>
+@implements IDisposable
+@using ActualChat.Transcription
+@using ActualChat.Streaming
+@{
+    var m = State.Value;
+    var sm = m.Streaming;
+    var message = Message;
+    var markup = m.Markup;
+    var entry = m.Entry;
+    _rendered = m;
+}
+<p class="chat-message-markup">
+    @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
+        <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+    }
+    @if (m.IsStreaming) {
+        <span class="retained">@sm.RetainedText</span>
+        <span class="changes">
+            <span>@sm.ChangedText</span>
+            @{
+                for (var spanIndex = 0; spanIndex < AnimationSpanCount; spanIndex++) {
+                    var spanStart = sm.AnimatedText.Length * spanIndex / AnimationSpanCount;
+                    var spanEnd = sm.AnimatedText.Length * (spanIndex + 1) / AnimationSpanCount;
+                    if (spanStart >= spanEnd)
+                        continue;
+
+                    var spanDelay = (int)Math.Round(AnimationSpanDurationMs * spanIndex);
+                    var style = $"transition-delay: {spanDelay}ms;";
+                    <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
+                }
+            }
+        </span>
+    } else {
+        <CascadingValue Value="@entry" IsFixed="true">
+            <MarkupView Markup="@markup" />
+        </CascadingValue>
+
+        @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
+            <ChatMessageSendingStatus
+                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
+                IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
+        }
+        @if (message.ShowIndexDocId) {
+            <span>[DocId=@message.IndexDocId]</span>
+        }
+    }
+</p>
+
+
+@code {
+    private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
+    private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
+    private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
+
+    private Model? _rendered;
+    private CancellationTokenSource? RestartCts { get; set; }
+    private ILogger Log => Hub.LogFor(GetType());
+    private IStreamClient StreamClient => Hub.StreamClient;
+    private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
+
+    [field: AllowNull, MaybeNull]
+    private IMutableState<StreamingModel> StreamingState => field ??= Hub.StateFactory.NewMutable(StreamingModel.None);
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
+    [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
+    [Parameter] public bool IsUnreadByOthers { get; set; }
+    [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
+
+    public ChatEntryMessageInternalView()
+        => Options = DefaultOptions;
+
+    public void Dispose()
+        => RestartCts.CancelAndDisposeSilently();
+
+    protected override void OnParametersSet() {
+        if (Message.Entry.IsStreaming || TranslationUI.IsStreaming(Message.Entry, default).Result) {
+            RestartCts.CancelAndDisposeSilently();
+            RestartCts = new();
+            var cancellationToken = RestartCts.Token;
+            BackgroundTask.Run(
+                () => ReadTranscript(Message, cancellationToken),
+                Log, "ReadTranscript failed",
+                cancellationToken);
+        }
+    }
+
+    protected override bool ShouldRender() {
+        var stateValue = State.Value;
+        var shouldRender = _rendered is null || !ReferenceEquals(_rendered, stateValue)
+            && (stateValue.IsStreaming
+                || _rendered.IsStreaming != stateValue.IsStreaming
+                || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
+                || _rendered.Markup != stateValue.Markup
+                || _rendered.IsTranslation != stateValue.IsTranslation);
+        // Log.LogWarning("ShouldRender: {Id}: {Value}", Message.Id, shouldRender);
+        return shouldRender;
+    }
+
+    private async Task ReadTranscript(ChatEntryMessage message, CancellationToken cancellationToken) {
+        try {
+            var entry = message.Entry;
+            var diffs = await GetTranscript(entry, cancellationToken);
+            var transcripts = diffs
+                .ToTranscripts()
+                .Throttle(TimeSpan.FromMilliseconds(320), cancellationToken);
+            var lastText = "";
+            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
+                var text = transcript.Text;
+                var retainedLength = lastText.GetCommonPrefixLength(text);
+                var changedPart = text[retainedLength..];
+                var animatedLength = (text.Length - lastText.Length).Clamp(0, changedPart.Length);
+                var animatedStartIndex = changedPart.Length - animatedLength;
+                await Dispatcher.InvokeSafeAsync(() => {
+                    StreamingState.Value = new(
+                        RetainedText: text[..retainedLength],
+                        ChangedText: changedPart[..animatedStartIndex],
+                        AnimatedText: changedPart[animatedStartIndex..]);
+                }, Log).ConfigureAwait(false);
+                Log.LogWarning("Transcript: {Id}: Retained='{Retained}', Changed='{Changed}', Animated='{Animated}'",
+                    message.Id, text[..retainedLength], changedPart[..animatedStartIndex], changedPart[animatedStartIndex..]);
+                lastText = text;
+            }
+        }
+        catch (Exception e) {
+            if (e.GetType().FullName != "Microsoft.AspNetCore.SignalR.HubException" || !e.Message.Contains(nameof(OperationCanceledException)))
+                throw;
+            // Not fully sure if it's the case, but it seems that sometimes SignalR
+            // wraps OperationCanceledException into HubException, so here we suppress it.
+        }
+    }
+
+
+    async Task<IAsyncEnumerable<TranscriptDiff>> GetTranscript(ChatEntry entry, CancellationToken cancellationToken)
+        => await TranslationUI.MustTranslate(entry, cancellationToken)
+            ? TranslationUI.GetTranscript(entry, cancellationToken)
+            : StreamClient.GetTranscript(entry.StreamId, cancellationToken);
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        // Do not use cached options as we need to pass Message and Markup parameters.
+        var initialData = new Model(Markup, Message.Entry, false, StreamingModel.None, null);
+        return new() {
+            InitialValue = initialData, // To show the original text immediately
+            Category = GetStateCategory(GetType()),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var message = Message;
+        var renderedEntry = _rendered?.Entry ?? message.Entry;
+        var markup = _rendered?.Markup ?? Markup;
+        var isRenderedTranslated = _rendered?.IsTranslation ?? false;
+        var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
+        if (entry == null) {
+            Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
+            return _rendered ?? new Model(markup, message.Entry, isRenderedTranslated, StreamingModel.None, null);
+        }
+        var isStreaming = entry.IsStreaming || await TranslationUI.IsStreaming(entry, cancellationToken).ConfigureAwait(false);
+
+        // If we're not streaming, handle possible translation
+        if (!isStreaming) {
+            if (!renderedEntry.VersionEquals(entry) || isRenderedTranslated)
+                markup = MarkupParser.Parse(entry.Content);
+
+            var mustTranslate = await TranslationUI.MustTranslate(entry, cancellationToken).ConfigureAwait(false);
+            if (!mustTranslate)
+                return new(markup, entry, false, StreamingModel.None, null);
+
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+            if (translation is null)
+                return new(markup, entry, false, StreamingModel.None, null);
+
+            var translatedMarkup = entry.HasMediaEntry
+                ? new PlayableTextMarkup(translation.Content, translation.TimeMap)
+                : MarkupParser.Parse(translation.Content);
+
+            return new(translatedMarkup, entry, true, StreamingModel.None, null);
+        }
+
+        var streamingState = await StreamingState.Use(cancellationToken).ConfigureAwait(false);
+        return new (markup, message.Entry, isRenderedTranslated, streamingState, null);
+    }
+
+    // Nested types
+    public sealed record Model(
+        Markup Markup,
+        ChatEntry Entry,
+        bool IsTranslation,
+        StreamingModel Streaming,
+        Transcript? Transcript)
+    {
+        public bool IsStreaming => Entry.IsStreaming || IsTranslationStreaming;
+        public bool IsTranslationStreaming => IsTranslation && Transcript != null;
+    }
+
+    public sealed record StreamingModel(
+        string RetainedText,
+        string ChangedText,
+        string AnimatedText) {
+        public static readonly StreamingModel None = new("", "", "");
+    }
+}

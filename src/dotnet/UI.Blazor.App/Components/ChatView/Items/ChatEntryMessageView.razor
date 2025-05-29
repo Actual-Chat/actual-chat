@@ -137,8 +137,8 @@
                 <div class="forwarded-author-header">
                     @{
                         var forwardedAuthorName = m.ForwardedAuthor?.Avatar.Name
-                                                  ?? entry.ForwardedAuthorName.NullIfEmpty()
-                                                  ?? "Unknown author";
+                            ?? entry.ForwardedAuthorName.NullIfEmpty()
+                            ?? "Unknown author";
                         var canClick = m.ForwardedAuthor != null || m.ForwardedChatEntryId is not null;
                     }
                     @if (canClick) {
@@ -158,28 +158,13 @@
                 @if (isReply) {
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
-                @if (entry.IsStreaming || m.IsTranslationStreaming) {
-                    <ChatMessageTranscript
-                        Message="@message"
-                        ShowEntryKind="@message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)"/>
-                } else {
-                    <p class="chat-message-markup">
-                        @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-                            <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
-                        }
-                        <CascadingValue Value="@entry" IsFixed="true">
-                            <TranslatedMessage Markup="@markup" ChatContext="ChatContext" Message="@message"/>
-                        </CascadingValue>
-                        @if (m.IsUnreadByOthers && entry.Attachments.Length == 0) {
-                            <ChatMessageSendingStatus
-                                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                                IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
-                        }
-                        @if (message.ShowIndexDocId) {
-                            <span>[DocId=@message.IndexDocId]</span>
-                        }
-                    </p>
-                }
+                <ChatEntryMessageInternalView
+                    Markup="@markup"
+                    Message="@message"
+                    ChatContext="@ChatContext"
+                    IsUnreadByOthers="@m.IsUnreadByOthers"
+                    IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart"
+                />
             </div>
             @if (entry.Attachments.Length > 0) {
                 var (mediaList, fileList) = GetOrderedAttachmentList(entry);
@@ -349,11 +334,11 @@
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken).ConfigureAwait(false);
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
         var isPreviousSelected = previousMessage != null
-                                 && selectedChatEntries.Contains(previousMessage.Entry.Id)
-                                 && previousMessage.ReplacementKind == ChatMessageReplacementKind.None;
+            && selectedChatEntries.Contains(previousMessage.Entry.Id)
+            && previousMessage.ReplacementKind == ChatMessageReplacementKind.None;
         var isNextSelected = nextMessage != null
-                             && selectedChatEntries.Contains(nextMessage.Entry.Id)
-                             && nextMessage.ReplacementKind == ChatMessageReplacementKind.None;
+            && selectedChatEntries.Contains(nextMessage.Entry.Id)
+            && nextMessage.ReplacementKind == ChatMessageReplacementKind.None;
         var isSelected = selectedChatEntries.Contains(entry.Id);
 
         var isSelectionStart = isSelected && !isPreviousSelected;

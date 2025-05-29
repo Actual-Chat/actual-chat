@@ -168,7 +168,38 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup {
     @apply relative;
     @apply text-02 text-base;
+    @apply min-h-6;
 }
+
+.chat-message-markup span {
+    @apply text-base;
+}
+
+.chat-message-markup .retained {
+}
+
+.chat-message-markup .changes:empty {
+    filter: opacity(0);
+}
+
+.chat-message-markup .changes {
+    @apply underline underline-offset-2 decoration-1;
+}
+
+.chat-message-markup .change-item {
+    transition-behavior: allow-discrete;
+}
+
+.chat-message-markup .changes .change-item {
+    filter: opacity(1);
+    transition-property: filter, -webkit-filter;
+    transition-timing-function: linear;
+    transition-duration: 200ms;
+    @starting-style {
+        filter: opacity(0);
+    }
+}
+
 
 .chat-message-markup .chat-message-sending-status {
     @apply ml-1;
@@ -185,34 +216,6 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 }
 body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
-}
-.chat-message-transcript {
-    @apply text-base text-02 whitespace-normal;
-}
-.chat-message-transcript span {
-    @apply text-base;
-}
-
-.chat-message-transcript .retained {
-}
-
-.chat-message-transcript .changes:empty {
-    filter: opacity(0);
-}
-.chat-message-transcript .changes {
-    @apply underline underline-offset-2 decoration-1;
-}
-.change-item {
-    transition-behavior: allow-discrete;
-}
-.chat-message-transcript .changes .change-item {
-    filter: opacity(1);
-    transition-property: filter, -webkit-filter;
-    transition-timing-function: linear;
-    transition-duration: 200ms;
-    @starting-style {
-        filter: opacity(0);
-    }
 }
 
 body.hoverable .chat-header-title:hover {
