@@ -22,6 +22,7 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     protected UrlMapper UrlMapper => Hub.UrlMapper;
     protected MomentClockSet Clocks => Hub.Clocks;
     protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    protected Temporals Temporals => Hub.Temporals;
     protected AccountSettings AccountSettings => Hub.AccountSettings;
     protected LocalSettings LocalSettings => Hub.LocalSettings;
     protected ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;

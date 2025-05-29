@@ -65,6 +65,8 @@ public class UIHub : CircuitHub, IDispatcherResolver
     [field: AllowNull, MaybeNull]
     public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
     [field: AllowNull, MaybeNull]
+    public Temporals Temporals => field ??= Services.GetRequiredService<Temporals>();
+    [field: AllowNull, MaybeNull]
     public AccountSettings AccountSettings => field ??= Services.GetRequiredService<AccountSettings>();
     [field: AllowNull, MaybeNull]
     public LocalSettings LocalSettings => field ??= Services.GetRequiredService<LocalSettings>();

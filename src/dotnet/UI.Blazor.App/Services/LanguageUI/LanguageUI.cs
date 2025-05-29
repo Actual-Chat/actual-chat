@@ -35,7 +35,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public virtual async Task<Language> GetChatLanguage(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = chatId is not null
-                ? await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false)
+                ? await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false)
                 : UserChatSettings.Default;
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
@@ -43,13 +43,13 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language, CancellationToken cancellationToken = default)
     {
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        var userChatSettings = await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         if (language == userChatSettings.Language)
             return language;
 
         _ = TuneUI.Play(Tune.ChangeLanguage);
         userChatSettings = userChatSettings with { Language = language };
-        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, cancellationToken).ConfigureAwait(false);
+        await Temporals.SetUserChatSettings(chatId, userChatSettings, cancellationToken).ConfigureAwait(false);
         return language;
     }
 

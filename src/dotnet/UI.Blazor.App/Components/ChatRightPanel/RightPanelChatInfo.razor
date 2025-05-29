@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Kvas
 @inherits ComputedStateComponent<AppUIHub, RightPanelChatInfo.Model>
 @{
     if (State.IsInitial(out var m))
@@ -48,7 +47,7 @@
 
         var enableSummarizationFeature = await Features.Get<Features_EnableChatSummarization>(cancellationToken).ConfigureAwait(false);
         var isOwner = chat.Rules.IsOwner();
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        var userChatSettings = await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,
             ShowSummarizationToggle = enableSummarizationFeature && isOwner,
@@ -58,12 +57,12 @@
 
     private Task OnNotificationToggleChanged(bool isMuted)
         => UICommander.RunLocal(ct
-            => AccountSettings.UpdateUserChatSettings(Chat.Id,
+            => Temporals.UpdateUserChatSettings(Chat.Id,
                 x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, },
                 ct));
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
-        if (Chat.IsSummarized == isSummarized)
+        if (State.Value.IsSummarized == isSummarized)
             return Task.CompletedTask;
 
         var chatId = Chat.Id;

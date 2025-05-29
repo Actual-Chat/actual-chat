@@ -100,6 +100,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new BubbleUI(c.UIHub()));
         services.AddScoped(c => new ShareUI(c.UIHub()));
         services.AddScoped(_ => new ToastUI());
+        if (hostKind == HostKind.Server)
+            fusion.AddService<Temporals, FakeTemporals>(ServiceLifetime.Scoped); // No temporals on the server-side
+        else
+            fusion.AddService<Temporals, RealTemporals>(ServiceLifetime.Scoped);
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
         fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
