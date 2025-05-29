@@ -13,7 +13,7 @@
 }
 <p class="chat-message-markup">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-        <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+        <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)" IsTranslation="m.IsTranslation"/>
     }
     @if (m.IsStreaming) {
         <span class="retained">@sm.RetainedText</span>
