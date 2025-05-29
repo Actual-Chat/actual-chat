@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.Internal;
 
 namespace ActualChat.UI.Blazor.Components;
@@ -50,6 +51,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]

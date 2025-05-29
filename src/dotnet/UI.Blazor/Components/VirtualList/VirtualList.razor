@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @typeparam TItem
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits ComputedStateComponent<UIHub, VirtualListData<TItem>>
 @{
@@ -10,12 +11,15 @@
 
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
-    var hasJsComponentCreated = JSRef != null;
     var data = Data;
-    var containerClass = !hasJsComponentCreated
-        ? "hide"
+    var endAnchorSize = ScreenSize.IsNarrow()
+        ? 48
+        : 4;
+    var containerStyle = renderIndex == 0
+        ? DefaultEdge == VirtualListEdge.End
+            ? $"bottom: {endAnchorSize}px;"
+            : ""
         : "";
-
     var spacerStyleDisplay = DefaultEdge == VirtualListEdge.End
         ? "none"
         : "flex";
@@ -64,14 +68,16 @@
 
     <div @key="@VirtualListSpecialKeys.Wrapper"
          class="c-wrapper">
-        <div @key="@VirtualListSpecialKeys.Spacer"
-             class="c-spacer-start"
-             style="display: @spacerStyleDisplay">
-            <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
-        </div>
 
         <ul @key="@VirtualListSpecialKeys.Container"
-            class="c-virtual-container @containerClass">
+            class="c-virtual-container" style="@containerStyle">
+
+            <li @key="@VirtualListSpecialKeys.Spacer"
+                class="c-spacer-start"
+                style="display: @spacerStyleDisplay">
+                <VirtualListSkeletonView SkeletonCount="@startSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+            </li>
+
             @foreach (var item in items) {
                 @if (item.IsGroup) {
                     <li class="group">
@@ -83,13 +89,14 @@
                     </li>
                 }
             }
-        </ul>
 
-        <div @key="@VirtualListSpecialKeys.EndSpacer"
-             class="c-spacer-end"
-             style="display: @endSpacerStyleDisplay">
-            <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
-        </div>
+            <li @key="@VirtualListSpecialKeys.EndSpacer"
+                class="c-spacer-end"
+                style="display: @endSpacerStyleDisplay">
+                <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
+            </li>
+
+        </ul>
 
         <div @key="@VirtualListSpecialKeys.EndAnchor"
              class="c-end-anchor">

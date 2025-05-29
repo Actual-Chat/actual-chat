@@ -38,20 +38,6 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
     @apply  min-h-12;
 }
 
-.virtual-list > .c-wrapper > .c-spacer-end {
-    @apply absolute w-full bottom-0;
-    @apply flex flex-nowrap flex-col flex-none items-stretch content-start justify-start;
-    @apply overflow-y-hidden;
-    overflow-anchor: none;
-}
-
-.virtual-list > .c-wrapper > .c-spacer-start {
-    @apply absolute w-full top-0;
-    @apply flex flex-nowrap flex-col-reverse flex-none items-stretch content-start justify-start;
-    @apply overflow-y-hidden;
-    overflow-anchor: none;
-}
-
 .virtual-list::-webkit-scrollbar {
     display: none;
 }
@@ -65,9 +51,25 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
     list-style-type: none;
     overflow-anchor: none;
 }
+
 .chat-list.virtual-list > .c-wrapper > ul.c-virtual-container {
     @apply gap-y-0.5;
 }
+
+.virtual-list > .c-wrapper > ul.c-virtual-container > .c-spacer-end {
+    @apply w-full;
+    @apply flex flex-nowrap flex-col flex-none items-stretch content-start justify-start;
+    @apply overflow-y-hidden;
+    overflow-anchor: none;
+}
+
+.virtual-list > .c-wrapper > ul.c-virtual-container >.c-spacer-start {
+    @apply w-full;
+    @apply flex flex-nowrap flex-col-reverse flex-none items-stretch content-start justify-start;
+    @apply overflow-y-hidden;
+    overflow-anchor: none;
+}
+
 .chat-list.virtual-list > .c-wrapper > .c-end-anchor {
     @apply hidden;
 }

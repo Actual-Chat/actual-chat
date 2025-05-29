@@ -145,9 +145,9 @@ export class VirtualList {
         this.isDisposed = false;
         this.abortController = new AbortController();
         this.wrapperRef = this.ref.querySelector(':scope > .c-wrapper');
-        this.spacerRef = this.wrapperRef.querySelector(':scope > .c-spacer-start');
-        this.endSpacerRef = this.wrapperRef.querySelector(':scope > .c-spacer-end');
         this.containerRef = this.wrapperRef.querySelector(':scope > .c-virtual-container');
+        this.spacerRef = this.containerRef.querySelector(':scope > .c-spacer-start');
+        this.endSpacerRef = this.containerRef.querySelector(':scope > .c-spacer-end');
         this.renderStateRef = this.ref.querySelector(':scope > .data.render-state');
         this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index');
         this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor');
@@ -159,6 +159,7 @@ export class VirtualList {
             this.containerRef.style.top = `${this.endAnchorSize}px`;
             this.ref.style.flexDirection = 'column';
             this.spacerRef.style.display = 'flex';
+            this.spacerRef.style.height = `${this.defaultSpacerSize}px`;
             this.endSpacerRef.style.display = 'none';
         }
         else {
@@ -166,6 +167,7 @@ export class VirtualList {
             this.ref.style.flexDirection = 'column-reverse';
             this.spacerRef.style.display = 'none';
             this.endSpacerRef.style.display = 'flex';
+            this.endSpacerRef.style.height = `${this.defaultSpacerSize}px`;
         }
         this.wrapperRef.style.height = `100%`;
 
@@ -251,10 +253,7 @@ export class VirtualList {
         if (this.parseRenderState() === null)
             this.renderStartedAt = Date.now();
 
-        if (this.containerRef.classList.contains('hide')) {
-            this.containerRef.classList.remove('hide');
-            this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
-        }
+        this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
         const mutationRecord: MutationRecord = {
             type: 'childList',
             addedNodes: this.containerRef.childNodes,
@@ -987,10 +986,26 @@ export class VirtualList {
     }
 
     private getFirstItemRef(): HTMLElement | null {
-        const itemRef = this.containerRef.firstElementChild;
-        if (itemRef == null || !itemRef.classList.contains('item'))
+        let ref = this.containerRef.firstElementChild.nextElementSibling as HTMLElement; // skip spacer
+        if (ref == null)
             return null;
-        return itemRef as HTMLElement;
+
+        if (ref.classList.contains('item'))
+            return ref as HTMLElement;
+
+        if (ref.classList.contains('group')) {
+            while (ref) {
+                ref = ref.lastElementChild;
+                if (ref.classList.contains('item')) {
+                    // we have found list item in the group, let's find the first one
+                    ref = ref.parentElement.firstElementChild;
+                    return ref as HTMLElement;
+                }
+            }
+            return null;
+        }
+
+        return null;
     }
 
     private getFirstItemKey(): string | null {
@@ -998,7 +1013,7 @@ export class VirtualList {
     }
 
     private getLastItemRef(): HTMLElement | null {
-        let ref = this.containerRef.lastElementChild;
+        let ref = this.containerRef.lastElementChild.previousElementSibling as HTMLElement; // skip end spacer
         if (ref == null)
             return null;
 
@@ -1009,9 +1024,9 @@ export class VirtualList {
             while (ref) {
                 ref = ref.lastElementChild;
                 if (ref.classList.contains('item'))
-                    return ref as HTMLElement;
+                    return ref as HTMLElement; // we have found list item in the group, let's return it
             }
-            return ref.lastElementChild as HTMLElement;
+            return null;
         }
 
         return null;
@@ -1140,17 +1155,16 @@ export class VirtualList {
         // debugLog?.log(`restoreScrollPosition: start`);
 
         const pivots = [...this.pivots];
-        const orderedItems = [... this.orderedItems];
         const interactivePivot = pivots.find(p => p.isInteractive);
 
         let scrollTop = 0;
         let scrollTopOffset = 0;
         let offset = 0;
         let totalSize = 0;
+        let beforeSize = 0;
+        let afterSize = 0;
         let spacerSize = 0;
         let endSpacerSize = 0;
-        let delayedSpacerSize = 0;
-        let delayedEndSpacerSize = 0;
         let totalSizeDiff = 0;
         let isInteractivePositioning = false;
 
@@ -1165,6 +1179,7 @@ export class VirtualList {
                 if (!this.itemRange)
                     this.ensureItemRangeCalculated();
 
+                const orderedItems = [... this.orderedItems];
                 const { start, end } = this.itemRange ?? new NumberRange(0,0);
                 const containerSize = this.containerRef.offsetHeight;
                 const oldTotalSize = this.wrapperRef.offsetHeight;
@@ -1172,8 +1187,8 @@ export class VirtualList {
                 scrollTop = this.ref.scrollTop;
 
                 if (rs.beforeCount !== null && rs.afterCount !== null) {
-                    spacerSize = Math.floor(rs.beforeCount * this.statistics.itemSize);
-                    endSpacerSize =  Math.floor(rs.afterCount * this.statistics.itemSize);
+                    beforeSize = Math.floor(rs.beforeCount * this.statistics.itemSize);
+                    afterSize =  Math.floor(rs.afterCount * this.statistics.itemSize);
                 }
                 else {
                     const knownRange = this.knownRange ?? new NumberRange(0,0);
@@ -1199,21 +1214,21 @@ export class VirtualList {
                             : new NumberRange(knownRange.start, knownRange.start + fullRangeSize)
                     }
 
-                    spacerSize = clamp(start - fullRange.start, 0, fullRange.size - containerSize);
-                    endSpacerSize = clamp(fullRange.end - end, 0, fullRange.size - containerSize);
+                    beforeSize = clamp(start - fullRange.start, 0, fullRange.size - containerSize);
+                    afterSize = clamp(fullRange.end - end, 0, fullRange.size - containerSize);
                 }
-                if (spacerSize == 0 && !rs.hasVeryFirstItem)
-                    spacerSize = defaultSpacerSize;
-                if (endSpacerSize == 0 && !rs.hasVeryLastItem)
-                    endSpacerSize = defaultSpacerSize;
+                if (beforeSize == 0 && !rs.hasVeryFirstItem)
+                    beforeSize = defaultSpacerSize;
+                if (afterSize == 0 && !rs.hasVeryLastItem)
+                    afterSize = defaultSpacerSize;
                 if (rs.hasVeryFirstItem)
-                    spacerSize = 0;
+                    beforeSize = 0;
                 if (rs.hasVeryLastItem)
-                    endSpacerSize = 0;
+                    afterSize = 0;
 
                 totalSize = containerSize
-                    + spacerSize
-                    + endSpacerSize
+                    + beforeSize
+                    + afterSize
                     + endAnchorSize;
 
                 if (!rs.hasVeryFirstItem && !rs.hasVeryLastItem)
@@ -1233,8 +1248,8 @@ export class VirtualList {
                         if (!interactiveItemRef && interactivePivot.range) {
                             // Interactive item is not found - let's find nearest one
                             const interactiveRange = interactivePivot.range;
-                            const interactiveItemIndex = binarySearch(this.orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
-                            const interactiveItem = this.orderedItems[interactiveItemIndex];
+                            const interactiveItemIndex = binarySearch(orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
+                            const interactiveItem = orderedItems[interactiveItemIndex];
                             interactiveItemRef = this.getItemRef(interactiveItem?.key);
                         }
                         // Debug helper
@@ -1290,17 +1305,15 @@ export class VirtualList {
                         }
                     }
 
-                    // Adjust spacer size to prevent overlap with container
-                    endSpacerSize = -offset - endAnchorSize;
-                    delayedEndSpacerSize = endSpacerSize;
+                    // Adjust spacer size
+                    endSpacerSize = clamp(-offset - endAnchorSize, 0, defaultSpacerSize);
                     if (rs.hasVeryFirstItem) {
                         spacerSize = 0;
-                        delayedSpacerSize = 0;
                     }
                     else {
-                        spacerSize = clamp(oldTotalSize - containerSize - endSpacerSize - endAnchorSize, 0, Infinity);
-                        delayedSpacerSize = clamp(totalSize - containerSize - endSpacerSize - endAnchorSize, 0, Infinity);
+                        spacerSize = clamp(oldTotalSize - containerSize - endSpacerSize - endAnchorSize, 0, defaultSpacerSize);
                     }
+                    offset += endSpacerSize; // adjust offset to include end spacer size
                 }
                 else {
                     offset = start;
@@ -1310,8 +1323,8 @@ export class VirtualList {
                         if (!interactiveItemRef) {
                             // Interactive item is not found - let's find nearest one
                             const interactiveRange = interactivePivot.range;
-                            const interactiveItemIndex = binarySearch(this.orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
-                            const interactiveItem = this.orderedItems[interactiveItemIndex];
+                            const interactiveItemIndex = binarySearch(orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
+                            const interactiveItem = orderedItems[interactiveItemIndex];
                             interactiveItemRef = this.getItemRef(interactiveItem?.key);
                         }
                         // Debug helper
@@ -1367,17 +1380,15 @@ export class VirtualList {
                         }
                     }
 
-                    // Adjust spacer size to prevent overlap with container
-                    spacerSize = offset;
-                    delayedSpacerSize = spacerSize;
+                    // Adjust spacer size
+                    spacerSize = clamp(offset, 0, defaultSpacerSize);
                     if (rs.hasVeryLastItem) {
                         endSpacerSize = 0;
-                        delayedEndSpacerSize = 0;
                     }
                     else {
-                        endSpacerSize = clamp(oldTotalSize - containerSize - spacerSize - endAnchorSize, 0, Infinity);
-                        delayedEndSpacerSize = clamp(totalSize - containerSize - spacerSize - endAnchorSize, 0, Infinity);
+                        endSpacerSize = clamp(oldTotalSize - containerSize - spacerSize - endAnchorSize, 0, defaultSpacerSize);
                     }
+                    offset -= spacerSize; // adjust offset to include spacer size
                 }
             },
             write: () => {
@@ -1402,8 +1413,6 @@ export class VirtualList {
                                 this.turnOffScrollingCallback = setWrapperHeight;
                             else {
                                 this.wrapperRef.style.height = `${totalSize}px`;
-                                this.spacerRef.style.height = `${delayedSpacerSize}px`;
-                                this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
                                 // console.warn(
                                 //     'restoreScrollPosition: wrapper size increased with DELAY!',
                                 //     totalSize);
@@ -1414,13 +1423,8 @@ export class VirtualList {
                 }
                 else if (totalSizeDiff != 0) {
                     this.wrapperRef.style.height = totalSize + 'px';
-                    this.spacerRef.style.height = `${delayedSpacerSize}px`;
-                    this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
                 }
-                else {
-                    this.spacerRef.style.height = `${delayedSpacerSize}px`;
-                    this.endSpacerRef.style.height = `${delayedEndSpacerSize}px`;
-                }
+
                 if (this.defaultEdge === VirtualListEdge.End) {
                     this.containerRef.style.bottom = `${-offset}px`;
                 }
