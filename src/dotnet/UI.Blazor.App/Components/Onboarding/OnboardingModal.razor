@@ -82,7 +82,6 @@
                         <Button
                             Class="btn-primary"
                             ButtonRef="@_nextButtonRef"
-                            IsDisabled="@(!_canMoveForward)"
                             Click="@(() => OnNext(stepper))">
                             @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
                                 <span>@stepper.NextTitle</span>
@@ -113,7 +112,6 @@
 
 @code {
     private readonly Mutable<ElementReference> _nextButtonRef = new();
-    private bool _canMoveForward = true;
 
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
 
@@ -133,12 +131,11 @@
 
     private async Task OnSkip(Stepper stepper) {
         await stepper.Skip();
-        _canMoveForward = true;
     }
 
     private async Task OnNext(Stepper stepper) {
         try {
-            _canMoveForward = await stepper.TryMoveForward();
+            await stepper.TryMoveForward();
         }
         finally {
             StateHasChanged();
