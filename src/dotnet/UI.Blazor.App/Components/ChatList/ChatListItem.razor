@@ -139,9 +139,6 @@
     [Parameter] public bool IsLastItemInBlock { get; set; }
     [Parameter] public bool IsFirstItem { get; set; }
 
-    public ChatListItem()
-        => Options = ComputedStateComponentOptions.RecomputeStateOnParameterChange;
-
     // protected override void OnInitialized() {
     //     DebugLog?.LogDebug("OnInitialized: {ListKind} #{Index}", ListKind, Index);
     // }
