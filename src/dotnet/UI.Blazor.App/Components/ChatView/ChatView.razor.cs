@@ -419,8 +419,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // DebugLog?.LogDebug("GetChatDataQuery: {ChatId}, {Query}, {OldData}, {Anchor}, {IdRange}", ChatId, query, oldData.KeyRange.Format(), scrollAnchor, chatIdRange.Format());
         var firstLayer = ChatUI.IdTileStack.FirstLayer;
         var secondLayer = ChatUI.IdTileStack.LastLayer;
-        // var minTileSize = ChatUI.IdTileStack.MinTileSize;
-        // var chatIdRangeEndPlus = chatIdRange.End + minTileSize;
+        var itemVisibility = ItemVisibility.Value;
         var firstItem = oldData.FirstItem;
         var lastItem = oldData.LastItem;
         var keyRange = query.IsNone
@@ -437,10 +436,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 -ChatUI.HalfLoadLimit,
                 ChatUI.HalfLoadLimit),
 
-            // No query, there is old data, and we are at the end of the list
+            // No query, there is old data, and we are at the end of the list, let's stick to the visible range if possible
             (false, true) when oldData.HasVeryLastItem
                 => new ChatDataQuery(
-                    secondLayer.GetTile(chatIdRange.End - firstLayer.TileSize).Range,
+                    new Range<long>(
+                        Math.Max(firstItem!.Id, itemVisibility.MinEntryLid),
+                        Math.Min(lastItem!.Id, itemVisibility.IsEmpty ? long.MaxValue : itemVisibility.MaxEntryLid)),
                     -ChatUI.HalfLoadLimit,
                     ChatUI.HalfLoadLimit),
 
