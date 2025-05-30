@@ -126,7 +126,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Flows
         services.AddFlows()
-            .Add<ChatMasterFlow>()
+            .Add<ConversationSplitMasterFlow>()
             .Add<ConversationSplitFlow>();
 
         // Redis

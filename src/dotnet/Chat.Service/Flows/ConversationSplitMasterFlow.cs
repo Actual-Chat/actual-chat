@@ -1,17 +1,13 @@
 using ActualChat.Flows;
-using ActualChat.Hosting;
 using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMasterFlow
+public partial class ConversationSplitMasterFlow : IndexingMasterFlowBase<ConversationSplitFlow, Chat, ChatId>
 {
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
-
-    [field: AllowNull, MaybeNull]
-    private HostInfo HostInfo => field ??= Host.Services.GetRequiredService<HostInfo>();
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public long MaxVersion { get; private set; }
@@ -37,24 +33,12 @@ public partial class ChatMasterFlow: BatchedIndexingFlowBase<Chat, ChatId>, IMas
             MinVersion = cursor.LastUpdatedVersion,
             MaxVersion = MaxVersion,
         };
-        var chats = await ChatsBackend.ListChanged(query, cancellationToken).ConfigureAwait(false);
-        return chats.Where(c => c.IsSummarized ?? false).ToList();
+        return await ChatsBackend.ListChanged(query, cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)
     {
-        foreach (var item in batch)
-            await Host.Flows
-                .StartOrReset<ConversationSplitFlow>(item.Id.Value, null, "ChatMasterFlow", cancellationToken)
-                .ConfigureAwait(false);
-    }
-
-    protected override Task<IndexingFlowTransitionKind> HandleTail(
-        bool hasProcessedAnyItems,
-        CancellationToken cancellationToken)
-    {
-        // stop indexing until version is bumped
-        FlowSetVersion = CurrentFlowSetVersion;
-        return Task.FromResult(IndexingFlowTransitionKind.Suspend);
+        foreach (var item in batch.Where(x => x.IsSummarized ?? false))
+            await StartOrResetFor(item, cancellationToken).ConfigureAwait(false);
     }
 }
