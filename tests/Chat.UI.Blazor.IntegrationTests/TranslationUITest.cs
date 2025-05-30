@@ -10,20 +10,24 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     : SharedAppHostTestBase<TranslationAppHostFixture>(fixture, @out)
 {
     [field: AllowNull, MaybeNull]
-    private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
+    private BlazorTester BobTester => field ??= AppHost.NewBlazorTester(Out);
     [field: AllowNull, MaybeNull]
-    private TranslationUI TranslationUI => field ??= Tester.ScopedAppServices.GetRequiredService<TranslationUI>();
+    private BlazorTester AliceTester => field ??= AppHost.NewBlazorTester(Out);
     [field: AllowNull, MaybeNull]
-    private LanguageUI LanguageUI => field ??= Tester.ScopedAppServices.GetRequiredService<LanguageUI>();
+    private TranslationUI TranslationUI => field ??= BobTester.ScopedAppServices.GetRequiredService<TranslationUI>();
     [field: AllowNull, MaybeNull]
-    private ChatUI ChatUI => field ??= Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+    private LanguageUI LanguageUI => field ??= BobTester.ScopedAppServices.GetRequiredService<LanguageUI>();
+    [field: AllowNull, MaybeNull]
+    private ChatUI ChatUI => field ??= BobTester.ScopedAppServices.GetRequiredService<ChatUI>();
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
-        await Tester.SignInAsUniqueBobAdmin();
-        var appSettings = await Tester.AccountSettings.GetUserAppSettings(CancellationToken.None);
-        await Tester.AccountSettings.SetUserAppSettings(appSettings with {
+        await AliceTester.SignInAsUniqueAlice();
+        await BobTester.SignInAsUniqueBobAdmin();
+        await LanguageUI.WhenReady.WaitAsync(TimeSpan.FromSeconds(5));
+        var appSettings = await BobTester.AccountSettings.GetUserAppSettings(CancellationToken.None);
+        await BobTester.AccountSettings.SetUserAppSettings(appSettings with {
             IsIncompleteUIEnabled = true,
             AreExperimentalFeaturesEnabled = true,
         }, CancellationToken.None);
@@ -31,7 +35,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     protected override async Task DisposeAsync()
     {
-        await Tester.DisposeSilentlyAsync();
+        await BobTester.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
 
@@ -42,15 +46,14 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldBeVisibleByDefaultWhenAnyForeignEntry(string sPrimary = "", string sSecondary = "")
     {
         // arrange
-        await LanguageUI.WhenReady;
         var primary = Language.ParseNullable(sPrimary);
         var secondary = Language.ParseNullable(sSecondary);
         if (primary is not null || secondary is not null)
             LanguageUI.UpdateSettings(x => x with { Primary = primary!, Secondary = secondary });
-        var (chatId, _) = await Tester.CreateChat(true);
+        var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
-        await CreateEntries(chatId, ("Bonjour", Languages.French));
+        await CreateAndSetVisibleEntries(chatId, ("Bonjour", Languages.French));
 
         // assert
         await AssertIsGlobeVisible(chatId, true);
@@ -61,26 +64,25 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotBeVisibleByDefaultWhenNoForeignEntry()
     {
         // arrange
-        var (chatId, _) = await Tester.CreateChat(true);
+        var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
-        await CreateEntries(chatId, ("Does not need translation", Languages.English));
+        await CreateAndSetVisibleEntries(chatId, ("Does not need translation", Languages.English));
 
         // assert
         await AssertIsGlobeVisible(chatId, false);
         await AssertIsSubHeaderVisible(chatId, false);
     }
 
-    [Fact(Skip = "Fails locally, need to investigate why")]
+    [Fact]
     public async Task ShouldNotBeVisibleWhenLanguageMatchesSpoken()
     {
         // arrange
-        await LanguageUI.WhenReady;
-        LanguageUI.UpdateSettings(x => x with { Primary = Languages.English, Secondary = Languages.French });
-        var (chatId, _) = await Tester.CreateChat(true);
+        LanguageUI.UpdateSettings(x => x with { Secondary = Languages.French });
+        var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
-        await CreateEntries(chatId, ("Bonjour", Languages.French));
+        await CreateAndSetVisibleEntries(chatId, ("Bonjour", Languages.French));
 
         // assert
         await AssertIsGlobeVisible(chatId, false);
@@ -91,10 +93,10 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotBeVisibleIfForeignEntryIsNotVisible()
     {
         // arrange
-        var (chatId, _) = await Tester.CreateChat(true);
+        var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
-        var entries = await CreateEntries(chatId, ("Does not need translation", Languages.English), ("Bonjour", Languages.French));
+        var entries = await CreateAndSetVisibleEntries(chatId, ("Does not need translation", Languages.English), ("Bonjour", Languages.French));
         var englishEntry = entries[0];
         SetVisibleItems(englishEntry);
 
@@ -109,12 +111,12 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task GlobeShouldBeVisibleWhenLanguageMatchesSpokenButIsAlreadyOnOrOff(bool isOn)
     {
         // arrange
-        var (chatId, _) = await Tester.CreateChat(true);
+        var (chatId, _) = await BobTester.CreateChat(true);
         await TranslationUI.SetTargetLanguage(chatId, Languages.English);
         await TranslationUI.SetIsOn(chatId, isOn);
 
         // act
-        await CreateEntries(chatId, ("Does not need translation", Languages.English));
+        await CreateAndSetVisibleEntries(chatId, ("Does not need translation", Languages.English));
 
         // assert
         await AssertIsGlobeVisible(chatId, true);
@@ -126,7 +128,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task IsOnShouldNotAffectSubheaderVisibility(bool initialIsOn)
     {
         // arrange
-        var (chatId, _) = await Tester.CreateChat(true);
+        var (chatId, _) = await BobTester.CreateChat(true);
         await TranslationUI.SetTargetLanguage(chatId, Languages.English);
         await TranslationUI.SetIsSubHeaderVisible(chatId, true);
 
@@ -143,26 +145,30 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await AssertIsSubHeaderVisible(chatId, true);
     }
 
-    private async Task<List<ChatEntry>> CreateEntries(ChatId chatId, params (string Text, Language ExpectedLanguage)[] toCreate)
+    private async Task<List<ChatEntry>> CreateAndSetVisibleEntries(ChatId chatId, params (string Text, Language ExpectedLanguage)[] toCreate)
     {
-        await using var _1 = await Tester.BackupAuth();
-        await Tester.SignInAsUniqueAlice();
-        await Tester.JoinChat(chatId, Symbol.Empty, false);
+        var entries = await ChatEntries(chatId, toCreate);
+        SetVisibleItems(entries);
+        return entries;
+    }
+
+    private async Task<List<ChatEntry>> ChatEntries(ChatId chatId, (string Text, Language ExpectedLanguage)[] toCreate)
+    {
+        await AliceTester.JoinChat(chatId, Symbol.Empty, false);
         var entries = new List<ChatEntry>(toCreate.Length);
         var languageDetectionTasks = new List<Task>();
         foreach (var (text, expectedLanguage) in toCreate) {
-            var entry = await Tester.CreateTextEntry(chatId, text);
+            var entry = await AliceTester.CreateTextEntry(chatId, text);
             languageDetectionTasks.Add(WhenLanguageDetected(entry.Id, expectedLanguage));
             entries.Add(entry);
         }
         await languageDetectionTasks.Collect(1);
-        SetVisibleItems(entries);
         return entries;
     }
 
     private Task<ChatEntryLanguage> WhenLanguageDetected(ChatEntryId entryId, Language expectedLanguage)
         => ComputedTest.When(async ct => {
-            var language = await Tester.GetEntryLanguage(entryId, ct).Require();
+            var language = await BobTester.GetEntryLanguage(entryId, ct).Require();
             language.Languages.Should().BeEquivalentTo([expectedLanguage]);
             return language;
         }, TimeSpan.FromSeconds(20).Debuggable());

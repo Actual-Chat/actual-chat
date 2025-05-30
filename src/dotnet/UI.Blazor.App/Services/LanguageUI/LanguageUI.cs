@@ -16,7 +16,6 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public LanguageUI(AppUIHub hub) : base(hub)
         => _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
-                InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
@@ -65,17 +64,11 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
     {
         var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
-        var settings = new UserLanguageSettings() {
+        return new () {
             Primary = languages.Count > 0 ? languages[0] : Languages.Main,
             Secondary = languages.Count > 1 ? (Language?) languages[1] : null,
+            Tertiary = languages.Count > 2 ? (Language?) languages[2] : null,
         };
-
-        // This code stores the languages after 1s delay
-        _ = BackgroundTask.Run(async () => {
-            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None).ConfigureAwait(false);
-            _settings.Set(_ => settings);
-        }, CancellationToken.None);
-        return settings;
     }
 
     private async ValueTask<List<Language>> GetClientLanguages(CancellationToken cancellationToken)

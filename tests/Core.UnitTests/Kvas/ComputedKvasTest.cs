@@ -8,11 +8,13 @@ namespace ActualChat.Core.UnitTests.Kvas;
 
 public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private IServiceProvider CreateServices()
+    private IServiceProvider CreateServices(Func<IServiceCollection, IServiceCollection>? configureServices = null)
     {
         var services = new ServiceCollection();
+        services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace).AddXUnit(Out));
         var fusion = services.AddFusion();
         fusion.AddService<IKvas, TestComputedKvas>();
+        configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }
 
@@ -150,7 +152,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         s1.Value.Origin.Should().Be(s2.Value.Origin);
     }
 
-    [Theory] // TODO(AY): sometimes fails
+    [Theory]
     [InlineData(1, true)]
     [InlineData(1, false)]
     [InlineData(11, true)]
@@ -182,7 +184,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         }
     }
 
-    [Fact] // TODO(AY): sometimes fails
+    [Fact]
     public async Task ValueOrDefaultMustReturnNewValueAfterUpdate()
     {
         // arrange
