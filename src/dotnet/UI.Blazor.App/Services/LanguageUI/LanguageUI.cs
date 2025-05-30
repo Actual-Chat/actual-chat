@@ -80,12 +80,18 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 
     private async ValueTask<List<Language>> GetClientLanguages(CancellationToken cancellationToken)
     {
-        var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
-            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
-        return languages
-            .Select(s => Language.TryParse(s, true))
-            .SkipNullItems()
-            .Distinct()
-            .ToList();
+        try {
+            var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
+                .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+            return languages
+                .Select(s => Language.TryParse(s, true))
+                .SkipNullItems()
+                .Distinct()
+                .ToList();
+        }
+        catch (InvalidOperationException e) {
+            Log.LogWarning(e, "Failed to get languages from JS, returning empty list");
+            return [];
+        }
     }
 }
