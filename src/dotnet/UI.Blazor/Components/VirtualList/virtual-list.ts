@@ -986,7 +986,7 @@ export class VirtualList {
     }
 
     private getFirstItemRef(): HTMLElement | null {
-        let ref = this.containerRef.firstElementChild.nextElementSibling as HTMLElement; // skip spacer
+        let ref = this.containerRef.firstElementChild.nextElementSibling; // skip spacer
         if (ref == null)
             return null;
 
@@ -1013,7 +1013,7 @@ export class VirtualList {
     }
 
     private getLastItemRef(): HTMLElement | null {
-        let ref = this.containerRef.lastElementChild.previousElementSibling as HTMLElement; // skip end spacer
+        let ref = this.containerRef.lastElementChild.previousElementSibling; // skip end spacer
         if (ref == null)
             return null;
 
