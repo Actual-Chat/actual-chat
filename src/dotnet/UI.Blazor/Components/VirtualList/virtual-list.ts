@@ -781,8 +781,6 @@ export class VirtualList {
         if (rs.renderIndex === -1)
             return;
 
-        this.ensureItemRangeCalculated();
-
         const hasScheduled = await fastReadRaf(`updateViewport_${this.identity}`);
         if (!hasScheduled)
             return; // unable to schedule requestAnimationFrame, same key has already been scheduled
@@ -790,21 +788,25 @@ export class VirtualList {
         if (this.isDisposed || this.isRendering)
             return;
 
+        this.viewport = this.calculateViewport();
+        await this.requestData();
+    }
+
+    private calculateViewport(): NumberRange {
         const viewportHeight = this.ref.clientHeight;
         const scrollTop = this.ref.scrollTop;
         const viewport = this.defaultEdge === VirtualListEdge.End
             ? new NumberRange(scrollTop - viewportHeight, scrollTop)
             : new NumberRange(scrollTop, scrollTop + viewportHeight);
 
-        if (this.viewport && viewport) {
-            if (viewport.start < this.viewport.start)
+        const oldViewport = this.viewport ?? this.lastViewport;
+        if (oldViewport && viewport) {
+            if (viewport.start < oldViewport.start)
                 this.scrollDirection = 'up';
             else
                 this.scrollDirection = 'down';
         }
-
-        this.viewport = viewport;
-        await this.requestData();
+        return viewport;
     }
 
     private readonly updateVisibleKeysThrottled = throttle(
@@ -1519,10 +1521,9 @@ export class VirtualList {
     }
 
     private ensureItemRangeCalculated(): boolean {
-        // nothing to do when unmeasured items still exist or there were no new renders
+        // this function is expected to be called with RAF
         if (this.hasUnmeasuredItems) {
-            fastRaf(() => this.measureItems());
-            return false;
+            this.measureItems();
         }
 
         if (this.itemRange)
@@ -1578,21 +1579,8 @@ export class VirtualList {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
             this.resetItemRange(true);
         }
-        else {
-            // calculate range of other items
-            let prevItem = cornerstoneItem;
-            for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
-                const item = orderedItems[i];
-                item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
-                prevItem = item;
-            }
-            prevItem = cornerstoneItem;
-            for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
-                const item = orderedItems[i];
-                item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
-                prevItem = item;
-            }
-        }
+        else
+            this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
 
         // Adjust item ranges according to default edge invariant
         if (!rs.query.isNone) {
@@ -1639,19 +1627,52 @@ export class VirtualList {
         return true;
     }
 
-    private resetItemRange(canUseQueryRange: boolean = false): number | null {
+    private recalculateItemRangesFromCornerstone(orderedItems: VirtualListItem[], cornerstoneItemIndex: number): void {
+        const cornerstoneItem = orderedItems[cornerstoneItemIndex];
+        let prevItem = cornerstoneItem;
+        for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
+            const item = orderedItems[i];
+            item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+            prevItem = item;
+        }
+        prevItem = cornerstoneItem;
+        for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
+            const item = orderedItems[i];
+            item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+            prevItem = item;
+        }
+    }
+
+    private resetItemRange(canUseViewport: boolean = false): number | null {
+        // This function is expected to be called with RAF
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
-        this.viewport = null;
+        const viewport = this.viewport = this.calculateViewport();
         if (orderedItems.length === 0)
             return null;
 
         let rangeDelta: number | null = null;
         const originalRanges = orderedItems.map(item => ({ ...item.range }) as Range<number>);
+
+        function findCenterItemIndex() {
+            // Find item index closest to the viewport center
+            const totalSize = orderedItems.reduce((sum, item) => sum + item.size, 0);
+            let runningSize = 0;
+            let cornerstoneItemIndex = 0;
+            for (let i = 0; i < orderedItems.length; i++) {
+                runningSize += orderedItems[i].size;
+                if (runningSize >= totalSize / 2) {
+                    cornerstoneItemIndex = i;
+                    break;
+                }
+            }
+            return cornerstoneItemIndex;
+        }
+
         if (this.defaultEdge === VirtualListEdge.End) {
-            const cornerstoneItemIndex = orderedItems.length - 1;
-            const cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            let cornerstoneItemIndex = orderedItems.length - 1;
+            let cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
             if (rs.beforeCount !== null && rs.afterCount !== null) {
                 // We are able to calculate range based on before and after counts
@@ -1659,21 +1680,23 @@ export class VirtualList {
                     0 - Math.floor(rs.afterCount * this.statistics.itemSize) - cornerstoneItem.size,
                     0 - Math.floor(rs.afterCount * this.statistics.itemSize));
             }
-            else if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryLastItem) {
-                // try to reuse coords of previously rendered items
-                const { virtualRange } = rs.query;
+            else if (canUseViewport && !rs.hasVeryLastItem) {
+                // use coords of viewport and center ordered items
+                const query = rs.query;
+                const viewportCenter = viewport
+                    ? viewport.start + viewport.size / 2
+                    : query.isNone
+                        ? 0 // We should not be here, but just in case
+                        : query.virtualRange.start + query.virtualRange.size / 2;
+                cornerstoneItemIndex = findCenterItemIndex();
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
                 cornerstoneItem.range = new NumberRange(
-                    virtualRange.end - cornerstoneItem.size,
-                    virtualRange.end);
+                    Math.floor(viewportCenter - cornerstoneItem.size / 2),
+                    Math.ceil(viewportCenter + cornerstoneItem.size / 2)
+                );
             }
-            else if (canUseQueryRange && rs.query.isNone && !rs.hasVeryLastItem) {
+            else if (!rs.hasVeryLastItem) {
                 // There is no query range and no very last item, so we have to calculate range manually with end spacer
-                cornerstoneItem.range = new NumberRange(
-                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
-                    0 - defaultSpacerSize - endAnchorSize);
-            }
-            else if (!canUseQueryRange && !rs.hasVeryLastItem) {
-                // There is no very last item, so we have to calculate range manually with end spacer
                 cornerstoneItem.range = new NumberRange(
                     0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
                     0 - defaultSpacerSize - endAnchorSize);
@@ -1684,12 +1707,8 @@ export class VirtualList {
                     0 - endAnchorSize);
 
             this.shouldUpdateCornerstoneItem = !rs.hasVeryLastItem;
-            let prevItem = cornerstoneItem;
-            for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
-                const item = orderedItems[i];
-                item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
-                prevItem = item;
-            }
+            this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
+
             rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range.end - r.end));
             this.itemRange = new NumberRange(
                 orderedItems[0].range.start,
@@ -1708,8 +1727,8 @@ export class VirtualList {
             return rangeDelta;
         }
         else {
-            const cornerstoneItemIndex = 0;
-            const cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            let cornerstoneItemIndex = 0;
+            let cornerstoneItem = orderedItems[cornerstoneItemIndex];
 
             if (rs.beforeCount !== null && rs.afterCount !== null) {
                 // We are able to calculate range based on before and after counts
@@ -1717,20 +1736,22 @@ export class VirtualList {
                     Math.floor(rs.beforeCount * this.statistics.itemSize),
                     Math.floor(rs.beforeCount * this.statistics.itemSize) + cornerstoneItem.size);
             }
-            else if (canUseQueryRange && !rs.query.isNone && !rs.hasVeryFirstItem) {
-                // try to reuse coords of previously rendered items
-                const { virtualRange } = rs.query;
+            else if (canUseViewport && !rs.hasVeryFirstItem) {
+                // use coords of viewport and center ordered items
+                const query = rs.query;
+                const viewportCenter = viewport
+                    ? viewport.start + viewport.size / 2
+                    : query.isNone
+                        ? 0 // We should not be here, but just in case
+                        : query.virtualRange.start + query.virtualRange.size / 2;
+                cornerstoneItemIndex = findCenterItemIndex();
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
                 cornerstoneItem.range = new NumberRange(
-                    virtualRange.start,
-                    virtualRange.start + cornerstoneItem.size);
+                    Math.floor(viewportCenter - cornerstoneItem.size / 2),
+                    Math.ceil(viewportCenter + cornerstoneItem.size / 2)
+                );
             }
-            else if (canUseQueryRange && rs.query.isNone && !rs.hasVeryFirstItem) {
-                // There is no query range and no very first item, so we have to calculate range manually with spacer
-                cornerstoneItem.range = new NumberRange(
-                    defaultSpacerSize,
-                    defaultSpacerSize + cornerstoneItem.size);
-            }
-            else if (!canUseQueryRange && !rs.hasVeryFirstItem) {
+            else if (!rs.hasVeryFirstItem) {
                 // There is no query range and no very first item, so we have to calculate range manually with spacer
                 cornerstoneItem.range = new NumberRange(
                     defaultSpacerSize,
@@ -1742,13 +1763,7 @@ export class VirtualList {
                     cornerstoneItem.size);
 
             this.shouldUpdateCornerstoneItem = !rs.hasVeryFirstItem;
-
-            let prevItem = cornerstoneItem;
-            for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
-                const item = orderedItems[i];
-                item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
-                prevItem = item;
-            }
+            this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
             rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range.start - r.start));
             this.itemRange = new NumberRange(
                 orderedItems[0].range.start,
@@ -1769,7 +1784,7 @@ export class VirtualList {
     }
 
     private async requestData(): Promise<void> {
-        if (this.isRendering || !this.viewport || !this.itemRange)
+        if (this.isRendering || !this.viewport)
             return;
 
         const query = this.getDataQuery();
@@ -1805,10 +1820,8 @@ export class VirtualList {
     }
 
     private mustRequestData(query: VirtualListDataQuery): boolean {
-        const itemRange = this.itemRange;
         const queryRange = query.virtualRange;
-        const viewport = this.viewport;
-        const rs = this.renderState;
+        const { itemRange, viewport, renderState: rs } = this;
         if (!itemRange || !queryRange)
             return false;
 
@@ -1856,10 +1869,7 @@ export class VirtualList {
 
         const itemSize = this.statistics.itemSize;
         const viewport = this.viewport;
-        if (this.hasUnmeasuredItems) { // Let's wait for measurement to complete first
-            fastRaf(() => this.measureItems());
-            return this.lastQuery;
-        }
+        this.ensureItemRangeCalculated();
         const orderedItems = [...this.orderedItems.filter(i => !i.isExpanded)];
         if (orderedItems.length == 0) // No entries -> nothing to "align" the query to
             return this.lastQuery;
