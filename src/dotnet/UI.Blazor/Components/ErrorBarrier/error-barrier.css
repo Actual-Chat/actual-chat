@@ -15,17 +15,6 @@
     @apply min-h-12 max-h-12;
 }
 
-.error-barrier > .c-image {
-    height: 168px;
-    width: 239px;
-    background-image: url('/dist/images/error-barrier-image.svg');
-    background-repeat: no-repeat;
-}
-.error-barrier.medium > .c-image {
-    height: 166px;
-    width: 166px;
-}
-
 .error-barrier > .c-text {
     @apply flex-y justify-center items-center;
     @apply my-2;

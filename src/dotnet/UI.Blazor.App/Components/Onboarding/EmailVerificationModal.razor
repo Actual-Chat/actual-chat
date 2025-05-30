@@ -2,16 +2,17 @@
 @implements IModalView<EmailVerificationModal.Model>
 
 <DialogFrame
-    Class="onboarding-modal"
+    Class="onboarding-modal fixed-height email-verification-modal"
     HasHeader="true"
     Title="Email verification"
-    HasCloseButton="true">
+    HasCloseButton="true"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <div class="flex-1 flex-y">
-        <div class="flex-x justify-center mb-4">
+    <div class="c-content">
+        <div class="c-image">
             <phone-verification-cat-svg/>
         </div>
-        <div class="flex-1 flex-y mx-4">
+        <div class="c-code">
             <div class="font-bold text-2xl text-02">Enter code</div>
             <TotpVerifier
                 Purpose="TotpPurpose.VerifyEmail"
