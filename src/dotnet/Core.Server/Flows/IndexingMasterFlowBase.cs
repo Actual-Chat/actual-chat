@@ -11,10 +11,11 @@ public abstract class IndexingMasterFlowBase<TIndexingFlow, TItem, TId>
     protected override async Task ProcessBatch(IReadOnlyList<TItem> batch, CancellationToken cancellationToken)
     {
         foreach (var item in batch)
-            await Host.Flows
-                .StartOrReset<TIndexingFlow>(BuildArguments(item), null, "IndexingMasterFlow", cancellationToken)
-                .ConfigureAwait(false);
+            await StartOrResetFor(item, cancellationToken).ConfigureAwait(false);
     }
+
+    protected Task<Flow> StartOrResetFor(TItem item, CancellationToken cancellationToken)
+        => Host.Flows.StartOrReset<TIndexingFlow>(BuildArguments(item), null, GetType().Name, cancellationToken);
 
     protected virtual string BuildArguments(TItem item)
         => item.Id.Value;
