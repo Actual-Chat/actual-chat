@@ -465,7 +465,6 @@
     --not-found-cat-lines-2: var(--gray-80);
     --not-found-cat-face: var(--white);
 
-
     --empty-chat-cat-gradient-1: var(--gray-80);
     --empty-chat-cat-gradient-2: var(--white);
     --empty-chat-cat-round-gradient-1: var(--white);
@@ -539,6 +538,12 @@
     --no-results-cat-rays-stroke: var(--white);
     --no-results-cat-ground-stroke: var(--gray-80);
     --no-results-cat-dot: var(--gray-60);
+
+    --error-cat-circle-gradient-1: var(--gray-80);
+    --error-cat-circle-gradient-2: var(--gray-95);
+    --error-cat-line-1: var(--gray-60);
+    --error-cat-line-2: var(--gray-80);
+    --error-cat-background-1: var(--white);
 
     --cr-header-gradient-1: var(--indigo-70);
     --cr-header-gradient-2: var(--indigo-90);
@@ -848,6 +853,12 @@
     --no-results-cat-ground-stroke: var(--ash-90);
     --no-results-cat-dot: var(--ash-60);
 
+    --error-cat-circle-gradient-1: var(--ash-40);
+    --error-cat-circle-gradient-2: var(--ash-60);
+    --error-cat-line-1: var(--ash-30);
+    --error-cat-line-2: var(--ash-60);
+    --error-cat-background-1: var(--ash-90);
+
     --cr-header-gradient-1: var(--indigo-70);
     --cr-header-gradient-2: var(--indigo-90);
 }
@@ -1154,6 +1165,12 @@
     --no-results-cat-rays-stroke: var(--white);
     --no-results-cat-ground-stroke: var(--ash-80);
     --no-results-cat-dot: var(--ash-80);
+
+    --error-cat-circle-gradient-1: var(--ash-80);
+    --error-cat-circle-gradient-2: var(--ash-95);
+    --error-cat-line-1: var(--ash-60);
+    --error-cat-line-2: var(--ash-80);
+    --error-cat-background-1: var(--white);
 
     --cr-header-gradient-1: var(--indigo-70);
     --cr-header-gradient-2: var(--indigo-90);

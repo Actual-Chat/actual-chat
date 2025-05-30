@@ -25,11 +25,19 @@ class ChatViewSkeleton extends LitElement {
             :host(.animated-skeleton) {
                 animation: pulse 2s infinite;
             }
+            @media (min-width: 1280px) {
+                :host(.chat-view-skeleton-list) {
+                    align-self: center;
+                    max-width: 48rem;
+                }
+            }
         `];
     private observer: IntersectionObserver;
 
     @property()
     public count = 2;
+    @property()
+    class = '';
 
     connectedCallback() {
         super.connectedCallback();

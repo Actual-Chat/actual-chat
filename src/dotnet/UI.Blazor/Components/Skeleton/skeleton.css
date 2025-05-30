@@ -105,7 +105,8 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply min-h-14;
 }
 .skeleton-chat-header {
-    @apply flex-x gap-x-2;
+    @apply flex-x self-center gap-x-2;
+    @apply w-full lg:max-w-192;
     @apply px-2;
     @apply border-b border-separator;
 }

@@ -1,5 +1,5 @@
 .onboarding-modal.modal-frame {
-    @apply md:w-88 lg:w-96 2xl:w-96;
+    @apply md:w-80 lg:w-96 2xl:w-96;
     @apply p-0;
     @apply text-01;
 }
@@ -120,7 +120,7 @@ body.narrow .stepper-image-filler {
 }
 
 .stepper:has(.onboarding-tutorial) {
-    @apply px-8;
+    @apply p-8 pb-4;
     @apply overflow-hidden;
     @apply text-white;
     background: radial-gradient(152.59% 69.81% at 42.78% 125.88%, #FF3880 0%, #0036A3 100%);
@@ -131,7 +131,12 @@ body.narrow .stepper-image-filler {
 .stepper-body:has(.onboarding-tutorial) {
     @apply justify-end;
     @apply overflow-y-auto;
-    mask-image: linear-gradient(to top, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 2rem);
+    mask-image: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0) 0,
+        rgba(0, 0, 0, 1) 2rem,
+        rgba(0, 0, 0, 1) calc(100% - 2rem),
+        rgba(0, 0, 0, 0) 100%
+    );
 }
 .stepper-body:has(.onboarding-tutorial.tutorial-4) {
     @apply justify-between;
@@ -143,7 +148,7 @@ body.narrow .stepper-image-filler {
     scrollbar-width: none;
 }
 .onboarding-stepper .stepper-content {
-    @apply pb-4;
+    @apply pb-8;
     @apply overflow-y-auto overflow-x-hidden;
 }
 .onboarding-tutorial {
@@ -211,7 +216,7 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
     @apply text-white;
 }
 .onboarding-stepper:has(.onboarding-tutorial) .stepper-footer {
-    @apply pt-4;
+    @apply p-4;
 }
 
 /* Phone verification */
@@ -230,4 +235,16 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 }
 .phone-verification-modal .dialog-body > .c-content .c-title {
     @apply text-headline-1 text-02;
+}
+
+/* Email verification */
+.email-verification-modal .dialog-body > .c-content {
+    @apply flex-1 flex-y justify-center gap-y-8;
+}
+.email-verification-modal .dialog-body > .c-content .c-image {
+    @apply flex-x justify-center items-center;
+}
+.email-verification-modal .dialog-body > .c-content .c-code {
+    @apply flex-y;
+    @apply px-4;
 }

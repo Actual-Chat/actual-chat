@@ -53,7 +53,7 @@
 </RenderIntoSlot>
 
 @if (m is null) {
-    <chat-view-skeleton count="15" />
+    <chat-view-skeleton count="15" class="chat-view-skeleton-list"/>
 } else if (chat is not null) {
     <ChatView @key="@chatKey" ChatId="@chat.Id"/>
 } else if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
