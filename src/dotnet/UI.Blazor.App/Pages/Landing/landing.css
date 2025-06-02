@@ -144,9 +144,6 @@ body.narrow .landing .title-text.main {
 .landing .landing-header > .c-content {
     @apply flex-1 flex-x;
 }
-.landing .landing-header > .c-content > .c-icon {
-    @apply min-w-fit;
-}
 .landing .landing-header > .c-content > .c-title-wrapper {
     @apply flex-1 flex-x;
 }
@@ -157,10 +154,6 @@ body.narrow .landing .title-text.main {
 }
 body.narrow .landing .landing-header > .c-content > .c-title-wrapper > .c-title {
     @apply max-w-40;
-}
-.landing .landing-header > .c-content > .c-title-wrapper > .c-version {
-    @apply max-w-9;
-    @apply -mt-0.5 -ml-1;
 }
 .landing .landing-header > .c-right {
     @apply flex-none justify-end;
@@ -212,28 +205,6 @@ body.wide.app-maui .landing .landing-header {
     @apply flex-x items-center;
     @apply h-full;
 }
-.landing .landing-header .light-header .c-version,
-.landing .landing-header .dark-header .c-version {
-    @apply relative;
-    @apply w-10 h-full;
-    @apply pb-2;
-}
-.landing .landing-header .light-header .c-title,
-.landing .landing-header .dark-header .c-title {
-    @apply pb-2;
-}
-.landing .landing-header .light-header .light-alpha,
-.landing .landing-header .dark-header .dark-alpha {
-    @apply absolute top-0.25 right-0;
-    @apply max-w-9;
-}
-.landing .landing-header .light-header .light-title,
-.landing .landing-header .dark-header .dark-title,
-.landing .menu-header .dark-title,
-.docs-header .menu-header .dark-title,
-.docs-left-panel .c-header-header .dark-title {
-    @apply max-w-32 md:max-w-none;
-}
 .landing .landing-header .c-btn-group {
     @apply flex-x items-center justify-center gap-x-2;
     @apply min-w-fit w-fit;
@@ -255,14 +226,12 @@ body.narrow .landing .landing-header .c-btn-group {
 }
 
 .landing .landing-header.filled .light-icon,
-.landing .landing-header.filled .light-title,
-.landing .landing-header.filled .light-alpha {
+.landing .landing-header.filled .light-title {
     @apply opacity-0;
     @apply transition-all ease-in-out duration-100;
 }
 .landing .landing-header.filled .dark-icon,
-.landing .landing-header.filled .dark-title,
-.landing .landing-header.filled .dark-alpha {
+.landing .landing-header.filled .dark-title {
     @apply opacity-100;
     @apply transition-all ease-in-out duration-100;
 }
@@ -942,6 +911,7 @@ body.narrow .landing .btn-download.ios-disabled {
 /* Docs */
 .docs-layout {
     @apply flex-y;
+    @apply bg-01;
 }
 .docs-layout .layout-header {
     @apply px-4;
@@ -966,7 +936,7 @@ body.narrow .side-nav-left:has(.docs-left-panel) {
 }
 .docs-left-panel {
     @apply flex-y;
-    @apply h-full w-110;
+    @apply h-full md:w-96 lg:w-112 xl:w-128 2xl:w-144;
     @apply pl-24 pr-4;
     @apply bg-03;
     @apply border-r border-separator;
@@ -980,20 +950,12 @@ body.narrow .docs-left-panel {
     @apply items-center;
     @apply py-2;
 }
-.docs-left-panel .c-header > .c-icon {
-    @apply max-w-fit;
-}
 .docs-left-panel .c-header > .c-title-wrapper {
     @apply flex-x;
 }
 .docs-left-panel .c-header > .c-title-wrapper > .c-title {
     @apply self-center;
-    @apply max-w-40;
     @apply px-2 -mt-1.5;
-}
-.docs-left-panel .c-header > .c-title-wrapper > .c-version {
-    @apply max-w-9;
-    @apply -mt-2 -ml-1;
 }
 .docs-left-panel .c-content {
     @apply h-full py-2;
