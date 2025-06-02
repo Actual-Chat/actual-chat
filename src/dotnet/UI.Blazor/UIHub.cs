@@ -148,6 +148,8 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
     [field: AllowNull, MaybeNull]
     public History History => field ??= Services.GetRequiredService<History>();
+	[field: AllowNull, MaybeNull]
+    public UpgradeUI UpgradeUI => field ??= Services.GetRequiredService<UpgradeUI>();
 
     public Tracer TracerFor(string name) => Tracer[name];
     public Tracer TracerFor(Type type) => Tracer[type];

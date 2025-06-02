@@ -113,6 +113,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ThemeUI(c.UIHub()));
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
+        fusion.AddService<UpgradeUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
         services.AddScoped<IClientAuth>(c => new WebAuth(c.UIHub()));

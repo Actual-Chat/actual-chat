@@ -4,29 +4,32 @@
 @inherits ComponentBase<UIHub>
 @implements IRootComponent
 @{
+    _renderIndex++;
     if (!Hub.IsInteractive) {
         <LandingForWeb/>
         return;
     }
-
-    if (!_readyToFullyRender) {
-        // We render fake AppRouter here to enable the navigation interception
-        <AppRouter AppAssembly="@BaseUIAssembly" AdditionalAssemblies="@OtherUIAssemblies">
-            <Found></Found>
-            <NotFound></NotFound>
-        </AppRouter>
-        return;
-    }
-
-    if (_simulatedCrashError != null)
-        throw _simulatedCrashError;
 }
 
-<ScreenSizeProvider>
-    <AlwaysVisibleComponents/>
+<ClientUpgradeCover RenderIndex="@_renderIndex">
+    @{
+        if (!_readyToFullyRender) {
+            // We render fake AppRouter here to enable the navigation interception
+            <AppRouter AppAssembly="@BaseUIAssembly" AdditionalAssemblies="@OtherUIAssemblies">
+                <Found></Found>
+                <NotFound></NotFound>
+            </AppRouter>
+            return;
+        }
 
-    <RequirementChecker>
-        <Success>
+        if (_simulatedCrashError != null)
+            throw _simulatedCrashError;
+    }
+    <ScreenSizeProvider>
+        <AlwaysVisibleComponents/>
+
+        <RequirementChecker>
+            <Success>
             <AppRouter AppAssembly="@BaseUIAssembly" AdditionalAssemblies="@OtherUIAssemblies">
                 <Found Context="routeData">
                     <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
@@ -35,12 +38,13 @@
                     <PageNotFoundBlock/>
                 </NotFound>
             </AppRouter>
-        </Success>
-        <Failure Context="failures">
-            <ErrorBlock Failures="@failures"/>
-        </Failure>
-    </RequirementChecker>
-</ScreenSizeProvider>
+            </Success>
+            <Failure Context="failures">
+                <ErrorBlock Failures="@failures"/>
+            </Failure>
+        </RequirementChecker>
+    </ScreenSizeProvider>
+</ClientUpgradeCover>
 
 @code {
     public static readonly Assembly BaseUIAssembly = typeof(AppBase).Assembly;
@@ -48,6 +52,7 @@
 
     private bool _readyToFullyRender;
     private bool _shouldRender;
+    private int _renderIndex;
     private Exception? _simulatedCrashError;
     private readonly AsyncTaskMethodBuilder _whenFirstRendered = AsyncTaskMethodBuilderExt.New();
 

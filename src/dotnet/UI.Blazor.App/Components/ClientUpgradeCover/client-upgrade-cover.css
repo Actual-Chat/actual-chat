@@ -1,0 +1,36 @@
+.client-upgrade-cover {
+    @apply flex-y items-center justify-center;
+    @apply h-full;
+    @apply px-4 md:px-16;
+    background: radial-gradient(71.69% 86.11% at 50% 111.44%, #FF3880 0%, #0036A3 100%);
+}
+.client-upgrade-cover > .c-header {
+    @apply flex-none flex-x items-center justify-start gap-x-2;
+    @apply h-14 md:h-16 w-full;
+}
+.client-upgrade-cover > .c-header .c-icon {
+    @apply w-10 h-10;
+}
+.client-upgrade-cover > .c-header .c-logo {
+    @apply h-6 max-w-32 md:max-w-none;
+    @apply -mt-0.5 md:-mt-2;
+}
+.client-upgrade-cover > .c-content {
+    @apply flex-1 flex-y items-center justify-center gap-y-4;
+    @apply w-full md:w-88;
+}
+.client-upgrade-cover > .c-content > .c-title {
+    @apply text-center;
+    @apply text-headline-6 text-white;
+}
+.client-upgrade-cover > .c-content > .c-text {
+    @apply text-center;
+    @apply text-text-1 text-white;
+}
+.client-upgrade-cover > .c-content > .c-button {
+    @apply w-full;
+    @apply px-0 md:px-4 py-4;
+}
+.client-upgrade-cover > .c-content > .c-button .btn {
+    @apply min-w-full;
+}
