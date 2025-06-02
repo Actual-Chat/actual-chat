@@ -328,7 +328,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             renderedData,
             nav,
             chatIdRange);
-        if (dataQuery.ExistingIdRange.Start + dataQuery.StartOffset + dataQuery.EndOffset + ChatUI.HalfLoadLimit >= chatIdRange.End)
+        if (dataQuery.ExistingIdRange.End + dataQuery.EndOffset + ChatUI.HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
@@ -425,7 +425,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var keyRange = query.IsNone
             ? firstItem != null
                 ? new Range<long>(firstItem.Id, lastItem!.Id + 1)
-                : chatIdRange
+                : chatIdRange.EnsureNonEmpty()
             : query.KeyRange.ToLongRange(true).EnsureNonEmpty();
         var dataQuery = (!query.IsNone, firstItem != null) switch {
             // Align the query params with the second tile layer
@@ -441,7 +441,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 => new ChatDataQuery(
                     new Range<long>(
                         Math.Max(firstItem!.Id, itemVisibility.MinEntryLid),
-                        Math.Min(lastItem!.Id, itemVisibility.IsEmpty ? long.MaxValue : itemVisibility.MaxEntryLid)),
+                        Math.Min(lastItem!.Id, itemVisibility.IsEmpty ? long.MaxValue : itemVisibility.MaxEntryLid)).EnsureNonEmpty(),
                     -ChatUI.HalfLoadLimit,
                     ChatUI.HalfLoadLimit),
 
@@ -466,7 +466,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ChatUI.LoadLimit);
 
         var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
-        var hasVeryLastItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset + dataQuery.EndOffset >= chatIdRange.End;
+        var hasVeryLastItem = dataQuery.ExistingIdRange.End + dataQuery.EndOffset >= chatIdRange.End;
 
         return dataQuery with {
             HasVeryFirstItem = hasVeryFirstItem,

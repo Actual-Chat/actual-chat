@@ -7,6 +7,6 @@ public record ChatDataQuery(Range<long> ExistingIdRange, int StartOffset, int En
 
     public string Format()
  #pragma warning disable MA0076
-        => $"{ExistingIdRange}@[{StartOffset}->{EndOffset}]";
+        => $"{ExistingIdRange}@[{StartOffset}-{EndOffset}]";
  #pragma warning restore MA0076
 }
