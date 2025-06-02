@@ -15,6 +15,7 @@ export class Landing {
     private lastPosition: number = 0;
     private isVideoPlayStarted = false;
     private observer: IntersectionObserver;
+    private canScroll: boolean = true;
 
     static create(landing: HTMLElement): Landing {
         return new Landing(landing);
@@ -108,12 +109,7 @@ export class Landing {
             canScroll = true;
         if (!canScroll)
             return;
-
-        const linksPage = this.landing.querySelector('.page-links');
-        let isNotLinksPage = linksPage.classList.contains('hidden')
-            || linksPage.getBoundingClientRect().top <= 0;
-
-        if (!isNotLinksPage) {
+        if (!this.canScroll) {
             preventDefaultForEvent(event);
             return;
         }
@@ -122,22 +118,14 @@ export class Landing {
     private onWheel(event: WheelEvent): void {
         if (hasModifierKey(event))
             return;
-        const linksPage = this.landing.querySelector('.page-links');
-        let isNotLinksPage = linksPage.classList.contains('hidden')
-            || linksPage.getBoundingClientRect().top <= 0;
-
-        if (!isNotLinksPage) {
+        if (!this.canScroll) {
             preventDefaultForEvent(event);
             return;
         }
     }
 
     private onTouch(event: TouchEvent): void {
-        const linksPage = this.landing.querySelector('.page-links');
-        let isNotLinksPage = linksPage.classList.contains('hidden')
-            || linksPage.getBoundingClientRect().top <= 0;
-
-        if (!isNotLinksPage) {
+        if (!this.canScroll) {
             preventDefaultForEvent(event);
             return;
         }
@@ -167,12 +155,9 @@ export class Landing {
 
     private updateHeader(): void {
         const page1 = this.landing.querySelector('.page-1');
-        const linksPage = this.landing.querySelector('.page-links');
         let isNotFirstPage = page1.getBoundingClientRect().bottom <= 0;
-        let isNotLinksPage = linksPage.classList.contains('hidden')
-            || linksPage.getBoundingClientRect().top <= 0;
 
-        if (isNotFirstPage && isNotLinksPage) {
+        if ((isNotFirstPage && this.canScroll)) {
             this.header.classList.add('filled');
         } else {
             this.header.classList.remove('filled');
@@ -182,7 +167,7 @@ export class Landing {
         let mainPageBtn = this.header.querySelector('.btn-to-main-page');
         if (this == null || mainPageBtn == null)
             return;
-        if (!linksPage.classList.contains('hidden') && !isNotLinksPage) {
+        if (!this.canScroll) {
             downloadBtn.classList.add('!hidden');
             mainPageBtn.classList.remove('!hidden');
         } else {
@@ -228,16 +213,15 @@ export class Landing {
         let page = this.downloadLinksPage;
         if (page.classList.contains('hidden')) {
             page.classList.remove('hidden');
+            this.canScroll = false;
         } else {
             page.classList.add('hidden');
+            this.canScroll = true;
         }
     }
 
     private showLinksPage(): void {
-        const linksPage = this.landing.querySelector('.page-links');
-        let isNotLinksPage = linksPage.classList.contains('hidden')
-            || linksPage.getBoundingClientRect().top <= 0;
-        if (isNotLinksPage)
+        if (this.canScroll)
             this.scrollToPageLinks();
         else
             return;

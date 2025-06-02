@@ -355,7 +355,7 @@ export class MarkupEditor {
         }
 
         // Up key & empty content = open previous
-        if (e.code === 'Up' || e.code === 'ArrowUp' && this.contentDiv.childNodes.length == 0) {
+        if (e.code === 'Up' || e.code === 'ArrowUp' && this.contentDiv.classList.contains('is-empty')) {
             void this.onOpenPrevious();
             return ok();
         }
