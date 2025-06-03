@@ -22,14 +22,9 @@ public class SystemProperties(IServiceProvider services)
         string clientVersion,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(clientVersion))
-            throw new ArgumentException("", nameof(clientVersion));
-
-        clientVersion = clientVersion.TrimStart('v');
-        var clientVersionParts = clientVersion.Split(' ');
-        clientVersion = clientVersionParts[0];
+        clientVersion.RequireNonEmpty();
         if(!Version.TryParse(clientVersion, out var version))
-             throw new ArgumentOutOfRangeException(nameof(clientVersion));
+             throw new ArgumentOutOfRangeException(nameof(clientVersion), clientVersion, "Invalid version format");
 
         var compatibility = SystemProperties_ClientCompatibility.Latest;
          var apiVersion = Version.Parse(Constants.Api.StringVersion);

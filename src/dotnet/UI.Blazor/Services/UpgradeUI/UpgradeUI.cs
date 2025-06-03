@@ -9,7 +9,7 @@ public partial class UpgradeUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     private readonly ComputedState<bool> _upgradeRequiredState;
     private readonly IStoredState<LocalClientCompatibility?> _storedState;
 
-    private string ClientVersion => AppInfo.DisplayVersion;
+    private string ClientVersion => AppInfo.Version;
     private ISystemProperties SystemProperties { get; }
 
     public IState<bool> UpgradeRequiredState => _upgradeRequiredState;
