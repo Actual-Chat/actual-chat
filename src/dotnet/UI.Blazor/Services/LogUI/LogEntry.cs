@@ -11,6 +11,7 @@ public record LogEntry(
 {
     public string Key { get; } = Id.ToInvariantString();
     public bool IsGroup => false;
+    public bool ShouldSkipKey => false;
 
     public override int GetHashCode()
         => Id.GetHashCode();

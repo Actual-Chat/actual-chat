@@ -47,6 +47,10 @@ public partial class ChatUI
             }
         }
 
+        Range<long> chatIdRange;
+        using (Computed.BeginIsolation())
+            chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange);
         var chatRangeMetaList = (await metaIdTiles
             .Select(metaIdTile => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
@@ -96,7 +100,8 @@ public partial class ChatUI
 
         var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        var prevMessage = dataQuery.HasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
+        var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
+        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         foreach (var idTile in idTiles) {
             var lastReadEntryLid = shownReadyEntryLid;
@@ -404,6 +409,7 @@ public partial class ChatUI
                         if (hasVeryFirstItem) {
                             var welcomeMessage = new ChatEntryMessage(entry) {
                                 ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+                                ShouldSkipKey = true,
                                 PreviousMessage = prevMessage,
                             };
                             if (prevMessage != null)
@@ -414,6 +420,7 @@ public partial class ChatUI
                         if (hasVeryFirstSearchItem) {
                             var welcomeMessage = new ChatEntryMessage(entry) {
                                 ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock,
+                                ShouldSkipKey = true,
                                 PreviousMessage = prevMessage,
                             };
                             if (prevMessage != null)
@@ -427,6 +434,7 @@ public partial class ChatUI
                     if (isEntryUnread && !isPrevUnread) {
                         var newLineMessage = new ChatEntryMessage(entry) {
                             ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
+                            ShouldSkipKey = true,
                             Date = date,
                             PreviousMessage = prevMessage,
                             Conversation = expandedConversation,
@@ -441,6 +449,7 @@ public partial class ChatUI
                     if (expandedConversation != null && alreadyAddedConversationHeaders.Add(expandedConversation.Id)) {
                         var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
                             ReplacementKind = ChatMessageReplacementKind.ConversationStart,
+                            ShouldSkipKey = true,
                             Date = date,
                             PreviousMessage = prevMessage,
                         };
@@ -452,6 +461,7 @@ public partial class ChatUI
                     if (date != prevDate) {
                         var dateLineMessage = new ChatEntryMessage(entry) {
                             ReplacementKind = ChatMessageReplacementKind.DateLine,
+                            ShouldSkipKey = true,
                             Date = date,
                             PreviousMessage = prevMessage,
                             Conversation = expandedConversation,
@@ -478,6 +488,7 @@ public partial class ChatUI
                         if (entry.Id.LocalId == expandedConversation.EndEntryLid) {
                             var conversationFooterMessage = new ConversationFooter(expandedConversation) {
                                 ReplacementKind = ChatMessageReplacementKind.ConversationEnd,
+                                ShouldSkipKey = true,
                                 Date = date,
                                 PreviousMessage = prevMessage,
                             };

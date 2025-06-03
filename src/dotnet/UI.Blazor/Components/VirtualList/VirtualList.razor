@@ -84,7 +84,7 @@
                         @Item(item)
                     </li>
                 } else {
-                    <li @key="@item.RenderKey" class="item" data-key="@item.Key">
+                    <li @key="@item.RenderKey" class="item" data-key="@item.Key" data-skip="@item.ShouldSkipKey">
                         @Item(item)
                     </li>
                 }

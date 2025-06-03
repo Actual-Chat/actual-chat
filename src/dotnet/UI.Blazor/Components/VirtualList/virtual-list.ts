@@ -401,13 +401,11 @@ export class VirtualList {
 
             for (const node of mutation.removedNodes) {
                 const nodeElement = node as HTMLElement;
-                const isGroup = nodeElement.className === 'group';
+                const isGroup = nodeElement.classList && nodeElement.classList.contains('group');
                 if (!node['dataset'] && !isGroup)
                     continue;
 
-                const itemRefs = isGroup
-                    ? [...nodeElement.children] as HTMLElement[]
-                    : [nodeElement];
+                const itemRefs = this.getChildItemRefs(nodeElement);
                 for (const itemRef of itemRefs) {
                     const key = getItemKey(itemRef);
                     this.items.delete(key);
@@ -421,15 +419,16 @@ export class VirtualList {
             }
             for (const node of mutation.addedNodes) {
                 const nodeElement = node as HTMLElement;
-                const isGroup = nodeElement.className === 'group';
+                const isGroup = nodeElement.classList && nodeElement.classList.contains('group');
                 if (!node['dataset'] && !isGroup)
                     continue;
 
-                if (isGroup)
-                    this.itemSetChangeObserver.observe(nodeElement, { childList: true });
-                const itemRefs = isGroup
-                    ? [...nodeElement.children] as HTMLElement[]
-                    : [nodeElement];
+                if (isGroup) {
+                    const groupRefs = this.getChildGroupRefs(nodeElement);
+                    for (const groupRef of groupRefs)
+                        this.itemSetChangeObserver.observe(groupRef, { childList: true });
+                }
+                const itemRefs = this.getChildItemRefs(nodeElement);
                 for (const itemRef of itemRefs) {
                     const key = getItemKey(itemRef);
                     if (!key)
@@ -438,6 +437,7 @@ export class VirtualList {
                     const newItem = this.createListItem(key, itemRef);
                     const oldItem = oldItems.get(key);
                     if (oldItem) {
+                        oldItem.range = null; // reset range
                         this.items.set(key, oldItem);
                         if (oldItem.size > 0)
                             this.unmeasuredItems.delete(key);
@@ -454,6 +454,7 @@ export class VirtualList {
     };
 
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
+        //console.warn(`onResize: entries =`, [...entries]);
         let itemsWereMeasured = false;
         let notAnItem = false;
         let existingResizedCount = 0;
@@ -859,8 +860,7 @@ export class VirtualList {
         this.visibilityObserver.observe(itemRef);
         itemRef.addEventListener('touchend', this.onInteractiveEvent, { passive: true });
         itemRef.addEventListener('click', this.onInteractiveEvent, { passive: true });
-        if (itemRef.classList.contains('expanded'))
-            newItem.isExpanded = true;
+        newItem.shouldSkipKey = itemRef.dataset['skip'] === 'true';
         return newItem;
     }
 
@@ -1036,6 +1036,22 @@ export class VirtualList {
 
     private getLastItemKey(): string | null {
         return getItemKey(this.getLastItemRef());
+    }
+
+    private getChildItemRefs(ref: HTMLElement): HTMLElement[] {
+        if (ref.classList.contains('item'))
+            return [ref as HTMLElement];
+
+        if (ref.classList.contains('group'))
+            return Array.from(ref.getElementsByClassName<HTMLElement>('item'));
+
+        return [];
+    }
+
+    private getChildGroupRefs(ref: HTMLElement): HTMLElement[] {
+        return ref.classList.contains('group')
+            ? [ref, ...Array.from(ref.getElementsByClassName<HTMLElement>('group'))]
+            : [];
     }
 
     private isKeyVisible(itemKey: string): boolean {
@@ -1870,7 +1886,7 @@ export class VirtualList {
         const itemSize = this.statistics.itemSize;
         const viewport = this.viewport;
         this.ensureItemRangeCalculated();
-        const orderedItems = [...this.orderedItems.filter(i => !i.isExpanded)];
+        const orderedItems = [...this.orderedItems.filter(i => !i.shouldSkipKey)];
         if (orderedItems.length == 0) // No entries -> nothing to "align" the query to
             return this.lastQuery;
 

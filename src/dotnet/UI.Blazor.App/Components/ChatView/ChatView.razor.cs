@@ -340,9 +340,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         rebuildTiles: // Building actual virtual list tiles
 
-        var hasVeryFirstItem = dataQuery.HasVeryFirstItem;
-        var hasVeryLastItem = dataQuery.HasVeryLastItem;
-        // var hasAllItems = hasVeryFirstItem && hasVeryLastItem;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return VirtualListData<ChatMessage>.None;
@@ -380,10 +377,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     TextEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
-        if (items.Count != 0) {
-            hasVeryFirstItem = hasVeryFirstItem || chatIdRange.Start >= items[0].Id;
-            hasVeryLastItem = hasVeryLastItem || chatIdRange.End - 1 <= GetLastMessage(items[^1]).Id;
-        }
+        var hasVeryFirstItem = chatIdRange.Start >= items[0].Id;
+        var hasVeryLastItem = chatIdRange.End - 1 <= GetLastMessage(items[^1]).Id;
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
@@ -465,13 +460,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 -ChatUI.HalfLoadLimit,
                 ChatUI.LoadLimit);
 
-        var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
-        var hasVeryLastItem = dataQuery.ExistingIdRange.End + dataQuery.EndOffset >= chatIdRange.End;
-
-        return dataQuery with {
-            HasVeryFirstItem = hasVeryFirstItem,
-            HasVeryLastItem = hasVeryLastItem,
-        };
+        return dataQuery;
     }
 
     // Helpers

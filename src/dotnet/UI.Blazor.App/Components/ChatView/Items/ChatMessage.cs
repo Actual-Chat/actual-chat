@@ -8,6 +8,8 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public string Key => _key ??= GetKey();
     public long Id { get; } = id;
 
+    public bool ShouldSkipKey { get; init; }
+
     public ChatMessageReplacementKind ReplacementKind { get; init; }
     public DateOnly Date { get; init; }
     public ChatMessageFlags Flags { get; init; }

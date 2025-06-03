@@ -32,17 +32,9 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     public CpuTimestamp ComputedAt { get; init; } = CpuTimestamp.Now;
 
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
-    public TItem? FirstItem => Items.Count > 0
-        ? Items[0] is IVirtualListGroup<TItem> { Count: > 0 } firstGroup
-            ? firstGroup.Items[0]
-            : Items[0]
-        : null;
+    public TItem? FirstItem => field ??= GetFirst(Items);
 
-    public TItem? LastItem => Items.Count > 0
-        ? Items[^1] is IVirtualListGroup<TItem> { Count: > 0 } lastGroup
-            ? lastGroup.Items[^1]
-            : Items[^1]
-        : null;
+    public TItem? LastItem => field ??= GetLast(Items);
 
     public bool IsSimilarTo(VirtualListData<TItem> other)
         => ReferenceEquals(this, other) ||
@@ -60,5 +52,27 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
             return group.Items.Sum(CalculateCount);
 
         return 1;
+    }
+
+    private static TItem? GetFirst(IReadOnlyList<TItem> items)
+    {
+        if (items.Count == 0)
+            return null;
+
+        if (items[0] is IVirtualListGroup<TItem> group)
+            return GetFirst(group.Items);
+
+        return items.SkipWhile(i => i.ShouldSkipKey).FirstOrDefault();
+    }
+
+    private static TItem? GetLast(IReadOnlyList<TItem> items)
+    {
+        if (items.Count == 0)
+            return null;
+
+        if (items[^1] is IVirtualListGroup<TItem> group)
+            return GetLast(group.Items);
+
+        return items.Reverse().SkipWhile(i => i.ShouldSkipKey).FirstOrDefault();
     }
 }

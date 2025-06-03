@@ -9,7 +9,7 @@ export class VirtualListItem {
 
     public range?: NumberRange;
     public size?: number;
-    public isExpanded = false;
+    public shouldSkipKey = false;
 
     get isMeasured(): boolean {
         return (this.size ?? -1) >= 0 && this.range != null;
