@@ -7,7 +7,7 @@
     <Header>
         @if (!stepper.CanMoveBack) {
             <div class="sign-in-modal-header-wrapper">
-                <div class="sign-in-modal-header">Sign-in @reason</div>
+                <div class="sign-in-modal-header">Sign in @reason</div>
             </div>
         } else {
             <HeaderButton Click="@(_ => stepper.MoveBack())">
