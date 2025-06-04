@@ -1601,6 +1601,25 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Join(dbContext.Mentions.Where(m => m.ChatId == chatId), ce => ce.LocalId, rs => rs.EntryLocalId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
+            // Remove entry languages
+            var chatEntryIdPrefix = ChatEntryId.Prefix(chatId);
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
+                .Join(dbContext.ChatEntryLanguages.Where(m => m.Id.StartsWith(chatEntryIdPrefix)),
+                    ce => ce.Id,
+                    cel => cel.Id,
+                    (_, cel) => cel)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+            // Remove translations
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
+                .Join(dbContext.Translations.Where(m => m.Id.StartsWith(chatEntryIdPrefix)),
+                    ce => ce.Id,
+                    t => t.EntryId,
+                    (_, t) => t)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             var lastAuthorEntryId = await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
