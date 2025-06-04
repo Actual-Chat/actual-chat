@@ -1,6 +1,6 @@
 .chat-message-sending-status {
     @apply relative bottom-0.5;
-    @apply flex-none inline-flex flex-row items-center align-bottom gap-x-0.5;
+    @apply flex-none inline-flex flex-row items-center align-middle gap-x-0.5;
     @apply h-4 w-fit;
     @apply px-1;
     @apply rounded-full;
@@ -9,7 +9,7 @@
     @apply text-xs text-primary;
 }
 .chat-message-sending-status.only-dot {
-    @apply absolute bottom-0.5;
+    @apply absolute bottom-0;
     @apply pl-0;
     @apply bg-transparent;
 }
@@ -20,6 +20,9 @@
     @apply w-1 h-1;
     @apply rounded-full;
     @apply bg-primary;
+}
+.chat-message-sending-status .c-text {
+    @apply text-caption-8;
 }
 
 /*Sending status in NavbarItem*/
@@ -36,5 +39,5 @@ body.hoverable .navbar-item:hover .chat-message-sending-status {
 /*Sending status in attachments and with code markup*/
 .message-attachments .chat-message-sending-status,
 .chat-message-markup:has(.code-block-markup) .chat-message-sending-status {
-    @apply -right-1 bottom-0;
+    @apply -right-1 bottom-0.5;
 }

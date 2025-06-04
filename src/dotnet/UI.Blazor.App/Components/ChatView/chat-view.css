@@ -139,11 +139,13 @@ body.hoverable .message-wrapper.mention.replied-message:hover,
     @apply border-l-2 border-selected-message-border;
     @apply rounded-none;
     @apply bg-selected-message;
+    transition: border-radius 0.25s ease 0.1s, border-color 0.25s ease 0.1s;
 }
 body.hoverable .message-wrapper.selected-message:hover,
 .touch-capable .message-wrapper.selected-message:active,
 body.hoverable .message-wrapper.mention.selected-message:hover,
 .touch-capable .message-wrapper.mention.selected-message:active {
+    @apply border-selected-message-border;
     @apply bg-selected-message-hover;
 }
 .message-wrapper.selected-message.selection-start {
@@ -167,12 +169,12 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 
 .chat-message-markup {
     @apply relative;
-    @apply text-02 text-base;
-    @apply min-h-6;
+    @apply my-0.5;
+    @apply text-02 text-text-1;
 }
 
 .chat-message-markup span {
-    @apply text-base;
+    @apply text-text-1;
 }
 
 .chat-message-markup .retained {
@@ -230,7 +232,6 @@ body.hoverable .chat-header-title:hover {
 
 .message-content {
     @apply flex-1;
-    @apply py-0.5;
     @apply overflow-hidden;
 }
 .system-entry {
@@ -240,23 +241,24 @@ body.hoverable .chat-header-title:hover {
 }
 .system-entry .chat-message {
     @apply flex-y items-center justify-center;
+    @apply m-0;
 }
 .system-entry .chat-message > .c-content {
     @apply flex-none;
-    @apply mr-0;
+    @apply m-0;
 }
 .system-entry .chat-message-markup {
     @apply flex flex-wrap items-center justify-center gap-x-0.5;
-    @apply mt-0.5;
 }
-.system-entry * {
-    @apply text-xs font-medium;
+.system-entry *,
+.system-entry .chat-message-markup * {
+    @apply text-caption-8;
 }
 .system-entry .message-content {
     @apply flex-x flex-wrap justify-center items-center gap-x-2;
     @apply w-fit;
-    @apply px-2;
-    @apply rounded-lg;
+    @apply px-4 py-0;
+    @apply rounded-2xl;
     @apply bg-03;
 }
 .system-entry .message-content .avatar-name {
@@ -268,6 +270,7 @@ body.hoverable .system-entry .message-content .avatar-name:hover {
 }
 .system-entry .mention-markup,
 .system-entry .mention-markup.mention-markup-own {
+    @apply max-w-40 md:max-w-48;
     @apply p-0;
     @apply bg-transparent;
 }
@@ -312,7 +315,7 @@ body.hoverable .chat-message-quote:hover,
     @apply relative;
     @apply flex-y gap-y-1;
     @apply w-fit;
-    @apply py-0.5 pr-2;
+    @apply pr-2;
     @apply overflow-hidden;
 }
 .message-image-attachments {
