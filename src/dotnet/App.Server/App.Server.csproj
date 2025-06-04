@@ -36,6 +36,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="Npgsql.OpenTelemetry" />
     <PackageReference Include="Google.Cloud.AspNetCore.DataProtection.Storage" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Seq.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>
