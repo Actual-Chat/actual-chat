@@ -1040,17 +1040,17 @@ export class VirtualList {
 
     private getChildItemRefs(ref: HTMLElement): HTMLElement[] {
         if (ref.classList.contains('item'))
-            return [ref as HTMLElement];
+            return [ref];
 
         if (ref.classList.contains('group'))
-            return Array.from(ref.getElementsByClassName<HTMLElement>('item'));
+            return Array.from(ref.getElementsByClassName('item')) as HTMLElement[];
 
         return [];
     }
 
     private getChildGroupRefs(ref: HTMLElement): HTMLElement[] {
         return ref.classList.contains('group')
-            ? [ref, ...Array.from(ref.getElementsByClassName<HTMLElement>('group'))]
+            ? [ref, ...Array.from(ref.getElementsByClassName('group')) as HTMLElement[]] as HTMLElement[]
             : [];
     }
 
