@@ -336,11 +336,10 @@ public partial class StreamingBackend
 
         Task FinalizeLanguages()
         {
-            if (EmptyRegex.IsMatch(lastTranscript.Text))
-                return Task.CompletedTask;
-
             var entryLanguage = new ChatEntryLanguage(textEntry.Id);
-            var cmd = ChatEntryLanguagesBackend_BulkChange.Remove(entryLanguage);
+            var cmd = EmptyRegex.IsMatch(lastTranscript.Text)
+                ? ChatEntryLanguagesBackend_BulkChange.Remove(entryLanguage)
+                : ChatEntryLanguagesBackend_BulkChange.Upserts(entryLanguage);
             return Commander.Call(cmd, true, CancellationToken.None);
         }
     }
