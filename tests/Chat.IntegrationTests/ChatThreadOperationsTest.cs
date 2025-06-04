@@ -6,8 +6,10 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [Fact]
-    public async Task CreateThread()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateThread(bool isPlaceChat)
     {
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
@@ -19,7 +21,13 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         var commander = tester.Commander;
         CancellationToken cancellationToken = default;
 
-        var (parentChatId, _) = await tester.CreateChat(false);
+        var isPrivateChat = !isPlaceChat;
+        PlaceId? placeId = null;
+        if (isPlaceChat) {
+            var place = await tester.CreatePlace(false);
+            placeId = place.Id;
+        }
+        var (parentChatId, _) = await tester.CreateChat(isPrivateChat, placeId: placeId);
         var parentChat = await chats.Get(session, parentChatId, cancellationToken).Require();
         var messages = new[] {
             "Hello!",
