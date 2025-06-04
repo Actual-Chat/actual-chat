@@ -213,7 +213,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-92B2-4BC2-9970-8AFF829A1987}"
 	ProjectSection(SolutionItems) = preProject
 		docs\BigTasks.md = docs\BigTasks.md
-		docs\Places.md = docs\Places.md
 		docs\Search.md = docs\Search.md
 		docs\SmallTasks.md = docs\SmallTasks.md
 	EndProjectSection
