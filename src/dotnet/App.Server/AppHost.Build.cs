@@ -69,6 +69,7 @@ public partial class AppHost
         var hostSettings = cfg.Settings<HostSettings>();
         var appKind = hostSettings.AppKind ?? HostKind.Server;
         var isTested = hostSettings.IsTested ?? false;
+        var isLocalDev = hostSettings.BaseUri.StartsWith($"https://{Constants.Hosts.LocalActualChat}");
         var services = ctx.Services;
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
         var roles = HostRoles.Server.GetAllRoles(serverRole, isTested);
@@ -87,20 +88,26 @@ public partial class AppHost
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
             logging.AddTailLogger();
-            if (LoggingExt.DevLog.IsEmpty || !appKind.IsServer() || isTested)
+            if (!appKind.IsServer() || isTested)
                 return;
+#if DEBUG
+            if (isLocalDev)
+                logging.AddSeq();
+#endif
 
-            var serilog = new LoggerConfiguration()
-                .MinimumLevel.Is(LogEventLevel.Verbose)
-                .Enrich.FromLogContext()
-                .Enrich.With(new ProcessIdLogEventEnricher())
-                .Enrich.With(new ThreadIdLogEventEnricher())
-                .WriteTo.File(LoggingExt.DevLog,
-                    outputTemplate: LoggingExt.OutputTemplate,
-                    fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit,
-                    shared: true)
-                .CreateLogger();
-            logging.AddFilteringSerilog(serilog, true);
+            if (!LoggingExt.DevLog.IsEmpty) {
+                var serilog = new LoggerConfiguration()
+                    .MinimumLevel.Is(LogEventLevel.Verbose)
+                    .Enrich.FromLogContext()
+                    .Enrich.With(new ProcessIdLogEventEnricher())
+                    .Enrich.With(new ThreadIdLogEventEnricher())
+                    .WriteTo.File(LoggingExt.DevLog,
+                        outputTemplate: LoggingExt.OutputTemplate,
+                        fileSizeLimitBytes: LoggingExt.DevLogFileSizeLimit,
+                        shared: true)
+                    .CreateLogger();
+                logging.AddFilteringSerilog(serilog, true);
+            }
         });
 
         // HostInfo
