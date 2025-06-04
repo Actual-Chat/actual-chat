@@ -19,6 +19,7 @@ namespace ActualChat;
 // coz this forces RPC to use polymorphic serialization for this type.
 public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntryId>
 {
+    public const string Delimiter = ":";
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ChatEntryId>();
     private static readonly ILruCache<string, ChatEntryId> Cache = CreateCache<ChatEntryId>(2048);
@@ -65,8 +66,14 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
 
     // Format & Parse
 
+    public static string Prefix(ChatId chatId)
+        => Prefix(chatId.Value);
+
+    public static string Prefix(string chatId)
+        => $"{chatId}{Delimiter}";
+
     public static string Format(ChatId chatId, ChatEntryKind kind, long localId)
-        => $"{chatId.Value}:{kind.Format()}:{localId.Format()}";
+        => $"{chatId.Value}{Delimiter}{kind.Format()}{Delimiter}{localId.Format()}";
 
     public static ChatEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId>(s);
@@ -90,14 +97,14 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
             return true;
         }
 
-        var chatIdLength = s.OrdinalIndexOf(":");
+        var chatIdLength = s.OrdinalIndexOf(Delimiter);
         if (chatIdLength < 0)
             return false;
         if (!ChatId.TryParse(s[..chatIdLength], out var chatId))
             return false;
 
         var kindStart = chatIdLength + 1;
-        var kindLength = s.OrdinalIndexOf(":", kindStart);
+        var kindLength = s.OrdinalIndexOf(Delimiter, kindStart);
         if (kindLength < 0)
             return false;
 
