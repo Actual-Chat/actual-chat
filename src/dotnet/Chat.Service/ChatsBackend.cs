@@ -897,6 +897,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     else
                         chatId = PlaceChatId.New(placeId);
                 }
+                else if (chatId.IsThread) {
+                    // Accept provided chat id.
+                }
                 else if (!(chatId is PlaceChatId placeChatId && placeChatId.IsRoot))
                     throw new ArgumentOutOfRangeException(nameof(command),
                         "Change.ChatId must be null for new place chats.");
