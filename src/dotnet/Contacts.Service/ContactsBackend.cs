@@ -182,7 +182,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatId[]> ListThreadIdsForChat(
+    public virtual async Task<ThreadChatId[]> ListThreadIdsForChat(
         UserId ownerId,
         ChatId parentChatId,
         CancellationToken cancellationToken)
@@ -201,12 +201,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         return sChatIds
             .Select(ChatId.ParseNullable)
             .SkipNullItems()
-            .Where(c => c.IsThread)
+            .Where(c => c.IsThread())
+            .Cast<ThreadChatId>()
             .ToArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatId[]> ListThreadIdsForPlace(
+    public virtual async Task<ThreadChatId[]> ListThreadIdsForPlace(
         UserId ownerId,
         PlaceId parentPlaceId,
         CancellationToken cancellationToken)
@@ -225,7 +226,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         return sChatIds
             .Select(ChatId.ParseNullable)
             .SkipNullItems()
-            .Where(c => c.IsThread)
+            .Where(c => c.IsThread())
+            .Cast<ThreadChatId>()
             .ToArray();
     }
 
@@ -672,18 +674,18 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         if (Invalidation.IsActive) {
             _ = GetThreadContact(ownerId, id, default);
-            var parent = chatId;
-            do {
-                parent = parent.GetThreadParentOrSelf();
-                _ = ListThreadIdsForChat(ownerId, parent, default);
-            } while (parent.IsThread);
+            ThreadChatId? invChatId = chatId as ThreadChatId;
+            while (invChatId is not null) {
+                _ = ListThreadIdsForChat(ownerId, invChatId.ParentChatId, default);
+                invChatId = invChatId.ParentChatId as ThreadChatId;
+            }
             if (chatId is PlaceChatId placeChatId)
                 _ = ListThreadIdsForPlace(ownerId, placeChatId.PlaceId, default);
             return default!;
         }
 
         id.Require();
-        id.ChatId.IsThread.RequireTrue("Id.ChatId.IsThread must be true.");
+        id.ChatId.IsThread().RequireTrue("Id.ChatId.IsThread must be true.");
         ownerId.Require();
         change.RequireValid();
 
@@ -741,7 +743,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return; // It just spawns other commands, so nothing to do here
 
         var (chat, oldChat, changeKind) = eventCommand;
-        if (chat.Id.IsThread) {
+        if (chat.Id.IsThread(out var threadChatId)) {
             if (changeKind is ChangeKind.Remove) {
                 // TODO: implement remove thread contacts
                 // var command = new ContactsBackend_RemoveChatContacts(chat.Id);
@@ -762,7 +764,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                     if (author is null)
                         continue;
 
-                    await EnsureThreadContactExits(author.UserId, chat.Id, cancellationToken).ConfigureAwait(false);
+                    await EnsureThreadContactExits(author.UserId, threadChatId, cancellationToken).ConfigureAwait(false);
                 }
             }
             return;
@@ -849,7 +851,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var userId = author.UserId;
         var chatId = entry.ChatId;
 
-        if (!chatId.IsThread) {
+        if (!chatId.IsThread(out var threadChatId)) {
             var contactId = ContactId.NewAny(userId, chatId);
             var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
             var now = Clocks.SystemClock.Now;
@@ -860,7 +862,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         }
         else if (changeKind is ChangeKind.Create)
-            await EnsureThreadContactExits(userId, chatId, cancellationToken).ConfigureAwait(false);
+            await EnsureThreadContactExits(userId, threadChatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [EventHandler]
@@ -893,8 +895,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (chatId, mentionIds) = eventCommand;
-        var parentChat = chatId.GetOutermostThreadParentOrSelf();
+        var (threadChatId, mentionIds) = eventCommand;
+        var parentChat = threadChatId.GetOutermostParent();
         foreach (var mentionId in mentionIds) {
             AuthorFull? author = null;
             if (mentionId.PrincipalId is AuthorId authorId)
@@ -908,7 +910,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             if (author is null)
                 continue;
 
-            await EnsureThreadContactExits(author.UserId, chatId, cancellationToken).ConfigureAwait(false);
+            await EnsureThreadContactExits(author.UserId, threadChatId, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -939,7 +941,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private static string ToRedisKey(UserId userId)
         => $"{RedisKeyPrefix}{userId.Value}";
 
-    private async Task EnsureThreadContactExits(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    private async Task EnsureThreadContactExits(UserId userId, ThreadChatId chatId, CancellationToken cancellationToken)
     {
         var contactId = ContactId.NewAny(userId, chatId);
         var threadContact = await GetThreadContact(userId, contactId, cancellationToken).ConfigureAwait(false);

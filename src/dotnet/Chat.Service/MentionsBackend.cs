@@ -85,8 +85,8 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         context.Operation.Items.KeylessSet(changedMentionIds);
 
         var chatId = eventCommand.Entry.ChatId;
-        if (chatId.IsThread && toAddMentionIds.Length > 0)
-            context.Operation.AddEvent(new UserMentionedInThreadChatEvent(chatId, toAddMentionIds));
+        if (chatId.IsThread(out var threadChatId) && toAddMentionIds.Length > 0)
+            context.Operation.AddEvent(new UserMentionedInThreadChatEvent(threadChatId, toAddMentionIds));
     }
 
     private async Task<HashSet<MentionId>> GetMentionIds(ChatEntry entry, CancellationToken cancellationToken)

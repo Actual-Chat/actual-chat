@@ -315,7 +315,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public void DeleteThread(Chat.Chat chat)
     {
-        if (!chat.Id.IsThread)
+        if (!chat.Id.IsThread())
             throw new ArgumentOutOfRangeException(nameof(chat), "Given chat should be a thread");
 
         _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true,

@@ -24,7 +24,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     private IThreadInsightExtractor ThreadInsightExtractor => field ??= services.GetRequiredService<IThreadInsightExtractor>();
 
     // [ComputeMethod]
-    public virtual async Task<ChatId[]> ListIdsForChat(
+    public virtual async Task<ThreadChatId[]> ListIdsForChat(
         Session session,
         ChatId parentChatId,
         CancellationToken cancellationToken)
@@ -38,7 +38,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatId[]> ListIdsForPlace(
+    public virtual async Task<ThreadChatId[]> ListIdsForPlace(
         Session session,
         PlaceId parentPlaceId,
         CancellationToken cancellationToken)
@@ -51,13 +51,13 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var placeContacts = await ContactsBackend.ListIds(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
         var placeChatIds = placeContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Place).ToHashSet();
         var placeTheadIds = await ContactsBackend.ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
-        return placeTheadIds.Where(c => placeChatIds.Contains(c.GetOutermostThreadParentOrSelf())).ToArray();
+        return placeTheadIds.Where(c => placeChatIds.Contains(c.GetOutermostParent())).ToArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> GetThreadFollowStatus(Session session, ChatId threadChatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> GetThreadFollowStatus(Session session, ThreadChatId threadChatId, CancellationToken cancellationToken)
     {
-        if (!threadChatId.IsThread)
+        if (!threadChatId.IsThread())
             throw new ArgumentOutOfRangeException(nameof(threadChatId));
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -72,7 +72,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     // [ComputeMethod]
     public virtual async Task<ThreadStat> GetThreadStat(
         Session session,
-        ChatId threadChatId,
+        ThreadChatId threadChatId,
         CancellationToken cancellationToken)
     {
         await Chats.Get(session, threadChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
@@ -82,18 +82,18 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     // [ComputeMethod]
     public virtual async Task<Author?> GetThreadCreator(
         Session session,
-        ChatId chatId,
+        ThreadChatId chatId,
         CancellationToken cancellationToken)
     {
-        if (!chatId.IsThread)
+        if (!chatId.IsThread(out var threadChatId))
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
-        await Chats.Get(session, chatId.GetThreadParent(), cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the parent chat
+        await Chats.Get(session, threadChatId.ParentChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the parent chat
         return await Backend.GetThreadCreator(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    protected virtual async Task<ThreadStat> GetThreadStatInternal(ChatId threadChatId, CancellationToken cancellationToken)
+    protected virtual async Task<ThreadStat> GetThreadStatInternal(ThreadChatId threadChatId, CancellationToken cancellationToken)
     {
         const int displayAuthorsLimit = 3;
         var messageCount = 0;
@@ -218,7 +218,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             return default;
 
         var (session, threadChatId) = command;
-        if (!threadChatId.IsThread)
+        if (!threadChatId.IsThread())
             throw new ArgumentOutOfRangeException(nameof(threadChatId));
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

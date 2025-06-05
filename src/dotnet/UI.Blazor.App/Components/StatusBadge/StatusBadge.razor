@@ -53,15 +53,18 @@
         var badgeClass = "";
         var chat = Chat;
         var isPublicChat = chat.IsPublic;
-        if (chat.Id.IsThread) {
-            var parentChat = await Chats.Get(Session, chat.Id.GetOutermostThreadParentOrSelf(), cancellationToken).ConfigureAwait(false);
+        ChatId parentChatId = chat.Id;
+        var isThread = chat.Id.IsThread(out var threadChatId);
+        if (isThread) {
+            parentChatId = threadChatId!.GetOutermostParent();
+            var parentChat = await Chats.Get(Session, parentChatId, cancellationToken).ConfigureAwait(false);
             isPublicChat = parentChat?.IsPublic ?? isPublicChat;
         }
-        switch (chat.Kind) {
+        switch (parentChatId.Kind) {
             case ChatKind.Group:
                 badgeClass = ShowOnlyIcon ? "default" : "public";
                 status = isPublicChat ? "Public\u00A0chat" : "Private\u00A0chat";
-                if (chat.Id.IsThread)
+                if (isThread)
                     status += "\u00A0thread";
                 return new() {
                     Status = status,
@@ -69,13 +72,13 @@
                 };
             case ChatKind.Place:
                 badgeClass = ShowOnlyIcon ? "default" : "public";
-                var placeId = ((PlaceChatId)chat.Id).PlaceId;
+                var placeId = ((PlaceChatId)parentChatId).PlaceId;
                 var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
                 if (ReferenceEquals(place, null))
                     return Model.Loading;
 
                 status = isPublicChat ? "Place\u00A0chat" : "Private\u00A0chat";
-                if (chat.Id.IsThread)
+                if (isThread)
                     status += "\u00A0thread";
                 return new () {
                     Status = status,
@@ -84,8 +87,7 @@
                 };
             default:
                 var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-                var chatId = chat.Id;
-                if (!(chatId is PeerChatId peerChatId))
+                if (parentChatId is not PeerChatId peerChatId)
                     return Model.Loading;
 
                 var peerAccountId = peerChatId.AnotherUserIdOrNull(ownAccount.Id);
@@ -99,7 +101,7 @@
                 if (anotherAuthor == null)
                     return Model.Loading;
 
-                var presence = await Authors.GetPresence(Session, chatId, anotherAuthor.Id, cancellationToken).ConfigureAwait(false);
+                var presence = await Authors.GetPresence(Session, peerChatId, anotherAuthor.Id, cancellationToken).ConfigureAwait(false);
                 status = presence switch {
                     Presence.Offline => "Offline",
                     Presence.Away => "Away",

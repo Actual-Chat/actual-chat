@@ -532,8 +532,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         RequestedAuthorKind authorKind,
         CancellationToken cancellationToken)
     {
-        if (chatId.IsThread) {
-            var parentChatId = chatId.GetThreadParent();
+        if (chatId.IsThread(out var threadChatId)) {
+            var parentChatId = threadChatId.ParentChatId;
             var parentChatAuthorId = Remap(principalId, parentChatId);
             var parentChatAuthor = await GetInternal(parentChatId, parentChatAuthorId, authorKind, cancellationToken).ConfigureAwait(false);
             if (parentChatAuthor is null)
@@ -719,8 +719,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
     private async Task<ChatId> GetAuthorChatId(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsThread)
-            return await GetAuthorChatId(chatId.GetOutermostThreadParentOrSelf(), cancellationToken).ConfigureAwait(false);
+        if (chatId.IsThread(out var threadChatId))
+            return await GetAuthorChatId(threadChatId.GetOutermostParent(), cancellationToken).ConfigureAwait(false);
 
         if (chatId is not PlaceChatId placeChatId || placeChatId.IsRoot)
             return chatId;

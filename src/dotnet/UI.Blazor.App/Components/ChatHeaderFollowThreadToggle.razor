@@ -13,7 +13,7 @@
 </HeaderButton>
 
 @code {
-    [Parameter, EditorRequired] public ChatId ThreadChatId { get; set; } = null!;
+    [Parameter, EditorRequired] public ThreadChatId ThreadChatId { get; set; } = null!;
 
     private IChatThreads ChatThreads => Hub.ChatThreads;
 

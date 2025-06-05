@@ -73,14 +73,4 @@ public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>
         result = chatId as GroupChatId;
         return result is not null;
     }
-
-    public override long ThreadId => _localChatId.ThreadId;
-    public new GroupChatId GetThreadParentOrSelf()
-    {
-        if (!IsThread)
-            return this;
-
-        var parentGroupChat = _localChatId.Parent;
-        return new GroupChatId(parentGroupChat!.Id, parentGroupChat);
-    }
 }

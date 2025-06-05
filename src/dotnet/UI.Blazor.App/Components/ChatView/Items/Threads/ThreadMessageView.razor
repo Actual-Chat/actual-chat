@@ -94,7 +94,7 @@
         _chatMarkupHub = Hub.ChatMarkupHubFactory[Message.Chat.Id];
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Message.Chat.Id;
+        var chatId = Message.ChatId;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return null;

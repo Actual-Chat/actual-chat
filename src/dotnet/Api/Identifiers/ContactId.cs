@@ -59,9 +59,10 @@ public sealed partial class ContactId : StringIdentifier, IStringIdentifier<Cont
     {
         OwnerId = ownerId;
         ChatId = chatId;
-        Kind = chatId.Kind switch {
+        var parent = chatId.IsThread(out var threadChatId) ? threadChatId.GetOutermostParent() : chatId;
+        Kind = parent.Kind switch {
             ChatKind.Peer => ContactKind.User,
-            ChatKind.Place => ((PlaceChatId)chatId).IsRoot ? ContactKind.Place : ContactKind.Chat,
+            ChatKind.Place => ((PlaceChatId)parent).IsRoot ? ContactKind.Place : ContactKind.Chat,
             _ => ContactKind.Chat,
         };
     }
