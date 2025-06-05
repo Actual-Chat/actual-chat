@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
 using MemoryPack;
 
@@ -7,9 +8,9 @@ namespace ActualChat.Hashing;
 #pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[JsonConverter(typeof(Internal.SymbolIdentifierJsonConverter<HashString>))]
-[Newtonsoft.Json.JsonConverter(typeof(Internal.SymbolIdentifierNewtonsoftJsonConverter<HashString>))]
-[TypeConverter(typeof(Internal.SymbolIdentifierTypeConverter<HashString>))]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<HashString>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<HashString>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<HashString>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct HashString : ISymbolIdentifier<HashString>
