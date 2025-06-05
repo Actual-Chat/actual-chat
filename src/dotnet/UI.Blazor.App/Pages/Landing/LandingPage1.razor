@@ -44,12 +44,6 @@
                     </div>
                 </button>
             }
-            @if (!isMaui) {
-                <DownloadButton
-                    Title="Get mobile/desktop app"
-                    Click="@DownloadClick"
-                    Class="download-app lg-icon"/>
-            }
             @if (IsGuest) {
                 <button class="btn-download transparent md:light lg-icon" @onclick="@SignInClick">
                     <span>@signinText</span>
@@ -57,6 +51,12 @@
                         <i class="icon-monitor text-2xl font-thin"></i>
                     }
                 </button>
+            }
+            @if (!isMaui) {
+                <DownloadButton
+                    Title="Get mobile/desktop app"
+                    Click="@DownloadClick"
+                    Class="download-app lg-icon"/>
             }
             @if (IsGuest && ScreenSize.IsNarrow()) {
                 <button class="btn-download transparent" @onclick="@ShowVideoClick">
