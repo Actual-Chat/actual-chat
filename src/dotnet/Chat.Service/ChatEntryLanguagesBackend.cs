@@ -244,11 +244,8 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     // Helper methods
 
     private static Task LockShared(ChatDbContext dbContext, ChatEntryId id, CancellationToken cancellationToken)
-        => dbContext.ChatEntryLanguages.LockShared(GetLockKey(id), cancellationToken);
+        => dbContext.ChatEntryLanguages.LockShared(id, cancellationToken);
 
     private static Task Lock(ChatDbContext dbContext, ChatEntryId id, CancellationToken cancellationToken)
-        => dbContext.ChatEntryLanguages.Lock(GetLockKey(id), cancellationToken);
-
-    private static string GetLockKey(ChatEntryId id)
-        => "lang_" + id;
+        => dbContext.ChatEntryLanguages.Lock(id, cancellationToken);
 }
