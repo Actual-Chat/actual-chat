@@ -93,10 +93,10 @@
         return new(languages, enableIncompleteUI);
     }
 
-    private void OnLanguageChanged(int index, string languageId) {
+    private async Task OnLanguageChanged(int index, string languageId) {
         var language = Language.ParseNullable(languageId);
-        LanguageUI.UpdateSettings(x => x.With(index, language));
-        State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+        await LanguageUI.UpdateSettings(x => x.With(index, language));
+        _ = State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 
     // Nested types

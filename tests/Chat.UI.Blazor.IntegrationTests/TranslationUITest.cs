@@ -49,7 +49,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var primary = Language.ParseNullable(sPrimary);
         var secondary = Language.ParseNullable(sSecondary);
         if (primary is not null || secondary is not null)
-            LanguageUI.UpdateSettings(x => x with { Primary = primary!, Secondary = secondary });
+            await LanguageUI.UpdateSettings(x => x with { Primary = primary!, Secondary = secondary });
         var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
@@ -78,7 +78,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotBeVisibleWhenLanguageMatchesSpoken()
     {
         // arrange
-        LanguageUI.UpdateSettings(x => x with { Secondary = Languages.French });
+        await LanguageUI.UpdateSettings(x => x with { Secondary = Languages.French });
         var (chatId, _) = await BobTester.CreateChat(true);
 
         // act

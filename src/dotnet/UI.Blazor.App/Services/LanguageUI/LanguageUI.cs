@@ -16,7 +16,6 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public LanguageUI(AppUIHub hub) : base(hub)
         => _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
-                InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
@@ -54,8 +53,9 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         return language;
     }
 
-    public void UpdateSettings(Func<UserLanguageSettings, UserLanguageSettings> updater)
+    public async Task UpdateSettings(Func<UserLanguageSettings, UserLanguageSettings> updater)
     {
+        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         var settings = updater.Invoke(_settings.Value);
         _settings.Value = settings;
     }
