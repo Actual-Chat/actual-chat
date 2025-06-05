@@ -5,20 +5,20 @@ namespace ActualChat.Chat;
 public interface IChatThreads : IComputeService
 {
     [ComputeMethod]
-    Task<ChatId[]> ListIdsForChat(Session session, ChatId parentChatId, CancellationToken cancellationToken);
+    Task<ThreadChatId[]> ListIdsForChat(Session session, ChatId parentChatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatId[]> ListIdsForPlace(Session session, PlaceId parentPlaceId, CancellationToken cancellationToken);
+    Task<ThreadChatId[]> ListIdsForPlace(Session session, PlaceId parentPlaceId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> GetThreadFollowStatus(Session session, ChatId threadChatId, CancellationToken cancellationToken);
+    Task<bool> GetThreadFollowStatus(Session session, ThreadChatId threadChatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ThreadStat> GetThreadStat(Session session, ChatId threadChatId, CancellationToken cancellationToken);
+    Task<ThreadStat> GetThreadStat(Session session, ThreadChatId threadChatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     // Returns author in parent chat who created the thread.
-    Task<Author?> GetThreadCreator(Session session, ChatId threadChatId, CancellationToken cancellationToken);
+    Task<Author?> GetThreadCreator(Session session, ThreadChatId threadChatId, CancellationToken cancellationToken);
 
     Task<(string, string)> SuggestThreadTitle(Session session, ChatId parentChatId, TextEntryId[] entryIds, CancellationToken cancellationToken);
 
@@ -43,7 +43,7 @@ public sealed partial record ChatThreads_Start(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatThreads_ToggleThreadFollowStatus(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] ChatId ThreadChatId
+    [property: DataMember, MemoryPackOrder(1)] ThreadChatId ThreadChatId
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

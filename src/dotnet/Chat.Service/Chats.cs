@@ -124,10 +124,9 @@ public class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var isThread = chatId.IsThread;
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
-        if (isThread) {
+        if (chatId.IsThread()) {
             var permissions = rules.Permissions;
             if (permissions.HasFlag(ChatPermissions.Write))
                 permissions |= ChatPermissions.EditProperties;
@@ -259,14 +258,13 @@ public class Chats(IServiceProvider services) : IChats
         }
         else {
             chatId.Require();
-            if (chatId.IsThread) {
+            if (chatId.IsThread(out var threadChatId)) {
                 if (change.IsUpdate(out var chatDiff2)) {
                     chat.Require().Rules.Permissions.Require(ChatPermissions.EditProperties);
                     ValidateThreadChatChangeConstraints(chatDiff2);
                 }
                 else if (change.Kind is ChangeKind.Remove) {
-                    var parentChatId = chatId.GetThreadParentOrSelf();
-                    var parentChat = await Get(session, parentChatId, cancellationToken).ConfigureAwait(false);
+                    var parentChat = await Get(session, threadChatId.ParentChatId, cancellationToken).ConfigureAwait(false);
                     parentChat.Require().Rules.Permissions.Require(ChatPermissions.Owner); // Thread can be removed only by parent chat owner.
                 }
                 else

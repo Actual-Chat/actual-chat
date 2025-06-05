@@ -4,6 +4,7 @@ public sealed class ThreadMessage(ChatEntry entry, Chat.Chat chat): ChatMessage(
 {
     public ChatEntry Entry { get; } = entry;
     public Chat.Chat Chat { get; } = chat;
+    public ThreadChatId ChatId => (ThreadChatId)Chat.Id;
 
     public override bool Equals(ChatMessage? other)
     {

@@ -5,7 +5,7 @@
     var searchCls = ScreenSize.IsNarrow() ? "btn-sm" : "";
     if (m.IsSearchMode)
         searchCls += " on";
-    var isThread = chat?.Id.IsThread ?? false;
+    var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
 }
 
@@ -67,8 +67,8 @@
                     <i class="icon-ai-search"></i>
                 </HeaderButton>
             }
-            @if (chat.Id.IsThread) {
-                <ChatHeaderFollowThreadToggle ThreadChatId="@chat.Id" />
+            @if (chat.Id.IsThread(out var threadChatId)) {
+                <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId" />
             }
             @if (IsRightNavigateButtonVisible) {
                 <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
@@ -108,8 +108,8 @@
         => Hub.PanelsUI.Right.Toggle();
 
     private async Task OnOpenLeftPanelClick() {
-        if (Chat is not null && Chat.Id.IsThread) {
-            var parentChatId = Chat.Id.GetThreadParent();
+        if (Chat is not null && Chat.Id.IsThread(out var threadChatId)) {
+            var parentChatId = threadChatId.ParentChatId;
             var parentChatLink = Links.Chat(parentChatId);
             if (History.TryGetStepBackUrl(out var backUrl)) {
                 var threadChatLink = Links.Chat(Chat.Id);
@@ -119,7 +119,7 @@
                 }
             }
 
-             await History.NavigateTo(Links.Chat(parentChatId), true);
+             await History.NavigateTo(parentChatLink, true);
              return;
         }
 

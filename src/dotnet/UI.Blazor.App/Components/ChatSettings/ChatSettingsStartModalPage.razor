@@ -16,7 +16,7 @@
     Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var isPlaceChat = m.IsPlace;
     var publicChatLabel = !isPlaceChat ? "Public" : "Place";
-    var isThread = m.Chat.Id.IsThread;
+    var isThread = m.Chat.Id.IsThread();
     var canEditChatPic = !isThread;
     var canEditChatType = !isThread;
 }
@@ -209,9 +209,8 @@
         if (chat == null)
             return new ComputedModel { Chat = null };
 
-        var isThread = chat.Id.IsThread;
-        if (isThread) {
-            var parentChat = await Chats.Get(Session, chatId.GetOutermostThreadParentOrSelf(), cancellationToken).ConfigureAwait(false);
+        if (chat.Id.IsThread(out var threadChatId)) {
+            var parentChat = await Chats.Get(Session, threadChatId.GetOutermostParent(), cancellationToken).ConfigureAwait(false);
             return new ComputedModel { Chat = chat, CanRemoveThread = parentChat?.Rules.IsOwner() ?? false };
         }
 

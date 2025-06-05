@@ -64,9 +64,8 @@ public class NotificationsBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsThread) {
-            var threadParent = chatId.GetThreadParent();
-            var subscriberIds = await ListSubscribedUserIds(threadParent, cancellationToken).ConfigureAwait(false);
+        if (chatId.IsThread(out var threadChatId)) {
+            var subscriberIds = await ListSubscribedUserIds(threadChatId.ParentChatId, cancellationToken).ConfigureAwait(false);
             subscriberIds = await FilterByFollowThreadStatus(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
             subscriberIds = await FilterByNotificationMode(subscriberIds, chatId, cancellationToken).ConfigureAwait(false);
             return subscriberIds;
@@ -485,11 +484,11 @@ public class NotificationsBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var (chat, _, changeKind) = eventCommand;
-        if (!(changeKind is ChangeKind.Create && chat.Id.IsThread))
+        if (!(changeKind is ChangeKind.Create && chat.Id.IsThread(out var threadChatId)))
             return;
 
         // New thread has been created.
-        var parentChatId = chat.Id.GetThreadParent();
+        var parentChatId = threadChatId.ParentChatId;
         var userIds = await ListSubscribedUserIds(parentChatId, cancellationToken).ConfigureAwait(false);
         var similarityKey = parentChatId.Value;
         var creator = await ChatThreadsBackend.GetThreadCreator(chat.Id, cancellationToken).ConfigureAwait(false);

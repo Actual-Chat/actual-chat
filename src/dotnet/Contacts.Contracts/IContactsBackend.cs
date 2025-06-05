@@ -20,9 +20,9 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ThreadContact?> GetThreadContact(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ChatId[]> ListThreadIdsForChat(UserId ownerId, ChatId parentChatId, CancellationToken cancellationToken);
+    Task<ThreadChatId[]> ListThreadIdsForChat(UserId ownerId, ChatId parentChatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ChatId[]> ListThreadIdsForPlace(UserId ownerId, PlaceId parentPlaceId, CancellationToken cancellationToken);
+    Task<ThreadChatId[]> ListThreadIdsForPlace(UserId ownerId, PlaceId parentPlaceId, CancellationToken cancellationToken);
 
     // Non-compute methods
     Task<Contact[]> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);

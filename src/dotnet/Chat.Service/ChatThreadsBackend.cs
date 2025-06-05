@@ -10,7 +10,7 @@ public class ChatThreadsBackend(IServiceProvider services) : IChatThreadsBackend
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetThreadCreator(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (!chatId.IsThread)
+        if (!chatId.IsThread())
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         var ownerRole = await RolesBackend
