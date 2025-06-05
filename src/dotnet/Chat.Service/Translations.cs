@@ -18,5 +18,5 @@ public class Translations(IServiceProvider services) : ITranslations
 
     // [ComputeMethod]
     public virtual Task<ChatEntryLanguage?> GetLanguage(Session session, ChatEntryId id, CancellationToken cancellationToken)
-        => ChatEntryLanguagesBackend.GetLanguage(id, cancellationToken);
+        => ChatEntryLanguagesBackend.Get(id, cancellationToken);
 }

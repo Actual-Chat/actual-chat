@@ -37,6 +37,6 @@ public class LanguageDetectionSettings
     public int EntryContentTruncationLength { get; set; } = 100;
     public FilePath PromptFile { get; set; } = "";
     public string OpenAIKey { get; set; } = "";
-    public string OpenAIModel { get; set; } = "gpt-4.1-mini";
+    public string OpenAIModel { get; set; } = "gpt-4.1-nano";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromMinutes(3);
 }

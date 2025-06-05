@@ -3,28 +3,26 @@ namespace ActualChat.Chat;
 public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedService(services, Constants.LanguageDetection.ServiceKey)
 {
     [field: AllowNull, MaybeNull]
-    private LanguageDetectionSerializer Serializer => field ??= Services.GetRequiredService<LanguageDetectionSerializer>();
-    [field: AllowNull, MaybeNull]
     private string Prompt => field ??= File.ReadAllText(Settings.LanguageDetection.PromptFile).RequireNonEmpty();
 
-    public async Task<IReadOnlyList<Language[]>> DetectLanguages(IReadOnlyList<string> texts, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Language>> DetectLanguages(string content, CancellationToken cancellationToken)
     {
         if (!Settings.IsTranslationEnabled)
             return [];
 
-        var request = $"""
-                       ```xml
-                       {Serializer.SerializeRequest(texts)}
-                       ```
-                       """;
-        var content = await Ask(Prompt, request, cancellationToken).ConfigureAwait(false);
+        var response = await Ask(Prompt, content, cancellationToken).ConfigureAwait(false);
         try {
-            content = content.OrdinalIgnoreCaseReplace("```xml", "").OrdinalReplace("```", "");
-            return Serializer.DeserializeResponse(content, texts.Count);
+            return response.OrdinalIgnoreCaseReplace("```json", "")
+                .OrdinalReplace("```", "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(Language.ParseNullable)
+                .SkipNullItems()
+                .ToList();
         }
-        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogError(e, "Could not deserialize language detection response");
-            return [..Enumerable.Repeat(Array.Empty<Language>(), texts.Count)];
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken))
+        {
+            Log.LogError(e, "Could not parse language detection response:");
+            return [];
         }
     }
 }

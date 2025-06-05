@@ -98,12 +98,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         }
         services.AddSingleton<Translator>();
         services.AddSingleton<LanguageDetector>();
-        services.AddSingleton<LanguageDetectionSerializer>();
         services.AddAIServices();
-
-        // Flows
-        services.AddFlows()
-            .Add<LanguageDetectionFlow>();
 
         // Keyed registration for ConversationSplitFlow
         services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
