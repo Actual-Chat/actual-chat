@@ -60,6 +60,7 @@ export class VirtualList {
     private readonly sizeCache: Map<string, number>;
     private readonly statistics: VirtualListStatistics = new VirtualListStatistics();
     private readonly keySortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    private readonly rowGap: number = 2;
 
     private isDisposed = false;
     private cachedAllItemRefs: Array<HTMLElement> | null = null;
@@ -71,7 +72,6 @@ export class VirtualList {
     private maxEnd: number | null = null;
     private isEndKnown: boolean = false;
     private windowScrollTop: number = 0;
-    private rowGap = 2;
 
     private renderStartedAt: number | null = null;
     private renderCompletedAt: number = 0;
@@ -92,8 +92,6 @@ export class VirtualList {
     private itemRange: NumberRange | null = null;
     private viewport: NumberRange | null = null;
     private lastViewport: NumberRange | null = null;
-    // private spacerSize: number | null = null;
-    // private endSpacerSize: number | null = null;
     private endAnchorSize = 4;
     private shouldUpdateCornerstoneItem: boolean = true;
     private isUpdatingPivots: boolean = false;
@@ -394,7 +392,6 @@ export class VirtualList {
         this.itemRange = null;
 
         // copy existing items - because we can remove them and add again at another tiles
-        const oldItems = new Map<string, VirtualListItem>(this.items);
         for (const mutation of mutations) {
             if (mutation.type !== 'childList')
                 continue;
@@ -434,11 +431,12 @@ export class VirtualList {
                     if (!key)
                         continue;
 
+                    const oldItem = this.items.get(key);
                     const newItem = this.createListItem(key, itemRef);
-                    const oldItem = oldItems.get(key);
                     if (oldItem) {
                         oldItem.range = null; // reset range
-                        this.items.set(key, oldItem);
+                        oldItem.size = newItem.size;
+                        oldItem.shouldSkipKey = newItem.shouldSkipKey;
                         if (oldItem.size > 0)
                             this.unmeasuredItems.delete(key);
                     } else
@@ -473,8 +471,9 @@ export class VirtualList {
 
             const item = this.items.get(key);
             if (item) {
+                const itemRef = entry.target as HTMLElement;
                 if (size == 0)
-                    itemRefsWithWrongSize.push(entry.target as HTMLElement);
+                    itemRefsWithWrongSize.push(itemRef);
                 else {
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
@@ -526,12 +525,11 @@ export class VirtualList {
         }
 
         // recalculate item range as some elements were updated
-        if (itemsWereMeasured)
+        if (itemsWereMeasured || existingResizedCount > 0) {
             this.itemRange = null;
-
-        const now = Date.now();
-        if (existingResizedCount && (now - this.renderCompletedAt) > 500 && this.pivots.length > 0) {
-            void this.restoreScrollPosition(this.renderState);
+            const renderState = { ...this.renderState, scrollToKey: undefined };
+            const scrollMetadata = this.getScrollMetadata(renderState);
+            void this.restoreScrollPosition(renderState, scrollMetadata);
         }
     };
 
@@ -699,14 +697,10 @@ export class VirtualList {
             this.whenRequestDataCompleted = null;
 
             this.lastViewport = this.viewport;
-            this.viewport = null;
         }
     }
 
     private getScrollMetadata(rs: VirtualListRenderState): ScrollMetadata {
-        if (!rs.query.isNone && rs.query.expectedCount)
-            this.statistics.addResponse(rs.count, rs.query.expectedCount);
-
         const scrollToItemRef = this.getItemRef(rs.scrollToKey);
         let shouldUseSmoothScroll = false;
         let scrollType: ScrollToEdgeReason = 'unknown';
@@ -852,7 +846,7 @@ export class VirtualList {
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
         const newItem = new VirtualListItem(itemKey);
         const size = this.sizeCache.get(itemKey);
-        if (size)
+        if (size > 0)
             newItem.size = size;
         else
             this.unmeasuredItems.add(itemKey);
@@ -1216,17 +1210,17 @@ export class VirtualList {
 
                     let fullRange: NumberRange;
                     if (this.isStartKnown && this.isEndKnown)
-                        fullRange = knownRange;
+                        fullRange = new NumberRange(knownRange.start, knownRange.end + endAnchorSize);
                     else if (this.isStartKnown) {
-                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size, oldTotalSize);
+                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
                         fullRange = new NumberRange(knownRange.start, fullRangeSize);
                     }
                     else if (this.isEndKnown) {
-                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size, oldTotalSize);
+                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
                         fullRange = new NumberRange(knownRange.end - fullRangeSize, knownRange.end);
                     }
                     else {
-                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size, oldTotalSize);
+                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize * 2);
                         fullRange = this.defaultEdge === VirtualListEdge.End
                             ? new NumberRange(knownRange.end - fullRangeSize, knownRange.end)
                             : new NumberRange(knownRange.start, knownRange.start + fullRangeSize)
@@ -1250,7 +1244,7 @@ export class VirtualList {
                     + endAnchorSize;
 
                 if (!rs.hasVeryFirstItem && !rs.hasVeryLastItem)
-                    totalSize = Math.max(totalSize, oldTotalSize, end, -start);
+                    totalSize = Math.max(totalSize, end, -start);
                 else if (rs.hasVeryFirstItem)
                     totalSize = Math.max(totalSize, -start);
                 else if (rs.hasVeryLastItem)
@@ -1317,7 +1311,6 @@ export class VirtualList {
                         // adjust item ranges
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
-                            console.warn(`restoreScrollPosition: resetItemRange`, resetDelta, offset, this.itemRange);
                             scrollTopOffset = resetDelta;
                             offset = this.itemRange.end;
                         }
@@ -1483,7 +1476,6 @@ export class VirtualList {
 
         this.scrollPositionRestoredAt = Date.now();
 
-        this.viewport = null;
         this.updateViewportThrottled();
         // await delayAsync(50);
         // debugLog?.log(`restoreScrollPosition: end`, rafResult);
@@ -1526,14 +1518,17 @@ export class VirtualList {
             if (size > 0) {
                 item.size = size;
                 item.range = null;
+                itemsWereMeasured = true;
                 this.sizeCache.set(key, size);
                 removeUnmeasuredItem(key);
             }
         }
 
         // recalculate item range as some elements were updated
-        if (itemsWereMeasured)
+        if (itemsWereMeasured) {
             this.itemRange = null;
+            this.ensureItemRangeCalculated();
+        }
     }
 
     private ensureItemRangeCalculated(): boolean {
@@ -1551,31 +1546,47 @@ export class VirtualList {
         if (orderedItems.length == 0)
             return false;
 
-        if (this.shouldUpdateCornerstoneItem && (rs.hasVeryFirstItem || rs.hasVeryLastItem)) {
-            // We have to recalculate cornerstone item
-            this.shouldUpdateCornerstoneItem = false;
-            for (const item of orderedItems)
-                item.range = null;
-        }
+        // TODO: validate idea of recalculating ranges
+        // if (this.shouldUpdateCornerstoneItem && (rs.hasVeryFirstItem || rs.hasVeryLastItem)) {
+        //     // We have to recalculate the cornerstone item
+        //     this.shouldUpdateCornerstoneItem = false;
+        //     for (const item of orderedItems)
+        //         item.range = null;
+        // }
 
         let cornerstoneItemIndex = -1;
         let cornerstoneItem: VirtualListItem = null;
-        if (this.defaultEdge === VirtualListEdge.End) {
-            cornerstoneItemIndex = orderedItems.length - 1;
-            cornerstoneItem = orderedItems[cornerstoneItemIndex];
-            // Find first one from the end
-            while (!cornerstoneItem.range && cornerstoneItemIndex > 0) {
-                cornerstoneItemIndex--;
-                cornerstoneItem = orderedItems[cornerstoneItemIndex];
+        if (this.visibleItems.size > 0) {
+            for (const visibleItemKey of this.visibleItems) {
+                const item = this.items.get(visibleItemKey);
+                if (!item || !item.range)
+                    continue;
+
+                const index = orderedItems.findIndex(orderedItem => orderedItem.key === visibleItemKey);
+                if (cornerstoneItemIndex !== -1) {
+                    cornerstoneItemIndex = index;
+                    cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                    break;
+                }
             }
         }
-        else if (this.defaultEdge === VirtualListEdge.Start) {
-            cornerstoneItemIndex = 0;
-            cornerstoneItem = orderedItems[cornerstoneItemIndex];
-            // Find first one from the start
-            while (!cornerstoneItem.range && cornerstoneItemIndex < orderedItems.length - 1) {
-                cornerstoneItemIndex++;
+        if (!cornerstoneItem || !cornerstoneItem.range) {
+            if (this.defaultEdge === VirtualListEdge.End) {
+                cornerstoneItemIndex = orderedItems.length - 1;
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                // Find first one from the end
+                while (!cornerstoneItem.range && cornerstoneItemIndex > 0) {
+                    cornerstoneItemIndex--;
+                    cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                }
+            } else if (this.defaultEdge === VirtualListEdge.Start) {
+                cornerstoneItemIndex = 0;
+                cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                // Find first one from the start
+                while (!cornerstoneItem.range && cornerstoneItemIndex < orderedItems.length - 1) {
+                    cornerstoneItemIndex++;
+                    cornerstoneItem = orderedItems[cornerstoneItemIndex];
+                }
             }
         }
 

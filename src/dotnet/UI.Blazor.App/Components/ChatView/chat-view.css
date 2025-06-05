@@ -232,6 +232,7 @@ body.hoverable .chat-header-title:hover {
 
 .message-content {
     @apply flex-1;
+    @apply min-h-6;
     @apply overflow-hidden;
 }
 .system-entry {

@@ -80,8 +80,18 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
 
 .virtual-list > .c-wrapper > ul.c-virtual-container > li {
     @apply flex flex-y;
+    @apply min-h-6;
     overflow-anchor: none;
-    min-height: 1.5rem;
+}
+
+.virtual-list > .c-wrapper > ul.c-virtual-container .item {
+    @apply min-h-6;
+    overflow-anchor: none;
+}
+
+.virtual-list > .c-wrapper > ul.c-virtual-container .group {
+    @apply min-h-6;
+    overflow-anchor: none;
 }
 
 .virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-header) {

@@ -2,6 +2,8 @@
     @apply flex-y items-start;
     @apply rounded-lg;
     @apply border-none;
+    @apply overflow-hidden;
+    @apply mx-2 mb-2;
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
 }
 .conversation-message .c-details {
@@ -12,9 +14,10 @@
     @apply flex-y;
 }
 .conversation-header {
-    @apply mb-2;
+    @apply mx-2 mb-2;
     @apply rounded-t-lg;
     @apply bg-01;
+    @apply h-15;
 }
 
 .conversation-header-short .bg-wrapper,
@@ -97,10 +100,11 @@
 
 .conversation-footer-short,
 .conversation-footer {
-    @apply w-full;
+    @apply w-auto;
+    @apply h-14;
 }
 .conversation-footer {
-    @apply my-2;
+    @apply mx-2 my-2;
     @apply rounded-b-lg;
     @apply bg-01;
 }
@@ -195,10 +199,4 @@
     @apply flex-x items-center justify-center;
     @apply bg-01;
     @apply text-cr-item-badge-selected-text text-caption-6;
-}
-
-.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-message),
-.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-header),
-.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.conversation-footer) {
-    @apply px-2 my-2;
 }
