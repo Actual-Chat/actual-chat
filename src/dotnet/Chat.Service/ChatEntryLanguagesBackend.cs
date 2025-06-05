@@ -93,7 +93,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
-        await Lock(dbContext, id, cancellationToken).ConfigureAwait(false);
+        await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
         var dbEntryLanguage = await dbContext.ChatEntryLanguages
             .FirstOrDefaultAsync(x => x.Id == command.Id.Value, cancellationToken)
             .ConfigureAwait(false);
@@ -147,7 +147,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             await using var _1 = dbContext.ConfigureAwait(false);
 
-            await LockShared(dbContext, id, cancellationToken).ConfigureAwait(false);
+            await dbContext.ChatEntryLanguages.LockShared(id, cancellationToken).ConfigureAwait(false);
             var dbChatEntryLanguage = await dbContext.ChatEntryLanguages
                 .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
@@ -158,7 +158,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
                 if (existing != null)
                     return Result.New<ChatEntryLanguage?>(existing);
 
-                await Lock(dbContext, id, cancellationToken).ConfigureAwait(false);
+                await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
                 chatEntryLanguage = chatEntryLanguage with {
                     Id = id,
                     Version = VersionGenerator.NextVersion(),
@@ -169,7 +169,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
                 dbContext.Add(dbChatEntryLanguage);
             }
             else if (change.IsUpdate(out chatEntryLanguage)) {
-                await Lock(dbContext, id, cancellationToken).ConfigureAwait(false);
+                await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
                 dbChatEntryLanguage.RequireVersion(expectedVersion);
                 chatEntryLanguage = chatEntryLanguage with {
                     Version = VersionGenerator.NextVersion(dbChatEntryLanguage.Version),
@@ -182,7 +182,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
                 if (dbChatEntryLanguage == null)
                     return Result.New<ChatEntryLanguage?>(null);
 
-                await Lock(dbContext, id, cancellationToken).ConfigureAwait(false);
+                await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
                 dbChatEntryLanguage.RequireVersion(expectedVersion);
                 dbContext.Remove(dbChatEntryLanguage);
             }
@@ -240,12 +240,4 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             Settings.LanguageDetection.Delay,
             cancellationToken);
     }
-
-    // Helper methods
-
-    private static Task LockShared(ChatDbContext dbContext, ChatEntryId id, CancellationToken cancellationToken)
-        => dbContext.ChatEntryLanguages.LockShared(id, cancellationToken);
-
-    private static Task Lock(ChatDbContext dbContext, ChatEntryId id, CancellationToken cancellationToken)
-        => dbContext.ChatEntryLanguages.Lock(id, cancellationToken);
 }
