@@ -29,13 +29,13 @@ internal class LocalChatId
         ThreadId = threadId;
     }
 
-    public static bool TryParse(string s, Func<string, bool>? allowNonStandardChatIdFunc, [NotNullWhen(true)] out LocalChatId? result)
+    public static bool TryParse(ReadOnlySpan<char> s, Func<string, bool>? allowNonStandardChatIdFunc, [NotNullWhen(true)] out LocalChatId? result)
     {
         result = null;
         if (s.Length < 6)
             return false;
 
-        var span = s.AsSpan();
+        var span = s;
         List<long>? threadIds = null;
         while (true) {
             var threadIdIndex = span.LastIndexOf(ActualChat.ChatId.ThreadIdSeparator);
