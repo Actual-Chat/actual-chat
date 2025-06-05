@@ -16,23 +16,33 @@
 
         <FormSection
             For="() => _form.Title"
-            Label="Smart title"
+            Label="Thread title"
             InputId="@_form.TitleId"
             IsLabelInsideInput="true"
-            Class="!mt-0 grow"
+            Class="thread-title"
             IsRequired="true">
             <TextBox
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
                 Autofocus="false"
                 Autocomplete="false"/>
+            @if (_generatingSmartTitle && string.IsNullOrEmpty(_form.Title)) {
+                <div class="waiting-message-container">
+                    <span id="waiting-circle-1" class="c-circle"></span>
+                    <span id="waiting-circle-2" class="c-circle"></span>
+                    <span id="waiting-circle-3" class="c-circle"></span>
+                    <span class="generating-text">
+                        <span>G</span><span>e</span><span>n</span><span>e</span><span>r</span><span>a</span><span>t</span><span>i</span><span>n</span><span>g</span>
+                    </span>
+                </div>
+            }
         </FormSection>
         <FormSection
             For="() => _form.Description"
-            Label="Smart description"
+            Label="Description"
             InputId="@_form.DescriptionId"
             IsLabelInsideInput="true"
-            Class="!mt-0 grow">
+            Class="thread-description">
             <InputTextArea
                 @bind-Value="@_form.Description"
                 id="@_form.DescriptionId"

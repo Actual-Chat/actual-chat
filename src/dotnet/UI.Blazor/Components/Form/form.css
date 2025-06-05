@@ -7,6 +7,7 @@
     @apply bg-input;
 }
 .form-section-content {
+    @apply relative;
     @apply flex-1 flex-x items-center;
 }
 .form-section-content > .c-left {
@@ -56,6 +57,18 @@
     @apply min-h-12;
     @apply px-4;
 }
+
+/* FormSection with textarea */
+.form.form-y section .form-section-content.label-inside-input:has(textarea) {
+    @apply px-0;
+}
+.form.form-y section .form-section-content.label-inside-input:has(textarea) .c-left > * {
+    @apply px-4;
+}
+.form.form-y section .form-section-content.label-inside-input textarea {
+    @apply custom-scrollbar;
+}
+
 .form.form-y section .form-section-content.label-inside-input input:disabled {
     @apply text-04 cursor-not-allowed;
 }
@@ -113,6 +126,7 @@
     @apply border-none rounded-none;
     @apply bg-transparent;
     @apply text-02 font-normal;
+    @apply custom-scrollbar;
 }
 .label-inside-input input,
 .label-inside-input select {

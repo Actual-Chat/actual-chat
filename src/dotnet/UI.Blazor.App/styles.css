@@ -38,6 +38,7 @@
 @import './Components/Navbar/navbar.css';
 @import './Components/NewChat/new-chat-modal.css';
 @import './Components/NewPlace/new-place-modal.css';
+@import './Components/NewThread/new-thread-modal.css';
 @import './Components/PlaceSettings/place-settings-modal.css';
 @import './Components/Notifications/notifications.css';
 @import './Components/LeftPanel/left-panel.css';

@@ -37,9 +37,13 @@
 }
 .thread-message .c-last-messages .c-message-wrapper .c-content {
     @apply flex-y;
+    @apply w-full;
+    @apply overflow-hidden;
 }
 .thread-message .c-last-messages .c-message-wrapper .c-content .c-info {
     @apply flex-x items-center gap-x-2;
+    @apply w-full;
+    @apply overflow-hidden;
 }
 .thread-message .c-last-messages .c-message-wrapper .c-content .c-message {
     @apply text-caption-4 text-02;
@@ -56,4 +60,5 @@
 .thread-message .c-footer .c-info {
     @apply flex-1;
     @apply text-caption-6 text-03;
+    @apply line-clamp-2;
 }
