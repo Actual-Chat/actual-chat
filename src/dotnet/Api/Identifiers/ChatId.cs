@@ -156,7 +156,7 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
         if (!PlaceId.TryParse(tail[..placeIdLength].ToString(), out var placeId))
             return null;
-        if (!LocalChatId.TryParse(tail[(placeIdLength + 1)..].ToString(), null, out var localChatId))
+        if (!LocalChatId.TryParse(tail[(placeIdLength + 1)..], null, out var localChatId))
             return null;
 
         var threadIds = new List<long>();
