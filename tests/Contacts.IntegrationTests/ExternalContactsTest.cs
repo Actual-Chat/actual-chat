@@ -150,7 +150,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact(Skip = "Flaky")] // TODO(FC): fix
     public async Task ShouldConnectByPhone_FriendAccountCreatedAfterSync()
     {
         // arrange
