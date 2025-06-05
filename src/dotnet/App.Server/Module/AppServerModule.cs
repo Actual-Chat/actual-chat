@@ -34,9 +34,6 @@ namespace ActualChat.App.Server.Module;
 public sealed class AppServerModule(IServiceProvider moduleServices)
     : HostModule<HostSettings>(moduleServices), IWebServerModule
 {
-    public static readonly string AppVersion =
-        typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
-
     [field: AllowNull, MaybeNull]
     public IWebHostEnvironment Env => field ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
@@ -283,8 +280,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
 
         var otel = services.AddOpenTelemetry();
         otel.ConfigureResource(resource => _ = Env.IsDevelopment()
-            ? resource.AddService(serviceName, "actualchat", AppVersion, false, "dev")
-            : resource.AddService(serviceName, "actualchat", AppVersion));
+            ? resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString, false, "dev")
+            : resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString));
 
         otel.WithMetrics(meter => meter
             // gcloud exporter doesn't support some of metrics yet:

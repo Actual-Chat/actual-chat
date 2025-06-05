@@ -53,6 +53,8 @@ public class UIHub : CircuitHub, IDispatcherResolver
 
     // Account-related & chat-related services
     [field: AllowNull, MaybeNull]
+    public ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
+    [field: AllowNull, MaybeNull]
     public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
     public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
@@ -148,8 +150,6 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
     [field: AllowNull, MaybeNull]
     public History History => field ??= Services.GetRequiredService<History>();
-	[field: AllowNull, MaybeNull]
-    public UpgradeUI UpgradeUI => field ??= Services.GetRequiredService<UpgradeUI>();
 
     public Tracer TracerFor(string name) => Tracer[name];
     public Tracer TracerFor(Type type) => Tracer[type];

@@ -2,10 +2,15 @@ namespace ActualChat;
 
 public static class ApiConstants
 {
+    public static readonly string VersionString = ThisAssembly.AssemblyVersion; // X.Y.0.0
+    public static readonly string FullVersionString = typeof(ApiConstants).Assembly.GetInformationalVersion() ?? "0.0+unknown"; // X.Y.Z+123abc
+    public static readonly string DisplayVersionString = "v" + FullVersionString.Replace('+', ' ');
+    public static readonly Version Version = Version.Parse(VersionString);
+
     public static class Concurrency
     {
         public static readonly int Unlimited = 0;
-        public static readonly int High = 0; // Seemingly a better option than e.g. 256
+        public static readonly int High = 0; // Seemingly a better option than e.g., 256 or so
         public static readonly int Low = 128;
     }
 }

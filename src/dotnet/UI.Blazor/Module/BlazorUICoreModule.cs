@@ -85,6 +85,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new InteractiveUI(c.UIHub()));
+        services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
         services.AddScoped(c => new History(c.UIHub()));
         services.AddScoped(c => new HistoryStepper(c));
         services.AddScoped(_ => new HistoryItemIdFormatter());
@@ -100,20 +101,18 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new BubbleUI(c.UIHub()));
         services.AddScoped(c => new ShareUI(c.UIHub()));
         services.AddScoped(_ => new ToastUI());
+        services.AddScoped(c => new ThemeUI(c.UIHub()));
+        services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
+
+        // Fusion-based UI services
         if (hostKind == HostKind.Server)
             fusion.AddService<Temporals, FakeTemporals>(ServiceLifetime.Scoped); // No temporals on the server-side
         else
             fusion.AddService<Temporals, RealTemporals>(ServiceLifetime.Scoped);
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
-        fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
-        services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
-        fusion.AddService<LogUI>(ServiceLifetime.Scoped);
-
-        // Actual Chat-specific UI services
-        services.AddScoped(c => new ThemeUI(c.UIHub()));
-        services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
-        fusion.AddService<UpgradeUI>(ServiceLifetime.Scoped);
+        fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
+        fusion.AddService<LogUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
         services.AddScoped<IClientAuth>(c => new WebAuth(c.UIHub()));

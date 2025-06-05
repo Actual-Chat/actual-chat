@@ -48,7 +48,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
         writer.WriteStartObject();
         writer.WriteString("message", message);
-        writer.WriteString("version", AppServerModule.AppVersion);
+        writer.WriteString("version", ApiConstants.FullVersionString);
         if (logEntry.Exception != null) {
             writer.WriteString("exception", logEntry.Exception.ToString());
         }

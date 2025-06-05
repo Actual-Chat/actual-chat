@@ -5,10 +5,16 @@ namespace ActualChat;
 
 public static partial class Constants
 {
-    public static class Api
+    public static class Hosts
     {
-        public static readonly string StringVersion = ThisAssembly.AssemblyVersion; // X.Y.0.0
-        public static readonly Version Version = Version.Parse(StringVersion);
+        public const string ActualChat = "actual.chat";
+        public const string DevActualChat = "dev.actual.chat";
+        public const string LocalActualChat = "local.actual.chat";
+    }
+
+    public static class Rpc
+    {
+        public static readonly TimeSpan RemoteComputedCacheInitialInvalidationDelay = TimeSpan.FromMilliseconds(3000);
 
         public static class Compression
         {
@@ -17,11 +23,12 @@ public static partial class Constants
         }
     }
 
-    public static class Hosts
+    public static class Session
     {
-        public const string ActualChat = "actual.chat";
-        public const string DevActualChat = "dev.actual.chat";
-        public const string LocalActualChat = "local.actual.chat";
+        public static readonly string CookieName = "FusionAuth.SessionId";
+        public static readonly string HeaderName = "Session";
+        public static readonly TimeSpan MinUpdatePresencePeriod = TimeSpan.FromHours(1);
+        public static readonly TimeSpan SessionInfoUpdatePeriod = TimeSpan.FromHours(1);
     }
 
     public static class Place
@@ -153,14 +160,6 @@ public static partial class Constants
         public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
     }
 
-    public static class Session
-    {
-        public static readonly string CookieName = "FusionAuth.SessionId";
-        public static readonly string HeaderName = "Session";
-        public static readonly TimeSpan MinUpdatePresencePeriod = TimeSpan.FromHours(1);
-        public static readonly TimeSpan SessionInfoUpdatePeriod = TimeSpan.FromHours(1);
-    }
-
     public static class Presence
     {
         public static readonly TimeSpan ActivityPeriod = TimeSpan.FromSeconds(30);
@@ -289,10 +288,9 @@ public static partial class Constants
         public const string UseChatContentArranger2ChatIds = "UseChatContentArranger2ChatIds";
     }
 
-    public static class RpcCalls
+    public static class Sentry
     {
-        public static readonly TimeSpan InitialCacheInvalidationDelay = TimeSpan.FromMilliseconds(3000);
-        public static readonly TimeSpan CacheInvalidationDelay = TimeSpan.FromMilliseconds(250);
+        public static readonly HashSet<HostKind> EnabledFor = [HostKind.MauiApp];
     }
 
     public static class Translation

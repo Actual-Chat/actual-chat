@@ -1,4 +1,5 @@
 using System.Text;
+using ActualLab.Identifiers;
 
 namespace ActualChat.Hashing;
 

@@ -22,7 +22,7 @@
                 </Content>
             </TileItem>
 
-            @if (!string.IsNullOrEmpty(avatar.Bio)) {
+            @if (!avatar.Bio.IsNullOrEmpty()) {
                 <TileItem>
                     <Icon>
                         <i class="icon-info text-xl"></i>

@@ -3,7 +3,6 @@ Mobile:
 - [Still intact?] Portrait/landscape mode switch should work in MAUI apps (mainly for images & videos) 
 
 Recording, playback, transcription:
-- [AK] Buffer up to 30s of audio
 - 1.25x, 1.5x, 1.66x & 2x speedup for Historical playback
 - Dynamic split pause detection:
     - Measure pauses (discarding the long ones, i.e. inter-phrase ones)

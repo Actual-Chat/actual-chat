@@ -2,6 +2,9 @@ namespace ActualChat.Hosting;
 
 public static class AppKindExt
 {
+    public static bool IsMaui(this AppKind appKind)
+        => appKind is AppKind.Ios or AppKind.MacOS or AppKind.Android or AppKind.Windows;
+
     public static bool IsMobile(this AppKind appKind)
         => appKind is AppKind.Ios or AppKind.Android;
 

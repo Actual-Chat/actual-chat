@@ -40,6 +40,7 @@ public class AndroidThemeHandler : MauiThemeHandler
         var window = Window;
         if (window == null)
             return;
+
         var androidColor = Android.Graphics.Color.ParseColor(color.ToArgbHex());
         window.SetNavigationBarColor(androidColor);
     }

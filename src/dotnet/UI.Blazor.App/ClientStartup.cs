@@ -20,6 +20,7 @@ using ActualChat.UI.Blazor.Pages.RenderSlotTestPage;
 using ActualLab.Fusion.Client;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Client.Interception;
+using ActualLab.Fusion.Internal;
 using ActualLab.Fusion.Trimming;
 using ActualLab.Interception;
 using ActualLab.Interception.Trimming;
@@ -178,8 +179,10 @@ public static class ClientStartup
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };
 #endif
-        var remoteComputedCacheUpdateDelayTask = Task.Delay(Constants.RpcCalls.InitialCacheInvalidationDelay)
-            .ContinueWith(_ => RemoteComputedCache.UpdateDelayer = (_, _) => Task.Delay(Constants.RpcCalls.CacheInvalidationDelay), TaskScheduler.Default);
+        var remoteComputedCacheUpdateDelayTask = Task.Delay(Constants.Rpc.RemoteComputedCacheInitialInvalidationDelay)
+            .ContinueWith(
+                _ => RemoteComputedCache.UpdateDelayer = (_, _) => TickSource.Default.WhenNextTick(),
+                TaskScheduler.Default);
         RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
     }
 

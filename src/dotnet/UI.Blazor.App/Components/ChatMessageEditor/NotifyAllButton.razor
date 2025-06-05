@@ -52,7 +52,7 @@
             if (chatId is PeerChatId peerChatId) {
                 var anotherAuthorId = peerChatId.AnotherAuthorId(chat.Rules.Account!.Id);
                 var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, default).ConfigureAwait(false);
-                if (!ReferenceEquals(anotherAuthor, null) && !string.IsNullOrEmpty(anotherAuthor.Avatar.Name))
+                if (!(anotherAuthor?.Avatar.Name).IsNullOrEmpty())
                     alertTarget = anotherAuthor.Avatar.Name;
             }
             return Model.EnabledUnread with { AlertTarget = alertTarget, AlertClass = cls}; // Always allowed for peer chats.

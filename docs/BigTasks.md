@@ -1,10 +1,7 @@
 In progress:
-- [AndreyY] New real-time playback & recording panels
-- [FC] Simple search & indexing
-  - List near-term tasks & goals
-- [AndrewK, AU, DF] AI search & indexing    
-  - List near-term tasks & goals
 - [EK] Email digest
+    - List near-term tasks & goals
+- [AndrewK, AU, DF] AI search & indexing    
   - List near-term tasks & goals
   
 Candidate tasks:

@@ -238,7 +238,7 @@ public readonly struct RpcHostBuilder
         Services.AddSingleton(RpcWebSocketServer.Options.Default with {
             ExposeBackend = true,
             ConfigureWebSocket = () => new WebSocketAcceptContext() {
-                DangerousEnableCompression = Constants.Api.Compression.IsServerSideEnabled,
+                DangerousEnableCompression = Constants.Rpc.Compression.IsServerSideEnabled,
             },
         });
 

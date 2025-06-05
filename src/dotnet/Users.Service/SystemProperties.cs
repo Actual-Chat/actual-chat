@@ -7,32 +7,32 @@ namespace ActualChat.Users;
 public class SystemProperties(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
-    private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.StringVersion);
-
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)
         => Task.FromResult(Clocks.SystemClock.Now.EpochOffset.TotalSeconds);
 
     // [ComputeMethod]
-    public virtual Task<string> GetApiVersion(CancellationToken cancellationToken)
-        => ApiVersionTask;
-
-    // [ComputeMethod]
-    public virtual Task<SystemProperties_ClientCompatibility> CheckClientCompatibility(
-        string clientVersion,
+    public virtual Task<ServerApiInfo> GetServerApiInfo(
+        string expectedVersion,
         CancellationToken cancellationToken)
     {
-        clientVersion.RequireNonEmpty();
-        if(!Version.TryParse(clientVersion, out var version))
-             throw new ArgumentOutOfRangeException(nameof(clientVersion), clientVersion, "Invalid version format");
+        if (expectedVersion.IsNullOrEmpty())
+            return Task.FromResult(new ServerApiInfo(CompatibilityLevel.Unknown));
 
-        var compatibility = SystemProperties_ClientCompatibility.Latest;
-         var apiVersion = Version.Parse(Constants.Api.StringVersion);
-         if (apiVersion.Major > version.Major)
-             compatibility = SystemProperties_ClientCompatibility.Incompatible;
-         else if (apiVersion > version)
-             compatibility = SystemProperties_ClientCompatibility.UpgradeAvailable;
-        return Task.FromResult(compatibility);
+        expectedVersion = expectedVersion.TrimStart('v');
+        var clientVersionParts = expectedVersion.Split(' ');
+        expectedVersion = clientVersionParts[0];
+        if (!Version.TryParse(expectedVersion, out var parsedExpectedVersion))
+             throw new ArgumentOutOfRangeException(nameof(expectedVersion));
+
+        var apiVersion = ApiConstants.Version;
+        var compatibilityLevel =
+            apiVersion.Major == parsedExpectedVersion.Major
+            ? apiVersion == parsedExpectedVersion
+                ? CompatibilityLevel.Full
+                : CompatibilityLevel.Compatible
+            : CompatibilityLevel.Incompatible;
+        return Task.FromResult(new ServerApiInfo(compatibilityLevel));
     }
 
     // [CommandHandler]
@@ -87,8 +87,34 @@ public class SystemProperties(IServiceProvider services)
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
 
-        // We must call CreateOperationDbContext to make sure this operation is logged in the Users DB
+        // We must call CreateOperationDbContext to make sure this operation is logged in the User DB
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
     }
+
+    // Legacy methods - to be removed in the future
+
+#pragma warning disable CS0618 // Type or member is obsolete
+
+    // [ComputeMethod]
+    [Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
+    public virtual async Task<string> GetApiVersion(CancellationToken cancellationToken)
+    {
+        var serverApiInfo = await GetServerApiInfo("", cancellationToken).ConfigureAwait(false);
+        return serverApiInfo.VersionString;
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
+    public virtual async Task<SystemProperties_LegacyClientCompatibility> CheckClientCompatibility(string clientVersion, CancellationToken cancellationToken)
+    {
+        var serverApiInfo = await GetServerApiInfo("", cancellationToken).ConfigureAwait(false);
+        return serverApiInfo.CompatibilityLevel switch {
+            CompatibilityLevel.Compatible => SystemProperties_LegacyClientCompatibility.UpgradeAvailable,
+            CompatibilityLevel.Incompatible => SystemProperties_LegacyClientCompatibility.Incompatible,
+            _ => SystemProperties_LegacyClientCompatibility.Latest,
+        };
+    }
+
+#pragma warning restore CS0618 // Type or member is obsolete
 }

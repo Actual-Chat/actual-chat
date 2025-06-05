@@ -70,7 +70,7 @@
                 <i class="icon-lock"></i>
             }
         </div>
-        @if (!string.IsNullOrEmpty(place.Description)) {
+        @if (!place.Description.IsNullOrEmpty()) {
             <div class="c-description">
                 @place.Description
     </div>

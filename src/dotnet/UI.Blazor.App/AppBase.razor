@@ -4,27 +4,25 @@
 @inherits ComponentBase<UIHub>
 @implements IRootComponent
 @{
-    _renderIndex++;
     if (!Hub.IsInteractive) {
         <LandingForWeb/>
         return;
     }
-}
-
-<ClientUpgradeCover RenderIndex="@_renderIndex">
-    @{
-        if (!_readyToFullyRender) {
-            // We render fake AppRouter here to enable the navigation interception
+    if (!_readyToFullyRender) {
+        // We render fake AppRouter here to enable the navigation interception
+        <ClientUpgradeCover>
             <AppRouter AppAssembly="@BaseUIAssembly" AdditionalAssemblies="@OtherUIAssemblies">
                 <Found></Found>
                 <NotFound></NotFound>
             </AppRouter>
-            return;
-        }
-
-        if (_simulatedCrashError != null)
-            throw _simulatedCrashError;
+        </ClientUpgradeCover>
+        return;
     }
+    if (_simulatedCrashError != null)
+        throw _simulatedCrashError;
+}
+
+<ClientUpgradeCover>
     <ScreenSizeProvider>
         <AlwaysVisibleComponents/>
 
@@ -52,7 +50,6 @@
 
     private bool _readyToFullyRender;
     private bool _shouldRender;
-    private int _renderIndex;
     private Exception? _simulatedCrashError;
     private readonly AsyncTaskMethodBuilder _whenFirstRendered = AsyncTaskMethodBuilderExt.New();
 
@@ -108,7 +105,7 @@
         if (!hostKind.IsMauiApp()) // TODO(AY,DF): Check if we need this in WASM?
             await NavigationInterception.EnableNavigationInterceptionAsync();
 
-        await AppScopedServiceStarter.PrepareFirstRender(sessionHash);
+        await AppScopedServiceStarter.PrepareFirstRender(sessionHash).SilentAwait();
         _readyToFullyRender = true;
         _shouldRender = true;
         _ = AppScopedServiceStarter.AfterFirstRender(Hub.StopToken);
