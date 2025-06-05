@@ -107,7 +107,7 @@ public partial class LanguageDetectionFlow : BatchedIndexingFlowBase<LanguageDet
     {
         var batch = new List<Item>();
         var remainingLength = Settings.LanguageDetection.OpenAIRequestTokenLimit;
-        foreach (var item in source) {
+        foreach (var item in source.Where(x => !x.Entry.Content.IsNullOrWhiteSpace())) {
             var contentLength = item.Entry.Content.Length.Clamp(0, Settings.LanguageDetection.EntryContentTruncationLength);
             if (contentLength <= remainingLength) {
                 batch.Add(item);
