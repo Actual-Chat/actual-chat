@@ -17,7 +17,7 @@
     @apply mx-2 mb-2;
     @apply rounded-t-lg;
     @apply bg-01;
-    @apply h-15;
+    @apply min-h-15;
 }
 
 .conversation-header-short .bg-wrapper,
