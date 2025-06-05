@@ -38,13 +38,13 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         await base.DisposeAsync();
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact(Skip = "Obsolete now - the used legacy RPC methods are gone, but the test is kept for future reference")]
     public void ShouldExposeCorrectRpcLegacyMethods()
     {
         var serviceRegistry = AppHost.Services.RpcHub().ServiceRegistry;
         var mExternalContactList = RpcMethodDef.ComposeFullName(nameof(IExternalContacts), "List");
 
-        var r = serviceRegistry.GetServerMethodResolver(new VersionSet($"Api={Constants.Api.StringVersion}"));
+        var r = serviceRegistry.GetServerMethodResolver(new VersionSet($"Api={ApiConstants.VersionString}"));
         Out.WriteLine(r.ToString());
         r.MethodByFullName.Should().BeNull();
 

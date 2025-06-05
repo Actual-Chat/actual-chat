@@ -6,13 +6,11 @@ namespace ActualChat.Module;
 
 #pragma warning disable CA2255
 
-public static class ApiSerializerAndRpcSetup
+public static class ApiModuleInitializer
 {
     [ModuleInitializer]
     internal static void ModuleInitializer()
     {
-        // Rpc API version
-        RpcDefaults.ApiVersion = RpcDefaults.BackendVersion = Constants.Api.Version;
         // This is super important: TypeRef and some other types that were formerly using Symbol
         // are stored in our DB, and this option enables their legacy serialization mode.
         StringAsSymbolMemoryPackFormatterAttribute.IsEnabled = true;

@@ -43,9 +43,8 @@
     private string? _appLink;
 
     [Inject] private UIHub Hub { get; set; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo();
+    private HostInfo HostInfo => Hub.HostInfo;
     private ISystemProperties SystemProperties => Hub.SystemProperties;
-    private History History => Hub.History;
     private ReloadUI ReloadUI => Hub.ReloadUI;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -66,7 +65,7 @@
             static t => new ComputedState<ServerApiInfo>.Options() {
                 InitialValue = new ServerApiInfo(CompatibilityLevel.Unknown),
                 UpdateDelayer = FixedDelayer.NextTick,
-                Category = ComputedStateComponent.GetStateCategory(t),
+                Category = GetStateCategory(t),
             });
 
     protected override Task<ServerApiInfo> ComputeState(CancellationToken cancellationToken)
