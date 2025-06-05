@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -55,7 +56,9 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
         await using var __ = dbContext.ConfigureAwait(false);
 
         var keys = command.Items.Select(i => prefix + i.Key).ToHashSet(StringComparer.Ordinal);
-        var dbKvasEntryList = await dbContext.KvasEntries.ForUpdate()
+        foreach (var key in keys.Order(StringComparer.Ordinal))
+            await dbContext.KvasEntries.Lock(key, cancellationToken).ConfigureAwait(false);
+        var dbKvasEntryList = await dbContext.KvasEntries
             .Where(e => keys.Contains(e.Key))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
