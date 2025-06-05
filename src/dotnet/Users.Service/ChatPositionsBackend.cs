@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Db;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -40,7 +41,8 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbChatPosition.ComposeId(userId, chatId, kind);
-        var dbChatPosition = await dbContext.ChatPositions.ForUpdate()
+        await dbContext.ChatPositions.Lock(id, cancellationToken).ConfigureAwait(false);
+        var dbChatPosition = await dbContext.ChatPositions
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
         bool hasChanges = false;
