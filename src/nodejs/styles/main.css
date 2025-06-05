@@ -150,9 +150,9 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply sticky top-0 z-90;
     @apply flex-none flex-y items-center;
     @apply w-full;
-    @apply px-1 md:px-3 pb-1 -mt-px mb-0.5;
+    @apply px-1 md:px-3;
     @apply overflow-visible;
-    @apply bg-transparent;
+    @apply bg-01;
     @apply transition-height;
 }
 .layout-subheader > div {
@@ -191,6 +191,7 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .list-view-layout .layout-header {
     @apply flex-x justify-center;
+    @apply max-h-14;
 }
 .list-view-layout > .layout-header > .c-content {
     @apply flex-1;
