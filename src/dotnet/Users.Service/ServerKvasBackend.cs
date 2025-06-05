@@ -56,7 +56,7 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
         await using var __ = dbContext.ConfigureAwait(false);
 
         var keys = command.Items.Select(i => prefix + i.Key).ToHashSet(StringComparer.Ordinal);
-        foreach (var key in keys.Order(StringComparer.Ordinal))
+        foreach (var key in keys.Order(StringComparer.Ordinal)) // Has to be ordered to prevent deadlocks
             await dbContext.KvasEntries.Lock(key, cancellationToken).ConfigureAwait(false);
         var dbKvasEntryList = await dbContext.KvasEntries
             .Where(e => keys.Contains(e.Key))
