@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -10,62 +12,86 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 {
     [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
+    [field: AllowNull, MaybeNull]
+    private IDbEntityResolver<string, DbChatEntryLanguage> LanguageEntityResolver => field ??= Tester.AppServices.DbEntityResolver<string, DbChatEntryLanguage>();
     private ITranslations Translations => Tester.Translations;
 
     [Theory]
-    [InlineData("Hi! How are you?", 1, "en")]
-    [InlineData("Hi! How are you?", 10, "en")]
-    // [InlineData("Hi! How are you?", 111, "en")]
-    [InlineData("Привет! Как дела?", 1, "ru")]
-    [InlineData("Привет! Как дела?", 11, "ru")]
-    //[InlineData("Привет! Как дела?", 50, "ru")]
-    [InlineData("Merhaba! Nasılsın?", 1, "tr")]
-    [InlineData("Merhaba! Nasılsın?", 12, "tr")]
-    //[InlineData("Hola, cómo estás?", 50, "es")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 1, "en,ru,tr,es")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 13, "en,ru,tr,es")]
-    //[InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
-    public async Task ShouldDetectLanguageOnInsert(string text, int entryCount, string sExpectedLanguages)
+    [InlineData("Hi! How are you?", "en")]
+    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", "en,ru,tr,es")]
+    public async Task ShouldFastReturnNullIfLanguageNotDetectedYet(string text, string sExpectedLanguages)
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
 
         // act
-        var entries = await CreateEntries(chatId, text, entryCount);
+        var entry = await Tester.CreateTextEntry(chatId, text);
+        var entryLanguage = await Tester.GetEntryLanguage(entry.Id, CancellationToken.None);
 
         // assert
-        await entries.Select(x => WhenDetected(x.Id, sExpectedLanguages)).Collect();
+        entryLanguage.Should().BeNull();
+
+        // assert
+        await WhenDetected(entry.Id, sExpectedLanguages);
     }
 
-    [Theory]
-    [InlineData("Hi! How are you?", 1, "en")]
-    [InlineData("Hi! How are you?", 10, "en")]
-    // [InlineData("Hi! How are you?", 50, "en")]
-    [InlineData("Привет! Как дела?", 1, "ru")]
-    [InlineData("Привет! Как дела?", 10, "ru")]
-    // [InlineData("Привет! Как дела?", 50, "ru")]
-    [InlineData("Merhaba! Nasılsın?", 1, "tr")]
-    [InlineData("Merhaba! Nasılsın?", 10, "tr")]
-    // [InlineData("Merhaba! Nasılsın?", 50, "tr")]
-    [InlineData("Hola, cómo estás?", 1, "es")]
-    [InlineData("Hola, cómo estás?", 10, "es")]
-    // [InlineData("Hola, cómo estás?", 50, "es")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 1, "en,ru,tr,es")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 10, "en,ru,tr,es")]
-    // [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", 77, "en,ru,tr,es")]
-    public async Task ShouldDetectLanguageOnUpdate(string updatedText, int entryCount, string sExpectedLanguages)
+    [Fact]
+    public async Task ShouldResetDetectedLanguageWhenEntryContentUpdated()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var entry = await Tester.CreateTextEntry(chatId, "Hi! How are you?");
+        await WhenDetected(entry.Id, "en");
+
+        // act
+        await Tester.UpdateTextEntry(entry.Id, "Привет! Как дела?");
+
+        // assert
+        await WhenDetected(entry.Id, "ru");
+    }
+
+    [Fact]
+    public async Task ShouldNotDetectLanguagesWithoutDemand()
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
 
         // act
-        var entries = await CreateEntries(chatId, "some text", entryCount);
-        var updatedEntries = await UpdateEntries(updatedText, entries);
+        var entry = await Tester.CreateTextEntry(chatId, "Hi! How are you?");
 
         // assert
-        await updatedEntries.Select(x => WhenDetected(x.Id, sExpectedLanguages)).Collect();
+        await WhenNotDetected(entry.Id);
+
+        // act
+        await Tester.UpdateTextEntry(entry.Id, "Привет! Как дела?");
+
+        // assert
+        await WhenNotDetected(entry.Id);
+
+        // act
+        await Tester.RemoveTextEntry(entry.Id);
+
+        // assert
+        await WhenNotDetected(entry.Id);
+    }
+
+    [Fact]
+    public async Task ShouldRemoveDetectedLanguageWhenEntryRemoved()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var entry = await Tester.CreateTextEntry(chatId, "Hi! How are you?");
+        await WhenDetected(entry.Id, "en");
+
+        // act
+        await Tester.RemoveTextEntry(entry.Id);
+
+        // assert
+        await WhenNotDetected(entry.Id);
     }
 
     [Theory]
@@ -142,17 +168,6 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
                 TimeSpan.FromSeconds(10));
     }
 
-    private async Task<ChatEntry[]> CreateEntries(ChatId chatId, string text, int entryCount)
-    {
-        var entries = await Enumerable.Repeat(0, entryCount)
-            .Select(async _ => await Tester.CreateTextEntry(chatId, text).ConfigureAwait(false))
-            .Collect(2);
-        return entries;
-    }
-
-    private Task<ChatEntry[]> UpdateEntries(string updatedText, ChatEntry[] entries)
-        => entries.Select(x => Tester.UpdateTextEntry(x.Id, updatedText)).Collect(2);
-
     private Task<Language[]> WhenDetected(ChatEntryId id, string sExpectedLanguages, TimeSpan? timeout = null)
     {
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
@@ -164,4 +179,11 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20)))
             .Debuggable());
     }
+
+    // DB query avoids triggering translation
+    private Task WhenNotDetected(ChatEntryId id, TimeSpan? timeout = null)
+        => TestsExt.When(() => LanguageEntityResolver.Get(id.Value).RequireNull(),
+            Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
+            (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20)))
+            .Debuggable());
 }

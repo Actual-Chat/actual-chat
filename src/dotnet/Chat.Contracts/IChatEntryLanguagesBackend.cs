@@ -6,45 +6,33 @@ namespace ActualChat.Chat;
 public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ChatEntryLanguage?> GetLanguage(ChatEntryId id, CancellationToken cancellationToken);
-
-    // Non-compute methods
-
-    Task<ChatEntryLanguage[]> ListForDetection(int limit, CancellationToken cancellationToken);
+    Task<ChatEntryLanguage?> Get(ChatEntryId id, CancellationToken cancellationToken);
 
     // Command handlers
 
     [CommandHandler]
-    Task<Result<ChatEntryLanguage?>[]> OnBulkChange(ChatEntryLanguagesBackend_BulkChange command, CancellationToken cancellationToken);
+    Task<ChatEntryLanguage?> OnDetect(ChatEntryLanguagesBackend_Detect command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<ChatEntryLanguage?> OnReset(ChatEntryLanguagesBackend_Reset command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Result<ChatEntryLanguage?>> OnTryChange(ChatEntryLanguagesBackend_TryChange command, CancellationToken cancellationToken);
+    Task<ChatEntryLanguage?> OnChange(ChatEntryLanguagesBackend_Change command, CancellationToken cancellationToken);
 
     // Event handlers
 
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
-
-    [EventHandler]
-    Task OnChatEntryLanguagesChangedEvent(ChatEntryLanguagesChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatEntryLanguagesBackend_BulkChange(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryLanguageChange[] Changes
-) : ICommand<Result<ChatEntryLanguage?>[]>, IBackendCommand, IHasShardKey<ChatId>
+public sealed partial record ChatEntryLanguagesBackend_Detect(
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id
+) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
 {
-    public static ChatEntryLanguagesBackend_BulkChange Upserts(params IEnumerable<ChatEntryLanguage> languages)
-        => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Upsert(x))).ToArray());
-    public static ChatEntryLanguagesBackend_BulkChange Remove(params IEnumerable<ChatEntryLanguage> languages)
-        => new(languages.Select(x => new ChatEntryLanguageChange(x.Id, x.Version, Change.Remove(x))).ToArray());
-
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Changes[0].Id.ChatId;
+    public ChatId ShardKey => Id.ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -59,17 +47,21 @@ public sealed partial record ChatEntryLanguagesBackend_Reset(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatEntryLanguagesBackend_TryChange(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryLanguageChange Change
-) : ICommand<Result<ChatEntryLanguage?>>, IBackendCommand, IHasShardKey<ChatId>
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Change.Id.ChatId;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record ChatEntryLanguageChange(
+public sealed partial record ChatEntryLanguagesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(2)] Change<ChatEntryLanguage> Change
-);
+) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => Id.ChatId;
+
+    public static ChatEntryLanguagesBackend_Change Upsert(ChatEntryLanguage language)
+        => new (language.Id, language.Version, ActualChat.Change.Upsert(language));
+
+    public static ChatEntryLanguagesBackend_Change Remove(ChatEntryLanguage language)
+        => new (language.Id, language.Version, ActualChat.Change.Remove(language));
+
+    public static ChatEntryLanguagesBackend_Change Remove(ChatEntryId id)
+        => new (id, null, ActualChat.Change.Remove<ChatEntryLanguage>());
+}

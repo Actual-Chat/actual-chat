@@ -1,8 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ActualLab.Versioning;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Chat.Db;
 
@@ -48,11 +46,5 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
             : "";
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
-    }
-
-    internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntryLanguage>
-    {
-        public void Configure(EntityTypeBuilder<DbChatEntryLanguage> builder)
-            => builder.HasIndex(nameof(Id)).HasFilter("languages = ''");
     }
 }

@@ -330,16 +330,15 @@ public partial class StreamingBackend
         Task CreateLanguages(Language[] languages)
         {
             var entryLanguage = new ChatEntryLanguage(textEntry.Id) { Languages = languages, };
-            var cmd = ChatEntryLanguagesBackend_BulkChange.Upserts(entryLanguage);
-            return Commander.Call(cmd, true, CancellationToken.None);
+            return Commander.Call(ChatEntryLanguagesBackend_Change.Upsert(entryLanguage), true, CancellationToken.None);
         }
 
         Task FinalizeLanguages()
         {
             var entryLanguage = new ChatEntryLanguage(textEntry.Id);
             var cmd = EmptyRegex.IsMatch(lastTranscript.Text)
-                ? ChatEntryLanguagesBackend_BulkChange.Remove(entryLanguage)
-                : ChatEntryLanguagesBackend_BulkChange.Upserts(entryLanguage);
+                ? ChatEntryLanguagesBackend_Change.Remove(entryLanguage)
+                : ChatEntryLanguagesBackend_Change.Upsert(entryLanguage);
             return Commander.Call(cmd, true, CancellationToken.None);
         }
     }
