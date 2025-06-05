@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Module;
 
 #pragma warning disable CA2255 // Module initializer is intended to be used in...
 
-internal static class RenderModeDefInitializer
+internal static class BlazorUIAppModuleInitializer
 {
     [ModuleInitializer]
     internal static void ModuleInitializer()

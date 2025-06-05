@@ -71,7 +71,7 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
             var language = GetSupportedLanguage(options.Language);
-            var model = language == "en" ? "nova-3" : "nova-2";
+            var model = OrdinalEquals(language, "en") ? "nova-3" : "nova-2";
             var liveSchema = new LiveSchema {
                 Language = language,
                 Punctuate = true,

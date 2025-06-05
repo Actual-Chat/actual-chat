@@ -12,7 +12,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
 {
     public new record Options : BatchingKvas.Options
     {
-        public string Version { get; init; } = Constants.Api.StringVersion;
+        public string Version { get; init; } = ApiConstants.VersionString;
         public ImmutableHashSet<Symbol> ForceFlushFor { get; init; } =
             ImmutableHashSet<Symbol>.Empty.Add(RpcMethodDef.ComposeFullName(nameof(IAccounts), nameof(IAccounts.GetOwn)));
     }

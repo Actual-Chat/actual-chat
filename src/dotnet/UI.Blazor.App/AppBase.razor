@@ -3,20 +3,17 @@
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @implements IRootComponent
 @{
-    _renderIndex++;
     if (!UIHub.IsInteractive) {
         <LandingForWeb/>
         return;
     }
+    if (!_readyToRender)
+        return;
+    if (_simulatedCrashError != null)
+        throw _simulatedCrashError;
 }
 
-<ClientUpgradeCover RenderIndex="@_renderIndex">
-    @{
-        if (!_readyToRender)
-            return;
-        if (_simulatedCrashError != null)
-            throw _simulatedCrashError;
-    }
+<ClientUpgradeCover>
     <ScreenSizeProvider>
         <AlwaysVisibleComponents/>
 
@@ -44,7 +41,6 @@
 
     private bool _readyToRender;
     private bool _shouldRender;
-    private int _renderIndex;
     private Exception? _simulatedCrashError;
     private readonly TaskCompletionSource _whenFirstRendered = TaskCompletionSourceExt.New();
 
@@ -117,7 +113,7 @@
             uiModuleAssemblies.Remove(UIAssembly);
             UIModuleAssemblies = uiModuleAssemblies.ToArray();
         }
-        await prepareFirstRenderTask;
+        await prepareFirstRenderTask.SilentAwait();
         _readyToRender = true;
         _shouldRender = true;
         _ = AppScopedServiceStarter.AfterFirstRender(CircuitContext.StopToken);

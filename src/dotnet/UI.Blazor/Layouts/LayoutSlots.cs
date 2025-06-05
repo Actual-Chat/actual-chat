@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor;
+namespace ActualChat.UI.Blazor.Layouts;
 
 public static class LayoutSlots
 {

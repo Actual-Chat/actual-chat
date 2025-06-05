@@ -1,12 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<bool>
-@{
-    var upgradeRequired = State.Value;
-}
-@if (!upgradeRequired) {
+@using ActualChat.Hosting
+@inherits ComputedStateComponent<ServerApiInfo>
+@if (State.LastNonErrorValue is not { CompatibilityLevel: CompatibilityLevel.Incompatible } serverApiInfo) {
     @ChildContent
     return;
 }
+
 <div class="client-upgrade-cover">
     <div class="c-header">
         <div class="c-icon">
@@ -19,31 +18,60 @@
     <div class="c-content">
         <upgrade-app-cat-svg/>
         <div class="c-title">
-            Please update the app
+            Please update Actual Chat
         </div>
         <div class="c-text">
             <p>
-                To get back to all your conversations,
-            </p>
-            <p>
-                install the latest version
+                You are using Actual Chat client
+                <span class="whitespace-nowrap font-bold">v@(ApiConstants.VersionString)</span>,
+                and it is incompatible with the current server API
+                <span class="whitespace-nowrap font-bold">v@(serverApiInfo.VersionString)</span>.
             </p>
         </div>
         <div class="c-button">
-            <Button Class="btn-primary btn-w-full">
-                Update
-            </Button>
+            @if (!_appLink.IsNullOrEmpty()) {
+                <Button Class="btn-primary btn-w-full" data-href="@_appLink">
+                    Update
+                </Button>
+            } else {
+                <Button Class="btn-primary btn-w-full" Click="@(() => ReloadUI.Reload(true, false))">
+                    Update
+                </Button>
+            }
         </div>
     </div>
 </div>
 
 @code {
+    private string? _appLink;
+
     [Inject] private UIHub Hub { get; set; } = null!;
-    private UpgradeUI UpgradeUI => Hub.UpgradeUI;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private ISystemProperties SystemProperties => Hub.SystemProperties;
+    private History History => Hub.History;
+    private ReloadUI ReloadUI => Hub.ReloadUI;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public  int RenderIndex { get; set; }
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await UpgradeUI.UpgradeRequiredState.Use(cancellationToken).ConfigureAwait(false);
+    protected override void OnInitialized() {
+        _appLink = HostInfo.AppKind switch {
+            AppKind.Ios => Links.Apps.iOS,
+            AppKind.MacOS => Links.Apps.iOS,
+            AppKind.Android => Links.Apps.Android,
+            AppKind.Windows => Links.Apps.Windows,
+            // _ => Links.Apps.Android,
+            _ => null,
+        };
+    }
+
+    protected override ComputedState<ServerApiInfo>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ServerApiInfo>.Options() {
+                InitialValue = new ServerApiInfo(CompatibilityLevel.Unknown),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override Task<ServerApiInfo> ComputeState(CancellationToken cancellationToken)
+        => SystemProperties.GetServerApiInfo(cancellationToken);
 }

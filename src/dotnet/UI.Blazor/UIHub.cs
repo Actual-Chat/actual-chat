@@ -17,6 +17,8 @@ public class UIHub(IServiceProvider services) : Hub(services)
     [field: AllowNull, MaybeNull]
     public LiveTime LiveTime => field ??= Services.GetRequiredService<LiveTime>();
     [field: AllowNull, MaybeNull]
+    public ISystemProperties SystemProperties => field ??= Services.GetRequiredService<ISystemProperties>();
+    [field: AllowNull, MaybeNull]
     public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
     public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
@@ -108,8 +110,6 @@ public class UIHub(IServiceProvider services) : Hub(services)
     public ModuleHost ModuleHost => field ??= Services.GetRequiredService<ModuleHost>();
     [field: AllowNull, MaybeNull]
     public AnalyticEvents AnalyticEvents => field ??= Services.GetRequiredService<AnalyticEvents>();
-    [field: AllowNull, MaybeNull]
-    public UpgradeUI UpgradeUI => field ??= Services.GetRequiredService<UpgradeUI>();
 
     // Shortcuts
     public bool IsPrerendering => JSRuntimeInfo.IsPrerendering;

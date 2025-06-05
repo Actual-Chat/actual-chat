@@ -45,18 +45,22 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
                 var cancellationToken = CancellationToken.None; // No cancellation here
 
                 // Access key services
+                var systemProperties = Services.GetRequiredService<ISystemProperties>();
                 var accounts = Services.GetRequiredService<IAccounts>();
                 Services.GetRequiredService<IChats>();
                 _ = Services.StateFactory().NewMutable<bool>();
 
-                // Preload own account
+                var getServerApiInfoTask = systemProperties.GetServerApiInfo(cancellationToken);
                 var ownAccountTask = accounts.GetOwn(session, cancellationToken);
-
-                await PreloadContactListData(session, cancellationToken).ConfigureAwait(false);
+                var preloadContactListDataTask = PreloadContactListData(session, cancellationToken);
 
                 // Complete the tasks we started earlier
-                await ownAccountTask.ConfigureAwait(false);
-                await startHostedServicesTask.ConfigureAwait(false);
+                await Task.WhenAll(
+                        getServerApiInfoTask,
+                        ownAccountTask,
+                        preloadContactListDataTask,
+                        startHostedServicesTask)
+                    .ConfigureAwait(false);
             }
             catch (Exception e) {
                 Tracer.Point($"{nameof(StartNonScopedServices)} failed, error: " + e);
@@ -68,7 +72,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         using var _1 = Tracer.Region();
         // Start preloading top contacts
         // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
-        // because we don't know selected place yet.
+        // because we don't know the selected place yet.
         var localSettings = Services.LocalSettings();
         var selectedChatIdOption = await localSettings.TryGet<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
         var selectedPlaceId = PlaceId.None;

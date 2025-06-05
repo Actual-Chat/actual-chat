@@ -4,9 +4,7 @@ using ActualChat.Security;
 using ActualChat.UI;
 using ActualLab.Fusion.Extensions;
 using ActualLab.Fusion.Internal;
-using ActualLab.Generators;
 using ActualLab.Mathematics.Internal;
-using ActualLab.Resilience;
 using ActualLab.Rpc;
 
 namespace ActualChat.Module;
@@ -17,51 +15,6 @@ namespace ActualChat.Module;
 public sealed class CoreModule(IServiceProvider moduleServices)
     : HostModule<CoreSettings>(moduleServices)
 {
-    static CoreModule()
-    {
-        // This type initializer sets all super-early defaults
-
-        // Rpc - API version
-        RpcDefaults.ApiVersion = RpcDefaults.BackendVersion = Constants.Api.Version;
-
-        // Session.Factory & Validator
-#pragma warning disable CA2000
-        Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(20, Alphabet.AlphaNumericDash.Symbols));
-#pragma warning restore CA2000
-        Session.Validator = session => session.Id.Value.Length >= 20;
-
-#if false
-        // Default binary serializer
-        ByteSerializer.Default = MessagePackByteSerializer.Default;
-
-        // Default caching settings
-        ComputedOptions.ClientDefault = ComputedOptions.ClientDefault with {
-            CacheMode = RemoteComputedCacheMode.NoCache,
-        };
-#endif
-
-        // Overrides default requirements for User type
-        User.MustExist = Requirement.New(
-            (User? u) => u != null,
-            new(() => StandardError.Account.Guest()));
-        User.MustBeAuthenticated = Requirement.New(
-            (User? u) => u?.IsAuthenticated() == true,
-            new(() => StandardError.Account.Guest()));
-
-        // Any AccountException isn't a transient error
-        var oldPreferTransient = TransiencyResolvers.PreferTransient;
-        TransiencyResolvers.PreferTransient = e => {
-            var transiency = oldPreferTransient.Invoke(e);
-            if (!transiency.IsTransient())
-                return transiency;
-
-            return e switch {
-                AccountException => Transiency.NonTransient,
-                _ => transiency,
-            };
-        };
-    }
-
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
     [UnconditionalSuppressMessage("Trimming", "IL2111:DynamicallyAccessedMembersAttribute", Justification = "Features are already marked with DynamicallyAccessedMembersAttribute.")]
     protected internal override void InjectServices(IServiceCollection services)
