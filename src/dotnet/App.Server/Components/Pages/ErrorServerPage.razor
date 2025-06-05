@@ -28,7 +28,7 @@
     private HttpContext HttpContext { get; set; } = null!;
 
     private string? RequestId { get; set; }
-    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+    private bool ShowRequestId => !RequestId.IsNullOrEmpty();
 
     protected override void OnInitialized()
         => RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
