@@ -33,7 +33,7 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
             .Where(e => e.Key.StartsWith(prefix))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], Value: e.Value)).ToApiList();
+        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], e.Value)).ToApiList();
     }
 
     // Command handlers
