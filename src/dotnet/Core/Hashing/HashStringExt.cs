@@ -22,6 +22,8 @@ public static class HashStringExt
         return output;
     }
 
+    // Private methods
+
     private static IHashOutput CreateOutput(HashAlgorithm algorithm)
         => algorithm switch {
             HashAlgorithm.MD5 => new HashOutput16(),
@@ -44,7 +46,7 @@ public static class HashStringExt
             bytes.CopyTo(dest);
             return true;
         case HashEncoding.Base64:
-            return Convert.TryFromBase64String(hashString.Hash.Value, dest, out _);
+            return Convert.TryFromBase64String(hashString.Hash, dest, out _);
         case HashEncoding.Base64Url:
             return Base64UrlEncoder.Decode(hashString.Hash).TryCopyTo(dest);
         default:

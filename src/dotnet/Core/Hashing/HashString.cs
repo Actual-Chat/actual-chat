@@ -29,7 +29,7 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public HashEncoding Encoding { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public Symbol Hash { get; }
+    public string Hash { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -49,7 +49,7 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
     public HashString(string id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public HashString(Symbol id, HashAlgorithm algorithm, HashEncoding encoding, Symbol hash, AssumeValid _)
+    public HashString(Symbol id, HashAlgorithm algorithm, HashEncoding encoding, string hash, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
@@ -61,9 +61,9 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
         Hash = hash;
     }
 
-    public HashString(HashAlgorithm algorithm, HashEncoding encoding, Symbol hash, AssumeValid _)
+    public HashString(HashAlgorithm algorithm, HashEncoding encoding, string hash, AssumeValid _)
     {
-        if (hash.IsEmpty) {
+        if (hash.IsNullOrEmpty()) {
             this = None;
             return;
         }
