@@ -16,6 +16,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     public LanguageUI(AppUIHub hub) : base(hub)
         => _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
+                InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
