@@ -157,6 +157,9 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
         if (!LocalChatId.TryParse(tail[(placeIdLength + 1)..], null, out var localChatId))
             return null;
 
+        if (!localChatId.IsTread)
+            return new PlaceChatId(PlaceChatId.Format(placeId, localChatId.Id), placeId, localChatId);
+
         var threadIds = new List<long>();
         while (localChatId.Parent is not null && localChatId.IsTread) {
             threadIds.Insert(0, localChatId.ThreadId);
@@ -172,6 +175,9 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     {
         if (!LocalChatId.TryParse(s, SpecialChatId, out var localChatId))
             return null;
+
+        if (!localChatId.IsTread)
+            return new GroupChatId(localChatId.Id, localChatId);
 
         var threadIds = new List<long>();
         while (localChatId.Parent is not null && localChatId.IsTread) {
