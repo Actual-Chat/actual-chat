@@ -4,73 +4,74 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
 <Form Model="@_form" Class="h-full" Id="@_form.FormId">
-<DialogFrame
-    Class="new-thread-modal modal-sm"
-    Title="New thread"
-    HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
-    <Body>
-
-    <FormBlock>
-        <DataAnnotationsValidator/>
-
-        <FormSection
-            For="() => _form.Title"
-            Label="Thread title"
-            InputId="@_form.TitleId"
-            IsLabelInsideInput="true"
-            Class="thread-title"
-            IsRequired="true">
-            <TextBox
-                @bind-Value="@_form.Title"
-                Id="@_form.TitleId"
-                Autofocus="false"
-                Autocomplete="false"/>
-            @if (_generatingSmartTitle && string.IsNullOrEmpty(_form.Title)) {
-                <div class="waiting-message-container">
-                    <span id="waiting-circle-1" class="c-circle"></span>
-                    <span id="waiting-circle-2" class="c-circle"></span>
-                    <span id="waiting-circle-3" class="c-circle"></span>
+    <DataAnnotationsValidator/>
+    <DialogFrame
+        Class="new-thread-modal modal-sm"
+        Title="New thread"
+        HasCloseButton="true"
+        NarrowViewSettings="@DialogFrameNarrowViewSettings.Bottom">
+        <Body>
+        <FormBlock>
+            <FormSection
+                For="() => _form.Title"
+                Label="Thread title"
+                InputId="@_form.TitleId"
+                IsLabelInsideInput="true"
+                Class="thread-title"
+                IsRequired="true">
+                <TextBox
+                    @bind-Value="@_form.Title"
+                    Id="@_form.TitleId"
+                    Autofocus="false"
+                    Autocomplete="false"/>
+                @if (_generatingSmartTitle && string.IsNullOrEmpty(_form.Title)) {
+                    <div class="waiting-message-container">
+                        <span id="waiting-circle-1" class="c-circle"></span>
+                        <span id="waiting-circle-2" class="c-circle"></span>
+                        <span id="waiting-circle-3" class="c-circle"></span>
+                        <span class="generating-text">
+                            <span>G</span><span>e</span><span>n</span><span>e</span><span>r</span><span>a</span><span>t</span><span>i</span><span>n</span><span>g</span>
+                        </span>
+                    </div>
+                }
+            </FormSection>
+            <FormSection
+                For="() => _form.Description"
+                Label="Description"
+                InputId="@_form.DescriptionId"
+                IsLabelInsideInput="true"
+                Class="thread-description">
+                <InputTextArea
+                    @bind-Value="@_form.Description"
+                    id="@_form.DescriptionId"
+                    rows="6"/>
+            </FormSection>
+            @if (_generatingSmartTitle) {
+                <div>
+                    <span>Busy generating smart title and description based on source messages...</span>
+                    <spam>Keep fields empty to get them filled in automatically.</spam>
                 </div>
             }
-        </FormSection>
-        <FormSection
-            For="() => _form.Description"
-            Label="Description"
-            InputId="@_form.DescriptionId"
-            IsLabelInsideInput="true"
-            Class="thread-description">
-            <InputTextArea
-                @bind-Value="@_form.Description"
-                id="@_form.DescriptionId"
-                rows="6" />
-        </FormSection>
-        @if (_generatingSmartTitle) {
-            <div>
-                <span>Busy generating smart title and description based on source messages...</span>
-                <spam>Keep fields empty to get them filled in automatically.</spam>
-            </div>
-        }
-    </FormBlock>
+        </FormBlock>
 
-    </Body>
-    <Buttons>
-        @if (ScreenSize.IsWide()) {
+        </Body>
+        <Buttons>
+            @if (ScreenSize.IsWide()) {
+                <Button
+                    Click="@(() => Modal.Close())"
+                    Class="btn-modal">
+                    Cancel
+                </Button>
+            }
             <Button
-                Click="@(() => Modal.Close())"
-                Class="btn-modal">
-                Cancel
+                Click="@OnCreate"
+                Type="@ButtonType.Button"
+                IsDisabled="@(!context.Validate())"
+                Class="btn-modal btn-primary">
+                Create
             </Button>
-        }
-        <Button
-            Click="@OnCreate"
-            Type="@ButtonType.Button"
-            IsDisabled="@(!context.Validate())"
-            Class="btn-modal btn-primary">
-            Create
-        </Button>
-    </Buttons>
-</DialogFrame>
+        </Buttons>
+    </DialogFrame>
 </Form>
 
 @code {
