@@ -4,11 +4,11 @@ namespace ActualChat.Chat;
 
 public interface IPlaces : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<PlaceRules> GetRules(Session session, PlaceId placeId, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<PlaceChatId?> GetWelcomeChatId(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -18,9 +18,9 @@ public interface IPlaces : IComputeService
     [ComputeMethod]
     Task<AuthorId[]> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
+    [ComputeMethod]
     Task<AuthorFull?> GetOwn(Session session, PlaceId placeId, CancellationToken cancellationToken);
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
+    [ComputeMethod]
     Task<Author?> Get(Session session, PlaceId placeId, AuthorId authorId, CancellationToken cancellationToken);
 
     // Commands

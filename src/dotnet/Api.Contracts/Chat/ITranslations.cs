@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public interface ITranslations : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.Cache)]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<Translation?> Get(Session session, TranslationId id, CancellationToken cancellationToken);
 
     [ComputeMethod]
