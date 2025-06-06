@@ -44,6 +44,7 @@ public static class ApiModuleInitializer
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PeerChatId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<GroupChatId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PlaceChatId>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ThreadChatId>());
         // Chat entry identifiers
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ChatEntryId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TextEntryId>());
