@@ -97,7 +97,7 @@
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
                 || _rendered.Markup != stateValue.Markup
                 || _rendered.IsTranslation != stateValue.IsTranslation);
-        // Log.LogWarning("ShouldRender: {Id}: {Value}", Message.Id, shouldRender);
+        Log.LogWarning("ShouldRender: {Id}: {Value}", Message.Id, shouldRender);
         return shouldRender;
     }
 
@@ -121,8 +121,8 @@
                         ChangedText: changedPart[..animatedStartIndex],
                         AnimatedText: changedPart[animatedStartIndex..]);
                 }, Log).ConfigureAwait(false);
-                Log.LogWarning("Transcript: {Id}: Retained='{Retained}', Changed='{Changed}', Animated='{Animated}'",
-                    message.Id, text[..retainedLength], changedPart[..animatedStartIndex], changedPart[animatedStartIndex..]);
+                // Log.LogWarning("Transcript: {Id}: Retained='{Retained}', Changed='{Changed}', Animated='{Animated}'",
+                //     message.Id, text[..retainedLength], changedPart[..animatedStartIndex], changedPart[animatedStartIndex..]);
                 lastText = text;
             }
         }
