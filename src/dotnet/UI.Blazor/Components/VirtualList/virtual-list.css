@@ -1,5 +1,5 @@
 ﻿.virtual-list {
-    @apply flex items-center;
+    @apply flex-y items-center;
     height: 100%;
     overflow-y: scroll;
     -ms-overflow-style: none;
@@ -22,8 +22,9 @@
 }
 
 .virtual-list > .c-wrapper {
-    @apply relative w-full shrink-0 min-h-full;
-    @apply lg:max-w-192;
+    @apply relative;
+    @apply shrink-0;
+    @apply w-full min-h-full lg:max-w-192;
     overflow-anchor: none;
 }
 
@@ -35,7 +36,7 @@
     overflow-anchor: none;
 }
 body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
-    @apply  min-h-12;
+    @apply min-h-12;
 }
 
 .virtual-list::-webkit-scrollbar {
