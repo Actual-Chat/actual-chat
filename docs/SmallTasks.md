@@ -1,3 +1,7 @@
+Pre v2 release:
+- [AY] Check all exceptions in Bugs chat
+- [AY] Check why we saw invalidation issues on dev yesterday
+
 Mobile:
 - [DF] Get rid of share intent state persistence on Android
 - [Still intact?] Portrait/landscape mode switch should work in MAUI apps (mainly for images & videos) 
