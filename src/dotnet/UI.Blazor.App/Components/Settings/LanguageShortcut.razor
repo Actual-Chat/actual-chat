@@ -22,5 +22,5 @@
             });
 
     protected override Task<UserLanguageSettings> ComputeState(CancellationToken cancellationToken)
-        => LanguageUI.Settings.Use(cancellationToken);
+        => LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken);
 }

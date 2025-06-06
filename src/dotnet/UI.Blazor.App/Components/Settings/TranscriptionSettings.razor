@@ -88,7 +88,7 @@
         => _formModel = new FormModel(ComponentIdGenerator);
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var languages = await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new(languages, enableIncompleteUI);
     }

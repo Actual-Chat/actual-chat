@@ -54,7 +54,7 @@
     protected override async Task<(IReadOnlyList<Language>?, Language)> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
 
-        var languages = await LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var languages = await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
         return (languages.ListSpoken(), language);
     }

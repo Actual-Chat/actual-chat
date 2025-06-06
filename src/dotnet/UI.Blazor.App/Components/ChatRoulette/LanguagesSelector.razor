@@ -45,7 +45,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        var languages = await Hub.LanguageUI.Settings.Use(Hub.LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
         var availableLanguages = new List<Language>();
         AddAvailableLanguage(availableLanguages, languages.Primary);
         AddAvailableLanguage(availableLanguages, languages.Secondary);

@@ -71,7 +71,7 @@
             return null;
 
         if (profile.Preferences.Preferences.IsEmpty) {
-            var languages = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+            var languages = await Hub.LanguageUI.Settings.Use(Hub.LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
             var primaryLanguage = languages.Primary;
             var preferences = profile.Preferences.Preferences;
             preferences = preferences with {

@@ -27,7 +27,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<Language>> ListSpoken(CancellationToken cancellationToken)
     {
-        var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
+        var settings = await Settings.Use(WhenReady, cancellationToken).ConfigureAwait(false);
         return settings.ListSpoken();
     }
 
