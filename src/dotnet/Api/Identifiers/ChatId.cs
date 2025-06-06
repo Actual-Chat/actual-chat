@@ -111,16 +111,14 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
         return threadChatId != null;
     }
 
+    public ChatId GetThreadOutermostParentOrSelf()
+        => this is ThreadChatId threadChatId ? threadChatId.GetOutermostParent() : this;
+
     public bool IsThread()
         => this is ThreadChatId;
 
     public ThreadChatId CreateThreadId(long threadId)
-    {
-        if (Kind is not (ChatKind.Group or ChatKind.Place))
-            throw StandardError.NotSupported($"{Kind} chats do not support threads");
-
-        return new ThreadChatId(this, threadId);
-    }
+        => new (this, threadId);
 
     public void EnsureNonThread()
     {

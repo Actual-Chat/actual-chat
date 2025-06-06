@@ -2,12 +2,18 @@
 @inherits FusionComponentBase<AppUIHub>
 @{
     var chat = Chat;
+    var chatKind = chat is null
+        ? (ChatKind?)null
+        : chat.Id.IsThread(out var threadChatId)
+            ? threadChatId.ParentChatId.Kind
+            : chat.Id.Kind;
+
 }
 
-@switch (chat?.Kind) {
+@switch (chatKind) {
 case ChatKind.Group or ChatKind.Place:
     <Pic
-        Title="@chat.Title"
+        Title="@chat!.Title"
         Picture="@chat.Picture.ToPicture()"
         Size="@Size"
         IsSquare="@IsSquare"

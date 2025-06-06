@@ -248,7 +248,7 @@
         => AuthorUI.StartAnonymousPeerChat(AuthorId);
 
     private async Task OnAvatarSelected(AvatarFull avatar) {
-        var command = new Authors_SetAvatar(Session, AuthorId.ChatId, avatar.Id);
+        var command = new Authors_SetAvatar(Session, AuthorId.ChatId.GetThreadOutermostParentOrSelf(), avatar.Id);
         await UICommander.Run(command);
     }
 
