@@ -14,8 +14,6 @@ public static class VirtualList
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
     where TItem : class, IVirtualListItem
 {
-    private VirtualListData<TItem>? _initialData;
-
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
@@ -31,7 +29,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
 
     private int RenderIndex { get; set; } = 0;
 
-    [Parameter] public bool RequestDataOnParameterSet { get; set; }
     [Parameter] public string Identity { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
@@ -56,7 +53,11 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListDataQuery))]
-    public VirtualList() { }
+    public VirtualList()
+        => Options = ComputedStateComponentOptions.RecomputeStateOnParameterChange
+            | ComputedStateComponentOptions.UseParametersSetAsyncRenderPoint
+            | ComputedStateComponentOptions.RenderInconsistentState
+            | ComputedStateComponentOptions.ComputeStateOnThreadPool;
 
     [JSInvokable]
     public async Task RequestData(VirtualListDataQuery query)
@@ -80,25 +81,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
         LastReportedItemVisibility = new VirtualListItemVisibility(identity, visibleKeys, isEndAnchorVisible);
         ItemVisibilityChanged?.Invoke(LastReportedItemVisibility);
         return Task.CompletedTask;
-    }
-
-    public override async Task SetParametersAsync(ParameterView parameters)
-    {
-        parameters.SetParameterProperties(this);
-        var shouldSetInitialData = RequestDataOnParameterSet && VirtualList.IsNonFirstRender;
-        if (shouldSetInitialData)
-            _initialData = await DataSource.GetData(VirtualListDataQuery.None,
-                VirtualListData<TItem>.None,
-                CancellationToken.None);
-        else
-            _initialData = null;
-
-        LastData = VirtualListData<TItem>.None;
-        if (ReferenceEquals(State, null) && shouldSetInitialData && _initialData != null) {
-            var (state, stateOptions) = CreateState();
-            SetState(state, stateOptions);
-        }
-        await base.SetParametersAsync(ParameterView.Empty);
     }
 
     public override async ValueTask DisposeAsync()
@@ -154,14 +136,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     }
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
-    {
-        var initialData = _initialData ?? VirtualListData<TItem>.None;
-        return new ComputedState<VirtualListData<TItem>>.Options {
-            InitialValue = initialData,
+        => new() {
+            InitialValue = VirtualListData<TItem>.None,
             UpdateDelayer = FixedDelayer.NextTick,
+            TryComputeSynchronously = true,
             Category = GetStateCategory(GetType()),
         };
-    }
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
