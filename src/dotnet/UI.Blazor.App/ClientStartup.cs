@@ -179,11 +179,14 @@ public static class ClientStartup
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };
 #endif
-        var remoteComputedCacheUpdateDelayTask = Task.Delay(Constants.Rpc.RemoteComputedCacheInitialInvalidationDelay)
+        // We use a single instance of the initial delay task - we want it to be
+        // an absolute delay from the app start rather than a relative delay for each call.
+        var remoteComputedCacheInitialDelayTask = Task
+            .Delay(Constants.Rpc.RemoteComputedCache.HitToCallInitialDelay)
             .ContinueWith(
-                _ => RemoteComputedCache.UpdateDelayer = (_, _) => TickSource.Default.WhenNextTick(),
+                _ => RemoteComputedCache.HitToCallDelayer = null, // And no more delays after the initial one
                 TaskScheduler.Default);
-        RemoteComputedCache.UpdateDelayer = (_, _) => remoteComputedCacheUpdateDelayTask;
+        RemoteComputedCache.HitToCallDelayer = (_, _) => remoteComputedCacheInitialDelayTask;
     }
 
     [RequiresUnreferencedCode(UnreferencedCode.Reflection)]

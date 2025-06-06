@@ -14,7 +14,10 @@ public static partial class Constants
 
     public static class Rpc
     {
-        public static readonly TimeSpan RemoteComputedCacheInitialInvalidationDelay = TimeSpan.FromMilliseconds(3000);
+        public static class RemoteComputedCache
+        {
+            public static readonly TimeSpan HitToCallInitialDelay = TimeSpan.FromMilliseconds(2000);
+        }
 
         public static class Compression
         {
