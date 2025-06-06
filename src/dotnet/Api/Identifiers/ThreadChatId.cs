@@ -25,14 +25,11 @@ public sealed partial class ThreadChatId : ChatId, IStringIdentifier<ThreadChatI
 
     // Factories and constructors
 
-    internal ThreadChatId(ChatId parentChatId, long threadId) : base(GetThreadChatIdValue(parentChatId, threadId), parentChatId.Kind)
+    internal ThreadChatId(ChatId parentChatId, long threadId) : base(Format(parentChatId, threadId), ChatKind.Thread)
     {
         ParentChatId = parentChatId;
         ThreadId = threadId;
     }
-
-    private static string GetThreadChatIdValue(ChatId parentChatId, long threadId)
-        => parentChatId.Value + ThreadIdSeparator + threadId.ToInvariantString();
 
     // Equality
 
@@ -52,6 +49,9 @@ public sealed partial class ThreadChatId : ChatId, IStringIdentifier<ThreadChatI
         => !(left?.Equals(right) ?? right is null);
 
     // Format & Parse
+
+    private static string Format(ChatId parentChatId, long threadId)
+        => parentChatId.Value + ThreadIdSeparator + threadId.ToInvariantString();
 
     public static new ThreadChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ThreadChatId>(s);
