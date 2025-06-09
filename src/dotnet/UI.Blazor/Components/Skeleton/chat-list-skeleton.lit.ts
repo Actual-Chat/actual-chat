@@ -21,6 +21,14 @@ class ChatListSkeleton extends LitElement {
             :host(.animated-skeleton) {
                 animation: pulse 2s infinite;
             }
+            .message-skeleton.thread-skeleton {
+                column-gap: 1rem;
+                height: 2.5rem;
+                align-items: flex-start;
+            }
+            .message-skeleton.thread-skeleton + .message-skeleton.thread-skeleton {
+                margin-top: 0.5rem;
+            }
 
             .avatar-wrapper {
                 display: flex;
@@ -30,6 +38,10 @@ class ChatListSkeleton extends LitElement {
                 width: 3rem;
                 height: 3rem;
             }
+            .thread-skeleton .avatar-wrapper {
+                width: 2rem;
+                height: 2rem;
+            }
 
             .avatar {
                 width: 2.5rem;
@@ -37,10 +49,20 @@ class ChatListSkeleton extends LitElement {
                 border-radius: 9999px;
                 background-color: var(--skeleton);
             }
+            .thread-skeleton .avatar {
+                width: 2rem;
+                height: 2rem;
+            }
+            .message-skeleton.thread-skeleton .c-container {
+                margin-top: 0.25rem;
+            }
         `];
 
     @property()
     class = '';
+
+    @property()
+    messageCls = '';
 
     @property()
     count = 1;
@@ -49,7 +71,7 @@ class ChatListSkeleton extends LitElement {
         const { count } = this;
         return html`
             ${guard([count], () => map(range(count), () => html`
-                <div class='message-skeleton'>
+                <div class='message-skeleton ${this.messageCls}'>
                     <div class='avatar-wrapper'>
                         <div class='avatar'></div>
                     </div>

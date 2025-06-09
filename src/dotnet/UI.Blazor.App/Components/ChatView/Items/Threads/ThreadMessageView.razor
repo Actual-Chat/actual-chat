@@ -39,7 +39,7 @@
     <Divider/>
     <div class="c-last-messages">
         @if (isLoading) {
-            <chat-view-skeleton count="2" />
+            <chat-list-skeleton count="2" messageCls="thread-skeleton"/>
         } else {
             foreach (var (chatEntry, markup) in m!.Entries) {
                 <div class="c-message-wrapper">
@@ -64,8 +64,8 @@
     <div class="c-footer">
         <div class="c-author-list">
             @if (isLoading) {
-                <AuthorCircle AuthorId="@null" Size="@SquareSize.Size6"/>
-                <AuthorCircle AuthorId="@null" Size="@SquareSize.Size6"/>
+                <round-skeleton radius="6"/>
+                <round-skeleton radius="6"/>
             } else {
                 const int displayAuthorsLimit = 3;
                 var topAuthorIds = m!.TopAuthorIds.Take(displayAuthorsLimit).ToList();
@@ -81,9 +81,9 @@
         <div class="c-info">
             <span>@creationDate,</span><span> created by </span>
             @if (isLoading) {
-                /* add skeleton */
+                <string-skeleton firstWidth="4" secondWidth="8" height="4"/>
             } else {
-                <span>@m!.OwnerName</span>
+                <span class="c-author-name">@m!.OwnerName</span>
             }
         </div>
         @if (!isLoading) {

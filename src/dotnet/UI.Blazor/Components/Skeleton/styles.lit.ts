@@ -135,6 +135,10 @@ export const messageStyles = css`
         width: 100%;
     }
 
+    .round-skeleton.radius-6 {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
     .round-skeleton.radius-8 {
         width: 2rem;
         height: 2rem;
