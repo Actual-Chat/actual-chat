@@ -30,7 +30,8 @@
     @apply flex-y gap-y-2;
 }
 .thread-message .c-last-messages .c-message-wrapper {
-    @apply flex-x gap-x-4;
+    @apply flex-x gap-x-4 items-start;
+    @apply h-10;
 }
 .thread-message .c-last-messages .c-message-wrapper .avatar-circle {
     @apply self-start;
@@ -47,7 +48,7 @@
 }
 .thread-message .c-last-messages .c-message-wrapper .c-content .c-message {
     @apply text-caption-4 text-02;
-    @apply line-clamp-2;
+    @apply line-clamp-1;
 }
 
 .thread-message .c-footer {
@@ -58,7 +59,10 @@
     @apply flex-x items-center gap-x-1;
 }
 .thread-message .c-footer .c-info {
-    @apply flex-1;
+    @apply flex-1 flex-x gap-x-0.5;
     @apply text-caption-6 text-03;
-    @apply line-clamp-2;
+    @apply truncate;
+}
+.thread-message .c-footer .c-info .c-author-name {
+    @apply truncate;
 }
