@@ -1,4 +1,4 @@
-@using System.Text
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
 <button @ref="ButtonRef"
@@ -14,13 +14,16 @@
         @attributes="@AdditionalAttributes"
         @onclick:stopPropagation="@StopPropagation"
         @onclick:preventDefault="@PreventDefault"
-        @onclick="@Click">
+        @onclick="@OnClick">
     <div class="@ContentClass btn-content" tabindex="-1">
         @ChildContent
     </div>
 </button>
 
 @code {
+    [Inject] private UIHub Hub { get; set; } = null!;
+    private TuneUI TuneUI => Hub.TuneUI;
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
@@ -42,4 +45,9 @@
 
     private string GetButtonType()
         => Type.ToString().ToLower();
+
+    private async Task OnClick(MouseEventArgs e) {
+        _ = TuneUI.Play(Tune.ClickButton);
+        await Click.InvokeAsync(e);
+    }
 }
