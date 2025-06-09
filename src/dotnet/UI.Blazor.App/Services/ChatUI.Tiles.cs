@@ -51,12 +51,17 @@ public partial class ChatUI
         using (Computed.BeginIsolation())
             chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
 
-        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange);
+        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange.Expand(LoadLimit));
         var chatRangeMetaList = (await metaIdTiles
-            .Select(metaIdTile => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false))
+                .Select(metaIdTile
+                    => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false))
+            .OrderBy(m => m.IdRange.Start)
+            .ThenByDescending(m => m.IdRange.Size()) // ChatRangeMeta can be overlapping, so we need to keep the largest
+            .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.IdRange.Start.CompareTo(b.IdRange.Start)))
             .ToList();
+
         List<Range<long>> idTiles;
         while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, expandedConversations, out idTiles)) {
             var prevIdTileStart = chatRangeMetaList[0].PreviousIdTileStart;
