@@ -390,7 +390,7 @@
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <MtouchLink>SdkOnly</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
-    <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,ActualLab.Interception</MTouchInterpreter>-->
+    <MTouchInterpreter>-ActualChat,ActualChat.Core,ActualChat.Api,ActualChat.Api.Contracts,ActualLab.Interception,ActualLab.Rpc,ActualLab.Fusion,ActualLab.Fusion.Blazor</MTouchInterpreter>
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
