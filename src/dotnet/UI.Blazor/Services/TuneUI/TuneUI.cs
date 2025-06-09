@@ -18,6 +18,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
         [Tune.ShowInputError] = new ([80] /*, "show-input-error"*/),
         [Tune.DragStart] = new ([100] /*, "drag-start"*/),
         [Tune.ChangeToggle] = new ([20] /*, "change-toggle"*/),
+        [Tune.ClickButton] = new ([20] /*, "click-button"*/),
         // Recording
         [Tune.BeginRecording] = new ([100, 50, 50], "begin-recording"),
         [Tune.ConfirmRecording] = new ([50, 50, 100] /*, "confirm-recording"*/),
@@ -130,6 +131,7 @@ public enum Tune
     React,
     DragStart,
     ChangeToggle,
+    ClickButton,
 }
 
 public record TuneInfo(int[] Vibration, string Sound = "");

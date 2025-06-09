@@ -21,6 +21,9 @@
 @code{
     private string _loadingCls = "";
 
+    [Inject] private UIHub Hub { get; set; } = null!;
+    private TuneUI TuneUI => Hub.TuneUI;
+
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public int MessageCount { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
@@ -28,6 +31,7 @@
     [Parameter] public EventCallback TitleClick { get; set; }
 
     private void OnMessageCountClick() {
+        _ = TuneUI.Play(Tune.ClickButton);
         _loadingCls = string.IsNullOrEmpty(_loadingCls) ? "loading-conversation" : "";
         StateHasChanged();
         MessageCountClick.InvokeAsync();
