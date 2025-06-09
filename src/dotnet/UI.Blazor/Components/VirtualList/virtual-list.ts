@@ -154,20 +154,11 @@ export class VirtualList {
 
         // Set positioning according to the default edge
         if (this.defaultEdge === VirtualListEdge.Start) {
-            this.containerRef.style.top = `${this.endAnchorSize}px`;
             this.ref.style.flexDirection = 'column';
-            this.spacerRef.style.display = 'flex';
-            this.spacerRef.style.height = `${this.defaultSpacerSize}px`;
-            this.endSpacerRef.style.display = 'none';
         }
         else {
-            this.containerRef.style.bottom = `${this.endAnchorSize}px`;
             this.ref.style.flexDirection = 'column-reverse';
-            this.spacerRef.style.display = 'none';
-            this.endSpacerRef.style.display = 'flex';
-            this.endSpacerRef.style.height = `${this.defaultSpacerSize}px`;
         }
-        this.wrapperRef.style.height = `100%`;
 
         // Events & observers
         const listenerOptions = { signal: this.abortController.signal, passive: true, };

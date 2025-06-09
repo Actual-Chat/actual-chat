@@ -17,14 +17,16 @@
     var containerStyle = renderIndex == 0
         ? DefaultEdge == VirtualListEdge.End
             ? $"bottom: {endAnchorSize}px;"
-            : ""
+            : "top: 0px;"
         : "";
-    var spacerStyleDisplay = DefaultEdge == VirtualListEdge.End
+    var hasVeryFirstItem = data.HasVeryFirstItem;
+    var hasVeryLastItem = data.HasVeryLastItem;
+    var spacerStyleDisplay = hasVeryFirstItem
         ? "none"
         : "flex";
-    var endSpacerStyleDisplay = DefaultEdge == VirtualListEdge.End
-        ? "flex"
-        : "none";
+    var endSpacerStyleDisplay = hasVeryLastItem
+        ? "none"
+        : "flex";
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
