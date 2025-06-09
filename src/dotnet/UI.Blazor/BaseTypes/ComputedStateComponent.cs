@@ -36,6 +36,9 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
 
+    protected ComputedStateComponent()
+        => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool; // Prevent blocking the UI thread
+
     public override Task SetParametersAsync(ParameterView parameters)
     {
         _hub ??= (THub)CircuitHub;
