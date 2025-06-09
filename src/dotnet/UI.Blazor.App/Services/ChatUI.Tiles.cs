@@ -51,7 +51,9 @@ public partial class ChatUI
         using (Computed.BeginIsolation())
             chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
 
-        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange.Expand(LoadLimit));
+        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange.Expand(LoadLimit))
+            .Where(t => t.Start >= 0)
+            .ToList();
         var chatRangeMetaList = (await metaIdTiles
                 .Select(metaIdTile
                     => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))

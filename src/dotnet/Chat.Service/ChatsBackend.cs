@@ -460,7 +460,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     break;
             }
             else
-                start = chatIdRange.Start;
+                start = IdTileStack.LastLayer.GetTile(chatIdRange.Start).Start;
 
             nextEntryRangeMeta = nextEntryRangeMetaTask is not null
                 ? await nextEntryRangeMetaTask.ConfigureAwait(false)
