@@ -1192,8 +1192,7 @@ export class VirtualList {
                     this.ensureItemRangeCalculated();
 
                 const orderedItems = [... this.orderedItems];
-                const { start, end } = this.itemRange ?? new NumberRange(0,0);
-                const containerSize = this.containerRef.offsetHeight;
+                const { start, end, size: itemRangeSize } = this.itemRange ?? new NumberRange(0,0);
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
                 scrollTop = this.ref.scrollTop;
@@ -1226,8 +1225,8 @@ export class VirtualList {
                             : new NumberRange(knownRange.start, knownRange.start + fullRangeSize)
                     }
 
-                    beforeSize = clamp(start - fullRange.start, 0, fullRange.size - containerSize);
-                    afterSize = clamp(fullRange.end - end, 0, fullRange.size - containerSize);
+                    beforeSize = clamp(start - fullRange.start, 0, fullRange.size - itemRangeSize);
+                    afterSize = clamp(fullRange.end - end, 0, fullRange.size - itemRangeSize);
                 }
                 if (beforeSize == 0 && !rs.hasVeryFirstItem)
                     beforeSize = defaultSpacerSize;
@@ -1238,7 +1237,7 @@ export class VirtualList {
                 if (rs.hasVeryLastItem)
                     afterSize = 0;
 
-                totalSize = containerSize
+                totalSize = itemRangeSize
                     + beforeSize
                     + afterSize
                     + endAnchorSize;
@@ -1328,7 +1327,7 @@ export class VirtualList {
                         spacerSize = 0;
                     }
                     else {
-                        spacerSize = clamp(oldTotalSize - containerSize - endSpacerSize - endAnchorSize, 0, defaultSpacerSize);
+                        spacerSize = clamp(oldTotalSize - itemRangeSize - endSpacerSize - endAnchorSize, 0, defaultSpacerSize);
                     }
                     offset += endSpacerSize; // adjust offset to include end spacer size
                 }
@@ -1409,7 +1408,7 @@ export class VirtualList {
                         endSpacerSize = 0;
                     }
                     else {
-                        endSpacerSize = clamp(oldTotalSize - containerSize - spacerSize - endAnchorSize, 0, defaultSpacerSize);
+                        endSpacerSize = clamp(oldTotalSize - itemRangeSize - spacerSize - endAnchorSize, 0, defaultSpacerSize);
                     }
                     offset -= spacerSize; // adjust offset to include spacer size
                 }
