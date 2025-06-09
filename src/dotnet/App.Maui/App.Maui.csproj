@@ -388,9 +388,9 @@
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
     <ArchiveOnBuild>true</ArchiveOnBuild>
-    <MtouchLink>SdkOnly</MtouchLink>
+    <MtouchLink>Full</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-ActualChat,ActualChat.Core,ActualChat.Api,ActualChat.Api.Contracts,ActualLab.Interception,ActualLab.Rpc,ActualLab.Fusion,ActualLab.Fusion.Blazor</MTouchInterpreter>
+    <MTouchInterpreter>-all</MTouchInterpreter>
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
