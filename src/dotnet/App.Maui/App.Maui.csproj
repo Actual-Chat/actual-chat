@@ -390,7 +390,7 @@
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <MtouchLink>SdkOnly</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-all,ActualLab.Interception</MTouchInterpreter>
+    <MTouchInterpreter>-all,ActualLab.Interception,MemoryPack.Core</MTouchInterpreter>
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
