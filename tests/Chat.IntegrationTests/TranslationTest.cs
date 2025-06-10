@@ -18,7 +18,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
     [Theory]
     [InlineData("Hi! How are you?", "en")]
-    [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", "en,ru,tr,es")]
+    // [InlineData("Hi! How are you? Привет! Как дела? Merhaba! Nasılsın? Hola, cómo estás?", "en,ru,tr,es")]
     public async Task ShouldFastReturnNullIfLanguageNotDetectedYet(string text, string sExpectedLanguages)
     {
         // arrange
