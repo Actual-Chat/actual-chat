@@ -229,32 +229,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return new ChatNews(idRange, lastEntry);
     }
 
-    // [ComputeMethod]
-    public virtual async Task<long> GetEntryCount(
-        ChatId chatId,
-        ChatEntryKind entryKind,
-        Range<long>? idTileRange,
-        bool includeRemoved,
-        CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbChatEntries = dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && e.Kind == entryKind);
-        if (!includeRemoved)
-            dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
-
-        if (idTileRange.HasValue) {
-            var idRangeValue = idTileRange.GetValueOrDefault();
-            IdTileStack.AssertIsTile(idRangeValue);
-            dbChatEntries = dbChatEntries
-                .Where(e => e.LocalId >= idRangeValue.Start && e.LocalId < idRangeValue.End);
-        }
-
-        return await dbChatEntries.LongCountAsync(cancellationToken).ConfigureAwait(false);
-    }
-
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetIdRange(
@@ -2064,36 +2038,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     protected void InvalidateTiles(ChatId chatId, ChatEntryKind entryKind, long entryId, ChangeKind changeKind)
     {
-        // Invalidate global entry counts
-        switch (changeKind) {
-        case ChangeKind.Create:
-            _ = GetEntryCount(chatId, entryKind, null, false, default);
-            _ = GetEntryCount(chatId, entryKind, null, true, default);
-            break;
-        case ChangeKind.Remove:
-            _ = GetEntryCount(chatId, entryKind, null, false, default);
-            break;
-        }
-
         // Invalidate GetTile & GetEntryCount for chat tiles
         foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
-            if (idTile.Layer.Smaller == null) {
-                // Larger tiles are composed out of smaller tiles,
-                // so we have to invalidate just the smallest one.
-                // And the tile with includeRemoved == false is based on
-                // a tile with includeRemoved == true, so we have to invalidate
-                // just this tile.
-                _ = GetTile(chatId, entryKind, idTile.Range, true, default);
-            }
-            switch (changeKind) {
-            case ChangeKind.Create:
-                _ = GetEntryCount(chatId, entryKind, idTile.Range, true, default);
-                _ = GetEntryCount(chatId, entryKind, idTile.Range, false, default);
-                break;
-            case ChangeKind.Remove:
-                _ = GetEntryCount(chatId, entryKind, idTile.Range, false, default);
-                break;
-            }
+            if (idTile.Layer.Smaller != null)
+                continue;
+
+            // Larger tiles are composed out of smaller tiles,
+            // so we have to invalidate just the smallest one.
+            // And the tile with includeRemoved == false is based on
+            // a tile with includeRemoved == true, so we have to invalidate
+            // just this tile.
+            _ = GetTile(chatId, entryKind, idTile.Range, true, default);
         }
 
         if (entryKind == ChatEntryKind.Text && changeKind is ChangeKind.Create or ChangeKind.Remove) {
