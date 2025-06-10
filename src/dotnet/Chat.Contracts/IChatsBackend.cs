@@ -23,14 +23,6 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<long> GetEntryCount(
-        ChatId chatId,
-        ChatEntryKind entryKind,
-        Range<long>? idTileRange,
-        bool includeRemoved,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod]
     Task<ChatTile> GetTile(
         ChatId chatId,
         ChatEntryKind entryKind,
