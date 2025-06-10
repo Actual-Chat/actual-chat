@@ -1190,11 +1190,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var entryKind = chatEntryId.Kind;
         var expectedVersion = command.ExpectedVersion;
         var context = CommandContext.GetCurrent();
+        const string boundToThreadHasChangedKey = "boundToThreadHasChanged";
 
         if (Invalidation.IsActive) {
             var invChatEntry = context.Operation.Items.KeylessGet<ChatEntry>();
+            var invBoundToThreadHasChanged = context.Operation.Items.Get<bool>(boundToThreadHasChangedKey);
             if (invChatEntry != null) {
-                InvalidateTiles(chatId, entryKind, invChatEntry.LocalId, changeKind);
+                InvalidateTiles(chatId, entryKind, invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
 
                 var entryTile = IdTileStack.LastLayer.GetTile(invChatEntry.LocalId);
                 _ = GetEntryRangeMeta(chatId, entryTile.Range.Start, default);
@@ -1220,6 +1222,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 _ = GetIdRange(chatId, entryKind, true, default);
                 _ = GetIdRange(chatId, entryKind, false, default);
                 break;
+            case ChangeKind.Update when invBoundToThreadHasChanged:
+                _ = GetIdRange(chatId, entryKind, true, default);
+                _ = GetIdRange(chatId, entryKind, false, default);
+                break;
             case ChangeKind.Remove:
                 _ = GetIdRange(chatId, entryKind, false, default);
                 break;
@@ -1230,6 +1236,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         change.RequireValid();
         ChatEntry entry;
         ChatEntry? oldEntry;
+        bool boundToThreadHasChanged = false;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = changeKind == ChangeKind.Create
@@ -1268,13 +1275,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 if (dbEntry.IsRemoved && update.IsRemoved == true)
                     throw StandardError.Constraint("Removed chat entries cannot be modified.");
 
-                entry = ApplyDiff(dbEntry.ToModel(), update, true) with {
+                var existingChatEntry = dbEntry.ToModel();
+                entry = ApplyDiff(existingChatEntry, update, true) with {
                     Version = VersionGenerator.NextVersion(dbEntry.Version),
                 };
                 entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
                 var hasAttachments = update.Attachments is { Length: > 0 } || dbEntry.HasAttachments;
                 dbEntry.UpdateFrom(entry);
                 dbEntry.HasAttachments = hasAttachments;
+                boundToThreadHasChanged = existingChatEntry.IsThreadEntry ^ entry.IsThreadEntry
+                    || existingChatEntry.IsThreadStartEntry ^ entry.IsThreadStartEntry;
             }
             else if (change.IsRemove()) {
                 dbEntry.Require();
@@ -1295,6 +1305,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 throw StandardError.Internal("Invalid ChatEntryDiff state.");
 
             context.Operation.Items.KeylessSet(entry);
+            context.Operation.Items.Set(boundToThreadHasChangedKey, boundToThreadHasChanged);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             entry = dbEntry.ToModel().WithPopulatedValues(entry);
         }
@@ -1443,7 +1454,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (Invalidation.IsActive) {
             _ = GetEntryAttachments(entryId, default);
-            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update);
+            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update, false);
             return default!;
         }
 
@@ -1529,11 +1540,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             foreach (var chatEntryPair in invChats) {
                 var chatId = ChatId.Parse(chatEntryPair.Key);
                 var entryId = chatEntryPair.Value;
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId, ChangeKind.Remove);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize, ChangeKind.Remove);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*2, ChangeKind.Remove);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*3, ChangeKind.Remove);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*4, ChangeKind.Remove);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*2, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*3, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*4, ChangeKind.Remove, false);
                 _ = GetEntryAttachments(TextEntryId.New(chatId, entryId), default);
             }
             return;
@@ -2036,7 +2047,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
     }
 
-    protected void InvalidateTiles(ChatId chatId, ChatEntryKind entryKind, long entryId, ChangeKind changeKind)
+    protected void InvalidateTiles(
+        ChatId chatId,
+        ChatEntryKind entryKind,
+        long entryId,
+        ChangeKind changeKind,
+        bool boundToThreadHasChanged)
     {
         // Invalidate GetTile & GetEntryCount for chat tiles
         foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
@@ -2051,7 +2067,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             _ = GetTile(chatId, entryKind, idTile.Range, true, default);
         }
 
-        if (entryKind == ChatEntryKind.Text && changeKind is ChangeKind.Create or ChangeKind.Remove) {
+        if (entryKind == ChatEntryKind.Text && (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged)) {
             // Invalidate GetEntryRangeMeta
             var tile = IdTileStack.LastLayer.GetTile(entryId);
             _ = GetEntryRangeMeta(chatId, tile.Start, default);

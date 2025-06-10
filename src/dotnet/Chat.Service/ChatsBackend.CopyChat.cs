@@ -24,7 +24,8 @@ public partial class ChatsBackend
                 InvalidateTiles(newChatId,
                     ChatEntryKind.Text,
                     ChatEntryId.Parse(invLastEntrySid).LocalId,
-                    ChangeKind.Create);
+                    ChangeKind.Create,
+                    false);
                 _ = GetIdRange(newChatId, ChatEntryKind.Text, true, default);
                 _ = GetIdRange(newChatId, ChatEntryKind.Text, false, default);
                 _ = GetIdRange(newChatId, ChatEntryKind.Audio, true, default);
