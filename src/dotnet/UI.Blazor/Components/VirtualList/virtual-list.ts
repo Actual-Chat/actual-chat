@@ -686,7 +686,7 @@ export class VirtualList {
             this.renderCompletedAt = Date.now();
             this.whenRequestDataCompleted?.resolve(undefined);
             this.whenRequestDataCompleted = null;
-
+            this.query = VirtualListDataQuery.None;
             this.lastViewport = this.viewport;
         }
     }
@@ -1157,9 +1157,6 @@ export class VirtualList {
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
 
-        const pivots = [...this.pivots];
-        const interactivePivot = pivots.find(p => p.isInteractive);
-
         let scrollTop = 0;
         let scrollTopOffset = 0;
         let offset = 0;
@@ -1182,7 +1179,6 @@ export class VirtualList {
                 if (!this.itemRange)
                     this.ensureItemRangeCalculated();
 
-                const orderedItems = [... this.orderedItems];
                 const { start, end, size: itemRangeSize } = this.itemRange ?? new NumberRange(0,0);
                 const oldTotalSize = this.wrapperRef.offsetHeight;
 
@@ -1254,10 +1250,12 @@ export class VirtualList {
                         }
                     }
                     else if (rs.hasVeryLastItem && offset < -endAnchorSize) {
-                        // reset if we are at the end anchor and offset is less than end anchor size
-                        this.resetItemRange();
-                        scrollTopOffset = 0;
-                        offset = this.itemRange.end;
+                        // reset if we are at the end anchor and offset is less than end anchor size - e.g., when item size is reduced
+                        const resetDelta = this.resetItemRange();
+                        if (resetDelta !== null) {
+                            scrollTopOffset = resetDelta;
+                            offset = this.itemRange.end;
+                        }
                     }
 
                     // Adjust spacer size
@@ -1283,9 +1281,11 @@ export class VirtualList {
                     }
                     else if (rs.hasVeryFirstItem && offset > 0) {
                         // reset if we are at the start and the offset is greater than 0
-                        this.resetItemRange();
-                        scrollTopOffset = 0;
-                        offset = this.itemRange.start;
+                        const resetDelta = this.resetItemRange();
+                        if (resetDelta !== null) {
+                            scrollTopOffset = resetDelta;
+                            offset = this.itemRange.start;
+                        }
                     }
 
                     // Adjust spacer size
@@ -1445,8 +1445,8 @@ export class VirtualList {
             defaultEdge === VirtualListEdge.End
                 ? new NumberRange(p.range.start - statistics.itemSize, p.range.end)
                 : new NumberRange(p.range.start, p.range.end + statistics.itemSize)); // expand pivot ranges to cover the nearest items in stable direction
-        const visibleItemRanges = [...visibleItems.keys()].map(k => this.items.get(k)?.range);
-        const cornerstoneRanges  = [...pivotRanges, ...visibleItemRanges].filter(r => r);
+        const visibleItemRanges = [...visibleItems.keys()].map(k => this.items.get(k)?.range).filter(r => r).sort((a, b) => a.start - b.start);
+        const cornerstoneRanges  = [...pivotRanges, ...visibleItemRanges];
         const orderedItemsWithRange = orderedItems.filter(item => item.range);
         if (cornerstoneRanges.length > 0) {
             for (const cornerstoneRange of cornerstoneRanges) {
@@ -1496,37 +1496,6 @@ export class VirtualList {
         }
         else
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
-
-        // Adjust item ranges according to default edge invariant
-        if (!rs.query.isNone) {
-            if (this.defaultEdge === VirtualListEdge.End) {
-                const end = orderedItems[orderedItems.length - 1].range.end - this.rowGap;
-                if (end > 0) {
-                    cornerstoneItemIndex = orderedItems.length - 1;
-                    cornerstoneItem = orderedItems[cornerstoneItemIndex];
-                    cornerstoneItem.range = new NumberRange(0 - cornerstoneItem.size, 0);
-                    let prevItem = cornerstoneItem;
-                    for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
-                        const item = orderedItems[i];
-                        item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
-                        prevItem = item;
-                    }
-                }
-            } else {
-                const start = orderedItems[0].range.start + this.rowGap;
-                if (start < 0) {
-                    cornerstoneItemIndex = 0;
-                    cornerstoneItem = orderedItems[cornerstoneItemIndex];
-                    cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size);
-                    let prevItem = cornerstoneItem;
-                    for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
-                        const item = orderedItems[i];
-                        item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
-                        prevItem = item;
-                    }
-                }
-            }
-        }
 
         this.itemRange = new NumberRange(
             orderedItems[0].range.start,
@@ -1730,8 +1699,8 @@ export class VirtualList {
         this.lastQueryTime = Date.now();
         // debug helper
         // await delayAsync(1500);
-        await this.blazorRef.invokeMethodAsync('RequestData', this.query);
         this.lastQuery = this.query;
+        await this.blazorRef.invokeMethodAsync('RequestData', this.query);
     }
 
     private mustRequestData(query: VirtualListDataQuery): boolean {
@@ -1746,7 +1715,7 @@ export class VirtualList {
         if (itemRange.isEmpty)
             return true; // re-request data with empty query
 
-        if (this.query === query)
+        if (rs.query === query || this.lastQuery === query)
             return false;
 
         if (itemRange.contains(query.virtualRange))
