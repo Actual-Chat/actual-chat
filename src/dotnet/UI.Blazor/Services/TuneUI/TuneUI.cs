@@ -103,6 +103,7 @@ internal interface ITuneUIBackend
     ValueTask OnVibrate(Tune tune);
 }
 
+// !!! keep in sync with tune-ui.ts
 public enum Tune
 {
     None = 0,
