@@ -24,6 +24,14 @@ public static class Emojis
         Surprise,
         Sad,
         Angry,
+        Poo,
+        OkHand,
+        Fire,
+        BeamingFace,
+        ThumbsDown,
+        ScreamingFaceInFear,
+        JackOLantern,
+        FramedPicture,
     ];
 
     public static readonly Dictionary<string, Emoji> ById
