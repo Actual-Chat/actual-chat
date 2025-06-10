@@ -14,6 +14,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
 {
     private readonly SharedResourcePool<ChatId, SyncedState<ReadPosition>> _readPositionStates;
+    private readonly SharedResourcePool<ChatId, MutableState<ReadPosition>> _viewPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly StoredState<ChatId?> _selectedChatId;
     private readonly MutableState<ChatViewItemVisibility> _itemVisibility;
@@ -96,6 +97,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readPositionStates = new SharedResourcePool<ChatId, SyncedState<ReadPosition>>(CreateReadPositionState);
+        _viewPositionStates = new SharedResourcePool<ChatId, MutableState<ReadPosition>>(CreateViewPositionState);
     }
 
     void INotifyInitialized.Initialized()
@@ -437,9 +439,15 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
+    public async ValueTask<SharedResourcePool<ChatId, MutableState<ReadPosition>>.Lease> LeaseViewPositionState(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+        => await _viewPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
+
     public async ValueTask DisposeAsync()
     {
         await _readPositionStates.DisposeAsync().ConfigureAwait(false);
+        await _viewPositionStates.DisposeAsync().ConfigureAwait(false);
         _navbarSettings.Dispose();
     }
 
@@ -597,6 +605,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             }
         ));
     }
+
+    private Task<MutableState<ReadPosition>> CreateViewPositionState(ChatId chatId, CancellationToken cancellationToken)
+        => Task.FromResult(StateFactory.NewMutable(new ReadPosition(chatId, 0)));
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {

@@ -21,12 +21,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     // ReSharper disable once NotAccessedField.Local
     private Task _updateReadStateTask = null!;
     private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? _readPositionLease;
+    private SharedResourcePool<ChatId, MutableState<ReadPosition>>.Lease? _viewPositionLease;
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<Navigation?> _nextNavigation = null!;
     private ChatContext _chatContext = null!;
 
-    private AppUIHub Hub { get; set; }
+    private AppUIHub Hub { get; }
     private Session Session => Hub.Session;
     private ICommander Commander => Hub.Commander;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -47,6 +48,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (_readPositionLease is null)
                 throw StandardError.Constraint("Accessed too early. Read position is not available yet.");
             return _readPositionLease.Resource;
+        }
+    }
+    public IState<ReadPosition> ViewPosition {
+        get {
+            if (_viewPositionLease is null)
+                throw StandardError.Constraint("Accessed too early. View position is not available yet.");
+            return _viewPositionLease.Resource;
         }
     }
     public IState<long> ShownReadEntryLid => _shownReadEntryLid;
@@ -81,7 +89,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 0L,
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
             _readPositionLease = await ChatUI.LeaseReadPositionState(ChatId, DisposeToken);
+            _viewPositionLease = await ChatUI.LeaseViewPositionState(ChatId, DisposeToken);
             _shownReadEntryLid.Value = _readPositionLease.Resource.Value.EntryLid;
+            if (_viewPositionLease.Resource.Value.EntryLid is 0)
+                _viewPositionLease.Resource.Value = _readPositionLease.Resource.Value;
             _whenInitializedSource.TrySetResult();
             _updateReadStateTask = AsyncChain.From(UpdateReadState)
                 .Log(LogLevel.Debug, Log)
@@ -201,6 +212,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         UpdateReadPosition(itemVisibility.MaxEntryLid);
+        if (_viewPositionLease is not null) {
+            var visibleEntryLids = itemVisibility.VisibleEntryLids;
+            var i = (int)(visibleEntryLids.Count / 2.0);
+            var entryId = visibleEntryLids.Skip(i).First();
+            _viewPositionLease.Resource.Value = new ReadPosition(ChatId, entryId);
+        }
         ChatUI.ItemVisibility.Value = itemVisibility;
     }
 
@@ -311,9 +328,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var readEntryLid = itemVisibility.IsEndAnchorVisible
             ? long.MaxValue // We are at the end of the chat so avoid displaying new messages line
             : ReadPosition.Value.EntryLid;
-        var hasReadEntry = readEntryLid != 0 && readEntryLid != long.MaxValue;
+        var viewEntryLid = itemVisibility.IsEndAnchorVisible
+            ? long.MaxValue // We are at the end of the chat so avoid displaying new messages line
+            : ViewPosition.Value.EntryLid;
+        var hasViewEntry = viewEntryLid != 0 && viewEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
-            ?? (isFirstRender && hasReadEntry ? new Navigation(readEntryLid, false) : null);
+            ?? (isFirstRender && hasViewEntry ? new Navigation(viewEntryLid, false) : null);
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
 
@@ -332,6 +352,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
+        activity?.SetTag("AC." + "ViewEntryLid", viewEntryLid);
         activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
         activity?.SetTag("AC." + "DataQuery", dataQuery.Format());
         DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, dataQuery.Format());
