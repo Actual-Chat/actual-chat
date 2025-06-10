@@ -1,4 +1,4 @@
-import { debounce, delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
+import { debounce, PromiseSource, PromiseSourceWithTimeout, throttle } from 'promises';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
@@ -1245,58 +1245,6 @@ export class VirtualList {
                 if (this.defaultEdge === VirtualListEdge.End) {
                     offset = end;
 
-                    if (interactivePivot) {
-                        let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
-                        if (!interactiveItemRef && interactivePivot.range) {
-                            // Interactive item is not found - let's find nearest one
-                            const interactiveRange = interactivePivot.range;
-                            const interactiveItemIndex = binarySearch(orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
-                            const interactiveItem = orderedItems[interactiveItemIndex];
-                            interactiveItemRef = this.getItemRef(interactiveItem?.key);
-                        }
-                        // Debug helper
-                        // interactiveItemRef.style.backgroundColor = 'red';
-
-                        if (interactiveItemRef) {
-                            const viewportTopOffset = interactivePivot.offset;
-                            const isSticky = window.getComputedStyle(interactiveItemRef).position === 'sticky';
-                            const interactiveItemOffset = isSticky
-                                ? getOriginalPosition(interactiveItemRef)
-                                : interactiveItemRef.getBoundingClientRect().top;
-                            const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
-                            const oldContainerBottom = parseFloat(window.getComputedStyle(this.containerRef).bottom) || 0;
-                            const containerBottom = -offset;
-                            const dContainerBottom = containerBottom - oldContainerBottom;
-                            scrollTopOffset = dTopOffset + dContainerBottom;
-                            isInteractivePositioning = true;
-                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
-
-                            let delayedScrollTop = 0;
-                            // restore scroll position with delay to prevent scroll jump, double RAF is required there
-                            const reRestoreOptions = {
-                                read: () => {
-                                    const viewportTopOffset = interactivePivot.offset;
-                                    const interactiveItemOffset = isSticky
-                                        ? getOriginalPosition(interactiveItemRef)
-                                        : interactiveItemRef.getBoundingClientRect().top;
-                                    const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
-                                    const scrollTop = this.ref.scrollTop;
-                                    delayedScrollTop = scrollTop + dTopOffset;
-                                },
-                                write: () => {
-                                    this.ref.scrollTop = delayedScrollTop;
-                                    reRestoreOptions.write = () => {
-                                        this.ref.scrollTop = delayedScrollTop;
-                                    };
-                                    fastRaf(reRestoreOptions);
-                                }
-                            };
-                            fastRaf(reRestoreOptions);
-                        }
-                        else
-                            warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
-                    }
-
                     if (offset > -endAnchorSize) {
                         // adjust item ranges
                         const resetDelta = this.resetItemRange();
@@ -1324,59 +1272,6 @@ export class VirtualList {
                 }
                 else {
                     offset = start;
-
-                    if (interactivePivot) {
-                        let interactiveItemRef = this.getItemRef(interactivePivot.itemKey);
-                        if (!interactiveItemRef) {
-                            // Interactive item is not found - let's find nearest one
-                            const interactiveRange = interactivePivot.range;
-                            const interactiveItemIndex = binarySearch(orderedItems, item => !item.range.intersectWith(interactiveRange).isEmpty || item.range.start > interactiveRange.start);
-                            const interactiveItem = orderedItems[interactiveItemIndex];
-                            interactiveItemRef = this.getItemRef(interactiveItem?.key);
-                        }
-                        // Debug helper
-                        // interactiveItemRef.style.backgroundColor = 'red';
-
-                        if (interactiveItemRef) {
-                            const viewportTopOffset = interactivePivot.offset;
-                            const isSticky = window.getComputedStyle(interactiveItemRef).position === 'sticky';
-                            const interactiveItemOffset = isSticky
-                                ? getOriginalPosition(interactiveItemRef)
-                                : interactiveItemRef.getBoundingClientRect().top;
-                            const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
-                            const oldContainerTop = parseFloat(window.getComputedStyle(this.containerRef).top) || 0;
-                            // noinspection UnnecessaryLocalVariableJS
-                            const containerTop = offset;
-                            const dContainerTop = containerTop - oldContainerTop;
-                            scrollTopOffset = dTopOffset + dContainerTop;
-                            isInteractivePositioning = true;
-                            debugLog?.log(`restoreScrollPosition: interactive item offset`, interactivePivot, offset, scrollTopOffset);
-
-                            let delayedScrollTop = 0;
-                            // restore scroll position with delay to prevent scroll jump, double RAF is required there
-                            const reRestoreOptions = {
-                                read: () => {
-                                    const viewportTopOffset = interactivePivot.offset;
-                                    const interactiveItemOffset = isSticky
-                                        ? getOriginalPosition(interactiveItemRef)
-                                        : interactiveItemRef.getBoundingClientRect().top;
-                                    const dTopOffset = Math.floor(interactiveItemOffset - viewportTopOffset);
-                                    const scrollTop = this.ref.scrollTop;
-                                    delayedScrollTop = scrollTop + dTopOffset;
-                                },
-                                write: () => {
-                                    this.ref.scrollTop = delayedScrollTop;
-                                    reRestoreOptions.write = () => {
-                                        this.ref.scrollTop = delayedScrollTop;
-                                    };
-                                    fastRaf(reRestoreOptions);
-                                }
-                            };
-                            fastRaf(reRestoreOptions);
-                        }
-                        else
-                            warnLog?.log(`restoreScrollPosition: interactive item not found`, interactivePivot);
-                    }
 
                     if (offset < 0) {
                         // adjust item ranges
@@ -1530,7 +1425,7 @@ export class VirtualList {
         if (this.itemRange)
             return false;
 
-        const { renderState: rs, orderedItems } = this;
+        const { renderState: rs, orderedItems, visibleItems, pivots, defaultEdge, statistics } = this;
 
         // nothing to do when there are no items rendered
         if (orderedItems.length == 0)
@@ -1546,14 +1441,17 @@ export class VirtualList {
 
         let cornerstoneItemIndex = -1;
         let cornerstoneItem: VirtualListItem = null;
-        if (this.visibleItems.size > 0) {
-            for (const visibleItemKey of this.visibleItems) {
-                const item = this.items.get(visibleItemKey);
-                if (!item || !item.range)
-                    continue;
-
-                const index = orderedItems.findIndex(orderedItem => orderedItem.key === visibleItemKey);
-                if (cornerstoneItemIndex !== -1) {
+        const pivotRanges = pivots.map(p =>
+            defaultEdge === VirtualListEdge.End
+                ? new NumberRange(p.range.start - statistics.itemSize, p.range.end)
+                : new NumberRange(p.range.start, p.range.end + statistics.itemSize)); // expand pivot ranges to cover the nearest items in stable direction
+        const visibleItemRanges = [...visibleItems.keys()].map(k => this.items.get(k)?.range);
+        const cornerstoneRanges  = [...pivotRanges, ...visibleItemRanges].filter(r => r);
+        const orderedItemsWithRange = orderedItems.filter(item => item.range);
+        if (cornerstoneRanges.length > 0) {
+            for (const cornerstoneRange of cornerstoneRanges) {
+                const index = binarySearch(orderedItemsWithRange, it => !it.range.intersectWith(cornerstoneRange).isEmpty || it.range.start >= cornerstoneRange.start);
+                if (index !== -1) {
                     cornerstoneItemIndex = index;
                     cornerstoneItem = orderedItems[cornerstoneItemIndex];
                     break;
