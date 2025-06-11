@@ -382,7 +382,8 @@ export class VirtualList {
         this.cachedAllItemRefs = null;
         this.itemRange = null;
 
-        // copy existing items - because we can remove them and add again at another tiles
+        // process removed nodes first
+        const keysToRemove = new Set<string>();
         for (const mutation of mutations) {
             if (mutation.type !== 'childList')
                 continue;
@@ -396,15 +397,20 @@ export class VirtualList {
                 const itemRefs = this.getChildItemRefs(nodeElement);
                 for (const itemRef of itemRefs) {
                     const key = getItemKey(itemRef);
-                    this.items.delete(key);
-                    this.unmeasuredItems.delete(key);
-                    this.visibleItems.delete(key);
+                    keysToRemove.add(key);
                     this.sizeObserver.unobserve(itemRef);
                     this.visibilityObserver.unobserve(itemRef);
                     itemRef.removeEventListener('touchend', this.onInteractiveEvent);
                     itemRef.removeEventListener('click', this.onInteractiveEvent);
                 }
             }
+        }
+
+        // process added nodes
+        for (const mutation of mutations) {
+            if (mutation.type !== 'childList')
+                continue;
+
             for (const node of mutation.addedNodes) {
                 const nodeElement = node as HTMLElement;
                 const isGroup = nodeElement.classList && nodeElement.classList.contains('group');
@@ -422,10 +428,17 @@ export class VirtualList {
                     if (!key)
                         continue;
 
+                    keysToRemove.delete(key);
                     const oldItem = this.items.get(key);
                     const newItem = this.createListItem(key, itemRef);
                     if (oldItem) {
-                        oldItem.range = null; // reset range
+                        if (this.pivots.some(pivot => pivot.itemKey === key)) {
+                            // if the item is a pivot, we need to update its size and keep range
+                            if (oldItem.range)
+                                oldItem.range = new NumberRange(oldItem.range.start, oldItem.range.start + newItem.size ?? oldItem.size);
+                        }
+                        else
+                            oldItem.range = null; // reset range
                         oldItem.size = newItem.size;
                         oldItem.shouldSkipKey = newItem.shouldSkipKey;
                         if (oldItem.size > 0)
@@ -436,6 +449,12 @@ export class VirtualList {
             }
         }
 
+        // remove items that were removed and not added back
+        for (const key of keysToRemove) {
+            this.items.delete(key);
+            this.unmeasuredItems.delete(key);
+            this.visibleItems.delete(key);
+        }
 
         this.updateOrderedItems();
         if (this.renderState.renderIndex <= 0)
@@ -474,7 +493,14 @@ export class VirtualList {
                         itemsWereMeasured = true;
                     }
                     item.size = size;
-                    item.range = null;
+                    if (this.pivots.some(pivot => pivot.itemKey === key)) {
+                        // if the item is a pivot, we need to update its size and keep range
+                        if (item.range)
+                            item.range = new NumberRange(item.range.start, item.range.start + size);
+                    }
+                    else
+                        item.range = null; // reset range
+
                     this.sizeCache.set(key, size);
                     this.statistics.addItem(item.size);
                 }
@@ -912,16 +938,27 @@ export class VirtualList {
 
                 pivotRefs.push(pivotRef);
                 // measure scroll position
+                let stickyOffset: number | null = null;
                 const itemRect = pivotRef.getBoundingClientRect();
                 const isVisible = this.isRectIntersects(itemRect, viewRect);
                 const isInteractive = itemKey === interactiveKey;
+                if (isInteractive) {
+                    const isSticky = window.getComputedStyle(pivotRef).position === 'sticky';
+                    if (isSticky) {
+                        // adjust range to the desired sticky position
+                        const staticOffset = getOriginalPosition(pivotRef);
+                        const actualOffset = pivotRef.getBoundingClientRect().top;
+                        stickyOffset = actualOffset - staticOffset;
+                    }
+                }
                 const pivot: Pivot = {
                     itemKey,
                     offset: Math.round(itemRect.top),
                     range: item?.range,
                     time,
                     isVisible,
-                    isInteractive
+                    isInteractive,
+                    stickyOffset,
                 };
                 pivots.push(pivot);
             }
@@ -1402,7 +1439,13 @@ export class VirtualList {
 
             if (size > 0) {
                 item.size = size;
-                item.range = null;
+                if (this.pivots.some(pivot => pivot.itemKey === key)) {
+                    // if the item is a pivot, we need to update its size and keep range
+                    if (item.range)
+                        item.range = new NumberRange(item.range.start, item.range.start + size);
+                }
+                else
+                    item.range = null; // reset range
                 itemsWereMeasured = true;
                 this.sizeCache.set(key, size);
                 removeUnmeasuredItem(key);
@@ -1431,26 +1474,32 @@ export class VirtualList {
         if (orderedItems.length == 0)
             return false;
 
-        // TODO: validate idea of recalculating ranges
-        // if (this.shouldUpdateCornerstoneItem && (rs.hasVeryFirstItem || rs.hasVeryLastItem)) {
-        //     // We have to recalculate the cornerstone item
-        //     this.shouldUpdateCornerstoneItem = false;
-        //     for (const item of orderedItems)
-        //         item.range = null;
-        // }
-
         let cornerstoneItemIndex = -1;
         let cornerstoneItem: VirtualListItem = null;
-        const pivotRanges = pivots.map(p =>
-            defaultEdge === VirtualListEdge.End
-                ? new NumberRange(p.range.start - statistics.itemSize, p.range.end)
-                : new NumberRange(p.range.start, p.range.end + statistics.itemSize)); // expand pivot ranges to cover the nearest items in stable direction
-        const visibleItemRanges = [...visibleItems.keys()].map(k => this.items.get(k)?.range).filter(r => r).sort((a, b) => a.start - b.start);
-        const cornerstoneRanges  = [...pivotRanges, ...visibleItemRanges];
-        const orderedItemsWithRange = orderedItems.filter(item => item.range);
-        if (cornerstoneRanges.length > 0) {
-            for (const cornerstoneRange of cornerstoneRanges) {
-                const index = binarySearch(orderedItemsWithRange, it => !it.range.intersectWith(cornerstoneRange).isEmpty || it.range.start >= cornerstoneRange.start);
+        const interactivePivots = pivots.filter(p => p.isInteractive);
+        if (interactivePivots.length > 0) {
+            // Use interactive pivot as cornerstone item
+            const interactivePivot = interactivePivots[0];
+            const itemKey = interactivePivot.itemKey;
+            cornerstoneItemIndex = orderedItems.findIndex(i => i.key === itemKey);
+            cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            if (cornerstoneItem && cornerstoneItem.range && interactivePivot.stickyOffset) {
+                // adjust cornerstone item range based on sticky offset
+                const offsetDelta = interactivePivot.stickyOffset;
+                cornerstoneItem.range = new NumberRange(
+                    cornerstoneItem.range.start + offsetDelta,
+                    cornerstoneItem.range.end + offsetDelta);
+                interactivePivot.stickyOffset = null;
+            }
+        }
+        const visibleItemKeys = [...visibleItems.keys()]
+            .map(k => this.items.get(k))
+            .filter(i => i && i.range)
+            .sort((a, b) => a.range.start - b.range.start)
+            .map(i => i.key);
+        if (!cornerstoneItem && visibleItemKeys.length > 0) {
+            for (const cornerstoneItemKey of visibleItemKeys) {
+                const index = orderedItems.findIndex(i => i.key === cornerstoneItemKey && i.range);
                 if (index !== -1) {
                     cornerstoneItemIndex = index;
                     cornerstoneItem = orderedItems[cornerstoneItemIndex];

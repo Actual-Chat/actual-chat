@@ -7,4 +7,5 @@ export interface Pivot {
     range: NumberRange;
     isVisible: boolean;
     isInteractive: boolean;
+    stickyOffset: number | null;
 }
