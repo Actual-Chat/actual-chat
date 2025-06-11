@@ -163,6 +163,16 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-header-control-panel .translation-btn.on {
     @apply text-primary;
 }
+.chat-header-control-panel .translation-btn .c-hill {
+    @apply absolute -bottom-1.5;
+    @apply w-4/5 h-1;
+    @apply ml-[10%];
+    @apply rounded-full;
+    @apply bg-[var(--text-03)];
+}
+.chat-header-control-panel .translation-btn.on .c-hill {
+    @apply bg-primary;
+}
 
 .message-counter-with-time {
     @apply flex-y items-center gap-y-0.5;
