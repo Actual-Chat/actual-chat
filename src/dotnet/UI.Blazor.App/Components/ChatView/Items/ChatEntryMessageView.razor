@@ -1,10 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualLab.Diagnostics
 @using ActualChat.Media
 @inherits ComputedStateComponent<AppUIHub, ChatEntryMessageView.Model?>
 @{
     var m = _rendered = State.Value;
-    if (m?.Chat is not { } chat)
+    if (m?.Chat is not { } chat) {
+        DebugLog?.LogDebug("Skip render ChatEntryMessageView for chat {ChatId} with message {MessageId}", ChatContext.ChatId, Message.Entry.Id);
         return;
+    }
+
+    DebugLog?.LogDebug("Rendering ChatEntryMessageView for chat {ChatId} with message {MessageId}", chat.Id, Message.Entry.Id);
 
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
@@ -239,6 +244,10 @@
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
+    [field: AllowNull] [field: MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
+
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter] public bool ShowAuthorBadge { get; set; } = true;
@@ -260,10 +269,15 @@
         await base.OnParametersSetAsync(); // Triggers recompute
     }
 
-    protected override bool ShouldRender()
-        => !ReferenceEquals(_rendered, State.Value)
-            || !ReferenceEquals(_renderedMessage, Message)
-            || !ReferenceEquals(_renderedMarkup, _markup);
+    protected override bool ShouldRender() {
+        var shouldRender = !ReferenceEquals(_rendered, State.Value)
+           || !ReferenceEquals(_renderedMessage, Message)
+           || !ReferenceEquals(_renderedMarkup, _markup);
+        if (!shouldRender) {
+            DebugLog?.LogDebug("Skipping rendering ChatEntryMessageView for chat {ChatId} with message {MessageId} because state has not changed", ChatId, Message.Entry.Id);
+        }
+        return shouldRender;
+    }
 
     protected override ComputedState<Model?>.Options GetStateOptions() {
         Model? initialValue = null;
