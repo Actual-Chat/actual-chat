@@ -214,7 +214,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         UpdateReadPosition(itemVisibility.MaxEntryLid);
         if (_viewPositionLease is not null) {
             var visibleEntryLids = itemVisibility.VisibleEntryLids;
-            var i = (int)(visibleEntryLids.Count / 2.0);
+            var i = visibleEntryLids.Count / 2;
             var entryId = visibleEntryLids.Skip(i).First();
             _viewPositionLease.Resource.Value = new ReadPosition(ChatId, entryId);
         }
