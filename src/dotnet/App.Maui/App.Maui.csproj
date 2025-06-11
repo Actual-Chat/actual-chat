@@ -390,7 +390,7 @@
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <MtouchLink>SdkOnly</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-ActualChat,-ActualChat.Core,-ActualChat.Api,-ActualChat.Api.Contracts-,ActualChat.UI.Blazor,-ActualChat.UI.Blazor.App,-ActualLab.Rpc,-ActualLab.Fusion,-ActualLab.Fusion.Blazor</MTouchInterpreter>
+    <MTouchInterpreter>-ActualChat,-ActualChat.Core,-ActualChat.Api,-ActualChat.Api.Contracts,-Microsoft.Maui,-Microsoft.iOS,-Microsoft.JSInterop,-netstandard,-mscorlib</MTouchInterpreter>
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
