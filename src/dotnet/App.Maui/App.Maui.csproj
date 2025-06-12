@@ -390,7 +390,7 @@
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <MtouchLink>SdkOnly</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-ActualChat</MTouchInterpreter>
+<!--    <MTouchInterpreter>-ActualChat</MTouchInterpreter>-->
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
