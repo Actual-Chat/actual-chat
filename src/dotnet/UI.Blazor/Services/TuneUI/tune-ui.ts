@@ -35,6 +35,7 @@ export enum Tune
     React,
     DragStart,
     ChangeToggle,
+    ClickButton,
 }
 
 export type TuneName = keyof typeof Tune;
