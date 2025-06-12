@@ -262,7 +262,6 @@
     <EnableLLVM>false</EnableLLVM>
     <!-- -50ms to startup time: -->
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
-    <AndroidEnableMarshalMethods>true</AndroidEnableMarshalMethods>
 
     <!-- Runtime -->
     <!-- android-env.txt contains MONO_GC_PARAMS, so this has no effect:
