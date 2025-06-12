@@ -179,14 +179,17 @@ public static class ClientStartup
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };
 #endif
-        // We use a single instance of the initial delay task - we want it to be
-        // an absolute delay from the app start rather than a relative delay for each call.
-        var remoteComputedCacheInitialDelayTask = Task
-            .Delay(Constants.Rpc.RemoteComputedCache.HitToCallInitialDelay)
-            .ContinueWith(
-                _ => RemoteComputedCache.HitToCallDelayer = null, // And no more delays after the initial one
-                TaskScheduler.Default);
-        RemoteComputedCache.HitToCallDelayer = (_, _) => remoteComputedCacheInitialDelayTask;
+        // // We use a single instance of the initial delay task - we want it to be
+        // // an absolute delay from the app start rather than a relative delay for each call.
+        // var remoteComputedCacheInitialDelayTask = Task
+        //     .Delay(Constants.Rpc.RemoteComputedCache.HitToCallInitialDelay)
+        //     .ContinueWith(
+        //         _ => RemoteComputedCache.HitToCallDelayer = null, // And no more delays after the initial one
+        //         TaskScheduler.Default);
+        // RemoteComputedCache.HitToCallDelayer = (_, _) => remoteComputedCacheInitialDelayTask;
+
+        // Experiment
+        RemoteComputedCache.HitToCallDelayer = null; // Turn off the delay for now, it causes issues with Maui iOS app startup
     }
 
     [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
