@@ -570,7 +570,12 @@ export class VirtualList {
                 }
                 continue;
             }
-            if (!entry.isIntersecting) {
+            const item = this.items.get(key);
+            if (item && item.shouldSkipKey) {
+                hasChanged ||= this.visibleItems.has(key);
+                this.visibleItems.delete(key);
+            }
+            else if (!entry.isIntersecting) {
                 hasChanged ||= this.visibleItems.has(key);
                 this.visibleItems.delete(key);
             } else if ((entry.intersectionRatio >= 0.4 || entry.intersectionRect.height > MinViewPortSize / 2) && entry.isIntersecting) {
