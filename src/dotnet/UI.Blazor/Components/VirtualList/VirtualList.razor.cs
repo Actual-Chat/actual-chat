@@ -42,9 +42,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
     [Parameter] public VirtualListEdge DefaultEdge { get; set; }
-    [Parameter] public double ExpandTriggerMultiplier { get; set; } = 2;
     [Parameter] public double ExpandMultiplier { get; set; } = 2;
-    [Parameter] public int  MinExpand { get; set; } = 20;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
@@ -129,7 +127,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
                 Identity,
                 DefaultEdge,
                 SpacerSize,
-                ExpandTriggerMultiplier,
                 ExpandMultiplier
                 );
         }
@@ -145,7 +142,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
-        var query = EnsureMinExpandSet(Query);
+        var query = Query;
 
         var lastData = LastData;
         VirtualListData<TItem> data;
@@ -160,20 +157,5 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
             throw;
         }
         return data;
-
-
-        VirtualListDataQuery EnsureMinExpandSet(VirtualListDataQuery query1)
-        {
-            if (query1.MoveRange is { Start: >= 0, End: <= 0 })
-                return query1;
-
-            var start = query1.MoveRange.Start;
-            var end = query1.MoveRange.End;
-            var startExpand = start < 0 ? Math.Min(start, -MinExpand) : start;
-            var endExpand = end > 0 ? Math.Max(end, MinExpand) : end;
-            return new VirtualListDataQuery(query1.KeyRange, query1.VirtualRange, new Range<int>(startExpand, endExpand)) {
-                ExpectedCount = query1.ExpectedCount,
-            };
-        }
     }
 }

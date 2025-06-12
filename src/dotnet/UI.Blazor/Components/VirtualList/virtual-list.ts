@@ -7,6 +7,7 @@ import { VirtualListDataQuery } from './ts/virtual-list-data-query';
 import { VirtualListItem } from './ts/virtual-list-item';
 import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { Pivot } from './ts/pivot';
+import { DotNet } from '@microsoft/dotnet-js-interop';
 
 import { Log } from 'logging';
 import { fastRaf, fastReadRaf } from 'fast-raf';
@@ -93,7 +94,6 @@ export class VirtualList {
     private viewport: NumberRange | null = null;
     private lastViewport: NumberRange | null = null;
     private endAnchorSize = 4;
-    private shouldUpdateCornerstoneItem: boolean = true;
     private isUpdatingPivots: boolean = false;
 
     public static create(
@@ -102,7 +102,6 @@ export class VirtualList {
         identity: string,
         defaultEdge: VirtualListEdge,
         spacerSize: number,
-        expandTriggerMultiplier: number,
         expandMultiplier: number,
     ) {
         return new VirtualList(
@@ -111,7 +110,6 @@ export class VirtualList {
             identity,
             defaultEdge,
             spacerSize,
-            expandTriggerMultiplier,
             expandMultiplier);
     }
 
@@ -121,7 +119,6 @@ export class VirtualList {
         identity: string,
         defaultEdge: VirtualListEdge,
         spacerSize: number,
-        expandTriggerMultiplier: number,
         expandMultiplier: number,
     ) {
         if (debugLog) {
@@ -1639,7 +1636,6 @@ export class VirtualList {
                     0 - endAnchorSize - cornerstoneItem.size,
                     0 - endAnchorSize);
 
-            this.shouldUpdateCornerstoneItem = !rs.hasVeryLastItem;
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
 
             rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range.end - r.end));
@@ -1695,7 +1691,6 @@ export class VirtualList {
                     0,
                     cornerstoneItem.size);
 
-            this.shouldUpdateCornerstoneItem = !rs.hasVeryFirstItem;
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
             rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range.start - r.start));
             this.itemRange = new NumberRange(
@@ -1829,7 +1824,7 @@ export class VirtualList {
         const viewportSize = viewport.size;
         const alreadyLoadedFromStart = viewport.start - alreadyLoaded.start;
         const alreadyLoadedTillEnd = alreadyLoaded.end - viewport.end;
-        const loadZoneTrigger = viewportSize * Math.max(0.5, this.expandMultiplier * 0.5);
+        const loadZoneTrigger = viewportSize * this.expandMultiplier * 0.5;
         if (alreadyLoadedFromStart > loadZoneTrigger && alreadyLoadedTillEnd > loadZoneTrigger)
             return this.lastQuery; // No need to load more data
 

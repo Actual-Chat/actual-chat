@@ -49,6 +49,7 @@
     "@actual-chat/resampler": "^0.1.5",
     "@actual-chat/webrtc-vad": "^0.1.20",
     "@floating-ui/dom": "^1.6.3",
+    "@microsoft/dotnet-js-interop": "^8.0.0",
     "@microsoft/signalr": "^8.0.0",
     "@microsoft/signalr-protocol-msgpack": "^8.0.0",
     "@types/sortablejs": "^1.15.8",

@@ -19,10 +19,27 @@ public partial class ChatUI
     public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
     public int LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
 
-    public async Task<IReadOnlyList<ChatMessage>> GetChatItems(
+    public Task<IReadOnlyList<ChatMessage>> GetChatItems(
         ChatId chatId,
         ChatDataQuery dataQuery,
         long shownReadyEntryLid,
+        CancellationToken cancellationToken)
+        => GetChatItemsInternal(chatId, dataQuery, shownReadyEntryLid, false, cancellationToken);
+
+    [ComputeMethod]
+    public virtual ValueTask<ChatEntry?> GetEntry(
+        ChatEntryId id,
+        CancellationToken cancellationToken = default)
+        => Chats.GetEntry(Session, id, cancellationToken);
+
+
+    // Private methods
+
+    private async Task<IReadOnlyList<ChatMessage>> GetChatItemsInternal(
+        ChatId chatId,
+        ChatDataQuery dataQuery,
+        long shownReadyEntryLid,
+        bool isPrefetch,
         CancellationToken cancellationToken)
     {
         // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
@@ -163,7 +180,24 @@ public partial class ChatUI
             tiles[^1].Items[^1].NextMessage = null;
         }
 
-        var items = tiles.SelectMany(t => t.Items);
+        var items = tiles.SelectMany(t => t.Items).ToList();
+        var direction = dataQuery.StartOffset != 0
+            ? dataQuery.StartOffset < 0 ? -1 : 1
+            : dataQuery.EndOffset != 0
+                ? dataQuery.StartOffset < 0 ? -1 : 1
+                : 0;
+        if (direction != 0 && items.Count > 0 && !isPrefetch) {
+            // prefetch next / previous tiles for next requests without awaiting
+            var item = direction < 0 ? items[0] : items[^1];
+            var prefetchDataQuery = new ChatDataQuery(
+                IdTileStack.FirstLayer.GetTile(item.Id).Range,
+                direction < 0 ? -LoadLimit : 0,
+                direction < 0 ? 0 : LoadLimit);
+
+            // use StopToken to cancel the prefetch task because we are not awaiting it
+            _ = Task.Run(() => GetChatItemsInternal(chatId, prefetchDataQuery, shownReadyEntryLid, true, Hub.StopToken), Hub.StopToken);
+        }
+
         var groupedItems = GroupAuthorMessages(items);
 
         if (expandedConversations.Count == 0)
@@ -280,12 +314,6 @@ public partial class ChatUI
             }
         }
     }
-
-    [ComputeMethod]
-    public virtual ValueTask<ChatEntry?> GetEntry(
-        ChatEntryId id,
-        CancellationToken cancellationToken = default)
-        => Chats.GetEntry(Session, id, cancellationToken);
 
     // NOTE: Please don't add excessive computed dependencies without real reason - it might rerender whole chat view content
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
