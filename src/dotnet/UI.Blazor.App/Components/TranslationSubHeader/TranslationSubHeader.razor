@@ -36,10 +36,6 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var isIncompleteUIEnabled = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isIncompleteUIEnabled)
-            return null;
-
         var isVisible = await TranslationUI.IsSubHeaderVisible(chat.Id, cancellationToken).ConfigureAwait(false);
         if (!isVisible)
             return null;

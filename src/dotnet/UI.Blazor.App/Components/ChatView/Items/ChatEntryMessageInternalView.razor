@@ -71,22 +71,20 @@
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
 
-    public ChatEntryMessageInternalView()
-        => Options = DefaultOptions;
-
     public void Dispose()
         => RestartCts.CancelAndDisposeSilently();
 
-    protected override void OnParametersSet() {
-        if (Message.Entry.IsStreaming || TranslationUI.IsStreaming(Message.Entry, default).Result) {
-            RestartCts.CancelAndDisposeSilently();
-            RestartCts = new();
-            var cancellationToken = RestartCts.Token;
-            BackgroundTask.Run(
-                () => ReadTranscript(Message, cancellationToken),
-                Log, "ReadTranscript failed",
-                cancellationToken);
-        }
+    protected override void OnInitialized() {
+        if (!Message.Entry.IsStreaming)
+            return;
+
+        RestartCts.CancelAndDisposeSilently();
+        RestartCts = new();
+        var cancellationToken = RestartCts.Token;
+        _ = BackgroundTask.Run(
+            () => ReadTranscript(Message, cancellationToken),
+            Log, "ReadTranscript failed",
+            cancellationToken);
     }
 
     protected override bool ShouldRender() {

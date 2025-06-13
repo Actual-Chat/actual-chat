@@ -16,9 +16,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     [ComputeMethod]
     public virtual async Task<bool> IsGlobeVisible(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-            return false;
-
         var isOn = await IsOn(chatId, cancellationToken).ConfigureAwait(false);
         if (isOn is not null)
             return true;
@@ -32,9 +29,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
     [ComputeMethod]
     public virtual async Task<bool> IsSubHeaderVisible(ChatId chatId, CancellationToken cancellationToken = default) {
-        if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-            return false;
-
         var isVisible = await GetSubHeaderVisibility(chatId, cancellationToken).ConfigureAwait(false);
         if (isVisible != null)
             return isVisible.Value;
@@ -68,9 +62,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     [ComputeMethod]
     public virtual async Task<bool> MustTranslate(ChatEntry entry, CancellationToken cancellationToken)
     {
-        if (!await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false))
-            return false;
-
         if (entry.IsSystemEntry || (entry.Content.IsNullOrEmpty() && !entry.IsStreaming) || entry.Id.Kind is not ChatEntryKind.Text)
             return false;
 
