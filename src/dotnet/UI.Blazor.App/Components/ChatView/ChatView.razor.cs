@@ -398,8 +398,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     TextEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
-        var hasVeryFirstItem = chatIdRange.Start >= items[0].Id;
-        var hasVeryLastItem = chatIdRange.End - 1 <= GetLastMessage(items[^1]).Id;
+        var firstItem = items[0];
+        var lastItem = GetLastMessage(items[^1]);
+        var hasVeryFirstItem = chatIdRange.Start >= firstItem.Id;
+        var hasVeryLastItem = chatIdRange.End - 1 <= (lastItem is ConversationMessage cm ? cm.Conversation!.EndEntryLid : lastItem.Id);
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
