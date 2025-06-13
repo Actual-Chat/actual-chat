@@ -53,8 +53,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListDataQuery))]
-    public VirtualList()
-        => Options = DefaultOptions;
+    public VirtualList() { }
 
     [JSInvokable]
     public async Task RequestData(VirtualListDataQuery query)

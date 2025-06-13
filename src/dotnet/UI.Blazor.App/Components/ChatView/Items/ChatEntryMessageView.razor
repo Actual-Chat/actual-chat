@@ -3,13 +3,9 @@
 @using ActualChat.Media
 @inherits ComputedStateComponent<AppUIHub, ChatEntryMessageView.Model?>
 @{
-    var m = _rendered = State.Value;
-    if (m?.Chat is not { } chat) {
-        DebugLog?.LogDebug("Skip render ChatEntryMessageView for chat {ChatId} with message {MessageId}", ChatContext.ChatId, Message.Entry.Id);
-        return;
-    }
-
-    DebugLog?.LogDebug("Rendering ChatEntryMessageView for chat {ChatId} with message {MessageId}", chat.Id, Message.Entry.Id);
+    var m = _rendered = State.Value ?? Model.Empty;
+    // var chatId = ChatContext.ChatId;
+    // DebugLog?.LogDebug("Rendering ChatEntryMessageView for chat {ChatId} with message {MessageId}", chatId, Message.Entry.Id);
 
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
@@ -21,20 +17,20 @@
     var isForward = entry.ForwardedAuthorId is not null;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
     var isBlockStart = message.Flags.HasFlag(ChatMessageFlags.BlockStart);
-    var isUnreadByOthersBlockStart = m.IsUnreadByOthersBlockStart;
     var showAuthor = !isSystem && (isBlockStart || isReply);
     var showAuthorBadge = showAuthor && ShowAuthorBadge;
     var showTime = !showAuthor && ShowAuthorBadge;
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
     var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
-    var isAiSearchChat = chat.IsAiSearchChat();
+    var isAiSearchChat = m.Chat?.IsAiSearchChat() ?? false;
+
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
     var paddingClass = isBlockStart ? "pt-2" : "";
-    var unreadBlockClass = isUnreadByOthersBlockStart ? "unread-block" : "";
+    var unreadBlockClass = m.IsUnreadByOthersBlockStart ? "unread-block" : "";
     var ownMessageClass = m.IsOwnMessage ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
@@ -54,10 +50,14 @@
         <Separator Title="New messages" TitleClass="new-separator-title"/>
         return;
     case ChatMessageReplacementKind.WelcomeBlock:
-        <ChatWelcomeBlock Chat="@chat" />
+        @if (m.Chat is { } chat1) {
+            <ChatWelcomeBlock Chat="@chat1" />
+        }
         return;
     case ChatMessageReplacementKind.SearchWelcomeBlock:
-        <SearchChatWelcomeBlock Chat="@chat" />
+        @if (m.Chat is { } chat2) {
+            <SearchChatWelcomeBlock Chat="@chat2" />
+        }
         return;
     default:
         throw new ArgumentOutOfRangeException();
@@ -182,7 +182,7 @@
                     @if (m.IsUnreadByOthers) {
                         <ChatMessageSendingStatus
                             Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                            IsDotOnly="@(!isUnreadByOthersBlockStart)"/>
+                            IsDotOnly="@(!m.IsUnreadByOthersBlockStart)"/>
                     }
                 </div>
             }
@@ -241,7 +241,6 @@
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
-    private TranslationUI TranslationUI => Hub.TranslationUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [field: AllowNull] [field: MaybeNull]
@@ -264,7 +263,7 @@
             return;
 
         _lastMessage = Message;
-        _markupTask = ChatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default).AsTask();
+        _markupTask = ChatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, CancellationToken.None).AsTask();
         _markup = await _markupTask;
         await base.OnParametersSetAsync(); // Triggers recompute
     }
@@ -287,7 +286,7 @@
             repliedEntry = ChatEntry.Loading(repliedEntryId);
         var isOwnMessage = Message.Flags.HasFlag(ChatMessageFlags.IsOwnMessage);
         if (isOwnMessage || repliedEntry != null) {
-            initialValue = new Model(null) {
+            initialValue = new (null) {
                 IsOwnMessage = isOwnMessage,
                 RepliedEntry = repliedEntry,
             };
@@ -554,6 +553,10 @@
     // Nested types
 
     public sealed record Model(Chat? Chat) {
+        public static readonly Model Empty = new((Chat?)null) {
+            MentionedAuthorIds = [],
+        };
+
         public bool IsOwnMessage { get; init; }
         public bool IsHighlighted { get; init; }
         public bool IsReplyTarget { get; init; }

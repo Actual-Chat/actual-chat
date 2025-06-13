@@ -7,7 +7,6 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AppUIHub, AuthorB
     protected IAuthors Authors => Hub.Authors;
     protected AuthorUI AuthorUI => Hub.AuthorUI;
 
-    // TODO(AY): Use AuthorId instead
     [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
