@@ -70,7 +70,7 @@ public sealed class Tracer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Point([CallerMemberName] string label = "")
+    public void Point(string label)
     {
         if (IsEnabled)
             Writer?.Invoke(new TracePoint(this, label, Elapsed));
@@ -84,6 +84,20 @@ public sealed class Tracer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TraceRegion Region([CallerMemberName] string label = "", bool logEnter = true)
+    public TraceRegion Region(string label, bool logEnter = true)
         => new(this, label, logEnter);
+
+    // [CallerMemberName] overloads
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void MethodPoint([CallerMemberName] string label = "")
+    {
+        if (IsEnabled)
+            Writer?.Invoke(new TracePoint(this, label, Elapsed));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TraceRegion MethodRegion([CallerMemberName] string label = "", bool logEnter = true)
+        => new(this, label, logEnter);
+
 }

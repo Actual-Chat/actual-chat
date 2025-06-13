@@ -82,7 +82,7 @@ internal sealed class ClusterSetup(
 
     private async Task EnsureTemplatesAsync(CancellationToken cancellationToken)
     {
-        using var _ = _tracer.Region();
+        using var _ = _tracer.MethodRegion();
 
         await actions.EnsureTemplateAsync(
                 openSearchNames.CommonIndexTemplateName,
@@ -97,11 +97,11 @@ internal sealed class ClusterSetup(
     {
         // Notes:
         // Assumption: This is a script.
-        // There's no reason make this script efficient.
+        // There's no reason to make this script efficient.
         // It must fail and retried on any error.
         // It has to succeed once and only once to set up an OpenSearch cluster.
-        // After the initial setup this would never be called again.
-        using var _1 = _tracer.Region();
+        // After the initial setup, this would never be called again.
+        using var _1 = _tracer.MethodRegion();
         var contentIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatContent, embeddingModelProps);
         var contentCursorIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatContentCursor, embeddingModelProps);
         var chatsCursorIndexName = openSearchNames.GetFullName(OpenSearchNames.ChatCursor, embeddingModelProps);

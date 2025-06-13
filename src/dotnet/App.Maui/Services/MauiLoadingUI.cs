@@ -16,7 +16,7 @@ public static class MauiLoadingUI
         if (!WhenFirstWebViewCreatedSource.TrySetResult())
             return;
 
-        StaticTracer.Point();
+        StaticTracer.MethodPoint();
     }
 
     public static void MarkFirstSplashRemoved()
@@ -24,6 +24,6 @@ public static class MauiLoadingUI
         if (!WhenFirstSplashRemovedSource.TrySetResult())
             return;
 
-        StaticTracer.Point();
+        StaticTracer.MethodPoint();
     }
 }

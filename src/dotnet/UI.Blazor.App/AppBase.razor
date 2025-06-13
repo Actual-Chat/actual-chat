@@ -80,7 +80,7 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        using var _1 = Tracer.Region();
+        using var _1 = Tracer.MethodRegion();
 
         var hostKind = HostInfo.HostKind;
         var sessionHash = SessionHash; // It's passed directly only in the WASM app

@@ -36,7 +36,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 
     public Task StartNonScopedServices()
         => Task.Run(async () => {
-            using var _1 = Tracer.Region();
+            using var _1 = Tracer.MethodRegion();
             try {
                 var startHostedServicesTask = StartHostedServices();
                 if (HostInfo.HostKind.IsWasmApp()) {
@@ -72,7 +72,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 
     private async Task PreloadContactListData(Session session, CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Region();
+        using var _1 = Tracer.MethodRegion();
         // Start preloading top contacts
         // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
         // because we don't know the selected place yet.
@@ -92,7 +92,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 
     private async Task StartHostedServices()
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
         var tracePrefix = nameof(StartHostedServices) + ": starting ";
         foreach (var hostedService in Services.HostedServices()) {
             Tracer.Point(tracePrefix + hostedService.GetType().Name);

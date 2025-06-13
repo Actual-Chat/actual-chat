@@ -62,7 +62,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        using var _1 = Tracer.Region();
+        using var _1 = Tracer.MethodRegion();
 
         BlazorWebViewApp.EnsureStarted();
 

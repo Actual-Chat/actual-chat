@@ -31,7 +31,7 @@ public sealed class MauiSession(IServiceProvider services)
             return Task.CompletedTask;
 
         return Task.Run(async () => {
-            using var _1 = Tracer.Region();
+            using var _1 = Tracer.MethodRegion();
 
             var session = await _readSessionTask.ConfigureAwait(false);
             if (session == null) {
@@ -59,7 +59,7 @@ public sealed class MauiSession(IServiceProvider services)
 
     public static Task RemoveStored()
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
         var storage = SecureStorage.Default;
         try {
             if (storage.Remove(SessionStorageKey))
@@ -75,7 +75,7 @@ public sealed class MauiSession(IServiceProvider services)
 
     private static async Task<Session?> Read()
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
         var storage = SecureStorage.Default;
         try {
             var sessionId = await storage.GetAsync(SessionStorageKey).ConfigureAwait(false);
@@ -97,7 +97,7 @@ public sealed class MauiSession(IServiceProvider services)
 
     private static async Task Store(Session session)
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
         var storage = SecureStorage.Default;
         bool isSaved;
         try {

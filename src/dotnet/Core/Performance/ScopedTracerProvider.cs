@@ -19,5 +19,5 @@ public sealed class ScopedTracerProvider
     }
 
     public void Dispose()
-        => Tracer.Point();
+        => Tracer.MethodPoint();
 }

@@ -35,7 +35,7 @@ public sealed class AppScopedServiceStarter
             throw StandardError.Internal("Session hash is already set.");
 
         // Starts in Blazor dispatcher
-        using var _1 = Tracer.Region();
+        using var _1 = Tracer.MethodRegion();
         try {
             var baseUri = HostInfo.BaseUrl;
 
@@ -158,7 +158,7 @@ public sealed class AppScopedServiceStarter
 
     private async Task StartHostedServices()
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
         var tracePrefix = nameof(StartHostedServices) + ": starting ";
         foreach (var hostedService in Hub.Services.HostedServices()) {
             Tracer.Point(tracePrefix + hostedService.GetType().Name);

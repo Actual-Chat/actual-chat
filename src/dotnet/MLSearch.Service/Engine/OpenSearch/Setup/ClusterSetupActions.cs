@@ -401,7 +401,7 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
 
     protected override async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
-        using var _1 = _tracer.Region();
+        using var _1 = _tracer.MethodRegion();
 
         var modelGroupId = await GetModelGroupId(openSearchSettings, cancellationToken).ConfigureAwait(false);
 

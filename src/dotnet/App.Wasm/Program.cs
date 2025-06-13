@@ -15,7 +15,7 @@ public static class Program
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Main is an entry point.")]
     public static async Task Main(string[] args)
     {
-        Tracer.Default.Point();
+        Tracer.Default.MethodPoint();
 
         ClientStartup.Initialize();
         AppUIOtelSetup.SetupConditionalPropagator();

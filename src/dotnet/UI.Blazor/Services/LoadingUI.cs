@@ -46,7 +46,7 @@ public class LoadingUI : UIServiceBase<UIHub>
             return;
 
         AppBuildTime = StaticTracer.Elapsed;
-        StaticTracer.Point();
+        StaticTracer.MethodPoint();
     }
 
     public static void MarkAppCreated()
@@ -55,7 +55,7 @@ public class LoadingUI : UIServiceBase<UIHub>
             return;
 
         AppCreationTime = StaticTracer.Elapsed;
-        StaticTracer.Point();
+        StaticTracer.MethodPoint();
     }
 
     public void MarkLoaded()
@@ -64,7 +64,7 @@ public class LoadingUI : UIServiceBase<UIHub>
             return;
 
         LoadTime = Tracer.Elapsed;
-        Tracer.Point();
+        Tracer.MethodPoint();
 
         // We want to make sure MarkRendered is called no matter what (e.g., even if render fails)
         _ = Task.Delay(TimeSpan.FromSeconds(0.5)).ContinueWith(
@@ -78,7 +78,7 @@ public class LoadingUI : UIServiceBase<UIHub>
             return;
 
         RenderTime = Tracer.Elapsed;
-        Tracer.Point();
+        Tracer.MethodPoint();
         _whenAppRenderedSource.TrySetResult();
         RemoveWebSplash();
     }
@@ -89,7 +89,7 @@ public class LoadingUI : UIServiceBase<UIHub>
             return;
 
         ChatListLoadTime = Tracer.Elapsed;
-        Tracer.Point();
+        Tracer.MethodPoint();
     }
 
     public void RemoveWebSplash(bool instantly = false)

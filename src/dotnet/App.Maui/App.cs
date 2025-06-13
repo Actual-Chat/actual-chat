@@ -57,7 +57,7 @@ public class App : Application
     private static void FlushSentryData()
     {
         var tracer = Tracer.Default[nameof(App)];
-        using (tracer.Region()) {
+        using (tracer.MethodRegion()) {
             MauiDiagnostics.TracerProvider?.DisposeSilently();
             if (SentrySdk.IsEnabled)
                 SentrySdk.Flush();

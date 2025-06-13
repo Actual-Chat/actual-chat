@@ -21,7 +21,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Region();
+        using var _1 = Tracer.MethodRegion();
         var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbExternalContactLinks = await dbContext.ExternalContactLinks.ForUpdate()

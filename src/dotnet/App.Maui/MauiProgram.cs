@@ -63,7 +63,7 @@ public static partial class MauiProgram
 #endif
     public static MauiApp CreateMauiApp()
     {
-        using var _1 = Tracer.Region();
+        using var _1 = Tracer.MethodRegion();
 
         MauiExceptionHandlers.Use();
         MauiRuntimeSettings.Apply();
@@ -138,7 +138,8 @@ public static partial class MauiProgram
 
     private static Task<BlazorWebViewApp> BuildBlazorViewAppInternal(MauiApp app)
     {
-        using var _1 = Tracer.Region();
+        using var _1 = Tracer.MethodRegion();
+
         _ = MauiSession.Start();
         BlazorWebViewApp blazorViewApp;
         // ReSharper disable once ExplicitCallerInfoArgument
@@ -204,7 +205,7 @@ public static partial class MauiProgram
 
     private static void ConfigureMauiApp(MauiAppBuilder builder)
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
 
         builder = builder
             .UseMauiBlazorApp<App>()
@@ -225,7 +226,7 @@ public static partial class MauiProgram
 
     private static void ConfigureBlazorApp(BlazorWebViewAppBuilder builder)
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
         var services = builder.Services;
         // Core services
         services.AddLogging(logging => logging.ClearProviders());
@@ -283,7 +284,7 @@ public static partial class MauiProgram
 
     private static void ConfigureBlazorWebViewAppServices(IServiceCollection services)
     {
-        using var _ = Tracer.Region();
+        using var _ = Tracer.MethodRegion();
 
 #if IOS
         // HTTP client
