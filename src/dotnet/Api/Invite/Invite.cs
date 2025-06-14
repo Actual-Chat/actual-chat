@@ -23,9 +23,12 @@ public sealed partial record Invite(
             Details = details,
         };
 
+    public bool CanUse(int useCount = 1)
+        => Remaining >= useCount;
+
     public Invite Use(VersionGenerator<long> versionGenerator, int useCount = 1)
     {
-        if (Remaining < useCount)
+        if (!CanUse(useCount))
             throw StandardError.Unauthorized("The invite link is already used.");
 
         return this with {

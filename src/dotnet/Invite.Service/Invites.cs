@@ -100,6 +100,16 @@ public class Invites(IServiceProvider services) : IInvites
         return invite;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<InviteChatLinkPreview?> GetInviteChatLinkPreview(
+        Session session,
+        string inviteId,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetInviteChatLinkPreview(account.Id, inviteId, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken)
     {

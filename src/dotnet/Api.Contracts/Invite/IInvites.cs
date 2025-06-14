@@ -14,6 +14,8 @@ public interface IInvites : IComputeService
     Task<Invite?> GetOrGenerateChatInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Invite?> GetOrGeneratePlaceInvite(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<InviteChatLinkPreview?> GetInviteChatLinkPreview(Session session, string inviteId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken);

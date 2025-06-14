@@ -11,6 +11,8 @@ public interface IInvitesBackend : IComputeService, IBackendService
     Task<Invite[]> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> IsValid(string activationKey, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<InviteChatLinkPreview?> GetInviteChatLinkPreview(UserId accountId, string inviteId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Invite> OnGenerate(InvitesBackend_Generate command, CancellationToken cancellationToken);
