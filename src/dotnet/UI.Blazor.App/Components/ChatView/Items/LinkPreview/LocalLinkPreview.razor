@@ -1,32 +1,56 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Media
 @inherits FusionComponentBase<AppUIHub>
 @{
     var m = Data;
     if (!m.CanRender)
         return;
 
-    var chat = m.Chat!;
-    var entry = m.Entry;
-    var place = m.Place;
-    var author = m.Author;
     var url = m.LocalUrl;
+    Chat? chat = null;
+    Account? user = null;
+    ChatEntry? entry = null;
+    Author? author = null;
+    Place? place = null;
+    if (Data is ChatLocalLinkInfo chatLocalLinkInfo) {
+        chat = chatLocalLinkInfo.Chat;
+        entry = chatLocalLinkInfo.Entry;
+        author = chatLocalLinkInfo.Author;
+        place = chatLocalLinkInfo.Place;
+    }
+    else if (Data is UserLocalLinkInfo userLocalLinkInfo) {
+        user = userLocalLinkInfo.Account;
+        chat = userLocalLinkInfo.Chat;
+    } else if (Data is PlaceLocalLinkInfo placeLocalLinkInfo) {
+        place = placeLocalLinkInfo.Place;
+
+    }
     var cls = entry is not null ? " local-link-chat-entry" : " local-link-chat";
-    var linkText = chat.Title;
-    if (place?.Id is not null)
-        linkText += $", {place.Title}";
-    var maxCount = entry != null
-        ? entry.Attachments.Length > 3 ? 3 : entry.Attachments.Length
-        : 0;
 }
 
 <div class="link-preview local-link unfocusable @cls">
     <div class="c-chat-icon">
-        @if (ReferenceEquals(entry, null)) {
-            <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
-        } else {
+        @if (entry is not null) {
             <AuthorCircle
                 AuthorId="@entry.AuthorId"
                 Size="SquareSize.Size9"/>
+
+        } else if (user is not null) {
+            <AccountCircle
+                UserId="@user.Id"
+                Size="@SquareSize.Size8" />
+        }
+        else if (chat is not null) {
+            <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
+        }
+        else if (place is not null) {
+            <Pic
+                Title="@place.Title"
+                Picture="@place.Picture.ToPicture()"
+                Size="@SquareSize.Size8"
+                IsSquare="@true"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@place.Id.Value"/>
         }
     </div>
     <div class="c-info">
@@ -40,29 +64,44 @@
                 }
                 <a class="c-description" href="@url" @onclick:preventDefault="true" @onclick="NavigateToUrl">@entry.Content</a>
             </div>
-        }
 
-        @if (entry is not null && entry.Attachments.Length > 0) {
-            <div class="link-preview-attachment-list">
-            @for (var i = 0; i < maxCount; i++) {
-                var attachment = entry.Attachments[i];
-                if (attachment.IsVisualMedia()) {
-                    <VisualMediaAttachment Attachment="@attachment" ChatEntry="@entry"/>
-                } else {
-                    <FileAttachment Attachment="@attachment"/>
-                }
+            @if (entry.Attachments.Length > 0) {
+                var maxCount = Math.Min(entry.Attachments.Length, 3);
+                <div class="link-preview-attachment-list">
+                    @for (var i = 0; i < maxCount; i++) {
+                        var attachment = entry.Attachments[i];
+                        if (attachment.IsVisualMedia()) {
+                            <VisualMediaAttachment Attachment="@attachment" ChatEntry="@entry"/>
+                        } else {
+                            <FileAttachment Attachment="@attachment"/>
+                        }
+                    }
+                    @if (entry.Attachments.Length > 3) {
+                        <div class="extra-attachment">+@($"{entry.Attachments.Length - maxCount}")</div>
+                    }
+                </div>
             }
-            @if (entry.Attachments.Length > 3) {
-                <div class="extra-attachment">+@($"{entry.Attachments.Length - maxCount}")</div>
-            }
-            </div>
         }
 
         <span class="c-domain">
             @if (entry is not null) {
                 <span>in </span>
             }
-            <a class="text-primary" href="@Links.Chat(chat.Id)" @onclick:preventDefault="true" @onclick="NavigateToChat">@linkText</a>
+            @if (user is not null) {
+                <a class="text-primary" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@user.Avatar.Name</a>
+            }
+            else if (chat is not null) {
+                var linkText = chat.Title;
+                if (place?.Id is not null)
+                    linkText += $", {place.Title}";
+
+                var useDirectChatLink = entry is not null;
+                var chatLink = useDirectChatLink ? Links.Chat(chat.Id) : Data.LocalUrl;
+                <a class="text-primary" href="@chatLink" @onclick:preventDefault="true" @onclick="@(() => NavigateTo(chatLink))">@linkText</a>
+            }
+            else if (place is not null) {
+                <a class="text-primary" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@place.Title</a>
+            }
         </span>
     </div>
     <div class="incut"></div>
@@ -74,6 +113,6 @@
     private void NavigateToUrl()
         => _ = History.NavigateTo(Data.LocalUrl);
 
-    private void NavigateToChat()
-        => _ = History.NavigateTo(Links.Chat(Data.Chat!.Id));
+    private void NavigateTo(string url)
+        => _ = History.NavigateTo(url);
 }

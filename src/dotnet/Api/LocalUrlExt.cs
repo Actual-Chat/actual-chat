@@ -4,6 +4,9 @@ namespace ActualChat;
 
 public static partial class LocalUrlExt
 {
+    private const string UserPagePath = "/u/";
+    private const string JoinPagePath = "/join/";
+
     [GeneratedRegex(@"^\/chat\/(?<chatId>[a-zA-Z0-9-]+)(?<parameters>\?([^#]*))?(#(?<hash>.*))?")]
     private static partial Regex IsChatRegexFactory();
 
@@ -76,13 +79,33 @@ public static partial class LocalUrlExt
     }
 
     public static bool IsUser(this LocalUrl url)
-        => url.Value.OrdinalStartsWith("/u/");
+        => url.Value.OrdinalStartsWith(UserPagePath);
+
+    public static bool IsUser(this LocalUrl url, [NotNullWhen(true)] out string? userIdSegment)
+    {
+        userIdSegment = null;
+        if (!url.IsUser())
+            return false;
+
+        userIdSegment = url.Value.Substring(UserPagePath.Length);
+        return !userIdSegment.IsNullOrEmpty();
+    }
 
     public static bool IsSettings(this LocalUrl url)
         => url.Value.OrdinalStartsWith("/settings");
 
     public static bool IsPrivateChatInvite(this LocalUrl url)
-        => url.Value.OrdinalStartsWith("/join/");
+        => url.Value.OrdinalStartsWith(JoinPagePath);
+
+    public static bool IsPrivateChatInvite(this LocalUrl url, [NotNullWhen(true)] out string? inviteIdSegment)
+    {
+        inviteIdSegment = null;
+        if (!url.IsPrivateChatInvite())
+            return false;
+
+        inviteIdSegment = url.Value.Substring(JoinPagePath.Length);
+        return !inviteIdSegment.IsNullOrEmpty();
+    }
 
     private static bool TryParseTextEntryLidFromQuery(string parameters, out long textEntryLid)
     {

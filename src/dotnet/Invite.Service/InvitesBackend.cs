@@ -10,13 +10,14 @@ namespace ActualChat.Invite;
 public class InvitesBackend(IServiceProvider services)
     : DbServiceBase<InviteDbContext>(services), IInvitesBackend
 {
-    private IAccounts? _accounts;
-    private IChatsBackend? _chatsBackend;
-    private IServerKvas? _serverKvas;
-
-    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
-    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IServerKvas ServerKvas => _serverKvas ??= Services.ServerKvas();
+    [field: AllowNull, MaybeNull]
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
+    [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
+    [field: AllowNull, MaybeNull]
+    private IServerKvas ServerKvas => field ??= Services.ServerKvas();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
     private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
@@ -50,6 +51,57 @@ public class InvitesBackend(IServiceProvider services)
     {
         var dbActivationKey = await DbActivationKeyResolver.Get(activationKey, cancellationToken).ConfigureAwait(false);
         return dbActivationKey != null;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<InviteChatLinkPreview?> GetInviteChatLinkPreview(
+        UserId accountId,
+        string inviteId,
+        CancellationToken cancellationToken)
+
+    {
+        var invite = await Get(inviteId, cancellationToken).ConfigureAwait(false);
+        if (invite is null)
+            return null;
+
+        if (!invite.CanUse())
+            return null;
+
+        switch (invite.Details.Option) {
+        case UserInviteOption:
+            return null;
+        case ChatInviteOption chatInviteOption: {
+            var chatId = chatInviteOption.ChatId;
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                return null;
+
+            if (chatId is PlaceChatId placeChatId) {
+                if (placeChatId.IsRoot)
+                    return null;
+
+                var placeId = placeChatId.PlaceId;
+                var place = await PlacesBackend.Get(placeId, cancellationToken).ConfigureAwait(false);
+                if (chat is { IsPublic: true })
+                    return new InviteChatLinkPreview(chat, place);
+
+                var placeRules = await ChatsBackend
+                    .GetRules(placeId.RootChatId, accountId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (placeRules.IsMember())
+                    return new InviteChatLinkPreview(chat, place);
+
+                return null;
+            }
+            return new InviteChatLinkPreview(chat, null);
+        }
+        case PlaceInviteOption placeInviteOption: {
+            var place = await PlacesBackend.Get(placeInviteOption.PlaceId, cancellationToken).ConfigureAwait(false);
+            return new InviteChatLinkPreview(null, place);
+        }
+        default:
+            throw StandardError.Format<Invite>();
+        }
     }
 
     // [CommandHandler]

@@ -1,4 +1,5 @@
-using ActualChat.UI.Blazor.Services;
+using ActualChat.Invite;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -7,6 +8,8 @@ public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private IPlaces Places => Hub.Places;
+    private IAccounts Accounts => Hub.Accounts;
+    private IInvites Invites => Hub.Invites;
 
     [ComputeMethod]
     public virtual async Task<bool> IsRenderedAsLocal(string url, CancellationToken cancellationToken)
@@ -21,30 +24,41 @@ public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrlOpt)
             return null;
 
-        var localLinkInfo = await GetLocal(localUrlOpt, cancellationToken).ConfigureAwait(false);
-        return localLinkInfo;
+        return await GetLocal(localUrlOpt, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
     public virtual async Task<LocalLinkInfo> GetLocal(LocalUrl localUrl, CancellationToken cancellationToken)
     {
-        var localLinkModel = new LocalLinkInfo(localUrl);
-        if (!localUrl.IsChatCompat(out var chatId, out var entryLid))
-            return localLinkModel;
+        LocalLinkInfo? localLinkInfo = null;
+        if (localUrl.IsChat())
+            localLinkInfo = await GetLocalLinkForChat(localUrl, cancellationToken).ConfigureAwait(false);
+        else if (localUrl.IsUser())
+            localLinkInfo = await GetLocalLinkForUser(localUrl, cancellationToken).ConfigureAwait(false);
+        else if (localUrl.IsPrivateChatInvite())
+            localLinkInfo = await GetLocalLinkForPrivateChat(localUrl, cancellationToken).ConfigureAwait(false);
+        return localLinkInfo ?? new LocalLinkInfo(localUrl);
+    }
 
-        // Chat message link
+    private async Task<LocalLinkInfo?> GetLocalLinkForChat(LocalUrl localUrl, CancellationToken cancellationToken)
+    {
+        if (!localUrl.IsChatCompat(out var chatId, out var entryLid))
+            return null;
+
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is not null) {
-            localLinkModel = localLinkModel with { Chat = chat };
-            if (entryLid > 0) {
-                var textEntryId = TextEntryId.New(chatId, entryLid);
-                var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
-                localLinkModel = localLinkModel with { Entry = entry };
-                if (entry is not null) {
-                    var authorId = entry.AuthorId;
-                    var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken).ConfigureAwait(false);
-                    localLinkModel = localLinkModel with { Author = author };
-                }
+        if (chat is null)
+            return null;
+
+        var localLinkModel = new ChatLocalLinkInfo(localUrl, chat);
+        if (entryLid > 0) {
+            var textEntryId = TextEntryId.New(chatId, entryLid);
+            var entry = await Chats.GetEntry(Session, textEntryId, cancellationToken).ConfigureAwait(false);
+            localLinkModel = localLinkModel with { Entry = entry };
+            if (entry is not null) {
+                var authorId = entry.AuthorId;
+                var author = await Authors.Get(Session, entry.ChatId, authorId, cancellationToken)
+                    .ConfigureAwait(false);
+                localLinkModel = localLinkModel with { Author = author };
             }
         }
         if (chatId is PlaceChatId placeChatId) {
@@ -52,5 +66,47 @@ public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             localLinkModel = localLinkModel with { Place = place };
         }
         return localLinkModel;
+    }
+
+    private async Task<LocalLinkInfo?> GetLocalLinkForUser(LocalUrl localUrl, CancellationToken cancellationToken)
+    {
+        if (!localUrl.IsUser(out var userIdSegment))
+            return null;
+
+        var userId = UserId.TryParse(userIdSegment);
+        if (userId is null)
+            return null;
+
+        var account = await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);
+        if (account is null)
+            return null;
+
+        var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var peerChatId = PeerChatId.New(ownAccount.Id, userId);
+        var chat = await Chats.Get(Session, peerChatId, cancellationToken).ConfigureAwait(false);
+        return new UserLocalLinkInfo(localUrl, account) {
+            Chat = chat
+        };
+    }
+
+    private async Task<LocalLinkInfo?> GetLocalLinkForPrivateChat(LocalUrl localUrl, CancellationToken cancellationToken)
+    {
+        if (!localUrl.IsPrivateChatInvite(out var inviteIdSegment))
+            return null;
+
+        var linkPreview = await Invites.GetInviteChatLinkPreview(Session, inviteIdSegment, cancellationToken)
+            .ConfigureAwait(false);
+        if (linkPreview is null)
+            return null;
+
+        if (linkPreview.Chat is not null)
+            return new ChatLocalLinkInfo(localUrl, linkPreview.Chat) {
+                Place = linkPreview.Place
+            };
+
+        if (linkPreview.Place is not null)
+            return new PlaceLocalLinkInfo(localUrl, linkPreview.Place);
+
+        return null;
     }
 }
