@@ -4,13 +4,14 @@
     {
         LineProgressDecoration.White => "white",
         LineProgressDecoration.Blue => "blue",
+        LineProgressDecoration.Gray => "gray",
         _ => throw new ArgumentOutOfRangeException(nameof(Decoration), Decoration, null),
     };
 }
 
 <div class="line-progress">
     @for (var i = 0; i < StepCount; i++) {
-        var cls = i == CurrentStepIndex ? "line-progress-item-current" : "";
+        var cls = i == CurrentStepIndex ? "c-current" : "";
         <div class="line-progress-item @decorationCls @cls"></div>
     }
 </div>
@@ -23,5 +24,6 @@
     public enum LineProgressDecoration {
         White = 0,
         Blue = 1,
+        Gray = 2,
     }
 }
