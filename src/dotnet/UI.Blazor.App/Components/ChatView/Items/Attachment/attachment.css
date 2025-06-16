@@ -1,14 +1,14 @@
 /* image line */
 .message-attachments .message-image-attachments {
-    @apply w-fit;
+    @apply w-full;
 }
 .image-line {
     @apply flex-x gap-x-px;
-    @apply max-w-96;
+    @apply h-full w-64 md:w-96;
     @apply overflow-hidden;
 }
 .message-image-attachments.one-row .image-line:not(.one-image) {
-    @apply w-full h-full;
+    @apply h-full;
 }
 .message-image-attachments .image-line:first-child {
     @apply rounded-t-xl;
@@ -19,6 +19,7 @@
 
 .image-line .image-item {
     @apply /*flex-1*/ flex-x;
+    @apply w-full;
 }
 body.hoverable .image-line .image-item:hover {
     filter: brightness(1.1);
@@ -66,10 +67,23 @@ body.hoverable .image-line .image-item:hover {
     @apply h-40 md:h-48;
 }
 .one-row .image-line.one-image {
-    @apply h-full w-fit;
+    @apply h-full w-full;
+}
+
+.one-row .image-line.one-image {
+    @apply max-h-96 w-64 md:w-96;
 }
 .one-row .image-line.one-image.sm-sm {
-    @apply max-h-96;
+    @apply h-80 md:h-96 w-40 md:w-48;
+}
+.one-row .image-line.one-image.md-md {
+    @apply h-64 md:h-96;
+}
+.one-row .image-line.one-image.lg-lg {
+    @apply h-32 md:h-40;
+}
+.one-row .image-line.one-image.xl-xl {
+    @apply h-24 md:h-32;
 }
 .one-row .image-line.one-image .image-item {
     @apply max-w-full;
