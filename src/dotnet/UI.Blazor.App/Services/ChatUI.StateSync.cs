@@ -9,6 +9,7 @@ public partial class ChatUI
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        // All logic here can be delayed to let other code run
         await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
         var baseChains = new[] {
             AsyncChain.From(InvalidateSelectedChatDependencies),
@@ -16,7 +17,7 @@ public partial class ChatUI
             AsyncChain.From(ResetHighlightedEntry),
             AsyncChain.From(PushKeepAwakeState),
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
-            AsyncChain.From(PrefetchChatTails),
+            // AsyncChain.From(PrefetchChatTails),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -201,6 +202,13 @@ public partial class ChatUI
 
     private async Task PrefetchChatTails(CancellationToken cancellationToken)
     {
+        // NOTE(AY): We must rewrite this logic as follow:
+        // - We don't care about visible chats - we periodically prefetch the tails of all chats
+        // - Periodically = prefech next 100 tails every 10 min (w/ 1 min startup delay)
+        // - We should iterate through every chat in user's contact list, even though
+        //   we may also end up prefetching only top 100 chats by recency in every list
+        // - Ultimately, our goal is to make sure nearly every chat is available offline.
+
         var visibleChatsChanges = ChatListUI.VisibleChats.Computed.Changes(cancellationToken);
         var changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         await foreach (var cVisibleChats in visibleChatsChanges.ConfigureAwait(false)) {
