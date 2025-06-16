@@ -276,6 +276,10 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         PlaceId? placeId,
         CancellationToken cancellationToken)
     {
+        // NOTE:
+        // The code below must be kept in sync with AppNonScopedServiceStarter.PreloadContacts,
+        // otherwise you're going to slow down the app startup!
+
         DebugLog?.LogDebug("-> ListUnorderedRaw({PlaceId})", placeId);
         var startedAt = CpuTimestamp.Now;
         var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);

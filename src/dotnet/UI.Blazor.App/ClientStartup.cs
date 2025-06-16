@@ -167,8 +167,8 @@ public static class ClientStartup
 #endif
         RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto();
         RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connecting
-        RemoteComputedSynchronizer.Default = new RemoteComputedSynchronizer() {
-            TimeoutFactory = (_, ct) => Task.Delay(TimeSpan.FromSeconds(1), ct),
+        ComputedSynchronizer.Default = ComputedSynchronizer.Safe.Instance = new ComputedSynchronizer.Safe() {
+            MaxSynchronizeDurationProvider = static _ => TimeSpan.FromSeconds(1),
         };
 
 #if DEBUG
@@ -179,17 +179,20 @@ public static class ClientStartup
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
             };
 #endif
-        // // We use a single instance of the initial delay task - we want it to be
-        // // an absolute delay from the app start rather than a relative delay for each call.
-        // var remoteComputedCacheInitialDelayTask = Task
-        //     .Delay(Constants.Rpc.RemoteComputedCache.HitToCallInitialDelay)
-        //     .ContinueWith(
-        //         _ => RemoteComputedCache.HitToCallDelayer = null, // And no more delays after the initial one
-        //         TaskScheduler.Default);
-        // RemoteComputedCache.HitToCallDelayer = (_, _) => remoteComputedCacheInitialDelayTask;
-
-        // Experiment
-        RemoteComputedCache.HitToCallDelayer = null; // Turn off the delay for now, it causes issues with Maui iOS app startup
+        // We use a single instance of the initial delay task - we want it to be
+        // an absolute delay from the app start rather than a relative delay for each call.
+        var tracer = Tracer.Default[typeof(ClientStartup)];
+        var hitToCallDelayTask = Task
+            .Delay(Constants.Rpc.RemoteComputedCache.HitToCallInitialDelay)
+            .ContinueWith(_ => {
+                    RemoteComputedCache.HitToCallDelayer = null;
+                    tracer.Point("RemoteComputedCache.HitToCallDelayer removed");
+                }, // And no more delays after the initial one
+                TaskScheduler.Default);
+        RemoteComputedCache.HitToCallDelayer = (input, peer) => {
+            // tracer.Point($"HitToCallDelayer.Invoke for {input}");
+            return hitToCallDelayTask;
+        };
     }
 
     [RequiresUnreferencedCode(UnreferencedCode.Reflection)]

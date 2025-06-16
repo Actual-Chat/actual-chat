@@ -63,7 +63,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         var chatId = selection.First().ChatId;
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
 
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         AuthorId? currentAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId).ConfigureAwait(false);
@@ -81,7 +81,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, default).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
                 var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);
-                sb.AppendFormat("{0}, [{1}]", authorName, timestamp);
+                sb.AppendFormat(CultureInfo.InvariantCulture, "{0}, [{1}]", authorName, timestamp);
                 sb.AppendLine();
             }
 
@@ -89,7 +89,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             sb.AppendLine(text);
         }
 
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     public Task Delete(ChatEntryId chatEntryId)
@@ -144,7 +144,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
 
         async Task<string> BuildInfoMessage()
         {
-            var sb = new StringBuilder();
+            var sb = ActualLab.Text.StringBuilderExt.Acquire();
             sb.Append("Forwarded ");
             sb.Append(selection.Count);
             sb.Append(' ');
@@ -163,7 +163,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 sb.Append(selectedChatIds.Count);
                 sb.Append(" chats");
             }
-            return sb.ToString();
+            return sb.ToStringAndRelease();
         }
     }
 

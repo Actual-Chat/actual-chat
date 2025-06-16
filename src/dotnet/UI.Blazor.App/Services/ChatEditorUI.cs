@@ -82,7 +82,7 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
             return;
 
         ChatEntry? lastEditableEntry;
-        using (RemoteComputedSynchronizer.Default.Activate()) {
+        using (ComputedSynchronizer.Default.Activate()) {
             var chatIdRange = await Chats
                 .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
                 .ConfigureAwait(false);

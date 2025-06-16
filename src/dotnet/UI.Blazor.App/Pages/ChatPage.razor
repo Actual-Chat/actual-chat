@@ -82,6 +82,7 @@
     protected IAliases Aliases => Hub.Aliases;
     protected ChatUI ChatUI => Hub.ChatUI;
     protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    protected LoadingUI LoadingUI => Hub.LoadingUI;
     protected BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [field: AllowNull, MaybeNull]
@@ -120,15 +121,10 @@
 
         if (_isVeryFirstLoad) {
             _isVeryFirstLoad = false;
-            var mustDelayVeryFirstLoad =
-                hostInfo.HostKind.IsApp()
-                && parsedRoute == RouteResult.Empty
-                && BrowserInfo.ScreenSize.Value.IsNarrow();
-            if (mustDelayVeryFirstLoad) {
-                // Postpone chat loading when it's invisible
-                Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
-                await Task.Delay(VeryFirstLoadDelay, cancellationToken).ConfigureAwait(false);
-                this.NotifyStateHasChanged();
+            if (hostInfo.HostKind.IsApp()) {
+                Log.LogInformation("Delaying display for chat #{ChatId}", chatId);
+                var delayTask = Task.Delay(VeryFirstLoadDelay, cancellationToken);
+                await Task.WhenAny(delayTask, LoadingUI.WhenChatListLoaded).ConfigureAwait(false);
             }
         }
 

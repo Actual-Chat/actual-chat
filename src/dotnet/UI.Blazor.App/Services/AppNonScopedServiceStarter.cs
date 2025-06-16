@@ -50,12 +50,11 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
                 // Access key services
                 var systemProperties = Services.GetRequiredService<ISystemProperties>();
                 var accounts = Services.GetRequiredService<IAccounts>();
-                Services.GetRequiredService<IChats>();
                 _ = Services.StateFactory().NewMutable<bool>();
 
                 var getServerApiInfoTask = systemProperties.GetServerApiInfo(cancellationToken);
                 var ownAccountTask = accounts.GetOwn(session, cancellationToken);
-                var preloadContactListDataTask = PreloadContactListData(session, cancellationToken);
+                var preloadContactListDataTask = PreloadContacts(session, cancellationToken);
 
                 // Complete the tasks we started earlier
                 await Task.WhenAll(
@@ -70,22 +69,56 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             }
         }, CancellationToken.None);
 
-    private async Task PreloadContactListData(Session session, CancellationToken cancellationToken)
+    private async Task PreloadContacts(Session session, CancellationToken cancellationToken)
     {
         using var _1 = Tracer.MethodRegion();
         // Start preloading top contacts
         // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
         // because we don't know the selected place yet.
+        var chats = Services.GetRequiredService<IChats>();
+        var mentions = Services.GetRequiredService<IMentions>();
+        var chatPositions = Services.GetRequiredService<IChatPositions>();
+        var chatThreads = Services.GetRequiredService<IChatThreads>();
         var localSettings = Services.LocalSettings();
+        var accountSettings = new AccountSettings(Services.ServerKvas(), session);
+
         var selectedChatId = await localSettings.Get<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
         var selectedPlaceId = (PlaceId?)null;
         if (selectedChatId is not null)
             selectedPlaceId = (selectedChatId as PlaceChatId)?.PlaceId;
-        Tracer.Point($"-- {nameof(PreloadContactListData)}.{nameof(PlaceId)}: '{selectedPlaceId}'");
+        Tracer.Point($"{nameof(PreloadContacts)}: {nameof(PlaceId)}: {selectedPlaceId?.ToString() ?? "null"}");
+
         var contacts = Services.GetRequiredService<IContacts>();
         var contactIds = await contacts.ListIds(session, selectedPlaceId, cancellationToken).ConfigureAwait(false);
-        foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
-            _ = contacts.Get(session, contactId, cancellationToken);
+        await contactIds
+            .Select(PreloadContact)
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        return;
+
+        async Task PreloadContact(ContactId contactId)
+        {
+            var chatId = contactId.ChatId;
+            var contactTask = contacts.Get(session, contactId, cancellationToken);
+            var chatNewsTask = chats.GetNews(session, chatId, cancellationToken);
+            var lastMentionTask = mentions.GetLastOwn(session, chatId, cancellationToken);
+            var chatPositionTask = chatPositions.GetOwn(session, chatId, ChatPositionKind.Read, cancellationToken);
+            var userSettingsTask = accountSettings.GetUserChatSettings(chatId, cancellationToken);
+
+            var contact = contactTask.ConfigureAwait(false);
+            var news = await chatNewsTask.ConfigureAwait(false);
+            var userSettings = await userSettingsTask.ConfigureAwait(false);
+            var lastMention = await lastMentionTask.ConfigureAwait(false);
+            var chatPosition = await chatPositionTask.ConfigureAwait(false);
+
+            if (news?.LastTextEntry is { IsThreadStartEntry: true } lastTextEntry) {
+                var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);
+                var threadChatTask = chats.Get(session, threadChatId, cancellationToken);
+                var threadCreatorTask = chatThreads.GetThreadCreator(session, threadChatId, cancellationToken);
+                var threadChat = await threadChatTask.ConfigureAwait(false);
+                var threadCreator = await threadCreatorTask.ConfigureAwait(false);
+            }
+        }
     }
 
     // Private methods

@@ -31,7 +31,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         DebugLog?.LogDebug("Play: {ChatId}, {StartedAt}", ChatId, minPlayAt);
 
         var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
-        using var syncScope = RemoteComputedSynchronizer.Default.Activate();
+        using var syncScope = ComputedSynchronizer.Default.Activate();
 
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);

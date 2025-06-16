@@ -27,7 +27,7 @@ internal static class Program
             return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
         };
         FusionDefaults.Mode = FusionMode.Server;
-        RemoteComputedSynchronizer.Default = null!; // Server shouldn't use it
+        ComputedSynchronizer.Default = ComputedSynchronizer.None.Instance; // Server shouldn't use it
 
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;

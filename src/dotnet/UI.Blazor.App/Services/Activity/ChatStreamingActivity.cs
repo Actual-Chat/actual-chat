@@ -86,7 +86,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     {
         var startAt = Hub.Clocks.ServerClock.Now;
         var entryReader = GetEntryReader(entryKind);
-        using var syncScope = RemoteComputedSynchronizer.Default.Activate();
+        using var syncScope = ComputedSynchronizer.Default.Activate();
 
         var idRange = await Hub.Chats
             .GetIdRange(Session, ChatId, entryKind, cancellationToken)

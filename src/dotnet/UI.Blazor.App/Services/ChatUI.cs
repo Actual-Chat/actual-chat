@@ -212,9 +212,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
     {
         // NOTE(AY): This method uses LeaseReadPositionState in a bit tricky way:
-        // on one hand, it can't depend on it, coz it disposes the lease, which means
+        // on the one hand, it can't depend on it, coz it disposes the lease, which means
         // computed it maintains might end up being never updated.
-        // On another hand, it makes sense to read the most up-to-date read position,
+        // On the other hand, it makes sense to read the most up-to-date read position,
         // so it returns max(leased read position, fetched read position).
 
         // DebugLog?.LogDebug("GetReadEntryLid: {ChatId}", chatId);
@@ -569,7 +569,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             new (
                 // Reader
                 async ct => {
-                    using var _ = RemoteComputedSynchronizer.Default.Activate();
+                    using var _ = ComputedSynchronizer.Default.Activate();
                     var (entryLid, origin) = await ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
                     return new ReadPosition(chatId, entryLid, origin);
                 },

@@ -62,7 +62,7 @@
     [field: AllowNull, MaybeNull]
     protected AppScopedServiceStarter AppScopedServiceStarter => field ??= Services.GetRequiredService<AppScopedServiceStarter>();
     [field: AllowNull, MaybeNull]
-    protected Tracer Tracer => field ??= Hub.Tracer;
+    protected Tracer Tracer => field ??= Hub.Tracer[GetType()];
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
@@ -74,7 +74,7 @@
         => LoadingUI.MarkAppCreated();
 
     protected override void OnInitialized() {
-        Log.LogWarning("OnInitialized, Hash: {Hash}", GetHashCode());
+        // Log.LogInformation("OnInitialized, Hash: {Hash}", GetHashCode());
         if (IsInteractive)
             Hub.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
     }
