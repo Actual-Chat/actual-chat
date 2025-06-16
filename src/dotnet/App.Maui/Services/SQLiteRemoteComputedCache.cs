@@ -6,9 +6,9 @@ namespace ActualChat.App.Maui.Services;
 #pragma warning disable MA0064
 
 // ReSharper disable once InconsistentNaming
-public sealed class SQLiteClientComputedCache : AppClientComputedCache
+public sealed class SQLiteRemoteComputedCache : AppRemoteComputedCache
 {
-    public new record Options : AppClientComputedCache.Options
+    public new record Options : AppRemoteComputedCache.Options
     {
         public FilePath DbPath { get; init; }
 
@@ -21,8 +21,8 @@ public sealed class SQLiteClientComputedCache : AppClientComputedCache
 
     private new Options Settings { get; }
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteClientComputedCache))]
-    public SQLiteClientComputedCache(Options settings, IServiceProvider services)
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteRemoteComputedCache))]
+    public SQLiteRemoteComputedCache(Options settings, IServiceProvider services)
         : base(settings, services)
     {
         Settings = settings;

@@ -9,15 +9,15 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
         public int ReaderBatchSize { get; init; } = 64;
         public IBatchProcessorWorkerPolicy ReaderWorkerPolicy { get; init; }
             = new BatchProcessorWorkerPolicy() { MaxWorkerCount = 4 };
-        public Func<IThreadSafeLruCache<Symbol, byte[]?>> ReaderCacheFactory { get; init; }
-            = () => new ThreadSafeLruCache<Symbol, byte[]?>(256);
+        public Func<IThreadSafeLruCache<string, byte[]?>> ReaderCacheFactory { get; init; }
+            = () => new ThreadSafeLruCache<string, byte[]?>(256, StringComparer.Ordinal);
         public int FlushBatchSize { get; init; } = 64;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.25);
         public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
         public RetryDelaySeq FlushRetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 5);
     }
 
-    protected IThreadSafeLruCache<Symbol, byte[]?> ReadCache { get; }
+    protected IThreadSafeLruCache<string, byte[]?> ReadCache { get; }
     protected BatchProcessor<string, byte[]?> Reader { get; }
     protected LazyWriter<(string Key, byte[]? Value)> Writer { get; }
     [field: AllowNull, MaybeNull]

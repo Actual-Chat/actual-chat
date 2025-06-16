@@ -16,7 +16,7 @@ public static partial class Constants
     {
         public static class RemoteComputedCache
         {
-            public static readonly TimeSpan HitToCallInitialDelay = TimeSpan.FromMilliseconds(3000);
+            public static readonly TimeSpan HitToCallInitialDelay = TimeSpan.FromMilliseconds(1500);
         }
 
         public static class Compression

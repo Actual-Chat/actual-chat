@@ -132,10 +132,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 
         // RemoteComputedCache
         if (hostKind.IsWasmApp() && !HostInfo.IsTested) {
-            services.AddSingleton(_ => new WebClientComputedCache.Options());
+            services.AddSingleton(_ => new WebRemoteComputedCache.Options());
             services.AddSingleton<IRemoteComputedCache>(c => {
-                var options = c.GetRequiredService<WebClientComputedCache.Options>();
-                return new WebClientComputedCache(options, c);
+                var options = c.GetRequiredService<WebRemoteComputedCache.Options>();
+                return new WebRemoteComputedCache(options, c);
             });
         }
 

@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -11,6 +12,9 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
 
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.WebKvasBackend ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public Task WhenReady { get; }
 
@@ -23,17 +27,20 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
         _clearName = $"{name}.clear";
         var jsRuntimeInfo = Services.GetRequiredService<JSRuntimeInfo>();
         _isDisabled = !jsRuntimeInfo.IsInteractive;
-        WhenReady = _isDisabled ? Task.CompletedTask
+        WhenReady = _isDisabled
+            ? Task.CompletedTask
             : JS.InvokeVoidAsync("window.App.isBundleReady").AsTask();
+        DebugLog?.LogDebug("IsDisabled: {IsDisabled}", _isDisabled);
     }
 
     public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         if (_isDisabled)
             return new byte[]?[keys.Length];
-
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
+
+        DebugLog?.LogDebug("GetMany({Keys})", JsonFormatter.Format(keys));
         var values = await JS
             .InvokeAsync<string?[]>(_getManyName, CancellationToken.None, [keys])
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -49,9 +56,9 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         if (_isDisabled)
             return;
-
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
+
         var keys = new string[updates.Count];
         var values = new string?[updates.Count];
         var i = 0;
@@ -60,12 +67,13 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
             values[i++] = value == null ? null : Convert.ToBase64String(value);
         }
         try {
+            DebugLog?.LogDebug("SetMany({Keys})", JsonFormatter.Format(keys));
             await JS.InvokeVoidAsync(_setManyName, CancellationToken.None, keys, values)
                 .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) {
             // Suppress exception to avoid reprocessing.
-            // JS invokes are no longer possible in a current scope.
+            // JS invokes are no longer possible in the current scope.
         }
     }
 
@@ -73,9 +81,10 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         if (_isDisabled)
             return;
-
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
+
+        DebugLog?.LogDebug("Clear()");
         await JS.InvokeVoidAsync(_clearName, CancellationToken.None)
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }

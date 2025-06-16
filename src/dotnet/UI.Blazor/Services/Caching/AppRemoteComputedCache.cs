@@ -1,5 +1,6 @@
 using ActualChat.Kvas;
 using ActualChat.Users;
+using ActualLab.Diagnostics;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Interception;
 using ActualLab.Rpc;
@@ -8,7 +9,7 @@ using ActualLab.Rpc.Serialization;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCache
+public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCache
 {
     public new record Options : BatchingKvas.Options
     {
@@ -22,12 +23,11 @@ public abstract class AppClientComputedCache : BatchingKvas, IRemoteComputedCach
     protected RpcHub Hub { get; }
     protected RpcArgumentSerializer ArgumentSerializer { get; }
     protected RpcMethodResolver AnyMethodResolver { get; }
-    protected static bool DebugMode => Constants.DebugMode.RemoteComputedCache;
-    protected ILogger? DebugLog => DebugMode ? Log : null;
+    protected ILogger? DebugLog => Constants.DebugMode.RemoteComputedCache ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public Task WhenInitialized { get; protected set; } = Task.CompletedTask;
 
-    protected AppClientComputedCache(Options settings, IServiceProvider services)
+    protected AppRemoteComputedCache(Options settings, IServiceProvider services)
         : base(settings, services)
     {
         Settings = settings;

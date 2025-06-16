@@ -50,12 +50,12 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // RemoteComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);
-        services.AddSingleton(_ => new SQLiteClientComputedCache.Options() {
+        services.AddSingleton(_ => new SQLiteRemoteComputedCache.Options() {
             DbPath = appCacheDir & "CCC.db3",
         });
         services.AddSingleton<IRemoteComputedCache>(c => {
-            var options = c.GetRequiredService<SQLiteClientComputedCache.Options>();
-            return new SQLiteClientComputedCache(options, c);
+            var options = c.GetRequiredService<SQLiteRemoteComputedCache.Options>();
+            return new SQLiteRemoteComputedCache(options, c);
         });
 
         // LocalSettings backend override
