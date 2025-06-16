@@ -2,7 +2,7 @@
     rem call "./npm-install.cmd"
     pushd src\nodejs
     call npm ci
-    call npx webpack --config webpack.config.js --mode development
+    call npm run build:Debug
     popd
 
     exit /b
@@ -12,5 +12,5 @@ BATCH
 # "./npm-install.cmd"
 pushd src/nodejs
 npm ci
-npx webpack --config webpack.config.js --mode development
+npm run build:Debug
 popd

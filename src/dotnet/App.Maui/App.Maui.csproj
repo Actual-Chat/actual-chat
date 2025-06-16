@@ -511,7 +511,7 @@
     <!--
       MAUI msbuild tasks doesn't work with
       <Content Include="..\App.Wasm\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
-      so we copy dist files from webpack build
+      so we copy dist files from web build
       issue: [Web Workers API doesn't work](https://github.com/MicrosoftEdge/WebView2Feedback/issues/2296)
      -->
     <Watch Include="wwwroot\dist\**" />

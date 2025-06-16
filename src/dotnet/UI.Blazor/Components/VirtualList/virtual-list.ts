@@ -432,7 +432,7 @@ export class VirtualList {
                         if (this.pivots.some(pivot => pivot.itemKey === key)) {
                             // if the item is a pivot, we need to update its size and keep range
                             if (oldItem.range)
-                                oldItem.range = new NumberRange(oldItem.range.start, oldItem.range.start + newItem.size ?? oldItem.size);
+                                oldItem.range = new NumberRange(oldItem.range.start, oldItem.range.start + newItem.size);
                         }
                         else
                             oldItem.range = null; // reset range

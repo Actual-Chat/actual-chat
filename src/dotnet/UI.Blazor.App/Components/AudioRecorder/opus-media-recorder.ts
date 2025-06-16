@@ -86,7 +86,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private sessionToken: string | null;
     private encoderWorkerSessionToken: string | null;
 
-    public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
+    public origin: string = new URL(import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
 
@@ -187,14 +187,14 @@ export class OpusMediaRecorder implements RecorderStateServer {
         debugLog?.log(`init(): create encoder worker`);
         if (!this.encoderWorker) {
             const encoderWorkerPath = Versioning.mapPath('/dist/opusEncoderWorker.js');
-            this.encoderWorkerInstance = new Worker(encoderWorkerPath);
+            this.encoderWorkerInstance = new Worker(encoderWorkerPath, { type: 'module' });
             this.encoderWorker = rpcClientServer<OpusEncoderWorker>(`${logScope}.encoderWorker`, this.encoderWorkerInstance, this);
         }
 
         debugLog?.log(`init(): create vad worker`);
         if (!this.vadWorker) {
             const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
-            this.vadWorkerInstance = new Worker(vadWorkerPath);
+            this.vadWorkerInstance = new Worker(vadWorkerPath, { type: 'module' });
             this.vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance, this);
         }
 

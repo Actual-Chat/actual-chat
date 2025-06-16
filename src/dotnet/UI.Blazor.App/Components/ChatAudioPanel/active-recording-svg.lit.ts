@@ -142,9 +142,9 @@ class ActiveRecordingSvg extends LitElement {
                 : 1;
             const power1 = p * maxNotYetCalculatedAdjustment;
             const height1 = getHeight(power1, maxPower);
-            const power2 = prevAudioPower[prevAudioPower.length - 4] * maxNotYetCalculatedAdjustment ?? 0; // with 180 ms delay
+            const power2 = prevAudioPower[prevAudioPower.length - 4] * maxNotYetCalculatedAdjustment; // with 180 ms delay
             const height2 = Math.floor(clamp(0.7 * getHeight(power2, maxPower), MIN_HEIGHT, MAX_HEIGHT));
-            const power3 = prevAudioPower[prevAudioPower.length - 7] * maxNotYetCalculatedAdjustment ?? 0; // with 360 ms delay
+            const power3 = prevAudioPower[prevAudioPower.length - 7] * maxNotYetCalculatedAdjustment; // with 360 ms delay
             const height3 = Math.floor(clamp(0.4 * getHeight(power3, maxPower), MIN_HEIGHT, MAX_HEIGHT));
             this.audioPowerState = {
                 height1: height1,

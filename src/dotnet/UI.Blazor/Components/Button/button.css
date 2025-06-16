@@ -244,7 +244,7 @@ body.hoverable .btn.btn-modal:hover::after {
 /* Modal focus, active */
 .btn.btn-modal:active::after {
     @apply hover-after;
-    @apply bg-after-lighter
+    @apply bg-after-lighter;
 }
 
 /* Button Square and Round */

@@ -29,7 +29,7 @@ export class OnDeviceAwake {
         };
 
         const workerPath = Versioning.mapPath('/dist/onDeviceAwakeWorker.js');
-        this._worker = new Worker(workerPath);
+        this._worker = new Worker(workerPath, { type: 'module' });
         this._worker.onmessage = onSleepDetected;
         this._worker.onerror = onWorkerError;
     }
