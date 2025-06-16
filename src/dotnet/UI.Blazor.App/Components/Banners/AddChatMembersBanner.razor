@@ -38,6 +38,11 @@
         });
     }
 
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        _dismissedAt.Dispose();
+    }
+
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<bool>.Options() {
