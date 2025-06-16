@@ -107,7 +107,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         s1.Value.Should().Be(s2.Value);
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task SyncedStateTest2()
     {
         var services = CreateServices();
@@ -122,7 +122,8 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
             UpdateDelayer = updateDelayer,
         });
         s1.Value = "a";
-        await Task.Delay(50); // NOTE(AY): Check why w/o this delay the test is failing on build server sometimes
+        OrdinalEquals(s1.Value.Origin, s1.OwnOrigin).Should().BeTrue();
+        await Task.Delay(100);
         OrdinalEquals(s1.Value.Origin, s1.OwnOrigin).Should().BeTrue();
         await s1.WhenWritten().WaitAsync(timeout);
 

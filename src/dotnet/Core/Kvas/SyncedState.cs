@@ -191,6 +191,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
     private async Task ReadCycle()
     {
         var cancellationToken = DisposeToken;
+        var isFirst = true;
         StateSnapshot? lastSnapshot = null;
         while (!cancellationToken.IsCancellationRequested) {
             try {
@@ -206,7 +207,8 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
                 var readResult = ((Computed<T>)snapshot.Computed).ToTypedResult();
                 lock (Lock)
-                    ApplyRead(readResult);
+                    ApplyRead(readResult, isFirst);
+                isFirst = false;
             }
             catch (OperationCanceledException) {
                 break;
@@ -221,10 +223,10 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
     // All methods below must be called inside lock (Lock)
 
-    private void ApplyRead(Result<T> result)
+    private void ApplyRead(Result<T> result, bool isFirst)
     {
         if (result.IsValue(out var value)) {
-            if (MustDiscardRead(value)) {
+            if (MustDiscardRead(value, isFirst)) {
                 _whenFirstTimeReadSource.TrySetResult();
                 DebugLog?.LogDebug("{State}: Read: skipping previously written value", this);
                 return;
@@ -247,8 +249,11 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         }
     }
 
-    private bool MustDiscardRead(T value)
+    private bool MustDiscardRead(T value, bool isFirst)
     {
+        if (isFirst && !Snapshot.IsInitial)
+            return true; // The first writing happened before the first read
+
         if (OwnOrigin == null)
             return IsRecentlyWritten(value, true);
 
