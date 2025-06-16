@@ -191,16 +191,20 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
     private async Task ReadCycle()
     {
         var cancellationToken = DisposeToken;
-        StateSnapshot? lastReadSnapshot = null;
+        StateSnapshot? lastSnapshot = null;
         while (!cancellationToken.IsCancellationRequested) {
             try {
-                if (lastReadSnapshot == ReadState.Snapshot)
-                    await ReadState.Snapshot.WhenUpdated().WaitAsync(cancellationToken).ConfigureAwait(false);
-                lastReadSnapshot = ReadState.Snapshot;
-                if (lastReadSnapshot is not { IsInitial: false })
+                var snapshot = ReadState.Snapshot;
+                if (lastSnapshot == snapshot) {
+                    DebugLog?.LogDebug("{State}: ReadCycle: awaiting update of {Snapshot}...", this, snapshot);
+                    await snapshot.WhenUpdated().WaitAsync(cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+                lastSnapshot = snapshot;
+                if (snapshot.IsInitial)
                     continue;
 
-                var readResult = ((Computed<T>)lastReadSnapshot.Computed).ToTypedResult();
+                var readResult = ((Computed<T>)snapshot.Computed).ToTypedResult();
                 lock (Lock)
                     ApplyRead(readResult);
             }
