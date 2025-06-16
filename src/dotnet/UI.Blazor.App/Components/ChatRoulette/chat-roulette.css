@@ -151,7 +151,7 @@ body.narrow .cr-center {
     @apply w-full;
 }
 div.c-start-chat {
-    @apply cursor-pointer
+    @apply cursor-pointer;
 }
 .btn.cr-btn {
     @apply w-full;
@@ -347,7 +347,7 @@ section.profile-field label {
 }
 
 .languages-selector-popup .dialog-body {
-    @apply px-4
+    @apply px-4;
 }
 
 .choose-avatar-btn.btn-round {

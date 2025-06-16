@@ -33,12 +33,12 @@
     <title>Actual Chat</title>
     <base href="/" />
     <!-- The version of icon.woff2 must match the version in icons.css! -->
-    <link rel="preload" href="/dist/fonts/icon.woff2?t=1731995804968" as="font" crossorigin />
-    <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
-    <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
-    <link rel="preload" href="/dist/fonts/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
-    <link rel="preload" href="/dist/fonts/forkawesome-webfont.woff2" as="font" crossorigin />
-    <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/icon.woff2?t=1731995804968" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/assets/woff2/forkawesome-webfont.woff2" as="font" crossorigin />
+    <link rel="prefetch" href="/dist/assets/woff2/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     <link rel="prefetch" href="/dist/onDeviceAwakeWorker.js?v=1.4.101-alpha-g0c6da31447-7C64C707" as="worker" crossorigin />
     <link rel="prefetch" href="/dist/opusDecoderWorker.js?v=1.4.101-alpha-g0c6da31447-7C64C707" as="worker" crossorigin />
     <link rel="prefetch" href="/dist/opusEncoderWorker.js?v=1.4.101-alpha-g0c6da31447-7C64C707" as="worker" crossorigin />
@@ -48,9 +48,9 @@
     <link rel="prefetch" href="/dist/opusEncoderWorklet.js?v=1.4.101-alpha-g0c6da31447-7C64C707" as="audioworklet" crossorigin />
     <link rel="prefetch" href="/dist/vadWorklet.js?v=1.4.101-alpha-g0c6da31447-7C64C707" as="audioworklet" crossorigin />
     <!--
-    <link rel="prefetch" href="/dist/wasm/codec.wasm?v=1.4.101-alpha-g0c6da31447-7C64C707" as="fetch" crossorigin />
-    <link rel="prefetch" href="/dist/wasm/webrtc-vad.wasm?v=1.4.101-alpha-g0c6da31447-7C64C707" as="fetch" crossorigin />
-    <link rel="prefetch" href="/dist/wasm/vad.bin" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/assets/wasm/codec.wasm?v=1.4.101-alpha-g0c6da31447-7C64C707" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/assets/wasm/webrtc-vad.wasm?v=1.4.101-alpha-g0c6da31447-7C64C707" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/assets/onnx/vad.onnx" as="fetch" crossorigin />
     -->
     <link href="/dist/bundle.css" rel="stylesheet" />
     <script src="_startup.js"></script>
@@ -74,6 +74,6 @@
     <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
-    <script defer src="/dist/bundle.js"></script>
+    <script defer src="/dist/bundle.js" type="module"></script>
 </body>
 </html>

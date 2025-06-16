@@ -28,13 +28,6 @@ public class TranslationSettings
 
 public class LanguageDetectionSettings
 {
-    public TimeSpan Delay { get; set; } = TimeSpan.FromSeconds(0.5);
-    public int ParallelismDegree { get; set; } = 10;
-    public int FlowBatchSize { get; set; } = 200;
-    public int FlowQuota { get; set; } = 1000;
-    public TimeSpan FlowBatchTimeout { get; set; } = TimeSpan.FromSeconds(30);
-    public int OpenAIRequestTokenLimit { get; set; } = 1000;
-    public int EntryContentTruncationLength { get; set; } = 100;
     public FilePath PromptFile { get; set; } = "";
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1-nano";

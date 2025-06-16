@@ -105,6 +105,7 @@ public static class MediaMimeTypes
             { ".azw", "application/vnd.amazon.ebook" },
             { ".bas", "text/plain" },
             { ".bcpio", "application/x-bcpio" },
+            { ".onnx", "application/octet-stream" },
             { ".bin", "application/octet-stream" },
             { ".bm", "image/bmp" },
             { ".bmp", "image/bmp" },

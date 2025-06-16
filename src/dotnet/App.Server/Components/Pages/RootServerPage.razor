@@ -131,11 +131,11 @@
     <meta name="twitter:image" content="@image">
 
     @* The version of icon.woff2 must match the version in icons.css! *@
-    <link rel="preload" href="/@Assets["dist/fonts/icon.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-Regular.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-Medium.woff2"]" as="font" crossorigin />
-    <link rel="preload" href="/@Assets["dist/fonts/TT-Commons-Pro-DemiBold.woff2"]" as="font" crossorigin />
-    <link rel="prefetch" href="/@Assets["dist/fonts/TT-Commons-Pro-Light.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/assets/woff2/icon.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-Regular.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-Medium.woff2"]" as="font" crossorigin />
+    <link rel="preload" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-DemiBold.woff2"]" as="font" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/assets/woff2/TT-Commons-Pro-Light.woff2"]" as="font" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/onDeviceAwakeWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/opusDecoderWorker.js"]" as="worker" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/opusEncoderWorker.js"]" as="worker" crossorigin />
@@ -144,9 +144,9 @@
     <link rel="prefetch" href="/@Assets["dist/feederWorklet.js"]" as="audioworklet" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/opusEncoderWorklet.js"]" as="audioworklet" crossorigin />
     <link rel="prefetch" href="/@Assets["dist/vadWorklet.js"]" as="audioworklet" crossorigin />
-    <link rel="prefetch" href="/@Assets["dist/wasm/codec.wasm"]" as="fetch" crossorigin />
-    <link rel="prefetch" href="/@Assets["dist/wasm/webrtc-vad.wasm"]" as="fetch"  crossorigin />
-    <link rel="prefetch" href="/@Assets["dist/wasm/ort-wasm-simd.wasm"]" as="fetch" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/assets/wasm/codec.wasm"]" as="fetch" crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/assets/wasm/webrtc-vad.wasm"]" as="fetch"  crossorigin />
+    <link rel="prefetch" href="/@Assets["dist/assets/wasm/ort-wasm-simd.wasm"]" as="fetch" crossorigin />
 
     <link href="/@Assets["dist/bundle.css"]" rel="stylesheet" />
     <ImportMap nonce="@importMapNonce" ImportMapDefinition="importMap"/>
@@ -184,7 +184,7 @@
             window.App.markBundleReady = resolve;
         });
     </script>
-    <script async src="/@Assets["dist/bundle.js"]"></script>
+    <script async src="/@Assets["dist/bundle.js"]" type="module"></script>
     <HeadOutlet @rendermode="@(_renderMode.Mode)" />
 </head>
 

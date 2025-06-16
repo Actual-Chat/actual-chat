@@ -73,7 +73,7 @@
     @apply flex-y gap-y-2;
 }
 .verify-phone-step .c-text-container .c-title {
-    @apply text-headline-5 text-03
+    @apply text-headline-5 text-03;
 }
 .verify-phone-step .c-text-container .c-text {
     @apply text-headline-1 text-03;

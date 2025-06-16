@@ -11,15 +11,24 @@ register();
 // Logging init
 import 'logging-init';
 // FontSize & Theme init
-export * from 'font-sizes';
-export * from 'theme';
+import { FontSizes } from 'font-sizes';
+import * as theme from 'theme';
 // Critical init logic - should go right after logging-init
-import './src/init'
+import './src/init';
 
 // Exports
-export * as ui from '../dotnet/UI.Blazor/exports';
-export * as blazorApp from '../dotnet/UI.Blazor.App/exports';
-export * from './src/kvas';
+import * as ui from '../dotnet/UI.Blazor/exports';
+import * as blazorApp from '../dotnet/UI.Blazor.App/exports';
+import { Kvas } from './src/kvas';
+
+// Assign to window objects
+window['ui'] = {
+    ...ui,
+};
+window['FontSizes'] = FontSizes;
+window['theme'] = theme;
+window['blazorApp'] = blazorApp;
+window['Kvas'] = Kvas;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 window['App']?.markBundleReady?.(); // "?." here ensures this code won't fail in workers, etc.

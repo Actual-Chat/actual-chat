@@ -47,7 +47,7 @@ To build & run the project:
 # Start Docker containers for NGINX, PostgreSQL, Redis etc.
 ./docker-start.cmd
 
-# Install dependencies and run watch (dotnet watch + webpack watch)
+# Install dependencies and run watch (dotnet watch + web watch)
 ./run-build.cmd restore-tools npm-install watch
 ```
 

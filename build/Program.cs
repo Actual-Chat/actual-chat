@@ -103,7 +103,7 @@ internal static class Program
         Target(Targets.Watch, DependsOn(Targets.CleanDist), async () => {
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                throw new WithoutStackException($"Watch is not implemented for '{RuntimeInformation.OSDescription}'. Use dotnet watch + webpack watch without build system");
+                throw new WithoutStackException($"Watch is not implemented for '{RuntimeInformation.OSDescription}'. Use dotnet watch + web watch without build system");
 
             // if one of process exits then close another on Cancel()
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -122,7 +122,7 @@ internal static class Program
                 },
                 cts);
             using var npmWatch = ProcessWatch.Start(
-                "webpack",
+                "web",
                 Utils.FindNpmExe(),
                 "run watch",
                 "src/nodejs",
@@ -259,7 +259,7 @@ internal static class Program
 
                 var npmTask = Npm()
                     .WithArguments($"run build:{configuration}")
-                    .ToConsole(Blue("webpack: "))
+                    .ToConsole(Blue("web: "))
                     .ExecuteAsync(token).Task;
 
                 await Task.WhenAll(dotnetTask, npmTask).ConfigureAwait(false);
@@ -285,7 +285,7 @@ internal static class Program
 
                 var npmTask = Npm()
                     .WithArguments($"run build:{configuration}")
-                    .ToConsole(Blue("webpack: "))
+                    .ToConsole(Blue("web: "))
                     .ExecuteAsync(token).Task;
 
                 await Task.WhenAll(dotnetTask, npmTask).ConfigureAwait(false);
@@ -300,7 +300,7 @@ internal static class Program
         Target(Targets.NpmBuild, DependsOn(Targets.CleanDist, Targets.NpmInstall),
             () => Npm()
                 .WithArguments($"run build:{configuration}")
-                .ToConsole(Blue("webpack: "))
+                .ToConsole(Blue("web: "))
                 .ExecuteAsync(cancellationToken).Task);
 
         Target(Targets.PublishWin, DependsOn(Targets.NpmBuild), async () => {

@@ -52,7 +52,7 @@ export class AudioPlayer implements Resettable {
 
         if (!decoderWorkerInstance) {
             const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
-            decoderWorkerInstance = new Worker(decoderWorkerPath);
+            decoderWorkerInstance = new Worker(decoderWorkerPath, { type: 'module' });
         }
         if (!decoderWorker)
             decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);

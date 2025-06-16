@@ -1,11 +1,6 @@
-/// #if MEM_LEAK_DETECTION
-import codec, { Codec, Encoder } from '@actual-chat/codec/codec.debug';
-import codecWasm from '@actual-chat/codec/codec.debug.wasm';
-import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
-/// #else
-/// #code import codec, { Encoder, Codec } from '@actual-chat/codec';
-/// #code import codecWasm from '@actual-chat/codec/codec.wasm';
-/// #endif
+import codec, { Encoder, Codec } from '@actual-chat/codec';
+import codecWasm from '@actual-chat/codec/codec.wasm';
+// import codecWasmMap from '@actual-chat/codec/codec.wasm.map';
 import { AUDIO_REC as AR, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
