@@ -78,12 +78,12 @@
 
     private string GetText() {
         var conversation = Message.Conversation!;
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.AppendLine(conversation.Title);
         sb.AppendLine();
         sb.AppendLine(conversation.Description);
         sb.AppendLine();
         sb.AppendLine(conversation.Summary);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 }

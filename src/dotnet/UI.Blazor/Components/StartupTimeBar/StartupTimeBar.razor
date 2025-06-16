@@ -16,16 +16,14 @@
     if (loadTime <= 0)
         return;
 
-    string tooltip;
-    using (var tooltipBuilder = ZString.CreateStringBuilder()) {
-        if (appBuildTime > 0)
-            tooltipBuilder.AppendLine($"App build time: {appBuildTime}ms");
-        tooltipBuilder.AppendLine($"App creation time: {appCreationTime}ms");
-        tooltipBuilder.AppendLine($"App load time: {loadTime}ms");
-        tooltipBuilder.AppendLine($"Render duration: {renderTime-loadTime}ms");
-        tooltipBuilder.Append($"Chat list load time: {chatListLoadedTime}ms");
-        tooltip = tooltipBuilder.ToString();
-    }
+    var sb = ActualLab.Text.StringBuilderExt.Acquire();
+    if (appBuildTime > 0)
+        sb.AppendLine($"App build time: {appBuildTime}ms");
+    sb.AppendLine($"App creation time: {appCreationTime}ms");
+    sb.AppendLine($"App load time: {loadTime}ms");
+    sb.AppendLine($"Render duration: {renderTime-loadTime}ms");
+    sb.Append($"Chat list load time: {chatListLoadedTime}ms");
+    var tooltip = sb.ToStringAndRelease();
 }
 
 <div

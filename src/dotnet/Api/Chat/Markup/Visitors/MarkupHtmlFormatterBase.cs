@@ -1,5 +1,5 @@
+using System.Text;
 using System.Text.RegularExpressions;
-using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
@@ -17,7 +17,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     public string NewLineHtml { get; init; } = "<br/>";
     public string? NewLineReplacement { get; init; } = null;
 
-    protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {
         var startTag = markup.Style switch {
             TextStyle.Italic => "<em>",
@@ -37,7 +37,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml(endTag, ref state);
     }
 
-    protected override void VisitUrl(UrlMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitUrl(UrlMarkup markup, ref StringBuilder state)
     {
         AddHtml("<a", ref state);
         AddAttribute("class", UrlClass, false, ref state);
@@ -48,7 +48,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml("</a>", ref state);
     }
 
-    protected override void VisitMention(MentionMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitMention(MentionMarkup markup, ref StringBuilder state)
     {
         AddHtml("<span", ref state);
         AddAttribute("class", MentionClass, false, ref state);
@@ -58,7 +58,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml("</span>", ref state);
     }
 
-    protected override void VisitCodeBlock(CodeBlockMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitCodeBlock(CodeBlockMarkup markup, ref StringBuilder state)
     {
         AddHtml("<div", ref state);
         AddAttribute("class", CodeBlockClass, false, ref state);
@@ -68,30 +68,30 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml("</div>", ref state);
     }
 
-    protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
         => AddTextSpan(markup.Text, PreformattedTextClass, ref state);
 
-    protected override void VisitPlainText(PlainTextMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitPlainText(PlainTextMarkup markup, ref StringBuilder state)
         => AddText(markup.Text, ref state);
 
-    protected override void VisitPlayableText(PlayableTextMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitPlayableText(PlayableTextMarkup markup, ref StringBuilder state)
         => AddText(markup.Text, ref state);
 
-    protected override void VisitNewLine(NewLineMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitNewLine(NewLineMarkup markup, ref StringBuilder state)
         => AddHtml(NewLineHtml, ref state);
 
-    protected override void VisitUnparsed(UnparsedTextMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitUnparsed(UnparsedTextMarkup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
-    protected override void VisitUnknown(Markup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitUnknown(Markup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
     // Protected methods
 
-    protected void AddMarkup(Markup markup, ref Utf16ValueStringBuilder state)
+    protected void AddMarkup(Markup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
-    protected void AddTextSpan(string text, string @class, ref Utf16ValueStringBuilder state)
+    protected void AddTextSpan(string text, string @class, ref StringBuilder state)
     {
         AddHtml("<span", ref state);
         AddAttribute("class", @class, false, ref state);
@@ -100,7 +100,7 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml("</span>", ref state);
     }
 
-    protected void AddText(string text, ref Utf16ValueStringBuilder state)
+    protected void AddText(string text, ref StringBuilder state)
     {
         var html = text.HtmlEncode();
         if (NewLineReplacement != null)
@@ -109,15 +109,15 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     }
 
 #pragma warning disable CA1822
-    protected void AddHtml(string html, ref Utf16ValueStringBuilder state)
+    protected void AddHtml(string html, ref StringBuilder state)
 #pragma warning restore CA1822
         => state.Append(html);
 
-    protected void AddAttribute(string name, string value, ref Utf16ValueStringBuilder state)
+    protected void AddAttribute(string name, string value, ref StringBuilder state)
         => AddAttribute(name, value, true, ref state);
 
 #pragma warning disable CA1822
-    protected void AddAttribute(string name, string value, bool mustEncode, ref Utf16ValueStringBuilder state)
+    protected void AddAttribute(string name, string value, bool mustEncode, ref StringBuilder state)
 #pragma warning restore CA1822
     {
         state.Append(" ");

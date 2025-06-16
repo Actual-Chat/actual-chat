@@ -1,5 +1,3 @@
-using Cysharp.Text;
-
 namespace ActualChat.Performance;
 
 public readonly struct TraceRegion : IDisposable
@@ -33,19 +31,12 @@ public readonly struct TraceRegion : IDisposable
         var elapsed = Tracer.Elapsed;
         var duration = elapsed - StartedAt;
 
-        string endLabel;
-        var sb = ZString.CreateStringBuilder(true);
-        try {
-            if (LogEnter)
-                sb.Append("<- ");
-            sb.Append(Label);
-            sb.Append(" - took ");
-            TracePoint.FormatDuration(duration, ref sb);
-            endLabel = sb.ToString();
-        }
-        finally {
-            sb.Dispose();
-        }
-        Tracer.Point(endLabel);
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        if (LogEnter)
+            sb.Append("<- ");
+        sb.Append(Label);
+        sb.Append(" - took ");
+        TracePoint.FormatDuration(duration, sb);
+        Tracer.Point(sb.ToStringAndRelease());
     }
 }

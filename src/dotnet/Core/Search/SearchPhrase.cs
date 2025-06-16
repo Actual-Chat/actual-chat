@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using Cysharp.Text;
 using MemoryPack;
@@ -46,8 +47,8 @@ public sealed partial class SearchPhrase
     {
         if (IsEmpty)
             return "";
-        var sb = ZString.CreateStringBuilder();
-        using var _ = sb;
+
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         foreach (var term in Terms) {
             if (term.Length == 0)
                 continue;
@@ -55,22 +56,23 @@ public sealed partial class SearchPhrase
                 sb.Append("|");
             sb.Append("((^|\\s)?");
             if (MatchPrefixes)
-                AddPrefixRegex(term, ref sb);
+                AddPrefixRegex(term, sb);
             else
-                RegexHelper.Escape(term, ref sb);
+                RegexHelper.Escape(term, sb);
             sb.Append(')');
         }
-        return sb.ToString();
+        return sb.ToStringAndRelease();
 
-        void AddPrefixRegex(ReadOnlySpan<char> word, ref Utf16ValueStringBuilder sb)
+        static void AddPrefixRegex(ReadOnlySpan<char> word, StringBuilder sb)
         {
             if (word.Length == 0)
                 return;
-            RegexHelper.Escape(word[0], ref sb);
+
+            RegexHelper.Escape(word[0], sb);
             var suffix = word[1..];
             if (suffix.Length != 0) {
                 sb.Append('(');
-                AddPrefixRegex(suffix, ref sb);
+                AddPrefixRegex(suffix, sb);
                 sb.Append(")?");
             }
         }

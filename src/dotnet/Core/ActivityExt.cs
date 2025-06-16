@@ -63,12 +63,12 @@ public static class ActivityExt
 
     private static string GetDescription(Activity activity)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("Id: ");
         sb.Append(activity.Id ?? "<null>");
         sb.Append(", DisplayName: ");
         sb.Append(activity.DisplayName);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     // This check is taken from Activity.Current setter.

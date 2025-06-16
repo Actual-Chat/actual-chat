@@ -24,15 +24,16 @@ public class UserNamer
     {
         if (ValidateName(name) == null)
             return name;
+
         // Normalizing name
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         foreach (var c in name) {
             if (IsValidCharacter(c))
                 sb.Append(c);
-            else if (sb.Length == 0 || char.IsLetterOrDigit(sb.AsSpan()[^1]))
+            else if (sb.Length == 0 || char.IsLetterOrDigit(sb[^1]))
                 sb.Append('_');
         }
-        name = sb.ToString();
+        name = sb.ToStringAndRelease();
         if (name.Length < 4 || !char.IsLetter(name[0]))
             name = "user-" + name;
         return name;

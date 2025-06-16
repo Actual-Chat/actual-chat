@@ -78,7 +78,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
 
     private async Task<string> BuildMentionsMap(AuthorId[] authorIds)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         foreach (var authorId in authorIds) {
             if (sb.Length > 0)
                 sb.AppendLine();
@@ -89,7 +89,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
             var mentionId = MentionId.NewAuthor(authorId);
             sb.Append(mentionId.Value);
         }
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     private static bool TryExtractTryAgainInDelay(string message, out TimeSpan tryAgainInDelay)

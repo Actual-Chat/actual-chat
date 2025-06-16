@@ -73,12 +73,12 @@ public static partial class StringExt
         if (firstLetter == firstLetterChanged)
             return source;
 
-        using var sb = ZString.CreateStringBuilder(true);
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         if (position > 0)
             sb.Append(source.AsSpan(0, position));
         sb.Append(firstLetterChanged);
         sb.Append(source.AsSpan(position + 1));
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     public static string Pluralize(this string source, int count)

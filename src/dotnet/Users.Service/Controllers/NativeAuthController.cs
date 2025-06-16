@@ -167,11 +167,11 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
 
     private static async Task<string> Format(HttpResponseMessage response)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("Status: " + response.StatusCode + "; ");
         sb.Append("Headers: " + response.Headers + "; ");
         var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         sb.Append("Body: " + body);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 }

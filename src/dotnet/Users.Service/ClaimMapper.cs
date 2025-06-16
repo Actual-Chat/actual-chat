@@ -37,13 +37,13 @@ public class ClaimMapper
 
     private static string Capitalize(string s)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         for (var i = 0; i < s.Length; i++) {
             var ch = i == 0
                 ? char.ToUpper(s[i], CultureInfo.InvariantCulture)
                 : char.ToLower(s[i], CultureInfo.InvariantCulture);
             sb.Append(ch);
         }
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 }

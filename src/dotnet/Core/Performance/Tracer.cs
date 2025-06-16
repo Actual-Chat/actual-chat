@@ -1,5 +1,3 @@
-using Cysharp.Text;
-
 namespace ActualChat.Performance;
 
 public sealed class Tracer
@@ -26,7 +24,9 @@ public sealed class Tracer
     public Tracer this[string name] {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => IsEnabled
-            ? new(string.Concat(Name, ".", name), _isEnabled, Writer, _startedAt)
+            ? ReferenceEquals(this, Default)
+                ? new(name, _isEnabled, Writer, _startedAt)
+                : new(string.Concat(Name, ".", name), _isEnabled, Writer, _startedAt)
             : None;
     }
 

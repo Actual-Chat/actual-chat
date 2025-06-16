@@ -26,7 +26,7 @@ internal partial class DialogFragmentAnalyzer(
 
     public async Task<int> ChooseOption(string phrase, string[] fragments)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("Choose more relevant continuation to the phrase below from given options.");
         if (!IsDiagnosticsEnabled)
             sb.Append(" Answer with option name only.");
@@ -44,7 +44,7 @@ internal partial class DialogFragmentAnalyzer(
             sb.AppendLine(keyedFragment);
             i++;
         }
-        var prompt = sb.ToString();
+        var prompt = sb.ToStringAndRelease();
 
         var (isOk, reply) = await GetReply(prompt).ConfigureAwait(false);
         if (!isOk)
@@ -61,7 +61,7 @@ internal partial class DialogFragmentAnalyzer(
 
     public async Task<int> ChooseMoreProbableDialog(string[] dialogs)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         var dialogWithKeys = new Dictionary<string, int>(StringComparer.Ordinal);
         var alphabet = Alphabet.AlphaLower;
         var i = 0;
@@ -74,7 +74,7 @@ internal partial class DialogFragmentAnalyzer(
             sb.AppendLine(dialog);
             i++;
         }
-        var dialogFragments = sb.ToString();
+        var dialogFragments = sb.ToStringAndRelease();
 
         var prompt = promptUtils.BuildPrompt(
             IsDiagnosticsEnabled ? Prompts.ChooseMoreProbableDialogWithAnalysis : Prompts.ChooseMoreProbableDialog,

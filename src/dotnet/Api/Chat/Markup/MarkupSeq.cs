@@ -14,10 +14,10 @@ public sealed class MarkupSeq : Markup
 
     public override string Format()
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         foreach (var item in Items)
             sb.Append(item.Format());
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     public override Markup Simplify()

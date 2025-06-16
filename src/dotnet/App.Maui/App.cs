@@ -17,7 +17,7 @@ public class App : Application
             this,
             Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.WindowSoftInputModeAdjust.Resize);
 #if WINDOWS
-        // Allows to load mixed content into WebView on Windows
+        // Allows loading of mixed content into WebView on Windows
         Environment.SetEnvironmentVariable(
             "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
             "--disable-features=AutoupgradeMixedContent");

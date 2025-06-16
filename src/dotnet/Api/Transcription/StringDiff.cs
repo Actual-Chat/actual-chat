@@ -31,10 +31,10 @@ public readonly partial record struct StringDiff(
         if (IsNone)
             return baseText;
 
-        using var sb = ZString.CreateStringBuilder(true);
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append(baseText.AsSpan(0, Start));
         sb.Append(Suffix!);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     // Operators

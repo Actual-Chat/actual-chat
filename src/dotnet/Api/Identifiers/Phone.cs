@@ -136,10 +136,10 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
 
     public static string NormalizePart(string phonePart)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         foreach (var c in phonePart)
             if (char.IsDigit(c))
                 sb.Append(c);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 }

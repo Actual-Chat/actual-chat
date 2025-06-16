@@ -143,12 +143,12 @@
 
     private string GetText() {
         var threadTitle = Message.Chat.Title;
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("Thread \"");
         sb.Append(threadTitle);
         sb.Append("\" on Actual Chat: ");
         sb.Append(UrlMapper.ToAbsolute(Links.Chat(Message.Chat.Id)));
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     // Nested types

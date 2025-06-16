@@ -30,7 +30,7 @@ public class OpenGrapHtmlBuilder
 
     public string Build()
     {
-        var sb = new StringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.AppendLine("""
                       <html prefix="og: https://ogp.me/ns#">
                       <head>
@@ -43,7 +43,7 @@ public class OpenGrapHtmlBuilder
                       <body></body>
                       </html>
                       """);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     public StringContent BuildHtmlResponseContent()

@@ -188,7 +188,7 @@ public partial class MarkupParser : IMarkupParser
             .SeparatedAndTerminated(Try(EndOfLine))
             .Select(lines => {
                 var buffer = ArrayBuffer<string>.Lease(false);
-                var sb = ZString.CreateStringBuilder();
+                var sb = ActualLab.Text.StringBuilderExt.Acquire();
                 try {
                     var minIndent = int.MaxValue;
                     foreach (var line in lines) {
@@ -207,10 +207,10 @@ public partial class MarkupParser : IMarkupParser
                         sb.Append(minIndent < line.Length ? line[minIndent..] : "");
                         sb.Append("\r\n"); // We want stable line endings here
                     }
-                    return sb.ToString();
+                    return sb.ToString(); // Ok here, .Release() is in finally block
                 }
                 finally {
-                    sb.Dispose();
+                    sb.Release();
                     buffer.Release();
                 }
             });

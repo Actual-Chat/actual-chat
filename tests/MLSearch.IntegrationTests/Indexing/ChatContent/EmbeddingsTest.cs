@@ -105,7 +105,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
 
     private string EntriesToText(IEnumerable<Entry> entries, bool addAuthor)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         foreach (var entry in entries) {
             if (sb.Length > 0)
                 sb.AppendLine();
@@ -115,7 +115,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
             }
             sb.Append(entry.Text);
         }
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     private string GetAuthor(AuthorNick authorId)

@@ -98,7 +98,7 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
         }
 
         // Trim some lines
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         foreach (var (line, endsWithLineFeed) in markup.Code.ParseLines()) {
             if (!state.CanAppend(sb.Length))
                 break;
@@ -110,7 +110,7 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
             return state.TryAppendEllipsis();
 
         state.Append(sb.Length);
-        return new MarkupSeq(new CodeBlockMarkup(sb.ToString(), markup.Language), state.TryAppendEllipsis());
+        return new MarkupSeq(new CodeBlockMarkup(sb.ToStringAndRelease(), markup.Language), state.TryAppendEllipsis());
     }
 
     protected override Markup VisitText(TextMarkup markup, ref State state)
@@ -127,18 +127,12 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
 
     // State
 
-    public struct State
+    public struct State(int maxLength, Func<MentionMarkup, string> mentionFormatter)
     {
-        public int MaxLength { get; }
-        public Func<MentionMarkup, string> MentionFormatter { get; }
+        public int MaxLength { get; } = maxLength;
+        public Func<MentionMarkup, string> MentionFormatter { get; } = mentionFormatter;
         public int Length { get; private set; }
         public bool IsTrimmed { get; set; }
-
-        public State(int maxLength, Func<MentionMarkup, string> mentionFormatter)
-        {
-            MaxLength = maxLength;
-            MentionFormatter = mentionFormatter;
-        }
 
         public Markup TryAppendEllipsis()
         {

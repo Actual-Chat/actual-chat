@@ -1,4 +1,4 @@
-using Cysharp.Text;
+using System.Text;
 
 namespace ActualChat.Chat;
 
@@ -15,7 +15,7 @@ public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         NewLineHtml = NewLineReplacement = "\n";
     }
 
-    protected override void VisitMention(MentionMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitMention(MentionMarkup markup, ref StringBuilder state)
     {
         AddHtml("<span", ref state);
         AddAttribute("class", MentionClass, false, ref state);
@@ -29,18 +29,18 @@ public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         AddHtml("&#8203</span>&#8203", ref state);
     }
 
-    protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
-    protected override void VisitCodeBlock(CodeBlockMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitCodeBlock(CodeBlockMarkup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
-    protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
         => AddText(markup.Format(), ref state);
 
     // Private methods
 
-    private static void AddHiddenText(string text, ref Utf16ValueStringBuilder state)
+    private static void AddHiddenText(string text, ref StringBuilder state)
     {
         state.Append("<span class=\"editor-hidden\">");
         state.Append(text.HtmlEncode());

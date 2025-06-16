@@ -10,7 +10,7 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
     public async Task<string> EntriesToText(IEnumerable<TextEntry> chatEntries, ChatDialogFormatterOptions? options = null)
     {
         options ??= ChatDialogFormatterOptions.Default;
-        using var sb = ZString.CreateStringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         TextEntry? prevChatEntry = null;
         foreach (var chatEntry in chatEntries) {
             if (sb.Length > 0)
@@ -18,7 +18,7 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
             var entryText = await EntryToText(chatEntry, prevChatEntry, options).ConfigureAwait(false);
             sb.Append(entryText);
         }
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     public async Task<string> EntryToText(TextEntry entry, TextEntry? prevChatEntry, ChatDialogFormatterOptions? options = null)
@@ -38,7 +38,7 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
         var timestamp = entry.BeginsAt.ToDateTime();
         var sTimestamp = $"{timestamp.ToShortDateString()} at {timestamp.ToShortTimeString()}";
 
-        var sb = new StringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         if (options.UseSquareBracketsFormat) {
             sb.Append("[");
             sb.Append(authorName);
@@ -59,7 +59,7 @@ internal sealed class ChatDialogFormatter(IAuthorNameRetriever authorNameRetriev
                 sb.Append(": ");
         }
         sb.Append(text);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     private Task<string> GetAuthorName(AuthorId authorId)

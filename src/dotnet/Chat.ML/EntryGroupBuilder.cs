@@ -1,4 +1,4 @@
-using Cysharp.Text;
+using System.Text;
 using MemoryPack;
 
 namespace ActualChat.Chat.ML;
@@ -7,7 +7,7 @@ namespace ActualChat.Chat.ML;
 public partial class EntryGroupBuilder
 {
     private readonly List<TextEntry> _entries = [];
-    private Utf16ValueStringBuilder _stringBuilder = ZString.CreateStringBuilder();
+    private readonly StringBuilder _stringBuilder = new();
     private int _wordCount;
     private string? _text;
     private int _averagePauseBetweenEntries;
