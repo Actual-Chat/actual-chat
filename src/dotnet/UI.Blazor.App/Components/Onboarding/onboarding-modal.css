@@ -191,6 +191,7 @@ body.narrow .stepper-image-filler {
     @apply rounded-full border-2 border-transparent;
     border-top-color: var(--magenta-60);
     transform: rotate(45deg);
+    transition: border-color 0.3s;
 }
 .tutorial-btn-wrapper.step-2 .tutorial-btn::before {
     border-right-color: var(--magenta-60);
