@@ -58,53 +58,53 @@
             }
         </Header>
         <Footer>
-            <div class="btn-group">
-                @if (stepper.CanSkip) {
-                    if (stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep) {
-                        <TutorialSkipButton Stepper="@stepper" Click="@(() => OnSkip(stepper))"/>
-                    } else {
-                        <Button
-                            Class="btn-cancel"
-                            Click="@(() => OnSkip(stepper))">
-                            @stepper.SkipTitle
-                        </Button>
-                    }
-                }
+            <div class="onboarding-footer">
                 @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
-                    @if (stepper.CurrentStep is PhoneStep) {
-                        <Button
-                            Class="btn-primary"
-                            ButtonRef="@_nextButtonRef"
-                            Click="@(() => OnSkip(stepper))">
-                            <span>@stepper.NextTitle</span>
-                        </Button>
-                    } else {
-                        <Button
-                            Class="btn-primary"
-                            ButtonRef="@_nextButtonRef"
-                            Click="@(() => OnNext(stepper))">
-                            @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
-                                <span>@stepper.NextTitle</span>
-                            } else if (stepper.IsLastStep) {
-                                <span>Start messaging</span>
-                            } else if (stepper.CanMoveForward) {
-                                <span>@stepper.NextTitle</span>
-                            } else {
-                                Modal.Close(true);
-                            }
-                        </Button>
-                    }
-                }
-            </div>
-            @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
-                <div class="flex w-full justify-center mt-6">
                     <LineProgress
                         StepCount="@(stepper.StepCount - 4)"
                         CurrentStepIndex="@(stepper.CurrentStepIndex - 4)"
                         Decoration="LineProgress.LineProgressDecoration.Gray">
                     </LineProgress>
+                }
+                <div class="btn-group">
+                    @if (stepper.CanSkip) {
+                        if (stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep) {
+                            <TutorialSkipButton Stepper="@stepper" Click="@(() => OnSkip(stepper))"/>
+                        } else {
+                            <Button
+                                Class="btn-cancel"
+                                Click="@(() => OnSkip(stepper))">
+                                @stepper.SkipTitle
+                            </Button>
+                        }
+                    }
+                    @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
+                        @if (stepper.CurrentStep is PhoneStep) {
+                            <Button
+                                Class="btn-primary"
+                                ButtonRef="@_nextButtonRef"
+                                Click="@(() => OnSkip(stepper))">
+                                <span>@stepper.NextTitle</span>
+                            </Button>
+                        } else {
+                            <Button
+                                Class="btn-primary"
+                                ButtonRef="@_nextButtonRef"
+                                Click="@(() => OnNext(stepper))">
+                                @if (stepper.CurrentStep is PhoneStep or EmailStep or DataCollectionStep) {
+                                    <span>@stepper.NextTitle</span>
+                                } else if (stepper.IsLastStep) {
+                                    <span>Start messaging</span>
+                                } else if (stepper.CanMoveForward) {
+                                    <span>@stepper.NextTitle</span>
+                                } else {
+                                    Modal.Close(true);
+                                }
+                            </Button>
+                        }
+                    }
                 </div>
-            }
+            </div>
         </Footer>
     </Stepper>
     </Body>

@@ -204,6 +204,27 @@ body.narrow .stepper-image-filler {
     border-color: var(--magenta-60);
 }
 
+.tutorial-btn-wrapper .tutorial-btn::after {
+    @apply content-empty;
+    @apply absolute z-minus;
+    @apply w-8 h-8;
+    @apply rounded-full;
+    @apply bg-[var(--white-05)];
+}
+.tutorial-btn-wrapper .tutorial-btn:active::after {
+    animation: blink-button 500ms ease-in-out;
+}
+@keyframes blink-button {
+    0%, 60%, 100% {
+        width: 2rem;
+        height: 2rem;
+    }
+    30% {
+        width: 4.5rem;
+        height: 4.5rem;
+    }
+}
+
 .stepper-skip-filler {
     @apply flex items-center justify-end;
     @apply h-10;
@@ -248,4 +269,11 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 .email-verification-modal .dialog-body > .c-content .c-code {
     @apply flex-y;
     @apply px-4;
+}
+
+.onboarding-footer {
+    @apply flex-y gap-y-8;
+}
+.onboarding-footer .line-progress {
+    @apply self-center;
 }

@@ -19,6 +19,7 @@
     @apply px-0;
 }
 .tab-panel-tabs .btn-group-container {
+    @apply relative;
     @apply flex-y;
     @apply max-h-8;
     @apply rounded-full;
@@ -50,15 +51,22 @@
     @apply text-primary;
 }
 .tab-panel-tabs .btn.tab-btn.on + .c-bottom-hill {
-    @apply bg-primary;
+    @apply bottom-0;
+    @apply opacity-100;
+    transition-delay: 0.15s;
+
 }
 
 /* Bottom hill */
 .tab-panel-tabs .c-bottom-hill {
+    @apply absolute -bottom-1.5;
     @apply self-center;
     @apply h-1;
     @apply rounded-t;
-    width: calc(100% - 0.7rem);
+    @apply bg-primary;
+    @apply opacity-0;
+    width: calc(100% - 0.75rem);
+    transition: bottom 0.25s ease, opacity 0.25s ease;
 }
 
 /* Tab */
@@ -111,6 +119,6 @@ body.hoverable .tab-panel-tabs .tab-btn.on:hover .btn-content {
     @apply justify-start;
     @apply min-h-10;
     @apply px-2;
-    @apply overflow-x-hidden;
+    @apply overflow-hidden;
 }
 
