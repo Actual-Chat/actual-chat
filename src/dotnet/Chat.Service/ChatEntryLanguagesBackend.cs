@@ -34,7 +34,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         if (!NeedsDetection(entry, entryLanguage))
             return entryLanguage;
 
-        // we only try to enqueue and fast return to allow compute method to cache current result
+        // It's a compute method, we don't want to do any heavy lifting here, so...
         var cmd = new ChatEntryLanguagesBackend_Detect(id);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
         return entryLanguage;

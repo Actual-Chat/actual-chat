@@ -28,7 +28,7 @@ public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightEx
     [field: AllowNull, MaybeNull]
     private IChatCompletionService ChatCompletionService => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
     [field: AllowNull, MaybeNull]
-    private IPromptUtils PromptUtils => field ??= services.GetRequiredService<IPromptUtils>();
+    private IPromptHelpers PromptHelpers => field ??= services.GetRequiredService<IPromptHelpers>();
     [field: AllowNull, MaybeNull]
     private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
     [field: AllowNull, MaybeNull]
@@ -39,7 +39,7 @@ public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightEx
         CancellationToken cancellationToken)
     {
         var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
-         var prompt = PromptUtils.BuildPrompt(
+         var prompt = PromptHelpers.BuildPrompt(
             PromptTemplate,
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 { "DISCUSSION", discussion.Truncate(10_000) },
@@ -55,8 +55,8 @@ public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightEx
         if (reply.IsNullOrEmpty())
             return new ThreadInsight("", "");
 
-        var title = PromptUtils.GetXmlTagValue(reply, "title").Trim().NullIfEmpty() ?? "";
-        var description = PromptUtils.GetXmlTagValue(reply, "description").Trim().NullIfEmpty() ?? "";
+        var title = PromptHelpers.GetXmlTagValue(reply, "title").Trim().NullIfEmpty() ?? "";
+        var description = PromptHelpers.GetXmlTagValue(reply, "description").Trim().NullIfEmpty() ?? "";
 
         return new ThreadInsight(title, description);
     }

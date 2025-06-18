@@ -13,13 +13,16 @@ public class Translator(IServiceProvider services) : ChatCompletionBasedService(
         if (!Settings.IsTranslationEnabled)
             return Task.FromResult(textToTranslate);
 
-        var prompt = PromptUtils.BuildPrompt(PromptTemplate, ("TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})"), ("ContextSeparator", Settings.Translation.ContextSeparator));
-        var text = $"""
-                    {context}.
+        var prompt = PromptHelpers.BuildPrompt(PromptTemplate,
+            ("TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})"),
+            ("ContextSeparator", Settings.Translation.ContextSeparator));
+        var text =
+            $"""
+            {context}.
 
-                    {Settings.Translation.ContextSeparator}
-                    {textToTranslate}
-                    """;
+            {Settings.Translation.ContextSeparator}
+            {textToTranslate}
+            """;
         return Ask(prompt, text, cancellationToken);
     }
 }

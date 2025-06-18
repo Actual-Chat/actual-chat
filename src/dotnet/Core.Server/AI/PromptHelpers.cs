@@ -2,13 +2,13 @@ namespace ActualChat.AI;
 
 public record PromptTemplate(string Template, string FormatString, string[] Variables);
 
-public interface IPromptUtils
+public interface IPromptHelpers
 {
     string BuildPrompt(string promptTemplate, IReadOnlyDictionary<string, string> variables);
     string GetXmlTagValue(string text, string tagName);
 }
 
-internal sealed class PromptUtils : IPromptUtils
+internal sealed class PromptHelpers : IPromptHelpers
 {
     private readonly ConcurrentDictionary<string, PromptTemplate> _promptTemplates = new (StringComparer.Ordinal);
 

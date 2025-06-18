@@ -8,15 +8,17 @@ namespace ActualChat.Chat;
 
 public abstract class ChatCompletionBasedService(IServiceProvider services, string serviceKey) : IHasServices
 {
-    public IServiceProvider Services => services;
+    public IServiceProvider Services { get; } = services;
+
+    protected string ServiceKey { get; } = serviceKey;
     [field: AllowNull, MaybeNull]
-    private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
+    protected Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
     [field: AllowNull, MaybeNull]
-    protected IChatCompletionService Completion => field ??= Kernel.GetRequiredService<IChatCompletionService>(serviceKey);
+    protected IChatCompletionService Completion => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
+    [field: AllowNull, MaybeNull]
+    protected IPromptHelpers PromptHelpers => field ??= Services.GetRequiredService<IPromptHelpers>();
     [field: AllowNull, MaybeNull]
     protected ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    [field: AllowNull, MaybeNull]
-    protected IPromptUtils PromptUtils => field ??= Services.GetRequiredService<IPromptUtils>();
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
 

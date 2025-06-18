@@ -29,7 +29,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
     [field: AllowNull, MaybeNull]
     private IChatCompletionService ChatCompletionService => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
     [field: AllowNull, MaybeNull]
-    private IPromptUtils PromptUtils => field ??= services.GetRequiredService<IPromptUtils>();
+    private IPromptHelpers PromptHelpers => field ??= services.GetRequiredService<IPromptHelpers>();
     [field: AllowNull, MaybeNull]
     private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
     [field: AllowNull, MaybeNull]
@@ -44,7 +44,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         var authorIds = chatEntries.Select(c => c.AuthorId).Distinct().ToArray();
         var mentionsMap = await BuildMentionsMap(authorIds).ConfigureAwait(false);
         var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
-         var prompt = PromptUtils.BuildPrompt(
+         var prompt = PromptHelpers.BuildPrompt(
             PromptTemplate,
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 { "DISCUSSION", discussion.Truncate(100_000) },
@@ -68,10 +68,10 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
                 "",
                 "Failed to retrieve summary");
 
-        var title = PromptUtils.GetXmlTagValue(reply, "title").Trim().NullIfEmpty()
+        var title = PromptHelpers.GetXmlTagValue(reply, "title").Trim().NullIfEmpty()
             ?? $"Summary of {count} entries with range: {firstEntry.LocalId} - {lastEntry.LocalId}";
-        var description = PromptUtils.GetXmlTagValue(reply, "description").Trim().NullIfEmpty() ?? "";
-        var summary = PromptUtils.GetXmlTagValue(reply, "summary").Trim().NullIfEmpty() ?? reply;
+        var description = PromptHelpers.GetXmlTagValue(reply, "description").Trim().NullIfEmpty() ?? "";
+        var summary = PromptHelpers.GetXmlTagValue(reply, "summary").Trim().NullIfEmpty() ?? reply;
 
         return new ConversationSummary(title, description, summary);
     }

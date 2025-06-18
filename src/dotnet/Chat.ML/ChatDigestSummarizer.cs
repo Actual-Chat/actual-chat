@@ -11,7 +11,7 @@ public interface IChatDigestSummarizer
 
 internal class ChatDigestSummarizer(
     IChatDialogFormatter chatDialogFormatter,
-    IPromptUtils promptUtils,
+    IPromptHelpers promptHelpers,
     IAnthropicClient anthropicClient,
     ILogger<ChatDigestSummarizer> log) : IChatDigestSummarizer
 {
@@ -20,14 +20,14 @@ internal class ChatDigestSummarizer(
         CancellationToken cancellationToken)
     {
         var text = await chatDialogFormatter.EntriesToText(chatEntries).ConfigureAwait(false);
-        var prompt = promptUtils.BuildPrompt(
+        var prompt = promptHelpers.BuildPrompt(
             Prompt,
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 { "DOCUMENT", text.Substring(0, Math.Min(text.Length, 1_000_000)) },
             });
         try {
             var response = await anthropicClient.Execute(prompt, cancellationToken).ConfigureAwait(false);
-            var summary = promptUtils.GetXmlTagValue(response, "summary");
+            var summary = promptHelpers.GetXmlTagValue(response, "summary");
             return summary.Split("\n", StringSplitOptions.RemoveEmptyEntries).ToList();
         }
         catch (Exception ex) {
