@@ -12,16 +12,16 @@ public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedSe
 
         var response = await Ask(Prompt, content, cancellationToken).ConfigureAwait(false);
         try {
-            return response.OrdinalIgnoreCaseReplace("```json", "")
-                .OrdinalReplace("```", "")
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            var json = response
+                .OrdinalIgnoreCaseReplace("```json", "")
+                .OrdinalReplace("`", "");
+            return SystemJsonSerializer.Default.Read<string[]>(json)
                 .Select(Language.ParseNullable)
                 .SkipNullItems()
                 .ToList();
         }
-        catch (Exception e) when (!e.IsCancellationOf(cancellationToken))
-        {
-            Log.LogError(e, "Could not parse language detection response:");
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "Could not parse language detection response: {Response}", response);
             return [];
         }
     }
