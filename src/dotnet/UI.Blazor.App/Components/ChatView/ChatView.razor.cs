@@ -365,7 +365,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chat == null)
             return VirtualListData<ChatMessage>.None;
 
-        var items = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
+        var (items, hasBefore, hasAfter) = await ChatUI.GetChatItems(chatId, dataQuery, readEntryLid, cancellationToken).ConfigureAwait(false);
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -398,15 +398,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     TextEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
-        var firstItem = items[0];
-        var lastItem = GetLastMessage(items[^1]);
-        var hasVeryFirstItem = chatIdRange.Start >= firstItem.Id;
-        var hasVeryLastItem = chatIdRange.End - 1 <= (lastItem is ConversationMessage cm ? cm.Conversation!.EndEntryLid : lastItem.Id);
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
-            HasVeryFirstItem = hasVeryFirstItem,
-            HasVeryLastItem = hasVeryLastItem,
+            HasVeryFirstItem = !hasBefore,
+            HasVeryLastItem = !hasAfter,
             ScrollToKey = navKey != null && mustScrollToEntry ? navKey : null,
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = ItemVisibility.Value,

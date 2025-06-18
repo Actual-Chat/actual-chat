@@ -4,6 +4,11 @@ using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+public record ChatItems(IReadOnlyList<ChatMessage> Items, bool HasBefore, bool HasAfter)
+{
+    public static readonly ChatItems Empty = new([], false, false);
+}
+
 public partial class ChatUI
 {
     public const string ShowIndexDocIdChatIdsSettingsKey = "ShowIndexDocIdChatIds";
@@ -19,7 +24,7 @@ public partial class ChatUI
     public int HalfLoadLimit => BrowserInfo.IsMobile ? SecondTileSize : SecondTileSize * 2; // 20 for mobile
     public int LoadLimit => BrowserInfo.IsMobile ? SecondTileSize * 2 : SecondTileSize * 4; // 40 for mobile
 
-    public Task<IReadOnlyList<ChatMessage>> GetChatItems(
+    public Task<ChatItems> GetChatItems(
         ChatId chatId,
         ChatDataQuery dataQuery,
         long shownReadyEntryLid,
@@ -35,7 +40,7 @@ public partial class ChatUI
 
     // Private methods
 
-    private async Task<IReadOnlyList<ChatMessage>> GetChatItemsInternal(
+    private async Task<ChatItems> GetChatItemsInternal(
         ChatId chatId,
         ChatDataQuery dataQuery,
         long shownReadyEntryLid,
@@ -45,7 +50,7 @@ public partial class ChatUI
         // DebugLog?.LogDebug("GetTiles: {ChatId} {IdRange} {ShownReadyEntryLid}", chatId, dataQuery, shownReadyEntryLid);
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return [];
+            return ChatItems.Empty;
 
         var showConversations = chat.IsSummarized ?? false;
         IImmutableSet<ConversationId> expandedConversations = [];
@@ -82,7 +87,8 @@ public partial class ChatUI
             .ToList();
 
         List<Range<long>> idTiles;
-        while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, expandedConversations, out idTiles)) {
+        bool hasMoreBefore, hasMoreAfter;
+        while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, expandedConversations, out idTiles, out hasMoreBefore, out hasMoreAfter)) {
             var prevIdTileStart = chatRangeMetaList[0].PreviousIdTileStart;
             var nextIdTileStart = chatRangeMetaList[^1].NextIdTileStart;
             var prevChatRangeMetaTask = prevIdTileStart.HasValue
@@ -201,16 +207,18 @@ public partial class ChatUI
         var groupedItems = GroupAuthorMessages(items);
 
         if (expandedConversations.Count == 0)
-            return groupedItems;
+            return new ChatItems(groupedItems, hasMoreBefore, hasMoreAfter);
 
         var groupedTiles = GroupExpandedConversations(groupedItems);
-        return groupedTiles;
+        return new ChatItems(groupedTiles, hasMoreBefore, hasMoreAfter);
 
         bool TryGetIdTilesToLoad(
             ChatDataQuery dataQuery1,
             IList<ChatRangeMeta> chatRangeMeta1,
             IImmutableSet<ConversationId> expandedConversations1,
-            out List<Range<long>> idTiles1)
+            out List<Range<long>> idTiles1,
+            out bool hasMoreBefore1,
+            out bool hasMoreAfter1)
         {
             var hasPreviousIdTile = chatRangeMeta1[0].PreviousIdTileStart.HasValue;
             var hasNextIdTile = chatRangeMeta1[^1].NextIdTileStart.HasValue;
@@ -295,6 +303,8 @@ public partial class ChatUI
                 .EnsureMonotonic(RangeExt.LongRangeComparer)
                 .ToList();
 
+            hasMoreBefore1 = hasPreviousIdTile || (hasFulfilledStart && idTiles1.Count > 0 && idTiles1[0].Start > resultIdRanges[0].Start);
+            hasMoreAfter1 = hasNextIdTile || (hasFulfilledEnd && idTiles1.Count > 0 && idTiles1[^1].End < resultIdRanges[^1].End);
             return hasFulfilledStart && hasFulfilledEnd;
 
             static void AddRange(List<Range<long>> list, Range<long> range)
