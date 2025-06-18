@@ -20,7 +20,7 @@ public class ChatContentArranger2Tests(ITestOutputHelper @out) : TestBase(@out)
             new DialogFragmentAnalyzer(
                 DialogFragmentAnalyzer.Options.Default,
                 Mock.Of<ILogger<DialogFragmentAnalyzer>>(MockBehavior.Loose),
-                Mock.Of<IPromptUtils>(MockBehavior.Loose),
+                Mock.Of<IPromptHelpers>(MockBehavior.Loose),
                 Mock.Of<IAnthropicClient>(MockBehavior.Loose)),
             chatDialogFormatter);
         var sourceGroups = await contentArranger.Arrange(entries, [], CancellationToken.None).ToListAsync();

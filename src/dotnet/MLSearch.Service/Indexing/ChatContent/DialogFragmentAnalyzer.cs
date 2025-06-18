@@ -12,7 +12,7 @@ internal interface IDialogFragmentAnalyzer
 internal partial class DialogFragmentAnalyzer(
     DialogFragmentAnalyzer.Options options,
     ILogger<DialogFragmentAnalyzer> log,
-    IPromptUtils promptUtils,
+    IPromptHelpers promptHelpers,
     IAnthropicClient anthropicClient) : IDialogFragmentAnalyzer
 {
     public record Options
@@ -76,7 +76,7 @@ internal partial class DialogFragmentAnalyzer(
         }
         var dialogFragments = sb.ToStringAndRelease();
 
-        var prompt = promptUtils.BuildPrompt(
+        var prompt = promptHelpers.BuildPrompt(
             IsDiagnosticsEnabled ? Prompts.ChooseMoreProbableDialogWithAnalysis : Prompts.ChooseMoreProbableDialog,
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 { "DIALOG_FRAGMENTS", dialogFragments },
@@ -86,7 +86,7 @@ internal partial class DialogFragmentAnalyzer(
         if (!isOk)
             return int.MinValue;
 
-        var decision = promptUtils.GetXmlTagValue(reply, "decision");
+        var decision = promptHelpers.GetXmlTagValue(reply, "decision");
 
         var result = dialogWithKeys
             .Select(pair => new { OptionIndex = pair.Value, AnswerIndex = decision.IndexOf(pair.Key, StringComparison.Ordinal) })
@@ -99,7 +99,7 @@ internal partial class DialogFragmentAnalyzer(
 
     public async Task<Option<bool>> IsDialogAboutTheSameTopic(string dialog)
     {
-        var prompt = promptUtils.BuildPrompt(
+        var prompt = promptHelpers.BuildPrompt(
             IsDiagnosticsEnabled ? Prompts.IsDialogAboutTheSameTopicWithAnalysis : Prompts.IsDialogAboutTheSameTopic,
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 { "CHAT_FRAGMENT", dialog },
@@ -109,7 +109,7 @@ internal partial class DialogFragmentAnalyzer(
         if (!isOk)
             return Option.None<bool>();
 
-        var decision = promptUtils.GetXmlTagValue(reply, "decision");
+        var decision = promptHelpers.GetXmlTagValue(reply, "decision");
 
         return Option.Some(decision.Contains("yes", StringComparison.OrdinalIgnoreCase));
     }

@@ -12,7 +12,7 @@ public class FragmentContinuationSelectorTest(ITestOutputHelper @out) : TestBase
         var selector = new DialogFragmentAnalyzer(
             DialogFragmentAnalyzer.Options.Default,
             Mock.Of<ILogger<DialogFragmentAnalyzer>>(MockBehavior.Loose),
-            new PromptUtils(),
+            new PromptHelpers(),
             new AnthropicClientWrapper(new AnthropicClient()));
         var index = await selector.ChooseOption(
             "Extensive evaluation will show you a standard RAG pipeline is certainly not enough to avoid unexpected hallucinations, overlooked knowledge, and misunderstood context.",
