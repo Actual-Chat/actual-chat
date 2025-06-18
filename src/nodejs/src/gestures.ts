@@ -78,7 +78,7 @@ export class Gesture extends DisposableBag {
 
 class DataHrefGesture extends Gesture {
     public static get blazor() {
-        return globalThis['Blazor'] as { navigateTo: (url: string) => void };
+        return globalThis.Blazor as { navigateTo: (url: string) => void };
     }
 
     public static use(): void {
@@ -99,10 +99,10 @@ class DataHrefGesture extends Gesture {
             return;
 
         let [element, href] = getOrInheritData(event.target, 'href');
-        const target = event.target as HTMLElement;
+        const target = event.target as HTMLElement | null;
         // TODO: Remove this workaround when MAUI issue is fixed: https://github.com/dotnet/maui/issues/25602
         if (!href && DeviceInfo.isIos && BrowserInfo.hostKind === 'MauiApp') {
-            const [anchor, aHref] = getOrInheritAttribute(event.target, 'href');
+            const [anchor, aHref] = getOrInheritAttribute(target, 'href');
             if (anchor instanceof HTMLAnchorElement && anchor.target === '_blank') {
                 element = anchor;
                 href = aHref as string;
@@ -111,20 +111,20 @@ class DataHrefGesture extends Gesture {
         if (href === null)
             return;
 
-        if (target && target.closest('div.pulling')) {
+        if (target.closest('div.pulling')) {
             // Do not trigger navigation during side-nav pulling
             return;
         }
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
-        const tune = Tune[element?.dataset['hrefTune'] as TuneName];
+        const tune = Tune[element.dataset.hrefTune as TuneName];
         FocusUI.blur();
         if (tune)
             TuneUI.play(tune);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
         else {
-            const replaceOnPrefix = element.dataset['replaceOnPrefix'];
+            const replaceOnPrefix = element.dataset.replaceOnPrefix;
             let mustReplace = false;
             if (replaceOnPrefix) {
                 const url = new URL(location.href);
@@ -228,12 +228,14 @@ class ContextMenuGesture extends Gesture {
                     })
                     Object.defineProperty(event, 'target', { writable: false, value: e.target });
                     debugLog?.log(`ContextMenuGesture: triggering contextMenu event:`, event);
-                    const mustHandleDefault = event.target.dispatchEvent(event);
+                    const mustHandleDefault = event.target!.dispatchEvent(event);
+                    // TODO(AY): check eslint suppressions
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     mustCancelClick = event.defaultPrevented || event.cancelBubble || !mustHandleDefault;
                 }
                 finally {
                     const suppressContextMenuGesture = Gestures.addActive(new SuppressEventGesture('contextmenu', 300, true, ['INPUT', 'editor-content']));
-                    let cancelGesture: Gesture = null;
+                    let cancelGesture: Gesture | null = null;
                     const suppressGesture = Gestures.addActive(
                         new WaitForEventGesture('pointerup', (e: PointerEvent) => {
                             preventDefaultForEvent(e);
@@ -273,12 +275,12 @@ class SuppressEventGesture extends Gesture {
     constructor(
         public readonly eventName: string,
         public readonly timeoutMs: number,
-        public readonly justOnce: boolean = true,
-        public readonly targetExclusions: string[] = null,
+        public readonly justOnce = true,
+        public readonly targetExclusions: string[] | null = null,
     ) {
         super();
         this.addDisposables(
-            new Timeout(timeoutMs, () => this.dispose()),
+            new Timeout(timeoutMs, () => { this.dispose(); }),
             fromEvent(document, eventName, { capture: true, passive: false })
                 .subscribe((e: Event) => {
                     const shouldStopEvent = !elementHasNameOrClass(e.target as HTMLElement, this.targetExclusions);
@@ -296,9 +298,8 @@ function elementHasNameOrClass(target: HTMLElement | null, strings: string[] | n
         return false;
     if (!strings)
         return false;
-    if (strings.indexOf(target.nodeName) > -1)
+    if (strings.includes(target.nodeName))
         return true;
-    if (strings.some(x => target.classList.contains(x)) )
-        return true;
-    return false;
+    return strings.some(x => target.classList.contains(x));
+
 }

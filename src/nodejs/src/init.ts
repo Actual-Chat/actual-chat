@@ -10,7 +10,7 @@ Gestures.init();
 void ServiceWorker.init();
 
 void (async () => {
-    if (window?.visualViewport) {
+    if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
             const vh = window.visualViewport.height * 0.01;
             window.document.body.style.setProperty('--vh', `${vh}px`);
@@ -18,16 +18,16 @@ void (async () => {
     }
 
     if (DeviceInfo.isIos) {
-        window?.addEventListener('scroll', e => {
+        window.addEventListener('scroll', e => {
             e.preventDefault();
             window.scrollTo(0, 0);
         });
     }
 
-    const app = window['App'] as {
+    const app = window.App as {
         whenBlazorReady: Promise<void>,
         renderMode: string,
-    };
+    } | undefined;
     if (app) {
         await app.whenBlazorReady;
         BrowserInit.startReloadWatchers();

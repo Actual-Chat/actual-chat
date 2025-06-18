@@ -8,33 +8,33 @@ interface ImportMap {
 }
 
 export class Versioning {
-    private static _assetMap: Map<string, string> = null;
+    private static _assetMap?: Map<string, string>;
 
     public static get assetMap(): Map<string, string> {
         if (this._assetMap)
             return this._assetMap;
 
         this.init();
-        return this._assetMap;
+        return this._assetMap!;
     }
 
-    public static init(assetMap: Map<string, string> = null) {
+    public static init(assetMap?: Map<string, string>) {
         if (this._assetMap) {
             warnLog?.log('init: skipped (already initialized)');
             return;
         }
 
-        if (assetMap === null) {
+        if (!assetMap) {
             const origin = document.location.origin;
             const stripOrigin = (s: string) => s.startsWith(origin) ? s.slice(origin.length) : s;
 
             const processAsset = (key: string, value: string) => {
-                const assetMatch = value.match(/\.(?<hash>[a-z0-9]{10})\.(js|wasm)$/);
+                const assetMatch = /\.(?<hash>[a-z0-9]{10})\.(js|wasm)$/.exec(value);
                 if (!assetMatch)
                     return;
 
                 const assetPath = stripOrigin(value);
-                const simpleKey = assetPath.replace(assetMatch.groups['hash']+'.', '');
+                const simpleKey = assetPath.replace(assetMatch.groups.hash+'.', '');
                 assetMap.set(simpleKey, assetPath);
                 if (!simpleKey.startsWith('/')) assetMap.set('/' + simpleKey, assetPath);
             };
@@ -44,7 +44,7 @@ export class Versioning {
                 if (e.localName !== 'link')
                     continue;
 
-                const href = e['href'] as string;
+                const href = e.href as string;
                 processAsset(href, href);
             }
             const importMapInnerHtml = document.head.querySelector('script[type="importmap"]')?.innerHTML;
@@ -71,4 +71,4 @@ export class Versioning {
     }
 }
 
-globalThis['Versioning'] = Versioning;
+globalThis.Versioning = Versioning;

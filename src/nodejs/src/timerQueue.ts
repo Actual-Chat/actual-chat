@@ -6,7 +6,7 @@ const { errorLog } = Log.get('TimerQueue');
 export class TimerQueueTimer {
     constructor(
         public readonly handle: number,
-        public callback: () => unknown,
+        public callback: (() => unknown) | null,
         public readonly time: number) {
     }
 
@@ -48,9 +48,6 @@ export class TimerQueue {
                 break;
             this.heap.pop();
             this.map.delete(timer.handle);
-            if (!timer.callback)
-                continue
-
             try {
                 timer.callback();
             }
@@ -71,8 +68,8 @@ export class TimerQueue {
     }
 }
 
-const setTimeoutImpl = globalThis['setTimeout'] as (callback: () => unknown, delayMs: number) => number;
-const clearTimeoutImpl = globalThis['clearTimeout'] as (handle: number) => void;
+const setTimeoutImpl = globalThis.setTimeout as ((callback: () => unknown, delayMs: number) => number) | null;
+const clearTimeoutImpl = globalThis.clearTimeout as (handle: number) => void;
 
 export const timerQueue = !setTimeoutImpl ? new TimerQueue() : null;
 export const setTimeout = timerQueue ? timerQueue.setTimeout : setTimeoutImpl;

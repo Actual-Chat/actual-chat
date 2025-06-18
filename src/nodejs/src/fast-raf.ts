@@ -12,9 +12,6 @@ const callbackKeys: Set<string> = new Set<string>();
 export function fastRaf(options: FastRafOptions): boolean;
 export function fastRaf(read: Callback, key?: string): boolean;
 export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
-    if (!arg)
-        return false;
-
     let cbKey = key;
     let read: Callback | null = null;
     let write: Callback | null = null;
@@ -61,8 +58,7 @@ export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
 
 let readRafPromise: Promise<boolean> | null = null;
 
-export function fastReadRaf(key: string = null): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+export function fastReadRaf(key?: string): Promise<boolean> {
     if (readRafPromise)
         return readRafPromise;
 
@@ -82,7 +78,6 @@ export function fastReadRaf(key: string = null): Promise<boolean> {
 let writeRafPromise: Promise<boolean> | null = null;
 
 export function fastWriteRaf(key: string = null): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     if (writeRafPromise)
         return writeRafPromise;
 

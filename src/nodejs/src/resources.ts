@@ -6,7 +6,7 @@ import { MonoConfig } from 'dotnet';
 
 export function areWasmResourcesLikelyCached(): boolean {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const config = window['Blazor']?.runtime?.config as MonoConfig;
+    const config = window.Blazor?.runtime?.config as MonoConfig | null;
     if (!config?.cacheBootResources)
         return false;
 
@@ -18,7 +18,7 @@ export function areWasmResourcesLikelyCached(): boolean {
     return hashInfo.value === existingHash;
 }
 
-function getWasmResourceHashInfo(config: MonoConfig): { key: string, value: string } {
+function getWasmResourceHashInfo(config: MonoConfig): { key: string, value: string } | null {
     const hash = config.resources?.hash;
     const mainAssemblyName = config.mainAssemblyName;
     if (!hash || !mainAssemblyName)

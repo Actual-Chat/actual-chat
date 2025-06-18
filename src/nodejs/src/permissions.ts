@@ -6,7 +6,7 @@ export async function tryQueryPermissionState(name: string): Promise<PermissionS
         const status = await navigator.permissions.query({ name: name as PermissionName });
         return status.state;
     }
-    catch (error) {
+    catch {
         return null;
     }
 }

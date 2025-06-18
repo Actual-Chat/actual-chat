@@ -8,7 +8,7 @@ export class Connectivity {
     public static async reloadCurrentPage(waitWhenOnline = true): Promise<void> {
         warnLog?.log('reload: reloading...');
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-        await window['opusMediaRecorder']?.stop();
+        await window.opusMediaRecorder?.stop();
 
         if (waitWhenOnline)
             await this.whenOnline();
@@ -27,7 +27,7 @@ export class Connectivity {
 
     public static async whenOnline(checkInterval = 2000): Promise<void> {
         let wasOnline = true;
-        // eslint-disable-next-line no-constant-condition
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (true) {
             if (await this.isOnline()) {
                 // Second check - just in case
@@ -55,7 +55,7 @@ export class Connectivity {
         try {
             const firstCheck = check();
             if (await Promise.race([firstCheck, whenWokeUp]) === null)
-                return Promise.race([firstCheck, check(50)])
+                return await Promise.race([firstCheck, check(50)])
             return await firstCheck;
         }
         finally {
@@ -81,10 +81,8 @@ export class Connectivity {
 
 // Private declarations
 
-let _isMauiApp: boolean = null;
+let _isMauiApp: boolean | null = null;
 
 function isMauiApp(): boolean {
-    if (_isMauiApp === null)
-        _isMauiApp = document.body.classList.contains('app-maui')
-    return _isMauiApp;
+    return _isMauiApp ??= document.body.classList.contains('app-maui');
 }

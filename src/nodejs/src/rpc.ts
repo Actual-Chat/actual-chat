@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
+// TODO(AY): review eslint suppressions
 import { delayAsync, PromiseSourceWithTimeout, ResolvedPromise } from 'promises';
 import { Disposable } from 'disposable';
 import { Log } from 'logging';
@@ -20,16 +22,16 @@ export class RpcCall {
         public readonly method: string,
         public readonly args: unknown[],
         timeoutMs?: number,
-        public readonly noWait: boolean = false,
+        public readonly noWait = false,
     ) {
-        this.timeoutMs = timeoutMs ?? null;
-        if (args?.length > 0) {
+        this.timeoutMs = timeoutMs;
+        if (args.length > 0) {
             const lastArg = args[args.length - 1];
             if (lastArg == rpcNoWait) {
                 args.pop();
                 this.noWait = true;
             }
-            else if (lastArg && lastArg['type'] && lastArg['type'] === 'rpc-timeout') {
+            else if (lastArg?.type && lastArg.type === 'rpc-timeout') {
                 args.pop();
                 const rpcTimeout = lastArg as RpcTimeout;
                 this.timeoutMs = rpcTimeout.timeoutMs;
@@ -81,7 +83,7 @@ export class RpcPromise<T> extends PromiseSourceWithTimeout<T> {
     }
 
     public static get<T>(id: number): RpcPromise<T> | null {
-        return rpcPromisesInProgress.get(id) as RpcPromise<T> ?? null;
+        return rpcPromisesInProgress.get(id) as RpcPromise<T>;
     }
 
     public unregister(): boolean {
@@ -94,7 +96,7 @@ RpcPromise.Void.resolve(undefined);
 export function completeRpc(result: RpcResult): void {
     const promise = RpcPromise.get<unknown>(result.id);
     if (promise == null) {
-        // eslint-disable-next-line no-debugger
+
         warnLog?.log(`completeRpc: RpcPromise #${result.id} is not found`);
         return;
     }
@@ -150,6 +152,7 @@ export function rpcServer(
     onUnhandledMessage?: (event: MessageEvent<unknown>) => Promise<void>,
     onDispose?: () => void,
 ) : Disposable {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!serverImpl)
         throw new Error(`${name}: serverImpl == null!`);
 
@@ -160,7 +163,7 @@ export function rpcServer(
 
     const onMessage = async (event: MessageEvent<RpcCall>): Promise<void> => {
         const rpcCall = event.data;
-        if (!rpcCall?.id) {
+        if (!rpcCall.id) {
             await onUnhandledMessage(event);
             return;
         }
@@ -168,8 +171,8 @@ export function rpcServer(
         let value: unknown = undefined;
         let error: unknown = undefined;
         try {
-            // eslint-disable-next-line @typescript-eslint/ban-types
-            const method = serverImpl[rpcCall.method] as Function;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+            const method = serverImpl[rpcCall.method] as Function | null;
             if (!method) {
                 await onUnhandledMessage(event);
                 return;
@@ -222,12 +225,12 @@ export function rpcClient<TService extends object>(
             return;
 
         const result = event.data;
-        if (result['method']) {
+        if (result.method) {
             errorLog?.log(`${name}: got an RpcCall message:`, result);
             throw new Error(`${name}: got an RpcCall message.`);
         }
         if (result.id)
-            void completeRpc(result);
+            completeRpc(result);
     }
 
     const onMessageError = (event: MessageEvent<RpcResult>): void => {
@@ -299,6 +302,7 @@ export function rpcClientServer<TClient extends object>(
     timeoutMs?: number,
     onUnhandledMessage?: (event: MessageEvent<unknown>) => Promise<void>,
 ) : TClient & Disposable {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!serverImpl)
         throw new Error(`${name}: serverImpl == null!`);
 
@@ -318,7 +322,7 @@ export function rpcClientServer<TClient extends object>(
 
     messagePort.onmessage = async (event: MessageEvent<RpcCall | RpcResult>): Promise<void> => {
         const data = event.data;
-        if (data['method']) // RpcCall message, we process it via serverOnMessage
+        if (data.method) // RpcCall message, we process it via serverOnMessage
             await serverOnMessage.call(messagePort, event);
         else // RpcResult message, we process it via clientOnMessage
             await clientOnMessage.call(messagePort, event);
@@ -333,7 +337,7 @@ async function whenNextMessage<T>(messagePort: MessagePort | Worker, timeoutMs?:
         result.setTimeout(timeoutMs);
 
     const oldOnMessage = messagePort.onmessage;
-    messagePort.onmessage = (event: MessageEvent<T>) => result.resolve(event);
+    messagePort.onmessage = (event: MessageEvent<T>) => { result.resolve(event); };
     try {
         return await result;
     }
@@ -344,7 +348,7 @@ async function whenNextMessage<T>(messagePort: MessagePort | Worker, timeoutMs?:
 
 
 // Self-test - we don't want to run it in workers & worklets
-const mustRunSelfTest = debugLog != null && globalThis['focus'];
+const mustRunSelfTest = debugLog != null && globalThis.focus;
 if (mustRunSelfTest) {
     const testLog = errorLog;
     if (!testLog)
@@ -354,17 +358,17 @@ if (mustRunSelfTest) {
 
         let rpcPromise = new RpcPromise<string>();
         testLog.assert(!rpcPromise.isCompleted());
-        void completeRpc(RpcResult.value(rpcPromise.id, 'x'));
+        completeRpc(RpcResult.value(rpcPromise.id, 'x'));
         testLog.assert(rpcPromise.isCompleted());
         testLog.assert('x' == await rpcPromise);
 
         rpcPromise = new RpcPromise<string>();
         testLog.assert(!rpcPromise.isCompleted());
-        void completeRpc(RpcResult.error(rpcPromise.id, 'Error'));
+        completeRpc(RpcResult.error(rpcPromise.id, 'Error'));
         testLog.assert(rpcPromise.isCompleted());
         try {
             await rpcPromise;
-            testLog?.log('rpcPromise.Error is undefined.');
+            testLog.log('rpcPromise.Error is undefined.');
         }
         catch (error) {
             testLog.assert(error == 'Error', 'error != "Error"');
@@ -380,7 +384,7 @@ if (mustRunSelfTest) {
         class TestServer implements TestService {
             mul(x: number, y: number): Promise<number> {
                 if (x === 1 || y === 1)
-                    throw '1';
+                    throw new Error('1');
                 return Promise.resolve(x * y);
             }
 
@@ -394,6 +398,8 @@ if (mustRunSelfTest) {
 
         const channel = new MessageChannel();
         const client = rpcClient<TestService>(`client`, channel.port1, 300);
+        // TODO(AY): review server is not used
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const server = rpcServer(`server`, channel.port2, new TestServer());
 
         // Normal call
@@ -403,7 +409,7 @@ if (mustRunSelfTest) {
         const pingChannel = new MessageChannel();
         await client.ping('Pong', pingChannel.port2, rpcNoWait);
         const sideResult = (await whenNextMessage<string>(pingChannel.port1, 1000)).data;
-        debugLog?.log('Side channel result:', sideResult);
+        debugLog.log('Side channel result:', sideResult);
         testLog.assert(sideResult === 'Pong');
 
         // Error call

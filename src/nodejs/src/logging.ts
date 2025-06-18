@@ -14,6 +14,10 @@ interface SetItem {
     touchedAt : number;
 }
 
+interface LogRefData {
+    __logRefId?: number;
+}
+
 class LogRefSet {
     items : SetItem[];
     capacity : number;
@@ -33,10 +37,9 @@ class LogRefSet {
             return existentItem.ref;
         }
         else {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const id = data['__logRefId'] as number ?? this.idSeed++;
-            const newRef = { target: data, id: id };
-            data['__logRefId'] = id;
+            const id = (data as LogRefData).__logRefId ?? this.idSeed++;
+            const newRef = { target: data, id };
+            (data as LogRefData).__logRefId = id;
             if (this.items.length >= this.capacity)
                 this.removeOldest();
             const newItem = { ref : newRef, touchedAt : Date.now() };
@@ -59,7 +62,7 @@ class LogRefSet {
         // clear log ref target to prevent memory leaks
         // and keep string representation of the target for tracing
         const ref = itemToEliminate.ref;
-        ref.target = ref.target.toString();
+        ref.target = ref.target?.toString();
     }
 }
 
@@ -77,20 +80,20 @@ export class Log {
     ) {
         const prefix = `[${scope}]`;
         switch (level) {
-            case LogLevel.Debug:
-                this.log = (...data: unknown[]) => console.debug(prefix, ...data);
-                break;
-            case LogLevel.Info:
-                this.log = (...data: unknown[]) => console.log(prefix, ...data);
-                break;
-            case LogLevel.Warn:
-                this.log = (...data: unknown[]) => console.warn(prefix, ...data);
-                break;
-            case LogLevel.Error:
-                this.log = (...data: unknown[]) => console.error(prefix, ...data);
-                break;
-            case LogLevel.None:
-                throw new Error('LogLevel.None cannot be used here');
+        case LogLevel.Debug:
+            this.log = (...data: unknown[]) => console.debug(prefix, ...data);
+            break;
+        case LogLevel.Info:
+            this.log = (...data: unknown[]) => console.log(prefix, ...data);
+            break;
+        case LogLevel.Warn:
+            this.log = (...data: unknown[]) => console.warn(prefix, ...data);
+            break;
+        case LogLevel.Error:
+            this.log = (...data: unknown[]) => console.error(prefix, ...data);
+            break;
+        case LogLevel.None:
+            throw new Error('LogLevel.None cannot be used here');
         }
         this.trace = (...data: unknown[]) => console.trace(prefix, ...data);
     }
@@ -119,7 +122,7 @@ export class Log {
         };
     }
 
-    public static ref(data: object) : object {
+    public static ref(data: object | null) : object | null {
         if (!data)
             return data;
         return this.logRefs.ref(data);
