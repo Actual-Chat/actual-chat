@@ -17,7 +17,7 @@ public partial class ChatUI
             AsyncChain.From(ResetHighlightedEntry),
             AsyncChain.From(PushKeepAwakeState),
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
-            // AsyncChain.From(PrefetchChatTails),
+            AsyncChain.From(PrefetchChatTails),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -208,6 +208,11 @@ public partial class ChatUI
         // - We should iterate through every chat in user's contact list, even though
         //   we may also end up prefetching only top 100 chats by recency in every list
         // - Ultimately, our goal is to make sure nearly every chat is available offline.
+
+        // NOTE(AK): This is a temporary solution to prefetch chat tails
+        // - We start prefetching tails of visible chats with delay
+        // - We prefetch tails of changed chats only - ChatInfo is updated when new entries are added
+        await Clocks.CoarseSystemClock.Delay(TimeSpan.FromSeconds(20), cancellationToken).ConfigureAwait(false);
 
         var visibleChatsChanges = ChatListUI.VisibleChats.Computed.Changes(cancellationToken);
         var changeTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
