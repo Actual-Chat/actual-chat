@@ -214,8 +214,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         UpdateReadPosition(itemVisibility.MaxEntryLid);
         if (_viewPositionLease is not null) {
             var visibleEntryLids = itemVisibility.VisibleEntryLids;
-            var i = visibleEntryLids.Count / 2;
-            var entryId = visibleEntryLids.Skip(i).First();
+            var entryId = visibleEntryLids.Max();
             _viewPositionLease.Resource.Value = new ReadPosition(ChatId, entryId);
         }
         ChatUI.ItemVisibility.Value = itemVisibility;
@@ -333,7 +332,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             : ViewPosition.Value.EntryLid;
         var hasViewEntry = viewEntryLid != 0 && viewEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
-            ?? (isFirstRender && hasViewEntry ? new Navigation(viewEntryLid, false) : null);
+            ?? (isFirstRender && hasViewEntry ? new Navigation(viewEntryLid, false, false) : null);
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
 
@@ -404,6 +403,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             HasVeryFirstItem = !hasBefore,
             HasVeryLastItem = !hasAfter,
             ScrollToKey = navKey != null && mustScrollToEntry ? navKey : null,
+            ScrollToKeyInTheMiddle = nav is { ShowInTheMiddle: true },
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = ItemVisibility.Value,
         };
@@ -561,7 +561,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private sealed record Navigation(
         long EntryLid,
-        bool MustHighlight)
+        bool MustHighlight,
+        bool ShowInTheMiddle = true)
     {
         // This record relies on referential equality
         public bool Equals(Navigation? other) => ReferenceEquals(this, other);

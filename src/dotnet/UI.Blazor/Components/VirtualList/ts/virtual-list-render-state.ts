@@ -14,5 +14,6 @@ export interface VirtualListRenderState {
     hasVeryLastItem: boolean;
 
     scrollToKey?: string;
+    scrollToKeyInTheMiddle?: boolean;
 }
 

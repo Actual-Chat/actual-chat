@@ -736,7 +736,10 @@ export class VirtualList {
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                     };
                 } else {
-                    scrollFunc = () => this.scrollTo(scrollToItemRef, false);
+                    const blockPosition: ScrollLogicalPosition = rs.scrollToKeyInTheMiddle
+                        ? 'center'
+                        : 'end'
+                    scrollFunc = () => this.scrollTo(scrollToItemRef, false, blockPosition);
                 }
             } else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                 shouldUseSmoothScroll = true;

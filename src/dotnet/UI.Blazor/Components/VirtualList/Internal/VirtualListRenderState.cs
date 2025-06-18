@@ -17,4 +17,5 @@ public sealed class VirtualListRenderState
     public bool HasVeryLastItem { get; init; }
 
     public string? ScrollToKey { get; init; }
+    public bool? ScrollToKeyInTheMiddle { get; init; }
 }

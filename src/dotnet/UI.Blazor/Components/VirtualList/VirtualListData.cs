@@ -27,6 +27,8 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public string? ScrollToKey { get; init; }
+
+    public bool? ScrollToKeyInTheMiddle { get; init; }
     public object? NavigationState { get; init; }
     public object? ItemVisibilityState { get; init; }
     public CpuTimestamp ComputedAt { get; init; } = CpuTimestamp.Now;
