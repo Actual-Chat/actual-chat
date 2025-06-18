@@ -11,10 +11,11 @@ namespace ActualChat.Queues.Nats;
 
 public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options, NatsQueues, NatsJSMsg<IMemoryOwner<byte>>>
 {
-    private const byte Version = 1;
+    private const byte Version = 2;
     private static readonly byte[] VersionBytes = [Version];
-    private static readonly byte[] SupportedVersions = [1];
-    private static readonly TypeDecoratingByteSerializer Serializer = new(MemoryPackByteSerializer.Default);
+    private static readonly IByteSerializer Serializer = MemoryPackByteSerializer.Default;
+    private static readonly IByteSerializer TypeDecoratingSerializer
+        = new TypeDecoratingByteSerializer(MemoryPackByteSerializer.Default);
 
     private readonly AsyncLockSet<int> _getStreamLocks = new();
     private readonly AsyncLockSet<int> _getConsumerLock = new();
@@ -57,24 +58,25 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
             var response = await context.PublishAsync(subjectName,
                     buffer,
-                    opts: new NatsJSPubOpts { MsgId = queuedCommand.Id.ToString() },
+                    opts: new NatsJSPubOpts { MsgId = queuedCommand.Uuid },
                     headers: headers,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             if (response.Error is { } error) {
                 Log.LogError(
-                    "NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}, {Kind} command #{Id} {Command}",
+                    "NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}, {Kind} command #{Uuid} {Command}",
                     error.Code,
                     error.ErrCode,
                     error.Description,
                     queuedCommand.UntypedCommand.GetKind(),
-                    queuedCommand.Id,
+                    queuedCommand.Uuid,
                     queuedCommand.UntypedCommand);
                 throw StandardError.External($"NATS write failed: Code={error.Code}, ErrCode={error.ErrCode}");
             }
-            DebugLog?.LogDebug("NATS write succeeded: {Kind} command #{Id} {Command} to '{Stream}' with domain '{Domain}'",
+            DebugLog?.LogDebug(
+                "NATS write succeeded: {Kind} command #{Uuid} {Command} to '{Stream}' with domain '{Domain}'",
                 queuedCommand.UntypedCommand.GetKind(),
-                queuedCommand.Id,
+                queuedCommand.Uuid,
                 queuedCommand.UntypedCommand,
                 response.Stream,
                 response.Domain);
@@ -189,10 +191,10 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("[{ShardIndex}]: Marking completed {Kind} command #{Id} {Command}",
+        DebugLog?.LogDebug("[{ShardIndex}]: Marking completed {Kind} command #{Uuid} {Command}",
             shardIndex,
             command?.UntypedCommand.GetKind(),
-            command?.Id,
+            command?.Uuid,
             command?.UntypedCommand);
         return message.AckAsync(new AckOpts { DoubleAck = true }, cancellationToken).AsTask();
     }
@@ -201,10 +203,10 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command, Exception? exception,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug(exception, "[{ShardIndex}]: Marking failed {Kind} command #{Id} {Command}",
+        DebugLog?.LogDebug(exception, "[{ShardIndex}]: Marking failed {Kind} command #{Uuid} {Command}",
             shardIndex,
             command?.UntypedCommand.GetKind(),
-            command?.Id,
+            command?.Uuid,
             command?.UntypedCommand);
         return message.NakAsync(new AckOpts { DoubleAck = true }, default, cancellationToken).AsTask();
     }
@@ -213,10 +215,10 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand command, TimeSpan delay,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("[{ShardIndex}]: Marking postponed {Kind} command #{Id} {Command} for {Time}",
+        DebugLog?.LogDebug("[{ShardIndex}]: Marking postponed {Kind} command #{Uuid} {Command} for {Time}",
             shardIndex,
             command.UntypedCommand.GetKind(),
-            command.Id,
+            command.Uuid,
             command.UntypedCommand,
             delay);
         return message.NakAsync(new AckOpts { DoubleAck = true }, delay, cancellationToken).AsTask();
@@ -381,21 +383,28 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         var dataMemory = data.Memory;
         var dataSpan = dataMemory.Span;
         var version = dataSpan[0];
-        if (!SupportedVersions.Contains(version))
-            throw StandardError.Internal($"Unsupported command version: {version}.");
 
-        var id = new Ulid(dataSpan[1..17]);
-        var command = Serializer.Read<ICommand>(dataMemory[17..]);
-        return QueuedCommand.NewUntyped(command, id, message.Headers?.AsReadOnly());
+        switch (version) {
+        case 1: {
+            var id = new Ulid(dataSpan[1..17]);
+            var command = TypeDecoratingSerializer.Read<ICommand>(dataMemory[17..]);
+            return QueuedCommand.NewUntyped(command, id.ToString(), message.Headers?.AsReadOnly());
+        }
+        case 2: {
+            var ulid = Serializer.Read<string>(dataMemory[1..], out var ulidLength);
+            var command = TypeDecoratingSerializer.Read<ICommand>(dataMemory[(1 + ulidLength)..]);
+            return QueuedCommand.NewUntyped(command, ulid, message.Headers?.AsReadOnly());
+        }
+        default:
+            throw StandardError.Internal($"Unsupported command version: {version}.");
+        }
     }
 
     private static void Serialize(ArrayPoolBuffer<byte> buffer, QueuedCommand queuedCommand)
     {
-        buffer.Write(VersionBytes); // Version (1 byte)
-        queuedCommand.Id.TryWriteBytes(buffer.GetSpan(16)); // Ulid - as 16-byte sequence
-        buffer.Advance(16);
         var command = queuedCommand.UntypedCommand;
-        var commandType = command.GetType();
-        Serializer.Write(buffer, command, commandType); // Command itself
+        buffer.Write(VersionBytes);
+        Serializer.Write(buffer, queuedCommand.Uuid);
+        TypeDecoratingSerializer.Write(buffer, command, command.GetType()); // Command itself
     }
 }

@@ -5,7 +5,7 @@ namespace ActualChat.Queues.InMemory;
 public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.Options, InMemoryQueues>
 {
     private readonly Channel<QueuedCommand> _queue;
-    private readonly RecentlySeenMap<Ulid, Unit> _knownCommands;
+    private readonly RecentlySeenMap<string, Unit> _knownCommands;
 
     public InMemoryQueueProcessor(InMemoryQueues.Options settings, InMemoryQueues queues)
         : base(settings, queues)
@@ -14,9 +14,10 @@ public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.
             new BoundedChannelOptions(Settings.MaxQueueSize) {
                 FullMode = BoundedChannelFullMode.Wait,
             });
-        _knownCommands = new RecentlySeenMap<Ulid, Unit>(
+        _knownCommands = new RecentlySeenMap<string, Unit>(
             Settings.MaxKnownCommandCount,
-            Settings.MaxKnownCommandAge);
+            Settings.MaxKnownCommandAge,
+            keyComparer: StringComparer.Ordinal);
     }
 
     public override Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default)
@@ -29,12 +30,14 @@ public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.
         using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
         var gracefulStopToken = gracefulStopCts.Token;
 
+        // ReSharper disable once PossiblyMistakenUseOfCancellationToken
         var commands = _queue.Reader.ReadAllAsync(cancellationToken);
         var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
             CancellationToken = cancellationToken,
         };
         await Parallel.ForEachAsync(commands, parallelOptions, HandleMessage).ConfigureAwait(false);
+        return;
 
         ValueTask HandleMessage(QueuedCommand queuedCommand, CancellationToken _) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -46,15 +49,15 @@ public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.
     {
         lock (_knownCommands) {
             // We de-duplicate commands here to make sure we process them just once.
-            // Note that here we rely on QueuedCommand.Id instead of its Command value,
+            // Note that here we rely on QueuedCommand.Uuid instead of its Command value,
             // coz Command instance is definitely non-unique here due to deserialization.
-            return _knownCommands.TryAdd(command.Id);
+            return _knownCommands.TryAdd(command.Uuid);
         }
     }
 
     protected override void MarkUnknown(QueuedCommand command)
     {
         lock (_knownCommands)
-            _knownCommands.TryRemove(command.Id);
+            _knownCommands.TryRemove(command.Uuid);
     }
 }

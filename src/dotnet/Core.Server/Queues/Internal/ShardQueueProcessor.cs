@@ -96,26 +96,18 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
 
         var command = queuedCommand.UntypedCommand;
         var kind = command.GetKind();
-        DebugLog?.LogDebug("[{ShardIndex}]: Running queued {Kind} #{Id}: {Command}",
-            shardIndex,
-            kind,
-            queuedCommand.Id,
-            queuedCommand.UntypedCommand);
+        DebugLog?.LogDebug(
+            "[{ShardIndex}]: Running queued {Kind} #{Uuid}: {Command}",
+            shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
         try {
             if (command.HasDelay(Clock.Now, out var delay)) {
                 activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay}");
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
-                await MarkPostponed(shardIndex,
-                        message,
-                        queuedCommand,
-                        delay.Value,
-                        cancellationToken)
+                await MarkPostponed(shardIndex, message, queuedCommand, delay.Value, cancellationToken)
                     .ConfigureAwait(false);
-                DebugLog?.LogDebug("Queued {Kind} #{Id} postponed: {Command} after {Time}",
-                    kind,
-                    queuedCommand.Id,
-                    queuedCommand.UntypedCommand,
-                    sw.Elapsed);
+                DebugLog?.LogDebug(
+                    "Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
+                    kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
             }
             else {
                 var processTask = kind switch {
@@ -125,7 +117,9 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
                     _ => throw StandardError.Internal($"Invalid command kind: {kind}"),
                 };
                 await processTask.ConfigureAwait(false);
-                DebugLog?.LogDebug("Queued {Kind} #{Id} completed: {Command} in {Time}", kind, queuedCommand.Id, queuedCommand.UntypedCommand, sw.Elapsed);
+                DebugLog?.LogDebug(
+                    "Queued {Kind} #{Uuid} completed: {Command} in {Time}",
+                    kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
                 await MarkCompleted(shardIndex, message, queuedCommand, cancellationToken).ConfigureAwait(false);
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
             }
@@ -134,15 +128,14 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
             activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
             await MarkPostponed(shardIndex, message, queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
-            DebugLog?.LogDebug(e, "Queued {Kind} #{Id} postponed: {Command} after {Time}", kind, queuedCommand.Id, queuedCommand.UntypedCommand, sw.Elapsed);
+            DebugLog?.LogDebug(e,
+                "Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
+                kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
         }
         catch (Exception e) {
             Log.LogError(e,
-                "[{ShardIndex}]: Queued {Kind} #{Id} failed: {Command}",
-                shardIndex,
-                kind,
-                queuedCommand.Id,
-                queuedCommand.UntypedCommand);
+                "[{ShardIndex}]: Queued {Kind} #{Uuid} failed: {Command}",
+                shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
             await MarkFailed(shardIndex, message, queuedCommand, e, cancellationToken).ConfigureAwait(false);
             if (e.IsCancellationOf(cancellationToken)) {
                 activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
