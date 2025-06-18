@@ -77,6 +77,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddSingleton(c =>
             new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
 
+        // Content meta
+        rpcHost.AddBackend<IContentLinksBackend, ContentLinksBackend>();
+        services.AddSingleton<OpenGraphTagsProvider>();
+
         if (isBackendClient)
             return;
 

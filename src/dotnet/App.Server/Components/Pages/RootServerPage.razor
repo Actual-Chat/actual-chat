@@ -1,3 +1,4 @@
+@using ActualChat.Chat
 @using ActualChat.Hosting
 @using ActualChat.Security
 @using ActualChat.UI.Blazor.Services
@@ -109,11 +110,18 @@
             "We fuse real-time audio, live transcription, and AI assistance to let you communicate with utmost efficiency. " +
             "Reply 5x faster, read for quick context, defer without fear of losing clarity, " +
             "and connect more frequently to deepen ties with those you cherish most — all free from the stress of traditional calls.";
-        var image = UrlMapper.BaseUrl + "actual-chat-site-preview.jpg";
+        var siteDescription = title + Environment.NewLine + description;
+        var image = "actual-chat-site-preview.jpg";
+        if (_contentLinkInfo is not null) {
+            title = _contentLinkInfo.Title;
+            description = _contentLinkInfo.Description;
+            if (_contentLinkInfo.Picture is not null)
+                image = UrlMapper.PicturePreview128Url(_contentLinkInfo.Picture);
+        }
     }
 
     @* Essential Meta Tags *@
-    <meta name="description" content="@description">
+    <meta name="description" content="@siteDescription">
 
     @* Open Graph Tags *@
     <meta property="og:title" content="@title" />
@@ -305,6 +313,7 @@
     private Session? _session;
     private Account? _account;
     private SecureToken? _sessionToken;
+    private ContentLinkInfo? _contentLinkInfo;
     private RenderModeDef _renderMode = RenderModeDef.ByKey["ss"]; // Static
     private CloseFlowInfo? _closeFlow;
 
@@ -317,6 +326,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private IWebHostEnvironment Env { get; init; } = null!;
     [Inject] private ILogger<RootServerPage> Log { get; init; } = null!;
+    [Inject] private OpenGraphTagsProvider OpenGraphTagsProvider { get; init; } = null!;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = null!;
@@ -351,9 +361,11 @@
             accountTask = Accounts.GetOwn(_session, cancellationToken)!;
 
         var sessionTokenTask = SecureTokens.CreateForSession(_session, cancellationToken);
-        await Task.WhenAll(accountTask, sessionTokenTask);
+        var linkInfoTask = OpenGraphTagsProvider.GetContentLinkInfo(_session, _url, cancellationToken);
+        await Task.WhenAll(accountTask, sessionTokenTask, linkInfoTask);
         _account = await accountTask;
         _sessionToken = await sessionTokenTask;
+        _contentLinkInfo = await linkInfoTask;
 
         _closeFlow = ServerAuth.IsCloseFlow(HttpContext);
         if (_closeFlow?.RedirectUrl is { } redirectUrl) {
