@@ -615,7 +615,7 @@ public partial class ChatUI
                 groupedItems.Add(item);
             }
             else {
-                if (ongoingConversation != null && ongoingConversation != item.Conversation)
+                if (ongoingConversation != null && ongoingConversation.Id != item.Conversation.Id)
                     FinalizeOngoingConversation();
 
                 ongoingConversation = item.Conversation;

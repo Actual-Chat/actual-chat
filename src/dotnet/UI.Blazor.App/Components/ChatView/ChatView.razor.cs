@@ -412,16 +412,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return !mustScrollToEntry && result.IsSimilarTo(renderedData)
             ? renderedData
             : result;
-
-        ChatMessage GetLastMessage(ChatMessage message)
-        {
-            while (true) {
-                if (message is not IVirtualListGroup<ChatMessage> group)
-                    return message;
-
-                message = group.Items[^1];
-            }
-        }
     }
 
     private ChatDataQuery GetChatDataQuery(
