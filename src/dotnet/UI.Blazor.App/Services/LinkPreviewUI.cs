@@ -82,8 +82,11 @@ public class LinkPreviewUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             return null;
 
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var peerChatId = PeerChatId.New(ownAccount.Id, userId);
-        var chat = await Chats.Get(Session, peerChatId, cancellationToken).ConfigureAwait(false);
+        Chat.Chat? chat = null;
+        if (ownAccount.Id != userId) {
+            var peerChatId = PeerChatId.New(ownAccount.Id, userId);
+            chat = await Chats.Get(Session, peerChatId, cancellationToken).ConfigureAwait(false);
+        }
         return new UserLocalLinkInfo(localUrl, account) {
             Chat = chat
         };
