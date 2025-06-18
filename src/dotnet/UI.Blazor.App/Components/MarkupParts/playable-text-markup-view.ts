@@ -1,4 +1,5 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
+import { setTimeout } from 'timerQueue';
 
 class NumberRange {
     start: number;
@@ -79,16 +80,58 @@ export class PlayableTextMarkupView {
                 const targetNodeParent = targetedNode.parentNode;
                 let wordIndex = Array.prototype.indexOf.call(this.playableText.childNodes, targetNodeParent);
                 let word = this.words[wordIndex];
-                void this.blazorRef.invokeMethodAsync("OnMarkupClick", word.textRange);
+                if (word) {
+                    this.highlightClickedWord(selection, word, true);
+                }
             }
         } else {
             let selection = getSelection();
             if (selection.rangeCount) {
                 let word = this.words.find(w =>
                     w.textRange.start <= selection.focusOffset && w.textRange.end >= selection.focusOffset);
-                void this.blazorRef.invokeMethodAsync("OnMarkupClick", word.textRange);
+                if (word) {
+                    this.highlightClickedWord(selection, word, false);
+                }
             }
         }
+    }
+
+    private highlightClickedWord(selection: Selection, word: Word, isOneWord: boolean) {
+        if (!this.playableText)
+            return;
+
+        const textNode = isOneWord ? selection.focusNode : this.playableText.firstChild;
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE)
+            return;
+
+        const range = document.createRange();
+        if (!isOneWord) {
+            range.setStart(textNode, word.textRange.start);
+            range.setEnd(textNode, word.textRange.end);
+        } else {
+            range.setStart(textNode, 0);
+            range.setEnd(textNode, textNode.textContent.length - 1);
+        }
+
+        const rect = range.getBoundingClientRect();
+        const floatSpan = document.createElement("span");
+        floatSpan.textContent = word.value;
+        floatSpan.className = "selected-word-float";
+
+        Object.assign(floatSpan.style, {
+            position: "absolute",
+            top: `${rect.top + window.scrollY + 4}px`,
+            left: `${rect.left + window.scrollX}px`,
+            width: `${rect.width}px`,
+            height: `${rect.height - 8}px`,
+        });
+
+        document.body.appendChild(floatSpan);
+
+        setTimeout(() => {
+            floatSpan.remove();
+            void this.blazorRef.invokeMethodAsync("OnMarkupClick", word.textRange);
+        }, 400);
     }
 }
 
