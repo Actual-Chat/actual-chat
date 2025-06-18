@@ -1,15 +1,14 @@
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
-// @ts-ignore - it works, but fails validation
 import * as ort from 'onnxruntime-web/wasm';
 import ortWasm from 'onnxruntime-web/dist/ort-wasm-simd.wasm'
 import { WebRtcVad } from '@actual-chat/webrtc-vad';
 import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
-import { Log } from 'logging';
+// import { Log } from 'logging';
 import { Versioning } from 'versioning';
 
-const { debugLog } = Log.get('AudioVadWorker');
+// const { debugLog } = Log.get('AudioVadWorker');
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
     protected readonly probEMA = new RunningEMA(0.5, 5); // 32ms*5 ~ 150ms
@@ -22,7 +21,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
 
     protected sampleCount = 0;
     protected pauseOffset?: number = null;
-    protected pauseCancelSamples: number = 0;
+    protected pauseCancelSamples = 0;
     protected lastConversationSignalAtSample: number | null = null;
     protected whenTalkingProbMedian: RunningUnitMedian | null = null;
     protected maxPauseSamples: number;
@@ -46,7 +45,8 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         this.pauseOffset = null;
         this.pauseCancelSamples = 0;
         this.lastConversationSignalAtSample = null;
-        this.resetInternal && this.resetInternal();
+        if (this.resetInternal)
+            this.resetInternal();
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> {

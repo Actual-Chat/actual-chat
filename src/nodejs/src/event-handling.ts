@@ -10,7 +10,7 @@ export class EventHandler<T> implements Disposable {
     constructor(
         private readonly event: EventHandlerSet<T>,
         private readonly handler: (T) => unknown,
-        private readonly justOnce: boolean = false,
+        private readonly justOnce = false,
     ) { }
 
     public dispose(): void {
@@ -87,9 +87,9 @@ export class EventHandlerSet<T> {
 
     public whenNextWithTimeout(timeoutMs: number): Promise<T | TimedOut> {
         const result = new PromiseSource<T | TimedOut>();
-        let timeout: Timeout = null;
+        let timeout: Timeout | null = null;
         const handler = this.addJustOnce(value => {
-            timeout.clear();
+            timeout?.clear();
             result.resolve(value)
         });
         timeout = new Timeout(timeoutMs, () => {
@@ -141,7 +141,7 @@ class DocumentEventSet {
         private readonly isCapture: boolean,
         private readonly isActive: boolean,
     ) {
-        const document = globalThis.document;
+        const document = globalThis.document as Document | null;
         if (!document)
             return;
 
@@ -197,7 +197,7 @@ export function preventDefaultForEvent(event?: Event) : void {
 }
 
 export function tryPreventDefaultForEvent(event?: Event) : void {
-    if (!event.defaultPrevented) {
+    if (!event?.defaultPrevented) {
         try {
             preventDefaultForEvent(event);
         }

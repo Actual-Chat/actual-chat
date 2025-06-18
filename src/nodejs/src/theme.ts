@@ -3,7 +3,7 @@ import { EventHandlerSet } from 'event-handling';
 
 const { debugLog } = Log.get('Theme');
 
-const storage = window?.localStorage;
+const storage = window.localStorage as Storage | null;
 const storageKey = 'ui.theme'
 const availableThemes = ['light', 'dark', 'ash'];
 
@@ -18,7 +18,7 @@ export class Theme {
     public static theme : string | null;
     public static defaultTheme = '';
     public static currentTheme = '';
-    public static info: ThemeInfo = null;
+    public static info?: ThemeInfo;
     public static changed: EventHandlerSet<ThemeInfo> = new EventHandlerSet<ThemeInfo>();
 
     public static init(): void {
@@ -26,6 +26,8 @@ export class Theme {
         this.defaultTheme = detectDefaultTheme();
         this.apply(false);
         const defaultThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        // TODO(AY): review eslint suppressions
+        // eslint-disable-next-line @typescript-eslint/no-deprecated, @typescript-eslint/no-unused-vars
         defaultThemeMediaQuery.addListener(_ => {
             Theme.defaultTheme = detectDefaultTheme();
             Theme.apply();
@@ -47,9 +49,10 @@ export class Theme {
 
     private static apply(mustNotify = true): void {
         this.currentTheme = this.theme ?? this.defaultTheme;
-        if (this.currentTheme === this.info?.currentTheme && this.defaultTheme === this.info?.defaultTheme)
+        if (this.currentTheme === this.info?.currentTheme && this.defaultTheme === this.info.defaultTheme)
             return;
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (document?.body) {
             const classList = document.body.classList;
             const oldClass = `theme-${this.info?.currentTheme ?? ''}`;

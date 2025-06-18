@@ -187,7 +187,7 @@ export class RunningEMA implements RunningCounter {
     constructor(
         defaultValue: number,
         private readonly minSampleCount: number, // Uses RunningMA unless sampleCount > minSampleCount
-        private readonly smoothingFactor: number = null,
+        private readonly smoothingFactor: number | null = null,
     ) {
         if (smoothingFactor === null)
             this.smoothingFactor = 2 / (minSampleCount + 1);
@@ -293,7 +293,7 @@ export function approximateGain(monoPcm: Float32Array, stride = 5): number {
     return Math.sqrt(sum / Math.floor(monoPcm.length / stride));
 }
 
-export function translate(number: number, [inMin, inMax]: Array<number>, [outMin, outMax]: Array<number>) {
+export function translate(number: number, [inMin, inMax]: number[], [outMin, outMax]: number[]) {
     const result = (number - inMin) / (inMax - inMin) * (outMax - outMin) + outMin;
     if (isNaN(result))
         return outMin;
@@ -301,9 +301,9 @@ export function translate(number: number, [inMin, inMax]: Array<number>, [outMin
     return result;
 }
 
-export function average(array: Array<number> | Float32Array): number {
+export function average(array: number[] | Float32Array): number {
     let sum = 0;
-    for (let i = 0; i < array.length; i++)
-        sum += array[i];
+    for (const value of array)
+        sum += value;
     return sum / array.length;
 }

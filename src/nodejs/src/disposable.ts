@@ -29,20 +29,23 @@ export class Disposables {
     }
 }
 
+// TODO(AK: clean up eslint suppressions
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 export function isDisposable<T>(obj: T | Disposable): obj is Disposable {
-    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['dispose'] === 'function';
+    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.dispose === 'function';
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 export function isAsyncDisposable<T>(obj: T | AsyncDisposable): obj is AsyncDisposable {
-    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['disposeAsync'] === 'function';
+    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.disposeAsync === 'function';
 }
 
 export class DisposableBag implements Disposable {
-    private disposables = new Array<Disposable | Subscription>();
+    private disposables: (Disposable | Subscription)[] | null = [];
 
     public get isDisposed() { return this.disposables === null; }
 
-    public addDisposables(...disposables: Array<Disposable | Subscription>) {
+    public addDisposables(...disposables: (Disposable | Subscription)[]) {
         if (this.isDisposed)
             throw new ObjectDisposedError();
 
@@ -59,7 +62,7 @@ export class DisposableBag implements Disposable {
             if (disposable instanceof Subscription)
                 disposable.unsubscribe();
             else
-                disposable?.dispose();
+                disposable.dispose();
         }
     }
 }

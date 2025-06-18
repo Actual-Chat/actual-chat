@@ -5,7 +5,7 @@ const { debugLog } = Log.get('Kvas');
 
 export class Kvas {
     private readonly store: UseStore;
-    private readonly debugLog: Log;
+    private readonly debugLog: Log | null;
 
     constructor(
         public readonly name: string,

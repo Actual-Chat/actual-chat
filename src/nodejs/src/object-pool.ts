@@ -9,17 +9,14 @@ export class ObjectPool<T>
         this.factory = factory;
     }
 
-    public expandTo(count: number): ObjectPool<T> {
+    public expandTo(count: number): this {
         while (this.pool.length < count)
             this.pool.push(this.factory());
         return this;
     }
 
     public get(): T {
-        let item = this.pool.pop();
-        if (item === undefined)
-            item = this.factory();
-        return item;
+        return this.pool.pop() ?? this.factory();
     }
 
     public release(obj: T): void {
@@ -53,10 +50,7 @@ export class AsyncObjectPool<T>
     }
 
     public async get(): Promise<T> {
-        let item = this.pool.pop();
-        if (item === undefined)
-            item = await this.factory();
-        return item;
+        return this.pool.pop() ?? await this.factory();
     }
 
     public async release(obj: T): Promise<void> {

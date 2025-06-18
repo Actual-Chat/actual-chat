@@ -3,5 +3,5 @@ export function hasModifierKey(event: KeyboardEvent | MouseEvent | WheelEvent): 
 }
 
 export function isEscapeKey(event: KeyboardEvent): boolean {
-    return event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc';
+    return event.key === 'Escape' || event.key === 'Esc';
 }

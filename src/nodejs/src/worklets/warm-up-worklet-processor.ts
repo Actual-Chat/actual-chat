@@ -2,7 +2,7 @@ import { Log } from 'logging';
 import { timerQueue } from 'timerQueue';
 
 const { warnLog } = Log.get('WarmUpAudioWorkletProcessor');
-/* eslint-disable @typescript-eslint/ban-ts-comment */
+
 /**
  * Produces silence. We use the worklet to warm up a browser's audio pipeline.
  * Lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
@@ -19,7 +19,7 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
         _inputs: Float32Array[][],
         outputs: Float32Array[][],
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _parameters: { [name: string]: Float32Array; }
+        _parameters: Record<string, Float32Array>
     ): boolean {
         timerQueue?.triggerExpired();
         // we should write silence at least once
@@ -28,7 +28,7 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
             return false;
         }
 
-        if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {
+        if (outputs.length === 0 || outputs[0].length === 0) {
             return true;
         }
         const output = outputs[0];

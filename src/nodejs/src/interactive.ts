@@ -89,4 +89,4 @@ export class Interactive {
 }
 
 Interactive.init();
-globalThis['Interactive'] = Interactive;
+globalThis.Interactive = Interactive;

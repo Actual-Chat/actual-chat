@@ -22,13 +22,13 @@ import * as blazorApp from '../dotnet/UI.Blazor.App/exports';
 import { Kvas } from './src/kvas';
 
 // Assign to window objects
-window['ui'] = {
+window.ui = {
     ...ui,
 };
-window['FontSizes'] = FontSizes;
-window['theme'] = theme;
-window['blazorApp'] = blazorApp;
-window['Kvas'] = Kvas;
+window.FontSizes = FontSizes;
+window.theme = theme;
+window.blazorApp = blazorApp;
+window.Kvas = Kvas;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-window['App']?.markBundleReady?.(); // "?." here ensures this code won't fail in workers, etc.
+window.App?.markBundleReady?.(); // "?." here ensures this code won't fail in workers, etc.

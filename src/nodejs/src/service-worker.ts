@@ -17,6 +17,7 @@ export class ServiceWorker {
         if (response.ok || response.status === 304) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const { config } = await response.json();
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             const configBase64 = btoa(JSON.stringify(config));
             const origin = new URL('service-worker.ts', import.meta.url).origin;
             const workerPath = new URL('/sw.js', origin).toString();

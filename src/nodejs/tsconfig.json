@@ -38,7 +38,7 @@
     // change to true (?)
     "noImplicitAny": false,
     // change to true (?)
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     // Tells TypeScript to read JS files, as
     // normally they are ignored as source files
     "allowJs": true,
@@ -56,7 +56,8 @@
       "es2018",
     ],
     "typeRoots": [
-      "./node_modules/@types"
+      "./node_modules/@types",
+      "./node_modules/user-agent-data-types"
     ],
     "baseUrl": "../dotnet/",
     "rootDirs": [

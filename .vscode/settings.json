@@ -23,14 +23,10 @@
   "eslint.codeAction.showDocumentation": {
     "enable": true
   },
-  "eslint.options": {
-    "overrideConfigFile": "./src/nodejs/.eslintrc.yml",
-    "ignorePath": "./src/nodejs/.eslintignore"
-  },
   "eslint.workingDirectories": [
     {
-      "directory": "/",
-    },
+      "directory": "./src/nodejs/**"
+    }
   ],
   "eslint.lintTask.enable": true,
   "eslint.lintTask.options": "-c src/nodejs/.eslintrc.json --ignore-path src/nodejs/.eslintignore .",

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters,@typescript-eslint/no-explicit-any */
 import { Log } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
@@ -9,7 +10,7 @@ export class TimedOut {
 }
 
 export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> {
-    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
+    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
 export class PromiseSource<T> implements Promise<T> {
@@ -35,7 +36,7 @@ export class PromiseSource<T> implements Promise<T> {
                     return;
 
                 this._isCompleted = true;
-                reject1(reason);
+                reject1(new Error(reason));
                 if (reject)
                     reject(reason);
             };
@@ -52,25 +53,25 @@ export class PromiseSource<T> implements Promise<T> {
     readonly [Symbol.toStringTag]: string;
 
     then<TResult1 = T, TResult2 = never>(
-        onfulfilled?: ((value: T) => (PromiseLike<TResult1> | TResult1)) | undefined | null,
-        onrejected?: ((reason: any) => (PromiseLike<TResult2> | TResult2)) | undefined | null
+        onfulfilled?: ((value: T) => (PromiseLike<TResult1> | TResult1))   | null,
+        onrejected?: ((reason: any) => (PromiseLike<TResult2> | TResult2))   | null
     ): Promise<TResult1 | TResult2> {
         return this._promise.then(onfulfilled, onrejected);
     }
 
     catch<TResult = never>(
-        onrejected?: ((reason: any) => (PromiseLike<TResult> | TResult)) | undefined | null
+        onrejected?: ((reason: any) => (PromiseLike<TResult> | TResult))   | null
     ): Promise<T | TResult> {
         return this._promise.catch(onrejected);
     }
 
-    finally(onfinally?: (() => void) | undefined | null): Promise<T> {
+    finally(onfinally?: (() => void)   | null): Promise<T> {
         return this._promise.finally(onfinally);
     }
 }
 
 export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
-    private _timeout: Timeout = null;
+    private _timeout: Timeout | null = null;
 
     constructor(resolve?: ((value: T) => void), reject?: ((reason?: unknown) => void)) {
         super((value: T) => {
@@ -98,7 +99,7 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
 
         this._timeout = new Timeout(timeoutMs, () => {
             this._timeout = null;
-            if (callback != null)
+            if (callback)
                 callback();
             else {
                 const error = new Error('The promise has timed out.');
@@ -117,7 +118,7 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
 
         this._timeout = new PreciseTimeout(timeoutMs, () => {
             this._timeout = null;
-            if (callback != null)
+            if (callback)
                 callback();
             else {
                 const error = new Error('The promise has timed out.');
@@ -159,7 +160,7 @@ export async function waitAsync<T>(promise: PromiseLike<T>, cancel?: Promise<Can
 
 export function delayAsync(delayMs: number): PromiseSourceWithTimeout<void> {
     const promise = new PromiseSourceWithTimeout<void>();
-    promise.setTimeout(delayMs, () => promise.resolve(undefined))
+    promise.setTimeout(delayMs, () => { promise.resolve(undefined); })
     return promise;
 }
 
@@ -171,12 +172,12 @@ export function delayAsyncWith<T>(delayMs: number, value: T): PromiseSourceWithT
 
 export function preciseDelayAsync(delayMs: number): PromiseSourceWithTimeout<void> {
     const promise = new PromiseSourceWithTimeout<void>();
-    promise.setPreciseTimeout(delayMs, () => promise.resolve(undefined))
+    promise.setPreciseTimeout(delayMs, () => { promise.resolve(undefined); })
     return promise;
 }
 
 export function flexibleDelayAsync(getNextTimeout: () => number): PromiseSourceWithTimeout<void> {
-    // eslint-disable-next-line no-constant-condition
+
     const promise = new PromiseSourceWithTimeout<void>();
     const timeoutHandler = () => {
         const timeout = getNextTimeout();
@@ -247,7 +248,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
             lastCall = null;
             nextFireTime = Date.now() + intervalMs;
             timeoutHandle = setTimeout(fire, intervalMs);
-            call?.invokeSilently(); // This must be done at last
+            call.invokeSilently(); // This must be done at last
         }
         else {
             if (name)
@@ -277,7 +278,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
             } else { // skip or default mode
                 if (name)
                     debugLog?.log(`throttle '${name}': fire (head call)`);
-                call?.invokeSilently();
+                call.invokeSilently();
             }
         } else {
             // timeoutHandle !== null, so all we need to do here is to update lastCall
@@ -319,7 +320,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
                     debugLog?.log(`debounce '${name}': fire`);
                 const call = lastCall;
                 lastCall = null;
-                call?.invokeSilently(); // This must be done at last
+                call.invokeSilently(); // This must be done at last
             }
         }
         else {
@@ -335,8 +336,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
         nextFireTime = Date.now() + intervalMs;
         lastCall = call;
 
-        if (timeoutHandle === null)
-            timeoutHandle = setTimeout(fire, intervalMs);
+        timeoutHandle ??= setTimeout(fire, intervalMs);
         if (name)
             debugLog?.log(`debounce '${name}': debouncing`);
     };
@@ -421,7 +421,7 @@ export async function retry<TResult>(
 export async function catchErrors<TResult>(
     fn: () => PromiseLike<TResult> | TResult,
     onError?: (e: unknown) => TResult,
-) : Promise<TResult> {
+) : Promise<TResult | undefined> {
     try {
         return await fn();
     }
@@ -442,7 +442,7 @@ export class AsyncLockReleaser implements Disposable {
                 if (asyncLock.releaser != this)
                     throw new Error(`${logScope}.AsyncLockReleaser is associated with another releaser.`);
 
-                asyncLock.releaser = null;
+                asyncLock.releaser = undefined;
                 return;
             },
             () => `${logScope}.AsyncLockReleaser.released cannot be rejected.`);
@@ -458,10 +458,10 @@ export class AsyncLockReleaser implements Disposable {
 }
 
 export class AsyncLock {
-    public releaser: AsyncLockReleaser = null;
+    public releaser?: AsyncLockReleaser;
 
     public async lock(): Promise<AsyncLockReleaser> {
-        if (this.releaser != null)
+        if (this.releaser)
             await this.releaser.whenReleased();
         return new AsyncLockReleaser(this);
     }
@@ -477,7 +477,7 @@ ResolvedPromise.True.resolve(true);
 ResolvedPromise.False.resolve(false);
 
 // Self-test - we don't want to run it in workers & worklets
-const mustRunSelfTest = debugLog != null && globalThis['focus'];
+const mustRunSelfTest = debugLog != null && globalThis.focus;
 if (mustRunSelfTest) {
     const testLog = errorLog;
     if (!testLog)

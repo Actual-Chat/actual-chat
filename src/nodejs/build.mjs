@@ -43,7 +43,7 @@ const options = {
     sourcemap: true,
     outdir: outputPath,
     tsconfig: './tsconfig.json',
-    nodePaths: ['./node_modules', /*'./src/'*/],
+    nodePaths: ['./node_modules'],
     assetNames: "assets/[ext]/[name]",
     loader: {
         '.css': 'css',

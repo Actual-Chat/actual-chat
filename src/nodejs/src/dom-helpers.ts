@@ -6,7 +6,7 @@ export function getOrInheritData(target: unknown, dataName: string): [HTMLElemen
 
     const rootElement = document.documentElement;
     let element = target;
-    while (element && element !== rootElement) {
+    while (element !== rootElement) {
         const value = element.dataset[dataName];
         if (value)
             return [element, value];
@@ -15,13 +15,13 @@ export function getOrInheritData(target: unknown, dataName: string): [HTMLElemen
     return [null, null];
 }
 
-export function getOrInheritAttribute(target: unknown, attributeName: string): [HTMLElement | SVGElement | null, unknown | null] {
+export function getOrInheritAttribute(target: unknown, attributeName: string): [HTMLElement | SVGElement | null, unknown] {
     if (!(target instanceof HTMLElement) && !(target instanceof SVGElement))
         return [null, null];
 
     const rootElement = document.documentElement;
     let element = target;
-    while (element && element !== rootElement) {
+    while (element !== rootElement) {
         const value = element[attributeName] as unknown;
         if (value !== undefined)
             return [element, value];
@@ -49,7 +49,7 @@ export function exposeInputState(
     };
     const updateThrottled = throttle(update, 10, 'delayHead');
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const observer = new MutationObserver(updateThrottled);
     observer.observe(input, { attributes: true });
 

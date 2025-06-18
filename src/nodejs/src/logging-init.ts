@@ -94,15 +94,15 @@ const StorageKey = 'logLevels';
 const DateStorageKey = `${StorageKey}.date`;
 const MaxStorageAge = 86_400_000 * 3; // 3 days
 
-const app = globalThis?.['App'] as unknown;
+const app = globalThis.App as unknown;
 const isWorkerOrWorklet = !app;
 
 export function initLogging(Log: unknown): void {
-    Log['defaultMinLevel'] = LogLevel.Info;
-    const minLevels = Log['minLevels'] as Map<LogScope, LogLevel>;
+    Log.defaultMinLevel = LogLevel.Info;
+    const minLevels = Log.minLevels as Map<LogScope, LogLevel>;
 
     let wasRestored = false;
-    if (globalThis && !isWorkerOrWorklet) {
+    if (!isWorkerOrWorklet) {
         globalThis[GlobalThisKey] = new LogLevelController(minLevels);
         wasRestored = restore(minLevels);
     }
@@ -133,12 +133,12 @@ class LogLevelController {
     public clear(defaultLevel?: LogLevel) {
         this.minLevels.clear();
         if (defaultLevel !== undefined)
-            this.minLevels['default'] = defaultLevel;
+            this.minLevels.default = defaultLevel;
         persist(this.minLevels);
     }
 }
 
-const sessionStorage = globalThis?.sessionStorage;
+const sessionStorage: Storage | null = globalThis.sessionStorage;
 
 function restore(minLevels: Map<string, LogLevel>): boolean {
     if (!sessionStorage)
@@ -172,6 +172,7 @@ function persist(minLevels: Map<string, LogLevel>): boolean {
     return true;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void {
     minLevels.clear();
     // enabled debug logging temporarily - do not add chatty log scopes!! - 14.11.2023 AK

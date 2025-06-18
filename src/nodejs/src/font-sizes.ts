@@ -1,12 +1,9 @@
 import { DeviceInfo } from 'device-info';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
-import { Log } from 'logging';
 
-const { debugLog } = Log.get('FontSizes');
-
-const storage = window?.localStorage;
+const storage = window.localStorage as Storage | null;
 const storageKey = 'ui.font-size'
-const availableSizes : { [title: string]: string } = {
+const availableSizes : Record<string, string> = {
     '14px': '14px',
     '16px': '16px',
     '18px': '18px',

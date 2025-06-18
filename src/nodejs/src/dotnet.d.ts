@@ -5,17 +5,19 @@
 
 //! This is not considered public API with backward compatibility guarantees.
 
+/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters,@typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-function-type,@typescript-eslint/unified-signatures,@typescript-eslint/no-redundant-type-constituents */
+
 declare interface NativePointer {
-    __brandNativePointer: "NativePointer";
+    __brandNativePointer: 'NativePointer';
 }
 declare interface VoidPtr extends NativePointer {
-    __brand: "VoidPtr";
+    __brand: 'VoidPtr';
 }
 declare interface CharPtr extends NativePointer {
-    __brand: "CharPtr";
+    __brand: 'CharPtr';
 }
 declare interface Int32Ptr extends NativePointer {
-    __brand: "Int32Ptr";
+    __brand: 'Int32Ptr';
 }
 declare interface EmscriptenModule {
     /** @deprecated Please use growableHeapI8() instead.*/
@@ -60,12 +62,8 @@ declare interface EmscriptenModule {
     preRun?: (() => any)[] | (() => any);
     onRuntimeInitialized?: () => any;
     postRun?: (() => any)[] | (() => any);
-    onAbort?: {
-        (error: any): void;
-    };
-    onExit?: {
-        (code: number): void;
-    };
+    onAbort?: (error: any) => void;
+    onExit?: (code: number) => void;
 }
 type InstantiateWasmSuccessCallback = (instance: WebAssembly.Instance, module: WebAssembly.Module | undefined) => void;
 type InstantiateWasmCallBack = (imports: WebAssembly.Imports, successCallback: InstantiateWasmSuccessCallback) => any;
@@ -76,9 +74,7 @@ interface DotnetHostBuilder {
     withConfigSrc(configSrc: string): DotnetHostBuilder;
     withApplicationArguments(...args: string[]): DotnetHostBuilder;
     withEnvironmentVariable(name: string, value: string): DotnetHostBuilder;
-    withEnvironmentVariables(variables: {
-        [i: string]: string;
-    }): DotnetHostBuilder;
+    withEnvironmentVariables(variables: Record<string, string>): DotnetHostBuilder;
     withVirtualWorkingDirectory(vfsPath: string): DotnetHostBuilder;
     withDiagnosticTracing(enabled: boolean): DotnetHostBuilder;
     withDebugging(level: number): DotnetHostBuilder;
@@ -94,7 +90,7 @@ interface DotnetHostBuilder {
     create(): Promise<RuntimeAPI>;
     run(): Promise<number>;
 }
-type MonoConfig = {
+interface MonoConfig {
     /**
      * Additional search locations for assets.
      */
@@ -136,9 +132,7 @@ type MonoConfig = {
     /**
      * Dictionary-style Object containing environment variables
      */
-    environmentVariables?: {
-        [i: string]: string;
-    };
+    environmentVariables?: Record<string, string>;
     /**
      * initial number of workers to add to the emscripten pthread pool
      */
@@ -166,13 +160,9 @@ type MonoConfig = {
     /**
      * config extensions declared in MSBuild items @(WasmBootConfigExtension)
      */
-    extensions?: {
-        [name: string]: any;
-    };
-};
-type ResourceExtensions = {
-    [extensionName: string]: ResourceList;
-};
+    extensions?: Record<string, any>;
+}
+type ResourceExtensions = Record<string, ResourceList>;
 interface ResourceGroups {
     hash?: string;
     assembly?: ResourceList;
@@ -185,22 +175,16 @@ interface ResourceGroups {
     wasmSymbols?: ResourceList;
     wasmNative: ResourceList;
     icu?: ResourceList;
-    satelliteResources?: {
-        [cultureName: string]: ResourceList;
-    };
+    satelliteResources?: Record<string, ResourceList>;
     modulesAfterConfigLoaded?: ResourceList;
     modulesAfterRuntimeReady?: ResourceList;
     extensions?: ResourceExtensions;
-    vfs?: {
-        [virtualPath: string]: ResourceList;
-    };
+    vfs?: Record<string, ResourceList>;
 }
 /**
  * A "key" is name of the file, a "value" is optional hash for integrity check.
  */
-type ResourceList = {
-    [name: string]: string | null | "";
-};
+type ResourceList = Record<string, string | null | ''>;
 /**
  * Overrides the built-in boot resource loading mechanism so that boot resources can be fetched
  * from a custom source, such as an external CDN.
@@ -216,7 +200,7 @@ interface ResourceRequest {
     name: string;
     behavior: AssetBehaviors;
     resolvedUrl?: string;
-    hash?: string | null | "";
+    hash?: string | null | '';
 }
 interface LoadingResource {
     name: string;
@@ -255,85 +239,85 @@ type SingleAssetBehaviors =
 /**
  * The binary of the dotnet runtime.
  */
-    "dotnetwasm"
+    'dotnetwasm'
     /**
      * The javascript module for loader.
      */
-    | "js-module-dotnet"
+    | 'js-module-dotnet'
     /**
      * The javascript module for threads.
      */
-    | "js-module-threads"
+    | 'js-module-threads'
     /**
      * The javascript module for runtime.
      */
-    | "js-module-runtime"
+    | 'js-module-runtime'
     /**
      * The javascript module for emscripten.
      */
-    | "js-module-native"
+    | 'js-module-native'
     /**
      * The javascript module for hybrid globalization.
      */
-    | "js-module-globalization"
+    | 'js-module-globalization'
     /**
      * Typically blazor.boot.json
      */
-    | "manifest";
+    | 'manifest';
 type AssetBehaviors = SingleAssetBehaviors |
     /**
      * Load asset as a managed resource assembly.
      */
-    "resource"
+    'resource'
     /**
      * Load asset as a managed assembly.
      */
-    | "assembly"
+    | 'assembly'
     /**
      * Load asset as a managed debugging information.
      */
-    | "pdb"
+    | 'pdb'
     /**
      * Store asset into the native heap.
      */
-    | "heap"
+    | 'heap'
     /**
      * Load asset as an ICU data archive.
      */
-    | "icu"
+    | 'icu'
     /**
      * Load asset into the virtual filesystem (for fopen, File.Open, etc).
      */
-    | "vfs"
+    | 'vfs'
     /**
      * The javascript module that came from nuget package .
      */
-    | "js-module-library-initializer"
+    | 'js-module-library-initializer'
     /**
      * The javascript module for threads.
      */
-    | "symbols";
+    | 'symbols';
 declare const enum GlobalizationMode {
     /**
      * Load sharded ICU data.
      */
-    Sharded = "sharded",
+    Sharded = 'sharded',
     /**
      * Load all ICU data.
      */
-    All = "all",
+    All = 'all',
     /**
      * Operate in invariant globalization mode.
      */
-    Invariant = "invariant",
+    Invariant = 'invariant',
     /**
      * Use user defined icu file.
      */
-    Custom = "custom",
+    Custom = 'custom',
     /**
      * Operate in hybrid globalization mode with small ICU files, using native platform functions.
      */
-    Hybrid = "hybrid"
+    Hybrid = 'hybrid'
 }
 type DotnetModuleConfig = {
     disableDotnet6Compatibility?: boolean;
@@ -345,7 +329,7 @@ type DotnetModuleConfig = {
     imports?: any;
     exports?: string[];
 } & Partial<EmscriptenModule>;
-type APIType = {
+interface APIType {
     runMain: (mainAssemblyName: string, args: string[]) => Promise<number>;
     runMainAndExit: (mainAssemblyName: string, args: string[]) => Promise<number>;
     setEnvironmentVariable: (name: string, value: string) => void;
@@ -386,7 +370,7 @@ type APIType = {
     localHeapViewU32: () => Uint32Array;
     localHeapViewF32: () => Float32Array;
     localHeapViewF64: () => Float64Array;
-};
+}
 type RuntimeAPI = {
     /**
      * @deprecated Please use API object instead. See also MONOType in dotnet-legacy.d.ts
@@ -405,12 +389,12 @@ type RuntimeAPI = {
         buildConfiguration: string;
     };
 } & APIType;
-type ModuleAPI = {
+interface ModuleAPI {
     dotnet: DotnetHostBuilder;
     exit: (code: number, reason?: any) => void;
-};
+}
 type CreateDotnetRuntimeType = (moduleFactory: DotnetModuleConfig | ((api: RuntimeAPI) => DotnetModuleConfig)) => Promise<RuntimeAPI>;
-type WebAssemblyBootResourceType = "assembly" | "pdb" | "dotnetjs" | "dotnetwasm" | "globalization" | "manifest" | "configuration";
+type WebAssemblyBootResourceType = 'assembly' | 'pdb' | 'dotnetjs' | 'dotnetwasm' | 'globalization' | 'manifest' | 'configuration';
 
 interface IDisposable {
     dispose(): void;
@@ -436,6 +420,7 @@ interface IMemoryView extends IDisposable {
     get byteLength(): number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 declare function mono_exit(exit_code: number, reason?: any): void;
 
 declare const dotnet: DotnetHostBuilder;

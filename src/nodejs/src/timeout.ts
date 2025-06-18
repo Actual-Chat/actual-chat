@@ -6,7 +6,8 @@ import { setTimeout, clearTimeout } from 'timerQueue';
 
 let nextTickImpl: (callback: () => unknown) => void = null;
 
-if (globalThis['MessageChannel']) {
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+if (globalThis.MessageChannel) {
     const nextTickCallbacks = new Array<() => unknown>();
     const nextTickChannel = new MessageChannel();
     nextTickChannel.port1.onmessage = () => {
@@ -26,7 +27,7 @@ else {
 }
 
 export const nextTick = nextTickImpl;
-export const nextTickAsync = () => new Promise<void>(resolve => nextTick(resolve));
+export const nextTickAsync = () => new Promise<void>(resolve => { nextTick(resolve); });
 
 // Timeout: a nicer wrapper around setTimeout
 
@@ -75,6 +76,7 @@ const disablePreciseTimeout = false;
 
 export class PreciseTimeout extends Timeout {
     constructor(timeoutMs: number, callback: () => unknown,) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (disablePreciseTimeout) {
             super(timeoutMs, callback);
             return;
@@ -92,8 +94,11 @@ export class PreciseTimeout extends Timeout {
     }
 
     public clear(): void {
-        if (disablePreciseTimeout)
-            return super.clear();
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (disablePreciseTimeout) {
+            super.clear();
+            return;
+        }
 
         if (this.handle) {
             cancelAnimationFrame(this.handle);

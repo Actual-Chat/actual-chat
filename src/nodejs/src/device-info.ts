@@ -1,24 +1,27 @@
-const userAgent = navigator?.userAgent ?? '';
+// TODO(AY): cleanup eslint suppressions
+/// <reference types="user-agent-data-types" />
+const userAgent = navigator.userAgent;
 const userAgentLowerCase = userAgent.toLowerCase();
-const userAgentData = navigator['userAgentData'] as { mobile: boolean; };
-const isMobile = userAgentData?.mobile === true
-    || /android|mobile|phone|webos|iphone|ipad|ipod|blackberry/.test(userAgentLowerCase);
-const isChromium = userAgentLowerCase.indexOf('chrome') >= 0;
+const userAgentData = navigator.userAgentData as { mobile: boolean; } | null;
+const isMobile = userAgentData?.mobile
+    ?? /android|mobile|phone|webos|iphone|ipad|ipod|blackberry/.test(userAgentLowerCase);
+const isChromium = userAgentLowerCase.includes('chrome');
 
 export const DeviceInfo = {
     isMobile: isMobile,
-    isAndroid: isMobile && userAgentLowerCase.indexOf('android') >= 0,
+    isAndroid: isMobile && userAgentLowerCase.includes('android'),
     isIos: isMobile && /iphone|ipad|ipod/.test(userAgentLowerCase),
     isChromium: isChromium,
-    isWebKit: userAgentLowerCase.indexOf('webkit') >= 0 && !isChromium,
-    isFirefox: userAgentLowerCase.indexOf('firefox') >= 0,
-    isEdge: userAgentLowerCase.indexOf('edg/') >= 0,
+    isWebKit: userAgentLowerCase.includes('webkit') && !isChromium,
+    isFirefox: userAgentLowerCase.includes('firefox'),
+    isEdge: userAgentLowerCase.includes('edg/'),
     isTouchCapable: (typeof window !== 'undefined' && (('ontouchstart' in window)
-        || (navigator['MaxTouchPoints'] as number > 0)
-        || (navigator['msMaxTouchPoints'] as number > 0))),
+        || (navigator.maxTouchPoints > 0))),
 
     init: function (): void {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const body = document?.body;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!body)
             return;
 
