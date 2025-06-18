@@ -25,7 +25,6 @@
     <SemanticKernelVersion>1.50.0</SemanticKernelVersion>
     <XamarinAndroidLifecycle>[2.8.7.3,)</XamarinAndroidLifecycle>
   </PropertyGroup>
-
   <!--
     MAUI is not fully compatible with centralized packages management:
     - https://github.com/dotnet/sdk/issues/27840
@@ -72,7 +71,6 @@
     <PackageVersion Include="AdamE.Firebase.iOS.Crashlytics" Version="11.10.0" />
     <PackageVersion Include="AdamE.Firebase.iOS.CloudMessaging" Version="11.10.0" />
   </ItemGroup>
-
   <!-- Strictly non-MAUI packages -->
   <ItemGroup Condition="!$(MSBuildProjectName.Contains('.Maui'))">
     <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
@@ -97,7 +95,6 @@
     <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)" />
   </ItemGroup>
-
   <!-- Fusion -->
   <ItemGroup>
     <PackageVersion Include="ActualLab.Core" Version="$(ActualLabFusionVersion)" />
@@ -119,7 +116,6 @@
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="Seq.Extensions.Logging" Version="8.0.0" />
   </ItemGroup>
-
   <!-- All other packages -->
   <ItemGroup>
     <PackageVersion Include="Anthropic.SDK" Version="5.2.3" />
@@ -129,7 +125,7 @@
     <PackageVersion Include="Blake3" Version="2.0.0" />
     <PackageVersion Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
     <PackageVersion Include="CommunityToolkit.Maui.Core" Version="11.2.0" />
-    <PackageVersion Include="Deepgram" Version="6.0.0" />
+    <PackageVersion Include="Deepgram" Version="6.2.1" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.2.0" />
     <PackageVersion Include="FirebaseAdmin" Version="3.1.0" />
@@ -237,7 +233,6 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.6" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.11.1" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="$(NpgsqlVersion)" />
-
     <!-- Aspire -->
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.2.1" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
