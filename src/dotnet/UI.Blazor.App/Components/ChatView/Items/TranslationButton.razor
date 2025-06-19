@@ -4,9 +4,6 @@
     if(!State.IsSet(out var m))
         return;
 
-    if(m.IsGlobeVisible != true)
-        return;
-
     var isOnCls = m.IsOn ? "on" : "";
     var sizeCls = ScreenSize.IsNarrow() ? "btn-sm" : "";
     var cls = $"translation-btn {sizeCls} {isOnCls}";
@@ -32,10 +29,9 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var isGlobeVisible = await TranslationUI.IsGlobeVisible(chatId, cancellationToken).ConfigureAwait(false);
         var isSubHeaderVisible = await TranslationUI.IsSubHeaderVisible(chatId, cancellationToken).ConfigureAwait(false);
         var isOn = await TranslationUI.IsOn(chatId, cancellationToken).ConfigureAwait(false) ?? false;
-        return new(isGlobeVisible, isSubHeaderVisible, isOn, chatId);
+        return new(isSubHeaderVisible, isOn, chatId);
     }
 
     private Task OnClick()
@@ -43,7 +39,7 @@
 
     // Nested types
 
-    public sealed record Model(bool IsGlobeVisible, bool IsSubHeaderVisible, bool IsOn, ChatId ChatId) {
-        public static readonly Model None = new(false, false, false, null!);
+    public sealed record Model(bool IsSubHeaderVisible, bool IsOn, ChatId ChatId) {
+        public static readonly Model None = new(false, false, null!);
     }
 }
