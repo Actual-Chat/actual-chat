@@ -12,7 +12,7 @@ register();
 import 'logging-init';
 // FontSize & Theme init
 import { FontSizes } from 'font-sizes';
-import * as theme from 'theme';
+import { Theme } from 'theme';
 // Critical init logic - should go right after logging-init
 import './src/init';
 
@@ -26,7 +26,7 @@ window.ui = {
     ...ui,
 };
 window.FontSizes = FontSizes;
-window.theme = theme;
+window.Theme = Theme;
 window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 

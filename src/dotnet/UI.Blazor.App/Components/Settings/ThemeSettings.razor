@@ -65,6 +65,9 @@
     private ThemeUI ThemeUI => Hub.ThemeUI;
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+
     protected override void OnInitialized() {
         _formModel = new (ComponentIdGenerator) {
             Theme = GetThemeKey(ThemeUI.State.Value.Theme),
@@ -73,7 +76,7 @@
     }
 
     private void OnCurrentThemeChanged(string? theme)
-        => ThemeUI.SetTheme(GetTheme(theme));
+        => ThemeUI.SetTheme(GetTheme(theme)).WithErrorLog(Log, "Failed to change theme to {Theme}", theme);
 
     private string GetThemeKey(Theme? theme)
         => theme?.ToString() ?? "";
@@ -82,8 +85,6 @@
         => !themeKey.IsNullOrEmpty() && Enum.TryParse<Theme>(themeKey, true, out var v) ? v : null;
 
     public sealed class FormModel {
-        private string? _theme;
-
         private string FormId { get; }
         public string LightThemeFormId { get; }
         public string DarkThemeFormId { get; }
@@ -91,11 +92,11 @@
         public string SystemThemeFormId { get; }
 
         public string? Theme {
-            get => _theme;
+            get;
             set {
-                if (_theme == value)
+                if (field == value)
                     return;
-                _theme = value;
+                field = value;
                 ThemeChanged?.Invoke(value);
             }
         }
