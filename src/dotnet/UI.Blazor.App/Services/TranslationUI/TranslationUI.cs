@@ -1,6 +1,5 @@
 using ActualChat.Streaming;
 using ActualChat.Transcription;
-using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -12,20 +11,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private AuthorUI AuthorUI => Hub.AuthorUI;
     private IStreamClient StreamClient => Hub.StreamClient;
-
-    [ComputeMethod]
-    public virtual async Task<bool> IsGlobeVisible(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var isOn = await IsOn(chatId, cancellationToken).ConfigureAwait(false);
-        if (isOn is not null)
-            return true;
-
-        var isSubHeaderVisible = await GetSubHeaderVisibility(chatId, cancellationToken).ConfigureAwait(false);
-        if (isSubHeaderVisible != null)
-            return true;
-
-        return await MustSuggest(chatId, cancellationToken).ConfigureAwait(false);
-    }
 
     [ComputeMethod]
     public virtual async Task<bool> IsSubHeaderVisible(ChatId chatId, CancellationToken cancellationToken = default) {

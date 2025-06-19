@@ -56,7 +56,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await CreateAndSetVisibleEntries(chatId, ("Bonjour", Languages.French));
 
         // assert
-        await AssertIsGlobeVisible(chatId, true);
         await AssertIsSubHeaderVisible(chatId, true);
     }
 
@@ -70,7 +69,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await CreateAndSetVisibleEntries(chatId, ("Does not need translation", Languages.English));
 
         // assert
-        await AssertIsGlobeVisible(chatId, false);
         await AssertIsSubHeaderVisible(chatId, false);
     }
 
@@ -85,7 +83,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await CreateAndSetVisibleEntries(chatId, ("Bonjour", Languages.French));
 
         // assert
-        await AssertIsGlobeVisible(chatId, false);
         await AssertIsSubHeaderVisible(chatId, false);
     }
 
@@ -101,25 +98,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         SetVisibleItems(englishEntry);
 
         // assert
-        await AssertIsGlobeVisible(chatId, false);
         await AssertIsSubHeaderVisible(chatId, false);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task GlobeShouldBeVisibleWhenLanguageMatchesSpokenButIsAlreadyOnOrOff(bool isOn)
-    {
-        // arrange
-        var (chatId, _) = await BobTester.CreateChat(true);
-        await TranslationUI.SetTargetLanguage(chatId, Languages.English);
-        await TranslationUI.SetIsOn(chatId, isOn);
-
-        // act
-        await CreateAndSetVisibleEntries(chatId, ("Does not need translation", Languages.English));
-
-        // assert
-        await AssertIsGlobeVisible(chatId, true);
     }
 
     [Theory]
@@ -183,12 +162,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     private Task AssertIsSubHeaderVisible(ChatId chatId, bool expected)
         => ComputedTest.When(async ct => {
             var isVisible = await TranslationUI.IsSubHeaderVisible(chatId, ct);
-            isVisible.Should().Be(expected);
-        });
-
-    private Task AssertIsGlobeVisible(ChatId chatId, bool expected)
-        => ComputedTest.When(async ct => {
-            var isVisible = await TranslationUI.IsGlobeVisible(chatId, ct);
             isVisible.Should().Be(expected);
         });
 }
