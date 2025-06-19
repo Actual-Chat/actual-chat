@@ -124,14 +124,42 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await AssertIsSubHeaderVisible(chatId, true);
     }
 
+    [Fact]
+    public async Task MustTranslateShouldConsiderOnlyChatLanguage()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var (chatId, _) = await BobTester.CreateChat(true);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        await TranslationUI.SetIsSubHeaderVisible(chatId, true, cancellationToken);
+        await LanguageUI.UpdateSettings(settings => settings with {
+            Primary = Languages.English,
+            Secondary = Languages.French,
+        });
+        await LanguageUI.ChangeChatLanguage(chatId, Languages.French, cancellationToken);
+
+        // act
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+        var entries = await CreateAndSetVisibleEntries(chatId,
+            ("Hello!", Languages.English),
+            ("Bonjour!", Languages.French));
+        var mustTranslateEnglishEntry = await TranslationUI.MustTranslate(entries[0], cancellationToken);
+        var mustTranslateFrenchEntry = await TranslationUI.MustTranslate(entries[1], cancellationToken);
+
+        // assert
+        mustTranslateEnglishEntry.Should().BeTrue();
+        mustTranslateFrenchEntry.Should().BeFalse();
+    }
+
     private async Task<List<ChatEntry>> CreateAndSetVisibleEntries(ChatId chatId, params (string Text, Language ExpectedLanguage)[] toCreate)
     {
-        var entries = await ChatEntries(chatId, toCreate);
+        var entries = await CreateEntries(chatId, toCreate);
         SetVisibleItems(entries);
         return entries;
     }
 
-    private async Task<List<ChatEntry>> ChatEntries(ChatId chatId, (string Text, Language ExpectedLanguage)[] toCreate)
+    private async Task<List<ChatEntry>> CreateEntries(ChatId chatId, (string Text, Language ExpectedLanguage)[] toCreate)
     {
         await AliceTester.JoinChat(chatId, Symbol.Empty, false);
         var entries = new List<ChatEntry>(toCreate.Length);
