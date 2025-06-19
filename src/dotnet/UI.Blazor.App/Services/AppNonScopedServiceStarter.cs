@@ -171,7 +171,6 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         Warmup(default(char));
         Warmup(default(bool?));
         Warmup(Symbol.Empty);
-        Warmup(default(JsonElement));
         Warmup(default(JSCallResultType));
         Warmup(default(ElementReference));
         Warmup(default(SideNavSide));

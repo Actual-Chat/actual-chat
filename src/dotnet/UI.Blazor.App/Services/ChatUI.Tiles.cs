@@ -263,7 +263,7 @@ public partial class ChatUI
                 }
 
                 if (hasEntryRange && hasConversationRange) {
-                    if (entryRange.Contains(conversationRange))
+                    if (conversationRange.Contains(entryRange))
                         AddRange(resultIdRanges, conversationStartRange);
                     else {
                         var (l, r) = entryRange.Subtract(conversationRange);
