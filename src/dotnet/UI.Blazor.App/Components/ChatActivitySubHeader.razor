@@ -1,36 +1,67 @@
-@inherits ComputedStateComponent<AppUIHub, Chat?>
+@inherits ComputedStateComponent<AppUIHub, ChatActivitySubHeader.Model?>
 @{
     var m = State.Value;
-    if (!ScreenSize.IsNarrow())
+    if (m is null || !ScreenSize.IsNarrow())
+        return;
+
+    var isVisible = m.IsAnyoneTalking || m.AudioState.IsListening || IsRecordingHere;
+    if (!isVisible)
         return;
 }
 
-<div class="chat-activity-subheader">
-    @if (m is not null) {
-        <ChatActivityPanel Chat="@m"/>
-    }
+<div class="chat-activity-subheader subheader-item">
+    <ChatActivityPanel Chat="@m.Chat"/>
 </div>
 
 @code {
     private IChats Chats => Hub.Chats;
-    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private ChatId? RecordingChatId {
+        get {
+            var activeChats = ActiveChatsUI.ActiveChats.Value;
+            return activeChats.Length > 0 ? activeChats[0].ChatId : null;
+        }
+    }
+
+    private bool IsRecordingHere => ChatId is not null && RecordingChatId == ChatId;
+
+    [Parameter, EditorRequired] public ChatId? ChatId { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Chat?>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Chat?>.Options() {
-                InitialValue = null,
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = GetStateCategory(t),
-            });
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = ChatId is not null
+            ? await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None)
+            : null;
+        await base.OnParametersSetAsync();
+    }
 
-    protected override async Task<Chat?> ComputeState(CancellationToken cancellationToken) {
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (selectedChatId is null)
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        if (ChatRecordingActivity == null)
             return null;
 
-        var selectedChat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
-        return selectedChat;
+        var chatId = ChatId;
+        if (chatId is null)
+            return null;
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return null;
+
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+
+        return new (chat, audioState, authorIds.Length > 0);
     }
+
+    // Nested types
+
+    public sealed record Model(
+        Chat Chat,
+        ChatAudioState AudioState,
+        bool IsAnyoneTalking);
 }

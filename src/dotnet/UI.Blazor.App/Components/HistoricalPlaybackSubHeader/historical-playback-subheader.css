@@ -1,21 +1,12 @@
 .historical-playback-subheader {
     @apply relative z-10;
-    @apply hidden;
-    @apply h-0 w-full lg:max-w-192;
-    @apply py-1 pl-1 pr-2 md:pl-4 md:pr-4 ;
+    @apply w-full lg:max-w-192;
+    @apply pl-1 pr-2 md:pl-4 md:pr-4 ;
     @apply bg-historical-playback;
     @apply text-historical-playback;
     @apply rounded-lg border-2 border-historical-playback;
     @apply duration-150;
     transition-behavior: allow-discrete;
-    transition-property: display, height;
-}
-.historical-playback-subheader:has(.c-content) {
-    @apply flex-x;
-    @apply h-12;
-    @starting-style {
-        height: 0;
-    }
 }
 .historical-playback-subheader > .c-content {
     @apply flex-1 flex-x justify-between items-center gap-x-2;

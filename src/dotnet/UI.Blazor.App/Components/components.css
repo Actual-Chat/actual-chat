@@ -164,8 +164,8 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply text-primary;
 }
 .chat-header-control-panel .translation-btn .c-hill {
-    @apply absolute -bottom-1.5;
-    @apply w-4/5 h-1;
+    @apply absolute -bottom-1;
+    @apply w-4/5 h-0.5;
     @apply ml-[10%];
     @apply rounded-full;
     @apply bg-[var(--text-03)];

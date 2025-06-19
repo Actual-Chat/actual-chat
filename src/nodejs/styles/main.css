@@ -153,11 +153,31 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply px-1 md:px-3;
     @apply overflow-visible;
     @apply bg-01;
-    @apply transition-height;
+    transition: height 0.25s;
 }
 .layout-subheader > div {
     @apply w-full;
     @apply mt-1;
+}
+.subheader-item {
+    display: none;
+    transform-origin: top;
+    margin-top: -1rem;
+    opacity: 0;
+    backface-visibility: hidden;
+    transition: margin-top 0.15s ease, opacity 0.25s;
+    transition-property: display, transform, opacity, margin-top;
+    transition-behavior: allow-discrete;
+}
+.layout-subheader .subheader-item {
+    display: flex !important;
+    opacity: 1;
+    margin-top: 0.25rem;
+    @starting-style {
+        display: none;
+        opacity: 0;
+        margin-top: -1rem;
+    }
 }
 
 .layout-body {

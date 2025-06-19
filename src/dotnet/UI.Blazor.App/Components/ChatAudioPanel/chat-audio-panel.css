@@ -487,56 +487,58 @@ body.narrow .narrow-panel .narrow-recorder-tooltip {
 .transcription-options-modal > .dialog-body {
     @apply gap-y-1;
 }
-.transcription-options-modal .language-btn-group {
+
+/* Language button group */
+.language-btn-group {
     @apply flex-y;
     @apply mb-2;
 }
-.transcription-options-modal .language-btn-group > .c-settings-hint {
+.language-btn-group > .c-settings-hint {
     @apply mb-4;
     @apply text-02;
 }
-.transcription-options-modal .language-btn-group > .c-title {
+.language-btn-group > .c-title {
     @apply mb-2;
     @apply text-02;
 }
-.transcription-options-modal .language-btn-group > .c-title > .c-edit {
+.language-btn-group > .c-title > .c-edit {
     @apply text-primary;
 }
-body.hoverable .transcription-options-modal .language-btn-group > .c-title > .c-edit:hover {
+body.hoverable .language-btn-group > .c-title > .c-edit:hover {
     @apply cursor-pointer;
 }
-.transcription-options-modal .language-btn-group a.link {
+.language-btn-group a.link {
     @apply md:cursor-pointer;
     @apply text-primary;
     @apply underline;
 }
 
-.transcription-options-modal .language-btn-group > .c-languages {
+.language-btn-group > .c-languages {
     @apply flex-x gap-x-2;
     @apply p-2;
     @apply rounded-lg;
     @apply bg-04;
 }
-.transcription-options-modal .language-btn-group > .c-languages > span {
+.language-btn-group > .c-languages > span {
     @apply flex-1 flex items-center justify-center;
     @apply text-03;
 }
-.transcription-options-modal .language-btn-group > .c-languages > button {
+.language-btn-group > .c-languages > button {
     @apply flex-1 flex items-center justify-center;
     @apply h-8;
     @apply rounded-lg;
     @apply bg-modal;
     @apply text-02;
 }
-.transcription-options-modal .language-btn-group > .c-languages > button.active {
+.language-btn-group > .c-languages > button.active {
     @apply text-primary;
     @apply cursor-default;
 }
-body.hoverable .transcription-options-modal .language-btn-group > .c-languages > button:not(.active):hover,
-.touch-capable .transcription-options-modal .language-btn-group > .c-languages > button:not(.active):active {
+body.hoverable .language-btn-group > .c-languages > button:not(.active):hover,
+.touch-capable .language-btn-group > .c-languages > button:not(.active):active {
     @apply bg-round;
 }
-.transcription-options-modal .language-btn-group > .c-languages > .c-none {
+.language-btn-group > .c-languages > .c-none {
     @apply flex-1 flex items-center justify-center;
     @apply text-03;
 }

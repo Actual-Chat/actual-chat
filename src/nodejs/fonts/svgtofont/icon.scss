@@ -1,10 +1,10 @@
 @font-face {font-family: "icon";
-  src: url('icon.eot?t=1745833220798'); /* IE9*/
-  src: url('icon.eot?t=1745833220798#iefix') format('embedded-opentype'), /* IE6-IE8 */
-  url("icon.woff2?t=1745833220798") format("woff2"),
-  url("icon.woff?t=1745833220798") format("woff"),
-  url('icon.ttf?t=1745833220798') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
-  url('icon.svg?t=1745833220798#icon') format('svg'); /* iOS 4.1- */
+  src: url('icon.eot?t=1750331898623'); /* IE9*/
+  src: url('icon.eot?t=1750331898623#iefix') format('embedded-opentype'), /* IE6-IE8 */
+  url("icon.woff2?t=1750331898623") format("woff2"),
+  url("icon.woff?t=1750331898623") format("woff"),
+  url('icon.ttf?t=1750331898623') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+  url('icon.svg?t=1750331898623#icon') format('svg'); /* iOS 4.1- */
 }
 
 [class^="icon-"], [class*=" icon-"] {
@@ -181,24 +181,29 @@
 .icon-stop-fill:before { content: "\eaa4"; }
 .icon-sync:before { content: "\eaa5"; }
 .icon-talking:before { content: "\eaa6"; }
-.icon-text:before { content: "\eaa7"; }
-.icon-transcription:before { content: "\eaa8"; }
-.icon-translate:before { content: "\eaa9"; }
-.icon-trash-fill:before { content: "\eaaa"; }
-.icon-trash02:before { content: "\eaab"; }
-.icon-trash03:before { content: "\eaac"; }
-.icon-unpin-from-navbar:before { content: "\eaad"; }
-.icon-unpin:before { content: "\eaae"; }
-.icon-unread:before { content: "\eaaf"; }
-.icon-vector-left:before { content: "\eab0"; }
-.icon-vector-right:before { content: "\eab1"; }
-.icon-video:before { content: "\eab2"; }
-.icon-voice-01:before { content: "\eab3"; }
-.icon-volume-off-fill:before { content: "\eab4"; }
-.icon-volume-off:before { content: "\eab5"; }
-.icon-volume-settings:before { content: "\eab6"; }
-.icon-volume-up-fill:before { content: "\eab7"; }
-.icon-volume-up:before { content: "\eab8"; }
+.icon-text-message-2:before { content: "\eaa7"; }
+.icon-text-message:before { content: "\eaa8"; }
+.icon-text:before { content: "\eaa9"; }
+.icon-transcription:before { content: "\eaaa"; }
+.icon-translate:before { content: "\eaab"; }
+.icon-translation:before { content: "\eaac"; }
+.icon-trash-fill:before { content: "\eaad"; }
+.icon-trash02:before { content: "\eaae"; }
+.icon-trash03:before { content: "\eaaf"; }
+.icon-unpin-from-navbar:before { content: "\eab0"; }
+.icon-unpin:before { content: "\eab1"; }
+.icon-unread:before { content: "\eab2"; }
+.icon-vector-left:before { content: "\eab3"; }
+.icon-vector-right:before { content: "\eab4"; }
+.icon-video:before { content: "\eab5"; }
+.icon-voice-01:before { content: "\eab6"; }
+.icon-voice-message:before { content: "\eab7"; }
+.icon-voice-to-text-message:before { content: "\eab8"; }
+.icon-volume-off-fill:before { content: "\eab9"; }
+.icon-volume-off:before { content: "\eaba"; }
+.icon-volume-settings:before { content: "\eabb"; }
+.icon-volume-up-fill:before { content: "\eabc"; }
+.icon-volume-up:before { content: "\eabd"; }
 
 $icon-activity: "\ea01";
 $icon-add-reaction: "\ea02";
@@ -366,22 +371,27 @@ $icon-status: "\eaa3";
 $icon-stop-fill: "\eaa4";
 $icon-sync: "\eaa5";
 $icon-talking: "\eaa6";
-$icon-text: "\eaa7";
-$icon-transcription: "\eaa8";
-$icon-translate: "\eaa9";
-$icon-trash-fill: "\eaaa";
-$icon-trash02: "\eaab";
-$icon-trash03: "\eaac";
-$icon-unpin-from-navbar: "\eaad";
-$icon-unpin: "\eaae";
-$icon-unread: "\eaaf";
-$icon-vector-left: "\eab0";
-$icon-vector-right: "\eab1";
-$icon-video: "\eab2";
-$icon-voice-01: "\eab3";
-$icon-volume-off-fill: "\eab4";
-$icon-volume-off: "\eab5";
-$icon-volume-settings: "\eab6";
-$icon-volume-up-fill: "\eab7";
-$icon-volume-up: "\eab8";
+$icon-text-message-2: "\eaa7";
+$icon-text-message: "\eaa8";
+$icon-text: "\eaa9";
+$icon-transcription: "\eaaa";
+$icon-translate: "\eaab";
+$icon-translation: "\eaac";
+$icon-trash-fill: "\eaad";
+$icon-trash02: "\eaae";
+$icon-trash03: "\eaaf";
+$icon-unpin-from-navbar: "\eab0";
+$icon-unpin: "\eab1";
+$icon-unread: "\eab2";
+$icon-vector-left: "\eab3";
+$icon-vector-right: "\eab4";
+$icon-video: "\eab5";
+$icon-voice-01: "\eab6";
+$icon-voice-message: "\eab7";
+$icon-voice-to-text-message: "\eab8";
+$icon-volume-off-fill: "\eab9";
+$icon-volume-off: "\eaba";
+$icon-volume-settings: "\eabb";
+$icon-volume-up-fill: "\eabc";
+$icon-volume-up: "\eabd";
 
