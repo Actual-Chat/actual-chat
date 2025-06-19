@@ -81,8 +81,10 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
         }
 
         var isTailReached = batch.Count < BatchSize;
-        if (groups.Count == 0)
+        if (groups.Count == 0) {
+            // TODO(AK): schedule summarization of current group in two minutes
             return new (false, isTailReached, ExtractorState.MaxLid, false);
+        }
 
         foreach (var group in groups) {
             if (group.WordCount < Settings.MinConversationWords)
@@ -112,6 +114,7 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
             if (idRanges.Count == 0)
                 continue; // No valid ranges - we should not get there
 
+            // TODO(AK): why do we need to delay summarization?
             var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]) {
                 DelayUntil = Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay,
             };

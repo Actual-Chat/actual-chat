@@ -13,7 +13,7 @@ public partial record ExtractorState(
     [property: DataMember, MemoryPackOrder(1)]
     EntryGroupBuilder? CurrentChunk)
 {
-    [MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore]
     public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
 }
 
@@ -56,12 +56,15 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
         var replyBuilder = new EntryGroupBuilder();
         var groupBuilder = state.CurrentGroup ?? new EntryGroupBuilder();
         var chunkBuilder = state.CurrentChunk ?? new EntryGroupBuilder();
-        var lastEntryLid = chunkBuilder.Entries.Count > 0
-            ? chunkBuilder.MaxLid
-            : groupBuilder.Entries.Count > 0
-                ? groupBuilder.MaxLid
-                : -1;
-        foreach (var entry in entries.SkipWhile(e => e.LocalId <= lastEntryLid)) {
+        if (groupBuilder.MaxLid > chunkBuilder.MaxLid) {
+            // Ensure that the chunk builder holds more recent entries than the group builder
+            var recentEntries = chunkBuilder.Entries.TakeWhile(e => e.LocalId <= groupBuilder.MaxLid)
+                .OrderBy(e => e.LocalId)
+                .ToList();
+            chunkBuilder = new EntryGroupBuilder(recentEntries);
+        }
+        var lastEntryLid = state.MaxLid;
+        foreach (var entry in entries.SkipWhile(e => e.LocalId <= lastEntryLid).OrderBy(e => e.LocalId)) {
             if (string.IsNullOrWhiteSpace(entry.Content))
                 continue;
 

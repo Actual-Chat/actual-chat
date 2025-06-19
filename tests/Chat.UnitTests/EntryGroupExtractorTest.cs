@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using ActualChat.Chat.ML;
 using Newtonsoft.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace ActualChat.Chat.UnitTests;
 
@@ -202,6 +203,25 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         result.Groups.Should().NotBeEmpty();
         result.Groups.Count.Should().BeLessThan(40);
         result.Groups.Should().AllSatisfy(group => group.Entries.Should().NotBeEmpty());
+    }
+
+    [Fact]
+    public async Task ExtractGroups_ExtractGroupsWithBrokenState_ShouldProvideConversations()
+    {
+        // Arrange
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
+        var initialState = JsonSerializer.Deserialize<ExtractorState>(
+            """{"CurrentGroup":{"Entries":[],"AuthorActivity":{},"WordCount":0,"Embeddings":[],"AveragePauseBetweenEntries":0,"MinLid":9223372036854775807,"MaxLid":0,"Text":""},"CurrentChunk":{"Entries":[{"LocalId":128581,"Content":"у, как его? Это слушай Андрюха Давайте не будем повторять то, что мы уже разбирали анонс. Ну что, либо исчезает, да, либо как бы, Когда двое пишут там знаешь, э, ну, оно дёргается. Просто немножко пристроено. Ну, то есть, потому что два сообщения растут и Ну короче, мы это неправильно вот на Айфоне бак намного серьёзнее.","AuthorId":"052w3sgrad:40","BeginsAt":"2025-06-19T07:39:00.7622090Z","EndsAt":null,"IsTranscript":false,"RepliedEntryLid":null}],"AuthorActivity":{"052w3sgrad:40":56},"WordCount":56,"Embeddings":[],"AveragePauseBetweenEntries":0,"MinLid":128581,"MaxLid":128581,"Text":"у, как его? Это слушай Андрюха Давайте не будем повторять то, что мы уже разбирали анонс. Ну что, либо исчезает, да, либо как бы, Когда двое пишут там знаешь, э, ну, оно дёргается. Просто немножко пристроено. Ну, то есть, потому что два сообщения растут и Ну короче, мы это неправильно вот на Айфоне бак намного серьёзнее.\n"},"MaxLid":128581}""",
+            JsonSerializerOptions.Default);
+        var entries = JsonSerializer.Deserialize<List<TextEntry>>(
+            """[{"LocalId":128582,"Content":"Ну вот, наверное, Может им еще один бак Report сделать тогда на эту тему. Я не знаю, потому что они Может я просто почитал тот про который писали он вообще специфичный сильно. То есть у нас-то, оно же без аут и так далее. То есть надо писать, что на самом деле, а проявляется и без","AuthorId":"052w3sgrad:40","BeginsAt":"2025-06-19T07:39:18.9511930Z","EndsAt":null,"IsTranscript":false,"RepliedEntryLid":null},{"LocalId":128583,"Content":"По поводу компоненты, которые в этот выдаёт.\r\nРезультаты поиска\r\nВот этого достаточно, чтобы\r\nНу то, что там сейчас передаётся.\r\nДля разделения на Плейс и чаты. Ну то есть, когда здесь message, он Search матч\r\nЕсть я понимаю, что из\r\nИз этого мессендже я могу вытащить относится он к чату и к Plays и так далее. А когда title Search\r\nКороче надо ли здесь ещё Play ID Или этого всего достаточно, чтобы понять.\r\nКто нашлось название Place и название чата?\r\nНу у нас же здесь передается чат ID","AuthorId":"052w3sgrad:40","BeginsAt":"2025-06-19T07:39:35.6673230Z","EndsAt":null,"IsTranscript":false,"RepliedEntryLid":null},{"LocalId":128584,"Content":"А вот, что я хотел спросить по поводу юаня. Я как бы это, наверное, не очень важно, но подбешивает, когда короче, как имиджи отачи подгружаешь на iPhone на этом на Андроиде неважно на Айфоне э, и клавиатура открывается и у тебя, короче, у нас скрывается этот индикатор загрузки для маленьких вариантов картины и типа, как бы тебе надо обратно сложить клавиатуру, чтобы посмотреть загрузилось она или нет, когда-то картинки что-нибудь подписываешь ещё комментарии, и у нас вот в маленьком варианте нет этого индикатора. Он там скрыт и я, ну, видимо, для экономии места. Это было сделано. Не знаю. Вот","AuthorId":"052w3sgrad:40","BeginsAt":"2025-06-19T07:39:49.9768670Z","EndsAt":null,"IsTranscript":false,"RepliedEntryLid":null},{"LocalId":128585,"Content":"Привет я пока тут.\r\nМы вообще договаривались в понедельник сделать. Вечером нашим звонок. Да чтобы Саша приходил. Вот все остальные звонки перенести на час раньше. То есть, чтоб больше вероятность было попадать, так как по московскому времени только я сейчас вроде 8 утра мне не проблема присоединиться. Я не знаю, как тебе удобно сейчас. Сейчас сколько время?","AuthorId":"052w3sgrad:40","BeginsAt":"2025-06-19T07:40:08.9501850Z","EndsAt":null,"IsTranscript":false,"RepliedEntryLid":null},{"LocalId":128586,"Content":"Мы вообще договаривались в понедельник сделать. Вечером нашим звонок. Да чтобы Саша приходил. Вот все остальные звонки перенести на час раньше. То есть, чтоб больше вероятность было попадать, так как по московскому времени только я сейчас вроде 8 утра мне не проблема присоединиться. Я не знаю, как тебе удобно сейчас. Сейчас сколько время?","AuthorId":"052w3sgrad:40","BeginsAt":"2025-06-19T07:40:34.2247310Z","EndsAt":null,"IsTranscript":false,"RepliedEntryLid":null},{"LocalId":128587,"Content":"Что, давайте я начну начну, потому что у меня нихуя никаких новостей за сегодня нет. Что-то мы отходили От вчерашнего, а потом нас соседи в гости нас созвали. И вот я только что вернулся. Вот, так что извиняюсь. Я думаю, наверное, надо считать, что я пока не пришёл отпуске. Э-э. Вот э-э. Ну, ну, я думаю, завтра что-нибудь уже сделаю. Я просто короче Как-то получилось что куча. Всего подряд и Ну вот","AuthorId":"052w3sgrad:40","BeginsAt":"2025-06-19T07:40:47.4541440Z","EndsAt":null,"IsTranscript":false,"RepliedEntryLid":null}]""",
+            JsonSerializerOptions.Default);
+
+        // Act
+        var result = extractor.ExtractGroups(initialState, entries);
+
+        // Assert
+        result.Groups.Should().NotBeEmpty();
     }
 
     [Fact(Skip = "For exploratory purposes only")]

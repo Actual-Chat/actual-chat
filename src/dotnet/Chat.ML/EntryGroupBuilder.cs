@@ -62,7 +62,7 @@ public partial class EntryGroupBuilder
     }
 
     [JsonConstructor, MemoryPackConstructor]
-    public EntryGroupBuilder(IReadOnlyCollection<TextEntry> entries)
+    public EntryGroupBuilder(IReadOnlyList<TextEntry> entries)
     {
         _entries = [.. entries];
         Initialize();

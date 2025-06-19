@@ -3,7 +3,7 @@ using MemoryPack;
 namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: MemoryPackConstructor]
+[method: MemoryPackConstructor, JsonConstructor]
 public sealed partial record TextEntry(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] long LocalId,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string Content,

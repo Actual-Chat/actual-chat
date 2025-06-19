@@ -61,7 +61,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
 
         LastRunAt = Clocks.SystemClock.Now;
         Log.LogDebug("`{Id}`.OnIndex: Started and updated LastRunAt = {LastRunAt}", Id, LastRunAt);
-        var (mustEnd, isTailReached, updatedCursor, processedCount) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
+        var (mustEnd, isTailReached, updatedCursor, hasProcessedAnyItems) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = updatedCursor;
         var transitionKind = IndexingFlowTransitionKind.Resume;
         DebugLog?.LogDebug(
@@ -72,7 +72,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
             updatedCursor);
         if (isTailReached) {
             FlowSetVersion = CurrentFlowSetVersion;
-            transitionKind = await HandleTail(processedCount, cancellationToken).ConfigureAwait(false);
+            transitionKind = await HandleTail(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
         }
         if (transitionKind != IndexingFlowTransitionKind.Recheck)
             NextRecheckAt = null;
