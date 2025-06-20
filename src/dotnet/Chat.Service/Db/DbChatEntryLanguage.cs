@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Hashing;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat.Db;
@@ -11,6 +12,7 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string Languages { get; set; } = "";
+    public string EntryContentHash { get; set; } = "";
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -30,6 +32,7 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
             Languages = Languages.IsNullOrEmpty()
                 ? []
                 : JsonSerializer.Deserialize<Language[]>(Languages) ?? [],
+            EntryContentHash = new HashString(EntryContentHash),
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
         };
@@ -44,6 +47,7 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
         Languages = model.Languages.Length != 0
             ? JsonSerializer.Serialize(model.Languages)
             : "";
+        EntryContentHash = model.EntryContentHash;
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
     }

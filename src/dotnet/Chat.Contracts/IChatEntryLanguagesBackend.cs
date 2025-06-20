@@ -1,3 +1,4 @@
+using ActualChat.Hashing;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -14,9 +15,6 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
     Task<ChatEntryLanguage?> OnDetect(ChatEntryLanguagesBackend_Detect command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<ChatEntryLanguage?> OnReset(ChatEntryLanguagesBackend_Reset command, CancellationToken cancellationToken);
-
-    [CommandHandler]
     Task<ChatEntryLanguage?> OnChange(ChatEntryLanguagesBackend_Change command, CancellationToken cancellationToken);
 
     // Event handlers
@@ -28,21 +26,14 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Detect(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id
-) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id,
+    [property: DataMember, MemoryPackOrder(1)] HashString ContentHash
+) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>, IHasUuid
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => Id.ChatId;
-}
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatEntryLanguagesBackend_Reset(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id
-) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Id.ChatId;
+    string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

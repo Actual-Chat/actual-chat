@@ -1,7 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
-using ActualChat.Mesh;
 using ActualChat.Queues;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +14,6 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     private IDbEntityResolver<string, DbChatEntryLanguage> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatEntryLanguage>>();
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    [field: AllowNull, MaybeNull]
-    private IMeshLocks EntryLanguageLocks => field ??= Services.MeshLocks<ChatDbContext>().WithKeyPrefix(nameof(EntryLanguageLocks));
     [field: AllowNull, MaybeNull]
     private LanguageDetector LanguageDetector => field ??= Services.GetRequiredService<LanguageDetector>();
     [field: AllowNull, MaybeNull]
@@ -35,7 +32,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             return entryLanguage;
 
         // It's a compute method, we don't want to do any heavy lifting here, so...
-        var cmd = new ChatEntryLanguagesBackend_Detect(id);
+        var cmd = new ChatEntryLanguagesBackend_Detect(id, entry.ContentHash);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
         return entryLanguage;
     }
@@ -53,53 +50,15 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         if (!NeedsDetection(entry, entryLanguage))
             return entryLanguage;
 
-        var (_, updatedEntryLanguage) = await EntryLanguageLocks.TryRunLocked(
-                $"{id}.{entry.ContentHash}",
-                RunLockedOptions.NoRelock,
-                ct => GetOrDetectUnsafe(id, ct),
-                cancellationToken)
-            .ConfigureAwait(false);
-        if (updatedEntryLanguage is null)
-            return null;
+        var languages = await LanguageDetector.DetectLanguages(entry.Content, cancellationToken).ConfigureAwait(false);
+        entryLanguage ??= new ChatEntryLanguage(id);
+        entryLanguage = entryLanguage with {
+            Languages = [..languages],
+            EntryContentHash = entry.ContentHash,
+        };
 
-        var cmd = new ChatEntryLanguagesBackend_Change(id, updatedEntryLanguage.Version, Change.Upsert(updatedEntryLanguage));
+        var cmd = new ChatEntryLanguagesBackend_Change(id, entryLanguage.Version, Change.Upsert(entryLanguage));
         return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task<ChatEntryLanguage?> OnReset(
-        ChatEntryLanguagesBackend_Reset command,
-        CancellationToken cancellationToken)
-    {
-        var id = command.Id;
-        id.Require();
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            _ = Get(id, default);
-            return default!;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _1 = dbContext.ConfigureAwait(false);
-
-        await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
-        var dbEntryLanguage = await dbContext.ChatEntryLanguages
-            .FirstOrDefaultAsync(x => x.Id == command.Id.Value, cancellationToken)
-            .ConfigureAwait(false);
-        var now = Clocks.SystemClock.Now;
-        if (dbEntryLanguage == null)
-            return null;
-
-        dbEntryLanguage.Languages = "";
-        dbEntryLanguage.ModifiedAt = now;
-        dbEntryLanguage.Version = VersionGenerator.NextVersion(dbEntryLanguage.Version);
-        dbContext.ChatEntryLanguages.Update(dbEntryLanguage);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        var entryLanguage = dbEntryLanguage.ToModel();
-        context.Operation.AddEvent(new ChatEntryLanguagesChangedEvent([entryLanguage]));
-        return entryLanguage;
     }
 
     // [CommandHandler]
@@ -169,8 +128,12 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     // [EventHandler]
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive) {
+            if (context.Operation.Items.KeylessGet<bool>())
+                _ = Get(eventCommand.Entry.Id, default);
             return Task.CompletedTask; // It just spawns other commands, so nothing to do here
+        }
 
         if (!Settings.IsTranslationEnabled)
             return Task.CompletedTask;
@@ -190,13 +153,12 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
                 Log.LogDebug("OnTextEntryChangedEvent: Removing chat entry languages for {Id}", entry.Id);
                 await Commander.Call(ChatEntryLanguagesBackend_Change.Remove(entry.Id), true, cancellationToken)
                     .ConfigureAwait(false);
-                return;
             }
 
-            Log.LogDebug("OnTextEntryChangedEvent: Resetting chat entry languages for {Id}", entry.Id);
-            var cmd = new ChatEntryLanguagesBackend_Reset(entry.Id);
-            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
-            Log.LogDebug("OnTextEntryChangedEvent: Reset chat entry languages for {Id}", entry.Id);
+            var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+            await using var _1 = dbContext.ConfigureAwait(false);
+
+            context.Operation.Items.KeylessSet(true);
         }
     }
 
@@ -204,14 +166,14 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 
     private static bool SupportsDetection(ChatEntry entry)
     {
-        if (entry.Kind is not ChatEntryKind.Text || entry.IsSystemEntry)
+        if (entry.Kind is not ChatEntryKind.Text)
+            return false;
+
+        if (entry.IsSystemEntry)
             return false;
 
         // languages are already saved for transcribed messages
-        if (entry is not { HasAudioEntry: false, HasVideoEntry: false })
-            return false;
-
-        return true;
+        return entry is { HasAudioEntry: false, HasVideoEntry: false };
     }
 
     private static bool NeedsDetection([NotNullWhen(true)] ChatEntry? entry, ChatEntryLanguage? entryLanguage)
@@ -222,13 +184,13 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         if (!SupportsDetection(entry))
             return false;
 
-        if (entry.IsRemoved || entry.Content.IsNullOrEmpty())
+        if (entry.IsRemoved)
             return false;
 
         if (entryLanguage is null)
             return true;
 
-        return entryLanguage.Languages.Length == 0;
+        return entryLanguage.EntryContentHash != entry.ContentHash;
     }
 
     private async Task<(ChatEntry? Entry, ChatEntryLanguage? Language)> GetExisting(ChatEntryId id, CancellationToken cancellationToken)
@@ -240,18 +202,5 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         var dbEntryLanguage = await EntityResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         var entryLanguage = dbEntryLanguage?.ToModel();
         return (entry, entryLanguage);
-    }
-
-    private async Task<ChatEntryLanguage?> GetOrDetectUnsafe(ChatEntryId id, CancellationToken cancellationToken)
-    {
-        var (entry, entryLanguage) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!NeedsDetection(entry, entryLanguage))
-            return entryLanguage;
-
-        var languages = await LanguageDetector.DetectLanguages(entry.Content, cancellationToken).ConfigureAwait(false);
-        entryLanguage ??= new ChatEntryLanguage(id);
-        return entryLanguage with {
-            Languages = [..languages],
-        };
     }
 }

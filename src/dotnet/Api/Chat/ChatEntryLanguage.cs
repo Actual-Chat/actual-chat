@@ -1,3 +1,4 @@
+using ActualChat.Hashing;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 using MemoryPack;
@@ -14,6 +15,7 @@ public sealed partial record ChatEntryLanguage(
     [DataMember, MemoryPackOrder(2)] public Language[] Languages { get; init; } = [];
     [DataMember, MemoryPackOrder(3)] public DateTime CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public DateTime ModifiedAt { get; init; }
+    [DataMember, MemoryPackOrder(5)] public HashString EntryContentHash { get; set; } = HashString.None;
 
     // This record relies on referential equality
     public bool Equals(ChatEntryLanguage? other) => ReferenceEquals(this, other);
