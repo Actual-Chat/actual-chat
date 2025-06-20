@@ -2,7 +2,36 @@ using MemoryPack;
 
 namespace ActualChat.Chat.ML;
 
-public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bool IsCompleted = false);
+public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bool IsCompleted = false)
+{
+    [field: AllowNull, MaybeNull]
+    public IReadOnlyList<Range<long>> LocalIdRanges => field ??= GetLocalIdRanges();
+
+    private IReadOnlyList<Range<long>> GetLocalIdRanges()
+    {
+        if (Entries.Count == 0)
+            return [];
+
+        var idRanges = new List<Range<long>>();
+        long? startId = null, endId = null;
+        foreach (var entry in Entries)
+            if (startId == null) {
+                startId = entry.LocalId;
+                endId = entry.LocalId;
+            }
+            else if (entry.LocalId == endId + 1)
+                endId = entry.LocalId;
+            else {
+                idRanges.Add(new Range<long>(startId.Value, endId!.Value + 1));
+                startId = entry.LocalId;
+                endId = entry.LocalId;
+            }
+        if (startId != null && endId != null)
+            idRanges.Add(new Range<long>(startId.Value, endId.Value + 1));
+
+        return idRanges;
+    }
+}
 
 public record ReplySequence(IReadOnlyList<TextEntry> Entries);
 
@@ -15,6 +44,15 @@ public partial record ExtractorState(
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
+
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TextEntry? LastEntry => CurrentChunk?.Entries.LastOrDefault() ?? CurrentGroup?.Entries.LastOrDefault();
+
+    [IgnoreDataMember, MemoryPackIgnore]
+    public int WordCount => (CurrentGroup?.WordCount ?? 0) + (CurrentChunk?.WordCount ?? 0);
+
+    [IgnoreDataMember, MemoryPackIgnore]
+    public int EntryCount => (CurrentGroup?.Entries.Count ?? 0) + (CurrentChunk?.Entries.Count ?? 0);
 }
 
 public record ExtractResult(ExtractorState State, IReadOnlyList<EntryGroup> Groups, IReadOnlyList<ReplySequence> ReplySequences);

@@ -7,11 +7,16 @@ using MemoryPack;
 namespace ActualChat.Chat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class ConversationSplitFlow : IndexingFlowBase<long>
+public partial class ConversationSplitFlow : Flow, IHasLastRunAt
 {
+    public static class FlowSteps
+    {
+        public static readonly Symbol OnReset = nameof(ConversationSplitFlow.OnReset);
+        public static readonly Symbol OnIndex = nameof(ConversationSplitFlow.OnIndex);
+    }
+
     private const int BatchSize = 100;
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
-    protected override int CurrentFlowSetVersion => 1;
     [field: AllowNull, MaybeNull]
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
 
@@ -27,37 +32,39 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
     [field: AllowNull, MaybeNull]
     private IEntryGroupExtractor EntryGroupExtractor => field ??= Host.Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
 
+    // Flow state
+
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public ExtractorState? ExtractorState { get; protected set; }
 
-    protected override void ResetState()
-    {
-        base.ResetState();
-        ExtractorState = null;
-    }
+    [DataMember(Order = 100), MemoryPackOrder(100)]
+    public long? Cursor { get; protected set; }
 
-    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+    [DataMember(Order = 104), MemoryPackOrder(104)]
+    public Moment LastRunAt { get; protected set; }
+
+    // Flow transitions
+
+    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chat.IsSummarized ?? false) // Only process summarized chats
-            return await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
+            return Resume(nameof(OnIndex));
 
-        return false;
+        return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
     }
 
-    protected override async Task<BatchIndexingResult<long>> Process(
-        long previousLastLid,
-        CancellationToken cancellationToken)
+    protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
-        var batch = await GetEntries(previousLastLid, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("`{Id}`.Process: retrieved {Count} entries with localId > {PreviousLastLid}", Id, batch.Count, previousLastLid);
-
-        var state = ExtractorState;
+        LastRunAt = Clocks.SystemClock.Now;
+        var lastLid = Cursor ?? 0;
         var chatId = ChatId;
-        var entries = batch.Select(c => new TextEntry(c)).ToList();
-        var (extractorState, groups, replySequences) = EntryGroupExtractor.ExtractGroups(state, entries);
-        ExtractorState = extractorState;
+        Log.LogDebug("`{Id}`.OnIndex: Started at cursor {LastLid}", Id, lastLid);
+        var (entries, hasMore) = await GetEntries(lastLid, cancellationToken).ConfigureAwait(false);
+        var (state, groups, replySequences) = EntryGroupExtractor.ExtractGroups(ExtractorState ?? new ExtractorState(null, null), entries);
+        ExtractorState = state;
 
+        // process replies
         foreach (var replySequence in replySequences) {
             var firstEntry = replySequence.Entries[0];
             if (firstEntry.RepliedEntryLid is not { } entryLid)
@@ -67,7 +74,6 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
             var idTileRange = IdTileStack.LastLayer.GetTile(entryLid).Range;
             var conversationTile = await ConversationsBackend.GetRangeMeta(chatId, idTileRange.Start, cancellationToken).ConfigureAwait(false);
             var existingConversationIds = conversationTile.ConversationIds;
-
             var appendReply = new ConversationBackend_AppendReply(
                 chatId,
                 entryLid,
@@ -80,10 +86,33 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
             await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
         }
 
-        var isTailReached = batch.Count < BatchSize;
+
+        // If we reached the end of the entries and there are no groups, we might want to summarize the last group
+        if (groups.Count == 0 && !hasMore) {
+            var lastEntry = state.LastEntry;
+            if (lastEntry != null && (lastEntry.EndsAt ?? lastEntry.BeginsAt) < Clocks.CoarseSystemClock.Now - Settings.ChatEntrySummarizationDelay)
+                if (state.WordCount >= Settings.MinConversationWords && state.EntryCount >= Settings.MinConversationEntries) {
+                    var group = state.CurrentGroup!.AddRange(state.CurrentChunk?.Entries ?? []).Build();
+
+                    var idRanges = group.LocalIdRanges;
+                    var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
+                    await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+
+                    // Reset the state for the next group
+                    ExtractorState = new ExtractorState(null, null);
+                }
+            if (entries.Count > 0)
+                Cursor = entries[^1].LocalId;
+            Event.MarkHandled();
+            return WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
+        }
+
         if (groups.Count == 0) {
-            // TODO(AK): schedule summarization of current group in two minutes
-            return new (false, isTailReached, ExtractorState.MaxLid, false);
+            // No groups found, but we have more entries to process
+            if (entries.Count > 0)
+                Cursor = entries[^1].LocalId;
+            Event.MarkHandled();
+            return WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay);
         }
 
         foreach (var group in groups) {
@@ -93,46 +122,35 @@ public partial class ConversationSplitFlow : IndexingFlowBase<long>
             if (group.Entries.Count < Settings.MinConversationEntries)
                 continue;
 
-            var idRanges = new List<Range<long>>();
-            long? startId = null, endId = null;
-
-            foreach (var entry in group.Entries)
-                if (startId == null) {
-                    startId = entry.LocalId;
-                    endId = entry.LocalId;
-                }
-                else if (entry.LocalId == endId + 1)
-                    endId = entry.LocalId;
-                else {
-                    idRanges.Add(new Range<long>(startId.Value, endId!.Value + 1));
-                    startId = entry.LocalId;
-                    endId = entry.LocalId;
-                }
-
-            if (startId != null && endId != null)
-                idRanges.Add(new Range<long>(startId.Value, endId.Value + 1));
-            if (idRanges.Count == 0)
-                continue; // No valid ranges - we should not get there
-
-            // TODO(AK): why do we need to delay summarization?
-            var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]) {
-                DelayUntil = Host.Clocks.CoarseSystemClock.Now + Settings.ChatEntrySummarizationDelay,
-            };
+            var idRanges = group.LocalIdRanges;
+            var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
             await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
         }
 
-        return new(false, isTailReached, entries[^1].LocalId, true);
+        if (entries.Count > 0)
+            Cursor = entries[^1].LocalId;
+        Event.MarkHandled();
+        return hasMore
+            ? StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch")
+            : WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
     }
 
-    private async Task<IReadOnlyList<ChatEntry>> GetEntries(
+    // Private methods
+
+    private async Task<(IReadOnlyList<TextEntry> Entries, bool HasMore)> GetEntries(
         long lastId,
         CancellationToken cancellationToken)
     {
         var chatId = ChatId;
         var now = Clocks.CoarseSystemClock.Now;
         var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
-        var entries = await ChatsBackend.ListNewEntries(chatId, lastId, BatchSize, cancellationToken).ConfigureAwait(false);
-        // TODO(AK): probably filtering by time must be done in Backend
-        return [.. entries.TakeWhile(e => (e.EndsAt ?? e.BeginsAt) <= immatureMoment)];
+        var entries = await ChatsBackend.ListNewEntries(chatId, lastId, BatchSize + 1, cancellationToken).ConfigureAwait(false);
+        var textEntries = entries
+            .TakeWhile(e => (e.EndsAt ?? e.BeginsAt) <= immatureMoment)
+            .Select(e => new TextEntry(e))
+            .Take(BatchSize)
+            .ToList();
+        var hasMore = entries.Length > BatchSize;
+        return (textEntries, hasMore);
     }
 }
