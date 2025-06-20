@@ -38,10 +38,12 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
     public ExtractorState? ExtractorState { get; protected set; }
 
     [DataMember(Order = 100), MemoryPackOrder(100)]
-    public long? Cursor { get; protected set; }
+    public long Cursor { get; protected set; }
 
     [DataMember(Order = 104), MemoryPackOrder(104)]
     public Moment LastRunAt { get; protected set; }
+    [DataMember(Order = 105), MemoryPackOrder(105), Obsolete("Deprecated.")]
+    public Moment? NextRecheckAt { get; protected set; }
 
     // Flow transitions
 
@@ -57,7 +59,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
     protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         LastRunAt = Clocks.SystemClock.Now;
-        var lastLid = Cursor ?? 0;
+        var lastLid = Cursor;
         var chatId = ChatId;
         Log.LogDebug("`{Id}`.OnIndex: Started at cursor {LastLid}", Id, lastLid);
         var (entries, hasMore) = await GetEntries(lastLid, cancellationToken).ConfigureAwait(false);
