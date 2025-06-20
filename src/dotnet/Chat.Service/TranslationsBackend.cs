@@ -17,7 +17,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     [field: AllowNull, MaybeNull]
-    private IMeshLocks TranslationLocks => field ??= Services.MeshLocks<ChatDbContext>().WithKeyPrefix(nameof(TranslationLocks));
+    private IMeshLocks TranslationLocks => field ??= Services.MeshLocks<ChatDbContext>().WithKeyPrefix(nameof(TranslationLocks)); // TODO: use uuid of command
     [field: AllowNull, MaybeNull]
     private IQueues Queues => field ??= Services.Queues();
     [field: AllowNull, MaybeNull]
@@ -187,7 +187,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return translation with {
             Content = translatedText,
             SourceContentHash = entry.ContentHash,
-            TimeMap = entry.TimeMap.Scale(entry.Content.Length, translatedText.Length),
         };
     }
 
