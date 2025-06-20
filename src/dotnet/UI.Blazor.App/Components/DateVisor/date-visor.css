@@ -8,6 +8,7 @@
     transition-behavior: allow-discrete;
 }
 .layout-subheader > div.date-visor-wrapper {
+    @apply z-button;
     @apply mt-0;
 }
 .date-visor-wrapper.show {

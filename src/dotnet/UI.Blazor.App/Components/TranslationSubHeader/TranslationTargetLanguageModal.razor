@@ -4,21 +4,39 @@
 @{
     if (!State.IsSet(out var m))
         return;
+
+    var ownMessagesStatus = m.TranslateOwnMessages ? "On" : "Off";
 }
 
-<DialogFrame Title="Select target language">
+<DialogFrame
+    Title="Translation language"
+    Class="translation-language-modal modal-sm"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
     <Body>
     <FormBlock Class="first last c-languages">
-        @foreach (var language in m.Languages) {
-            <TileItem Click="@(_ => OnClick(language))">
-                <Content>@language.Title</Content>
-                <Right>
-                    @if (m.Selected == language) {
-                        <i class="icon-checkmark-simple text-2xl"></i>
-                    }
-                </Right>
-            </TileItem>
-        }
+        <div class="language-btn-group">
+            <div class="c-title">
+                Translate to:
+            </div>
+            <div class="c-languages">
+                @foreach (var l in m.Languages) {
+                    <button
+                        class="@(l == m.Selected ? "active" : "")"
+                        @onclick="@(() => OnClick(l))">
+                        @l.Title
+                    </button>
+                }
+            </div>
+        </div>
+
+        <TileItem Click="@OnTranslateOwnMessagesClick">
+            <Content>Translate own messages</Content>
+            <Caption>@ownMessagesStatus</Caption>
+            <Right>
+                <Toggle
+                    IsChecked="@m.TranslateOwnMessages" />
+            </Right>
+        </TileItem>
     </FormBlock>
     </Body>
 </DialogFrame>
@@ -34,7 +52,8 @@
         var chatId = ModalModel.ChatId;
         var languages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
         var targetLanguage = await TranslationUI.GetTargetLanguage(chatId, cancellationToken).ConfigureAwait(false);
-        return new(languages, targetLanguage, chatId);
+        var translateOwnMessages = await TranslationUI.MustTranslateOwnMessages(chatId, cancellationToken).ConfigureAwait(false);
+        return new(languages, targetLanguage, chatId, translateOwnMessages);
     }
 
     private async Task OnClick(Language language) {
@@ -44,9 +63,15 @@
         }
     }
 
+    private async Task OnTranslateOwnMessagesClick() {
+        if (State.Value is { } m) {
+            await TranslationUI.SetMustTranslateOwnMessages(m.ChatId, !m.TranslateOwnMessages, CancellationToken.None);
+        }
+    }
+
     // Nested types
 
-    public sealed record ComputedModel(IReadOnlyCollection<Language> Languages, Language Selected, ChatId ChatId);
+    public sealed record ComputedModel(IReadOnlyCollection<Language> Languages, Language Selected, ChatId ChatId, bool TranslateOwnMessages);
 
     public sealed record Model(ChatId ChatId);
 }
