@@ -47,7 +47,13 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     [ComputeMethod]
     public virtual async Task<bool> MustTranslate(ChatEntry entry, CancellationToken cancellationToken)
     {
-        if (entry.IsSystemEntry || (entry.Content.IsNullOrEmpty() && !entry.IsStreaming) || entry.Id.Kind is not ChatEntryKind.Text)
+        if (entry.IsSystemEntry)
+            return false;
+
+        if (entry.Content.IsNullOrEmpty() && !entry.IsStreaming)
+            return false;
+
+        if (entry.Id.Kind is not ChatEntryKind.Text)
             return false;
 
         if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
@@ -98,7 +104,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
    }
 
    [ComputeMethod]
-   protected virtual async Task<bool> IsForeignEntry(TextEntryId entryId, bool useOnlyChatLanguage, CancellationToken cancellationToken = default)
+   protected virtual async Task<bool> IsForeignEntry(TextEntryId entryId, bool useOnlyTargetLanguage, CancellationToken cancellationToken = default)
    {
        var session = Session;
        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
@@ -116,9 +122,9 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
        if (entryLanguage == null)
            return false;
 
-       if (useOnlyChatLanguage) {
-           var chatLanguage = await LanguageUI.GetChatLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-           return !entryLanguage.Languages.Contains(chatLanguage);
+       if (useOnlyTargetLanguage) {
+           var targetLanguage = await GetTargetLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
+           return entryLanguage.Languages.Any(x => x != targetLanguage);
        }
 
        var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);

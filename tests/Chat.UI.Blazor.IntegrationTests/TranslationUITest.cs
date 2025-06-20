@@ -125,7 +125,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
-    public async Task MustTranslateShouldConsiderOnlyChatLanguage()
+    public async Task MustTranslateShouldConsiderOnlyTargetLanguage()
     {
         // arrange
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
@@ -137,7 +137,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             Primary = Languages.English,
             Secondary = Languages.French,
         });
-        await LanguageUI.ChangeChatLanguage(chatId, Languages.French, cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.French, cancellationToken);
 
         // act
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
