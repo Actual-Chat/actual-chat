@@ -89,27 +89,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         }
 
 
-        // If we reached the end of the entries and there are no groups, we might want to summarize the last group
-        if (groups.Count == 0 && !hasMore) {
-            var lastEntry = state.LastEntry;
-            if (lastEntry != null && (lastEntry.EndsAt ?? lastEntry.BeginsAt) < Clocks.CoarseSystemClock.Now - Settings.ChatEntrySummarizationDelay)
-                if (state.WordCount >= Settings.MinConversationWords && state.EntryCount >= Settings.MinConversationEntries) {
-                    var group = state.CurrentGroup!.AddRange(state.CurrentChunk?.Entries ?? []).Build();
-
-                    var idRanges = group.LocalIdRanges;
-                    var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
-                    await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
-
-                    // Reset the state for the next group
-                    ExtractorState = new ExtractorState(null, null);
-                }
-            if (entries.Count > 0)
-                Cursor = entries[^1].LocalId;
-            Event.MarkHandled();
-            return WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
-        }
-
-        if (groups.Count == 0) {
+        if (groups.Count == 0 && hasMore) {
             // No groups found, but we have more entries to process
             if (entries.Count > 0)
                 Cursor = entries[^1].LocalId;
@@ -127,6 +107,26 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
             var idRanges = group.LocalIdRanges;
             var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
             await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+        }
+
+        // If we reached the end of the entries, we might want to summarize the last group
+        if (!hasMore) {
+            var lastEntry = state.LastEntry;
+            if (lastEntry != null && (lastEntry.EndsAt ?? lastEntry.BeginsAt) < Clocks.CoarseSystemClock.Now - Settings.ChatEntrySummarizationDelay)
+                if (state.WordCount >= Settings.MinConversationWords && state.EntryCount >= Settings.MinConversationEntries) {
+                    var group = state.CurrentGroup!.AddRange(state.CurrentChunk?.Entries ?? []).Build();
+
+                    var idRanges = group.LocalIdRanges;
+                    var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
+                    await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+
+                    // Reset the state for the next group
+                    ExtractorState = new ExtractorState(null, null);
+                }
+            if (entries.Count > 0)
+                Cursor = entries[^1].LocalId;
+            Event.MarkHandled();
+            return WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
         }
 
         if (entries.Count > 0)
