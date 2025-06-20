@@ -188,7 +188,7 @@
                 return new(markup, entry, false, StreamingModel.None);
 
             var translatedMarkup = entry.HasMediaEntry
-                ? new PlayableTextMarkup(translation.Content, translation.TimeMap)
+                ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
                 : MarkupParser.Parse(translation.Content);
 
             return new(translatedMarkup, entry, true, StreamingModel.None);
