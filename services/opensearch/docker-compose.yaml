@@ -1,7 +1,6 @@
 services:
   opensearch-node:
     image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.18.0}
-    container_name: opensearch-node
     environment:
       node.name: opensearch-node
       discovery.type: single-node
@@ -43,7 +42,6 @@ services:
   opensearch-config:
     build:
       context: .
-    container_name: opensearch-config
     develop:
       watch:
         - path: ./opensearch-setup.py
@@ -55,13 +53,6 @@ services:
       MAX_RETRY_ATTEMPTS: 3
       TORCHSCRIPT_MODEL_PATH: /ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip
       TORCHSCRIPT_MODEL_CONFIG_PATH: /ml_model/config.json
-    volumes:
-      - type: bind
-        source: ./ml_model
-        target: /ml_model
-      - type: bind
-        source: ./opensearch-setup.py
-        target: /workdir/opensearch-setup.py
     networks:
       - opensearch-net
     depends_on:
@@ -75,7 +66,6 @@ services:
       dockerfile: opensearch-dashboard-no-security.dockerfile
       args:
         OPENSEARCH_VERSION: ${OPENSEARCH_VERSION:-2.18.0}
-    container_name: opensearch-dashboards
     ports:
       - 5601:5601
     expose:
