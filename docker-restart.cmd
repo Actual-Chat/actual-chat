@@ -1,2 +1,2 @@
 docker compose down
-docker compose up -d --wait
+docker compose up -d --build --wait
