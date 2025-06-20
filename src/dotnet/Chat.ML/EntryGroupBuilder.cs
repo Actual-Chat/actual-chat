@@ -150,7 +150,6 @@ public partial class EntryGroupBuilder
     public EntryGroup Build(bool isCompleted = true)
         => new (_entries, _wordCount, isCompleted);
 
-
     // Private methods
 
     private void RecalculateAveragePause()

@@ -1999,6 +1999,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, _, kind, _) = eventCommand;
+        if (entry.IsStreaming)
+            return; // Streaming entries are not summarized
 
         await Summarize().ConfigureAwait(false);
         return;
