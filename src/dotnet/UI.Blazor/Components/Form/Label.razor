@@ -1,14 +1,15 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
-<label for="@(InputId.NullIfEmpty() ?? "-")">
+<label for="@(InputId.NullIfEmpty() ?? "-")" class="@Class">
     <span>@Text</span>
-    @if (IsRequired) {
-        <sup class="text-danger text-xxs opacity-50"> &#x2731</sup>
+    @if (!IsRequired) {
+        <span> (optional)</span>
     }
 </label>
 
 @code {
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string InputId { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsRequired { get; set; }
 }

@@ -3,33 +3,48 @@
 @inherits InputText
 @implements IAsyncDisposable
 @{
+    var emptyClass = CurrentValue.IsNullOrEmpty() && Placeholder.IsNullOrEmpty() ? "" : " not-empty";
     var cls = CssClass + " " + Class;
 }
 
-<div class="text-box flex-x">
+<div class="text-box flex-x @emptyClass">
     @if (!Prefix.IsNullOrEmpty()) {
         <span class="prefix">@Prefix</span>
     }
-    <input @ref="Ref"
-           id="@Id"
-           type="text"
-           autocomplete="@(Autocomplete ? "on" : "off")"
-           class="flex-1 @cls"
-           value="@CurrentValue"
-           placeholder="@Placeholder"
-           @attributes="@AdditionalAttributes"
-           @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
-    @if (ClearButton && !CurrentValue.IsNullOrEmpty()) {
-        <button
-            type="button"
-            class="text-box-btn"
-            data-tooltip="Clear"
-            data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
-            @onclick="@OnClearClick">
-            <i class="icon-close"></i>
-        </button>
+    @if (!IsMultiline) {
+        <input @ref="Ref"
+               id="@Id"
+               type="text"
+               autocomplete="@(Autocomplete ? "on" : "off")"
+               class="flex-1 @cls"
+               value="@CurrentValue"
+               placeholder="@Placeholder"
+               @attributes="@AdditionalAttributes"
+               @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)"/>
+    } else {
+        <textarea @ref="Ref"
+               id="@Id"
+               rows="@MultilineRows"
+               cols="@MultilineCols"
+               type="text"
+               autocomplete="@(Autocomplete ? "on" : "off")"
+               class="flex-1 @cls"
+               value="@CurrentValue"
+               placeholder="@Placeholder"
+               @attributes="@AdditionalAttributes"
+               @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)">
+        </textarea>
     }
 </div>
+@if (ClearButton && !CurrentValue.IsNullOrEmpty()) {
+    <ButtonRound
+        Class="btn-xs btn-transparent text-box-btn"
+        Click="@OnClearClick"
+        data-tooltip="Clear"
+        data-tooltip-position="@(FloatingPosition.Top.ToPositionString())">
+        <i class="icon-close text-xl"></i>
+    </ButtonRound>
+}
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TextBox.create";
@@ -43,6 +58,9 @@
     [Parameter] public string? Id { get; set; }
     [Parameter] public bool Autofocus { get; set; }
     [Parameter] public bool Autocomplete { get; set; } = true;
+    [Parameter] public bool IsMultiline { get; set; }
+    [Parameter] public int MultilineRows { get; set; } = 2;
+    [Parameter] public int MultilineCols { get; set; } = 20;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public bool ClearButton { get; set; }

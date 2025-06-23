@@ -72,12 +72,12 @@
                 Class="grow"
                 IsLabelInsideInput="true">
                 <ChildContent>
-                    <InputText
-                        id="@_form.PhoneFieldId"
+                    <TextBox
+                        Id="@_form.PhoneFieldId"
                         Value="@(!_form.Phone.IsNullOrEmpty() ? _form.Phone : _defaultPhoneValue)"
                         ValueExpression="@(() => _form.Phone)"
                         ValueChanged="@OnPhoneChanged"
-                        autocomplete="tel"
+                        Autocomplete="true"
                         type="tel"
                         inputmode="tel"
                         disabled="@isPhoneVerified"/>

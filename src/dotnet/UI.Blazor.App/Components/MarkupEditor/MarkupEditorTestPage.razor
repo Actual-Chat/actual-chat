@@ -10,8 +10,8 @@
         <Button Click="OnSetMarkupClick">Set markup</Button>
     </div>
 
-    <InputTextArea @bind-Value="_markup" class="my-2 border-2 border-bg-03 rounded min-h-[8rem]">
-    </InputTextArea>
+    <TextBox IsMultiline="true" @bind-Value="_markup" Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]">
+    </TextBox>
 
     <p class="my-2">Parsed: <code>@_parsedMarkup</code></p>
 

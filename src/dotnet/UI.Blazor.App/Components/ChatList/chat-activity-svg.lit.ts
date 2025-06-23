@@ -9,30 +9,30 @@ class ChatActivitySvg extends LitElement {
         }
 
         #stream-svg-1 {
-            animation: pulse-wave-1 1.25s infinite;
+            animation: pulse-wave-1 1.5s ease-in-out infinite;
         }
         #stream-svg-2 {
-            animation: pulse-wave-2 1.25s infinite;
+            animation: pulse-wave-2 1.5s ease-in-out infinite;
         }
         @keyframes pulse-wave-1 {
             0%, 100% {
                 opacity: 0;
             }
-            33% {
-                opacity: 0.5;
+            25%, 75% {
+                opacity: 0.75;
             }
-            67% {
-                opacity: 0.5;
+            50% {
+                opacity: 1;
             }
         }
         @keyframes pulse-wave-2 {
-            0%, 100% {
+            0%, 25%, 75%, 100% {
                 opacity: 0;
             }
-            33% {
-                opacity: 0;
+            37%, 52% {
+                opacity: 0.25;
             }
-            67% {
+            50% {
                 opacity: 0.5;
             }
         }
