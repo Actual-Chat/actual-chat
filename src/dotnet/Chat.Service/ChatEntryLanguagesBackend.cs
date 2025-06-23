@@ -26,7 +26,6 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<ChatLanguageTile> GetTile(
         ChatId chatId,
-        ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
@@ -35,7 +34,6 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         if (smallerIdTiles.Length != 0) {
             var smallerChatTiles = await smallerIdTiles
                 .Select(sidTile => GetTile(chatId,
-                    entryKind,
                     sidTile.Range,
                     cancellationToken))
                 .Collect(cancellationToken)
@@ -52,7 +50,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         IEnumerable<ChatEntryId> GetEntryIds(Range<long> range)
         {
             for (var lid = range.Start; lid < range.End; lid++)
-                yield return ChatEntryId.New(chatId, entryKind, lid);
+                yield return TextEntryId.New(chatId, lid);
         }
     }
 
