@@ -88,7 +88,6 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
             await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
         }
 
-
         if (groups.Count == 0 && hasMore) {
             // No groups found, but we have more entries to process
             if (entries.Count > 0)
@@ -120,8 +119,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
                     var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
                     await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
 
-                    // Reset the state for the next group
-                    ExtractorState = new ExtractorState(null, null);
+                    // Do not reset the state, as we might have more entries to process on the next call within the same conversation
                 }
             if (entries.Count > 0)
                 Cursor = entries[^1].LocalId;

@@ -224,6 +224,43 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         result.Groups.Should().NotBeEmpty();
     }
 
+    [Fact]
+    public void ExtractGroups_TwoSubsequentCallsWithMultipleEntriesWithoutPause_ProducesSingleGroup()
+    {
+        // Arrange
+
+        var now = DateTimeOffset.UtcNow;
+        var messageCounter = 1;
+
+        var firstBatch = Enumerable.Range(1, 10)
+            .Select(i => new TextEntry(i, $"Message {messageCounter++} " + string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, now.AddSeconds(i).UtcDateTime, null, true, null))
+            .ToList();
+
+        var secondBatch = Enumerable.Range(1, 10)
+            .Select(i => new TextEntry(i + firstBatch.Count, $"Message {messageCounter++} " + string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, now.AddSeconds(i).UtcDateTime, null, true, null))
+            .ToList();
+
+        var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
+
+        // Act
+
+        var (state1, groups1, _) = extractor.ExtractGroups(null, firstBatch);
+        var (state2, groups2, _)  = extractor.ExtractGroups(state1, secondBatch);
+
+        // Assert
+
+        groups1.Should().BeEmpty();
+        groups2.Should().BeEmpty();
+
+        var allEntries = firstBatch.Concat(secondBatch);
+
+        var currentGroup = state2.CurrentGroup!.AddRange(state2.CurrentChunk!.Entries).Build();
+        currentGroup.Entries.Should().HaveCount(20, "group should contain all entries from both batches");
+        currentGroup.Entries.Should().BeEquivalentTo(allEntries, options => options.WithStrictOrdering());
+    }
+
+
+
     [Fact(Skip = "For exploratory purposes only")]
     public async Task ExtractGroups_ExtractGroupsFromRealDataWithEmbeddings_ShouldProvideConversations()
     {
