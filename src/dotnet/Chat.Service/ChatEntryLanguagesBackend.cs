@@ -28,7 +28,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             return null;
 
         var (entry, entryLanguage) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!NeedsDetection(entry, entryLanguage))
+        if (!entry.NeedsLanguageDetection(entryLanguage))
             return entryLanguage;
 
         // It's a compute method, we don't want to do any heavy lifting here, so...
@@ -47,7 +47,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             return default!; // It just spawns other commands, so nothing to do here
 
         var (entry, entryLanguage) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!NeedsDetection(entry, entryLanguage))
+        if (!entry.NeedsLanguageDetection(entryLanguage))
             return entryLanguage;
 
         var languages = await LanguageDetector.DetectLanguages(entry.Content, cancellationToken).ConfigureAwait(false);
@@ -143,7 +143,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 
         async Task ChangeEntryLanguages()
         {
-            if (!SupportsDetection(entry))
+            if (!entry.SupportsLanguageDetection())
                 return;
 
             if (changeKind is ChangeKind.Update && entry.ContentHash == oldEntry?.ContentHash)
@@ -153,6 +153,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
                 Log.LogDebug("OnTextEntryChangedEvent: Removing chat entry languages for {Id}", entry.Id);
                 await Commander.Call(ChatEntryLanguagesBackend_Change.Remove(entry.Id), true, cancellationToken)
                     .ConfigureAwait(false);
+                return;
             }
 
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -163,35 +164,6 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     }
 
     // Helper methods
-
-    private static bool SupportsDetection(ChatEntry entry)
-    {
-        if (entry.Kind is not ChatEntryKind.Text)
-            return false;
-
-        if (entry.IsSystemEntry)
-            return false;
-
-        // languages are already saved for transcribed messages
-        return entry is { HasAudioEntry: false, HasVideoEntry: false };
-    }
-
-    private static bool NeedsDetection([NotNullWhen(true)] ChatEntry? entry, ChatEntryLanguage? entryLanguage)
-    {
-        if (entry is null)
-            return false;
-
-        if (!SupportsDetection(entry))
-            return false;
-
-        if (entry.IsRemoved)
-            return false;
-
-        if (entryLanguage is null)
-            return true;
-
-        return entryLanguage.EntryContentHash != entry.ContentHash;
-    }
 
     private async Task<(ChatEntry? Entry, ChatEntryLanguage? Language)> GetExisting(ChatEntryId id, CancellationToken cancellationToken)
     {

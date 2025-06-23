@@ -1,9 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
-using ActualChat.Mesh;
 using ActualChat.Queues;
-using ActualChat.Transcription;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -17,8 +15,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     [field: AllowNull, MaybeNull]
-    private IMeshLocks TranslationLocks => field ??= Services.MeshLocks<ChatDbContext>().WithKeyPrefix(nameof(TranslationLocks)); // TODO: use uuid of command
-    [field: AllowNull, MaybeNull]
     private IQueues Queues => field ??= Services.Queues();
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -30,11 +26,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return null;
 
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!NeedsTranslate(entry, translation))
+        if (!entry.NeedsTranslate(translation))
             return translation;
 
         // we only try to enqueue and fast return to allow compute method to cache current result
-        var cmd = new TranslationsBackend_Translate(id);
+        var cmd = new TranslationsBackend_Translate(id, entry.ContentHash);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
         return translation;
     }
@@ -130,40 +126,21 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return default!; // It just spawns other commands, so nothing to do here
 
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!NeedsTranslate(entry, translation))
+        if (!entry.NeedsTranslate(translation))
             return translation;
 
-        var (_, updatedTranslation) = await TranslationLocks.TryRunLocked(
-                $"{id}.{entry.ContentHash}",
-                RunLockedOptions.NoRelock,
-                ct => GetOrTranslateUnsafe(id, ct),
-                cancellationToken)
-            .ConfigureAwait(false);
-        if (updatedTranslation is null)
-            return null;
+        var translatedText = await TranslateUnsafe(id, entry.Content, cancellationToken).ConfigureAwait(false);
+        translation ??= new Translation(id);
+        translation = translation with {
+            Content = translatedText,
+            SourceContentHash = entry.ContentHash,
+        };
 
-        var cmd = new TranslationsBackend_Change(id, updatedTranslation.Version, Change.Upsert(updatedTranslation));
+        var cmd = new TranslationsBackend_Change(id, translation.Version, Change.Upsert(translation));
         return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
-
-    private static bool NeedsTranslate([NotNullWhen(true)] ChatEntry? entry, Translation? translation)
-    {
-        if (entry is null)
-            return false;
-
-        if (entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text || entry.IsRemoved || entry.Content.IsNullOrEmpty())
-            return false;
-
-        if (translation is null)
-            return true;
-
-        if (translation.IsStreaming)
-            return false;
-
-        return translation.SourceContentHash != entry.ContentHash;
-    }
 
     private async Task<(ChatEntry? entry, Translation? translation)> GetExisting(TranslationId id, CancellationToken cancellationToken)
     {
@@ -174,20 +151,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var dbTranslation = await EntityResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         var translation = dbTranslation?.ToModel();
         return (entry, translation);
-    }
-
-    private async Task<Translation?> GetOrTranslateUnsafe(TranslationId id, CancellationToken cancellationToken)
-    {
-        var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!NeedsTranslate(entry, translation))
-            return translation;
-
-        var translatedText = await TranslateUnsafe(id, entry.Content, cancellationToken).ConfigureAwait(false);
-        translation ??= new Translation(id);
-        return translation with {
-            Content = translatedText,
-            SourceContentHash = entry.ContentHash,
-        };
     }
 
     private async Task<string> TranslateUnsafe(TranslationId id, string content, CancellationToken cancellationToken)

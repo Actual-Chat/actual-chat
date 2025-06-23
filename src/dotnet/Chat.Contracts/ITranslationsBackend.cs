@@ -1,3 +1,4 @@
+using ActualChat.Hashing;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -29,9 +30,13 @@ public sealed partial record TranslationsBackend_Change(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Translate(
-    [property: DataMember, MemoryPackOrder(0)] TranslationId Id
-) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationId>
+    [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
+    [property: DataMember, MemoryPackOrder(1)] HashString ContentHash
+) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationId>, IHasUuid
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public TranslationId ShardKey => Id;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
 }
