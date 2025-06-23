@@ -3,17 +3,10 @@
     @apply items-center;
 }
 
-.text-box-btn {
-    @apply hidden;
-    @apply items-center justify-center;
-    @apply min-h-5 min-w-5 max-h-5 max-w-5;
-    @apply rounded-full;
-    @apply bg-after-darker;
+.btn.text-box-btn {
+    @apply absolute right-0 top-3.5;
 }
-.text-box-btn i {
-    @apply text-xs text-02;
-}
-.text-box:focus-within .text-box-btn {
+.text-box:focus-within + .btn.text-box-btn {
     @apply flex;
 }
 .text-box input {

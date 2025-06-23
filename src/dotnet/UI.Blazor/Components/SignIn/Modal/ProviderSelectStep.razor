@@ -53,11 +53,11 @@
                 Class="grow"
                 IsLabelInsideInput="true"
                 IsRequired="true">
-                <InputText
-                    id="@_stepModel.PhoneFieldId"
+                <TextBox
+                    Id="@_stepModel.PhoneFieldId"
                     @bind-Value="_stepModel.Phone"
+                    Autocomplete="true"
                     disabled="@codeHasBeenSent"
-                    autocomplete="tel"
                     type="tel"
                     inputmode="tel"/>
                 @if (codeHasBeenSent) {

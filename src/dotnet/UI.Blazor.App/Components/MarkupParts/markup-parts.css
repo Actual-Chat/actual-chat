@@ -4,6 +4,12 @@
     @apply mr-1;
     @apply text-base;
 }
+.translation-marker {
+    @apply relative -bottom-1 left-1;
+    @apply inline-block;
+    @apply w-fit;
+    @apply text-04;
+}
 
 .mention-markup {
     @apply inline-flex items-center;

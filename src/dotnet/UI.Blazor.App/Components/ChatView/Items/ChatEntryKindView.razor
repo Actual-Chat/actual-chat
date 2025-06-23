@@ -1,16 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 @{
-    var cls = IsTranslation
-        ? "icon-translate"
-        : Kind == ChatEntryKind.Audio
-            ? "icon-voice-message"
-            : "icon-text-message-2";
+    var cls = Kind switch {
+        ChatEntryKind.Audio => "icon-voice-message",
+        ChatEntryKind.Transcribed => "icon-voice-to-text-message",
+        _ => "icon-text-message-2",
+    };
 }
 
 <span class="chat-entry-kind-marker @cls"></span>
 
 @code {
     [Parameter, EditorRequired] public ChatEntryKind Kind { get; set; }
-    [Parameter, EditorRequired] public bool IsTranslation { get; set; }
 }

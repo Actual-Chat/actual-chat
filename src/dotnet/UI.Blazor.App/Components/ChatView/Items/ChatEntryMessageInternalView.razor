@@ -15,7 +15,7 @@
 }
 <p class="chat-message-markup">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-        <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)" IsTranslation="m.IsTranslation"/>
+        <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
     }
     @if (m.IsStreaming) {
         <span class="retained">@sm.RetainedText</span>
@@ -32,12 +32,23 @@
                     var style = $"transition-delay: {spanDelay}ms;";
                     <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
                 }
+                @if (m.IsTranslation) {
+                    <span class="translation-marker">
+                        <translation-svg size="4" isActive="true"/>
+                    </span>
+                }
             }
         </span>
     } else {
         <CascadingValue Value="@entry" IsFixed="true">
             <MarkupView Markup="@markup" />
         </CascadingValue>
+
+        @if (m.IsTranslation) {
+            <span class="translation-marker">
+                <i class="icon-translation"></i>
+            </span>
+        }
 
         @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
             <ChatMessageSendingStatus

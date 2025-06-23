@@ -1,9 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
+@using System.ComponentModel.DataAnnotations
 @using System.Linq.Expressions
 @typeparam TValue
 @inherits ComponentBase
 @implements IDisposable
-
 @{
     var messages = CurrentEditContext.GetValidationMessages(_fieldIdentifier).ToList();
     var isInvalid = messages.Any();
@@ -13,11 +13,11 @@
     }
 }
 
-<section data-control-id="@InputId" class="@cls">
+<section data-control-id="@InputId" class="form-section @cls">
     @if (!IsLabelInsideInput) {
         @if (!Label.IsNullOrEmpty()) {
             <div class="@LabelClass form-section-label">
-                <Label InputId="@InputId" Text="@Label" IsRequired="@IsRequired"></Label>
+                <Label InputId="@InputId" Text="@Label" IsRequired="@ComputedIsRequired"></Label>
             </div>
         }
         <div class="@ContentClass form-section-content">
@@ -28,7 +28,7 @@
             <div class="c-left">
                 @if (!Label.IsNullOrEmpty()) {
                     <div class="@LabelClass form-section-label">
-                        <Label InputId="@InputId" Text="@Label" IsRequired="@IsRequired"></Label>
+                        <Label InputId="@InputId" Text="@Label" IsRequired="@ComputedIsRequired" Class="internal-label"></Label>
                     </div>
                 }
                 @ChildContent
@@ -53,6 +53,8 @@
     private Expression<Func<TValue>>? _previousFieldAccessor;
     private FieldIdentifier _fieldIdentifier;
 
+    private bool ComputedIsRequired { get; set; }
+
     public FormSection()
         => _validationStateChangedHandler = (_, _) => StateHasChanged();
 
@@ -63,7 +65,7 @@
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Label { get; set; } = "";
     [Parameter] public string InputId { get; set; } = "";
-    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool? IsRequired { get; set; }
     [Parameter] public bool IsLabelInsideInput { get; set; }
     [Parameter] public bool ShowErrors { get; set; }
     [Parameter] public bool HideValidationMessage { get; set; }
@@ -91,6 +93,19 @@
             DetachValidationStateChangedListener();
             CurrentEditContext.OnValidationStateChanged += _validationStateChangedHandler;
             _previousEditContext = CurrentEditContext;
+        }
+
+        if (IsRequired.HasValue) {
+            ComputedIsRequired = IsRequired.Value;
+        } else {
+            var expression = For.Body as MemberExpression
+                             ?? (For.Body as UnaryExpression)?.Operand as MemberExpression;
+
+            if (expression?.Member is PropertyInfo propInfo) {
+                ComputedIsRequired = propInfo.IsDefined(typeof(RequiredAttribute), inherit: true);
+            } else {
+                ComputedIsRequired = false;
+            }
         }
     }
 
