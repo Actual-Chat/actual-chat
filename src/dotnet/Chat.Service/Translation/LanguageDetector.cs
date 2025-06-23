@@ -1,10 +1,7 @@
-using System.Text.RegularExpressions;
-
 namespace ActualChat.Chat;
 
 public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedService(services, Constants.LanguageDetection.ServiceKey)
 {
-    private static readonly Regex NonWordRe = new (@"^[^\p{L}]+$");
     [field: AllowNull, MaybeNull]
     private string Prompt => field ??= File.ReadAllText(Settings.LanguageDetection.PromptFile).RequireNonEmpty();
 
@@ -13,7 +10,7 @@ public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedSe
         if (!Settings.IsTranslationEnabled)
             return [];
 
-        if (content.IsNullOrWhiteSpace() || NonWordRe.IsMatch(content))
+        if (content.IsNullOrWhiteSpace() || !content.Any(char.IsLetter))
             return [];
 
         var response = await Ask(Prompt, content, cancellationToken).ConfigureAwait(false);

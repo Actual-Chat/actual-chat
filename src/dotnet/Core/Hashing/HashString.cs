@@ -17,7 +17,7 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<HashString>();
-    private const char Delimiter = ' ';
+    private const string Delimiter = " ";
 
     public static HashString None => default;
 
@@ -111,12 +111,12 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
         if (!Enum.TryParse<HashAlgorithm>(s[..algoEndsAt], out var algorithm))
             return false;
 
-        var encodingStartsAt = algoEndsAt + 1;
-        var encodingEndsAt = s.IndexOf(Delimiter, encodingStartsAt);
+        var encodingStartsAt = algoEndsAt + Delimiter.Length;
+        var encodingEndsAt = s.OrdinalIndexOf(Delimiter, encodingStartsAt);
         if (!Enum.TryParse<HashEncoding>(s[encodingStartsAt..encodingEndsAt], out var encoding))
             return false;
 
-        var hashStartsAt = encodingStartsAt + 1;
+        var hashStartsAt = encodingEndsAt + Delimiter.Length;
         result = new HashString(s,
             algorithm,
             encoding,
