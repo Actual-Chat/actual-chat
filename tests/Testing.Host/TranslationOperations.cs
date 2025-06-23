@@ -21,5 +21,5 @@ public static class TranslationOperations
         this IWebTester tester,
         ChatEntryId id,
         CancellationToken cancellationToken = default)
-        => tester.Translations.GetLanguage(tester.Session, id, cancellationToken);
+        => tester.Translations.GetLanguage(tester.Session, (TextEntryId)id, cancellationToken);
 }

@@ -9,7 +9,6 @@ public interface ITranslations : IComputeService
     Task<ChatLanguageTile> GetLanguageTile(
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 }
