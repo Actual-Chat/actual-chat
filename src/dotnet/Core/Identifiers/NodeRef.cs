@@ -20,7 +20,7 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
     private static RandomStringGenerator IdGenerator => Alphabet.AlphaNumeric.Generator8;
 
     public static NodeRef None => default;
-    public static readonly NodeRef OwnNodeAlias = new("@", AssumeValid.Option);
+    public static readonly NodeRef ThisNodeAlias = new("@", AssumeValid.Option);
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }

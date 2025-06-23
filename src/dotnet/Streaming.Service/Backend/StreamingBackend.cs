@@ -24,7 +24,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ILogger? DebugLog => DebugMode ? Log : null;
     private IServiceProvider Services { get; }
     [field: AllowNull, MaybeNull]
-    private MeshNode OwnNode => field ??= Services.MeshWatcher().OwnNode;
+    private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     [field: AllowNull, MaybeNull]
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     [field: AllowNull, MaybeNull]
@@ -101,9 +101,9 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
 
     private void ValidateStreamId(StreamId streamId)
     {
-        if (streamId.NodeRef != OwnNode.Ref)
+        if (streamId.NodeRef != ThisNode.Ref)
             throw new ArgumentOutOfRangeException(nameof(streamId),
-                $"Wrong mesh node: expected {OwnNode.Ref}, but got {streamId.NodeRef}.");
+                $"Wrong mesh node: expected {ThisNode.Ref}, but got {streamId.NodeRef}.");
     }
 
     private static IAsyncEnumerable<byte[]> SkipTo(

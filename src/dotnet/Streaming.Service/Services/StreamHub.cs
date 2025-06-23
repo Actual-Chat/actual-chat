@@ -16,7 +16,7 @@ public class StreamHub(IServiceProvider services) : Hub
 {
     private static readonly Task<string> PongTask = Task.FromResult("Pong");
 
-    private readonly bool _preferOwnNode = services.HostInfo().HasRole(HostRole.OneServer);
+    private readonly bool _preferThisNode = services.HostInfo().HasRole(HostRole.OneServer);
 
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
@@ -73,7 +73,7 @@ public class StreamHub(IServiceProvider services) : Hub
             return; // No backends
         }
 
-        var nodeRef = _preferOwnNode ? MeshWatcher.OwnNode.Ref : nodes.GetRandom().Ref;
+        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
         var streamId = StreamId.New(nodeRef);
         var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);

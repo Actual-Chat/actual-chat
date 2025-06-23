@@ -42,7 +42,6 @@ public readonly struct RpcHostBuilder
             RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto(); // Only for API host!
         RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
         Services.AddSingleton(c => new BackendServiceDefs(c));
-        Services.AddSingleton(c => new RpcMeshRefResolvers(c));
         Services.AddSingleton(c => new RpcBackendDelegates(c));
         AddMeshServices();
         AddRpcServer();
@@ -254,7 +253,7 @@ public readonly struct RpcHostBuilder
         Rpc.AddInboundMiddleware<RpcBackendDefaultSessionReplacerMiddleware>();
 
         // Replace RpcServerConnectionFactory
-        Services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<RpcBackendDelegates>().GetConnection);
+        Services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<RpcBackendDelegates>().GetServerConnection);
     }
 
     private void AddRpcClient()
@@ -262,8 +261,7 @@ public readonly struct RpcHostBuilder
         Rpc.AddWebSocketClient();
 
         // Additional services
-        Services.AddSingleton(c => new RpcMeshPeerRefCache(c));
-        Services.AddSingleton(c => new RpcMeshRefResolvers(c));
+        Services.AddSingleton(c => new MeshRpcPeerRefs(c));
 
         // Replace RpcCallRouter
         Services.AddSingleton<RpcCallRouter>(c => c.GetRequiredService<RpcBackendDelegates>().RouteCall);

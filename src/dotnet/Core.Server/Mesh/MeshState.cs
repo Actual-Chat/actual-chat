@@ -1,37 +1,35 @@
 using ActualChat.Hosting;
-using MemoryPack;
 
 namespace ActualChat.Mesh;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class MeshState
+public sealed class MeshState
 {
-    public static readonly MeshState Empty = new();
-
     private readonly Lock _lock = new();
     private volatile Dictionary<ShardScheme, ShardMap>? _shardMapCache;
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public ImmutableArray<MeshNode> Nodes { get; } = ImmutableArray<MeshNode>.Empty;
+    public ImmutableArray<MeshNode> OnlineNodes { get; }
+    public ImmutableDictionary<NodeRef, CpuTimestamp> DyingNodes { get; }
+    public ImmutableArray<MeshNode> Nodes { get; }
+    public bool IsFinal { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public IReadOnlySet<HostRole> Roles { get; } = ImmutableHashSet<HostRole>.Empty;
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    // Computed properties
+    public IReadOnlySet<HostRole> Roles { get; }
+        = ImmutableHashSet<HostRole>.Empty;
     public IReadOnlyDictionary<NodeRef, MeshNode> NodeByRef { get; }
         = ImmutableDictionary<NodeRef, MeshNode>.Empty;
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public IReadOnlyDictionary<HostRole, ImmutableArray<MeshNode>> NodesByRole { get; }
         = ImmutableDictionary<HostRole, ImmutableArray<MeshNode>>.Empty;
 
-    public MeshState()
-    { }
-
-    [MemoryPackConstructor, Newtonsoft.Json.JsonConstructor]
-    public MeshState(ImmutableArray<MeshNode> nodes)
+    public MeshState(
+        ImmutableArray<MeshNode> onlineNodes,
+        ImmutableDictionary<NodeRef, CpuTimestamp> dyingNodes,
+        ImmutableArray<MeshNode> nodes,
+        bool isFinal = false)
     {
+        OnlineNodes = onlineNodes;
+        DyingNodes = dyingNodes;
         Nodes = nodes;
+        IsFinal = isFinal;
         if (nodes.IsEmpty)
             return;
 
@@ -47,13 +45,38 @@ public sealed partial class MeshState
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("MeshState(").Append(Nodes.Length).AppendLine(" node(s)) {");
+        var now = CpuTimestamp.Now;
         var i = 0;
         foreach (var node in Nodes) {
-            sb.Append("  [").Append(i).Append("] = ").Append(node).AppendLine();
+            sb.Append("  [").Append(i).Append("] = ").Append(node);
+            if (DyingNodes.TryGetValue(node.Ref, out var dyingAt) && dyingAt > now)
+                sb.Append($", dying in {(now - dyingAt).ToShortString()}");
+            sb.AppendLine();
             i++;
         }
         sb.Append('}');
         return sb.ToStringAndRelease();
+    }
+
+    public MeshState ToFinal()
+        => IsFinal
+            ? this
+            : new MeshState(OnlineNodes, DyingNodes, Nodes, true);
+
+    public (MeshNode? Node, MeshNodeState State) GetNodeAndState(NodeRef nodeRef)
+    {
+        if (nodeRef.IsNone)
+            return (null, MeshNodeState.Dead);
+
+        var node = NodeByRef.GetValueOrDefault(nodeRef);
+        var state = DyingNodes.TryGetValue(nodeRef, out var dyingAt)
+            ? dyingAt <= CpuTimestamp.Now
+                ? MeshNodeState.Dead
+                : MeshNodeState.Offline
+            : node is not null
+                ? MeshNodeState.Online
+                : MeshNodeState.Unknown;
+        return (node, state);
     }
 
     public ShardMap GetShardMap(ShardScheme shardScheme)

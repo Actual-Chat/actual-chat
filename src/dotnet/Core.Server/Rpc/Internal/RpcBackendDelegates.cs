@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Mesh;
 using ActualLab.Interception;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
@@ -14,8 +15,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
 {
     private volatile TaskCompletionSource? _whenRoutingStarted = new();
 
-    private RpcMeshPeerRefCache MeshPeerRefs { get; } = services.GetRequiredService<RpcMeshPeerRefCache>();
-    private RpcMeshRefResolvers RpcMeshRefResolvers { get; } = services.GetRequiredService<RpcMeshRefResolvers>();
+    private MeshRpcPeerRefs PeerRefs { get; } = services.GetRequiredService<MeshRpcPeerRefs>();
     private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
 
     public void StartRouting()
@@ -43,30 +43,25 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         if (_whenRoutingStarted is { Task.IsCompleted: false })
             return RpcPeerRef.Local;
 
-        var meshRefResolver = RpcMeshRefResolvers[methodDef];
-        var meshRef = meshRefResolver.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);
-        var peerRef = MeshPeerRefs.Get(meshRef).Require(meshRef);
+        var callRouter = methodDef.GetCallRouter();
+        var meshRef = callRouter.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);
+        var peerRef = PeerRefs.Get(meshRef).Require(meshRef);
         return peerRef;
     }
 
     public Uri? GetConnectionUri(RpcWebSocketClient client, RpcClientPeer peer)
     {
-        if (peer.Ref is not RpcMeshPeerRef peerRef)
+        if (peer.Ref is not MeshRpcPeerRef peerRef)
             throw new RpcReconnectFailedException($"Unsupported RpcPeerRef type: {peer.Ref}.");
 
         var target = peerRef.Target;
-        if (target.Node is not { } node) {
-            // No node -> the node is offline or dead
-            if (target.ShardRef.IsNone) {
-                // It's a NodeRef target
-                if (target.State == MeshNodeState.Dead)
-                    throw new RpcReconnectFailedException($"Node {target.NodeRef} is dead."); // Causes peer to terminate
-                return null; // Causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
-            }
-            // It's a ShardRef target
-            if (peerRef.IsRerouted)
-                throw new RpcReconnectFailedException("Rerouted."); // Causes peer to terminate + reroute calls
-            return null; // Causes RPC connection to hang waiting for RpcPeerRef.RerouteToken cancellation
+        var node = target.Node;
+        if (node is null) {
+            // No node -> target.State is Unknown or Dead
+            if (target.ShardRef.IsNone && target.State == MeshNodeState.Dead) // Such targets are never rerouted
+                throw new RpcReconnectFailedException($"Node {target.NodeRef} is dead."); // Makes peer to terminate
+
+            return null; // null Uri = peer will hang waiting for RpcPeerRef.RerouteToken cancellation
         }
 
         var settings = client.Settings;
@@ -85,7 +80,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         return sb.ToStringAndRelease().ToUri();
     }
 
-    public Task<RpcConnection> GetConnection(
+    public Task<RpcConnection> GetServerConnection(
         RpcServerPeer peer, Channel<RpcMessage> channel, PropertyBag properties,
         CancellationToken cancellationToken)
     {

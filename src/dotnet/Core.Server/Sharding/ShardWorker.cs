@@ -31,7 +31,7 @@ public abstract class ShardWorker : WorkerBase
         Services = services;
         ShardScheme = shardScheme;
         MeshWatcher = services.MeshWatcher();
-        ThisNode = MeshWatcher.OwnNode;
+        ThisNode = MeshWatcher.ThisNode;
 
         KeyPrefix = keyPrefix ?? GetType().Name;
         ShardLocks = GetMeshLocks(nameof(ShardLocks));

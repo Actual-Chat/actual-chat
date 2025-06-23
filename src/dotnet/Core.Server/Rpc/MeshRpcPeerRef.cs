@@ -2,15 +2,15 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Rpc;
 
-public sealed record RpcMeshPeerRef : RpcPeerRef
+public sealed record MeshRpcPeerRef : RpcPeerRef
 {
     private readonly CancellationTokenSource _rerouteTokenSource;
 
-    public readonly MeshRefTarget Target;
+    public readonly ResolvedMeshRef Target;
     public readonly int Version;
     public override CancellationToken RerouteToken { get; }
 
-    internal RpcMeshPeerRef(MeshRefTarget target, int version)
+    internal MeshRpcPeerRef(ResolvedMeshRef target, int version)
         : base($"{target.ToString()}-v{version.Format()}", false, true)
     {
         Target = target;
@@ -20,13 +20,15 @@ public sealed record RpcMeshPeerRef : RpcPeerRef
     }
 
     public override RpcPeerConnectionKind GetConnectionKind(RpcHub hub)
-        => Target.IsLocal ? RpcPeerConnectionKind.Local : RpcPeerConnectionKind.Remote;
+        => Target.IsLocal
+            ? RpcPeerConnectionKind.Local
+            : RpcPeerConnectionKind.Remote;
 
     public override string ToString()
         => Key;
 
     // This record relies on referential equality
-    public bool Equals(RpcMeshPeerRef? other) => ReferenceEquals(this, other);
+    public bool Equals(MeshRpcPeerRef? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 
     // Private and internal methods

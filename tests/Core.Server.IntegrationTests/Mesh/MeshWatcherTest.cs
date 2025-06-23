@@ -10,13 +10,12 @@ public class MeshWatcherTest(ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        var syncTimeout = TimeSpan.FromSeconds(3);
-
         using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         Out.WriteLine(s.ToString());
 
+        var syncTimeout = w1.NodeTimeout * 2;
         await w1.State.Computed.When(x => x.Nodes.Length == 1).WaitAsync(syncTimeout);
         s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         Out.WriteLine(s.ToString());
@@ -31,11 +30,11 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         s.IsEmpty.Should().BeFalse();
 
         _ = w1.DisposeAsync();
-        await w1.State.Computed.When((_, e) => e is ObjectDisposedException).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
         await w2.State.Computed.When(x => x.Nodes.Length == 1).WaitAsync(syncTimeout);
 
         _ = w2.DisposeAsync();
-        await w2.State.Computed.When((_, e) => e is ObjectDisposedException).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
     }
 
     [Fact(Timeout = 30_000)]
@@ -43,14 +42,14 @@ public class MeshWatcherTest(ITestOutputHelper @out)
     {
         using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
-        var c1 = h1.Services.GetRequiredService<RpcMeshPeerRefCache>();
+        var c1 = h1.Services.GetRequiredService<MeshRpcPeerRefs>();
 
         using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
-        var c2 = h2.Services.GetRequiredService<RpcMeshPeerRefCache>();
+        var c2 = h2.Services.GetRequiredService<MeshRpcPeerRefs>();
 
-        var w1w2 = c1.Get(w2.OwnNode.Ref).Require();
-        var w2w1 = c2.Get(w1.OwnNode.Ref).Require();
+        var w1w2 = c1.Get(w2.ThisNode.Ref).Require();
+        var w2w1 = c2.Get(w1.ThisNode.Ref).Require();
 
         _ = w2.DisposeAsync();
 
