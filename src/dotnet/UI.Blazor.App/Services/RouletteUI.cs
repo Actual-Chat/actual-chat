@@ -1,5 +1,4 @@
 using ActualChat.Roulette;
-using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -60,7 +59,7 @@ public partial class RouletteUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         var preferences = profile?.Preferences.Preferences ?? Preferences.Empty;
         preferences = preferences with {
             Gender = Gender.Undefined,
-            Country = Country.Undefined,
+            Country = null,
         };
         UpdateSearchCriteria(preferences);
     }

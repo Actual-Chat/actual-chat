@@ -23,6 +23,7 @@
                              Label="Choose country"
                              IsLabelInsideInput="true">
                     <InputSelect @bind-Value="@_form.CountryId">
+                        <option value="">Unspecified</option>
                         @foreach (var country in RouletteUI.Countries) {
                             <option value="@country.Value">@country.Title</option>
                         }
@@ -64,7 +65,7 @@
 
 @code {
     private Preferences _searchFilter = Preferences.Empty;
-    private Form? _formRef = null!;
+    private Form? _formRef;
     private FormModel _form = null!;
 
     private RouletteUI RouletteUI => Hub.RouletteUI;
@@ -89,7 +90,7 @@
 
     private void OnSubmit() {
         var preferences = new Preferences {
-            Country = Country.Parse(_form.CountryId),
+            Country = Country.ParseNullable(_form.CountryId),
             Gender = _form.Gender,
             Languages = _form.Languages.ToArray(),
             Interests = _form.Interests.ToArray(),
@@ -98,7 +99,7 @@
     }
 
     private bool HasFilterChanged(FormModel form, Preferences searchFilter) {
-        if (!OrdinalEquals(form.CountryId, searchFilter.Country.Value))
+        if (!OrdinalEquals(form.CountryId, searchFilter.Country?.Value ?? ""))
             return true;
 
         if (form.Gender != searchFilter.Gender)
@@ -114,7 +115,7 @@
     }
 
     private void FillInForm(FormModel form, Preferences searchCriteria) {
-        form.CountryId = searchCriteria.Country.Value;
+        form.CountryId = searchCriteria.Country?.Value ?? "";
         form.Gender = searchCriteria.Gender;
         form.Languages = searchCriteria.Languages;
         form.Interests = searchCriteria.Interests;

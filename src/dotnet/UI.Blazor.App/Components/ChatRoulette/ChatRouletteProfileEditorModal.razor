@@ -37,6 +37,7 @@
 
                 <FormSection For="() => _form.CountryId" InputId="@_form.CountryIdFieldId" Label="Choose country" IsLabelInsideInput="true">
                     <InputSelect @bind-Value="@_form.CountryId">
+                        <option value="">Unspecified</option>
                         @foreach (var country in RouletteUI.Countries) {
                             <option value="@country.Value">@country.Title</option>
                         }
@@ -104,7 +105,7 @@
             _form.Picture = avatar.Picture;
             _form.Name = avatar.Name;
             _form.Bio = avatar.Bio;
-            _form.CountryId = preferences.Country.Value;
+            _form.CountryId = preferences.Country?.Value ?? "";
             _form.Languages = preferences.Languages;
             _form.Gender = preferences.Gender;
             _form.Interests = preferences.Interests;
@@ -125,7 +126,7 @@
         };
         avatar = avatar.WithPicture(_form.Picture);
         var preferences = profile.Preferences.Preferences with {
-            Country = Country.Parse(_form.CountryId),
+            Country = Country.ParseNullable(_form.CountryId),
             Gender = _form.Gender,
             Languages = _form.Languages.ToArray(),
             Interests = _form.Interests.ToArray(),
