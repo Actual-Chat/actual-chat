@@ -17,6 +17,14 @@ public class Translations(IServiceProvider services) : ITranslations
     }
 
     // [ComputeMethod]
-    public virtual Task<ChatEntryLanguage?> GetLanguage(Session session, ChatEntryId id, CancellationToken cancellationToken)
-        => ChatEntryLanguagesBackend.Get(id, cancellationToken);
+    public virtual async Task<ChatLanguageTile> GetLanguageTile(
+        Session session,
+        ChatId chatId,
+        ChatEntryKind entryKind,
+        Range<long> idTileRange,
+        CancellationToken cancellationToken)
+    {
+        _ = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        return await ChatEntryLanguagesBackend.GetTile(chatId, entryKind, idTileRange, cancellationToken).ConfigureAwait(false);
+    }
 }

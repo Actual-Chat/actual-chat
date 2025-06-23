@@ -10,6 +10,8 @@ namespace ActualChat.Chat;
 public class ChatEntryLanguagesBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IChatEntryLanguagesBackend
 {
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+
     [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChatEntryLanguage> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatEntryLanguage>>();
     [field: AllowNull, MaybeNull]
@@ -22,19 +24,36 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     // [ComputeMethod]
-    public virtual async Task<ChatEntryLanguage?> Get(ChatEntryId id, CancellationToken cancellationToken)
+    public virtual async Task<ChatLanguageTile> GetTile(
+        ChatId chatId,
+        ChatEntryKind entryKind,
+        Range<long> idTileRange,
+        CancellationToken cancellationToken)
     {
-        if (!Settings.IsTranslationEnabled)
-            return null;
+        var idTile = IdTileStack.GetTile(idTileRange);
+        var smallerIdTiles = idTile.Smaller();
+        if (smallerIdTiles.Length != 0) {
+            var smallerChatTiles = await smallerIdTiles
+                .Select(sidTile => GetTile(chatId,
+                    entryKind,
+                    sidTile.Range,
+                    cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            return new ChatLanguageTile(smallerChatTiles);
+        }
 
-        var (entry, entryLanguage) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!entry.NeedsLanguageDetection(entryLanguage))
-            return entryLanguage;
+        var entries = await GetEntryIds(idTile.Range)
+            .Select(id => Get(id, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return new ChatLanguageTile(idTile.Range, entries.SkipNullItems().ToArray());
 
-        // It's a compute method, we don't want to do any heavy lifting here, so...
-        var cmd = new ChatEntryLanguagesBackend_Detect(id, entry.ContentHash);
-        await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
-        return entryLanguage;
+        IEnumerable<ChatEntryId> GetEntryIds(Range<long> range)
+        {
+            for (var lid = range.Start; lid < range.End; lid++)
+                yield return ChatEntryId.New(chatId, entryKind, lid);
+        }
     }
 
     // [CommandHandler]
@@ -161,6 +180,23 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 
             context.Operation.Items.KeylessSet(true);
         }
+    }
+
+    // Protected
+    [ComputeMethod]
+    protected virtual async Task<ChatEntryLanguage?> Get(ChatEntryId id, CancellationToken cancellationToken)
+    {
+        if (!Settings.IsTranslationEnabled)
+            return null;
+
+        var (entry, entryLanguage) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
+        if (!entry.NeedsLanguageDetection(entryLanguage))
+            return entryLanguage;
+
+        // It's a compute method, we don't want to do any heavy lifting here, so...
+        var cmd = new ChatEntryLanguagesBackend_Detect(id, entry.ContentHash);
+        await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
+        return entryLanguage;
     }
 
     // Helper methods

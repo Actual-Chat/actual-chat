@@ -7,7 +7,11 @@ namespace ActualChat.Chat;
 public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ChatEntryLanguage?> Get(ChatEntryId id, CancellationToken cancellationToken);
+    Task<ChatLanguageTile> GetTile(
+        ChatId chatId,
+        ChatEntryKind entryKind,
+        Range<long> idTileRange,
+        CancellationToken cancellationToken);
 
     // Command handlers
 
