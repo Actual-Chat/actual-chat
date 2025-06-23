@@ -11,6 +11,7 @@
            id="@Id"
            disabled="@IsDisabled"
            checked="@_isChecked"
+           @onclick:stopPropagation="true"
            @onchange="@OnChange"/>
     <span class="dash"><span class="o">&nbsp;</span></span>
     @if (LabelContent != null) {
