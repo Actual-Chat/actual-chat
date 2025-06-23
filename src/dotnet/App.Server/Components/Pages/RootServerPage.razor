@@ -8,6 +8,7 @@
 @using ActualLab.Fusion.Server.Endpoints
 @using ActualLab.Generators
 @using ActualChat.UI.Blazor.App
+@using Microsoft.AspNetCore.Http.Extensions
 @{
     // Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
     var renderModeKey = _renderMode.Key;
@@ -350,7 +351,7 @@
 
     private async Task Initialize() {
         var cancellationToken = HttpContext.RequestAborted;
-        _url = new LocalUrl(HttpContext.Request.Path.Value);
+        _url = new LocalUrl(HttpContext.Request.GetEncodedPathAndQuery());
         (_session, _isNewSession) = await ServerAuth.Authenticate(HttpContext, cancellationToken);
         SessionResolver.Session = _session;
         Task<AccountFull?> accountTask;

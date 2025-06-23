@@ -11,10 +11,10 @@ public class OpenGraphTagsProvider(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         ContentId? contentId = null;
-        if (localUrl.IsChat(out var chatId)) {
+        if (localUrl.IsChat(out var chatId, out long entryLid)) {
             var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat is not null) {
-                if (localUrl.IsChat(out _, out long entryLid)) {
+                if (entryLid > 0) {
                     var textEntryId = TextEntryId.New(chatId, entryLid);
                     var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
                     if (chatEntry is not null)
