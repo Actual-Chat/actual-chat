@@ -4,7 +4,7 @@
     var avatar = Profile.Avatar;
     var preferences = Profile.Preferences.Preferences;
     var country = preferences.Country;
-    var countryName = country.Title.NullIfEmpty() ?? "---";
+    var countryName = country?.Title ?? "Unspecified";
     var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
     var cls = Click.HasDelegate ? "clickable" : "";
 }

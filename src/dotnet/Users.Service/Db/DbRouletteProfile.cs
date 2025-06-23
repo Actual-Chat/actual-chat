@@ -25,7 +25,7 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
 
     public ProfilePreferencesFull ToModel()
     {
-        var country = ActualChat.Country.Parse(Country ?? "");
+        var country = ActualChat.Country.ParseNullable(Country ?? "");
         var languages = Languages.IsNullOrEmpty()
             ? Array.Empty<Language>()
             : [..Languages.Split(',').Select(Language.Parse)];
@@ -57,7 +57,7 @@ public class DbRouletteProfilePrefs : IHasId<string>, IHasVersion<long>, IRequir
             throw StandardError.Constraint("UserId can't be changed.");
 
         var preferences = model.Preferences;
-        Country = preferences.Country.Value;
+        Country = preferences.Country?.Value ?? "";
         Gender = preferences.Gender;
         Languages = preferences.Languages.Select(c => c.Value).ToDelimitedString(",");
         Interests = Sort(preferences.Interests).Select(c => c.Value).ToDelimitedString(",");

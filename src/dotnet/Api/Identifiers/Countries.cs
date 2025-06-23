@@ -510,9 +510,7 @@ public static class Countries
         ANT,
     ];
 
-    public static readonly Country[] AllWithUndefined = [Country.Undefined, ..All];
-
-    public static readonly Dictionary<string, Country> ById = AllWithUndefined
+    public static readonly Dictionary<string, Country> ById = All
         .Select(x => new KeyValuePair<string, Country>(x.Id.Value, x))
         .Concat(All.Select(x => new KeyValuePair<string, Country>(x.Id.Value.ToLowerInvariant(), x)))
         .DistinctBy(kv => kv.Key)

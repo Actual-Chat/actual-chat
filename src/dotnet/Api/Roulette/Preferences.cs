@@ -9,14 +9,14 @@ public sealed partial record Preferences
 {
     public static readonly Preferences Empty = new();
 
-    [DataMember, MemoryPackOrder(0)] public Country Country { get; init; } = Country.Undefined;
+    [DataMember, MemoryPackOrder(0)] public Country? Country { get; init; }
     [DataMember, MemoryPackOrder(1)] public Gender Gender { get; init; } = Gender.Undefined;
     [DataMember, MemoryPackOrder(2)] public Language[] Languages { get; init; } = [];
     [DataMember, MemoryPackOrder(3)] public Interest[] Interests { get; init; } = [];
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty =>
-        Country == Country.Undefined
+        Country is null
         && Gender == Gender.Undefined
         && Languages.Length == 0
         && Interests.Length == 0;

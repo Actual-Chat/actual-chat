@@ -20,8 +20,6 @@ public sealed partial class Country : StringIdentifier, IStringIdentifier<Countr
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Country>();
 
-    public static Country Undefined = new ("", "Undefined");
-
     [IgnoreDataMember]
     public string Title { get; }
     [IgnoreDataMember]
@@ -65,7 +63,7 @@ public sealed partial class Country : StringIdentifier, IStringIdentifier<Countr
 
     public static bool TryParse(string? s, [NotNullWhen(true)] out Country? result)
     {
-        if (s is not null && (Countries.ById.TryGetValue(s, out result) || Countries.ById.TryGetValue(s.ToLowerInvariant(), out result)))
+        if (!s.IsNullOrEmpty() && (Countries.ById.TryGetValue(s, out result) || Countries.ById.TryGetValue(s.ToLowerInvariant(), out result)))
             return true;
 
         result = null;
