@@ -17,6 +17,8 @@ public static class SentryExt
         options.AddExceptionFilterForType<OperationCanceledException>();
         options.Debug = false;
         options.DiagnosticLevel = SentryLevel.Error;
+        if (MauiSettings.IsDevApp)
+            options.Environment = "dev";
         options.CreateHttpMessageHandler = CreateHttpMessageHandler;
 
         if (useOpenTelemetry) {
