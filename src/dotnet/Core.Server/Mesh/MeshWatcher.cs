@@ -149,7 +149,6 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                 // 2. Fetch the most current state & update State, if necessary
                 var nodes = await ListNodes(cancellationToken).ConfigureAwait(false);
                 var diff = nodes.OrderedDiffFrom(_onlineNodes.Value);
-                _onlineNodes.Value = nodes;
                 if (!diff.IsEmpty) {
                     var sb = ActualLab.Text.StringBuilderExt.Acquire();
                     foreach (var item in diff.RemovedItems)
@@ -157,11 +156,13 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                     foreach (var item in diff.AddedItems)
                         sb.Append("+ ").Append(item).AppendLine();
                     sb.Append("= ").Append(nodes.Select(x => x.Ref).ToDelimitedString());
-
                     // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                     Log.LogInformation(
                         $"{nameof(UpdateOnlineNodes)} @ {{ThisNode}}:{Environment.NewLine}{{Description}}",
                         ThisNode.Ref.Value, sb.ToStringAndRelease());
+
+                    // Exposing the value after logging the diff
+                    _onlineNodes.Value = nodes;
                 }
 
                 try {
