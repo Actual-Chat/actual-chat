@@ -22,6 +22,9 @@ public sealed partial record Translation(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsStreaming => !StreamId.IsNullOrEmpty();
 
+    public bool MatchesOriginal(string originalContent)
+        => Content.IsNullOrEmpty() || OrdinalIgnoreCaseEquals(originalContent, Content); // we ask llm to ignore text that is already in target language
+
     // This record relies on referential equality
     public bool Equals(Translation? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

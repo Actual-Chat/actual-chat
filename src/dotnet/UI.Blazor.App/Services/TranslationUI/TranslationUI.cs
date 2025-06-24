@@ -45,31 +45,22 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> MustTranslate(ChatEntry entry, CancellationToken cancellationToken)
-    {
-        if (entry.IsSystemEntry)
-            return false;
-
-        if (entry.Content.IsNullOrEmpty() && !entry.IsStreaming)
-            return false;
-
-        if (entry.Id.Kind is not ChatEntryKind.Text)
-            return false;
-
-        if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
-            return false;
-
-        return await IsForeignEntry(entry.Id.ToTextEntryId(), true, cancellationToken).ConfigureAwait(false) ?? true;
-    }
-
-    [ComputeMethod]
     public virtual async Task<bool> IsStreaming(ChatEntry entry, CancellationToken cancellationToken)
     {
-        if (!await MustTranslate(entry, cancellationToken).ConfigureAwait(false))
+        if (!await MustTranslate(entry, true, cancellationToken).ConfigureAwait(false))
             return false;
 
         var streamId = await GetTranscriptionStreamId(entry, cancellationToken).ConfigureAwait(false);
         return !streamId.IsEmpty;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> MustTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
+    {
+        if (!entry.SupportsTranslation(isForStreaming))
+            return false;
+
+        return await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) == true;
     }
 
     [ComputeMethod]

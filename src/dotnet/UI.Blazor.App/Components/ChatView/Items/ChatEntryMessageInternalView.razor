@@ -123,7 +123,7 @@
     private async Task ReadTranscript(ChatEntryMessage message, CancellationToken cancellationToken) {
         try {
             var entry = message.Entry;
-            var isTranslation = await TranslationUI.MustTranslate(entry, cancellationToken).ConfigureAwait(false);
+            var isTranslation = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
             var diffs = isTranslation
                 ? TranslationUI.GetTranscript(entry, cancellationToken)
                 : StreamClient.GetTranscript(entry.StreamId, cancellationToken);
@@ -189,7 +189,7 @@
 
         // If we're not streaming, handle possible translation
         if (!isStreaming) {
-            var mustTranslate = await TranslationUI.MustTranslate(entry, cancellationToken).ConfigureAwait(false);
+            var mustTranslate = await TranslationUI.MustTranslate(entry, false, cancellationToken).ConfigureAwait(false);
             var hasTranslationChanged = isRenderedTranslated != mustTranslate;
             var hasStreamingChanged = isRenderedStreaming != isStreaming;
             if (!renderedEntry.VersionEquals(entry) || hasTranslationChanged || hasStreamingChanged)
@@ -201,6 +201,9 @@
             var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
             if (translation is null)
                 return new(markup, entry, TranslationState.Translating, StreamingModel.None);
+
+            if (translation.MatchesOriginal(entry.Content))
+                return new(markup, entry, TranslationState.None, StreamingModel.None);
 
             var translatedMarkup = entry.HasMediaEntry
                 ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))

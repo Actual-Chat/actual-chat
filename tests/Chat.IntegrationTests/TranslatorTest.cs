@@ -97,6 +97,22 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     }
 
     [Theory]
+    [InlineData("en", "hello")]
+    [InlineData("en", "I saw a bank.")]
+    public async Task ShouldReturnEmptyIfTextIsAlreadyInTargetLanguage(string targetLanguage, string text)
+    {
+        // arrange
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var translated = await Translator.Translate(text, Language.Parse(targetLanguage), "", cancellationToken);
+
+        // assert
+        translated.Should().BeEmpty();
+    }
+
+    [Theory]
     [InlineData("ru", "I", """
                            I was heading towards the river.
                            But it was still far away.

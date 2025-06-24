@@ -26,7 +26,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return null;
 
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!entry.NeedsTranslate(translation))
+        if (!entry.NeedsTranslation(translation))
             return translation;
 
         // we only try to enqueue and fast return to allow compute method to cache current result
@@ -126,7 +126,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return default!; // It just spawns other commands, so nothing to do here
 
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!entry.NeedsTranslate(translation))
+        if (!entry.NeedsTranslation(translation))
             return translation;
 
         var translatedText = await TranslateUnsafe(id, entry.Content, cancellationToken).ConfigureAwait(false);
