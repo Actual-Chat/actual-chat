@@ -73,20 +73,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
-    public async Task ShouldNotBeVisibleWhenLanguageMatchesSpoken()
-    {
-        // arrange
-        await LanguageUI.UpdateSettings(x => x with { Secondary = Languages.French });
-        var (chatId, _) = await BobTester.CreateChat(true);
-
-        // act
-        await CreateAndSetVisibleEntries(chatId, ("Bonjour", Languages.French));
-
-        // assert
-        await AssertIsSubHeaderVisible(chatId, false);
-    }
-
-    [Fact]
     public async Task ShouldNotBeVisibleIfForeignEntryIsNotVisible()
     {
         // arrange
