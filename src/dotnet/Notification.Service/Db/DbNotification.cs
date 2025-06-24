@@ -60,11 +60,15 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
             SentAt = SentAt,
             HandledAt = HandledAt.ToMoment(),
             Option = Kind switch {
-                NotificationKind.Invitation => new ChatNotificationOption(chatId!),
-                NotificationKind.Message => new ChatEntryNotificationOption(entryId!, authorId!),
-                NotificationKind.Reply => new ChatEntryNotificationOption(entryId!, authorId!),
-                NotificationKind.Reaction => new ChatEntryNotificationOption(entryId!, authorId!),
-                NotificationKind.Attention => new GetAttentionNotificationOption(chatId!, authorId!, entryId?.LocalId ?? 0),
+                NotificationKind.Invitation
+                    => new ChatNotificationOption(chatId!),
+                NotificationKind.Message or
+                NotificationKind.Reply or
+                NotificationKind.Reaction or
+                NotificationKind.NewThread
+                    => new ChatEntryNotificationOption(entryId!, authorId!),
+                NotificationKind.Attention
+                    => new GetAttentionNotificationOption(chatId!, authorId!, entryId?.LocalId ?? 0),
                 _ => throw new ArgumentOutOfRangeException(),
             },
         };
