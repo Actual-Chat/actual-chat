@@ -10,8 +10,8 @@
     var markup = m.Markup;
     var entry = m.Entry;
     _rendered = m;
-    // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslation: {IsTranslation})",
-    //     message.Entry.Id, m.IsStreaming, m.IsTranslation);
+    // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
+    //     message.Entry.Id, m.IsStreaming, m.IsTranslated);
 }
 <p class="chat-message-markup">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
@@ -32,7 +32,7 @@
                     var style = $"transition-delay: {spanDelay}ms;";
                     <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
                 }
-                @if (m.IsTranslation) {
+                @if (m.IsTranslated) {
                     <span class="translation-marker">
                         <translation-svg size="4" isActive="true"/>
                     </span>
@@ -44,9 +44,13 @@
             <MarkupView Markup="@markup" />
         </CascadingValue>
 
-        @if (m.IsTranslation) {
+        @if (m.IsTranslated || m.IsTranslating) {
             <span class="translation-marker">
-                <i class="icon-translation"></i>
+                @if (m.IsTranslating) {
+                    <translation-svg size="4" isActive="true"/>
+                } else {
+                    <i class="icon-translation"></i>
+                }
             </span>
         }
 
@@ -108,10 +112,11 @@
                 || _rendered.IsStreaming != stateValue.IsStreaming
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
                 || _rendered.Markup != stateValue.Markup
-                || _rendered.IsTranslation != stateValue.IsTranslation);
+                || _rendered.IsTranslated != stateValue.IsTranslated
+                || _rendered.IsTranslating != stateValue.IsTranslating);
         // if (!shouldRender) {
-        //     Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslation: {IsTranslation})",
-        //         Message.Entry.Id, stateValue.IsStreaming, stateValue.IsTranslation);
+        //     Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
+        //         Message.Entry.Id, stateValue.IsStreaming, stateValue.IsTranslated);
         // }
         return shouldRender;
     }
@@ -163,7 +168,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.
-        var initialData = new Model(Markup, Message.Entry, false, StreamingModel.None);
+        var initialData = new Model(Markup, Message.Entry, false, false, StreamingModel.None);
         return new() {
             InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
@@ -174,12 +179,12 @@
         var message = Message;
         var renderedEntry = _rendered?.Entry ?? message.Entry;
         var markup = _rendered?.Markup ?? Markup;
-        var isRenderedTranslated = _rendered?.IsTranslation ?? false;
+        var isRenderedTranslated = _rendered?.IsTranslated ?? false;
         var isRenderedStreaming = _rendered?.IsStreaming ?? false;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
-            return _rendered ?? new Model(markup, message.Entry, isRenderedTranslated, StreamingModel.None);
+            return _rendered ?? new Model(markup, message.Entry, isRenderedTranslated, false, StreamingModel.None);
         }
         var isStreaming = entry.IsStreaming || await TranslationUI.IsStreaming(entry, cancellationToken).ConfigureAwait(false);
 
@@ -192,28 +197,29 @@
                 markup = await ChatMarkupHub.GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
 
             if (!mustTranslate)
-                return new(markup, entry, false, StreamingModel.None);
+                return new(markup, entry, false, false, StreamingModel.None);
 
             var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
             if (translation is null)
-                return new(markup, entry, false, StreamingModel.None);
+                return new(markup, entry, false, true, StreamingModel.None);
 
             var translatedMarkup = entry.HasMediaEntry
                 ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
                 : MarkupParser.Parse(translation.Content);
 
-            return new(translatedMarkup, entry, true, StreamingModel.None);
+            return new(translatedMarkup, entry, true, false, StreamingModel.None);
         }
 
         var streamingState = await StreamingState.Use(cancellationToken).ConfigureAwait(false);
-        return new (markup, entry, streamingState.IsTranslation, streamingState);
+        return new (markup, entry, streamingState.IsTranslating, true, streamingState);
     }
 
     // Nested types
     public sealed record Model(
         Markup Markup,
         ChatEntry Entry,
-        bool IsTranslation,
+        bool IsTranslated,
+        bool IsTranslating,
         StreamingModel Streaming)
     {
         public bool IsStreaming => Entry.IsStreaming || Streaming.IsStreaming;
@@ -224,7 +230,7 @@
         string ChangedText,
         string AnimatedText,
         bool IsStreaming,
-        bool IsTranslation) {
+        bool IsTranslating) {
         public static readonly StreamingModel None = new("", "", "", false, false);
     }
 }
