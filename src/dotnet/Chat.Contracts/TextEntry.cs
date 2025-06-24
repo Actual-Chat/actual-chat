@@ -13,6 +13,8 @@ public sealed partial record TextEntry(
     [property: DataMember(Order = 5), MemoryPackOrder(5)] bool IsTranscript,
     [property: DataMember(Order = 6), MemoryPackOrder(6)] long? RepliedEntryLid)
 {
+    public static Comparer<TextEntry> LocalIdComparer { get; } = Comparer<TextEntry>.Create((a, b) => a.LocalId.CompareTo(b.LocalId));
+
     public TextEntry(ChatEntry chatEntry)
         : this(
             chatEntry.LocalId,

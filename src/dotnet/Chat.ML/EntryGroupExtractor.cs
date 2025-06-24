@@ -14,7 +14,7 @@ public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bo
 
         var idRanges = new List<Range<long>>();
         long? startId = null, endId = null;
-        foreach (var entry in Entries.OrderBy(e => e.LocalId).EnsureMonotonic())
+        foreach (var entry in Entries.OrderBy(e => e.LocalId).EnsureMonotonic(TextEntry.LocalIdComparer))
             if (startId == null) {
                 startId = entry.LocalId;
                 endId = entry.LocalId;
