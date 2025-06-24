@@ -43,7 +43,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     [InlineData]
     [InlineData("en")]
     [InlineData("en", "ru")]
-    public async Task ShouldBeVisibleByDefaultWhenAnyForeignEntry(string sPrimary = "", string sSecondary = "")
+    public async Task SubHeaderShouldBeVisibleByDefaultWhenAnyForeignEntry(string sPrimary = "", string sSecondary = "")
     {
         // arrange
         var primary = Language.ParseNullable(sPrimary);
@@ -53,7 +53,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
-        await CreateAndSetVisibleEntries(chatId, ("Bonjour", Languages.French));
+        await CreateVisibleEntries(chatId, "Bonjour");
 
         // assert
         await AssertIsSubHeaderVisible(chatId, true);
@@ -66,7 +66,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
-        await CreateAndSetVisibleEntries(chatId, ("Does not need translation", Languages.English));
+        await CreateVisibleEntries(chatId,"Does not need translation");
 
         // assert
         await AssertIsSubHeaderVisible(chatId, false);
@@ -79,7 +79,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
-        var entries = await CreateAndSetVisibleEntries(chatId, ("Does not need translation", Languages.English), ("Bonjour", Languages.French));
+        var entries = await CreateVisibleEntries(chatId, "Does not need translation", "Bonjour");
         var englishEntry = entries[0];
         SetVisibleItems(englishEntry);
 
@@ -111,7 +111,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
-    public async Task MustTranslateShouldConsiderOnlyTargetLanguage()
+    public async Task MustTranslateShouldConsiderIsOn()
     {
         // arrange
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
@@ -127,44 +127,22 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // act
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
-        var entries = await CreateAndSetVisibleEntries(chatId,
-            ("Hello!", Languages.English),
-            ("Bonjour!", Languages.French));
-        var mustTranslateEnglishEntry = await TranslationUI.MustTranslate(entries[0], cancellationToken);
-        var mustTranslateFrenchEntry = await TranslationUI.MustTranslate(entries[1], cancellationToken);
+        var entries = await CreateVisibleEntries(chatId, "Hello!", "Bonjour!");
+        var mustTranslateEnglishEntry = await TranslationUI.MustTranslate(entries[0], false, cancellationToken);
+        var mustTranslateFrenchEntry = await TranslationUI.MustTranslate(entries[1], false, cancellationToken);
 
         // assert
         mustTranslateEnglishEntry.Should().BeTrue();
-        mustTranslateFrenchEntry.Should().BeFalse();
+        mustTranslateFrenchEntry.Should().BeTrue();
     }
 
-    private async Task<List<ChatEntry>> CreateAndSetVisibleEntries(ChatId chatId, params (string Text, Language ExpectedLanguage)[] toCreate)
+    private async Task<ChatEntry[]> CreateVisibleEntries(ChatId chatId, params string[] texts)
     {
-        var entries = await CreateEntries(chatId, toCreate);
+        await AliceTester.JoinChat(chatId, Symbol.Empty, false);
+        var entries = await texts.Select(x => AliceTester.CreateTextEntry(chatId, x)).Collect();
         SetVisibleItems(entries);
         return entries;
     }
-
-    private async Task<List<ChatEntry>> CreateEntries(ChatId chatId, (string Text, Language ExpectedLanguage)[] toCreate)
-    {
-        await AliceTester.JoinChat(chatId, Symbol.Empty, false);
-        var entries = new List<ChatEntry>(toCreate.Length);
-        var languageDetectionTasks = new List<Task>();
-        foreach (var (text, expectedLanguage) in toCreate) {
-            var entry = await AliceTester.CreateTextEntry(chatId, text);
-            languageDetectionTasks.Add(WhenLanguageDetected(entry.Id, expectedLanguage));
-            entries.Add(entry);
-        }
-        await languageDetectionTasks.Collect(1);
-        return entries;
-    }
-
-    private Task<ChatEntryLanguage> WhenLanguageDetected(ChatEntryId entryId, Language expectedLanguage)
-        => ComputedTest.When(async ct => {
-            var language = await BobTester.GetEntryLanguage(entryId, ct).Require();
-            language.Languages.Should().BeEquivalentTo([expectedLanguage]);
-            return language;
-        }, TimeSpan.FromSeconds(20).Debuggable());
 
     private void SetVisibleItems(params IReadOnlyCollection<ChatEntry> entries)
     {
