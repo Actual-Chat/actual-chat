@@ -18,7 +18,7 @@
         <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
     }
     @if (m.IsStreaming) {
-        @if (!string.IsNullOrEmpty(sm.RetainedText)) {
+        @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
         }
         <span class="changes">
