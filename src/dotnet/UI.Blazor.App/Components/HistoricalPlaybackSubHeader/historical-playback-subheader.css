@@ -1,6 +1,6 @@
 .historical-playback-subheader {
     @apply relative z-10;
-    @apply w-full lg:max-w-192;
+    @apply w-full;
     @apply pl-1 pr-2 md:pl-4 md:pr-4 ;
     @apply bg-historical-playback;
     @apply text-historical-playback;

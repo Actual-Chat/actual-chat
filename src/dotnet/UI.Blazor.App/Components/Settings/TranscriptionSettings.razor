@@ -25,7 +25,8 @@
                 For="() => _formModel.PrimaryLanguageId"
                 InputId="@_formModel.PrimaryLanguageFormId"
                 IsLabelInsideInput="true"
-                Label="Primary language">
+                Label="Primary language"
+                IsRequired="true">
                 <InputSelect
                     Value="_formModel.PrimaryLanguageId"
                     ValueExpression="@(() => _formModel.PrimaryLanguageId)"
