@@ -222,7 +222,7 @@
     }
 
     private ValueTask UpdateChatId()
-        => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
+        => JSRef.InvokeVoidAsync("setChatId", Chat.Id.Value);
 
     private async Task OnMentionButtonClick() {
         await MarkupEditorRef.WhenReady;
