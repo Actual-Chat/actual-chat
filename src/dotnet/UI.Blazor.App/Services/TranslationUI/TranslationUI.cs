@@ -97,10 +97,11 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
        if (itemVisibility.IsEmpty || itemVisibility.ChatId != chatId)
            return false;
 
-       var items = await itemVisibility.VisibleEntryIds.Select(id => IsForeignEntry(id, false, cancellationToken))
-           .Collect(1, cancellationToken)
-           .ConfigureAwait(false);
-       return items.Any(x => x ?? false);
+       foreach (var entryId in itemVisibility.VisibleEntryIds)
+           if (await IsForeignEntry(entryId, true, cancellationToken).ConfigureAwait(false) == true)
+               return true;
+
+       return false;
    }
 
    [ComputeMethod]
