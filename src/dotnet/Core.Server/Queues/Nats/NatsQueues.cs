@@ -14,7 +14,7 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
         public bool UseStreamPerShard { get; init; } = true;
         public int MaxQueueSize { get; init; } = 1024 * 1024;
         public int ReplicaCount { get; init; } = 0;
-        public int MaxTryCount { get; set; } = 10;
+        public int MaxTryCount { get; set; } = 20;
         public long MaxPendingCount { get; set; } = 1_000_000;
     }
 

@@ -20,6 +20,11 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
     protected new MomentClock Clock { get; }
     protected new ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
+    protected TimeSpan ProcessTimeout
+        => ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
+            ? TimeSpan.FromMinutes(15)
+            : TimeSpan.FromSeconds(15);
+
     public TSettings Settings { get; }
     IQueues IQueueSender.Queues => Queues;
     public TQueues Queues { get; }

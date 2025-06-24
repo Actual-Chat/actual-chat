@@ -110,34 +110,35 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
         var expireIn = Settings.IdleTimeout.ToRandom(0.25);
         using var stopCts = cancellationToken.CreateLinkedTokenSource();
-        cancellationToken = stopCts.Token;
+        var stopToken = stopCts.Token;
 
-        while (!cancellationToken.IsCancellationRequested) {
+        while (!stopToken.IsCancellationRequested) {
             // retry pull until cancellation is requested
-            using var expiringPullCts = cancellationToken.CreateLinkedTokenSource(expireIn.Next());
-            var expiringPullToken = expiringPullCts.Token;
-            using var gracefulStopCts = expiringPullToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
-            var gracefulStopToken = gracefulStopCts.Token;
-
-            var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
-            var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
-                opts: new NatsJSConsumeOpts {
-                    MaxMsgs = 10,
-                    Expires = Settings.IdleTimeout,
-                },
-                cancellationToken: expiringPullToken);
-
-            MarkStarted();
-            var degreeOfParallelism = ShardScheme.DegreeOfParallelism ?? Settings.ConcurrencyLevel;
-            var parallelOptions = new ParallelOptions {
-                MaxDegreeOfParallelism = degreeOfParallelism,
-                CancellationToken = cancellationToken,
-            };
+            var consumer = await GetConsumer(shardIndex, stopToken).ConfigureAwait(false);
             DebugLog?.LogDebug(
                 "NATS: pulling messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
                 consumer.Info.Name,
                 consumer.Info.StreamName,
                 shardIndex);
+            var batchSize = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
+                ? 2
+                : consumer.Info.Config.MaxBatch;
+            var fetchExpiration = expireIn.Next();
+            var messages = consumer.FetchAsync<IMemoryOwner<byte>>(
+                opts: new NatsJSFetchOpts {
+                    MaxMsgs = batchSize,
+                    Expires = fetchExpiration,
+                    IdleHeartbeat = fetchExpiration / 2,
+                },
+                cancellationToken: stopToken);
+
+            MarkStarted();
+            var degreeOfParallelism = ShardScheme.DegreeOfParallelism ?? Settings.ConcurrencyLevel;
+            var parallelOptions = new ParallelOptions {
+                MaxDegreeOfParallelism = degreeOfParallelism,
+                CancellationToken = stopToken,
+            };
+
             var handledCount = 0;
             await Parallel
                 .ForEachAsync(messages, parallelOptions, HandleMessage)
@@ -150,12 +151,12 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 shardIndex);
             continue;
 
-            async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken _) {
+            async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken cancellationToken1) {
                 try {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    // ReSharper disable once AccessToDisposedClosure
-                    expiringPullCts.CancelAfter(expireIn.Next());
-                    await Process(shardIndex, message, gracefulStopToken).ConfigureAwait(false);
+                    using var processCts = cancellationToken1.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
+                    processCts.CancelAfter(ProcessTimeout);
+
+                    await Process(shardIndex, message, processCts.Token).ConfigureAwait(false);
                     Interlocked.Increment(ref handledCount);
                 }
                 catch (ObjectDisposedException) {
@@ -175,7 +176,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 }
             }
         }
-        cancellationToken.ThrowIfCancellationRequested();
+        stopToken.ThrowIfCancellationRequested();
     }
 
     // Private methods
