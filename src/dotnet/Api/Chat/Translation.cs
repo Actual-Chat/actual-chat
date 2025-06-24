@@ -23,7 +23,10 @@ public sealed partial record Translation(
     public bool IsStreaming => !StreamId.IsNullOrEmpty();
 
     public bool MatchesOriginal(string originalContent)
-        => Content.IsNullOrEmpty() || OrdinalIgnoreCaseEquals(originalContent, Content); // we ask llm to ignore text that is already in target language
+        // we ask llm to ignore text already in the target language
+        => Content.IsNullOrEmpty()
+            || OrdinalIgnoreCaseEquals(Content, Constants.Chat.NoTranslationNeededText)
+            || OrdinalIgnoreCaseEquals(originalContent, Content);
 
     // This record relies on referential equality
     public bool Equals(Translation? other) => ReferenceEquals(this, other);

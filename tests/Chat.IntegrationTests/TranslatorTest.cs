@@ -109,7 +109,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
         var translated = await Translator.Translate(text, Language.Parse(targetLanguage), "", cancellationToken);
 
         // assert
-        translated.Should().BeEmpty();
+        translated.Should().Be(Constants.Chat.NoTranslationNeededText);
     }
 
     [Theory]

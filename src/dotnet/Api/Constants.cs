@@ -67,6 +67,7 @@ public static partial class Constants
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int MinChatPageMapSize = 100;
         public const int ImageRowCapacity = 4;
+        public const string NoTranslationNeededText = "NO_TRANSLATION_NEEDED";
 
         public static class SystemTags
         {

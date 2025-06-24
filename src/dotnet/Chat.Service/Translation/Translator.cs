@@ -15,7 +15,8 @@ public class Translator(IServiceProvider services) : ChatCompletionBasedService(
 
         var prompt = PromptHelpers.BuildPrompt(PromptTemplate,
             ("TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})"),
-            ("ContextSeparator", Settings.Translation.ContextSeparator));
+            ("ContextSeparator", Settings.Translation.ContextSeparator),
+            ("NoTranslationNeeded", Constants.Chat.NoTranslationNeededText));
         var text =
             $"""
             {context}.
