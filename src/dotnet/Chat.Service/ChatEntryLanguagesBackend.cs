@@ -1,6 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
+using ActualChat.Hashing;
 using ActualChat.Queues;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -189,7 +190,12 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 
         var (entry, entryLanguage) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (!entry.NeedsLanguageDetection(entryLanguage))
-            return entryLanguage;
+            return entryLanguage ?? new ChatEntryLanguage(id) {
+                Languages = [],
+                EntryContentHash = entry?.ContentHash ?? HashString.None,
+                CreatedAt = Clocks.CoarseSystemClock.Now,
+                ModifiedAt = Clocks.CoarseSystemClock.Now,
+            }; // Return a new empty language entry if no need to detect languages
 
         // It's a compute method, we don't want to do any heavy lifting here, so...
         var cmd = new ChatEntryLanguagesBackend_Detect(id, entry.ContentHash);

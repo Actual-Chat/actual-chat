@@ -59,7 +59,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
-        return await IsForeignEntry(entry.Id.ToTextEntryId(), true, cancellationToken).ConfigureAwait(false);
+        return await IsForeignEntry(entry.Id.ToTextEntryId(), true, cancellationToken).ConfigureAwait(false) ?? true;
     }
 
     [ComputeMethod]
@@ -100,16 +100,16 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
        var items = await itemVisibility.VisibleEntryIds.Select(id => IsForeignEntry(id, false, cancellationToken))
            .Collect(1, cancellationToken)
            .ConfigureAwait(false);
-       return items.Any(x => x);
+       return items.Any(x => x ?? false);
    }
 
    [ComputeMethod]
-   protected virtual async Task<bool> IsForeignEntry(TextEntryId entryId, bool useOnlyTargetLanguage, CancellationToken cancellationToken = default)
+   protected virtual async Task<bool?> IsForeignEntry(TextEntryId entryId, bool useOnlyTargetLanguage, CancellationToken cancellationToken = default)
    {
        var session = Session;
        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
        if (entry is null)
-           return false;
+           return null;
 
        var mustTranslateOwnMessages = await MustTranslateOwnMessages(entry.ChatId, cancellationToken).ConfigureAwait(false);
        if (!mustTranslateOwnMessages) {
@@ -120,11 +120,14 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
        var entryLanguage = await Translations.GetLanguage(session, entryId, cancellationToken).ConfigureAwait(false);
        if (entryLanguage == null)
-           return false;
+           return null;
+
+       if (entryLanguage.Languages.Length == 0)
+           return false; // No languages can be detected - e.g., empty message or just numbers
 
        if (useOnlyTargetLanguage) {
            var targetLanguage = await GetTargetLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-           return entryLanguage.Languages.Any(x => x != targetLanguage);
+           return entryLanguage.Languages.All(x => x != targetLanguage);
        }
 
        var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
