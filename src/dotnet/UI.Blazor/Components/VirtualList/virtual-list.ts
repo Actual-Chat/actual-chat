@@ -541,6 +541,11 @@ export class VirtualList {
         // recalculate item range as some elements were updated
         if (itemsWereMeasured || existingResizedCount > 0) {
             this.itemRange = null;
+
+            const now = Date.now();
+            if (now - this.scrollPositionRestoredAt < ScrollDebounce)
+                return; // do not restore the scroll position if already restored recently
+
             const renderState = { ...this.renderState, scrollToKey: undefined };
             const scrollMetadata = this.getScrollMetadata(renderState);
             void this.restoreScrollPosition(renderState, scrollMetadata);

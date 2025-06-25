@@ -52,27 +52,6 @@ public partial class ChatUI
         if (chat == null)
             return ChatItems.Empty;
 
-        var showConversations = chat.IsSummarized ?? false;
-        IImmutableSet<ConversationId> expandedConversations = [];
-        if (showConversations) {
-            expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
-            var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
-                .OrderBy(c => c.StartEntryLid)
-                .ToList();
-            LastExpandedConversations = expandedConversations;
-            if (changedExpand.FirstOrDefault() is { } conversationId) {
-                // Adjust data query to load tiles around expanded conversation entries
-                dataQuery = new ChatDataQuery(
-                    IdTileStack.LastLayer.GetTile(conversationId.StartEntryLid).Range,
-                    -HalfLoadLimit,
-                    HalfLoadLimit);
-            }
-        }
-
-        Range<long> chatIdRange;
-        using (Computed.BeginIsolation())
-            chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
-
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
             .ToList();
@@ -85,6 +64,49 @@ public partial class ChatUI
             .ThenByDescending(m => m.IdRange.Size()) // ChatRangeMeta can be overlapping, so we need to keep the largest
             .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.IdRange.Start.CompareTo(b.IdRange.Start)))
             .ToList();
+
+        var showConversations = chat.IsSummarized ?? false;
+        if (showConversations && dataQuery.NavigateToLid.HasValue) {
+            var conversationRanges = chatRangeMetaList
+                .SelectMany(rm => rm.ConversationIdRanges)
+                .EnsureMonotonic(RangeExt.LongRangeComparer)
+                .ToList();
+            var navigateToId = dataQuery.NavigateToLid.Value;
+            var index = conversationRanges.AsSpan().BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
+            if (index >= 0) {
+                var conversationRange = conversationRanges[index];
+                if (conversationRange.Contains(navigateToId)) {
+                    // Expand the conversation if its range contains the navigateToId
+                    var conversationId = ConversationId.New(chatId, conversationRange.Start);
+                    var currentExpandedConversations = ExpandedConversations.Value;
+                    var newExpandedConversations =  currentExpandedConversations.Add(conversationId);
+                    if (!ReferenceEquals(newExpandedConversations, currentExpandedConversations)) {
+                        _expandedConversations.Value = newExpandedConversations;
+                        // We don't need to navigate to the conversation start entry
+                        LastExpandedConversations = newExpandedConversations;
+                    }
+                }
+            }
+        }
+
+        IImmutableSet<ConversationId> expandedConversations = [];
+        if (showConversations) {
+            expandedConversations = await ExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
+            var changedExpand = expandedConversations.SymmetricExcept(LastExpandedConversations)
+                .OrderBy(c => c.StartEntryLid)
+                .ToList();
+            LastExpandedConversations = expandedConversations;
+            if (changedExpand.FirstOrDefault() is { } conversationId)
+                // Adjust data query to load tiles around expanded conversation entries
+                dataQuery = new ChatDataQuery(
+                    IdTileStack.LastLayer.GetTile(conversationId.StartEntryLid).Range,
+                    -HalfLoadLimit,
+                    HalfLoadLimit);
+        }
+
+        Range<long> chatIdRange;
+        using (Computed.BeginIsolation())
+            chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
 
         List<Range<long>> idTiles;
         bool hasMoreBefore, hasMoreAfter;

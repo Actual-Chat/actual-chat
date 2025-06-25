@@ -467,7 +467,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             dataQuery = new ChatDataQuery(
                 secondLayer.GetTile(scrollAnchor.EntryLid).Range,
                 -ChatUI.HalfLoadLimit,
-                ChatUI.LoadLimit);
+                ChatUI.LoadLimit) {
+                    NavigateToLid = scrollAnchor.EntryLid,
+            };
 
         return dataQuery;
     }

@@ -8,6 +8,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <param name="EndOffset">How many items to load after the ExistingIdRange</param>
 public record ChatDataQuery(Range<long> ExistingIdRange, int StartOffset, int EndOffset)
 {
+    public long? NavigateToLid { get; init; }
+
     public string Format()
  #pragma warning disable MA0076
         => $"{ExistingIdRange}@[{StartOffset}-{EndOffset}]";
