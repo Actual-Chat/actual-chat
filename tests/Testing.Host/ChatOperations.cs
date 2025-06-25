@@ -12,10 +12,11 @@ public static class ChatOperations
         this IWebTester tester,
         bool isPublicChat,
         string title = DefaultChatTitle,
-        PlaceId? placeId = null)
+        PlaceId? placeId = null,
+        CancellationToken cancellationToken = default)
     {
         var (id, inviteId) = await CreateChat(tester,
-            c => c with { IsPublic = isPublicChat, Title = title, PlaceId = placeId, Kind = null });
+            c => c with { IsPublic = isPublicChat, Title = title, PlaceId = placeId, Kind = null }, cancellationToken);
         var chat = await tester.Chats.Get(tester.Session, id, CancellationToken.None).Require();
         return (chat, inviteId);
     }
@@ -24,10 +25,11 @@ public static class ChatOperations
         this IWebTester tester,
         bool isPublicChat,
         [CallerMemberName] string title = "",
-        PlaceId? placeId = null)
-        => CreateChat(tester, c => c with { IsPublic = isPublicChat, Title = title.NullIfEmpty() ?? DefaultChatTitle, PlaceId = placeId, Kind = null });
+        PlaceId? placeId = null,
+        CancellationToken cancellationToken = default)
+        => CreateChat(tester, c => c with { IsPublic = isPublicChat, Title = title.NullIfEmpty() ?? DefaultChatTitle, PlaceId = placeId, Kind = null }, cancellationToken);
 
-    public static async Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, Func<ChatDiff, ChatDiff> configure)
+    public static async Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, Func<ChatDiff, ChatDiff> configure, CancellationToken cancellationToken = default)
     {
         var session = tester.Session;
         var chatDiff = configure(new ChatDiff() {
@@ -42,7 +44,7 @@ public static class ChatOperations
             null,
             new () {
                 Create = chatDiff,
-            }));
+            }), cancellationToken);
         chat.Require();
         var chatId = chat.Id;
 
@@ -50,7 +52,7 @@ public static class ChatOperations
         if (!isPublicChat) {
             // to join private chat we need to generate invite code
             var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chatId));
-            invite = await commander.Call(new Invites_Generate(session, invite));
+            invite = await commander.Call(new Invites_Generate(session, invite), cancellationToken);
             inviteId = invite.Id;
         }
 

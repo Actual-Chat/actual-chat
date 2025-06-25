@@ -60,7 +60,14 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (!entry.SupportsTranslation(isForStreaming))
             return false;
 
-        return await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) == true;
+        if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
+            return false;
+
+        if (!isForStreaming)
+            return true;
+
+        return await IsForeignEntry(entry.Id.ToTextEntryId(), true, cancellationToken).ConfigureAwait(false) == true;
+
     }
 
     [ComputeMethod]
