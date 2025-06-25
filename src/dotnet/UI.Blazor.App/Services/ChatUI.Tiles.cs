@@ -720,10 +720,12 @@ public partial class ChatUI
 
         var isForward = requestedOffset > 0;
         var index = ranges.BinarySearch(r => r.End > anchorId);
-        if (index < 0)
-            return isForward
-                ? null
-                : (ranges[^1].End - 1, Sum(ranges));
+        if (index < 0) {
+            if (isForward)
+                return null;
+
+            index = ranges.Length - 1;
+        }
 
         var remaining = Math.Abs((long)requestedOffset);
         var travelled = 0L;

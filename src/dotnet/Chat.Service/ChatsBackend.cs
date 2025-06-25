@@ -426,8 +426,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             if (previousEntryRangeMeta is not null && previousConversationRangeMeta is not null) {
                 start = previousTile.Start;
-                entryIdRanges.AddRange(previousEntryRangeMeta.EntryRanges);
-                conversationIdRanges.AddRange(previousConversationRangeMeta.ConversationRanges);
+                entryIdRanges = [..previousEntryRangeMeta.EntryRanges, ..entryIdRanges];
+                conversationIdRanges = [..previousConversationRangeMeta.ConversationRanges, ..conversationIdRanges];
                 minCount += EstimateMinimumCount(previousEntryRangeMeta, previousConversationRangeMeta);
                 hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(start, end).Contains(chatIdRange);
                 if (hasFulfilled)
