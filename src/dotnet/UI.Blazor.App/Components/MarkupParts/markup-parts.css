@@ -1,14 +1,15 @@
 .chat-entry-kind-marker {
-    @apply relative top-0.5 -bottom-0.5;
-    @apply inline-block;
+    @apply top-0.5;
     @apply mr-1;
-    @apply text-base;
 }
 .translation-marker {
-    @apply relative -bottom-1 left-1;
-    @apply inline-block;
-    @apply w-fit;
-    @apply text-04;
+    @apply top-1;
+    @apply ml-1;
+}
+.entry-marker {
+    @apply relative;
+    @apply inline-flex items-center;
+    @apply w-4 h-0;
 }
 
 .mention-markup {

@@ -1,5 +1,4 @@
 .translation-sub-header {
-    @apply lg:max-w-192;
     @apply px-2;
     @apply rounded-lg border-banner-default border-2;
     @apply bg-banner-default;

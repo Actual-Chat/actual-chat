@@ -303,7 +303,8 @@ form .form-section {
 .form .form-section-content.label-inside-input:has(span.prefix) .internal-label,
 .form .form-section-content.label-inside-input:has(.text-box.not-empty) .internal-label,
 .form .form-section-content.label-inside-input:has(input:focus) .internal-label,
-.form .form-section-content.label-inside-input:has(textarea:focus) .internal-label {
+.form .form-section-content.label-inside-input:has(textarea:focus) .internal-label,
+.form .form-section-content.label-inside-input:has(select) .internal-label {
     @apply text-xs leading-3.5 font-normal text-03;
     @apply translate-y-0;
 }

@@ -160,6 +160,7 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply mt-1;
 }
 .subheader-item {
+    @apply w-full lg:max-w-192;
     display: none;
     transform-origin: top;
     margin-top: -1rem;

@@ -8,7 +8,9 @@
     };
 }
 
-<span class="chat-entry-kind-marker @cls"></span>
+<span class="chat-entry-kind-marker entry-marker">
+    <i class="@cls"></i>
+</span>
 
 @code {
     [Parameter, EditorRequired] public ChatEntryKind Kind { get; set; }

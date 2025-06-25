@@ -18,7 +18,9 @@
         <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
     }
     @if (m.IsStreaming) {
-        <span class="retained">@sm.RetainedText</span>
+        @if (!sm.RetainedText.IsNullOrEmpty()) {
+            <span class="retained">@sm.RetainedText</span>
+        }
         <span class="changes">
             <span>@sm.ChangedText</span>
             @{
@@ -33,7 +35,7 @@
                     <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
                 }
                 @if (m.Translation != TranslationState.None) {
-                    <span class="translation-marker">
+                    <span class="translation-marker entry-marker">
                         <translation-svg size="4" isActive="true"/>
                     </span>
                 }
@@ -45,11 +47,11 @@
         </CascadingValue>
 
         @if (m.Translation != TranslationState.None) {
-            <span class="translation-marker">
+            <span class="translation-marker entry-marker">
                 @if (m.Translation == TranslationState.Translating) {
                     <translation-svg size="4" isActive="true"/>
                 } else {
-                    <i class="icon-translation"></i>
+                    <translation-svg size="4"/>
                 }
             </span>
         }
