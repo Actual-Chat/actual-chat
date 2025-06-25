@@ -25,7 +25,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await base.InitializeAsync();
         await AliceTester.SignInAsUniqueAlice();
         await BobTester.SignInAsUniqueBobAdmin();
-        await LanguageUI.WhenReady.WaitAsync(TimeSpan.FromSeconds(5));
+        await LanguageUI.WhenReady.WaitAsync(TimeSpan.FromSeconds(5).Debuggable());
         var appSettings = await BobTester.AccountSettings.GetUserAppSettings(CancellationToken.None);
         await BobTester.AccountSettings.SetUserAppSettings(appSettings with {
             IsIncompleteUIEnabled = true,
@@ -46,11 +46,13 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task SubHeaderShouldBeVisibleByDefaultWhenAnyForeignEntry(string sPrimary = "", string sSecondary = "")
     {
         // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
         var primary = Language.ParseNullable(sPrimary);
         var secondary = Language.ParseNullable(sSecondary);
         if (primary is not null || secondary is not null)
             await LanguageUI.UpdateSettings(x => x with { Primary = primary!, Secondary = secondary });
-        var (chatId, _) = await BobTester.CreateChat(true);
 
         // act
         await CreateVisibleEntries(chatId, "Bonjour");
@@ -63,7 +65,9 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotBeVisibleByDefaultWhenNoForeignEntry()
     {
         // arrange
-        var (chatId, _) = await BobTester.CreateChat(true);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
 
         // act
         await CreateVisibleEntries(chatId,"Does not need translation");
@@ -76,7 +80,9 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task ShouldNotBeVisibleIfForeignEntryIsNotVisible()
     {
         // arrange
-        var (chatId, _) = await BobTester.CreateChat(true);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
 
         // act
         var entries = await CreateVisibleEntries(chatId, "Does not need translation", "Bonjour");
@@ -93,18 +99,20 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     public async Task IsOnShouldNotAffectSubheaderVisibility(bool initialIsOn)
     {
         // arrange
-        var (chatId, _) = await BobTester.CreateChat(true);
-        await TranslationUI.SetTargetLanguage(chatId, Languages.English);
-        await TranslationUI.SetIsSubHeaderVisible(chatId, true);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        await TranslationUI.SetIsSubHeaderVisible(chatId, true, cancellationToken);
 
         // act
-        await TranslationUI.SetIsOn(chatId, initialIsOn);
+        await TranslationUI.SetIsOn(chatId, initialIsOn, cancellationToken);
 
         // assert
         await AssertIsSubHeaderVisible(chatId, true);
 
         // act
-        await TranslationUI.SetIsOn(chatId, !initialIsOn);
+        await TranslationUI.SetIsOn(chatId, !initialIsOn, cancellationToken);
 
         // assert
         await AssertIsSubHeaderVisible(chatId, true);
@@ -116,7 +124,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         // arrange
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
         var cancellationToken = cts.Token;
-        var (chatId, _) = await BobTester.CreateChat(true);
+        var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
         await TranslationUI.SetIsSubHeaderVisible(chatId, true, cancellationToken);
         await LanguageUI.UpdateSettings(settings => settings with {
@@ -134,6 +142,40 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         // assert
         mustTranslateEnglishEntry.Should().BeTrue();
         mustTranslateFrenchEntry.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MustTranslateShouldConsiderIsForeignEntryForStreaming()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+
+        // act
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+        var englishEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.English, cancellationToken);
+        var frenchEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken);
+
+        // assert
+        await WhenMustTranslate(frenchEntry.TextEntry, true);
+        await WhenMustTranslate(englishEntry.TextEntry, false);
+
+        // act
+        englishEntry = await AliceTester.FinalizeStreamingEntry(englishEntry, "Hello!", cancellationToken);
+        frenchEntry = await AliceTester.FinalizeStreamingEntry(frenchEntry, "Bonjour!", cancellationToken);
+
+        // assert
+        await WhenMustTranslate(frenchEntry.TextEntry, true);
+        await WhenMustTranslate(englishEntry.TextEntry, true);
+    }
+
+    private async Task<ChatId> CreateChat(CancellationToken cancellationToken)
+    {
+        var (chatId, _) = await BobTester.CreateChat(true, cancellationToken: cancellationToken);
+        await AliceTester.JoinChat(chatId, Symbol.Empty, false);
+        return chatId;
     }
 
     private async Task<ChatEntry[]> CreateVisibleEntries(ChatId chatId, params string[] texts)
@@ -156,4 +198,10 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             var isVisible = await TranslationUI.IsSubHeaderVisible(chatId, ct);
             isVisible.Should().Be(expected);
         });
+
+    private Task WhenMustTranslate(ChatEntry entry, bool expected)
+        => ComputedTest.When(async ct => {
+            var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsStreaming, ct);
+            mustTranslate.Should().Be(expected);
+        }, TimeSpan.FromSeconds(10));
 }

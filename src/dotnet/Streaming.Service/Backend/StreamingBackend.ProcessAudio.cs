@@ -253,6 +253,7 @@ public partial class StreamingBackend
     {
         Transcript? lastTranscript = null;
         ChatEntry? textEntry = null;
+        ChatEntryLanguage? entryLanguage = null;
         var audioEntry = (ChatEntry?)null;
         try {
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
@@ -264,7 +265,7 @@ public partial class StreamingBackend
 
                 // Got first non-empty transcript -> create text entry
                 textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
-                await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
+                entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
             }
         }
         finally {
@@ -327,15 +328,25 @@ public partial class StreamingBackend
             await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
         }
 
-        Task CreateLanguages(Language[] languages)
+        Task<ChatEntryLanguage> CreateLanguages(Language[] languages)
         {
-            var entryLanguage = new ChatEntryLanguage(textEntry.Id) { Languages = languages, };
-            return Commander.Call(ChatEntryLanguagesBackend_Change.Upsert(entryLanguage), true, CancellationToken.None);
+            var cmd = ChatEntryLanguagesBackend_Change.Upsert(
+                new (textEntry.Id) {
+                    Languages = languages,
+                    EntryContentHash = textEntry.ContentHash,
+                });
+            return Commander.Call(cmd, true, CancellationToken.None).Require();
         }
 
         Task FinalizeLanguages()
         {
-            var entryLanguage = new ChatEntryLanguage(textEntry.Id);
+            if (entryLanguage is null)
+                return Task.CompletedTask;
+
+            entryLanguage = entryLanguage with {
+                Languages = lastTranscript.Languages,
+                EntryContentHash = textEntry.ContentHash,
+            };
             var cmd = EmptyRegex.IsMatch(lastTranscript.Text)
                 ? ChatEntryLanguagesBackend_Change.Remove(entryLanguage)
                 : ChatEntryLanguagesBackend_Change.Upsert(entryLanguage);
