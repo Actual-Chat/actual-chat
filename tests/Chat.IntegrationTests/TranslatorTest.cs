@@ -99,7 +99,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
     [Theory]
     [InlineData("en", "hello")]
     [InlineData("en", "I saw a bank.")]
-    public async Task ShouldReturnEmptyIfTextIsAlreadyInTargetLanguage(string targetLanguage, string text)
+    public async Task ShouldSkipIfTextIsAlreadyInTargetLanguage(string targetLanguage, string text)
     {
         // arrange
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5).Debuggable());
