@@ -543,8 +543,8 @@ export class VirtualList {
             this.itemRange = null;
 
             const now = Date.now();
-            if (now - this.scrollPositionRestoredAt < ScrollDebounce)
-                return; // do not restore the scroll position if already restored recently
+            if (this.renderState.scrollToKey && now - this.scrollPositionRestoredAt < ScrollDebounce)
+                return; // do not restore the scroll position if already restored recently with navigation to the item
 
             const renderState = { ...this.renderState, scrollToKey: undefined };
             const scrollMetadata = this.getScrollMetadata(renderState);
