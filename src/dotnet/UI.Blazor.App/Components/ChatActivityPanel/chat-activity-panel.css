@@ -56,6 +56,7 @@ body.wide .chat-activity-panel {
 }
 .chat-activity-subheader .chat-activity-panel {
     @apply h-12;
+    @apply px-1 md:px-0;
 }
 
 @keyframes glow-btn {

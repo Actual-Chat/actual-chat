@@ -100,7 +100,6 @@
 
 .conversation-footer-short,
 .conversation-footer {
-    @apply w-full;
     @apply h-14;
 }
 .conversation-footer {
