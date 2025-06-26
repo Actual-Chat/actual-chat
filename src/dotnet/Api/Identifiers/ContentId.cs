@@ -1,14 +1,35 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+using ActualLab.Fusion.Blazor;
+using MemoryPack;
+using MessagePack;
+
 namespace ActualChat;
 
-public class ContentId
-{
-    public ContentKind Kind { get; }
-    public StringIdentifier Id { get; }
+#pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
+#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
-    private ContentId(ContentKind kind, StringIdentifier id)
+[DataContract, MemoryPackable(GenerateType.NoGenerate)]
+[JsonConverter(typeof(StringIdentifierJsonConverter<ContentId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ContentId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ContentId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<ContentId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
+public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
+{
+    public const string Delimiter = ":";
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= StaticLog.For<ChatEntryId>();
+    private static readonly ILruCache<string, ContentId> Cache = CreateCache<ContentId>(256);
+
+    [IgnoreDataMember] public ContentKind Kind { get; }
+    [IgnoreDataMember] public StringIdentifier TargetId { get; }
+
+    private ContentId(string value, ContentKind kind, StringIdentifier targetId)
+     : base(value)
     {
         Kind = kind;
-        Id = id;
+        TargetId = targetId;
     }
 
     public static ContentId New(StringIdentifier id)
@@ -16,7 +37,7 @@ public class ContentId
         var kind = GetKind(id);
         if (kind is null)
             throw new ArgumentOutOfRangeException(nameof(id));
-        return new ContentId(kind.Value, id);
+        return new ContentId(Format(kind.Value, id), kind.Value, id);
     }
 
     public static bool IsValid(StringIdentifier id)
@@ -36,19 +57,104 @@ public class ContentId
             return ContentKind.Place;
         return null;
     }
+
+    // Equality
+
+    public bool Equals(ContentId? other)
+        => !ReferenceEquals(other, null)
+            && HashCode == other.HashCode
+            && string.Equals(Value, other.Value, StringComparison.Ordinal);
+    public override bool Equals(object? obj)
+        => obj is ContentId other && Equals(other);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(ContentId? left, ContentId? right)
+        => left?.Equals(right) ?? right is null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(ContentId? left, ContentId? right)
+        => !(left?.Equals(right) ?? right is null);
+
+    // Format & Parse
+
+    public static string Format(ContentKind kind, StringIdentifier targetId)
+        => $"{(int)kind}{Delimiter}{targetId.Value}";
+
+    public static ContentId Parse(string? s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<ContentId>(s);
+
+    public static ContentId? ParseNullable(string? s)
+        => s.IsNullOrEmpty() ? null : Parse(s);
+
+    public static ContentId? TryParse(string? s, bool allowNull = false)
+        => allowNull && s.IsNullOrEmpty() ? null
+            : !TryParse(s, out var result) ? null
+            : result;
+
+    public static bool TryParse(string? s, [NotNullWhen(true)] out ContentId? result)
+    {
+        result = null;
+        if (s.IsNullOrEmpty())
+            return false;
+
+        if (Cache.TryGetValue(s, out var cached)) {
+            result = cached;
+            return true;
+        }
+
+        var kindLength = s.OrdinalIndexOf(Delimiter);
+        if (kindLength < 0)
+            return false;
+
+        if (!int.TryParse(s[..kindLength], CultureInfo.InvariantCulture, out var iKind))
+            return false;
+
+        var kind = (ContentKind)iKind;
+        if (!Enum.IsDefined(kind))
+            return false;
+
+        var sTargetId = s[(kindLength + 1)..];
+        if (sTargetId.IsNullOrEmpty())
+            return false;
+
+        switch (kind) {
+            case ContentKind.User:
+                if (!UserId.TryParse(sTargetId, out var userId))
+                    return false;
+                result = new ContentId(s, kind, userId);
+                return true;
+            case ContentKind.Chat:
+                if (!ChatId.TryParse(sTargetId, out var chatId))
+                    return false;
+                result = new ContentId(s, kind, chatId);
+                return true;
+            case ContentKind.TextEntry:
+                if (!TextEntryId.TryParse(sTargetId, out var textEntryId))
+                    return false;
+                result = new ContentId(s, kind, textEntryId);
+                return true;
+            case ContentKind.Author:
+                if (!AuthorId.TryParse(sTargetId, out var authorId))
+                    return false;
+                result = new ContentId(s, kind, authorId);
+                return true;
+            case ContentKind.Place:
+                if (!PlaceId.TryParse(sTargetId, out var placeId))
+                    return false;
+                result = new ContentId(s, kind, placeId);
+                return true;
+        }
+
+        result = null;
+        return false;
+    }
 }
 
 public enum ContentKind
 {
-    User,
-    Chat,
-    TextEntry,
-    Author,
-    Place
-}
-
-public record ContentLinkInfo(ContentId Id, string Title, Picture? Picture, string Description)
-{
-    public static ContentLinkInfo RemovedOrUnknown(ContentId id)
-        => new (id, "Removed or Unknown", null, "");
+    User = 0,
+    Chat = 1,
+    TextEntry = 2,
+    Author = 3,
+    Place = 4
 }

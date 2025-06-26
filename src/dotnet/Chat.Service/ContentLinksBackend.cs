@@ -15,7 +15,7 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
     public virtual async Task<ContentLinkInfo> GetContentInfo(ContentId contentId, CancellationToken cancellationToken)
     {
         var kind = contentId.Kind;
-        var id = contentId.Id;
+        var id = contentId.TargetId;
         switch (kind) {
             case ContentKind.User: {
                 var userId = (UserId)id;
