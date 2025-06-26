@@ -171,6 +171,25 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await WhenMustTranslate(englishEntry.TextEntry, true);
     }
 
+    [Fact]
+    public async Task ShouldTranslateHistoricalTranscribedMessages()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+
+        // act
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+        var streamingEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken);
+        streamingEntry = await AliceTester.FinalizeStreamingEntry(streamingEntry, "Bonjour!", cancellationToken);
+
+        // assert
+        await WhenMustTranslate(streamingEntry.TextEntry, true);
+        await WhenTranslated(streamingEntry.TextEntry, "Hello!");
+    }
+
     private async Task<ChatId> CreateChat(CancellationToken cancellationToken)
     {
         var (chatId, _) = await BobTester.CreateChat(true, cancellationToken: cancellationToken);
@@ -203,5 +222,12 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         => ComputedTest.When(async ct => {
             var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsStreaming, ct);
             mustTranslate.Should().Be(expected);
+        }, TimeSpan.FromSeconds(10));
+
+    private Task WhenTranslated(ChatEntry entry, string expected)
+        => ComputedTest.When(async ct => {
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ct).Require();
+            translation.Content.Should().Be(expected);
+            translation.SourceContentHash.Should().Be(entry.ContentHash);
         }, TimeSpan.FromSeconds(10));
 }
