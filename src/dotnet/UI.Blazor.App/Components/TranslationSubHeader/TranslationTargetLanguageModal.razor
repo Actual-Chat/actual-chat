@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<TranslationTargetLanguageModal.Model>
+@using ActualChat.UI.Blazor.Events
 @inherits ComputedStateComponent<AppUIHub, TranslationTargetLanguageModal.ComputedModel?>
 @{
     if (!State.IsSet(out var m))
@@ -17,6 +18,7 @@
         <div class="language-btn-group">
             <div class="c-title">
                 Translate to:
+                <span @onclick="@OnOpenLanguageSettings" class="c-edit"> (setup)</span>
             </div>
             <div class="c-languages">
                 @foreach (var l in m.Languages) {
@@ -74,4 +76,7 @@
     public sealed record ComputedModel(IReadOnlyCollection<Language> Languages, Language Selected, ChatId ChatId, bool TranslateOwnMessages);
 
     public sealed record Model(ChatId ChatId);
+
+    private Task OnOpenLanguageSettings()
+        => UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));
 }
