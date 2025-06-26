@@ -30,9 +30,6 @@
                     <div class="c-title">
                         @chat.Title
                     </div>
-                    @if (ScreenSize.IsNarrow() && chat.Kind != ChatKind.Peer) {
-                        <StatusBadge Chat="@chat" ShowOnlyIcon="true"/>
-                    }
                 </div>
                 <div class="c-info">
                     @if (chat.Kind != ChatKind.Peer) {
