@@ -29,7 +29,16 @@
             var highlightedCls = m.HighlightedWords.Count > 0 && m.HighlightedWords.Contains(word.Value.TrimNonWord(), StringComparer.OrdinalIgnoreCase)
                 ? "highlight"
                 : "";
-            <span class="@cls @highlightedCls">@word.Value</span>
+            if (i != Markup.Words.Length - 1) {
+                <span class="@cls @highlightedCls">@word.Value</span>
+            } else {
+                <span class="last-word">
+                    <span class="@cls @highlightedCls">@word.Value</span>
+                    <span class="translation-marker entry-marker">
+                        <translation-svg size="4"/>
+                    </span>
+                </span>
+            }
         }
     }
 </span>

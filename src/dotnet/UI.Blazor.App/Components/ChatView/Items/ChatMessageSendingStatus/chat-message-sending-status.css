@@ -1,5 +1,5 @@
 .chat-message-sending-status {
-    @apply relative bottom-0.5;
+    @apply relative;
     @apply flex-none inline-flex flex-row items-center align-middle gap-x-0.5;
     @apply h-4 w-fit;
     @apply px-1;

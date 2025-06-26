@@ -4,7 +4,6 @@
 }
 .translation-marker {
     @apply top-1;
-    @apply ml-1;
 }
 .entry-marker {
     @apply relative;
@@ -36,6 +35,7 @@
 }
 
 .plain-text-markup {
+    @apply whitespace-break-spaces;
     word-break: break-word;
 }
 .plain-text-markup.highlight {
@@ -52,6 +52,9 @@
 }
 .playable-text-markup > span {
     @apply inline-block;
+}
+.playable-text-markup > span.last-word {
+    white-space: nowrap;
 }
 body.hoverable .playable-text-markup > span:hover {
 }

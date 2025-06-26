@@ -175,6 +175,13 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 
 .chat-message-markup span {
     @apply text-text-1;
+    -webkit-line-break: after-white-space;
+}
+.chat-message-markup span.one-container {
+    white-space: nowrap;
+}
+.one-container:has(.last-word) > .entry-marker {
+    @apply hidden;
 }
 
 .chat-message-markup .retained {
