@@ -43,18 +43,23 @@
         </span>
     } else {
         <CascadingValue Value="@entry" IsFixed="true">
-            <MarkupView Markup="@markup" />
+            <span class="one-container">
+                <MarkupView Markup="@markup"/>
+                <span class="translation-marker entry-marker">
+                    <translation-svg size="4"/>
+                </span>
+            </span>
         </CascadingValue>
 
-        @if (m.Translation != TranslationState.None) {
-            <span class="translation-marker entry-marker">
-                @if (m.Translation == TranslationState.Translating) {
-                    <translation-svg size="4" isActive="true"/>
-                } else {
-                    <translation-svg size="4"/>
-                }
-            </span>
-        }
+        @* @if (m.Translation != TranslationState.None) { *@
+        @*     <span class="translation-marker entry-marker"> *@
+        @* @if (m.Translation == TranslationState.Translating) { *@
+        @*             <translation-svg size="4" isActive="true"/> *@
+        @*         } else { *@
+        @*             <translation-svg size="4"/> *@
+        @*         } *@
+        @*     </span> *@
+        @* } *@
 
         @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
             <ChatMessageSendingStatus
