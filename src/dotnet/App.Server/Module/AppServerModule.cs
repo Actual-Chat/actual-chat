@@ -96,7 +96,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseRouting();
         app.UseCors("Default");
         app.UseResponseCaching();
-        app.UseAuthentication();
+        if (HostInfo.HasRole(HostRole.Api))
+            app.UseAuthentication();
         app.UseAntiforgery();
 
         // Endpoint mapping
