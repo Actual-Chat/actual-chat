@@ -19,11 +19,16 @@ public static partial class StringExt
     [GeneratedRegex(@"([^\r\n]*)(?:\r?\n)", RegexOptions.ExplicitCapture)]
     private static partial Regex NewLineRegexFactory();
 
+    [GeneratedRegex(@"\s*(\S+)\s*$")]
+    private static partial Regex LastWordRegexFactory();
+
     private static readonly Regex CaseChangeRegex = CaseChangeRegexFactory();
 #pragma warning disable MA0023
     private static readonly Regex CamelCaseRegex = CamelCaseRegexFactory();
     private static readonly Regex NewLineRegex = NewLineRegexFactory();
 #pragma warning restore MA0023
+    private static readonly Regex LastWordRegex = LastWordRegexFactory();
+
 
     public static string RequireNonEmpty(this string? source, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
@@ -159,6 +164,20 @@ public static partial class StringExt
         => WebUtility.HtmlDecode(input);
     public static string HtmlDecode(this Symbol input)
         => WebUtility.HtmlDecode(input);
+
+    public static (string Head, string? Last) SplitLastWord(this string text)
+    {
+        if (text.IsNullOrEmpty())
+            return ("", null);
+
+        var match = LastWordRegex.Match(text);
+        if (!match.Success)
+            return (text, null);
+
+        var lastWord = match.Groups[1].Value;
+        var prefix = text[..match.Index];
+        return (prefix, lastWord);
+    }
 
     // ParseXxx
 

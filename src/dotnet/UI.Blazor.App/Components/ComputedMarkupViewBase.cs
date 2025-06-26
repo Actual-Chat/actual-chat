@@ -7,6 +7,7 @@ public abstract class ComputedMarkupViewBase<TMarkup, TState>
     where TMarkup : Markup
 {
     [CascadingParameter] public ChatEntry Entry { get; set; } = null!;
+    [CascadingParameter] public RenderFragment? LastFragment { get; set; }
     [Parameter, EditorRequired] public TMarkup Markup { get; set; } = null!;
 
     Markup IMarkupView.Markup => Markup;

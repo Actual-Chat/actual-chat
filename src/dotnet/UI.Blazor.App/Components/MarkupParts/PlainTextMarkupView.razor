@@ -9,8 +9,20 @@
         Match="m.SearchMatch"
         PlainTextClass="plain-text-markup"
         HighlightedClass="plain-text-markup highlight" />
+    @if(LastFragment != null)
+        @LastFragment
 } else {
-     <span class="plain-text-markup">@m.MarkupText</span>
+    @if (LastFragment != null) {
+        var (head, lastWord) = m.MarkupText.SplitLastWord();
+        if (lastWord != null) {
+            <span class="plain-text-markup">@head</span>
+            <span class="plain-text-markup last-word">@lastWord @LastFragment</span>
+            return;
+        }
+    }
+    <span class="plain-text-markup">@m.MarkupText</span>
+    @if(LastFragment != null)
+        @LastFragment
 }
 
 @code {
