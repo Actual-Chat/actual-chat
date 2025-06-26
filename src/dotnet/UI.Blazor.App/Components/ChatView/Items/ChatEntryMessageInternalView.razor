@@ -10,8 +10,33 @@
     var markup = m.Markup;
     var entry = m.Entry;
     _rendered = m;
+    var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
     // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
     //     message.Entry.Id, m.IsStreaming, m.IsTranslated);
+
+
+    // Should be named __builder
+    // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
+    RenderFragment statusFragment = (__builder) => {
+        @if (m.Translation != TranslationState.None) {
+            <span class="translation-marker entry-marker">
+                @if (m.Translation == TranslationState.Translating) {
+                    <translation-svg size="4" isActive="true"/>
+                } else {
+                    <translation-svg size="4"/>
+                }
+            </span>
+        }
+
+        @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
+            <ChatMessageSendingStatus
+                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
+                IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
+        }
+        @if (message.ShowIndexDocId) {
+            <span>[DocId=@message.IndexDocId]</span>
+        }
+    };
 }
 <p class="chat-message-markup">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
@@ -43,32 +68,15 @@
         </span>
     } else {
         <CascadingValue Value="@entry" IsFixed="true">
-            <span class="one-container">
+            @if (isSimpleMarkup) {
+                <CascadingValue Value="@statusFragment" IsFixed="true">
+                    <MarkupView Markup="@markup"/>
+                </CascadingValue>
+            } else {
                 <MarkupView Markup="@markup"/>
-                <span class="translation-marker entry-marker">
-                    <translation-svg size="4"/>
-                </span>
-            </span>
+                @statusFragment
+            }
         </CascadingValue>
-
-        @* @if (m.Translation != TranslationState.None) { *@
-        @*     <span class="translation-marker entry-marker"> *@
-        @* @if (m.Translation == TranslationState.Translating) { *@
-        @*             <translation-svg size="4" isActive="true"/> *@
-        @*         } else { *@
-        @*             <translation-svg size="4"/> *@
-        @*         } *@
-        @*     </span> *@
-        @* } *@
-
-        @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
-            <ChatMessageSendingStatus
-                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
-        }
-        @if (message.ShowIndexDocId) {
-            <span>[DocId=@message.IndexDocId]</span>
-        }
     }
 </p>
 
