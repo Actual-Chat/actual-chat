@@ -4,6 +4,8 @@ namespace ActualChat.Chat;
 
 public class Translator(IServiceProvider services) : ChatCompletionBasedService(services, Constants.Translation.ServiceKey)
 {
+    public const string PromptHash = "XYoJnmiu114NtlK7QCi8nGI0rP0zARJ3yvjYOBpQ90A";
+
     [field: AllowNull, MaybeNull]
     private string PromptTemplate => field ??= File.ReadAllText(Settings.Translation.PromptFile).RequireNonEmpty();
 
