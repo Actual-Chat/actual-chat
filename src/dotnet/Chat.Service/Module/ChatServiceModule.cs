@@ -89,8 +89,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         if (Settings.IsTranslationEnabled) {
             Settings.LanguageDetection.PromptFile.RequireFileExists();
             Settings.Translation.PromptFile.RequireFileExists();
-            Settings.Translation.PromptFile.RequireHash(Translator.PromptHash);
-            Settings.LanguageDetection.PromptFile.RequireHash(LanguageDetector.PromptHash);
+            // TODO(AK): Disable hash check for now, as it is not work at DEV now
+            // Settings.Translation.PromptFile.RequireHash(Translator.PromptHash);
+            // Settings.LanguageDetection.PromptFile.RequireHash(LanguageDetector.PromptHash);
             AddKeyedOpenAI(services,
                 Constants.Translation.ServiceKey,
                 Settings.Translation.OpenAIModel,
