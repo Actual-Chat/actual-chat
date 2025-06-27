@@ -37,11 +37,11 @@
                 ? "highlight"
                 : "";
             if (i != Markup.Words.Length - 1) {
-                <span class="@cls @highlightedCls">@word.Value</span>
+                <span class="@cls @highlightedCls playable-word">@word.Value</span>
             } else if (LastFragment != null) {
-                <span class="@cls @highlightedCls last-word">@word.Value @LastFragment</span>
+                <span class="@cls @highlightedCls playable-word last-word"><span class="painted">@word.Value</span> @LastFragment</span>
             } else {
-                <span class="@cls @highlightedCls last-word">@word.Value</span>
+                <span class="@cls @highlightedCls playable-word last-word">@word.Value</span>
             }
         }
     }
