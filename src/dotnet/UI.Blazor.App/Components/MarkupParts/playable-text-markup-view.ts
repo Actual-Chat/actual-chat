@@ -73,24 +73,59 @@ export class PlayableTextMarkupView {
         if (isPlayDisabled)
             return;
 
-        if (this.playableText.childNodes.length > 1) {
-            let selection = getSelection();
+        const childNodes = this.playableText.childNodes;
+        const selection = getSelection();
+        if (!selection || !childNodes)
+            return;
+
+        if (childNodes.length > 2) {
             if (selection.rangeCount) {
                 const targetedNode = selection.focusNode;
-                const targetNodeParent = targetedNode.parentNode;
+                if (!targetedNode)
+                    return;
+
+                let targetNodeParent = targetedNode.parentNode;
+                if (!targetNodeParent.classList.contains('playable-word')) {
+                    targetNodeParent = targetNodeParent.parentNode;
+                    targetNodeParent = targetNodeParent.closest('.playable-word');
+                }
+                if (!targetNodeParent)
+                    return;
+
                 let wordIndex = Array.prototype.indexOf.call(this.playableText.childNodes, targetNodeParent);
                 let word = this.words[wordIndex];
                 if (word) {
                     this.highlightClickedWord(selection, word, true);
                 }
             }
-        } else {
-            let selection = getSelection();
+        } else if (childNodes.length < 2) {
             if (selection.rangeCount) {
                 let word = this.words.find(w =>
                     w.textRange.start <= selection.focusOffset && w.textRange.end >= selection.focusOffset);
                 if (word) {
                     this.highlightClickedWord(selection, word, false);
+                }
+            }
+        } else {
+            const textNode = Array.from(childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+            const spanNode = Array.from(childNodes).find(n =>
+                n.nodeType === Node.ELEMENT_NODE &&
+                (n as Element).classList.contains('last-word')
+            );
+
+            const focusNode = selection.focusNode;
+            if (focusNode === textNode) {
+                const word = this.words.find(w =>
+                    w.textRange.start <= selection.focusOffset &&
+                    w.textRange.end >= selection.focusOffset
+                );
+                if (word) {
+                    this.highlightClickedWord(selection, word, false);
+                }
+            } else if (focusNode === spanNode || (focusNode?.parentNode === spanNode)) {
+                const word = this.words[this.words.length - 1];
+                if (word) {
+                    this.highlightClickedWord(selection, word, true);
                 }
             }
         }
