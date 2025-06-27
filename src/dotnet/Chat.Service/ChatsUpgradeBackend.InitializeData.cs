@@ -15,7 +15,7 @@ public partial class ChatsUpgradeBackend
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return default!; // It just spawns other commands, so nothing to do here
+            return null!; // It just spawns other commands, so nothing to do here
 
         var chatId = Constants.Chat.AnnouncementsChatId;
         var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
@@ -132,7 +132,7 @@ public partial class ChatsUpgradeBackend
         if (Invalidation.IsActive) {
             // This command changes a lot of things directly, so we invalidate everything here
             ComputedRegistry.Instance.InvalidateEverything();
-            return default!;
+            return null!;
         }
 
         var chatId = Constants.Chat.DefaultChatId;
@@ -363,7 +363,7 @@ public partial class ChatsUpgradeBackend
     public virtual async Task<Chat> OnCreateFeedbackTemplateChat(ChatsUpgradeBackend_CreateFeedbackTemplateChat command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return default!; // It just spawns other commands, so nothing to do here
+            return null!; // It just spawns other commands, so nothing to do here
 
         var chatId = Constants.Chat.FeedbackTemplateChatId;
         var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();

@@ -28,7 +28,7 @@ public class ExternalContactHashesBackend(
         var (userDeviceId, expectedVersion, change) = command;
         if (Invalidation.IsActive) {
             _ = Get(userDeviceId, default);
-            return default!;
+            return null!;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);

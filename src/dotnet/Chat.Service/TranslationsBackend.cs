@@ -71,7 +71,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var (id, expectedVersion, change) = command;
         if (Invalidation.IsActive) {
             _ = Get(id, default);
-            return default!;
+            return null!;
         }
 
         if (!Settings.IsTranslationEnabled)
@@ -123,7 +123,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     {
         var id = command.Id;
         if (Invalidation.IsActive)
-            return default!; // It just spawns other commands, so nothing to do here
+            return null!; // It just spawns other commands, so nothing to do here
 
         var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (!entry.NeedsTranslation(translation))

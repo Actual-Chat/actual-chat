@@ -35,6 +35,8 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         // NOTE(AY): A bit suspicious IApiCommand design:
         // - On one hand, it doesn't have to invalidate anything
         // - On another, it doesn't use a backend.
+        if (Invalidation.IsActive)
+            return default; // It just spawns other commands, so nothing to do here
 
         // TODO: throttle
         var (session, phone, purpose) = command;
@@ -58,6 +60,9 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         PhoneAuth_ValidateTotp command,
         CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return false; // It just spawns other commands, so nothing to do here
+
         var (session, phone, totp) = command;
         if (!await ValidateCode(session, phone, totp, TotpPurpose.SignIn, cancellationToken).ConfigureAwait(false))
             return false;
@@ -72,6 +77,8 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     public virtual async Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken)
     {
         // NOTE(AY): Add backend, implement IApiCommand
+        if (Invalidation.IsActive)
+            return false; // It just spawns other commands, so nothing to do here
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {

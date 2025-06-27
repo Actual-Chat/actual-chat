@@ -40,6 +40,9 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [CommandHandler]
     public virtual async Task<AvatarFull> OnChange(Avatars_Change command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, avatarId, expectedVersion, change) = command;
         command.Change.RequireValid();
 
@@ -70,6 +73,9 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [CommandHandler]
     public virtual async Task OnSetDefault(Avatars_SetDefault command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, avatarId) = command;
         var avatar = await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
         var kvas = ServerKvas.GetClient(session);

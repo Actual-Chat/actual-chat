@@ -90,6 +90,9 @@ public class Contacts(IServiceProvider services) : IContacts
     // [CommandHandler]
     public virtual async Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, id, expectedVersion, change) = command;
         id.Require();
         change.RequireValid();
@@ -105,6 +108,9 @@ public class Contacts(IServiceProvider services) : IContacts
     // [CommandHandler]
     public virtual async Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, id) = command;
         id.Require();
 

@@ -22,6 +22,9 @@ public class ExternalContactHashes(IAccounts accounts, IExternalContactHashesBac
         ExternalContactHashes_Change command,
         CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, deviceId, expectedVersion, change) = command;
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())

@@ -26,6 +26,9 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     public virtual async Task<Result<ExternalContactFull?>[]> OnBulkChange(
         ExternalContacts_BulkChange command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, changes) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())

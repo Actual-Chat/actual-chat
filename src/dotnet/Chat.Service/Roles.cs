@@ -91,6 +91,9 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     // [CommandHandler]
     public virtual async Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, roleId, expectedVersion, change) = command;
         await RequireOwner(session, chatId, cancellationToken).ConfigureAwait(false);
 

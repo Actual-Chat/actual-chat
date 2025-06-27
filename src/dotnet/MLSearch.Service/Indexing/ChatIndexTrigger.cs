@@ -17,6 +17,9 @@ internal class ChatIndexTrigger(
     // [CommandHandler]
     public virtual async Task OnCommand(MLSearch_TriggerChatIndexing e, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         foreach (var workers in workerPools) {
             await workers.PostAsync(e, cancellationToken).ConfigureAwait(false);
         }
@@ -26,6 +29,9 @@ internal class ChatIndexTrigger(
     // [CommandHandler]
     public virtual async Task OnCancelCommand(MLSearch_CancelChatIndexing e, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         foreach (var workers in workerPools) {
             await workers.CancelAsync(e, cancellationToken).ConfigureAwait(false);
         }
@@ -36,6 +42,9 @@ internal class ChatIndexTrigger(
     // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var indexContentCmd = new MLSearch_TriggerChatIndexing(eventCommand.Entry.ChatId, IndexingKind.ChatContent);
         await queues.Enqueue(indexContentCmd, cancellationToken).ConfigureAwait(false);
     }
@@ -44,6 +53,9 @@ internal class ChatIndexTrigger(
     // [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var e = new MLSearch_TriggerChatIndexing(eventCommand.Chat.Id, IndexingKind.ChatInfo);
         await queues.Enqueue(e, cancellationToken).ConfigureAwait(false);
     }

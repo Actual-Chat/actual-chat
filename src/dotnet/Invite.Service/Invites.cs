@@ -113,6 +113,9 @@ public class Invites(IServiceProvider services) : IInvites
     // [CommandHandler]
     public virtual async Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, invite) = command;
         var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
@@ -126,6 +129,9 @@ public class Invites(IServiceProvider services) : IInvites
         Invites_Use command,
         CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         Log.LogInformation("On Invites_Use");
         Exception? exception = null;
         try {
@@ -148,6 +154,9 @@ public class Invites(IServiceProvider services) : IInvites
     // [CommandHandler]
     public virtual async Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, inviteId) = command;
         var invite = await Backend.Get(inviteId, cancellationToken).ConfigureAwait(false);
         invite.Require();

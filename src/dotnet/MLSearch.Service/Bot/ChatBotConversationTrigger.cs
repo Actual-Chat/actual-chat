@@ -19,12 +19,20 @@ internal class ChatBotConversationTrigger(
     // ReSharper disable once UnusedMember.Global
     // [CommandHandler]
     public virtual async Task OnCommand(MLSearch_TriggerContinueConversationWithBot job, CancellationToken cancellationToken)
-        => await workerPool.PostAsync(job, cancellationToken).ConfigureAwait(false);
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        await workerPool.PostAsync(job, cancellationToken).ConfigureAwait(false);
+    }
 
     // ReSharper disable once UnusedMember.Global
     // [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var chat = await chats.Get(eventCommand.Entry.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;

@@ -102,8 +102,12 @@ public class Places(IServiceProvider services) : IPlaces
         return await Authors.Get(session, placeId.RootChatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, placeId, expectedVersion, placeChange) = command;
 
         var place = placeId is null ? null
@@ -129,20 +133,31 @@ public class Places(IServiceProvider services) : IPlaces
 
     public virtual async Task OnJoin(Places_Join command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, placeId, avatarId) = command;
         var joinCommand = new Authors_Join(session, placeId.RootChatId, avatarId);
         await Commander.Call(joinCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task OnInvite(Places_Invite command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, placeId, userIds) = command;
         var inviteCommand = new Authors_Invite(session, placeId.RootChatId, userIds);
         await Commander.Call(inviteCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task OnExclude(Places_Exclude command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, authorId) = command;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
@@ -150,8 +165,12 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(excludeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task OnRestore(Places_Restore command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, authorId) = command;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
@@ -159,8 +178,12 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(restoreCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task OnPromoteToOwner(Places_PromoteToOwner command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, authorId) = command;
         ThrowIfNonPlaceRootChatAuthor(authorId);
 
@@ -168,8 +191,12 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(promoteCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task OnLeave(Places_Leave command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, placeId) = command;
         var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
         if (place == null)

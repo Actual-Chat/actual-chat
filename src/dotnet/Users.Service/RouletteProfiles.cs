@@ -81,6 +81,9 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
     // [CommandHandler]
     public virtual async Task<Profile> OnChange(RouletteProfiles_UpsertProfile command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         if (command.Change.Kind == ChangeKind.Remove)
             throw StandardError.NotSupported("Remove change is not supported.");
 
@@ -132,6 +135,9 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
     // [CommandHandler]
     public virtual async Task OnSelectProfile(RouletteProfiles_SelectProfile command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, profileId) = command;
 
         if (!profileId.IsEmpty) {
@@ -149,6 +155,9 @@ public class RouletteProfiles(IServiceProvider services) : IRouletteProfiles
         RouletteProfiles_ChangeOwnUserSettings command,
         CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, expectedVersion, change) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var backendCommand = new RouletteProfilesBackend_ChangeUserSettings(account.Id, expectedVersion, change);

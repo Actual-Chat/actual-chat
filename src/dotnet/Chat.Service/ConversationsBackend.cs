@@ -219,7 +219,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return default!; // No invalidation there as we call other commands
+            return null!; // No invalidation there as we call other commands
 
         var (chatId, entryIdRanges) = command;
         if (entryIdRanges.Length == 0)

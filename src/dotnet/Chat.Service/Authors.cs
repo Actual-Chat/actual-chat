@@ -180,6 +180,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, avatarId, joinAnonymously) = command;
         chatId.EnsureNonThread();
 
@@ -241,6 +244,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnLeave(Authors_Leave command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId) = command;
         chatId.EnsureNonThread();
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -268,6 +274,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnInvite(Authors_Invite command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, userIds, joinAnonymously) = command;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -298,6 +307,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnExclude(Authors_Exclude command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         chatId.EnsureNonThread();
@@ -329,6 +341,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnRestore(Authors_Restore command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         chatId.EnsureNonThread();
@@ -345,6 +360,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, avatarId) = command;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -375,6 +393,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         chatId.EnsureNonThread();

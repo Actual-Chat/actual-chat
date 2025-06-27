@@ -146,7 +146,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     public virtual async Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return default!; //
+            return null!; // It just spawns other commands, so nothing to do here
 
         var session = command.Session;
         var parentChatId = command.ParentChatId;
@@ -215,7 +215,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return default;
+            return default; // It just spawns other commands, so nothing to do here
 
         var (session, threadChatId) = command;
         if (!threadChatId.IsThread())

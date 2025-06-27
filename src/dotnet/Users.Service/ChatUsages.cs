@@ -16,6 +16,9 @@ public class ChatUsages(IServiceProvider services) : IChatUsages
     // [CommandHandler]
     public virtual async Task OnRegisterUsage(ChatUsages_RegisterUsage command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, kind, chatId, accessTime) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
 

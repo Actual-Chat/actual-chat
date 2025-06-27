@@ -32,6 +32,7 @@ public class ChatUsagesBackend(IServiceProvider services)
         return chatIds;
     }
 
+    // [CommandHandler]
     public virtual async Task OnRegisterUsage(
         ChatUsagesBackend_RegisterUsage command,
         CancellationToken cancellationToken)
@@ -75,6 +76,7 @@ public class ChatUsagesBackend(IServiceProvider services)
         context.Operation.Items.KeylessSet(hasChanges);
     }
 
+    // [CommandHandler]
     public virtual async Task OnPurgeRecencyList(
         ChatUsagesBackend_PurgeRecencyList command,
         CancellationToken cancellationToken)

@@ -24,6 +24,8 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         // NOTE(AY): A bit suspicious IApiCommand design:
         // - On one hand, it doesn't have to invalidate anything
         // - On another, it doesn't use a backend.
+        if (Invalidation.IsActive)
+            return default; // It just spawns other commands, so nothing to do here
 
         var session = command.Session;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -59,6 +61,8 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
     public virtual async Task<bool> OnVerifyEmail(Emails_VerifyEmail command, CancellationToken cancellationToken)
     {
         // NOTE(AY): Add backend, implement IApiCommand
+        if (Invalidation.IsActive)
+            return false; // It just spawns other commands, so nothing to do here
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {

@@ -106,6 +106,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
 
     // Commands
 
+    // [CommandHandler]
     public virtual async Task<RouletteUserSettings?> OnChangeUserSettings(
         RouletteProfilesBackend_ChangeUserSettings command,
         CancellationToken cancellationToken)
@@ -165,6 +166,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         return userSettings;
     }
 
+    // [CommandHandler]
     public virtual async Task<ProfilePreferencesFull?> OnChangePrefs(
         RouletteProfilesBackend_ChangePrefs command,
         CancellationToken cancellationToken)
@@ -221,6 +223,7 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         return profilePrefs;
     }
 
+    // [CommandHandler]
     public virtual async Task OnCreateCompletedChatRoulette(
         RouletteProfilesBackend_CreateCompletedChatRoulette command,
         CancellationToken cancellationToken)

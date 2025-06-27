@@ -33,6 +33,9 @@ public class Reactions(IServiceProvider services) : IReactions
     // [CommandHandler]
     public virtual async Task OnReact(Reactions_React command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, reaction) = command;
         var chatRules = await Chats.GetRules(session, reaction.EntryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);

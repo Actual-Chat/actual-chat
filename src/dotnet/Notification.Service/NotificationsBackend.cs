@@ -378,6 +378,9 @@ public class NotificationsBackend(IServiceProvider services)
     // [CommandHandler]
     public virtual async Task OnNotifyMentionedMembers(NotificationsBackend_NotifyMentionedMembers command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (userId, textEntryId, mentionedUserIds) = command;
         var chatId = textEntryId.ChatId;
 

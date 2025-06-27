@@ -27,6 +27,7 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
         return await Backend.GetIndexDocIdByEntryId(entryId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task<MLSearchChat> OnCreate(MLSearch_CreateChat command, CancellationToken cancellationToken)
     {
         // This method is called from the client side
@@ -37,6 +38,10 @@ public class MLSearchImpl (ICommander commander, IMLSearchBackend backend, IChat
         // Note: Quick workaround to make a chat owned by a bot.
         // Promote ownership instead of creating it by the bot from the start.
         // Reason: not sure how to create a session for a bot.
+
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, title, mediaId) = command;
         mediaId ??= Constants.User.Sherlock.MediaId;
         var chatChange = Change.Create<ChatDiff> (new() {

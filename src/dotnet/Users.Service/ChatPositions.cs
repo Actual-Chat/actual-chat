@@ -21,6 +21,9 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
     // [CommandHandler]
     public virtual async Task OnSet(ChatPositions_Set command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, kind, position) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
 

@@ -242,6 +242,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, expectedVersion, change) = command;
         var chat = chatId is null ? null
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -322,8 +325,12 @@ public class Chats(IServiceProvider services) : IChats
         }
     }
 
+    // [CommandHandler]
     public virtual async Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, localId, text, repliedEntryLid) = command;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -386,6 +393,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRemoveTextEntry(Chats_RemoveTextEntry command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, localId) = command;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -398,6 +408,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRestoreTextEntry(Chats_RestoreTextEntry command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, localId) = command;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -415,6 +428,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRemoveTextEntries(Chats_RemoveTextEntries command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, localIds) = command;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -429,6 +445,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRestoreTextEntries(Chats_RestoreTextEntries command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, localIds) = command;
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -443,6 +462,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task<Chat> OnGetOrCreateFromTemplate(Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, templateChatId) = command;
         var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
         templateChat.Require(Chat.MustBeTemplate);
@@ -573,6 +595,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task<Unit> OnForwardTextEntries(Chats_ForwardTextEntries command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return default; // It just spawns other commands, so nothing to do here
+
         var (session, chatId, chatEntryIds, destinationChatIds) = command;
         await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -633,6 +658,9 @@ public class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return null!; // It just spawns other commands, so nothing to do here
+
         var (session, sourceChatId, placeId, correlationId) = command;
         var hasChanges = false;
         var hasErrors = false;
@@ -740,8 +768,12 @@ public class Chats(IServiceProvider services) : IChats
         }
     }
 
+    // [CommandHandler]
     public virtual async Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, newChatId, sourceChatId) = command;
 
         var localChatId = sourceChatId is PlaceChatId sourcePlaceChatId

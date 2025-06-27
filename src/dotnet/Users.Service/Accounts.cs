@@ -48,6 +48,9 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
     // [CommandHandler]
     public virtual async Task OnUpdate(Accounts_Update command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, account, expectedVersion) = command;
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
 
@@ -58,6 +61,9 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
     // [CommandHandler]
     public virtual async Task OnDeleteOwn(Accounts_DeleteOwn command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 

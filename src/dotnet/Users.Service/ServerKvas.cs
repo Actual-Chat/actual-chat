@@ -51,6 +51,9 @@ public class ServerKvas : IServerKvas
     // [CommandHandler]
     public virtual async Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, key, value) = command;
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
         var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, value));
@@ -75,6 +78,9 @@ public class ServerKvas : IServerKvas
     // [CommandHandler]
     public virtual async Task OnSetMany(ServerKvas_SetMany command, CancellationToken cancellationToken = default)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var (session, items) = command;
         var backendItems = items.Select(i => (i.Key, i.Value)).ToArray();
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
@@ -100,6 +106,9 @@ public class ServerKvas : IServerKvas
     // [CommandHandler]
     public virtual async Task OnMigrateGuestKeys(ServerKvas_MigrateGuestKeys command, CancellationToken cancellationToken = default)
     {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
         var session = command.Session;
 
         // This piece is tricky: since this command is started while auth info isn't committed yet,
