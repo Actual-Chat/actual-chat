@@ -85,10 +85,8 @@ export class PlayableTextMarkupView {
                     return;
 
                 let targetNodeParent = targetedNode.parentNode;
-                if (!targetNodeParent.classList.contains('playable-word')) {
-                    targetNodeParent = targetNodeParent.parentNode;
+                if (!targetNodeParent.classList.contains('playable-word'))
                     targetNodeParent = targetNodeParent.closest('.playable-word');
-                }
                 if (!targetNodeParent)
                     return;
 
