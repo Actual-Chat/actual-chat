@@ -2,6 +2,8 @@ namespace ActualChat.Chat;
 
 public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedService(services, Constants.LanguageDetection.ServiceKey)
 {
+    public const string PromptHash = "6nqQiUyS73BP81GU40bAR2sLS5OG6P0Hbf5Q2Lo8IKo";
+
     [field: AllowNull, MaybeNull]
     private string Prompt => field ??= File.ReadAllText(Settings.LanguageDetection.PromptFile).RequireNonEmpty();
 

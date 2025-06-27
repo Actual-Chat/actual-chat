@@ -10,8 +10,8 @@ using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.SemanticKernel;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace ActualChat.Chat.Module;
@@ -89,6 +89,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         if (Settings.IsTranslationEnabled) {
             Settings.LanguageDetection.PromptFile.RequireFileExists();
             Settings.Translation.PromptFile.RequireFileExists();
+            Settings.Translation.PromptFile.RequireHash(Translator.PromptHash);
+            Settings.LanguageDetection.PromptFile.RequireHash(LanguageDetector.PromptHash);
             AddKeyedOpenAI(services,
                 Constants.Translation.ServiceKey,
                 Settings.Translation.OpenAIModel,
