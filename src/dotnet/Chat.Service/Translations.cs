@@ -12,7 +12,7 @@ public class Translations(IServiceProvider services) : ITranslations
     // [ComputeMethod]
     public virtual async Task<Translation?> Get(Session session, TranslationId id, CancellationToken cancellationToken)
     {
-        _ = await Chats.Get(session, id.ChatEntryId.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        _ = await Chats.Get(session, id.SourceId.ChatId, cancellationToken).Require().ConfigureAwait(false);
         return await Backend.Get(id, cancellationToken).ConfigureAwait(false);
     }
 

@@ -1,8 +1,8 @@
-@using Cysharp.Text
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ConversationMessageView.Model>
 @{
+    var m = State.Value;
     var conversation = Message.Conversation!;
-    var title = conversation.Title;
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
@@ -14,15 +14,15 @@
     <CascadingValue Value="@_fakeEntry" IsFixed="true">
     <div class="c-details">
         <div class="c-summary">
-            <ConversationMessageHeader Title="@title" MessageCount="@messageCount" TitleClick="@ToggleDetails" MessageCountClick="@ToggleShowMessage"/>
+            <ConversationMessageHeader Title="@m.Title" MessageCount="@messageCount" TitleClick="@ToggleDetails" MessageCountClick="@ToggleShowMessage"/>
             <div class="c-short">
-                <MarkupView Markup="@_descriptionMarkup" />
+                <MarkupView Markup="@m.Description" />
             </div>
         </div>
         @if (_isOpen) {
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
-                    <MarkupView Markup="@_summaryMarkup" />
+                    <MarkupView Markup="@m.Summary" />
                 </div>
             </div>
         }
@@ -37,19 +37,23 @@
 
 @code {
     private bool _isOpen;
-    private Markup _summaryMarkup = Markup.Empty;
-    private Markup _descriptionMarkup = Markup.Empty;
     private ConversationMessage? _lastMessage;
     private ChatEntry _fakeEntry = null!;
 
-    private AppUIHub Hub => ChatContext.Hub;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(Message.Conversation!.Title, Markup.Empty, Markup.Empty),
+                Category = GetStateCategory(t),
+            });
 
     protected override void OnParametersSet() {
         if (ReferenceEquals(_lastMessage, Message))
@@ -59,8 +63,36 @@
         var chatEntryId = TextEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
-        _descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
-        _summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var conversation = Message.Conversation!;
+        var chatId = conversation.Id.ChatId;
+        var title = conversation.Title;
+        var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
+        var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
+
+        var mustTranslate = await TranslationUI.MustTranslate(conversation, cancellationToken).ConfigureAwait(false);
+        if (mustTranslate) {
+            var refLid = conversation.Id.StartEntryLid;
+            var titleTranslationId = TranslationSourceId.New(chatId, TranslationIdKind.ConversationTitle, refLid);
+            var titleTranslation = await TranslationUI.Get(titleTranslationId, cancellationToken).ConfigureAwait(false);
+            if (titleTranslation is not null)
+                title = titleTranslation.Content;
+            var descriptionTranslationId = TranslationSourceId.New(chatId, TranslationIdKind.ConversationDescription, refLid);
+            var descriptionTranslation = await TranslationUI.Get(descriptionTranslationId, cancellationToken).ConfigureAwait(false);
+            if (descriptionTranslation is not null && !descriptionTranslation.MatchesOriginal(conversation.Description)) {
+                var translatedDescriptionMarkup = ChatMarkupHub.Parser.Parse(descriptionTranslation.Content);
+                descriptionMarkup = translatedDescriptionMarkup;
+            }
+            var summaryTranslationId = TranslationSourceId.New(chatId, TranslationIdKind.ConversationSummary, refLid);
+            var summaryTranslation = await TranslationUI.Get(summaryTranslationId, cancellationToken).ConfigureAwait(false);
+            if (summaryTranslation is not null && !summaryTranslation.MatchesOriginal(conversation.Summary)) {
+                var translatedSummaryMarkup = ChatMarkupHub.Parser.Parse(summaryTranslation.Content);
+                summaryMarkup = translatedSummaryMarkup;
+            }
+        }
+        return new Model(title, descriptionMarkup, summaryMarkup);
     }
 
     private void ToggleShowMessage()
@@ -77,13 +109,19 @@
     }
 
     private string GetText() {
-        var conversation = Message.Conversation!;
+        var m = State.Value;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        sb.AppendLine(conversation.Title);
+        sb.AppendLine(m.Title);
         sb.AppendLine();
-        sb.AppendLine(conversation.Description);
+        sb.AppendLine(m.Description.ToReadableText());
         sb.AppendLine();
-        sb.AppendLine(conversation.Summary);
+        sb.AppendLine(m.Summary.ToReadableText());
         return sb.ToStringAndRelease();
     }
+
+    // Nested types
+    public record Model(
+        string Title,
+        Markup Description,
+        Markup Summary);
 }
