@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using Cysharp.Text
 @inherits ComputedStateComponent<AppUIHub, ThreadMessageView.Model?>
 @{
     var chat = Message.Chat;
@@ -24,7 +23,7 @@
         <div class="c-left">
             <span class="c-text">
                 <span class="c-hash">#</span>
-                @chat.Title
+                @(m?.Title ?? chat.Title)
             </span>
         </div>
         <div class="c-right" @onclick="@OnGoToTheThread">
@@ -35,7 +34,7 @@
             <i class="icon-chevron-right"></i>
         </div>
     </div>
-    <div class="c-short">@chat.Description</div>
+    <div class="c-short">@(m?.Description ?? chat.Description)</div>
     <Divider/>
     <div class="c-last-messages">
         @if (isLoading) {
@@ -101,6 +100,7 @@
     private IChats Chats => Hub.Chats;
     private IChatThreads ChatThreads => Hub.ChatThreads;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
 
     // ChatContext belongs to parent Chat, not to the thread chat.
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
@@ -120,17 +120,44 @@
         var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;
+        var translationIsOn = await TranslationUI.IsOn(chatId.ParentChatId, cancellationToken).ConfigureAwait(false) == true;
         await foreach (var chatEntry in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
             if (chatEntry.IsSystemEntry)
                 continue;
 
             var markup = await _chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
+            if (translationIsOn) {
+                var needTranslate = await TranslationUI.NeedTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false);
+                if (needTranslate) {
+                    var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+                    if (translation is not null && !translation.MatchesOriginal(chatEntry.Content)) {
+                        var translatedMarkup = _chatMarkupHub.Parser.Parse(translation.Content);
+                        markup = translatedMarkup;
+                    }
+                }
+            }
             chatEntries = chatEntries.Insert(0, (chatEntry, markup));
             if (chatEntries.Count >= 2)
                 break;
         }
         var threadStat = await ChatThreads.GetThreadStat(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(chatEntries, threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
+
+        var title = chat.Title;
+        var description = chat.Description;
+        var mustTranslate = await TranslationUI.MustTranslate(chat, cancellationToken).ConfigureAwait(false);
+        if (mustTranslate) {
+            var threadChatId = (ThreadChatId)chat.Id;
+            var parentChatId = threadChatId.ParentChatId;
+            var titleTranslationId = TranslationSourceId.New(parentChatId, TranslationIdKind.ThreadTitle, threadChatId.ThreadId);
+            var titleTranslation = await TranslationUI.Get(titleTranslationId, cancellationToken).ConfigureAwait(false);
+            if (titleTranslation is not null)
+                title = titleTranslation.Content;
+            var descriptionTranslationId = TranslationSourceId.New(parentChatId, TranslationIdKind.ThreadDescription, threadChatId.ThreadId);
+            var descriptionTranslation = await TranslationUI.Get(descriptionTranslationId, cancellationToken).ConfigureAwait(false);
+            if (descriptionTranslation is not null)
+                description = descriptionTranslation.Content;
+        }
+        return new Model(title,  description, chatEntries, threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
     }
 
     private void OnGoToTheThread()
@@ -152,5 +179,12 @@
     }
 
     // Nested types
-    public record Model(IReadOnlyList<(ChatEntry, Markup)> Entries, AuthorId[] TopAuthorIds, int AuthorCount, long MessageCount, string OwnerName);
+    public record Model(
+        string Title,
+        string Description,
+        IReadOnlyList<(ChatEntry, Markup)> Entries,
+        AuthorId[] TopAuthorIds,
+        int AuthorCount,
+        long MessageCount,
+        string OwnerName);
 }

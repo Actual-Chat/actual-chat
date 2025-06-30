@@ -14,6 +14,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public string Content { get; set; } = "";
     public string SourceContentHash { get; set; } = "";
     public string StreamId { get; set; } = "";
+    public string ChatId { get; set; } = "";
     public string EntryId { get; set; } = "";
 
     public DateTime CreatedAt {
@@ -40,10 +41,13 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
 
     public void UpdateFrom(Translation model)
     {
-        this.RequireSameOrEmptyId(model.Id.Value);
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id.Value);
 
-        Id = model.Id.Value;
-        EntryId = model.Id.ChatEntryId.Value;
+        Id = id.Value;
+        var sourceId = id.SourceId;
+        ChatId = sourceId.ChatId.Value;
+        EntryId = sourceId.Kind is TranslationIdKind.TextEntry ? sourceId.GetChatEntryId().Value : "";
         Version = model.Version;
         Content = model.Content;
         SourceContentHash = model.SourceContentHash;

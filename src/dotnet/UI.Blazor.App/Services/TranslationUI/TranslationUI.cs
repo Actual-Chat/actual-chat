@@ -57,24 +57,69 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     [ComputeMethod]
     public virtual async Task<bool> MustTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
     {
-        if (!entry.SupportsTranslation(isForStreaming))
+        if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
-        if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
+        return await NeedTranslate(entry, isForStreaming, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> NeedTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
+    {
+        if (!entry.SupportsTranslation(isForStreaming))
             return false;
 
         if (!isForStreaming)
             return true;
 
         return await IsForeignEntry(entry.Id.ToTextEntryId(), true, cancellationToken).ConfigureAwait(false) == true;
-
     }
 
     [ComputeMethod]
-    public virtual async Task<Translation?> Get(TextEntryId entryId, CancellationToken cancellationToken = default){
+    public virtual async Task<bool> MustTranslate(Chat.Chat threadChat, CancellationToken cancellationToken)
+    {
+        var chatId = threadChat.Id;
+        if (chatId is not ThreadChatId threadChatId)
+            throw new ArgumentOutOfRangeException(nameof(threadChat), "Thread chat should be given.");
+
+        var parentChatId = threadChatId.ParentChatId;
+        var supportsTranslation = TranslationExt.ContentSupportsTranslation(threadChat.Title)
+            || TranslationExt.ContentSupportsTranslation(threadChat.Description);
+        if (!supportsTranslation)
+            return false;
+
+        if (await IsOn(parentChatId, cancellationToken).ConfigureAwait(false) != true)
+            return false;
+
+        // Pessimistically, consider that we require translation.
+        return true;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> MustTranslate(Conversation conversation, CancellationToken cancellationToken)
+    {
+        var supportsTranslation = TranslationExt.ContentSupportsTranslation(conversation.Title)
+            || TranslationExt.ContentSupportsTranslation(conversation.Description)
+            || TranslationExt.ContentSupportsTranslation(conversation.Summary);
+        if (!supportsTranslation)
+            return false;
+
+        if (await IsOn(conversation.Id.ChatId, cancellationToken).ConfigureAwait(false) != true)
+            return false;
+
+        // Pessimistically, consider that we require translation.
+        return true;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<Translation?> Get(TextEntryId entryId, CancellationToken cancellationToken = default)
+        => await Get(TranslationSourceId.New(entryId), cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<Translation?> Get(TranslationSourceId translationSourceId, CancellationToken cancellationToken = default){
         var session = Session;
-        var targetLanguage = await GetTargetLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-        return await Translations.Get(session, TranslationId.New(entryId, targetLanguage), cancellationToken).ConfigureAwait(false);
+        var targetLanguage = await GetTargetLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
+        return await Translations.Get(session, TranslationId.New(translationSourceId, targetLanguage), cancellationToken).ConfigureAwait(false);
     }
 
    public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntry entry, [EnumeratorCancellation] CancellationToken cancellationToken) {

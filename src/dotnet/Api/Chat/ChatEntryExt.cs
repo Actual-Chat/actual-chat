@@ -39,9 +39,6 @@ public static class ChatEntryExt
         if (entry.IsStreaming)
             return false;
 
-        if (entry.Content.IsNullOrEmpty())
-            return false;
-
-        return entry.Content.Any(char.IsLetter);
+        return TranslationExt.ContentSupportsTranslation(entry.Content);
     }
 }

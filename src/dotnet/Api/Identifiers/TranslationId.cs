@@ -19,23 +19,28 @@ public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<TranslationId>();
-    private static readonly ILruCache<string, TranslationId> Cache = CreateCache<TranslationId>(128);
+    private static readonly ILruCache<string, TranslationId> Cache = CreateCache<TranslationId>(256);
 
     public const char Delimiter = ':';
 
     [IgnoreDataMember]
-    public TextEntryId ChatEntryId { get; }
+    public TranslationSourceId SourceId { get; }
     [IgnoreDataMember]
     public Language Language { get; }
+
+    public TranslationIdKind Kind => SourceId.Kind;
 
     // Factories and constructors
 
     public static TranslationId New(TextEntryId chatEntryId, Language language)
-        => new(Format(chatEntryId, language), chatEntryId, language);
+        => New(TranslationSourceId.New(chatEntryId), language);
 
-    private TranslationId(string value, TextEntryId chatEntryId, Language language) : base(value)
+    public static TranslationId New(TranslationSourceId translationSourceId, Language language)
+        => Parse(Format(translationSourceId, language));
+
+    private TranslationId(string value, TranslationSourceId sourceId, Language language) : base(value)
     {
-        ChatEntryId = chatEntryId;
+        SourceId = sourceId;
         Language = language;
     }
 
@@ -58,8 +63,8 @@ public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<
 
     // Format & Parse
 
-    public static string Format(TextEntryId chatEntryId, Language language)
-        => $"{chatEntryId.Value}{Delimiter}{language.Value}";
+    public static string Format(TranslationSourceId sourceId, Language language)
+        => $"{sourceId.Value}{Delimiter}{language.Value}";
 
     public static TranslationId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<TranslationId>(s);
@@ -83,18 +88,18 @@ public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<
             return true;
         }
 
-        var entryIdLength = s.LastIndexOf(Delimiter);
-        if (entryIdLength < 0)
+        var sourceIdLength = s.LastIndexOf(Delimiter);
+        if (sourceIdLength < 0)
             return false;
 
-        if (!TextEntryId.TryParse(s[..entryIdLength], out var entryId))
-            return false;
-
-        var languageStart = entryIdLength + 1;
+        var languageStart = sourceIdLength + 1;
         if (!Language.TryParse(s[languageStart..], out var language))
             return false;
 
-        result = new TranslationId(s, entryId, language);
+        if (!TranslationSourceId.TryParse(s.Substring(0, sourceIdLength), out var sourceId))
+            return false;
+
+        result = new TranslationId(s, sourceId, language);
         result = Cache.AddOrGet(s, result);
         return true;
     }

@@ -18,6 +18,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IQueues Queues => field ??= Services.Queues();
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    [field: AllowNull, MaybeNull]
+    private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken)
@@ -25,12 +27,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!Settings.IsTranslationEnabled)
             return null;
 
-        var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!entry.NeedsTranslation(translation))
+        var (translationSource, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
+        if (!translationSource.NeedsTranslation(translation))
             return translation;
 
         // we only try to enqueue and fast return to allow compute method to cache current result
-        var cmd = new TranslationsBackend_Translate(id, entry.ContentHash);
+        var cmd = new TranslationsBackend_Translate(id, translationSource.ContentHash);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
         return translation;
     }
@@ -42,6 +44,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return Task.FromResult("");
 
         if (content.IsNullOrEmpty())
+            return Task.FromResult("");
+
+        if (id.Kind is not TranslationIdKind.TextEntry)
             return Task.FromResult("");
 
         return TranslateInternal(id, prefix, content, cancellationToken);
@@ -128,43 +133,86 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (entry, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!entry.NeedsTranslation(translation))
+        var (translationSource, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
+        if (!translationSource.NeedsTranslation(translation))
             return translation;
 
-        var translatedText = await TranslateInternal(id, "", entry.Content, cancellationToken).ConfigureAwait(false);
+        var translatedText = await TranslateInternal(id, "", translationSource.Content, cancellationToken).ConfigureAwait(false);
         translation ??= new Translation(id);
         translation = translation with {
             Content = translatedText,
-            SourceContentHash = entry.ContentHash,
+            SourceContentHash = translationSource.ContentHash,
         };
 
         var cmd = new TranslationsBackend_Change(id, translation.Version, Change.Upsert(translation));
         return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
+    // protected methods
+
+    protected virtual async Task<TranslationSource?> TryResolveTranslationSource(TranslationId translationId, CancellationToken cancellationToken)
+    {
+        var sourceId = translationId.SourceId;
+        switch (sourceId.Kind) {
+            case TranslationIdKind.TextEntry: {
+                var chatEntryId = sourceId.GetChatEntryId();
+                var entry = await ChatsBackend.GetEntry(chatEntryId, cancellationToken).ConfigureAwait(false);
+                if (entry is null)
+                    return null;
+
+                return new TextEntryTranslationSource(entry, sourceId);
+            }
+            case TranslationIdKind.ConversationTitle or
+                TranslationIdKind.ConversationDescription or
+                TranslationIdKind.ConversationSummary: {
+                var lid = sourceId.GetRefLId();
+                var conversationId = ConversationId.New(sourceId.ChatId, lid);
+                var conversation = await ConversationsBackend.Get(conversationId, cancellationToken).ConfigureAwait(false);
+                if (conversation is null)
+                    return null;
+
+                return new ConversationTranslationSource(conversation, sourceId);
+            }
+            case TranslationIdKind.ThreadTitle or
+                TranslationIdKind.ThreadDescription : {
+                var lid = sourceId.GetRefLId();
+                var threadChatId = sourceId.ChatId.CreateThreadId(lid);
+                var threadChat = await ChatsBackend.Get(threadChatId, cancellationToken).ConfigureAwait(false);
+                if (threadChat is null)
+                    return null;
+
+                return new ThreadTranslationSource(threadChat, sourceId);
+            }
+            default: throw new ArgumentOutOfRangeException(nameof(translationId.Kind));
+        }
+    }
+
     // Private methods
 
-    private async Task<(ChatEntry? entry, Translation? translation)> GetExisting(TranslationId id, CancellationToken cancellationToken)
+    private async Task<(TranslationSource? source, Translation? translation)> GetExisting(TranslationId id, CancellationToken cancellationToken)
     {
-        var entry = await ChatsBackend.GetEntry(id.ChatEntryId, cancellationToken).ConfigureAwait(false);
-        if (entry is null)
+        var source = await TryResolveTranslationSource(id, cancellationToken).ConfigureAwait(false);
+        if (source is null)
             return (null, null);
 
         var dbTranslation = await EntityResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
         var translation = dbTranslation?.ToModel();
-        return (entry, translation);
+        return (source, translation);
     }
 
     private async Task<string> TranslateInternal(TranslationId id, string prefix, string content, CancellationToken cancellationToken)
     {
         var hasPrefix = !prefix.IsNullOrEmpty();
-        var count = hasPrefix
-            ? Settings.Translation.ContextMessageCount
-            : Settings.Translation.RealtimeContextMessageCount;
-        var context = await GetTranslationContext(id.ChatEntryId, count, cancellationToken).ConfigureAwait(false);
-        if (hasPrefix)
-            context = $"{context}\n{prefix}";
+        string context = "";
+        if (id.Kind is TranslationIdKind.TextEntry) {
+            var chatEntryId = id.SourceId.GetChatEntryId();
+            var count = hasPrefix
+                ? Settings.Translation.ContextMessageCount
+                : Settings.Translation.RealtimeContextMessageCount;
+            context = await GetTranslationContext(chatEntryId, count, cancellationToken).ConfigureAwait(false);
+            if (hasPrefix)
+                context = $"{context}\n{prefix}";
+        }
         return await Translator.Translate(
             content,
             id.Language,

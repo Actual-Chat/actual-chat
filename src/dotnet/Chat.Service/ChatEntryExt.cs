@@ -2,12 +2,20 @@ namespace ActualChat.Chat;
 
 public static class ChatEntryExt
 {
-    public static bool NeedsTranslation([NotNullWhen(true)] this ChatEntry? entry, Translation? translation)
+    public static bool NeedsTranslation([NotNullWhen(true)] this TranslationSource? source, Translation? translation)
     {
-        if (!entry.SupportsTranslation(false))
+        if (source is null)
             return false;
 
-        if (entry.IsRemoved)
+        if (source is TextEntryTranslationSource textEntrySource) {
+            var entry = textEntrySource.ChatEntry;
+            if (!entry.SupportsTranslation(false))
+                return false;
+            if (entry.IsRemoved)
+                return false;
+        }
+
+        if (!TranslationExt.ContentSupportsTranslation(source.Content))
             return false;
 
         if (translation is null)
@@ -16,7 +24,7 @@ public static class ChatEntryExt
         if (translation.IsStreaming)
             return false;
 
-        return translation.SourceContentHash != entry.ContentHash;
+        return translation.SourceContentHash != source.ContentHash;
     }
 
     public static bool NeedsLanguageDetection([NotNullWhen(true)] this ChatEntry? entry, ChatEntryLanguage? entryLanguage)
