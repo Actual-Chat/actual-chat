@@ -13,7 +13,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     [field: AllowNull, MaybeNull]
-    private IDbEntityResolver<string, DbConversation> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
+    private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
     [field: AllowNull, MaybeNull]
     private IConversationSummarizer ConversationSummarizer { get; } = services.GetRequiredService<IConversationSummarizer>();
     [field: AllowNull, MaybeNull]
@@ -24,9 +24,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         ArgumentNullException.ThrowIfNull(conversationId);
 
-        var dbChat = await DbChatResolver.Get(conversationId.Value, cancellationToken).ConfigureAwait(false);
-        var chat = dbChat?.ToModel();
-        return chat;
+        var dbConversation = await DbConversationResolver.Get(conversationId.Value, cancellationToken).ConfigureAwait(false);
+        var conversation = dbConversation?.ToModel();
+        return conversation;
     }
 
     // [ComputeMethod]
@@ -64,6 +64,27 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             conversationRanges.ToArray(),
             previousConversationRange,
             nextConversationRange);
+    }
+
+    // [Computed]
+    public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
+    {
+        var idTiles = IdTileStack.LastLayer.GetCoveringTiles(idTileRange);
+        var conversationTiles = await idTiles
+            .Select(idTile => GetRangeMeta(chatId, idTile.Range.Start, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        var conversations = await conversationTiles
+            .SelectMany(ct => ct.ConversationIds)
+            .Distinct()
+            .Select(cId => Get(cId, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+
+        return conversations
+            .Where(c => c != null && !c.EntryRange.IntersectWith(idTileRange).IsEmpty)
+            .OrderBy(c => c!.EntryRange.Start)
+            .ToArray()!;
     }
 
     // Commands

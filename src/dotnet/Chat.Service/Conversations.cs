@@ -23,23 +23,10 @@ public class Conversations(IServiceProvider services) : IConversations
     // [Computed]
     public virtual async Task<Conversation[]> GetTile(Session session, ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
     {
-        await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+        var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanRead())
+            return [];
 
-        var idTiles = IdTileStack.LastLayer.GetCoveringTiles(idTileRange);
-        var conversationTiles = await idTiles
-            .Select(idTile => Backend.GetRangeMeta(chatId, idTile.Range.Start, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-        var conversations = await conversationTiles
-            .SelectMany(ct => ct.ConversationIds)
-            .Distinct()
-            .Select(cId => Backend.Get(cId, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-
-        return conversations
-            .Where(c => c != null && !c.EntryRange.IntersectWith(idTileRange).IsEmpty)
-            .OrderBy(c => c!.EntryRange.Start)
-            .ToArray()!;
+        return await Backend.GetTile(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 }

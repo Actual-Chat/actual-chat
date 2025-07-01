@@ -11,6 +11,12 @@ public interface IConversationsBackend : IComputeService, IBackendService
     Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<Conversation[]> GetTile(
+        ChatId chatId,
+        Range<long> idTileRange,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<ConversationRangeMeta> GetRangeMeta(ChatId chatId, long idTileStart, CancellationToken cancellationToken);
 
     // Commands

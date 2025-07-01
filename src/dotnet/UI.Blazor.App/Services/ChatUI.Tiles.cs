@@ -133,21 +133,23 @@ public partial class ChatUI
 
         // Prefetch tiles for the loaded id ranges
         {
-            var prefetchEntriesTask = idTiles
-                .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
-                .Select(t => t.Range)
-                .EnsureMonotonic(RangeExt.LongRangeComparer)
-                .Select(r => Chats.GetTile(Session, chatId, ChatEntryKind.Text, r, cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken);
-            var prefetchConversationsTask = showConversations
-                ? idTiles
-                    .Select(r => ServerIdTileStack.LastLayer.GetTile(r.Start).Range)
+            await Task.Run(async () => {
+                var prefetchEntriesTask = idTiles
+                    .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
+                    .Select(t => t.Range)
                     .EnsureMonotonic(RangeExt.LongRangeComparer)
-                    .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
-                    .Collect(ApiConstants.Concurrency.High, cancellationToken)
-                : Task.CompletedTask;
-            var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
-            await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
+                    .Select(r => Chats.GetTile(Session, chatId, ChatEntryKind.Text, r, cancellationToken))
+                    .Collect(ApiConstants.Concurrency.High, cancellationToken);
+                var prefetchConversationsTask = showConversations
+                    ? idTiles
+                        .Select(r => ServerIdTileStack.LastLayer.GetTile(r.Start).Range)
+                        .EnsureMonotonic(RangeExt.LongRangeComparer)
+                        .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
+                        .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                    : Task.CompletedTask;
+                var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
+                await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask).ConfigureAwait(false);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         var isBot = chat.IsAiSearchChat();
