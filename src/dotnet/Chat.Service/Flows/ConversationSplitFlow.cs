@@ -90,9 +90,17 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
 
         if (groups.Count == 0 && hasMore) {
             // No groups found, but we have more entries to process
-            if (entries.Count > 0)
-                Cursor = entries[^1].LocalId;
             Event.MarkHandled();
+            if (entries.Count > 0) {
+                Cursor = entries[^1].LocalId;
+                var lastEntry = entries[^1];
+                var now = Clocks.CoarseSystemClock.Now;
+                var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
+                if ((lastEntry.EndsAt ?? lastEntry.BeginsAt) < immatureMoment)
+                    // Run the flow again to process the next batch of entries
+                    return StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch");
+            }
+
             return WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay);
         }
 

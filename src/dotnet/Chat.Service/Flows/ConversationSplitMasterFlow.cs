@@ -4,7 +4,8 @@ using MemoryPack;
 namespace ActualChat.Chat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class ConversationSplitMasterFlow : IndexingMasterFlowBase<ConversationSplitFlow, Chat, ChatId>
+public partial class ConversationSplitMasterFlow
+    : IndexingMasterFlowBase<ConversationSplitFlow, Chat, ChatId>, IMasterFlow
 {
     [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
