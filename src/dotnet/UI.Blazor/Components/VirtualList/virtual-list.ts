@@ -1213,7 +1213,7 @@ export class VirtualList {
         let spacerSize = 0;
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
-        let isInteractivePositioning = false;
+        let isInteractivePositioning = [...this.pivots].some(p => p.isInteractive);
 
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
