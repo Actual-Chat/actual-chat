@@ -24,7 +24,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private SharedResourcePool<ChatId, MutableState<ReadPosition>>.Lease? _viewPositionLease;
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
-    private MutableState<Navigation?> _nextNavigation = null!;
+    private MutableState<ChatViewNavigation?> _nextNavigation = null!;
     private ChatContext _chatContext = null!;
 
     private AppUIHub Hub { get; }
@@ -83,7 +83,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ChatViewItemVisibility.Empty,
                 StateCategories.Get(type, nameof(ItemVisibility)));
             _nextNavigation = StateFactory.NewMutable(
-                (Navigation?)null,
+                (ChatViewNavigation?)null,
                 StateCategories.Get(type, nameof(_nextNavigation)));
             _shownReadEntryLid = StateFactory.NewMutable(
                 0L,
@@ -152,7 +152,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized;
         if (updateReadPosition)
             _shownReadEntryLid.Value = UpdateReadPosition(entryLid);
-        _nextNavigation.Value = new Navigation(entryLid, highlight);
+        _nextNavigation.Value = new ChatViewNavigation(entryLid, highlight);
     }
 
     public override string ToString()
@@ -332,7 +332,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             : ViewPosition.Value.EntryLid;
         var hasViewEntry = viewEntryLid != 0 && viewEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
-            ?? (isFirstRender && hasViewEntry ? new Navigation(viewEntryLid, false, false) : null);
+            ?? (isFirstRender && hasViewEntry ? new ChatViewNavigation(viewEntryLid, false, false, true) : null);
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
 
@@ -417,10 +417,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private ChatDataQuery GetChatDataQuery(
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> oldData,
-        Navigation? scrollAnchor,
+        ChatViewNavigation? navigation,
         Range<long> chatIdRange)
     {
-        // DebugLog?.LogDebug("GetChatDataQuery: {ChatId}, {Query}, {OldData}, {Anchor}, {IdRange}", ChatId, query, oldData.KeyRange.Format(), scrollAnchor, chatIdRange.Format());
+        // DebugLog?.LogDebug("GetChatDataQuery: {ChatId}, {Query}, {OldData}, {Anchor}, {IdRange}", ChatId, query, oldData.KeyRange.Format(), navigation, chatIdRange.Format());
         var firstLayer = ChatUI.IdTileStack.FirstLayer;
         var secondLayer = ChatUI.IdTileStack.LastLayer;
         var itemVisibility = ItemVisibility.Value;
@@ -462,13 +462,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 query.MoveRange.End),
         };
 
-        // If we are scrolling somewhere within idRange, let's extend the range to scrollAnchor & nearby entries.
-        if (scrollAnchor != null && chatIdRange.Contains(scrollAnchor.EntryLid))
+        // If we are scrolling somewhere within idRange, let's extend the range to navigation & nearby entries.
+        if (navigation != null && chatIdRange.Contains(navigation.EntryLid))
             dataQuery = new ChatDataQuery(
-                secondLayer.GetTile(scrollAnchor.EntryLid).Range,
+                secondLayer.GetTile(navigation.EntryLid).Range,
                 -ChatUI.HalfLoadLimit,
                 ChatUI.LoadLimit) {
-                    NavigateToLid = scrollAnchor.EntryLid,
+                    Navigation = navigation,
             };
 
         return dataQuery;
@@ -557,17 +557,5 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             },
             ex => Log.LogDebug(ex, "Failed to register view group chat"),
             DisposeToken);
-    }
-
-    // Nested types
-
-    private sealed record Navigation(
-        long EntryLid,
-        bool MustHighlight,
-        bool ShowInTheMiddle = true)
-    {
-        // This record relies on referential equality
-        public bool Equals(Navigation? other) => ReferenceEquals(this, other);
-        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }

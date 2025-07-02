@@ -66,12 +66,12 @@ public partial class ChatUI
             .ToList();
 
         var showConversations = chat.IsSummarized ?? false;
-        if (showConversations && dataQuery.NavigateToLid.HasValue) {
+        if (showConversations && dataQuery.Navigation is { ShouldRestoreViewPosition: false }) {
             var conversationRanges = chatRangeMetaList
                 .SelectMany(rm => rm.ConversationIdRanges)
                 .EnsureMonotonic(RangeExt.LongRangeComparer)
                 .ToList();
-            var navigateToId = dataQuery.NavigateToLid.Value;
+            var navigateToId = dataQuery.Navigation.EntryLid;
             var index = conversationRanges.AsSpan().BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
             if (index >= 0) {
                 var conversationRange = conversationRanges[index];
