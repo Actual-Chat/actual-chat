@@ -61,7 +61,7 @@ public partial class DeepgramTranscriber : ITranscriber
             using var deepgramClient = new ListenWebSocketClient(
                 apiKey,
                 new DeepgramWsClientOptions(apiKey) {
-                    KeepAlive = false,
+                    KeepAlive = true,
                 });
 
             var whenCompleted = whenCompletedSource.Task;
