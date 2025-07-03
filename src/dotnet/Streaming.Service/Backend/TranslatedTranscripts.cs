@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Mesh;
 using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
@@ -17,6 +18,8 @@ public class TranslatedTranscripts : ProcessorBase
     [field: AllowNull, MaybeNull]
     private MomentClockSet Clocks => field ??= Services.Clocks();
     [field: AllowNull, MaybeNull]
+    private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
+    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
@@ -25,9 +28,19 @@ public class TranslatedTranscripts : ProcessorBase
     public TranslatedTranscripts(IServiceProvider services)
     {
         Services = services;
-        _translatedTranscripts = new () {
+        _translatedTranscripts = new (ThisNode.Ref) {
             Log = services.LogFor($"{GetType().FullName}.TranslatedTranscripts"),
+            ExpirationDelay = TimeSpan.FromSeconds(30),
+            ShareWaitDelay = TimeSpan.FromSeconds(5),
+            OnStreamExpire = OnStreamExpire,
         };
+        return;
+
+        void OnStreamExpire(StreamId streamId)
+        {
+            _activePublishers.Remove(streamId, out var delegatingWorker);
+            delegatingWorker?.Dispose();
+        }
     }
 
     protected override async Task DisposeAsyncCore()
@@ -47,20 +60,23 @@ public class TranslatedTranscripts : ProcessorBase
         CancellationToken cancellationToken)
     {
         var streamId = GetTranslatedStreamId(originalStreamId, translationId.Language);
-
-        var worker = _activePublishers.GetOrAdd(streamId, PublisherFactory);
+        var worker = _activePublishers.GetOrAdd(streamId, PublisherFactory, (this, translationId, originalStream));
         // since ValueFactory in concurrent dictionary can run concurrently we start only single one
         worker.Start();
         var stream = await _translatedTranscripts.Get(streamId, cancellationToken).ConfigureAwait(false);
         return stream?.Select(x => x.Translated);
 
-        DelegatingWorker PublisherFactory(StreamId id)
-            => DelegatingWorker.New(PublishTaskFactory, start: false);
-
-        Task PublishTaskFactory(CancellationToken cancellationToken1)
-            // ReSharper disable once PossibleMultipleEnumeration
-            => Publish(translationId, streamId, originalStream, cancellationToken1);
+        static DelegatingWorker PublisherFactory(StreamId streamId, (TranslatedTranscripts, TranslationId, IAsyncEnumerable<TranscriptDiff>) args)
+        {
+            var worker = DelegatingWorker.New(ct => {
+                var (self, translationId, originalStream) = args;
+                return self.Publish(translationId, streamId, originalStream, ct);
+            }, start: false);
+            return worker;
+        }
     }
+
+    // Private methods
 
     private async Task Publish(
         TranslationId translationId,
@@ -68,9 +84,7 @@ public class TranslatedTranscripts : ProcessorBase
         IAsyncEnumerable<TranscriptDiff> originalStream,
         CancellationToken cancellationToken)
     {
-        var translationDiffs = Translate(translationId, originalStream, cancellationToken)
-            .Throttle(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
-            .Memoize(cancellationToken);
+        var translationDiffs = Translate(translationId, originalStream, cancellationToken).Memoize(cancellationToken);
         var publishTask = _translatedTranscripts.Publish(streamId, translationDiffs);
 
         var translatedTranscripts = translationDiffs.Replay(cancellationToken);
@@ -96,19 +110,31 @@ public class TranslatedTranscripts : ProcessorBase
     private async IAsyncEnumerable<TranslatedTranscriptDiff> Translate(
         TranslationId translationId,
         IAsyncEnumerable<TranscriptDiff> originalStream,
-        [EnumeratorCancellation]
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var translatedTranscript = Transcript.Empty;
-        var originalTranscript = Transcript.Empty;
-        await foreach (var originalTranscriptDiff in originalStream.Where(x => !x.TextDiff.IsNone).WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            var prev = translatedTranscript;
-            originalTranscript += originalTranscriptDiff;
-            DebugLog?.LogDebug("Translating transcript for #{TranslationId}", translationId);
-            var translatedContent = await TranslationsBackend.GetRealtime(translationId, originalTranscript.Text, cancellationToken).ConfigureAwait(false);
-            var translatedTimeMap = originalTranscript.TimeMap.Scale(originalTranscript.Length, translatedContent.Length);
-            translatedTranscript = new Transcript(translatedContent, translatedTimeMap, [translationId.Language]);
-            yield return new (originalTranscriptDiff, TranscriptDiff.New(translatedTranscript, prev));
+        var transcript = Transcript.Empty;
+        var stableTranscript = Transcript.Empty;
+        var stableTranslatedTranscript = Transcript.Empty;
+        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
+        await foreach (var transcriptDiff in originalStream.ConfigureAwait(false)) {
+            transcript += transcriptDiff;
+            var prefix = stableTranscript.Text;
+            var diff = (transcript - stableTranscript);
+            var content = diff.TextDiff.Suffix ?? "";
+            if (transcriptDiff.IsStable)
+                stableTranscript = transcript;
+            if (content.IsNullOrWhiteSpace())
+                continue;
+
+            var translatedContent = await TranslationsBackend.Translate(translationId, prefix, content, cancellationToken).ConfigureAwait(false);
+            if (!translatedContent.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
+                translatedContent = $" {translatedContent}";
+
+            var translatedTranscript = stableTranslatedTranscript.WithSuffix(translatedContent, diff.TimeMapDiff.Suffix.Scale(content.Length, translatedContent.Length));
+            var translatedDiff = translatedTranscript - stableTranslatedTranscript;
+            yield return new (transcriptDiff, translatedDiff);
+            if (transcriptDiff.IsStable)
+                stableTranslatedTranscript = translatedTranscript with { IsStable = true };
         }
     }
 
@@ -151,6 +177,8 @@ public class TranslatedTranscripts : ProcessorBase
         return Commander.Call(cmd, cancellationToken)
             .Catch(Log, "Failed to finalize streaming translation #{TranslationId}", translationId);
     }
+
+    // Nested types
 
     private sealed record TranslatedTranscriptDiff(TranscriptDiff Original, TranscriptDiff Translated);
 }

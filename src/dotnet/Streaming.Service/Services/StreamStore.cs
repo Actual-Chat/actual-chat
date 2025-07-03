@@ -2,14 +2,17 @@ using System.Diagnostics.Metrics;
 
 namespace ActualChat.Streaming.Services;
 
-public class StreamStore<TItem> : ProcessorBase
+public class StreamStore<TItem>(NodeRef nodeRef) : ProcessorBase
 {
     private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>>> _streams = new();
 
+    public NodeRef NodeRef { get; } = nodeRef;
     public TimeSpan ExpirationDelay { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan ShareWaitDelay { get; init; } = TimeSpan.FromSeconds(2);
     public Action<StreamId> StreamIdValidator { get; init; } = static _ => { };
+    public Action<StreamId> OnStreamExpire { get; init; } = static _ => { };
     public UpDownCounter<int>? StreamCount { get; init; }
+
     public ILogger? Log { get; init; }
 
     public bool Has(StreamId streamId)
@@ -103,6 +106,8 @@ public class StreamStore<TItem> : ProcessorBase
                             self.StreamCount?.Add(-1);
                         else
                             e.Value.TrySetResult(null);
+                        var streamId = StreamId.New(self.NodeRef, key);
+                        self.OnStreamExpire(streamId);
                     })
                     .BumpExpiresAt(self.ExpirationDelay)
                     .BeginExpire();

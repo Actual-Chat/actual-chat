@@ -35,8 +35,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return translation;
     }
 
-    // [ComputeMethod]
-    public virtual Task<string> GetRealtime(TranslationId id, string content, CancellationToken cancellationToken)
+    // Not a compute method
+    public Task<string> Translate(TranslationId id, string prefix, string content, CancellationToken cancellationToken)
     {
         if (!Settings.IsTranslationEnabled)
             return Task.FromResult("");
@@ -44,13 +44,16 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (content.IsNullOrEmpty())
             return Task.FromResult("");
 
-        return TranslateUnsafe(id, content, cancellationToken);
+        return TranslateInternal(id, prefix, content, cancellationToken);
     }
 
-    [ComputeMethod(AutoInvalidationDelay = 60 * 1000)]
-    protected virtual async Task<string> GetTranslationContext(ChatEntryId id, CancellationToken cancellationToken)
+    [ComputeMethod]
+    protected virtual async Task<string> GetTranslationContext(ChatEntryId id, int count, CancellationToken cancellationToken)
     {
-        var entries = await ListEntries().Take(10).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var entries = await ListEntries()
+            .Take(count)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
         return string.Join(".\n", entries.Select(e => e.Content));
 
         async IAsyncEnumerable<ChatEntry> ListEntries()
@@ -129,7 +132,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!entry.NeedsTranslation(translation))
             return translation;
 
-        var translatedText = await TranslateUnsafe(id, entry.Content, cancellationToken).ConfigureAwait(false);
+        var translatedText = await TranslateInternal(id, "", entry.Content, cancellationToken).ConfigureAwait(false);
         translation ??= new Translation(id);
         translation = translation with {
             Content = translatedText,
@@ -153,9 +156,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return (entry, translation);
     }
 
-    private async Task<string> TranslateUnsafe(TranslationId id, string content, CancellationToken cancellationToken)
+    private async Task<string> TranslateInternal(TranslationId id, string prefix, string content, CancellationToken cancellationToken)
     {
-        var context = await GetTranslationContext(id.ChatEntryId, cancellationToken).ConfigureAwait(false);
+        var hasPrefix = !prefix.IsNullOrEmpty();
+        var count = hasPrefix
+            ? Settings.Translation.ContextMessageCount
+            : Settings.Translation.RealtimeContextMessageCount;
+        var context = await GetTranslationContext(id.ChatEntryId, count, cancellationToken).ConfigureAwait(false);
+        if (hasPrefix)
+            context = $"{context}\n{prefix}";
         return await Translator.Translate(
             content,
             id.Language,

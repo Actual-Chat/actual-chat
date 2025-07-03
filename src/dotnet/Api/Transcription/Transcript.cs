@@ -21,7 +21,7 @@ public sealed partial record Transcript(
     public static readonly Regex ContentEndRegex = ContentEndRegexFactory();
 
     public static readonly Vector2 TimeMapEpsilon = new(0.1f, 0.1f);
-    public static readonly Transcript Empty = New();
+    public static readonly Transcript Empty = New() with { IsStable = true };
     public static readonly Transcript Ellipsis = new("\u2026", new LinearMap(Vector2.Zero, new Vector2(1, 0)), []);
     public static readonly Transcript Unrecognized = new("\u2026\u200B\u2026", new LinearMap(Vector2.Zero, new Vector2(3, 0)), []);
 
@@ -32,7 +32,8 @@ public sealed partial record Transcript(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Range<float> TimeRange => TimeMap.YRange;
 
-    // public Transcript(string text, LinearMap timeMap) : this(text, timeMap, []) { }
+    [DataMember(Order = 3), MemoryPackOrder(3)]
+    public bool IsStable { get; init; }
 
     public static Transcript New()
         => new ("", LinearMap.Zero, []);

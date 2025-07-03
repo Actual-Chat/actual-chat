@@ -28,7 +28,7 @@ public class DeepgramTranscribeState(
     public DeepgramTranscribeState MakeStable(bool isStable = true)
     {
         if (isStable)
-            Stable = Unstable;
+            Stable = Unstable = Unstable with { IsStable = true };
         return this;
     }
 

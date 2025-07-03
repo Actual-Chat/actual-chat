@@ -8,8 +8,9 @@ public interface ITranslationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken);
-    [ComputeMethod(InvalidationDelay = 2 * 60 * 1000)]
-    Task<string> GetRealtime(TranslationId id, string content, CancellationToken cancellationToken);
+
+    // Not a compute method
+    Task<string> Translate(TranslationId id, string prefix, string content, CancellationToken cancellationToken);
 
     // Command handlers
 

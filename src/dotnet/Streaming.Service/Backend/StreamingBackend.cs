@@ -46,12 +46,12 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     {
         Services = services;
 
-        _audioStreams = new StreamStore<byte[]>() {
+        _audioStreams = new StreamStore<byte[]>(ThisNode.Ref) {
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.AudioStreamCount,
             Log = services.LogFor($"{GetType().FullName}.AudioStreams"),
         };
-        _transcriptStreams = new StreamStore<TranscriptDiff>() {
+        _transcriptStreams = new StreamStore<TranscriptDiff>(ThisNode.Ref) {
             StreamIdValidator = ValidateStreamId,
             Log = services.LogFor($"{GetType().FullName}.TranscriptStreams"),
         };

@@ -36,7 +36,7 @@ public class GoogleTranscribeState(
     public GoogleTranscribeState MakeStable(bool isStable = true)
     {
         if (isStable)
-            Stable = Unstable;
+            Stable = Unstable = Unstable with { IsStable = true };
         return this;
     }
 

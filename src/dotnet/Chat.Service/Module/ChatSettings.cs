@@ -20,6 +20,7 @@ public class TranslationSettings
 {
     public FilePath PromptFile { get; set; } = "";
     public int ContextMessageCount { get; set; } = 10;
+    public int RealtimeContextMessageCount { get; set; } = 3;
     public string ContextSeparator { get; set; } = "⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊";
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1";

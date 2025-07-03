@@ -12,11 +12,14 @@ public sealed partial record TranscriptDiff(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => TextDiff.IsNone && TimeMapDiff.IsNone;
 
+    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public bool IsStable { get; init; }
+
     public static TranscriptDiff New(Transcript transcript, Transcript baseTranscript)
     {
         var textDiff = StringDiff.New(transcript.Text, baseTranscript.Text);
         var timeMapDiff = LinearMapDiff.New(transcript.TimeMap, baseTranscript.TimeMap, Transcript.TimeMapEpsilon);
-        return new TranscriptDiff(textDiff, timeMapDiff);
+        return new TranscriptDiff(textDiff, timeMapDiff) { IsStable = transcript.IsStable };
     }
 
     public override string ToString()
@@ -29,7 +32,7 @@ public sealed partial record TranscriptDiff(
 
         var text = baseTranscript.Text + TextDiff;
         var timeMap = TimeMapDiff.ApplyTo(baseTranscript.TimeMap, Transcript.TimeMapEpsilon.X);
-        return new Transcript(text, timeMap, baseTranscript.Languages);
+        return new Transcript(text, timeMap, baseTranscript.Languages) { IsStable = IsStable };
     }
 
     // Operators
