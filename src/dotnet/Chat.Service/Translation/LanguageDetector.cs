@@ -1,11 +1,34 @@
+using ActualChat.Chat.Module;
+using Microsoft.Extensions.AI;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+
 namespace ActualChat.Chat;
 
-public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedService(services, Constants.LanguageDetection.ServiceKey)
+public class LanguageDetector(IServiceProvider services)
 {
     public const string PromptHash = "6nqQiUyS73BP81GU40bAR2sLS5OG6P0Hbf5Q2Lo8IKo";
 
+    private IServiceProvider Services { get; } = services;
+
+    private string ServiceKey => Constants.LanguageDetection.ServiceKey;
+
+    [field: AllowNull, MaybeNull]
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+
     [field: AllowNull, MaybeNull]
     private string Prompt => field ??= File.ReadAllText(Settings.LanguageDetection.PromptFile).RequireNonEmpty();
+
+    [field: AllowNull, MaybeNull]
+    private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
+
+    [field: AllowNull, MaybeNull]
+    private IChatCompletionService Completion
+        => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<IReadOnlyList<Language>> DetectLanguages(string content, CancellationToken cancellationToken)
     {
@@ -15,9 +38,33 @@ public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedSe
         if (content.IsNullOrWhiteSpace() || !content.Any(char.IsLetter))
             return [];
 
-        var response = await Ask(Prompt, content, cancellationToken).ConfigureAwait(false);
+        var executionSettings = new OpenAIPromptExecutionSettings {
+            Temperature = 0,
+            ChatSystemPrompt = Prompt.Trim(),
+            ResponseFormat =  ChatResponseFormat.ForJsonSchema(
+                JsonDocument.Parse(
+                """
+                {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
+                """).RootElement,
+                "languages",
+                "The list of languages detected in the text, in the format: [\"en\", \"fr\", \"de\"]"),
+        };
+        var chatHistory = new ChatHistory();
+        chatHistory.AddUserMessage(content);
+
+        var response = await Completion
+            .GetChatMessageContentAsync(
+                chatHistory,
+                executionSettings,
+                Kernel,
+                cancellationToken)
+            .ConfigureAwait(false);
         try {
-            var json = response
+            var result = response.Content ?? "[]";
+            var json = result
                 .OrdinalIgnoreCaseReplace("```json", "")
                 .OrdinalReplace("`", "");
             return SystemJsonSerializer.Default.Read<string[]>(json)
@@ -26,7 +73,7 @@ public class LanguageDetector(IServiceProvider services) : ChatCompletionBasedSe
                 .ToList();
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogError(e, "Could not parse language detection response: {Response}", response);
+            Log.LogError(e, "Could not parse language detection response: {Response}", response.Content);
             return [];
         }
     }

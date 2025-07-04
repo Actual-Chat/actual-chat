@@ -222,7 +222,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
                     new RedisTokenBucketRateLimiter.Options(
                         $"rate_limit:openai:{serviceKey}",
-                        200_000,
+                        2_000_000,
                         TimeSpan.FromSeconds(60)
                     ),
                     c);
