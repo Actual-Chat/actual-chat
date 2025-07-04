@@ -127,6 +127,9 @@ public class TranslatedTranscripts : ProcessorBase
                 continue;
 
             var translatedContent = await TranslationsBackend.Translate(translationId, prefix, content, cancellationToken).ConfigureAwait(false);
+            if (OrdinalIgnoreCaseEquals(translatedContent, Constants.Chat.NoTranslationNeededText))
+                translatedContent = content; // No translation needed, use original content
+
             if (!translatedContent.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
                 translatedContent = $" {translatedContent}";
 
