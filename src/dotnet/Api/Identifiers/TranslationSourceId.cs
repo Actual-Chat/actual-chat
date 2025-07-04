@@ -22,11 +22,17 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
 
     public const char Delimiter = ':';
 
-    public static TranslationSourceId New(TextEntryId textEntryId)
-        => new TranslationSourceId(textEntryId.Value, textEntryId);
-
     public static TranslationSourceId New(ChatId chatId, TranslationIdKind kind, long refLid)
-        => new TranslationSourceId(Format(chatId, kind, refLid.ToInvariantString()), chatId, kind, refLid);
+        => new (Format(chatId, kind, refLid.ToInvariantString()), chatId, kind, refLid);
+
+    public static TranslationSourceId New(TextEntryId textEntryId)
+        => new (textEntryId.Value, textEntryId);
+
+    public static TranslationSourceId New(ThreadChatId threadChatId, ThreadTranslationIdKind kind)
+        => New(threadChatId.ParentChatId, Map(kind), threadChatId.ThreadId);
+
+    public static TranslationSourceId New(ConversationId conversationId, ConversationTranslationIdKind kind)
+        => New(conversationId.ChatId, Map(kind), conversationId.StartEntryLid);
 
     private TranslationSourceId(string value, TextEntryId textEntryId)
         : this(value, textEntryId.ChatId, TranslationIdKind.TextEntry, textEntryId.LocalId)
@@ -137,14 +143,42 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
         result = Cache.AddOrGet(s, result);
         return true;
     }
+
+    private static TranslationIdKind Map(ConversationTranslationIdKind kind)
+        => kind switch {
+            ConversationTranslationIdKind.Title => TranslationIdKind.ConversationTitle,
+            ConversationTranslationIdKind.Description => TranslationIdKind.ConversationDescription,
+            ConversationTranslationIdKind.Summary => TranslationIdKind.ConversationSummary,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+
+    private static TranslationIdKind Map(ThreadTranslationIdKind kind)
+        => kind switch {
+            ThreadTranslationIdKind.Title => TranslationIdKind.ThreadTitle,
+            ThreadTranslationIdKind.Description => TranslationIdKind.ThreadDescription,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
 }
 
 public enum TranslationIdKind
 {
     TextEntry = 0,
-    ConversationTitle = 1,
-    ConversationDescription = 2,
-    ConversationSummary = 3,
-    ThreadTitle = 4,
-    ThreadDescription = 5,
+    ConversationTitle = 5,
+    ConversationDescription = 6,
+    ConversationSummary = 7,
+    ThreadTitle = 8,
+    ThreadDescription = 9,
+}
+
+public enum ConversationTranslationIdKind
+{
+    Title,
+    Description,
+    Summary,
+}
+
+public enum ThreadTranslationIdKind
+{
+    Title,
+    Description,
 }

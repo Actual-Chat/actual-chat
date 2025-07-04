@@ -111,9 +111,14 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         return true;
     }
 
-    [ComputeMethod]
     public virtual async Task<Translation?> Get(TextEntryId entryId, CancellationToken cancellationToken = default)
         => await Get(TranslationSourceId.New(entryId), cancellationToken).ConfigureAwait(false);
+
+    public virtual async Task<Translation?> Get(ThreadChatId threadChatId, ThreadTranslationIdKind kind, CancellationToken cancellationToken = default)
+        => await Get(TranslationSourceId.New(threadChatId, kind), cancellationToken).ConfigureAwait(false);
+
+    public virtual async Task<Translation?> Get(ConversationId conversationId, ConversationTranslationIdKind kind, CancellationToken cancellationToken = default)
+        => await Get(TranslationSourceId.New(conversationId, kind), cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<Translation?> Get(TranslationSourceId translationSourceId, CancellationToken cancellationToken = default){
