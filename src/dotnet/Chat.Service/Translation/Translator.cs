@@ -2,7 +2,7 @@ using ActualChat.AI;
 
 namespace ActualChat.Chat;
 
-public class Translator(IServiceProvider services) : ChatCompletionBasedService(services, Constants.Translation.ServiceKey)
+public class Translator(IServiceProvider services, [ServiceKey]string serviceKey = Constants.Translation.ServiceKey) : ChatCompletionBasedService(services, serviceKey)
 {
     public const string PromptHash = "XYoJnmiu114NtlK7QCi8nGI0rP0zARJ3yvjYOBpQ90A";
 

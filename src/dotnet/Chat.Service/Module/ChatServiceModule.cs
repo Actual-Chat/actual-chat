@@ -98,12 +98,18 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 Settings.Translation.OpenAIKey,
                 Settings.Translation.HttpTimeout);
             AddKeyedOpenAI(services,
+                Constants.Translation.RealtimeServiceKey,
+                Settings.Translation.RealtimeOpenAIModel,
+                Settings.Translation.OpenAIKey,
+                Settings.Translation.HttpTimeout);
+            AddKeyedOpenAI(services,
                 Constants.LanguageDetection.ServiceKey,
                 Settings.LanguageDetection.OpenAIModel,
                 Settings.LanguageDetection.OpenAIKey,
                 Settings.LanguageDetection.HttpTimeout);
         }
         services.AddSingleton<Translator>();
+        services.AddKeyedSingleton<Translator>(Constants.Translation.RealtimeServiceKey);
         services.AddSingleton<LanguageDetector>();
         services.AddAIServices();
 

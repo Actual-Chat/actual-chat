@@ -300,6 +300,7 @@ public static partial class Constants
     public static class Translation
     {
         public const string ServiceKey = nameof(Translation);
+        public const string RealtimeServiceKey = $"{nameof(Translation)}Realtime";
     }
 
     public static class LanguageDetection

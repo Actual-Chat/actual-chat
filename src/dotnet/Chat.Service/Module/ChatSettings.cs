@@ -24,6 +24,7 @@ public class TranslationSettings
     public string ContextSeparator { get; set; } = "⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊⚋⚊";
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1";
+    public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-mini";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 

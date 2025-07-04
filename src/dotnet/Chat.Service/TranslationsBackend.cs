@@ -13,6 +13,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     [field: AllowNull, MaybeNull]
     private Translator Translator => field ??= Services.GetRequiredService<Translator>();
     [field: AllowNull, MaybeNull]
+    private Translator RealtimeTranslator => field ??= Services.GetRequiredKeyedService<Translator>(Constants.Translation.RealtimeServiceKey);
+    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     [field: AllowNull, MaybeNull]
     private IQueues Queues => field ??= Services.Queues();
@@ -49,7 +51,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (id.Kind is not TranslationIdKind.TextEntry)
             return Task.FromResult("");
 
-        return TranslateInternal(id, prefix, content, cancellationToken);
+        return TranslateInternal(id, prefix, content, true, cancellationToken);
     }
 
     [ComputeMethod]
@@ -137,7 +139,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!translationSource.NeedsTranslation(translation))
             return translation;
 
-        var translatedText = await TranslateInternal(id, "", translationSource.Content, cancellationToken).ConfigureAwait(false);
+        var translatedText = await TranslateInternal(id, "", translationSource.Content, false, cancellationToken).ConfigureAwait(false);
         translation ??= new Translation(id);
         translation = translation with {
             Content = translatedText,
@@ -200,7 +202,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return (source, translation);
     }
 
-    private async Task<string> TranslateInternal(TranslationId id, string prefix, string content, CancellationToken cancellationToken)
+    private async Task<string> TranslateInternal(TranslationId id, string prefix, string content, bool isRealtime, CancellationToken cancellationToken)
     {
         var hasPrefix = !prefix.IsNullOrEmpty();
         string context = "";
@@ -213,7 +215,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             if (hasPrefix)
                 context = $"{context}\n{prefix}";
         }
-        return await Translator.Translate(
+        var translator = isRealtime
+            ? RealtimeTranslator
+            : Translator;
+        return await translator.Translate(
             content,
             id.Language,
             context,
