@@ -119,8 +119,11 @@ public class TranslatedTranscripts : ProcessorBase
         await foreach (var transcriptDiff in originalStream.ConfigureAwait(false)) {
             transcript += transcriptDiff;
             var prefix = stableTranscript.Text;
-            var diff = (transcript - stableTranscript);
-            var content = diff.TextDiff.Suffix ?? "";
+            // The diff represents the changes between the current transcript (transcript) and the stable transcript (stableTranscript).
+            // This diff is distinct from the transcriptDiff object because transcriptDiff is derived from the unstable transcript, which may still be undergoing changes.
+            // The purpose of this calculation is to isolate the differences that have occurred since the last stable state of the transcript.
+            var diffSinceStable = transcript - stableTranscript;
+            var content = diffSinceStable.TextDiff.Suffix ?? "";
             if (transcriptDiff.IsStable)
                 stableTranscript = transcript;
             if (content.IsNullOrWhiteSpace())
@@ -133,7 +136,7 @@ public class TranslatedTranscripts : ProcessorBase
             if (!translatedContent.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
                 translatedContent = $" {translatedContent}";
 
-            var translatedTranscript = stableTranslatedTranscript.WithSuffix(translatedContent, diff.TimeMapDiff.Suffix.Scale(content.Length, translatedContent.Length));
+            var translatedTranscript = stableTranslatedTranscript.WithSuffix(translatedContent, diffSinceStable.TimeMapDiff.Suffix.Scale(content.Length, translatedContent.Length));
             var translatedDiff = translatedTranscript - stableTranslatedTranscript;
             yield return new (transcriptDiff, translatedDiff);
             if (transcriptDiff.IsStable)
