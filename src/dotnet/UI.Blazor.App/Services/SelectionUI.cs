@@ -13,6 +13,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
     private IAuthors Authors => Hub.Authors;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
 
     public IState<bool> HasSelection => _hasSelection;
     public IState<ImmutableHashSet<ChatEntryId>> Selection => _selection;
@@ -62,23 +63,32 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         var showAuthor = selection.Count > 1;
         var chatId = selection.First().ChatId;
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
+        CancellationToken cancellationToken = default;
 
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         AuthorId? currentAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
-            var chatEntry = await Chats.GetEntry(Session, chatEntryId).ConfigureAwait(false);
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry == null || chatEntry.Content.IsNullOrEmpty())
                 continue;
 
+            var mustTranslate = await TranslationUI.MustTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false);
+            Translation? translation = null;
+            if (mustTranslate) {
+                translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+                if (translation is not null && translation.MatchesOriginal(chatEntry.Content))
+                    translation = null;
+            }
+
             var markup = await chatMarkupHub
-                .GetMarkup(chatEntry, MarkupConsumer.MessageView, default)
+                .GetMarkup(chatEntry, translation, MarkupConsumer.MessageView, cancellationToken)
                 .ConfigureAwait(false);
 
             if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
                 if (sb.Length > 0)
                     sb.AppendLine();
                 currentAuthorId = chatEntry.AuthorId;
-                var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, default).ConfigureAwait(false);
+                var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, cancellationToken).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
                 var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g", CultureInfo.InvariantCulture);
                 sb.AppendFormat(CultureInfo.InvariantCulture, "{0}, [{1}]", authorName, timestamp);
