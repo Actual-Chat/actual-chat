@@ -2,9 +2,21 @@ namespace ActualChat.Chat;
 
 public static class ChatMarkupHubExt
 {
+    public static ValueTask<Markup> GetMarkup(
+        this IChatMarkupHub markupHub,
+        ChatEntry entry,
+        MarkupConsumer consumer,
+        CancellationToken cancellationToken)
+        => GetMarkup(markupHub,
+            entry,
+            null,
+            consumer,
+            cancellationToken);
+
     public static async ValueTask<Markup> GetMarkup(
         this IChatMarkupHub markupHub,
         ChatEntry entry,
+        Translation? translation,
         MarkupConsumer consumer,
         CancellationToken cancellationToken)
     {
@@ -16,10 +28,10 @@ public static class ChatMarkupHubExt
             markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
         case { HasMediaEntry: true }:
-            markup = new PlayableTextMarkup(entry.Content, entry.TimeMap);
+            markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.TimeMap);
             break;
         default:
-            markup = markupHub.Parser.Parse(entry.Content);
+            markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
             if (ReferenceEquals(markup, Markup.Empty))
                 markup = GetEmptyMarkupReplacement(entry, consumer);
             break;
