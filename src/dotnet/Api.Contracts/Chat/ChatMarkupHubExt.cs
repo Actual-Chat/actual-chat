@@ -93,6 +93,12 @@ public static class ChatMarkupHubExt
         return markup;
     }
 
+    public static async ValueTask<Markup> ApplyMentionNamer(
+        this IChatMarkupHub markupHub,
+        Markup markup,
+        CancellationToken cancellationToken)
+        => await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
+
     // Private methods
 
     private static Markup GetEmptyMarkupReplacement(ChatEntry entry, MarkupConsumer consumer)

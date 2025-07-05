@@ -100,18 +100,21 @@
     }
 
     private async Task OnCopyToClipboardRequested() {
-        var text = GetText();
+        var text = await GetText();
         await ClipboardUI.WriteText(text).ConfigureAwait(false);
     }
 
-    private string GetText() {
+    private async Task<string> GetText() {
         var m = State.Value;
+        CancellationToken cancellationToken = default;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.AppendLine(m.Title);
         sb.AppendLine();
-        sb.AppendLine(m.Description.ToReadableText());
+        var description = await ChatMarkupHub.ApplyMentionNamer(m.Description, cancellationToken).ConfigureAwait(false);
+        sb.AppendLine(description.ToReadableText());
         sb.AppendLine();
-        sb.AppendLine(m.Summary.ToReadableText());
+        var summary = await ChatMarkupHub.ApplyMentionNamer(m.Summary, cancellationToken).ConfigureAwait(false);
+        sb.AppendLine(summary.ToReadableText());
         return sb.ToStringAndRelease();
     }
 

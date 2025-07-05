@@ -83,6 +83,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             var markup = await chatMarkupHub
                 .GetMarkup(chatEntry, translation, MarkupConsumer.MessageView, cancellationToken)
                 .ConfigureAwait(false);
+            markup = await chatMarkupHub.ApplyMentionNamer(markup, cancellationToken).ConfigureAwait(false);
 
             if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
                 if (sb.Length > 0)
