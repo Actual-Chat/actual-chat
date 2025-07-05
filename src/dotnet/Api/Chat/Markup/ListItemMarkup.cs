@@ -11,6 +11,6 @@ public sealed class ListItemMarkup(Markup content, int? order = null) : Markup
     public override string Format()
         => GetPrefix() + Content.Format();
 
-    private string GetPrefix()
+    public string GetPrefix()
         => Order.HasValue ? $"{Order}. " : "- ";
 }
