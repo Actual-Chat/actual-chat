@@ -82,7 +82,7 @@
         var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
         var summaryTranslation = await summaryTranslationTask.ConfigureAwait(false);
         await Task.WhenAll(titleTranslationTask, descriptionTranslationTask, summaryTranslationTask).ConfigureAwait(false);
-        if (titleTranslation is not null)
+        if (titleTranslation is not null && !titleTranslation.MatchesOriginal(conversation.Title))
             title = titleTranslation.Content;
         if (descriptionTranslation is not null && !descriptionTranslation.MatchesOriginal(conversation.Description))
             descriptionMarkup = ChatMarkupHub.Parser.Parse(descriptionTranslation.Content);

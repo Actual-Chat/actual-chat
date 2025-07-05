@@ -151,10 +151,10 @@
             var descriptionTranslationTask = TranslationUI.Get(threadChatId, ThreadTranslationIdKind.Description, cancellationToken);
             await Task.WhenAll(titleTranslationTask, descriptionTranslationTask).ConfigureAwait(false);
             var titleTranslation = await titleTranslationTask.ConfigureAwait(false);
-            if (titleTranslation is not null)
+            if (titleTranslation is not null && !titleTranslation.MatchesOriginal(chat.Title))
                 title = titleTranslation.Content;
             var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
-            if (descriptionTranslation is not null)
+            if (descriptionTranslation is not null && !descriptionTranslation.MatchesOriginal(chat.Description))
                 description = descriptionTranslation.Content;
         }
         return new Model(title,  description, chatEntries, threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
