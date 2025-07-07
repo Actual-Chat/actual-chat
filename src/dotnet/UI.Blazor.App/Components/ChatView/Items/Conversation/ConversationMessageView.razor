@@ -48,12 +48,17 @@
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        var conversation = Message.Conversation!;
+        var title = conversation.Title;
+        var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
+        var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
+        return ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(Message.Conversation!.Title, Markup.Empty, Markup.Empty),
+                InitialValue = new Model(title, descriptionMarkup, summaryMarkup),
                 Category = GetStateCategory(t),
             });
+    }
 
     protected override void OnParametersSet() {
         if (ReferenceEquals(_lastMessage, Message))
