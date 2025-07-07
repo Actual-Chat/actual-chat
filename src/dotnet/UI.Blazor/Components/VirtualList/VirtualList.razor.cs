@@ -82,7 +82,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         parameters.SetParameterProperties(this);
-        var shouldSetInitialData = VirtualList.IsNonFirstRender;
+        var shouldSetInitialData = VirtualList.IsNonFirstRender && RenderIndex == 0;
         if (shouldSetInitialData)
             _initialData = await DataSource.GetData(VirtualListDataQuery.None,
                 VirtualListData<TItem>.None,
@@ -90,7 +90,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
         else
             _initialData = null;
 
-        LastData = VirtualListData<TItem>.None;
         if (ReferenceEquals(State, null) && shouldSetInitialData && _initialData != null) {
             var (state, stateOptions) = CreateState();
             SetState(state, stateOptions);

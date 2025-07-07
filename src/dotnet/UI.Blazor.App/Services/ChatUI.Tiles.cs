@@ -110,7 +110,7 @@ public partial class ChatUI
 
         List<Range<long>> idTiles;
         bool hasMoreBefore, hasMoreAfter;
-        while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, expandedConversations, out idTiles, out hasMoreBefore, out hasMoreAfter)) {
+        while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, out idTiles, out hasMoreBefore, out hasMoreAfter)) {
             var prevIdTileStart = chatRangeMetaList[0].PreviousIdTileStart;
             var nextIdTileStart = chatRangeMetaList[^1].NextIdTileStart;
             var prevChatRangeMetaTask = prevIdTileStart.HasValue
@@ -239,7 +239,6 @@ public partial class ChatUI
         bool TryGetIdTilesToLoad(
             ChatDataQuery dataQuery1,
             IList<ChatRangeMeta> chatRangeMeta1,
-            IImmutableSet<ConversationId> expandedConversations1,
             out List<Range<long>> idTiles1,
             out bool hasMoreBefore1,
             out bool hasMoreAfter1)
@@ -254,12 +253,15 @@ public partial class ChatUI
                 .EnsureMonotonic(RangeExt.LongRangeComparer);
 
             var excludedRanges = conversationIdRanges
-                .Where(r => !expandedConversations1.Contains(ConversationId.New(chatId, r.Start)))
+                .Where(r => !expandedConversations.Contains(ConversationId.New(chatId, r.Start)))
                 .ToList();
 
-            var merged = entryIdRanges
-                .Merge(excludedRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
-                .ToList();
+            var merged = showConversations
+                ? entryIdRanges
+                    .Merge(excludedRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
+                    .ToList()
+                : entryIdRanges
+                    .Select(idRange => (idRange, new Range<long>(0, 0)));
 
             var resultIdRanges = new List<Range<long>>();
 

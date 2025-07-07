@@ -23,6 +23,19 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public bool IsReplacement
         => ReplacementKind != ChatMessageReplacementKind.None;
 
+    public IEnumerable<ChatMessage> GetLeafMessages()
+    {
+        if (!IsGroup)
+            yield return this;
+
+        if (this is not IVirtualListGroup<ChatMessage> group)
+            yield break;
+
+        foreach (var child in group.Items)
+        foreach (var leaf in child.GetLeafMessages())
+            yield return leaf;
+    }
+
     public override string ToString()
         => $"(#{Key})";
 

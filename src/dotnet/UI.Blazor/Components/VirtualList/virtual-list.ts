@@ -732,7 +732,8 @@ export class VirtualList {
 
         if (scrollToItemRef != null) {
             // Server-side scroll request
-            if (!this.isKeyVisible(rs.scrollToKey)) {
+            const isScrollToKeyVisible = this.isKeyVisible(rs.scrollToKey);
+            if (!isScrollToKeyVisible) {
                 if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     scrollType = 'last-item';
                     shouldUseSmoothScroll = this.stickyEdge?.edge == VirtualListEdge.End;
@@ -753,6 +754,10 @@ export class VirtualList {
                     this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, scrollType);
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                 };
+            }
+            else if (isScrollToKeyVisible && !rs.scrollToKeyInTheMiddle) {
+                // Keep position of visible item
+                scrollFunc = () => this.scrollTo(scrollToItemRef, false, 'end');
             }
         } else if (this.query.isNone && this.stickyEdge != null) {
             // Sticky edge scroll when we are not requesting data with query - render of new items only

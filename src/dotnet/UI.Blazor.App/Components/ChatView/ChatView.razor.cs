@@ -382,11 +382,40 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             goto rebuildTiles;
         }
 
+        if (nav == null) {
+            var renderedMetadata = renderedData.Metadata as ChatViewMetadata;
+            var isSummarized = chat.IsSummarized ?? false;
+            var renderedIsSummarized = renderedMetadata?.IsSummarized ?? isSummarized;
+            if (renderedIsSummarized != isSummarized) {
+                // If we are changing the summary state, we need to navigate to a predictable position
+                var currentIds = items
+                    .SelectMany(it => it.GetLeafMessages())
+                    .Select(it => it.Id)
+                    .ToHashSet();
+                var visibleIds = itemVisibility.VisibleEntryLids
+                    .Where(id => id != 0 && id != long.MaxValue)
+                    .ToList();
+                var keptIds = visibleIds
+                    .Where(id => currentIds.Contains(id))
+                    .ToList();
+                if (keptIds.Count == 0)
+                    // No visible items are kept, so we need to scroll to the end
+                    keptIds.Add(items[^1].Id);
+
+                nav = new ChatViewNavigation(
+                    keptIds.Max(),
+                    false,
+                    false,
+                    true);
+                mustScrollToEntry = true;
+            }
+        }
+
         // Locating navigation entry
         string? navKey = null;
         if (nav != null) {
             var navChatMessage = items
-                .SelectMany(item => item is IVirtualListGroup<ChatMessage> group ? group.Items : [item])
+                .SelectMany(item => item.GetLeafMessages())
                 .LastOrDefault(x => x.Id <= nav.EntryLid);
             navKey = navChatMessage?.Key;
             if (navChatMessage == null)
@@ -406,6 +435,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ScrollToKeyInTheMiddle = nav is { ShowInTheMiddle: true },
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = ItemVisibility.Value,
+            Metadata = new ChatViewMetadata(chat.IsSummarized ?? false),
         };
 
         // do not return new instance if data is the same to prevent re-renders
@@ -558,4 +588,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ex => Log.LogDebug(ex, "Failed to register view group chat"),
             DisposeToken);
     }
+
+    // Nested types
+
+    private record ChatViewMetadata(bool IsSummarized);
 }
