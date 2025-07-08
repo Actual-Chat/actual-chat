@@ -34,7 +34,7 @@ export class TextInput implements Disposable {
             .pipe(
                 takeUntil(this.disposed$),
                 debounceTime(this.options.debounce),
-                switchMap((e: ClipboardEvent) => this.blazorRef.invokeMethodAsync('OnPaste', e.clipboardData.getData('Text'))),
+                switchMap((e: ClipboardEvent) => this.blazorRef.invokeMethodAsync('OnPaste', e.clipboardData?.getData('Text'))),
             ).subscribe();
     }
 

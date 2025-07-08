@@ -14,9 +14,9 @@ const { logScope, errorLog } = Log.get('FeederNode');
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
-    private readonly worklet: FeederAudioWorklet & Disposable = null;
+    private readonly worklet: FeederAudioWorklet & Disposable;
 
-    public onStateChanged?: (state: FeederState) => void = null;
+    public onStateChanged?: (state: FeederState) => void;
 
     private constructor(
         public readonly id: string,

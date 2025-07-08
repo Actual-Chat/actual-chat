@@ -26,17 +26,17 @@ export class MarkupEditor {
     }
 
     public readonly contentDiv: HTMLDivElement;
-    public hasContent: boolean = null;
+    public hasContent: boolean = false;
     public changed: (html: string, text: string) => void = () => { };
 
     private isContentDivInitialized = false;
-    private lastSelectedRange?: Range = null;
+    private lastSelectedRange?: Range;
     private undoStack: UndoStack<string>;
-    private currentTransaction: () => void | null = null;
-    private lastHtml: string = null;
+    private currentTransaction: (() => void) | null = null;
+    private lastHtml: string | null = null;
 
     private readonly listHandlers: Array<ListHandler>;
-    private listHandler?: ListHandler = null;
+    private listHandler?: ListHandler;
     private listFilter: string = "";
 
     constructor(
@@ -165,10 +165,11 @@ export class MarkupEditor {
         return false;
     }
 
-    public isEditable(mustBeEditable: boolean = null): boolean {
+    public isEditable(mustBeEditable: boolean | null = null): boolean {
         if (mustBeEditable !== null) {
             if (this.contentDiv.isContentEditable == mustBeEditable)
-                return;
+                return false;
+
             this.contentDiv.setAttribute('contenteditable', mustBeEditable ? 'true' : 'false');
         }
         const isEditable = this.contentDiv.isContentEditable;
@@ -235,12 +236,12 @@ export class MarkupEditor {
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
             const html = prevChar.trim() != '' ? ' @' : '@';
-            this.insertHtml(html, null);
+            this.insertHtml(html);
         }
         else {
             if (prevChar == "@") {
                 newCaretPosition = caretPosition - 1;
-                const oldText = range.endContainer.textContent;
+                const oldText = range.endContainer.textContent || '';
                 const newText = oldText.substring(0, caretPosition - 1) + oldText.substring(caretPosition);
                 this.setHtml(newText);
             }
@@ -256,10 +257,10 @@ export class MarkupEditor {
     private getPrevCharInfo(): { selection: Selection; caretPosition: number; range: Range; prevChar: string } {
         let prevChar = "";
         let range: Range;
-        let clonedRange: Range;
+        let clonedRange: Range = document.createRange();
         let caretPosition = 0;
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
+        const selection = window.getSelection()!; // We dont care about hidden iframes
+        if (selection && selection.rangeCount > 0) {
             range = selection.getRangeAt(0);
             clonedRange = range.cloneRange();
             clonedRange.selectNodeContents(this.contentDiv);
@@ -280,7 +281,7 @@ export class MarkupEditor {
         const range = document.createRange();
         range.selectNodeContents(this.contentDiv);
         range.collapse(false); // false means collapse to end rather than the start
-        const selection = document.getSelection();
+        const selection = document.getSelection()!;
         selection.removeAllRanges();
         selection.addRange(range);
     }
@@ -402,6 +403,9 @@ export class MarkupEditor {
         const ok = () => preventDefaultForEvent(e);
 
         const data = e.clipboardData;
+        if (!data)
+            return ok();
+
         const plainText = data.getData('text');
         const text = cleanupPastedText(plainText, data.types.includes('text/html'));
         const url = data.getData('text/uri-list');
@@ -416,7 +420,7 @@ export class MarkupEditor {
 
     private insertTextAtCursor(text)
     {
-        const selection = window.getSelection();
+        const selection = window.getSelection()!;
         const range = selection.getRangeAt(0);
         const node = document.createTextNode(text);
         range.deleteContents();
@@ -513,7 +517,7 @@ export class MarkupEditor {
         if (!listHandler)
             return;
 
-        this.listHandler = null;
+        this.listHandler = undefined;
         this.listFilter = "";
         void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.Hide));
     }
@@ -543,7 +547,7 @@ export class MarkupEditor {
     }
 
     private getCursorRange(): Range | null {
-        const selection = document.getSelection();
+        const selection = document.getSelection()!;
         if (!selection.isCollapsed || selection.rangeCount !== 1)
             return null;
 
@@ -560,7 +564,7 @@ export class MarkupEditor {
         if (!this.lastSelectedRange)
             return;
 
-        const selection = document.getSelection();
+        const selection = document.getSelection()!;
         selection.removeAllRanges();
         try {
             selection.addRange(this.lastSelectedRange);
@@ -580,7 +584,7 @@ export class MarkupEditor {
         if (!matchRange)
             return false;
 
-        const selection = document.getSelection();
+        const selection = document.getSelection()!;
         selection.removeAllRanges();
         selection.addRange(matchRange);
         return true;
@@ -596,7 +600,7 @@ export class MarkupEditor {
 
     private fixSelection() {
         debugLog?.log(`fixSelection`);
-        const selection = document.getSelection();
+        const selection = document.getSelection()!;
         if (!selection.rangeCount)
             return;
 
@@ -622,7 +626,7 @@ export class MarkupEditor {
                 debugLog?.log(`fixSelection: mention:`, mention);
                 const newRange = document.createRange();
                 const text = getPostMentionText(mention);
-                if (text && text.textContent.startsWith(ZeroWidthSpace)) {
+                if (text && text.textContent?.startsWith(ZeroWidthSpace)) {
                     newRange.setStart(text, 1);
                     newRange.collapse(false);
                 }
@@ -653,7 +657,7 @@ export class MarkupEditor {
         // - https://github.com/ProseMirror/prosemirror/issues/565#issuecomment-552805191
         const process = (parent: Node) => {
             let mustNormalize = false;
-            let skipNode: Node = null;
+            let skipNode: Node | null = null;
             for (const node of parent.childNodes) {
                 if (node === skipNode) {
                     skipNode = null;
@@ -664,9 +668,9 @@ export class MarkupEditor {
                 let text = asText(node);
                 if (text) {
                     const oldText = text.textContent;
-                    const newText = oldText.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
-                    if (newText.length !== oldText.length) {
-                        text.textContent = newText;
+                    const newText = oldText?.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
+                    if (newText?.length !== oldText?.length) {
+                        text.textContent = newText ?? null;
                         mustNormalize = true;
                     }
                     continue;
@@ -683,7 +687,7 @@ export class MarkupEditor {
                 }
 
                 text = getPostMentionText(element);
-                if (!text || !text.textContent.startsWith(ZeroWidthSpace)) {
+                if (!text || !text.textContent?.startsWith(ZeroWidthSpace)) {
                     debugLog?.log('fixContent: removing mention', mention);
                     mention.remove();
                 } else
@@ -709,14 +713,14 @@ abstract class ListHandler {
     public getMatchText(cursorRange: Range): string {
         const matchRange = this.getMatchRange(cursorRange);
         if (!matchRange)
-            return "";
+            return '';
 
         const textNode = matchRange.startContainer as Text;
         if (!textNode)
-            return "";
+            return '';
 
         const text = textNode.textContent;
-        return text.substring(matchRange.startOffset, matchRange.endOffset);
+        return text?.substring(matchRange.startOffset, matchRange.endOffset) ?? '';
     }
 
     public getMatchRange(cursorRange: Range): Range | null {
@@ -735,7 +739,7 @@ abstract class ListHandler {
             return 0;
 
         const endOffset = range.startOffset; // It's always collapsed
-        const startOffset = this.getMatchStart(textNode.textContent, endOffset);
+        const startOffset = this.getMatchStart(textNode.textContent ?? '', endOffset);
         return (startOffset == null || startOffset >= endOffset) ? 0 : endOffset - startOffset;
     }
 
@@ -787,9 +791,10 @@ enum ListCommandKind {
 
 // Helpers
 
-function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | null {
+function castNode<TNode extends Node>(node: Node | null, nodeType: number): TNode | null {
     if (!node)
         return null;
+
     if (node.nodeType !== nodeType)
         return null;
 
@@ -800,7 +805,7 @@ function asHTMLElement(node: Node): HTMLElement | null {
     return castNode<HTMLElement>(node, Node.ELEMENT_NODE);
 }
 
-function asText(node: Node): Text | null {
+function asText(node: Node | null): Text | null {
     return castNode<Text>(node, Node.TEXT_NODE);
 }
 
@@ -824,8 +829,11 @@ function asMention(node: Node): HTMLElement | null {
 }
 
 function getPostMentionText(mention: HTMLElement): Text | null {
+    if (!mention || !mention.nextSibling)
+        return null;
+
     let text = asText(mention.nextSibling);
-    while (text && text.textContent.length == 0)
+    while (text && text.textContent?.length == 0)
         text = asText(text.nextSibling);
     return text;
 }
@@ -845,7 +853,7 @@ function normalize(text: string): string {
 
 function listParents(start: Node, endExclusive: Node): HTMLElement[] {
     const parents = new Array<HTMLElement>();
-    let node = start;
+    let node: Node | null = start;
     while (node && node !== endExclusive) {
         const eParent = asHTMLElement(node);
         if (eParent)

@@ -7,7 +7,7 @@ export class ObserveDirective extends AsyncDirective {
 
     render(observable: Observable<unknown>, defaultValue: unknown = undefined) {
         this.#subscription = observable.subscribe(value => this.setValue(value));
-        return defaultValue !== undefined
+        return defaultValue != null
             ? defaultValue.toString()
             : ``;
     }

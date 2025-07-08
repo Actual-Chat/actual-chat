@@ -13,9 +13,9 @@
     constructor(ref: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this._blazorRef = blazorRef;
         this._ref = ref;
-        this._dropdownMenu = this._ref.querySelector('.dropdown-menu');
-        this._menu = this._dropdownMenu.querySelector('.menu');
-        this._button = this._ref.querySelector('.dropdown-menu-btn');
+        this._dropdownMenu = this._ref.querySelector('.dropdown-menu')!;
+        this._menu = this._dropdownMenu.querySelector('.menu')!;
+        this._button = this._ref.querySelector('.dropdown-menu-btn')!;
 
         window.addEventListener('mouseup', this.onMouseUp);
         document.addEventListener('keydown', this.onKeyDown);
@@ -42,10 +42,10 @@
         window.removeEventListener('mouseup', this.onMouseUp);
         document.removeEventListener('keydown', this.onKeyDown);
         this.menuObserver.disconnect();
-        this._blazorRef = null;
-        this._dropdownMenu = null;
-        this._ref = null;
-        this._button = null;
+        this._blazorRef = null!;
+        this._dropdownMenu = null!;
+        this._ref = null!;
+        this._button = null!;
     }
 
     private updateBottomMenuPosition = () => {

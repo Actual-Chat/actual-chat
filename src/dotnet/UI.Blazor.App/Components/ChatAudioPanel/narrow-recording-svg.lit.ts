@@ -41,9 +41,9 @@ class NarrowRecordingSvg extends LitElement {
     private signalPowerSubscription: Subscription;
 
     @state()
-    private opacity: number = null;
+    private opacity: number | null = null;
 
-    private _isRecording = null;
+    private _isRecording: boolean;
     @property({type: Boolean})
     set isRecording(val: boolean) {
         if (val)
@@ -108,7 +108,7 @@ class NarrowRecordingSvg extends LitElement {
                 </svg>
             `;
         } else {
-            const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
+            const display = getComputedStyle(this.shadowRoot?.host!, null)?.display ?? 'none';
             if (display === 'none')
                 return html``;
 

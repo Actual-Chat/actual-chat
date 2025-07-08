@@ -32,11 +32,13 @@ export class Disposables {
 // TODO(AK: clean up eslint suppressions
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 export function isDisposable<T>(obj: T | Disposable): obj is Disposable {
+    // @ts-expect-error - we want to check if obj has a dispose method
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.dispose === 'function';
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 export function isAsyncDisposable<T>(obj: T | AsyncDisposable): obj is AsyncDisposable {
+    // @ts-expect-error - we want to check if obj has a disposeAsync method
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.disposeAsync === 'function';
 }
 
@@ -49,7 +51,7 @@ export class DisposableBag implements Disposable {
         if (this.isDisposed)
             throw new ObjectDisposedError();
 
-        this.disposables.push(...disposables);
+        this.disposables?.push(...disposables);
     }
 
     public dispose() {

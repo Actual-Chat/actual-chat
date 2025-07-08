@@ -10,12 +10,13 @@ export class TimedOut {
 }
 
 export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> {
+    // @ts-expect-error exclude non-promise objects
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
 export class PromiseSource<T> implements Promise<T> {
-    public resolve: (T) => void;
-    public reject: (any) => void;
+    public resolve: (arg: T) => void;
+    public reject: (arg: any) => void;
 
     private readonly _promise: Promise<T>;
     private _isCompleted = false;
@@ -31,7 +32,7 @@ export class PromiseSource<T> implements Promise<T> {
                 if (resolve)
                     resolve(value);
             };
-            this.reject = (reason: unknown) => {
+            this.reject = (reason?: string) => {
                 if (this._isCompleted)
                     return;
 
@@ -479,8 +480,7 @@ ResolvedPromise.False.resolve(false);
 // Self-test - we don't want to run it in workers & worklets
 const mustRunSelfTest = debugLog != null && globalThis.focus;
 if (mustRunSelfTest) {
-    const testLog = errorLog;
-    if (!testLog)
+    if (!errorLog)
         throw new Error('testLog == null');
     void (async () => {
         const c = new PromiseSource<Cancelled>();

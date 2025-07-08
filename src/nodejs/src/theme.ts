@@ -102,7 +102,7 @@ function normalizeColor(hexColor: string): string {
 
 function load(): string | null {
     if (!storage)
-        return;
+        return null;
 
     const theme = storage.getItem(storageKey) ?? null;
     debugLog?.log('load:', theme);

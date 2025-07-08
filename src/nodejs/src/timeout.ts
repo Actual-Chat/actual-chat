@@ -4,7 +4,7 @@
 import { Disposable } from 'disposable';
 import { setTimeout, clearTimeout } from 'timerQueue';
 
-let nextTickImpl: (callback: () => unknown) => void = null;
+let nextTickImpl: (callback: () => unknown) => void;
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 if (globalThis.MessageChannel) {
@@ -12,7 +12,9 @@ if (globalThis.MessageChannel) {
     const nextTickChannel = new MessageChannel();
     nextTickChannel.port1.onmessage = () => {
         const callback = nextTickCallbacks.shift();
-        callback();
+        if (callback) {
+            callback();
+        }
     };
 
     nextTickImpl = (callback: () => unknown) => {
@@ -54,7 +56,7 @@ export class Timeout implements Disposable {
             return;
         }
 
-        this.handle = setTimeout(callback, timeoutMs) as unknown as number;
+        this.handle = setTimeout(callback ?? (() => undefined), timeoutMs) as unknown as number;
         return;
     }
 
@@ -75,7 +77,7 @@ export class Timeout implements Disposable {
 const disablePreciseTimeout = false;
 
 export class PreciseTimeout extends Timeout {
-    constructor(timeoutMs: number, callback: () => unknown,) {
+    constructor(timeoutMs: number, callback: () => unknown) {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (disablePreciseTimeout) {
             super(timeoutMs, callback);

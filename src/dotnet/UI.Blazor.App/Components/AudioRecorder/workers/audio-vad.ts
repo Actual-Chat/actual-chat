@@ -1,6 +1,7 @@
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
+// @ts-ignore
 import * as ort from 'onnxruntime-web/wasm';
 import ortWasm from 'onnxruntime-web/dist/ort-wasm-simd.wasm'
 import { WebRtcVad } from '@actual-chat/webrtc-vad';
@@ -20,7 +21,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     // private readonly results =  new Array<number>();
 
     protected sampleCount = 0;
-    protected pauseOffset?: number = null;
+    protected pauseOffset: number | null = null;
     protected pauseCancelSamples = 0;
     protected lastConversationSignalAtSample: number | null = null;
     protected whenTalkingProbMedian: RunningUnitMedian | null = null;
@@ -105,7 +106,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                     }
                 } else if (probEma < pauseProbTrigger) {
                     // it's still a pause
-                    const currentSilenceSamples = currentOffset - this.pauseOffset;
+                    const currentSilenceSamples = currentOffset - (this.pauseOffset ?? 0);
                     if (currentSilenceSamples > this.maxPauseSamples && currentSpeechSamples > this.minSpeechSamples) {
                         // "materializing" the pause
                         const offset = this.pauseOffset + monoPcm.length;
@@ -196,7 +197,7 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
         const now = Date.now();
         if (activity > 0 && (this.sampleCount / AR.SAMPLES_PER_MS < AV.SKIP_FIRST_RECORDING_MS || now - this.lastSkippedAt < 5)) {
             this.lastSkippedAt = now;
-            return null; // Skip triggering on microphone noise at the beginning of the first microphone stream
+            return Promise.resolve(null); // Skip triggering on microphone noise at the beginning of the first microphone stream
         }
 
         if (activity == VadActivity.Error)
@@ -290,6 +291,6 @@ function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate: num
         kind: event.kind,
         offset: event.offset / sampleRate,
         speechProb: event.speechProb,
-        duration: event.duration === null ? null : event.duration / sampleRate
+        duration: event.duration == null ? undefined : event.duration / sampleRate
     };
 }

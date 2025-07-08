@@ -28,16 +28,16 @@ export let isWebRtcAecRequired = false; //DeviceInfo.isAndroid && DeviceInfo.isC
  * {@link https://bugs.chromium.org/p/chromium/issues/detail?id=933677}
  * {@link https://bugs.chromium.org/p/chromium/issues/detail?id=687574}
  */
-export async function createWebRtcAecStream(stream: MediaStream): Promise<MediaStream & Disposable> {
+export async function createWebRtcAecStream(stream: MediaStream): Promise<MediaStream & Disposable | undefined> {
     if (!isWebRtcAecRequired)
         return;
 
     infoLog?.log(`createWebRtcAecStream(), stream:`, stream);
-    let outboundConnection = new RTCPeerConnection();
-    let inboundConnection = new RTCPeerConnection();
+    let outboundConnection: RTCPeerConnection | null = new RTCPeerConnection();
+    let inboundConnection: RTCPeerConnection | null = new RTCPeerConnection();
     try {
         const tracks = stream.getTracks();
-        inboundConnection.onicecandidate = (e) => e.candidate && outboundConnection.addIceCandidate(e.candidate);
+        inboundConnection.onicecandidate = (e) => e.candidate && outboundConnection!.addIceCandidate(e.candidate);
         const whenLoopbackStreamReady = new PromiseSource<MediaStream>()
         let connectedTrackCount = 0;
         inboundConnection.ontrack = (e) => {
@@ -45,8 +45,8 @@ export async function createWebRtcAecStream(stream: MediaStream): Promise<MediaS
                 whenLoopbackStreamReady.resolve(e.streams[0]);
         };
 
-        outboundConnection.onicecandidate = (e) => e.candidate && inboundConnection.addIceCandidate(e.candidate);
-        tracks.forEach((track) => outboundConnection.addTrack(track, stream));
+        outboundConnection.onicecandidate = (e) => e.candidate && inboundConnection!.addIceCandidate(e.candidate);
+        tracks.forEach((track) => outboundConnection!.addTrack(track, stream));
 
         const offer = await outboundConnection.createOffer(offerOptions);
         await outboundConnection.setLocalDescription(offer);
@@ -56,9 +56,9 @@ export async function createWebRtcAecStream(stream: MediaStream): Promise<MediaS
         await outboundConnection.setRemoteDescription(answer);
         const loopbackStream = await whenLoopbackStreamReady as MediaStream & Disposable;
         loopbackStream['dispose'] = () => {
-            closeConnection(inboundConnection);
+            closeConnection(inboundConnection!);
             inboundConnection = null;
-            closeConnection(outboundConnection);
+            closeConnection(outboundConnection!);
             outboundConnection = null;
         };
         return loopbackStream;

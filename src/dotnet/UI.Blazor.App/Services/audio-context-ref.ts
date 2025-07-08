@@ -32,8 +32,8 @@ export class AudioContextRef implements AsyncDisposable {
     private readonly whenRunning: Promise<void>;
     private readonly whenDisposeRequested = new PromiseSource<Cancelled>();
     private _whenReady = new PromiseSource<OverridenAudioContext>();
-    private context?: OverridenAudioContext = null;
-    private inUse?: Disposable = null;
+    private context: OverridenAudioContext | null = null;
+    private inUse: Disposable | null = null;
 
     public get isUsed(): boolean { return this.inUse != null; }
 
@@ -97,7 +97,7 @@ export class AudioContextRef implements AsyncDisposable {
         // We want to do the rest after completion of post-AudioContextSource.getRef logic
         await nextTickAsync();
 
-        let lastContext: AudioContext = null;
+        let lastContext: AudioContext | null = null;
 
         while (!this.whenDisposeRequested.isCompleted()) {
             try {
@@ -135,7 +135,7 @@ export class AudioContextRef implements AsyncDisposable {
             }
             catch (e) {
                 const isDisposeRequested = ((e instanceof OperationCancelledError) && this.whenDisposeRequested.isCompleted());
-                if (!isDisposeRequested) {
+                if (!isDisposeRequested && lastContext != null) {
                     errorLog?.log(`${this.name}.maintain: error:`, e);
                     await this.options.detach?.(lastContext);
                     lastContext = null;
@@ -146,7 +146,7 @@ export class AudioContextRef implements AsyncDisposable {
         debugLog?.log(`${this.name}.maintain: shutting down...`);
 
         try {
-            if (lastContext) {
+            if (lastContext != null) {
                 debugLog?.log(`${this.name}: final detach, context:`, Log.ref(lastContext));
                 await this.options.detach?.(lastContext);
                 lastContext = null;

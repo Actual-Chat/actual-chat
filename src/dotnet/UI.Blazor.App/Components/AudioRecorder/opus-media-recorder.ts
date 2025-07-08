@@ -65,19 +65,19 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private lastState: RecorderState = { isRecording: false, isSignalDetected: false, isConnected: false, isVoiceActive: false };
     private whenInitialized: PromiseSource<void>;
 
-    private encoderWorkerInstance: Worker = null;
-    private encoderWorker: OpusEncoderWorker & Disposable = null;
-    private vadWorkerInstance: Worker = null;
-    private vadWorker: AudioVadWorker & Disposable = null;
-    private encoderWorkletInstance: AudioWorkletNode = null;
-    private encoderWorklet: OpusEncoderWorklet & Disposable = null;
-    private vadWorkletInstance: AudioWorkletNode = null;
-    private vadWorklet: AudioVadWorklet & Disposable = null;
-    private recordingContextRef: AudioContextRef = null;
-    private contextRef: AudioContextRef = null;
-    private recording?: Disposable = null;
-    private playing?: Disposable = null;
-    private chatId?: string = null;
+    private encoderWorkerInstance: Worker;
+    private encoderWorker: OpusEncoderWorker & Disposable;
+    private vadWorkerInstance: Worker;
+    private vadWorker: AudioVadWorker & Disposable;
+    private encoderWorkletInstance: AudioWorkletNode | null = null;
+    private encoderWorklet: OpusEncoderWorklet & Disposable | null = null;
+    private vadWorkletInstance: AudioWorkletNode | null = null;
+    private vadWorklet: AudioVadWorklet & Disposable | null = null;
+    private recordingContextRef: AudioContextRef;
+    private contextRef: AudioContextRef;
+    private recording?: Disposable;
+    private playing?: Disposable;
+    private chatId?: string;
     private onStateChanged?: RecorderStateChanged;
     private onRecordingHeartbeat?: () => void;
     private isSignalDetected: boolean = false;
@@ -87,14 +87,14 @@ export class OpusMediaRecorder implements RecorderStateServer {
     private encoderWorkerSessionToken: string | null;
 
     public origin: string = new URL(import.meta.url).origin;
-    public source?: MediaStreamAudioSourceNode = null;
-    public stream?: MediaStream;
+    public source: MediaStreamAudioSourceNode | null = null;
+    public stream: MediaStream | null = null;
 
     private get isRecording(): boolean {
         return !!(this.stream && this.state === 'recording');
     }
 
-    public static async stopStreamTracks(stream?: MediaStream): Promise<void> {
+    public static async stopStreamTracks(stream: MediaStream | null): Promise<void> {
         if (!stream)
             return;
 
@@ -110,10 +110,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
         });
 
         // Better integration with native mobile audio pipeline
-        if ('audioSession' in navigator) {
-            navigator.audioSession['type'] = 'playback';
-            navigator.audioSession['type'] = 'auto'; // Hack for iOS Safari
-            navigator.audioSession['type'] = 'playback';
+        if ('audioSession' in navigator && typeof navigator.audioSession === 'object') {
+            (navigator.audioSession as any)['type'] = 'playback';
+            (navigator.audioSession as any)['type'] = 'auto'; // Hack for iOS Safari
+            (navigator.audioSession as any)['type'] = 'playback';
         }
 
         infoLog?.log('<- stopStreamTracks()');
@@ -125,7 +125,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
          */
         const isAndroid = !!navigator.userAgent.match(/Android/i);
-        let stream: MediaStream = null;
+        let stream: MediaStream | null = null;
         try {
             infoLog?.log('-> getMicrophoneStream');
             function getConstraints(): MediaStreamConstraints & any {
@@ -144,13 +144,13 @@ export class OpusMediaRecorder implements RecorderStateServer {
             }
             // Better integration with native mobile audio pipeline - we are resetting to defaults
             if ('audioSession' in navigator) {
-                navigator.audioSession['type'] = 'auto';
+                (navigator.audioSession as any)['type'] = 'auto';
             }
 
             stream = await navigator.mediaDevices.getUserMedia(getConstraints());
             // Better integration with native mobile audio pipeline - SHOULD BE AFTER ACQUIRING THE STREAM!
             if ('audioSession' in navigator) {
-                navigator.audioSession['type'] = 'play-and-record';
+                (navigator.audioSession as any)['type'] = 'play-and-record';
             }
             const tracks = stream.getAudioTracks();
             const audioTrack = tracks[0];
@@ -174,8 +174,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     constructor() {
         this.whenInitialized = new PromiseSource<void>();
-        this.onStateChanged = null;
-        this.onRecordingHeartbeat = null;
+        this.onStateChanged = undefined;
+        this.onRecordingHeartbeat = undefined;
     }
 
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
@@ -340,7 +340,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     await Promise.all([
                         this.encoderWorker.start(chatId, ""), // Reuse chatId and repliedChatEntryId, last rpc arg cannot be null
                         this.vadWorker.reset(),
-                        this.encoderWorklet.start(rpcNoWait)
+                        this.encoderWorklet?.start(rpcNoWait)
                     ]);
                     await this.startMicrophoneStream(context);
                 }
@@ -349,7 +349,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 await this.stopMicrophoneStream();
                 this.state = 'stopped';
                 this.recording?.dispose();
-                this.recording = null;
+                this.recording = undefined;
             }
 
             debugLog?.log(`<- init.attach()`);
@@ -397,7 +397,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 await Promise.all([
                     this.encoderWorker.start(chatId, repliedChatEntryId),
                     this.vadWorker.reset(),
-                    this.encoderWorklet.start(rpcNoWait)
+                    this.encoderWorklet?.start(rpcNoWait)
                 ]);
 
                 this.chatId = chatId;
@@ -423,14 +423,14 @@ export class OpusMediaRecorder implements RecorderStateServer {
             if (this.encoderWorkerSessionToken === this.sessionToken)
                 return; // Concurrent call to this method already applied the change
 
-            this.encoderWorkerSessionToken = sessionToken;
-            void this.encoderWorker.setSessionToken(this.sessionToken);
+            this.encoderWorkerSessionToken = this.sessionToken;
+            void this.encoderWorker.setSessionToken(this.sessionToken!);
         });
     }
 
     public async stop(): Promise<void> {
         this.state = 'stopped';
-        this.chatId = null;
+        this.chatId = undefined;
 
         debugLog?.log(`-> stop()`);
 
@@ -447,9 +447,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
         }
         finally {
             this.recording?.dispose();
-            this.recording = null;
+            this.recording = undefined;
             this.playing?.dispose();
-            this.playing = null;
+            this.playing = undefined;
             debugLog?.log(`<- stop()`);
         }
     }
@@ -458,10 +458,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
         await this.encoderWorker?.stop();
         await this.vadWorker?.reset();
         this.recording?.dispose();
-        this.recording = null;
+        this.recording = undefined;
         this.playing?.dispose();
-        this.playing = null;
-        this.recordingContextRef = null;
+        this.playing = undefined;
+        this.recordingContextRef = undefined!;
         this.encoderWorkerInstance.terminate();
         this.vadWorkerInstance.terminate();
         void this.vadWorklet?.terminate(rpcNoWait);
@@ -621,6 +621,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 await recordingAudioContextSource.interactiveResume(context);
             }
 
+            if (!this.vadWorkletInstance)
+                throw new Error('startMicrophoneStream(): vadWorkletInstance is not initialized');
+            if (!this.encoderWorkletInstance)
+                throw new Error('startMicrophoneStream(): encoderWorkletInstance is not initialized');
             this.source.connect(this.vadWorkletInstance);
             this.source.connect(this.encoderWorkletInstance);
             debugLog?.log(`startMicrophoneStream(): microphone stream has been connected to the pipeline`);
@@ -641,7 +645,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             this.source = null;
             this.stream = null;
             this.playing?.dispose();
-            this.playing = null;
+            this.playing = undefined;
         }
         finally {
             await OpusMediaRecorder.stopStreamTracks(stream);

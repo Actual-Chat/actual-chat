@@ -103,7 +103,7 @@ export class Log {
     public static get(scope: LogScope) {
         if (!this.isInitialized) {
             this.isInitialized = true;
-            initLogging(this);
+            initLogging();
         }
 
         const minLevels = this.minLevels;
@@ -122,7 +122,7 @@ export class Log {
         };
     }
 
-    public static ref(data: object | null) : object | null {
+    public static ref(data: object | null | undefined) : object | null | undefined {
         if (!data)
             return data;
         return this.logRefs.ref(data);

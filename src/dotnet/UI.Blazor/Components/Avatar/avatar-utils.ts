@@ -1,4 +1,4 @@
-export const hashCode = (name: string): number => {
+export function hashCode (name: string): number {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         const character = name.charCodeAt(i);
@@ -6,25 +6,25 @@ export const hashCode = (name: string): number => {
         hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash);
-};
+}
 
-export const mod = (num: number, max: number): number => {
+export function mod(num: number, max: number): number {
     return num % max;
-};
+}
 
-export const getDigit = (number: number, index: number): number => {
+export function getDigit(number: number, index: number): number {
     return Math.floor((number / Math.pow(10, index)) % 10);
-};
+}
 
-export const getBoolDigit = (number: number, index: number): boolean => {
+export function getBoolDigit(number: number, index: number): boolean {
     return (!((getDigit(number, index)) % 2));
-};
+}
 
-export const getAngle = (x: number, y: number): number => {
+export function getAngle(x: number, y: number): number {
     return Math.atan2(y, x) * 180 / Math.PI;
-};
+}
 
-export const getUnit = (number: number, range: number, index: number): number => {
+export function getUnit(number: number, range: number, index?: number): number {
     let value = number % range;
 
     if (index && ((getDigit(number, index) % 2) === 0)) {
@@ -32,13 +32,13 @@ export const getUnit = (number: number, range: number, index: number): number =>
     } else {
         return value;
     }
-};
+}
 
-export const getRandomColor = (number: number, colors: string[], range: number): string => {
+export function getRandomColor(number: number, colors: string[], range: number): string {
     return colors[(number) % range];
-};
+}
 
-export const getContrast = (hexColor: string): string => {
+export function getContrast(hexColor: string): string {
 
     // If a leading # is provided, remove it
     if (hexColor.slice(0, 1) === '#') {
@@ -55,4 +55,4 @@ export const getContrast = (hexColor: string): string => {
 
     // Check contrast
     return (yiq >= 128) ? '#000000' : '#FFFFFF';
-};
+}

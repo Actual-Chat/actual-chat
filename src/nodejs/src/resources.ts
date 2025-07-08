@@ -5,6 +5,7 @@ import { MonoConfig } from 'dotnet';
 // - Look for "areWebAssemblyResourcesLikelyCached" function there.
 
 export function areWasmResourcesLikelyCached(): boolean {
+    // @ts-expect-error - window.Blazor is defined in the root html
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const config = window.Blazor?.runtime?.config as MonoConfig | null;
     if (!config?.cacheBootResources)

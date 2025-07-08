@@ -13,8 +13,8 @@ export function fastRaf(options: FastRafOptions): boolean;
 export function fastRaf(read: Callback, key?: string): boolean;
 export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
     let cbKey = key;
-    let read: Callback | null = null;
-    let write: Callback | null = null;
+    let read: Callback | undefined;
+    let write: Callback | undefined;
     if (typeof arg === 'function') {
         read = arg;
     }
@@ -44,8 +44,8 @@ export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
             readCallbacks = null;
             writeCallbacks = null;
             callbackKeys.clear();
-            currentReadCallbacks.forEach((cb) => cb());
-            currentWriteCallbacks.forEach((cb) => cb());
+            currentReadCallbacks?.forEach((cb) => cb());
+            currentWriteCallbacks?.forEach((cb) => cb());
         });
     } else {
         if (read)
@@ -77,7 +77,7 @@ export function fastReadRaf(key?: string): Promise<boolean> {
 
 let writeRafPromise: Promise<boolean> | null = null;
 
-export function fastWriteRaf(key: string = null): Promise<boolean> {
+export function fastWriteRaf(key?: string): Promise<boolean> {
     if (writeRafPromise)
         return writeRafPromise;
 

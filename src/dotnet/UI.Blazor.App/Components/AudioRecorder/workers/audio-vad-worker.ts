@@ -24,31 +24,31 @@ const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('AudioVadWork
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
 
-let vadWorklet: AudioVadWorklet & Disposable = null;
-let encoderWorker: OpusEncoderWorker & Disposable = null;
+let vadWorklet: AudioVadWorklet & Disposable;
+let encoderWorker: OpusEncoderWorker & Disposable;
 let isActive = false;
 let isProcessing = false;
 let audioPowerEma = new RunningEMA(0, 10);
 let lastVadEventProcessedAt = 0;
 
 class VadLoader {
-    private static webRtcVadModule: WebRtcVadModule = null;
+    private static webRtcVadModule: WebRtcVadModule;
 
-    public static neuralVadLoadDelaySource = new PromiseSource<void>();
+    public static neuralVadLoadDelaySource: PromiseSource<void> | undefined = new PromiseSource<void>();
     public useNeuralVad = false;
-    public whenWebRtcVadReady: Promise<void> = null;
-    public whenNeuralVadReady: Promise<void> = null;
+    public whenWebRtcVadReady: Promise<void>;
+    public whenNeuralVadReady: Promise<void>;
     public webRtcVad: WebRtcVoiceActivityDetector | null = null;
     public neuralVad: NeuralVoiceActivityDetector | null = null;
     public isInitialized = false;
 
     public static cancelNeuralVadLoadDelay(): void {
         VadLoader.neuralVadLoadDelaySource?.resolve(undefined)
-        VadLoader.neuralVadLoadDelaySource = null;
+        VadLoader.neuralVadLoadDelaySource = undefined;
     }
 
     public get vad(): VoiceActivityDetector {
-        return this.neuralVad ?? this.webRtcVad;
+        return this.neuralVad ?? this.webRtcVad!;
     }
 
     public get windowSizeMs(): 30 | 32 {
@@ -56,7 +56,7 @@ class VadLoader {
     }
 
     public load(useNeuralVad: boolean = true): Promise<void> {
-        if (this.whenWebRtcVadReady === null) {
+        if (this.whenWebRtcVadReady == null) {
             this.useNeuralVad = useNeuralVad;
             this.whenWebRtcVadReady = (async () => {
                 VadLoader.webRtcVadModule ??= await retry(3, () => webRtcVadModule(getWebRTCVadEmscriptenLoaderOptions()));
@@ -74,7 +74,7 @@ class VadLoader {
                 await VadLoader.neuralVadLoadDelaySource;
                 infoLog?.log(`VadSwitcher.init: loading neural VAD...`);
                 await this.whenWebRtcVadReady;
-                const lastActivityEvent: VoiceActivityChange = this.webRtcVad.lastActivityEvent ?? NO_VOICE_ACTIVITY;
+                const lastActivityEvent: VoiceActivityChange = this.webRtcVad!.lastActivityEvent ?? NO_VOICE_ACTIVITY;
                 const nnVad = new NeuralVoiceActivityDetector(OnnxModel as unknown as URL, lastActivityEvent);
                 await nnVad.init();
                 queue.clear();
@@ -162,7 +162,7 @@ const serverImpl: AudioVadWorker = {
     },
 
     runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
-        const vad = vads.neuralVad ?? vads.webRtcVad;
+        const vad = vads.neuralVad ?? vads.webRtcVad!;
         diagnosticsState.isVadActive = isActive;
         diagnosticsState.lastVadEvent = vad.lastActivityEvent;
         diagnosticsState.lastVadFrameProcessedAt = lastVadEventProcessedAt;
@@ -193,7 +193,7 @@ async function processQueue(): Promise<void> {
     try {
         isProcessing = true;
         while (!queue.isEmpty()) {
-            const samplesBuffer = queue.shift();
+            const samplesBuffer = queue.shift()!;
             let vadEvent: VoiceActivityChange | number = 0;
 
             if (samplesBuffer.byteLength === expectedWindowSizeBytes) {

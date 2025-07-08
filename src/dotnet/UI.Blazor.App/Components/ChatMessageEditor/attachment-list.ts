@@ -168,7 +168,7 @@ export class AttachmentList {
     }
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
-        for (const file of this.filePickerElement.files) {
+        for (const file of this.filePickerElement.files ?? []) {
             const isAdded = await this.add(this.chatId, file);
             if (!isAdded)
                 break;

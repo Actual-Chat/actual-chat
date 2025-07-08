@@ -43,10 +43,10 @@ export class ResamplerWrapper implements Resampler {
 }
 
 export class ResamplerLoader {
-    private static resamplerModule: ResamplerModule = null;
-    private resampler: ResamplerWrapper = null;
+    private static resamplerModule: ResamplerModule;
+    private resampler: ResamplerWrapper;
 
-    public whenResamplerReady: Promise<void> = null;
+    public whenResamplerReady: Promise<void>;
     public load(): Promise<void> {
         if (ResamplerLoader.resamplerModule) {
             return Promise.resolve();

@@ -29,8 +29,9 @@ export class Versioning {
             const stripOrigin = (s: string) => s.startsWith(origin) ? s.slice(origin.length) : s;
 
             const processAsset = (key: string, value: string) => {
+                // @ts-expect-error - capturing groups require ES2018 or later
                 const assetMatch = /\.(?<hash>[a-z0-9]{10})\.(js|wasm)$/.exec(value);
-                if (!assetMatch)
+                if (!assetMatch?.groups || !assetMap)
                     return;
 
                 const assetPath = stripOrigin(value);
@@ -44,7 +45,7 @@ export class Versioning {
                 if (e.localName !== 'link')
                     continue;
 
-                const href = e.href as string;
+                const href = (e as HTMLLinkElement).href;
                 processAsset(href, href);
             }
             const importMapInnerHtml = document.head.querySelector('script[type="importmap"]')?.innerHTML;

@@ -33,8 +33,8 @@ interface SideNavOptions {
 type TouchResponsiveControlKind = 'none' | 'control' | 'scrollable' | 'unknown';
 
 export class SideNav extends DisposableBag {
-    public static left: SideNav | null = null;
-    public static right: SideNav | null = null;
+    public static left: SideNav;
+    public static right: SideNav;
 
     private readonly contentDiv: HTMLElement;
     private readonly bodyClassWhenOpen: string;
@@ -68,7 +68,7 @@ export class SideNav extends DisposableBag {
         this.contentDiv = element.firstElementChild as HTMLElement;
         this.bodyClassWhenOpen = `side-nav-${this.side == SideNavSide.Left ? 'left' : 'right'}-open`;
         this.hasHistoryNavigationGesture = DeviceInfo.isWebKit && BrowserInfo.hostKind !== 'MauiApp';
-        this.pageWithHeaderAndFooter = element.closest('.page-with-header-and-footer');
+        this.pageWithHeaderAndFooter = element.closest('.page-with-header-and-footer')!;
         const stateObserver = new MutationObserver(() => this.updateBodyClassList());
         stateObserver.observe(this.element, { attributeFilter: ['data-side-nav'] });
         if (this.side == SideNavSide.Left)
@@ -81,9 +81,9 @@ export class SideNav extends DisposableBag {
         this.addDisposables(pullGestureDisposer, {
             dispose() {
                 if (SideNav.left === sideNav)
-                    SideNav.left = null;
+                    SideNav.left = null!;
                 else if (SideNav.right === sideNav)
-                    SideNav.right = null;
+                    SideNav.right = null!;
                 document.body.classList.remove(sideNav.bodyClassWhenOpen);
                 stateObserver.disconnect();
             },
@@ -108,11 +108,11 @@ export class SideNav extends DisposableBag {
     public setTransform(openRatio: number): void {
         const mustTransform = !ScreenSize.isWide() && (this.isOpen ? openRatio < 1 : openRatio > 0);
         if (!mustTransform) {
-            this.element.style.transform = null;
-            this.element.style.backgroundColor = null;
-            this.element.style.backdropFilter = null;
-            this.contentDiv.style.opacity = null;
-            this.contentDiv.style.backdropFilter = null;
+            this.element.style.transform = null!;
+            this.element.style.backgroundColor = null!;
+            this.element.style.backdropFilter = null!;
+            this.contentDiv.style.opacity = null!;
+            this.contentDiv.style.backdropFilter = null!;
             this.element.style.removeProperty('-webkit-backdrop-filter');
             this.contentDiv.style.removeProperty('-webkit-backdrop-filter');
             return;
@@ -191,6 +191,9 @@ class SideNavPullDetectGesture extends Gesture {
                 return;
             if (document.querySelector('.ac-bubble-host > .ac-bubble')) // Walk-through bubble is shown
                 return;
+
+            if (!event.target)
+                return; // Not sure if this is possible, but just in case
 
             const prePullDistance = getPrePullDistance(event.target);
             if (!prePullDistance)
@@ -306,13 +309,13 @@ class SideNavPullDetectGesture extends Gesture {
             DocumentEvents.capturedPassive.touchMove$.subscribe(e => move(e)),
             chatViewDiv
                 ? Disposables.fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
-                : null,
+                : Disposables.empty(),
         );
     }
 }
 
 class SideNavPullGesture extends Gesture {
-    private state: MoveState;
+    private state: MoveState | null = null;
 
     constructor(
         public readonly sideNav: SideNav,
@@ -347,9 +350,9 @@ class SideNavPullGesture extends Gesture {
             if (event === null || event.type === 'touchstart' || moveDuration < MinPullDurationMs)
                 isCancelled = true;
 
-            const coords = getCoords(event);
+            const coords = getCoords(event!);
             if (coords && !isCancelled) {
-                await move(event);
+                await move(event!);
                 if (this.state === null!) // move(event) may call endMove(..., true)
                     return;
             }
@@ -403,7 +406,10 @@ class SideNavPullGesture extends Gesture {
             tryPreventDefaultForEvent(event);
 
             const coords = getCoords(event);
-            const offset = coords.sub(origin);
+            const offset = coords?.sub(origin);
+            if (!coords || !offset)
+                return;
+
             if (!offset.isHorizontal()) { // >45 deg. vertical
                 await endMove(event, true);
                 return;
@@ -433,7 +439,7 @@ class SideNavPullGesture extends Gesture {
         fastRaf({
             read: async () => {
                 const chatViewDiv = document.querySelector('.chat-view.virtual-list');
-                const initialChatViewScrollTop = chatViewDiv?.scrollTop;
+                const initialChatViewScrollTop = chatViewDiv?.scrollTop ?? 0;
                 if (firstMoveEvent.type === 'touchend') {
                     await endMove(firstMoveEvent, false);
                 } else {
@@ -455,7 +461,7 @@ class SideNavPullGesture extends Gesture {
                             if (Math.abs(chatViewDiv.scrollTop - initialChatViewScrollTop) > MaxChatViewScroll)
                                 void endMove(null, true);
                         }))
-                        : null,
+                        : Disposables.empty(),
                     );
                 }
             },
@@ -545,5 +551,5 @@ function getTouchResponsiveControlKind(node: EventTarget): TouchResponsiveContro
     if (node.scrollWidth > (node.clientWidth + 0.5))
         return 'scrollable';
 
-    return getTouchResponsiveControlKind(node.parentNode);
+    return getTouchResponsiveControlKind(node.parentNode!);
 }

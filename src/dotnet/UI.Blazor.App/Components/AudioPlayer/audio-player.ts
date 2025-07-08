@@ -19,8 +19,8 @@ const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
 const EnableFrequentDebugLog = false;
 
-let decoderWorkerInstance: Worker = null;
-let decoderWorker: OpusDecoderWorker & Disposable = null;
+let decoderWorkerInstance: Worker;
+let decoderWorker: OpusDecoderWorker & Disposable;
 
 export class AudioPlayer implements Resettable {
     private static readonly pool: ObjectPool<AudioPlayer> = new ObjectPool<AudioPlayer>(() => new AudioPlayer());
@@ -36,8 +36,8 @@ export class AudioPlayer implements Resettable {
     private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
-    private decoderToFeederWorkletChannel: MessageChannel = null;
-    private feederNode?: FeederAudioWorkletNode = null;
+    private decoderToFeederWorkletChannel?: MessageChannel;
+    private feederNode?: FeederAudioWorkletNode;
 
     public static get isInitialized() {
         return AudioPlayer.whenInitialized && AudioPlayer.whenInitialized.isCompleted();
@@ -127,7 +127,7 @@ export class AudioPlayer implements Resettable {
                 await catchErrors(
                     () => decoderWorker.close(this.internalId),
                     e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));
-                this.decoderToFeederWorkletChannel = null;
+                this.decoderToFeederWorkletChannel = undefined;
                 await catchErrors(
                     () => decoderToFeederWorkletChannel?.port1.close(),
                     e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));
@@ -138,12 +138,12 @@ export class AudioPlayer implements Resettable {
 
             const feederNode = this.feederNode;
             if (feederNode) {
-                this.feederNode.disconnect();
-                this.feederNode = null;
+                this.feederNode?.disconnect();
+                this.feederNode = undefined;
                 await catchErrors(
                     () => feederNode.disconnect(),
                     e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));
-                feederNode.onStateChanged = null;
+                feederNode.onStateChanged = undefined;
             }
         }
 
@@ -166,7 +166,7 @@ export class AudioPlayer implements Resettable {
         this.blazorRef = blazorRef;
         this.playing = this.contextRef.use(async () => {
             await decoderWorker.resume(this.internalId, rpcNoWait);
-            await this.feederNode.resume(preSkip);
+            await this.feederNode?.resume(preSkip);
         });
         this.playbackState = 'paused';
         this.whenEnded = new PromiseSource<void>();
@@ -178,10 +178,10 @@ export class AudioPlayer implements Resettable {
     public reset(): void {
         debugLog?.log(`#${this.internalId} reset()`);
         void this.feederNode?.pause(rpcNoWait);
-        this.blazorRef = null;
+        this.blazorRef = undefined;
         this.playbackState = 'ended';
         this.playing?.dispose();
-        this.playing = null;
+        this.playing = undefined;
         this.whenEnded?.resolve(undefined);
         resetMediaSessionDebounced();
     }
@@ -215,7 +215,7 @@ export class AudioPlayer implements Resettable {
         await decoderWorker.end(this.internalId, mustAbort);
         await this.whenEnded;
         this.playing?.dispose();
-        this.playing = null;
+        this.playing = undefined;
         resetMediaSessionDebounced();
     }
 
@@ -225,10 +225,10 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.pause`);
-        await this.playing.whenInUse;
+        await this.playing?.whenInUse;
         await this.feederNode?.pause(rpcNoWait);
         this.playing?.dispose();
-        this.playing = null;
+        this.playing = undefined;
         this.playbackState = 'paused';
 
         this.setMediaSessionState('paused');
@@ -241,7 +241,7 @@ export class AudioPlayer implements Resettable {
 
         debugLog?.log(`#${this.internalId}.resume`);
         this.playing = this.contextRef.use(async () => {
-            await this.feederNode.resume(0);
+            await this.feederNode?.resume(0);
         });
         this.playbackState = 'paused';
 
@@ -300,8 +300,8 @@ export class AudioPlayer implements Resettable {
             }
             finally {
                 this.playing?.dispose();
-                this.playing = null;
-                this.whenEnded.resolve(undefined);
+                this.playing = undefined;
+                this.whenEnded?.resolve(undefined);
                 AudioPlayer.pool.release(this);
             }
         }
@@ -321,7 +321,7 @@ export class AudioPlayer implements Resettable {
 
             if (EnableFrequentDebugLog)
                 debugLog?.log(`#${this.internalId}.reportPlaying: ${stateText} @ ${playingAt}, buffer: ${bufferText}`);
-            await this.blazorRef.invokeMethodAsync('OnPlaying', playingAt, isPaused, isBufferLow);
+            await this.blazorRef?.invokeMethodAsync('OnPlaying', playingAt, isPaused, isBufferLow);
         }
         catch (e) {
             warnLog?.log(`#${this.internalId}.reportPlaying: unhandled error:`, e);
@@ -331,7 +331,7 @@ export class AudioPlayer implements Resettable {
     private reportEnded = async (message: string | null = null) => {
         try {
             debugLog?.log(`#${this.internalId}.reportEnded:`, message);
-            await this.blazorRef.invokeMethodAsync('OnEnded', message);
+            await this.blazorRef?.invokeMethodAsync('OnEnded', message);
         }
         catch (e) {
             warnLog?.log(`#${this.internalId}.reportEnded: unhandled error:`, e);

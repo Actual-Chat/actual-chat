@@ -36,7 +36,7 @@ const serverImpl: OpusDecoderWorker = {
 
         if (!useSystemDecoder && globalThis.AudioDecoder) {
             const configSupport = await AudioDecoder.isConfigSupported(systemCodecConfig);
-            useSystemDecoder = configSupport.supported;
+            useSystemDecoder = configSupport.supported ?? false;
         }
 
         if (!useSystemDecoder) {
@@ -53,7 +53,7 @@ const serverImpl: OpusDecoderWorker = {
         debugLog?.log(`-> #${streamId}.create`);
         const decoder: Decoder | null = useSystemDecoder
             ? null
-            : new codecModule.Decoder(AP.SAMPLE_RATE);
+            : new codecModule!.Decoder(AP.SAMPLE_RATE);
         const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
         opusDecoder.init();
         decoders.set(streamId, opusDecoder);
@@ -118,7 +118,7 @@ function getDecoder(streamId: string, failIfNone = true): OpusDecoder {
     if (!decoder && failIfNone)
         throw new Error(`getDecoder: no decoder #${streamId}, did you forget to call 'create'?`);
 
-    return decoder;
+    return decoder!;
 }
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
@@ -129,7 +129,8 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
                 return codecWasmPath;
             /// #if MEM_LEAK_DETECTION
             else if (filename.slice(-3) === 'map')
-                return codecWasmMap;
+                // return codecWasmMap;
+                return codecWasmPath + '.map';
                 /// #endif
                 // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI

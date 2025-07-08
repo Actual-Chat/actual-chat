@@ -5,7 +5,7 @@ export class DateVisor {
     private readonly dateVisor: HTMLElement;
     private chatView: HTMLElement;
     private subHeader: HTMLElement;
-    private endAnchor: HTMLElement;
+    private endAnchor: HTMLElement | null;
     private isScrolling: boolean;
     private disposed$: Subject<void> = new Subject<void>();
 
@@ -16,8 +16,8 @@ export class DateVisor {
     constructor(dateVisor: HTMLElement) {
         this.dateVisor = dateVisor;
         const checkInterval = setInterval(() => {
-            this.chatView = document.querySelector('.chat-view');
-            this.subHeader = this.dateVisor.closest('.layout-subheader');
+            this.chatView = document.querySelector('.chat-view')!;
+            this.subHeader = this.dateVisor.closest('.layout-subheader')!;
             this.endAnchor = this.chatView ? this.chatView.querySelector('.c-end-anchor') : null;
             if (this.chatView && this.subHeader && this.endAnchor) {
                 clearInterval(checkInterval);
@@ -61,12 +61,16 @@ export class DateVisor {
         this.dateVisor.classList.remove('show');
     }
 
-    private isInViewport(anchor, chat = null) {
+    private isInViewport(anchor: HTMLElement | null, chatView: HTMLElement | null = null) {
+        if (!anchor)
+            return false;
+
         const rect = anchor.getBoundingClientRect();
 
-        if (chat) {
-            const chatRect = chat.getBoundingClientRect();
+        if (chatView) {
+            const chatRect = chatView.getBoundingClientRect();
             return rect.top >= chatRect.top && rect.top < chatRect.bottom;
         }
+        return false;
     }
 }

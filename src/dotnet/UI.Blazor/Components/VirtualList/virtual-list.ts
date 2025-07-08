@@ -82,7 +82,7 @@ export class VirtualList {
     private isScrolling: boolean = false;
     private scrollTime: number | null = null;
     private scrollDirection: 'up' | 'down' | 'none' = 'none';
-    private turnOffScrollingCallback?: () => void = null;
+    private turnOffScrollingCallback?: () => void;
 
     private query: VirtualListDataQuery = VirtualListDataQuery.None;
     private lastQuery: VirtualListDataQuery = VirtualListDataQuery.None;
@@ -139,13 +139,13 @@ export class VirtualList {
 
         this.isDisposed = false;
         this.abortController = new AbortController();
-        this.wrapperRef = this.ref.querySelector(':scope > .c-wrapper');
-        this.containerRef = this.wrapperRef.querySelector(':scope > .c-virtual-container');
-        this.spacerRef = this.containerRef.querySelector(':scope > .c-spacer-start');
-        this.endSpacerRef = this.containerRef.querySelector(':scope > .c-spacer-end');
-        this.renderStateRef = this.ref.querySelector(':scope > .data.render-state');
-        this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index');
-        this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor');
+        this.wrapperRef = this.ref.querySelector(':scope > .c-wrapper')!;
+        this.containerRef = this.wrapperRef.querySelector(':scope > .c-virtual-container')!;
+        this.spacerRef = this.containerRef.querySelector(':scope > .c-spacer-start')!;
+        this.endSpacerRef = this.containerRef.querySelector(':scope > .c-spacer-end')!;
+        this.renderStateRef = this.ref.querySelector(':scope > .data.render-state')!;
+        this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index')!;
+        this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor')!;
         this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
         this.endAnchorSize = this.endAnchorRef.getBoundingClientRect().height;
 
@@ -214,8 +214,6 @@ export class VirtualList {
             count: 0,
             hasVeryFirstItem: false,
             hasVeryLastItem: false,
-
-            scrollToKey: null,
         };
 
         // set isRendering as soon as possible
@@ -296,8 +294,6 @@ export class VirtualList {
             count: 0,
             hasVeryFirstItem: false,
             hasVeryLastItem: false,
-
-            scrollToKey: null,
         };
     }
 
@@ -363,7 +359,7 @@ export class VirtualList {
                 warnLog?.log('onItemSetChange: there are mutations, but isRendering() == false');
             this.renderStartedAt = Date.now();
         }
-        const startedAt = this.renderStartedAt;
+        const startedAt = this.renderStartedAt ??= Date.now();
         if (debugLog) {
             const removedCount = mutations.reduce((prev, m) => prev + m.removedNodes.length, 0);
             const addedCount = mutations.reduce((prev, m) => prev + m.addedNodes.length, 0);
@@ -380,7 +376,7 @@ export class VirtualList {
         this.itemRange = null;
 
         // process removed nodes first
-        const keysToRemove = new Set<string>();
+        const keysToRemove = new Set<string|null>();
         for (const mutation of mutations) {
             if (mutation.type !== 'childList')
                 continue;
@@ -431,14 +427,14 @@ export class VirtualList {
                     if (oldItem) {
                         if (this.pivots.some(pivot => pivot.itemKey === key)) {
                             // if the item is a pivot, we need to update its size and keep range
-                            if (oldItem.range)
+                            if (oldItem.range && newItem.size && newItem.size > 0)
                                 oldItem.range = new NumberRange(oldItem.range.start, oldItem.range.start + newItem.size);
                         }
                         else
-                            oldItem.range = null; // reset range
+                            oldItem.range = undefined; // reset range
                         oldItem.size = newItem.size;
                         oldItem.shouldSkipKey = newItem.shouldSkipKey;
-                        if (oldItem.size > 0)
+                        if (oldItem?.size && oldItem.size > 0)
                             this.unmeasuredItems.delete(key);
                     } else
                         this.items.set(key, newItem);
@@ -448,6 +444,9 @@ export class VirtualList {
 
         // remove items that were removed and not added back
         for (const key of keysToRemove) {
+            if (!key)
+                continue;
+
             this.items.delete(key);
             this.unmeasuredItems.delete(key);
             this.visibleItems.delete(key);
@@ -456,7 +455,7 @@ export class VirtualList {
         this.updateOrderedItems();
         if (this.renderState.renderIndex <= 0)
             void this.endRender();
-    };
+    }
 
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
         //console.warn(`onResize: entries =`, [...entries]);
@@ -485,7 +484,7 @@ export class VirtualList {
                     const hasRemoved = this.unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
                     const oldSize = item.size;
-                    if (oldSize > 0 && size > 0 && size != oldSize) {
+                    if (oldSize && oldSize > 0 && size > 0 && size != oldSize) {
                         existingResizedCount++;
                         itemsWereMeasured = true;
                     }
@@ -496,7 +495,7 @@ export class VirtualList {
                             item.range = new NumberRange(item.range.start, item.range.start + size);
                     }
                     else
-                        item.range = null; // reset range
+                        item.range = undefined; // reset range
 
                     this.sizeCache.set(key, size);
                     this.statistics.addItem(item.size);
@@ -510,12 +509,13 @@ export class VirtualList {
             // ensure we have all sizes calculated
             itemRefsWithWrongSize.forEach((itemRef) => {
                 const key = getItemKey(itemRef);
-                this.unmeasuredItems.add(key);
+                if (key)
+                    this.unmeasuredItems.add(key);
             });
             fastRaf(() => this.measureItems());
         }
         if (notAnItem) {
-            this.windowScrollTop = window.visualViewport.offsetTop;
+            this.windowScrollTop = window.visualViewport?.offsetTop ?? window.scrollY;
             // restore sticky end edge on item resize - not adding new one!
             if (!itemsWereMeasured && this.stickyEdge?.edge === this.defaultEdge)
                 this.scrollToEdge(this.defaultEdge, false, 'non-item-resize');
@@ -525,9 +525,9 @@ export class VirtualList {
                 const bodyElement = document.body;
                 if (this.windowScrollTop == 0) {
                     htmlElement.style.position = 'static';
-                    htmlElement.style.overflowX = null;
+                    htmlElement.style.overflowX = null!;
                     bodyElement.style.position = 'static';
-                    bodyElement.style.overflowX = null;
+                    bodyElement.style.overflowX = null!;
                 } else {
                     // Hack for iOS to keep text editor visible when virtual keyboard appears or new message is submitted
                     htmlElement.style.position = 'fixed';
@@ -595,12 +595,12 @@ export class VirtualList {
         if (hasChanged) {
             let hasStickyEdge = false;
             if (rs.hasVeryLastItem) {
-                if (this.visibleItems.has(lastItemKey)) {
+                if (lastItemKey && this.visibleItems.has(lastItemKey)) {
                     this.setStickyEdge({ itemKey: lastItemKey, edge: VirtualListEdge.End });
                     hasStickyEdge = true;
                 }
             }
-            if (!hasStickyEdge && rs.hasVeryFirstItem) {
+            if (firstItemKey && !hasStickyEdge && rs.hasVeryFirstItem) {
                 if (this.visibleItems.has(firstItemKey)) {
                     this.setStickyEdge({ itemKey: firstItemKey, edge: VirtualListEdge.Start });
                 }
@@ -674,7 +674,7 @@ export class VirtualList {
 
         this.isEndAnchorVisible = true;
         if (this.renderState.hasVeryLastItem) {
-            const edgeKey = this.getLastItemKey();
+            const edgeKey = this.getLastItemKey()!;
             this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
         }
         this.updateVisibleKeysThrottled();
@@ -702,7 +702,7 @@ export class VirtualList {
 
         this.renderState = rs;
 
-        const startedAt = this.renderStartedAt;
+        const startedAt = this.renderStartedAt ?? Date.now();
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
 
@@ -728,7 +728,7 @@ export class VirtualList {
         const scrollToItemRef = this.getItemRef(rs.scrollToKey);
         let shouldUseSmoothScroll = false;
         let scrollType: ScrollToEdgeReason = 'unknown';
-        let scrollFunc: (() => void) | null = null;
+        let scrollFunc: (() => void) | undefined = undefined;
 
         if (scrollToItemRef != null) {
             // Server-side scroll request
@@ -739,7 +739,7 @@ export class VirtualList {
                     shouldUseSmoothScroll = this.stickyEdge?.edge == VirtualListEdge.End;
                     scrollFunc = () => {
                         this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, scrollType);
-                        this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                        this.setStickyEdge({ itemKey: rs.scrollToKey!, edge: VirtualListEdge.End });
                     };
                 } else {
                     const blockPosition: ScrollLogicalPosition = rs.scrollToKeyInTheMiddle
@@ -752,7 +752,7 @@ export class VirtualList {
                 scrollType = 'last-item';
                 scrollFunc = () => {
                     this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, scrollType);
-                    this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                    this.setStickyEdge({ itemKey: rs.scrollToKey!, edge: VirtualListEdge.End });
                 };
             }
             else if (isScrollToKeyVisible && !rs.scrollToKeyInTheMiddle) {
@@ -770,13 +770,14 @@ export class VirtualList {
                 shouldUseSmoothScroll = itemKey !== this.stickyEdge.itemKey;
                 scrollType = 'sticky-edge';
                 scrollFunc = () => {
-                    this.setStickyEdge({ itemKey, edge: this.stickyEdge.edge });
-                    this.scrollToEdge(this.stickyEdge.edge, shouldUseSmoothScroll, scrollType);
+                    this.setStickyEdge({ itemKey, edge: this.stickyEdge!.edge });
+                    this.scrollToEdge(this.stickyEdge!.edge, shouldUseSmoothScroll, scrollType);
                 };
             } else {
                 if (this.stickyEdge.edge === VirtualListEdge.End) {
                     const itemRef = this.getItemRef(this.stickyEdge.itemKey);
-                    scrollFunc = () => this.scrollTo(itemRef, false);
+                    if (itemRef)
+                        scrollFunc = () => this.scrollTo(itemRef!, false);
                 }
                 this.setStickyEdge(null);
             }
@@ -878,7 +879,7 @@ export class VirtualList {
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
         const newItem = new VirtualListItem(itemKey);
         const size = this.sizeCache.get(itemKey);
-        if (size > 0)
+        if (size && size > 0)
             newItem.size = size;
         else
             this.unmeasuredItems.add(itemKey);
@@ -934,21 +935,21 @@ export class VirtualList {
 
             // do not use first item as pivot - it might be changed during rendering of items above - e.g. author circle might disappear
 
-            let medianVisibleKey = null;
+            let medianVisibleKey = '';
             if (this.visibleItems.size) {
                 const visibleItems = [...this.visibleItems.values()];
                 medianVisibleKey = visibleItems[Math.floor(visibleItems.length / 2)];
             }
 
             const viewRect = this.ref.getBoundingClientRect();
-            const itemKeys: string[] = [interactiveKey, medianVisibleKey, this.query.keyRange?.end, this.query.keyRange?.start];
+            const itemKeys: string[] = [interactiveKey ?? '', medianVisibleKey, this.query.keyRange?.end, this.query.keyRange?.start];
             for (let itemKey of itemKeys) {
                 if (!itemKey)
                     continue;
 
                 const item = this.items.get(itemKey);
                 const pivotRef = this.getItemRef(itemKey);
-                if (!pivotRef)
+                if (!pivotRef || !item || item.shouldSkipKey || !item.range)
                     continue;
 
                 pivotRefs.push(pivotRef);
@@ -968,8 +969,7 @@ export class VirtualList {
                 }
                 const pivot: Pivot = {
                     itemKey,
-                    offset: Math.round(itemRect.top),
-                    range: item?.range,
+                    range: item.range,
                     time,
                     isVisible,
                     isInteractive,
@@ -1001,7 +1001,7 @@ export class VirtualList {
 
         const turnOffScrollingCallback = this.turnOffScrollingCallback;
         if (turnOffScrollingCallback) {
-            this.turnOffScrollingCallback = null;
+            this.turnOffScrollingCallback = undefined;
             turnOffScrollingCallback();
         }
 
@@ -1017,7 +1017,7 @@ export class VirtualList {
         return this.cachedAllItemRefs;
     }
 
-    private getItemRef(key: string): HTMLElement | null {
+    private getItemRef(key?: string): HTMLElement | null {
         if (key == null)
             return null;
 
@@ -1025,7 +1025,7 @@ export class VirtualList {
     }
 
     private getFirstItemRef(): HTMLElement | null {
-        let ref = this.containerRef.firstElementChild.nextElementSibling; // skip spacer
+        let ref = this.containerRef.firstElementChild?.nextElementSibling; // skip spacer
         if (ref == null)
             return null;
 
@@ -1035,9 +1035,9 @@ export class VirtualList {
         if (ref.classList.contains('group')) {
             while (ref) {
                 ref = ref.lastElementChild;
-                if (ref.classList.contains('item')) {
+                if (ref && ref.classList.contains('item')) {
                     // we have found list item in the group, let's find the first one
-                    ref = ref.parentElement.firstElementChild;
+                    ref = ref.parentElement!.firstElementChild;
                     return ref as HTMLElement;
                 }
             }
@@ -1052,7 +1052,7 @@ export class VirtualList {
     }
 
     private getLastItemRef(): HTMLElement | null {
-        let ref = this.containerRef.lastElementChild.previousElementSibling; // skip end spacer
+        let ref = this.containerRef.lastElementChild!.previousElementSibling; // skip end spacer
         if (ref == null)
             return null;
 
@@ -1062,7 +1062,7 @@ export class VirtualList {
         if (ref.classList.contains('group')) {
             while (ref) {
                 ref = ref.lastElementChild;
-                if (ref.classList.contains('item'))
+                if (ref && ref.classList.contains('item'))
                     return ref as HTMLElement; // we have found list item in the group, let's return it
             }
             return null;
@@ -1091,7 +1091,10 @@ export class VirtualList {
             : [];
     }
 
-    private isKeyVisible(itemKey: string): boolean {
+    private isKeyVisible(itemKey?: string): boolean {
+        if (itemKey == null)
+            return false;
+
         return this.visibleItems.has(itemKey);
     }
 
@@ -1123,7 +1126,7 @@ export class VirtualList {
         itemRef?: HTMLElement,
         useSmoothScroll: boolean = false,
         blockPosition: ScrollLogicalPosition = 'center') {
-        debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
+        debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef ?? null));
         this.scrollTime = Date.now();
         if (itemRef) {
             const authorBadge = itemRef.querySelector('div.c-author-badge');
@@ -1244,7 +1247,7 @@ export class VirtualList {
                     const knownRange = this.knownRange ?? new NumberRange(0,0);
                     const estimatedTotalSize = rs.estimatedCount
                         ? clamp(Math.floor(rs.estimatedCount * this.statistics.itemSize), knownRange.size, 5E6)
-                        : null;
+                        : 0;
 
                     let fullRange: NumberRange;
                     if (this.isStartKnown && this.isEndKnown)
@@ -1298,7 +1301,7 @@ export class VirtualList {
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
                             scrollTopOffset = resetDelta;
-                            offset = this.itemRange.end;
+                            offset = this.itemRange!.end;
                         }
                     }
                     else if (rs.hasVeryLastItem && offset < -endAnchorSize) {
@@ -1306,7 +1309,7 @@ export class VirtualList {
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
                             scrollTopOffset = resetDelta;
-                            offset = this.itemRange.end;
+                            offset = this.itemRange!.end;
                         }
                     }
 
@@ -1328,7 +1331,7 @@ export class VirtualList {
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
                             scrollTopOffset = resetDelta;
-                            offset = this.itemRange.start;
+                            offset = this.itemRange!.start;
                         }
                     }
                     else if (rs.hasVeryFirstItem && offset > 0) {
@@ -1336,7 +1339,7 @@ export class VirtualList {
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
                             scrollTopOffset = resetDelta;
-                            offset = this.itemRange.start;
+                            offset = this.itemRange!.start;
                         }
                     }
 
@@ -1436,7 +1439,7 @@ export class VirtualList {
                 continue;
             }
 
-            const itemSizeIsValid = item.size > 0;
+            const itemSizeIsValid = item.size && item.size > 0;
             if (itemSizeIsValid) {
                 removeUnmeasuredItem(key);
                 continue;
@@ -1460,7 +1463,7 @@ export class VirtualList {
                         item.range = new NumberRange(item.range.start, item.range.start + size);
                 }
                 else
-                    item.range = null; // reset range
+                    item.range = undefined; // reset range
                 itemsWereMeasured = true;
                 this.sizeCache.set(key, size);
                 removeUnmeasuredItem(key);
@@ -1490,7 +1493,7 @@ export class VirtualList {
             return false;
 
         let cornerstoneItemIndex = -1;
-        let cornerstoneItem: VirtualListItem = null;
+        let cornerstoneItem: VirtualListItem | null = null;
         const interactivePivots = pivots.filter(p => p.isInteractive);
         if (interactivePivots.length > 0) {
             // Use interactive pivot as cornerstone item
@@ -1510,8 +1513,8 @@ export class VirtualList {
         const visibleItemKeys = [...visibleItems.keys()]
             .map(k => this.items.get(k))
             .filter(i => i && i.range)
-            .sort((a, b) => a.range.start - b.range.start)
-            .map(i => i.key);
+            .sort((a, b) => (a!.range?.start ?? 0) - (b!.range?.start ?? 0))
+            .map(i => i!.key);
         if (!cornerstoneItem && visibleItemKeys.length > 0) {
             for (const cornerstoneItemKey of visibleItemKeys) {
                 const index = orderedItems.findIndex(i => i.key === cornerstoneItemKey && i.range);
@@ -1562,8 +1565,8 @@ export class VirtualList {
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
 
         this.itemRange = new NumberRange(
-            orderedItems[0].range.start,
-            orderedItems[orderedItems.length - 1].range.end - this.rowGap);
+            orderedItems[0].range!.start,
+            orderedItems[orderedItems.length - 1].range!.end - this.rowGap);
 
         this.minStart = Math.min(this.minStart ?? Number.MAX_SAFE_INTEGER, this.itemRange.start);
         if (this.renderState.hasVeryFirstItem)
@@ -1580,13 +1583,13 @@ export class VirtualList {
         let prevItem = cornerstoneItem;
         for (let i = cornerstoneItemIndex + 1; i < orderedItems.length; i++) {
             const item = orderedItems[i];
-            item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
+            item.range = new NumberRange(prevItem.range!.end, prevItem.range!.end + item.size!);
             prevItem = item;
         }
         prevItem = cornerstoneItem;
         for (let i = cornerstoneItemIndex - 1; i >= 0; i--) {
             const item = orderedItems[i];
-            item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
+            item.range = new NumberRange(prevItem.range!.start - item.size!, prevItem.range!.start);
             prevItem = item;
         }
     }
@@ -1605,11 +1608,11 @@ export class VirtualList {
 
         function findCenterItemIndex() {
             // Find item index closest to the viewport center
-            const totalSize = orderedItems.reduce((sum, item) => sum + item.size, 0);
+            const totalSize = orderedItems.reduce((sum, item) => sum + item.size!, 0);
             let runningSize = 0;
             let cornerstoneItemIndex = 0;
             for (let i = 0; i < orderedItems.length; i++) {
-                runningSize += orderedItems[i].size;
+                runningSize += orderedItems[i].size!;
                 if (runningSize >= totalSize / 2) {
                     cornerstoneItemIndex = i;
                     break;
@@ -1625,7 +1628,7 @@ export class VirtualList {
             if (rs.beforeCount !== null && rs.afterCount !== null) {
                 // We are able to calculate range based on before and after counts
                 cornerstoneItem.range = new NumberRange(
-                    0 - Math.floor(rs.afterCount * this.statistics.itemSize) - cornerstoneItem.size,
+                    0 - Math.floor(rs.afterCount * this.statistics.itemSize) - cornerstoneItem.size!,
                     0 - Math.floor(rs.afterCount * this.statistics.itemSize));
             }
             else if (canUseViewport && !rs.hasVeryLastItem) {
@@ -1639,35 +1642,35 @@ export class VirtualList {
                 cornerstoneItemIndex = findCenterItemIndex();
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
                 cornerstoneItem.range = new NumberRange(
-                    Math.floor(viewportCenter - cornerstoneItem.size / 2),
-                    Math.ceil(viewportCenter + cornerstoneItem.size / 2)
+                    Math.floor(viewportCenter - cornerstoneItem.size! / 2),
+                    Math.ceil(viewportCenter + cornerstoneItem.size! / 2)
                 );
             }
             else if (!rs.hasVeryLastItem) {
                 // There is no query range and no very last item, so we have to calculate range manually with end spacer
                 cornerstoneItem.range = new NumberRange(
-                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size,
+                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size!,
                     0 - defaultSpacerSize - endAnchorSize);
             }
             else
                 cornerstoneItem.range = new NumberRange(
-                    0 - endAnchorSize - cornerstoneItem.size,
+                    0 - endAnchorSize - cornerstoneItem.size!,
                     0 - endAnchorSize);
 
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
 
-            rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range.end - r.end));
+            rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range!.end - r.end));
             this.itemRange = new NumberRange(
-                orderedItems[0].range.start,
-                orderedItems[orderedItems.length - 1].range.end);
+                orderedItems[0].range!.start,
+                orderedItems[orderedItems.length - 1].range!.end);
             if (fullRangeSize) {
                 this.minStart = 0 - fullRangeSize - endAnchorSize;
                 this.maxEnd = 0  - endAnchorSize;
                 // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
             }
             else {
-                this.minStart = orderedItems[0].range.start;
-                this.maxEnd = orderedItems[orderedItems.length - 1].range.end;
+                this.minStart = orderedItems[0].range!.start;
+                this.maxEnd = orderedItems[orderedItems.length - 1].range!.end;
                 this.isEndKnown = rs.hasVeryLastItem;
                 this.isStartKnown = rs.hasVeryFirstItem;
             }
@@ -1681,7 +1684,7 @@ export class VirtualList {
                 // We are able to calculate range based on before and after counts
                 cornerstoneItem.range = new NumberRange(
                     Math.floor(rs.beforeCount * this.statistics.itemSize),
-                    Math.floor(rs.beforeCount * this.statistics.itemSize) + cornerstoneItem.size);
+                    Math.floor(rs.beforeCount * this.statistics.itemSize) + cornerstoneItem.size!);
             }
             else if (canUseViewport && !rs.hasVeryFirstItem) {
                 // use coords of viewport and center ordered items
@@ -1694,34 +1697,34 @@ export class VirtualList {
                 cornerstoneItemIndex = findCenterItemIndex();
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
                 cornerstoneItem.range = new NumberRange(
-                    Math.floor(viewportCenter - cornerstoneItem.size / 2),
-                    Math.ceil(viewportCenter + cornerstoneItem.size / 2)
+                    Math.floor(viewportCenter - cornerstoneItem.size! / 2),
+                    Math.ceil(viewportCenter + cornerstoneItem.size! / 2)
                 );
             }
             else if (!rs.hasVeryFirstItem) {
                 // There is no query range and no very first item, so we have to calculate range manually with spacer
                 cornerstoneItem.range = new NumberRange(
                     defaultSpacerSize,
-                    defaultSpacerSize + cornerstoneItem.size);
+                    defaultSpacerSize + cornerstoneItem.size!);
             }
             else
                 cornerstoneItem.range = new NumberRange(
                     0,
-                    cornerstoneItem.size);
+                    cornerstoneItem.size!);
 
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
-            rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range.start - r.start));
+            rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range!.start - r.start));
             this.itemRange = new NumberRange(
-                orderedItems[0].range.start,
-                orderedItems[orderedItems.length - 1].range.end);
+                orderedItems[0].range!.start,
+                orderedItems[orderedItems.length - 1].range!.end);
             if (fullRangeSize) {
                 this.minStart = 0;
                 this.maxEnd = fullRangeSize + endAnchorSize;
                 // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
             }
             else {
-                this.minStart = orderedItems[0].range.start;
-                this.maxEnd = orderedItems[orderedItems.length - 1].range.end;
+                this.minStart = orderedItems[0].range!.start;
+                this.maxEnd = orderedItems[orderedItems.length - 1].range!.end;
                 this.isEndKnown = rs.hasVeryLastItem;
                 this.isStartKnown = rs.hasVeryFirstItem;
             }
@@ -1864,37 +1867,37 @@ export class VirtualList {
         }
 
         const lastKey = orderedItems[orderedItems.length - 1].key;
-        const firstItemIndex = binarySearch(orderedItems, item => item.range.end >= loadZone.start);
-        const lastItemIndex = binarySearch(orderedItems, item => item.range.start > loadZone.end || (item.key === lastKey && !item.range.intersectWith(loadZone).isEmpty));
+        const firstItemIndex = binarySearch(orderedItems, item => item.range!.end >= loadZone.start);
+        const lastItemIndex = binarySearch(orderedItems, item => item.range!.start > loadZone.end || (item.key === lastKey && !item.range!.intersectWith(loadZone).isEmpty));
         let firstItem = orderedItems[firstItemIndex];
         let lastItem = orderedItems[lastItemIndex];
         if (!firstItem) {
-            if (orderedItems[0].range.start >= loadZone.end)
+            if (orderedItems[0].range!.start >= loadZone.end)
                 firstItem = orderedItems[0];
-            else if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
+            else if (orderedItems[orderedItems.length - 1].range!.end <= loadZone.start)
                 firstItem = orderedItems[orderedItems.length - 1];
             else
                 firstItem = orderedItems[0];
         }
         if (!lastItem) {
-            if (orderedItems[orderedItems.length - 1].range.end <= loadZone.start)
+            if (orderedItems[orderedItems.length - 1].range!.end <= loadZone.start)
                 lastItem = orderedItems[orderedItems.length - 1];
-            else if (orderedItems[0].range.start >= loadZone.end)
+            else if (orderedItems[0].range!.start >= loadZone.end)
                 lastItem = orderedItems[0];
             else
                 lastItem = orderedItems[orderedItems.length - 1];
         }
         const keyRange = new Range(firstItem.key, lastItem.key);
-        const moveRangeStart = Math.floor((loadZone.start - firstItem.range.start) / itemSize / 5) * 5; // round to 5 to prevent too many requests
-        const moveRangeEnd = Math.ceil((loadZone.end - lastItem.range.end) / itemSize / 5) * 5; // round to 5 to prevent too many requests
+        const moveRangeStart = Math.floor((loadZone.start - firstItem.range!.start) / itemSize / 5) * 5; // round to 5 to prevent too many requests
+        const moveRangeEnd = Math.ceil((loadZone.end - lastItem.range!.end) / itemSize / 5) * 5; // round to 5 to prevent too many requests
         const moveRange = new NumberRange(moveRangeStart, moveRangeEnd);
-        const startGap = Math.max(0, firstItem.range.start - loadZone.start);
-        const endGap = Math.max(0, loadZone.end - lastItem.range.end);
+        const startGap = Math.max(0, firstItem.range!.start - loadZone.start);
+        const endGap = Math.max(0, loadZone.end - lastItem.range!.end);
         // skip queries that load few more items - we prefer to load more - if not close of the skeletons
         const smallGap = viewportSize * 0.5;
-        const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range.end >= viewport.start;
-        const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range.start <= viewport.end;
-        if (startGap < smallGap && endGap < smallGap && firstItem.range.start && !isFirstItemInViewport && !isLastItemInViewport)
+        const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range!.end >= viewport.start;
+        const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range!.start <= viewport.end;
+        if (startGap < smallGap && endGap < smallGap && firstItem.range!.start && !isFirstItemInViewport && !isLastItemInViewport)
             return this.lastQuery;
 
         const query = new VirtualListDataQuery(keyRange, loadZone, moveRange);
@@ -1904,7 +1907,7 @@ export class VirtualList {
 }
 
 // Helper functions
-function getItemKey(itemRef?: HTMLElement): string | null {
+function getItemKey(itemRef: HTMLElement | null): string | null {
     return itemRef?.dataset?.key ?? null;
 }
 

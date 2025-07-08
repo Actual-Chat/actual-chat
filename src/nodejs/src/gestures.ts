@@ -111,12 +111,15 @@ class DataHrefGesture extends Gesture {
         if (href === null)
             return;
 
-        if (target.closest('div.pulling')) {
+        if (target?.closest('div.pulling')) {
             // Do not trigger navigation during side-nav pulling
             return;
         }
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
+        if (!element)
+            return;
+
         const tune = Tune[element.dataset.hrefTune as TuneName];
         FocusUI.blur();
         if (tune)
@@ -168,7 +171,7 @@ class ContextMenuGesture extends Gesture {
             if (delayText === null && ScreenSize.isWide() && !DeviceInfo.isIos)
                 return; // No 'data-context-menu-delay' + wide screen + non-iOS device: default handling
 
-            let delay = parseInt(delayText);
+            let delay = parseInt(delayText ?? '');
             delay = isNaN(delay) ? this.defaultDelayMs : delay;
             const gesture = new ContextMenuGesture(event, delay);
             Gestures.addActive(gesture);

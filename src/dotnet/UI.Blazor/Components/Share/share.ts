@@ -3,12 +3,9 @@
 const { infoLog } = Log.get('Share');
 
 export class Share {
-    private static backendRef: DotNet.DotNetObject = null;
 
     /** Called from Blazor  */
     public static init(backendRef1: DotNet.DotNetObject): void {
-        this.backendRef = backendRef1;
-
         const initResult: InitResult = {
             canShareText: this.canShare({
                 text: 'Actual Chat',
@@ -18,7 +15,7 @@ export class Share {
             }),
         };
         infoLog?.log(`init:`, initResult);
-        void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
+        void backendRef1.invokeMethodAsync('OnInitialized', initResult);
     }
 
     /** Called from Blazor  */
@@ -65,11 +62,11 @@ export class Share {
 
         const title = target.dataset.shareTitle;
         const link = target.dataset.shareLink;
-        if (link && await this.shareLink(title, link)) // Link share is preferred over text share
+        if (link && title && await this.shareLink(title, link)) // Link share is preferred over text share
             return;
 
         const text = target.dataset.shareText;
-        if (text)
+        if (text && title)
             await this.shareText(title, text);
     }
 }

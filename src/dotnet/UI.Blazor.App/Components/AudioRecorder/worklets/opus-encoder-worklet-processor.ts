@@ -27,7 +27,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private state: 'running' | 'ready' | 'inactive' | 'terminated' = 'inactive';
     private stateServer: RecorderStateServer & Disposable;
     private worker: OpusEncoderWorker & Disposable;
-    private samplesSinceLastReport: number = null;
+    private samplesSinceLastReport: number | null = null;
     private frameCount: number = 0;
     private lastFrameProcessedAt: number = 0;
     private promiseQueue: Promise<void> = Promise.resolve();

@@ -34,10 +34,10 @@ export class VisualMediaViewer {
         private readonly imageViewer: HTMLElement,
         private readonly blazorRef: DotNet.DotNetObject
     ) {
-        this.overlay = this.imageViewer.closest('.modal-overlay');
-        this.header = this.overlay.querySelector('.image-viewer-header');
+        this.overlay = this.imageViewer.closest('.modal-overlay')!;
+        this.header = this.overlay.querySelector('.image-viewer-header')!;
         this.headerHeight = this.header.offsetHeight;
-        this.footer = this.overlay.querySelector('.image-viewer-footer');
+        this.footer = this.overlay.querySelector('.image-viewer-footer') as HTMLElement;
         this.videos = this.imageViewer.getElementsByTagName('video');
 
         const swiperEl = document.querySelector('.media-swiper') as SwiperElement;
@@ -59,7 +59,7 @@ export class VisualMediaViewer {
             this.onZoomedSlideSwipe(swiper, event);
         });
 
-        fromEvent(window.visualViewport, 'resize')
+        fromEvent(window.visualViewport ?? window, 'resize')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: Event) => {
                 [...this.videos].forEach(video => {
@@ -226,7 +226,7 @@ export class VisualMediaViewer {
 
             const activeIndex = swiper.activeIndex;
             const activeSlide = swiper.slides[activeIndex];
-            const image = activeSlide.querySelector('img');
+            const image = activeSlide.querySelector('img')!;
             const prevButton = swiper.navigation.prevEl;
             const nextButton = swiper.navigation.nextEl;
 
@@ -302,7 +302,7 @@ export class VisualMediaViewer {
                         .then(_ => {
                             this.hideSpinner(video);
                             this.fixVideoPosition();
-                            let control = video.parentElement.querySelector('.video-control');
+                            let control = video.parentElement!.querySelector('.video-control');
                             if (control && control.classList.contains('hide-control')) {
                                 control.classList.remove('hide-control');
                             }
@@ -369,7 +369,7 @@ export class VisualMediaViewer {
     }
 
     private addVideoListeners(video: HTMLMediaElement) {
-        const control = video.parentElement.querySelector('.video-control') as HTMLElement;
+        const control = video.parentElement!.querySelector('.video-control') as HTMLElement;
         const playBtn = control.querySelector('.play-btn') as HTMLElement;
         const rewindBtn = control.querySelector('.rewind-btn') as HTMLElement;
         const forwardBtn = control.querySelector('.forward-btn') as HTMLElement;
@@ -451,13 +451,13 @@ export class VisualMediaViewer {
 
     private onImageLoaded(event: Event, container: HTMLElement) {
         const plug = container.querySelector('.image-plug') as HTMLImageElement;
-        const spinner = container.querySelector('.spinner-icon-wrapper');
+        const spinner = container.querySelector('.spinner-icon-wrapper')!;
         plug.remove();
         spinner.remove();
     }
 
     private onVideoLoaded(event: Event, video: HTMLMediaElement) {
-        const wrapper = video.closest('.video-wrapper');
+        const wrapper = video.closest('.video-wrapper')!;
         const thumbnailWrapper = wrapper.querySelector('.video-thumbnail-wrapper');
         const spinner = wrapper.querySelector('.spinner-icon-wrapper');
         const control = wrapper.querySelector('.video-control') as HTMLElement;
@@ -526,9 +526,9 @@ export class VisualMediaViewer {
         let percentage = Math.round(current / video.duration * 100);
         progressBar.value = percentage;
         progressBar.innerHTML = percentage + '% played';
-        let currentTimeDiv = control.querySelector('.c-current');
+        let currentTimeDiv = control.querySelector('.c-current')!;
         currentTimeDiv.innerHTML = this.formatTime(current);
-        let durationDiv = control.querySelector('.c-duration');
+        let durationDiv = control.querySelector('.c-duration')!;
         durationDiv.innerHTML = this.formatTime(video.duration);
     }
 

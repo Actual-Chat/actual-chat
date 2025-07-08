@@ -23,14 +23,14 @@ export class AudioStream implements Disposable {
     public readonly name: string;
     public isCompleted = false;
     public isDisposed = false;
-    public readonly whenDisposed: Promise<void> = null;
+    public readonly whenDisposed: Promise<void>;
 
     constructor(
         private readonly sessionToken: string,
         private readonly preSkip: number,
         private readonly chatId: string,
-        private repliedChatEntryId: string,
-        private streamAfter: Promise<void> = null,
+        private repliedChatEntryId?: string,
+        private streamAfter?: Promise<void>,
     ) {
         this.name = `AudioStream(${chatId}).${AudioStream.totalCount++}`
         this.whenDisposed = (async () => {
@@ -84,7 +84,7 @@ export class AudioStream implements Disposable {
 
         this.frames.push(frame);
         while (this.frames.length > AS.MAX_BUFFERED_FRAMES) {
-            const oldFrame = this.frames.shift();
+            const oldFrame = this.frames.shift()!;
             if (oldFrame.buffer.byteLength === AE.FRAME_BUFFER_BYTES) // It's our own buffer
                 bufferPool.release(oldFrame.buffer);
         }
@@ -97,13 +97,13 @@ export class AudioStream implements Disposable {
             // while the client was disconnected may come out of order, and thus create
             // out-of-order messages.
             await this.streamAfter;
-            this.streamAfter = null;
+            this.streamAfter = undefined;
         }
 
         while (!this.isCompleted && this.frames.length <= AS.DELAY_FRAMES)
             await this.frameAdded.whenNext();
 
-        let subject: signalR.Subject<Array<Uint8Array>> = null;
+        let subject: signalR.Subject<Array<Uint8Array>> | null = null;
         const framesToSend = new Array<Uint8Array>();
         while (!this.isDisposed) {
             try {
@@ -119,7 +119,7 @@ export class AudioStream implements Disposable {
                         'ProcessAudioChunks',
                         this.sessionToken, this.chatId, this.repliedChatEntryId,
                         Date.now() / 1000, this.preSkip, subject);
-                    this.repliedChatEntryId = null; // We don't want to send a few "replies" in case we retry
+                    this.repliedChatEntryId = undefined; // We don't want to send a few "replies" in case we retry
                 }
                 while (AudioStreamer.isConnected && !this.isDisposed) {
                     // Prepare framesToSend
@@ -170,7 +170,7 @@ export class AudioStream implements Disposable {
 }
 
 export class AudioStreamer {
-    public static connection: signalR.HubConnection = null;
+    public static connection: signalR.HubConnection;
     public static readonly streams = new Array<AudioStream>();
     public static lastStream: AudioStream | null = null;
     public static connectionStateChangedEvents = new EventHandlerSet<boolean>()
@@ -207,7 +207,7 @@ export class AudioStreamer {
     }
 
     public static get isInitialized(): boolean {
-        return this.connection !== null;
+        return this.connection != null;
     }
 
     public static get isConnected(): boolean {
@@ -342,7 +342,7 @@ function debugBeginRandomDisconnects(periodMs: number) {
             if (sockets.length == 0)
                 continue;
 
-            warnLog.log(`Killing ${sockets.length} WebSocket connection(s)...`);
+            warnLog?.log(`Killing ${sockets.length} WebSocket connection(s)...`);
             try {
                 sockets.forEach(x => x.close(3666, 'KILLED!')); // 3666 is just an error code
             }

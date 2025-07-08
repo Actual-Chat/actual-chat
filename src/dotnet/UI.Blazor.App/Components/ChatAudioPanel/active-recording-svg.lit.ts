@@ -77,7 +77,7 @@ class ActiveRecordingSvg extends LitElement {
         }
     `];
 
-    private _isRecording = null;
+    private _isRecording: boolean = false;
     private observer: IntersectionObserver;
     private recorderStateChangedSubscription: Subscription;
     private signalPowerChangedSubscription: Subscription;
@@ -195,7 +195,7 @@ class ActiveRecordingSvg extends LitElement {
                 </svg>
             `;
         } else {
-            const display = getComputedStyle(this.shadowRoot?.host, null)?.display ?? 'none';
+            const display = getComputedStyle(this.shadowRoot?.host!, null)?.display ?? 'none';
             if (display === 'none')
                 return html``;
 

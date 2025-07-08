@@ -96,13 +96,13 @@ export class MenuHost implements Disposable {
         menuRef: string,
         isHoverMenu: boolean,
         triggerElement: HTMLElement | string,
-        placement?: Placement | null,
-        position?: Vector2D | null,
+        placement: Placement | null,
+        position: Vector2D | null,
     ): void {
         let menu = this.create(menuRef, isHoverMenu, triggerElement, placement, position);
         if (this.isShown(menu)) {
             debugLog?.log(`showOrPosition: already shown. Setting position.`);
-            void this.position(this.menu, menu);
+            void this.position(this.menu!, menu);
         }
         else
             this.show(menu);
@@ -145,7 +145,7 @@ export class MenuHost implements Disposable {
     ): Menu {
         if (!(triggerElement instanceof HTMLElement)) {
             const triggerElementId = triggerElement as string;
-            triggerElement = document.getElementById(triggerElementId);
+            triggerElement = document.getElementById(triggerElementId)!;
         }
         placement = placement ?? getPlacementFromAttributes(triggerElement);
         return {
@@ -153,16 +153,16 @@ export class MenuHost implements Disposable {
             menuRef: menuRef,
             triggerElement: triggerElement,
             isHoverMenu: isHoverMenu,
-            placement: placement,
+            placement: placement!,
             position: position,
             historyStepId: null,
             menuElement: null,
         };
     }
 
-    private isShown(menu: Menu) {
-        let m = this.menu;
-        return m
+    private isShown(menu: Menu): boolean {
+        const m = this.menu;
+        return !!m
             && m.menuRef === menu.menuRef
             && m.triggerElement === menu.triggerElement
             && m.isHoverMenu === menu.isHoverMenu;
@@ -310,9 +310,10 @@ export class MenuHost implements Disposable {
         if (!menuRef) {
             // We couldn't find any menu to activate on click
             const isClickInsideMenu = event.target.closest('.ac-menu, .ac-menu-hover') != null;
-            if (isClickInsideMenu) {
+            if (isClickInsideMenu && this.menu != null) {
                 // The menu will process the action, but we can schedule menu hiding here
-                nextTick(() => this.hide({ id: this.menu.id }));
+                const menu = this.menu;
+                nextTick(() => this.hide({ id: menu.id }));
                 return;
             }
 
@@ -325,6 +326,9 @@ export class MenuHost implements Disposable {
             return stopEvent(event);
         }
 
+        if (!triggerElement)
+            return;
+
         const position = isDesktopMode && (event instanceof PointerEvent || event instanceof MouseEvent)
             ? new Vector2D(event.clientX, event.clientY)
             : null;
@@ -335,7 +339,7 @@ export class MenuHost implements Disposable {
             if (triggerElement.nodeName == 'BUTTON')
                 this.hide();
             else
-                void this.position(this.menu, menu)
+                void this.position(this.menu!, menu)
         }
         else
             this.show(menu);
@@ -366,6 +370,9 @@ export class MenuHost implements Disposable {
             return;
         }
 
+        if (!triggerElement)
+            return;
+
         const menu = this.create(menuRef, true, triggerElement, "top-end", null);
         if (this.isShown(menu))
             return;
@@ -382,6 +389,9 @@ let nextId = () => 'menu:' + (_nextId++).toString();
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset['menuPlacement'];
+    if (!placement)
+        return null;
+
     return placement?.length > 0 ? placement as Placement : null;
 }
 

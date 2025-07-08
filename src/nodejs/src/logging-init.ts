@@ -1,3 +1,5 @@
+import { Log } from 'logging';
+
 // Should be the same as logging.LogLevel, but local to this module
 export enum LogLevel {
     Debug = 1,
@@ -97,9 +99,9 @@ const MaxStorageAge = 86_400_000 * 3; // 3 days
 const app = globalThis.App as unknown;
 const isWorkerOrWorklet = !app;
 
-export function initLogging(Log: unknown): void {
+export function initLogging(): void {
     Log.defaultMinLevel = LogLevel.Info;
-    const minLevels = Log.minLevels as Map<LogScope, LogLevel>;
+    const minLevels = Log.minLevels;
 
     let wasRestored = false;
     if (!isWorkerOrWorklet) {
@@ -117,7 +119,7 @@ export function initLogging(Log: unknown): void {
 }
 
 class LogLevelController {
-    constructor (private minLevels: Map<LogScope, LogLevel>)
+    constructor (private minLevels: Map<LogScope, LogLevel> & { default?: LogLevel})
     { }
 
     public override(scope: LogScope, newLevel: LogLevel): void {

@@ -1,6 +1,6 @@
 import { Subject, BehaviorSubject, takeUntil, filter } from 'rxjs';
 
-const apiReady$: BehaviorSubject<boolean> = new BehaviorSubject<boolean | null>(null);
+const apiReady$: BehaviorSubject<boolean | null> = new BehaviorSubject<boolean | null>(null);
 
 export class YoutubePlayer {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -58,7 +58,7 @@ function loadYouTubeIframeAPI(): void {
     tag.id = 'youtube-iframe-api';
     tag.src = 'https://www.youtube.com/iframe_api';
     const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    firstScriptTag.parentNode!.insertBefore(tag, firstScriptTag);
 }
 
 (window as any).onYouTubeIframeAPIReady = function(): void {

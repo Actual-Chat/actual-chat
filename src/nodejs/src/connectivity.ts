@@ -7,6 +7,8 @@ const { infoLog, warnLog } = Log.get('Connectivity');
 export class Connectivity {
     public static async reloadCurrentPage(waitWhenOnline = true): Promise<void> {
         warnLog?.log('reload: reloading...');
+
+        // @ts-expect-error because of the `window.opusMediaRecorder` type
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
         await window.opusMediaRecorder?.stop();
 

@@ -7,7 +7,7 @@ const { debugLog, errorLog } = Log.get('OnDeviceAwake');
 
 export class OnDeviceAwake {
     private static _totalSleepDurationMs = 0;
-    private static _worker: Worker = null;
+    private static _worker: Worker | null = null;
 
     public static get totalSleepDurationMs(): number { return this._totalSleepDurationMs; }
     public static readonly events = new EventHandlerSet<number>();

@@ -20,16 +20,16 @@ const isOldIOS = () =>
     !('MSStream' in window);
 
 export class NoSleep {
-    private readonly noSleepVideo: HTMLVideoElement = null;
+    private readonly noSleepVideo: HTMLVideoElement | null = null;
     private enabled = false;
-    private wakeLock: WakeLockSentinel;
-    private noSleepTimer: number = null;
+    private wakeLock: WakeLockSentinel | null = null;
+    private noSleepTimer: number | null = null;
 
     constructor() {
         if (this.isNativeWakeLockSupported) {
             const handleVisibilityChange = () => {
                 if (this.wakeLock !== null && document.visibilityState === "visible")
-                    this.enable();
+                    void this.enable();
             };
             document.addEventListener("visibilitychange", handleVisibilityChange);
             document.addEventListener("fullscreenchange", handleVisibilityChange);
@@ -39,29 +39,30 @@ export class NoSleep {
             // Set up no sleep video element
             this.noSleepVideo = document.createElement("video");
 
-            this.noSleepVideo.setAttribute("title", "Actual Chat");
-            this.noSleepVideo.setAttribute("playsinline", "");
+            const noSleepVideo = this.noSleepVideo;
+            noSleepVideo.setAttribute("title", "Actual Chat");
+            noSleepVideo.setAttribute("playsinline", "");
 
-            this.addSourceToVideo(this.noSleepVideo, "webm", webm);
-            this.addSourceToVideo(this.noSleepVideo, "mp4", mp4);
+            this.addSourceToVideo(noSleepVideo, "webm", webm);
+            this.addSourceToVideo(noSleepVideo, "mp4", mp4);
 
             // For iOS >15 video needs to be on the document to work as a wake lock
-            Object.assign(this.noSleepVideo.style, {
+            Object.assign(noSleepVideo.style, {
                 position: "absolute",
                 left: "-100%",
                 top: "-100%",
             });
-            document.querySelector("body").append(this.noSleepVideo);
+            document.querySelector('body')!.append(noSleepVideo);
 
-            this.noSleepVideo.addEventListener("loadedmetadata", () => {
-                if (this.noSleepVideo.duration <= 1) {
+            noSleepVideo.addEventListener("loadedmetadata", () => {
+                if (noSleepVideo!.duration <= 1) {
                     // webm source
-                    this.noSleepVideo.setAttribute("loop", "");
+                    noSleepVideo!.setAttribute("loop", "");
                 } else {
                     // mp4 source
-                    this.noSleepVideo.addEventListener("timeupdate", () => {
-                        if (this.noSleepVideo.currentTime > 0.5) {
-                            this.noSleepVideo.currentTime = Math.random();
+                    noSleepVideo!.addEventListener("timeupdate", () => {
+                        if (noSleepVideo!.currentTime > 0.5) {
+                            noSleepVideo!.currentTime = Math.random();
                         }
                     });
                 }
@@ -115,7 +116,7 @@ export class NoSleep {
             this.enabled = true;
             return ResolvedPromise.Void;
         } else {
-            let playPromise = this.noSleepVideo.play();
+            let playPromise = this.noSleepVideo!.play();
             return playPromise
                 .then((res) => {
                     this.enabled = true;
@@ -140,7 +141,7 @@ export class NoSleep {
                 this.noSleepTimer = null;
             }
         } else {
-            this.noSleepVideo.pause();
+            this.noSleepVideo!.pause();
         }
         this.enabled = false;
     }

@@ -7,7 +7,6 @@ import {
     fromEvent
 } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
-import { throttle } from 'promises';
 import { AttachmentList } from './attachment-list';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
@@ -31,12 +30,12 @@ export class ChatMessageEditor {
     private readonly sideNavObserver: MutationObserver;
     private markupEditor: MarkupEditor;
     private attachmentList: AttachmentList;
-    private attachmentListElement: HTMLDivElement;
+    private attachmentListElement: HTMLDivElement | null;
     private lastHeight: number;
     private lastWidth: number;
-    private isNarrowScreen: boolean = null; // Intended: updateLayout needs this on the first run
-    private panelModel: PanelMode = null; // Intended: updateLayout needs this on the first run
-    private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
+    private isNarrowScreen: boolean | null = null; // Intended: updateLayout needs this on the first run
+    private panelModel: PanelMode | null = null; // Intended: updateLayout needs this on the first run
+    private hasContent: boolean | null = null; // Intended: updateHasContent needs this on the first run
     private chatId: string;
 
     static create(editorDiv: HTMLDivElement): ChatMessageEditor {
@@ -46,8 +45,8 @@ export class ChatMessageEditor {
     constructor(editorDiv: HTMLDivElement) {
         let domClassList = document.documentElement.classList;
         this.editorDiv = editorDiv;
-        this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
-        this.input = this.postPanelDiv.querySelector(':scope .message-input');
+        this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel')!;
+        this.input = this.postPanelDiv.querySelector(':scope .message-input')!;
         this.isSmooth = !domClassList.contains('device-ios');
         if (this.isSmooth)
             editorDiv.classList.add('smooth');
@@ -104,18 +103,23 @@ export class ChatMessageEditor {
     // Public methods
 
     private addAttachmentsObserver() {
-        let lastElement = this.attachmentListElement.querySelector('.last-element');
-        const callback = (mutationList, observer) => {
-            mutationList.forEach(m => {
+        let lastElement = this.attachmentListElement?.querySelector('.last-element');
+        if (lastElement == null) {
+            warnLog?.log('addAttachmentsObserver: last-element not found');
+            return;
+        }
+
+        const callback: MutationCallback = (mutations: MutationRecord[]): void => {
+            mutations.forEach(m => {
                 m.addedNodes.forEach(e => {
-                    if (e.className == 'attachment-item') {
+                    if ((e as HTMLElement).className == 'attachment-item') {
                         lastElement.scrollIntoView({ behavior: 'smooth' });
                     }
                 })
             })
         };
         let observer = new MutationObserver(callback);
-        observer.observe(this.attachmentListElement, {
+        observer.observe(this.attachmentListElement!, {
             attributes: true,
             childList: true,
             subtree: true,
@@ -123,7 +127,7 @@ export class ChatMessageEditor {
 
     }
 
-    private updatePostPanelBorderRadius = (entries) => {
+    private updatePostPanelBorderRadius: ResizeObserverCallback = (entries) => {
         let clsLst = this.postPanelDiv.classList;
         entries.forEach(entry => {
             let height = entry.contentRect.height;
@@ -136,14 +140,14 @@ export class ChatMessageEditor {
         });
     };
 
-    private updateAttachmentListState = (mutationList, observer) => {
+    private updateAttachmentListState: MutationCallback = (mutationList, observer) => {
         mutationList.forEach(m => {
             m.addedNodes.forEach(element => {
-                if (element.className == 'attachment-list-wrapper') {
+                if ((element as HTMLElement).className == 'attachment-list-wrapper') {
                     if (!this.editorDiv.classList.contains('attachment-mode')) {
                         this.editorDiv.classList.add('attachment-mode');
                     }
-                    this.attachmentListElement = this.editorDiv.querySelector('.attachment-list')
+                    this.attachmentListElement = this.editorDiv.querySelector('.attachment-list')!;
                     this.addAttachmentsObserver();
                     fromEvent(this.attachmentListElement, 'wheel')
                         .pipe(takeUntil(this.disposed$))
@@ -151,7 +155,7 @@ export class ChatMessageEditor {
                 }
             });
             m.removedNodes.forEach(element => {
-                if (element.className == 'attachment-list-wrapper') {
+                if ((element as HTMLElement).className == 'attachment-list-wrapper') {
                     this.editorDiv.classList.remove('attachment-mode');
                     if (this.attachmentListElement != null) {
                         this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
@@ -163,7 +167,7 @@ export class ChatMessageEditor {
 
     private onHorizontalScroll = ((event: WheelEvent) => {
         preventDefaultForEvent(event);
-        this.attachmentListElement.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
+        this.attachmentListElement?.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
     });
 
     /** Called by Blazor */
@@ -226,6 +230,9 @@ export class ChatMessageEditor {
         // We need to handle only files pasting.
         // Text pasting is controlled by markup editor.
         const clipboardData = event.clipboardData;
+        if (!clipboardData)
+            return;
+
         let isAdding = false;
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
@@ -233,6 +240,9 @@ export class ChatMessageEditor {
                     preventDefaultForEvent(event); // We can do it only in the sync part of async handler
                 isAdding = true;
                 const file = item.getAsFile();
+                if (!file)
+                    continue; // Should not happen, but just in case
+
                 if (await this.attachmentList.add(this.chatId, file))
                     this.updateHasContent();
             }
@@ -242,8 +252,8 @@ export class ChatMessageEditor {
     // Private methods
 
     private updateLayout = () => {
-        const width = window.visualViewport.width;
-        const height = window.visualViewport.height;
+        const width = window.visualViewport?.width ?? window.innerWidth;
+        const height = window.visualViewport?.height ?? window.innerHeight;
         const isNarrowScreen = width < 1024;
 
         if (this.isNarrowScreen === isNarrowScreen) {
@@ -339,8 +349,8 @@ export class ChatMessageEditor {
 
         const text = this.markupEditor.getHtml();
         const keys = [`MessageDraft.${this.chatId}.Html`];
-        const values = [!!text ? text : null];
-        await localSettings.setMany(keys, values);
+        if (!!text)
+            await localSettings.setMany(keys, [text]);
     }
 
     private async restoreDraft(): Promise<void> {

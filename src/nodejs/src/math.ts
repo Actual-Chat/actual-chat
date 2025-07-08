@@ -174,8 +174,11 @@ export class RunningMA implements RunningCounter {
         const average = this._average;
         samples.push(value);
         average.appendSample(value);
-        if (average.sampleCount > this.windowSize)
-            average.removeSample(samples.shift())
+        if (average.sampleCount > this.windowSize) {
+            const removed = samples.shift();
+            if (removed)
+                average.removeSample(removed)
+        }
     }
 }
 
@@ -216,7 +219,7 @@ export class RunningEMA implements RunningCounter {
             if (this._sampleCount >= this.minSampleCount)
                 this._value = this._average.value;
         } else {
-            this._value =  last + this.smoothingFactor * (value - last);
+            this._value =  last + this.smoothingFactor! * (value - last);
         }
     }
 }

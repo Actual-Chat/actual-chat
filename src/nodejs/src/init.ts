@@ -12,6 +12,9 @@ void ServiceWorker.init();
 void (async () => {
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
+            if (!window.visualViewport)
+                return;
+
             const vh = window.visualViewport.height * 0.01;
             window.document.body.style.setProperty('--vh', `${vh}px`);
         });
@@ -24,6 +27,7 @@ void (async () => {
         });
     }
 
+    // @ts-expect-error - window.App is defined root html
     const app = window.App as {
         whenBlazorReady: Promise<void>,
         renderMode: string,

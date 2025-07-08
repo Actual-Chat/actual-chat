@@ -31,7 +31,7 @@ export class RpcCall {
                 args.pop();
                 this.noWait = true;
             }
-            else if (lastArg?.type && lastArg.type === 'rpc-timeout') {
+            else if (typeof lastArg === 'object' && lastArg !== null && 'type' in lastArg && lastArg.type === 'rpc-timeout') {
                 args.pop();
                 const rpcTimeout = lastArg as RpcTimeout;
                 this.timeoutMs = rpcTimeout.timeoutMs;
@@ -225,6 +225,7 @@ export function rpcClient<TService extends object>(
             return;
 
         const result = event.data;
+        // @ts-expect-error - sanity check
         if (result.method) {
             errorLog?.log(`${name}: got an RpcCall message:`, result);
             throw new Error(`${name}: got an RpcCall message.`);
@@ -254,7 +255,7 @@ export function rpcClient<TService extends object>(
                 if (rpcCall.timeoutMs && !rpcCall.noWait)
                     rpcPromise.setTimeout(rpcCall.timeoutMs);
 
-                const transferables = getTransferables(args);
+                const transferables = getTransferables(args)!;
                 debugLog?.log(`${name}.call:`, rpcCall, ', transfer:', transferables);
                 messagePort.postMessage(rpcCall, transferables);
                 return rpcPromise;
@@ -322,10 +323,10 @@ export function rpcClientServer<TClient extends object>(
 
     messagePort.onmessage = async (event: MessageEvent<RpcCall | RpcResult>): Promise<void> => {
         const data = event.data;
-        if (data.method) // RpcCall message, we process it via serverOnMessage
-            await serverOnMessage.call(messagePort, event);
+        if ('method' in data) // RpcCall message, we process it via serverOnMessage
+            await serverOnMessage?.call(messagePort, event);
         else // RpcResult message, we process it via clientOnMessage
-            await clientOnMessage.call(messagePort, event);
+            await clientOnMessage?.call(messagePort, event);
     }
     return client;
 }

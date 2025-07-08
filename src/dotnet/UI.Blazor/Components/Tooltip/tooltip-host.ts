@@ -64,7 +64,7 @@ export class TooltipHost implements Disposable {
                     if (element == null)
                         return null;
 
-                    return { element, text };
+                    return { element, text: text ?? '' };
                 }),
                 switchMap(tooltip => {
                     return tooltip ? of(tooltip).pipe(delay(300)) : EMPTY;
@@ -111,6 +111,9 @@ export class TooltipHost implements Disposable {
                 top: `${y}px`,
             });
 
+            if (!middlewareData.arrow)
+                return;
+
             const { x: arrowX, y: arrowY } = middlewareData.arrow;
 
             const staticSide = {
@@ -125,6 +128,7 @@ export class TooltipHost implements Disposable {
                 top: arrowY != null ? `${arrowY}px` : '',
                 right: '',
                 bottom: '',
+                // @ts-ignore
                 [staticSide]: '-4px',
             });
         });

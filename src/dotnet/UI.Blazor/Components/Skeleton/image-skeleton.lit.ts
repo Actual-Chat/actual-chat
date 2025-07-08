@@ -135,11 +135,13 @@ class ImageSkeleton extends LitElement {
             const response = await fetch(this.src, { mode: isSubDomain ? undefined : 'cors' });
             if (response.ok) {
                 const blob = await response.blob();
-                this._imageRef.value.src = URL.createObjectURL(blob);
+                if (this._imageRef.value)
+                    this._imageRef.value.src = URL.createObjectURL(blob);
                 return;
             }
         }
-        this._imageRef.value.src = this.src;
+        if (this._imageRef.value)
+            this._imageRef.value.src = this.src;
     }
 
     async imageLoaded(): Promise<void> {

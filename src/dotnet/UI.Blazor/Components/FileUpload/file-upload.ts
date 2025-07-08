@@ -28,11 +28,11 @@ export class FileUpload implements Disposable {
         fromEvent(input, 'change')
             .pipe(
                 takeUntil(this.disposed$),
-                map(() => this.input.files[0]),
+                map(() => this.input.files?.[0]),
                 filter((file: File) => !!file),
                 filter((file: File) => {
-                    if (options.maxSize !== null && file.size > options.maxSize) {
-                        input.value = null;
+                    if (options.maxSize != null && file.size > (options.maxSize ?? 0)) {
+                        input.value = null!;
                         void blazorRef.invokeMethodAsync('OnInvalidSize');
                         return false;
                     }

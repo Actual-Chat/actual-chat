@@ -9,15 +9,12 @@ const { infoLog, warnLog } = Log.get('AudioInfo');
 export type BackgroundState = 'Foreground' | 'BackgroundIdle' | 'BackgroundActive';
 
 export class AudioInitializer {
-    private static backendRef: DotNet.DotNetObject = null;
-
     public static backgroundState: BackgroundState = 'Foreground';
     public static isRecorderInitialized = false;
     public static isPlayerInitialized = false;
 
     /** Called by Blazor */
-    public static async init(backendRef1: DotNet.DotNetObject, baseUri: string, canUseNNVad: boolean): Promise<void> {
-        this.backendRef = backendRef1;
+    public static async init(backendRef: DotNet.DotNetObject, baseUri: string, canUseNNVad: boolean): Promise<void> {
         infoLog?.log(`-> init`);
 
         const initPlayer = async () => {

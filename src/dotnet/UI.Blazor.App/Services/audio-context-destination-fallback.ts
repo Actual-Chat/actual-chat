@@ -9,14 +9,14 @@ const { debugLog, errorLog } = Log.get('FallbackPlayback');
 export class AudioContextDestinationFallback implements Disposable {
     private readonly audio: HTMLAudioElement;
     private destinationNode: MediaStreamAudioDestinationNode;
-    private aecStream: MediaStream & Disposable | null = null;
+    private aecStream?: MediaStream & Disposable;
 
     // Allows to expose mediaSession metadata at the lock screen
     public static get isRequired() { return DeviceInfo.isIos; }
 
     public get destination() { return this.destinationNode; }
 
-    private get audioStream() { return this.aecStream ?? this.destinationNode.stream; }
+    private get audioStream() { return this.aecStream ?? this.destinationNode?.stream ?? null; }
 
     constructor(context: AudioContext) {
         this.audio = new Audio();
@@ -63,7 +63,8 @@ export class AudioContextDestinationFallback implements Disposable {
 
     public dispose(): void {
         this.audio.pause();
-        this.audio.srcObject = undefined;
+        this.audio.srcObject = null;
+        // @ts-ignore
         this.audio.src = undefined;
         document.body.removeChild(this.audio);
 
@@ -71,11 +72,11 @@ export class AudioContextDestinationFallback implements Disposable {
             this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
             this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
             this.destinationNode.disconnect();
-            this.destinationNode = null;
+            this.destinationNode = undefined!;
         }
         if (this.aecStream) {
             this.aecStream.dispose();
-            this.aecStream = null;
+            this.aecStream = undefined;
         }
     }
 }

@@ -47,8 +47,8 @@ const systemCodecConfig: AudioEncoderConfig = {
 let state: 'initial' | 'created' | 'encoding' | 'ended' = 'initial';
 let isVoiceDetected: boolean = false;
 let isProcessing: boolean = false;
-let encoderWorklet: OpusEncoderWorklet & Disposable = null;
-let vadWorker: AudioVadWorker & Disposable = null;
+let encoderWorklet: OpusEncoderWorklet & Disposable;
+let vadWorker: AudioVadWorker & Disposable;
 let encoder: Encoder | null;
 let systemEncoder: AudioEncoder | null;
 let lastStartArguments: { chatId: string, repliedChatEntryId: string } | null = null;
@@ -101,7 +101,7 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     start: async (chatId: string, repliedChatEntryId: string): Promise<void> => {
-        if (chatId !== null)
+        if (chatId != null)
             lastStartArguments = { chatId, repliedChatEntryId };
         else if (!lastStartArguments)
             throw new Error('Unable to start recording: chatId is required.');
@@ -146,7 +146,7 @@ const serverImpl: OpusEncoderWorker = {
         debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, approximateGain(new Float32Array(buffer)));
         queue.push(buffer);
         while (queue.length > AE.MAX_BUFFERED_FRAMES) {
-            const samplesBuffer = queue.shift();
+            const samplesBuffer = queue.shift()!;
             void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
         }
         processQueue();
@@ -178,9 +178,9 @@ function onSystemEncoderError(error: DOMException): void {
 
 function onSystemEncoderChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
     const timestamp  = output.timestamp;
-    while (encodedAudioFrames.length && encodedAudioFrames.peekFront().timestamp <= timestamp) {
+    while (encodedAudioFrames.length && encodedAudioFrames.peekFront()!.timestamp <= timestamp) {
         // release encoded buffers
-        const { frame } = encodedAudioFrames.shift();
+        const { frame } = encodedAudioFrames.shift()!;
         void encoderWorklet.releaseBuffer(frame, rpcNoWait);
     }
 
@@ -232,7 +232,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
             const gains = new Float32Array(queue.length).fill(0);
             if (gains.length) {
                 for (let i = 0; i < queue.length; i++) {
-                    const samplesBuffer = queue.peekAt(i);
+                    const samplesBuffer = queue.peekAt(i)!;
                     const samples = new Float32Array(samplesBuffer);
                     gains[i] = approximateGain(samples);
                 }
@@ -247,7 +247,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 let framesToShift = clamp(startIndex - 1, 0, queue.length - 5); // Keep at least 4 frames
                 debugLog?.log(`processQueue(in): gains: `, gains, framesToShift);
                 while (framesToShift-- > 0)            {
-                    const samplesBuffer = queue.shift();
+                    const samplesBuffer = queue.shift()!;
                     void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
                 }
             }
@@ -260,7 +260,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
 
         // debugLog?.log(`processQueue:`, fade);
         while (!queue.isEmpty()) {
-            const samplesBuffer = queue.shift();
+            const samplesBuffer = queue.shift()!;
             let samples: Float32Array;
             if (samplesBuffer.byteLength === expectedWindowSizeBytes) {
                 samples = new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples);
@@ -290,7 +290,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 systemEncoder.encode(audioChunk);
                 encodedAudioFrames.push({ frame: samplesBuffer, timestamp: timestamp });
             }
-            else {
+            else if (encoder) {
                 // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
                 // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
                 const frameView = encoder.encode(new Uint8Array(samples.buffer, 0, samples.length * 4));
@@ -312,13 +312,13 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
 
 function clearQueue(): void {
     while(queue.length) {
-        const samplesBuffer = queue.shift();
+        const samplesBuffer = queue.shift()!;
         // release queued buffers
         void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
     }
     while (encodedAudioFrames.length) {
         // release encoded buffers
-        const { frame } = encodedAudioFrames.shift();
+        const { frame } = encodedAudioFrames.shift()!;
         void encoderWorklet.releaseBuffer(frame, rpcNoWait);
     }
 }
@@ -333,7 +333,8 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
                 return codecWasmPath;
             /// #if MEM_LEAK_DETECTION
             else if (filename.slice(-3) === 'map')
-                return codecWasmMap;
+                // return codecWasmMap;
+                return codecWasmPath + '.map';
                 /// #endif
                 // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI

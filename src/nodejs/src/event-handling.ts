@@ -120,7 +120,7 @@ class DocumentEventSet {
     public readonly click$: Observable<MouseEvent>;
     public readonly contextmenu$: Observable<MouseEvent>;
     public readonly wheel$: Observable<WheelEvent>;
-    public readonly scroll$: Observable<Event>;
+    public readonly scroll$: Observable<Event> | null;
     public readonly visibilityChange$: Observable<Event>;
 
     public readonly pointerOver$: Observable<PointerEvent>;
@@ -150,7 +150,7 @@ class DocumentEventSet {
         this.click$ = fromEvent(document, 'click', options) as Observable<MouseEvent>;
         this.contextmenu$ = fromEvent(document, 'contextmenu', options) as Observable<MouseEvent>;
         this.wheel$ = fromEvent(document, 'wheel', options) as Observable<WheelEvent>;
-        this.scroll$ = isActive ? null : fromEvent(document.defaultView, 'scroll', options);
+        this.scroll$ = isActive && document.defaultView ? null : fromEvent(document.defaultView!, 'scroll', options);
         this.visibilityChange$ = fromEvent(document, 'visibilitychange', options);
 
         this.pointerOver$ = fromEvent(document, 'pointerover', options) as Observable<PointerEvent>;
@@ -188,7 +188,7 @@ export function stopEvent(event?: Event, stopImmediatePropagation = true, preven
         event.preventDefault();
 }
 
-export function preventDefaultForEvent(event?: Event) : void {
+export function preventDefaultForEvent(event: Event | null) : void {
     if (!event)
         return;
 
@@ -196,7 +196,7 @@ export function preventDefaultForEvent(event?: Event) : void {
     event.preventDefault();
 }
 
-export function tryPreventDefaultForEvent(event?: Event) : void {
+export function tryPreventDefaultForEvent(event: Event | null) : void {
     if (!event?.defaultPrevented) {
         try {
             preventDefaultForEvent(event);

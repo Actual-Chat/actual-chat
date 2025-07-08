@@ -106,7 +106,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
     public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
 
     // Key properties
-    public get isContextRunning(): boolean { return this._context && this._context.state === 'running'; }
+    public get isContextRunning(): boolean { return !!this._context && this._context.state === 'running'; }
     public abstract get isMaintained(): boolean;
 
     public get hasRefsInUse(): boolean {
@@ -122,10 +122,10 @@ abstract class AudioContextSourceBase implements AudioContextSource {
     protected constructor(public readonly purpose: AudioContextPurpose) {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(durationMs => this.onDeviceAwake(durationMs));
         if (purpose === 'playback') {
-            if ('audioSession' in navigator) {
-                navigator.audioSession['type'] = 'playback';
-                navigator.audioSession['type'] = 'auto'; // Hack for iOS Safari
-                navigator.audioSession['type'] = 'playback';
+            if ('audioSession' in navigator && typeof navigator.audioSession === 'object') {
+                (navigator.audioSession as any)['type'] = 'playback';
+                (navigator.audioSession as any)['type'] = 'auto'; // Hack for iOS Safari
+                (navigator.audioSession as any)['type'] = 'playback';
             }
             resetMediaSessionMetadata();
         }
@@ -378,7 +378,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
             throw new Error(`${logScope}.test: AudioContext is running, but didn't pass currentTime test.`);
     }
 
-    protected async closeSilently(context?: OverridenAudioContext): Promise<void> {
+    protected async closeSilently(context: OverridenAudioContext | null): Promise<void> {
         debugLog?.log(`close:`, Log.ref(context));
         if (!context)
             return;
@@ -494,7 +494,7 @@ abstract class AudioContextSourceBase implements AudioContextSource {
 class WebAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
     private _isActive = false;
     private _maintain: Promise<void> | null = null;
-    private _whenReady = new PromiseSource<AudioContext | null>();
+    private _whenReady = new PromiseSource<AudioContext>();
     private _whenNotReady = new PromiseSource<void>();
 
     // Key properties
@@ -601,7 +601,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     // Must be private, but good to keep it near markNotReady
-    private markReady(context: AudioContext | null) {
+    private markReady(context: AudioContext): void {
         // Invariant it maintains on exit:
         // - _context != null
         // - _whenReady is completed
@@ -648,7 +648,7 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
 
     // Protected methods
 
-    protected async closeSilently(context?: AudioContext): Promise<void> {
+    protected async closeSilently(context: AudioContext | null): Promise<void> {
         this.markNotReady();
         await super.closeSilently(context);
     }
@@ -831,7 +831,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                 await whileBackgroundIdle;
             this._context = await this.create();
         }
-        return this._context;
+        return this._context!;
     }
 
     public async whenNotReady(context: AudioContext, cancel?: Promise<symbol>): Promise<void> {

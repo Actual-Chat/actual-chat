@@ -84,7 +84,7 @@ export class PlayableTextMarkupView {
                 if (!targetedNode)
                     return;
 
-                let targetNodeParent = targetedNode.parentNode;
+                let targetNodeParent: HTMLElement | null = targetedNode.parentNode! as HTMLElement;
                 if (!targetNodeParent.classList.contains('playable-word'))
                     targetNodeParent = targetNodeParent.closest('.playable-word');
                 if (!targetNodeParent)
@@ -143,7 +143,7 @@ export class PlayableTextMarkupView {
             range.setEnd(textNode, word.textRange.end);
         } else {
             range.setStart(textNode, 0);
-            range.setEnd(textNode, textNode.textContent.length - 1);
+            range.setEnd(textNode, textNode.textContent!.length - 1);
         }
 
         const rect = range.getBoundingClientRect();

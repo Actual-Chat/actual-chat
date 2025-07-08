@@ -1,7 +1,7 @@
 import { DeviceInfo } from 'device-info';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 
-const storage = window.localStorage as Storage | null;
+const storage = window.localStorage as Storage | undefined;
 const storageKey = 'ui.font-size'
 const availableSizes : Record<string, string> = {
     '14px': '14px',
@@ -21,11 +21,11 @@ export class FontSizes {
         return availableSizes;
     }
 
-    public static get(): string {
+    public static get(): string | null {
         if (!storage)
             return null;
 
-        const root = document.querySelector(':root');
+        const root = document.querySelector(':root')!;
         const rootStyle = window.getComputedStyle(root);
         const size = rootStyle.getPropertyValue('--font-size');
         return getValidOrDefault(size);
@@ -36,7 +36,7 @@ export class FontSizes {
             return;
 
         size = getValidOrDefault(size);
-        const root = document.querySelector(':root');
+        const root = document.querySelector(':root')!;
         const rootStyle = window.getComputedStyle(root);
         const rootFontSize = rootStyle.getPropertyValue('--font-size');
         if (rootFontSize != size) {
@@ -56,7 +56,9 @@ function getValidOrDefault(size: string): string {
 }
 
 function load(): string | null {
-    return storage?.getItem(storageKey);
+    return storage
+        ? storage.getItem(storageKey)
+        : null;
 }
 
 function save(size: string): void {

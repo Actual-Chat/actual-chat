@@ -49,7 +49,9 @@ export class TimerQueue {
             this.heap.pop();
             this.map.delete(timer.handle);
             try {
-                timer.callback();
+                const callback = timer.callback;
+                if (callback)
+                    callback();
             }
             catch (e) {
                 errorLog?.log('Callback failed:', e);
@@ -68,9 +70,9 @@ export class TimerQueue {
     }
 }
 
-const setTimeoutImpl = globalThis.setTimeout as ((callback: () => unknown, delayMs: number) => number) | null;
+const setTimeoutImpl = globalThis.setTimeout as ((callback: () => unknown, delayMs?: number) => number) | null;
 const clearTimeoutImpl = globalThis.clearTimeout as (handle: number) => void;
 
 export const timerQueue = !setTimeoutImpl ? new TimerQueue() : null;
-export const setTimeout = timerQueue ? timerQueue.setTimeout : setTimeoutImpl;
+export const setTimeout = timerQueue ? timerQueue.setTimeout : setTimeoutImpl!;
 export const clearTimeout = timerQueue ? timerQueue.clearTimeout : clearTimeoutImpl;

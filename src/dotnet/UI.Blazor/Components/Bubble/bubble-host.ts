@@ -15,7 +15,7 @@ interface BubbleModel {
     total?: number;
 }
 
-const { debugLog } = Log.get('BubbleHost');
+const { debugLog, warnLog } = Log.get('BubbleHost');
 
 export class BubbleHost {
     private readonly mutationObserver: MutationObserver;
@@ -24,7 +24,7 @@ export class BubbleHost {
     private bubbleHost: HTMLElement;
 
     private _bubbles: BubbleModel[] = [];
-    private _clearAutoUpdate: () => void;
+    private _clearAutoUpdate?: () => void;
 
     public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[]): BubbleHost {
         return new BubbleHost(blazorRef, readBubbles);
@@ -56,7 +56,7 @@ export class BubbleHost {
                 this.showNextBubble();
             });
         this.mutationObserver.observe(
-            document.getElementById('app'),
+            document.getElementById('app')!,
             {
                 subtree: true,
                 childList: true,
@@ -67,7 +67,7 @@ export class BubbleHost {
                 ],
             });
 
-        this.bubbleHost = document.querySelector('.ac-bubble-host');
+        this.bubbleHost = document.querySelector('.ac-bubble-host')!;
         const mediaQuery = window.matchMedia('(orientation: portrait)');
         if (!mediaQuery.matches && !this.bubbleHost.classList.contains('landscape')) {
             this.bubbleHost.classList.add('landscape');
@@ -104,7 +104,8 @@ export class BubbleHost {
         const shownBubble = unreadBubbles.find(x => x.isShown);
         if (shownBubble) {
             shownBubble.isShown = false;
-            shownBubble.bubbleElement.style.display = 'none';
+            if (shownBubble.bubbleElement)
+                shownBubble.bubbleElement.style.display = 'none';
         }
 
         const bubblesToSkip = unreadBubbles
@@ -119,7 +120,8 @@ export class BubbleHost {
         debugLog?.log(`readBubble:`, bubbleRef);
 
         const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
-        bubble.isRead = true;
+        if (bubble)
+            bubble.isRead = true;
         this.clearAutoUpdate();
         this.showNextBubble();
     }
@@ -141,11 +143,20 @@ export class BubbleHost {
         debugLog?.log(`showBubble:`, id, bubbleRef);
 
         const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
+        if (!bubble) {
+            warnLog?.log(`Bubble not found:`, bubbleRef);
+            return;
+        }
         bubble.isShown = true;
 
         const triggerElement = bubble.triggerElement;
         const position = triggerElement.dataset['bubblePlacement'] as Placement;
         const bubbleElement = document.getElementById(id);
+        if (!bubbleElement) {
+            warnLog?.log(`Bubble element not found:`, id);
+            return;
+        }
+
         bubble.bubbleElement = bubbleElement;
 
         const arrowElement = document.getElementsByClassName('ac-bubble-arrow')[0] as HTMLElement;
@@ -192,6 +203,9 @@ export class BubbleHost {
             top: `${y}px`,
         });
 
+        if (!middlewareData.arrow)
+            return;
+
         const { x: arrowX, y: arrowY } = middlewareData.arrow;
 
         const staticSide = {
@@ -206,6 +220,7 @@ export class BubbleHost {
             top: arrowY != null ? `${arrowY}px` : '',
             right: '',
             bottom: '',
+            // @ts-ignore
             [staticSide]: '-4px',
         });
     }
@@ -216,6 +231,10 @@ export class BubbleHost {
         const elements = this.getBubbleElements();
         elements.forEach(el => {
             const bubbleRef = el.dataset['bubble'];
+            if (!bubbleRef) {
+                warnLog?.log(`Bubble element without data-bubble:`, el);
+                return;
+            }
             if (this.readBubbles.includes(bubbleRef)) {
                 return;
             }
@@ -245,7 +264,8 @@ export class BubbleHost {
                 || (bubble.isTopElement && this.topElementIsBubble(bubble.triggerElement));
             if (bubble.isShown && (!bubble.isTopElement || !bubble.isInViewport)) {
                 bubble.isShown = false;
-                bubble.bubbleElement.style.display = 'none';
+                if (bubble.bubbleElement)
+                    bubble.bubbleElement.style.display = 'none';
             }
         });
 

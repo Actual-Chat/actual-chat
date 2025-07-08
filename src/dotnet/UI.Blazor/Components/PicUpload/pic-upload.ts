@@ -1,5 +1,5 @@
 import { Disposable } from 'disposable';
-import { fromEvent, map, Subject, takeUntil, tap, merge } from 'rxjs';
+import { fromEvent, map, filter, Subject, takeUntil, tap, merge } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
 
 export class PicUpload implements Disposable {
@@ -30,13 +30,15 @@ export class PicUpload implements Disposable {
                 preventDefaultForEvent(e);
                 this.removeHoverClass();
             }),
-            map((e: DragEvent) => e.dataTransfer.files),
-        ).subscribe(f => this.raiseChangeEvent(f));
+            map((e: DragEvent) => e.dataTransfer?.files),
+            filter((files: FileList | null) => !!files && files.length > 0),
+        ).subscribe(f => this.raiseChangeEvent(f!));
 
         fromEvent(document, 'paste').pipe(
             takeUntil(this.disposed$),
-            map((e: ClipboardEvent) => e.clipboardData.files),
-        ).subscribe(f => this.raiseChangeEvent(f));
+            map((e: ClipboardEvent) => e.clipboardData?.files),
+            filter((files: FileList | null) => !!files && files.length > 0),
+        ).subscribe(f => this.raiseChangeEvent(f!));
     }
 
     public dispose() {

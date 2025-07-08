@@ -13,21 +13,21 @@ import { throttle } from 'promises';
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
 export class AudioDiagnosticsState {
-    public isPlayerInitialized?: boolean = null;
-    public isRecorderInitialized?: boolean = null;
-    public hasMicrophonePermission?: boolean = null;
-    public isAudioContextSourceMaintained?: boolean = null;
-    public isAudioContextRunning?: boolean = null;
-    public hasMicrophoneStream?: boolean = null;
-    public isVadActive?: boolean = null;
-    public lastVadEvent?: VoiceActivityChange = null;
-    public lastVadFrameProcessedAt?: number = null;
-    public isConnected?: boolean = null;
-    public lastFrameProcessedAt?: number = null;
-    public vadWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated' = null;
-    public lastVadWorkletFrameProcessedAt?: number = null;
-    public encoderWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated' = null;
-    public lastEncoderWorkletFrameProcessedAt?: number = null;
+    public isPlayerInitialized?: boolean;
+    public isRecorderInitialized?: boolean;
+    public hasMicrophonePermission?: boolean;
+    public isAudioContextSourceMaintained?: boolean;
+    public isAudioContextRunning?: boolean;
+    public hasMicrophoneStream?: boolean;
+    public isVadActive?: boolean;
+    public lastVadEvent?: VoiceActivityChange;
+    public lastVadFrameProcessedAt?: number;
+    public isConnected?: boolean;
+    public lastFrameProcessedAt?: number;
+    public vadWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated';
+    public lastVadWorkletFrameProcessedAt?: number;
+    public encoderWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated';
+    public lastEncoderWorkletFrameProcessedAt?: number;
 }
 
 const HEARTBEAT_INTERVAL = 2000; // ms
@@ -37,7 +37,7 @@ export class AudioRecorder {
     private readonly onReconnected: EventHandler<void>;
 
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
-    private chatId?: string = null;
+    private chatId?: string;
 
     public static async terminate(): Promise<void> {
         debugLog?.log(`-> terminate()`);
@@ -62,7 +62,7 @@ export class AudioRecorder {
     /** Called from Blazor */
     public async dispose(): Promise<void> {
         debugLog?.log(`-> dispose()`);
-        this.chatId = null;
+        this.chatId = undefined;
         if (this.onReconnected)
             BrowserInit.reconnectedEvents.remove(this.onReconnected);
         try {
@@ -102,7 +102,7 @@ export class AudioRecorder {
 
             if (!hasMicrophone || !hasPermission) {
                 // Requests microphone permission
-                let stream: MediaStream = null;
+                let stream: MediaStream | null = null;
                 try {
                     debugLog?.log(`requestPermission: detecting active tracks to stop`);
                     if (BrowserInfo.hostKind === 'MauiApp' && DeviceInfo.isIos ) {
@@ -112,6 +112,7 @@ export class AudioRecorder {
                     else {
                         // Better integration with native mobile audio pipeline - we are resetting to defaults
                         if ('audioSession' in navigator) {
+                            // @ts-ignore
                             navigator.audioSession['type'] = 'auto';
                         }
                         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -161,7 +162,7 @@ export class AudioRecorder {
         catch (e) {
             errorLog?.log(`startRecording: unhandled error:`, e);
             this.state = 'failed';
-            this.chatId = null;
+            this.chatId = undefined;
             throw e;
         }
         finally {
@@ -175,7 +176,7 @@ export class AudioRecorder {
     public async stopRecording(): Promise<void> {
         try {
             debugLog?.log(`-> stopRecording`);
-            this.chatId = null;
+            this.chatId = undefined;
             await opusMediaRecorder.stop();
         }
         catch (error) {

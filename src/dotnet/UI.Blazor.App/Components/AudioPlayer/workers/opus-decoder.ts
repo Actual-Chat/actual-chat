@@ -99,7 +99,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.processor.enqueue('end', false);
     }
 
-    public async releaseBuffer(buffer: ArrayBuffer, _rpcNoWait: RpcNoWait): Promise<void> {
+    public async releaseBuffer(buffer: ArrayBuffer, _rpcNoWait?: RpcNoWait): Promise<void> {
         if (buffer.byteLength <= AP.SAMPLES_PER_WINDOW * 4)
             this.bufferPool.release(buffer);
         else
@@ -126,7 +126,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
                 this.chunkTimeOffset += 20;
                 this.systemDecoder.decode(chunk);
             }
-            else {
+            else if (this.decoder) {
                 // typedViewSamples is a typed_memory_view to Decoder internal buffer - so you have to copy data
                 const typedViewSamples = this.decoder.decode(item);
                 if (typedViewSamples == null || typedViewSamples.length === 0) {

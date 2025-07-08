@@ -34,7 +34,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private skipSamples = 0;
     private playbackState: PlaybackState = 'paused';
     private bufferState: BufferState = 'ok';
-    private lastReportedState: FeederState = null;
+    private lastReportedState: FeederState;
     private isEnding = false;
     private bufferSizeToStartPlayback = AP.BUFFER_TO_PLAY_DURATION;
     private lastStarvingEventAt: number = 0;
@@ -54,7 +54,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         let result = buffer.samplesAvailable;
         for (let i = 0; i <  chunks.length; ++i) {
             const chunk = chunks.peekAt(i);
-            result += chunk.length;
+            result += chunk!.length;
         }
         return result;
     }
@@ -70,7 +70,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.playbackState === 'ended' || this.isEnding) {
             // Send buffer back
             void this.decoder.releaseBuffer(buffer, rpcNoWait);
-            return;
+            return ResolvedPromise.Void;
         }
 
         this.chunks.push(new Float32Array(buffer, offset, length));
@@ -81,7 +81,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     public pause(_noWait?: RpcNoWait): Promise<void> {
         if (this.playbackState === 'paused' || this.playbackState === 'ended')
-            return;
+            return ResolvedPromise.Void;
 
         debugLog?.log(`#${this.id}.pause`);
         this.playbackState = 'paused';
@@ -94,7 +94,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.skipSamples = preSkip;
 
         if (this.playbackState === 'playing')
-            return;
+            return ResolvedPromise.Void;
 
         debugLog?.log(`#${this.id}.resume`);
         this.playbackState = this.playbackState === 'ended'
