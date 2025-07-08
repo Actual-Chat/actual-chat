@@ -59,7 +59,7 @@ public class TranslatedTranscripts : ProcessorBase
         IAsyncEnumerable<TranscriptDiff> originalStream,
         CancellationToken cancellationToken)
     {
-        var streamId = GetTranslatedStreamId(originalStreamId, translationId.Language);
+        var streamId = StreamId.New(originalStreamId, translationId.Language);
         var worker = _activePublishers.GetOrAdd(streamId, PublisherFactory, (this, translationId, originalStream));
         // since ValueFactory in concurrent dictionary can run concurrently we start only single one
         worker.Start();
@@ -84,27 +84,9 @@ public class TranslatedTranscripts : ProcessorBase
         IAsyncEnumerable<TranscriptDiff> originalStream,
         CancellationToken cancellationToken)
     {
+        await CreateTranslation(translationId, streamId, cancellationToken).ConfigureAwait(false);
         var translationDiffs = Translate(translationId, originalStream, cancellationToken).Memoize(cancellationToken);
-        var publishTask = _translatedTranscripts.Publish(streamId, translationDiffs);
-
-        var translatedTranscripts = translationDiffs.Replay(cancellationToken);
-        var last = Transcript.Empty;
-        var lastOriginal = Transcript.Empty;
-        Translation? translation = null;
-        try {
-            await foreach (var translatedTranscriptDiff in translatedTranscripts.ConfigureAwait(false)) {
-                last += translatedTranscriptDiff.Translated;
-                lastOriginal += translatedTranscriptDiff.Original;
-                if (translation is not null || last.Text.IsNullOrWhiteSpace())
-                    continue;
-
-                await CreateTranslation(translationId, streamId, last.Text, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        finally {
-            await FinalizeTranslation(translationId, last.Text, lastOriginal.Text, cancellationToken).ConfigureAwait(false);
-        }
-        await publishTask.ConfigureAwait(false);
+        await _translatedTranscripts.Publish(streamId, translationDiffs).ConfigureAwait(false);
     }
 
     private async IAsyncEnumerable<TranslatedTranscriptDiff> Translate(
@@ -142,15 +124,13 @@ public class TranslatedTranscripts : ProcessorBase
             if (transcriptDiff.IsStable)
                 stableTranslatedTranscript = translatedTranscript with { IsStable = true };
         }
+        // Update the final translation
+        await FinalizeTranslation(translationId, stableTranslatedTranscript.Text, stableTranscript.Text, cancellationToken).ConfigureAwait(false);
     }
-
-    private static StreamId GetTranslatedStreamId(StreamId streamId, Language language)
-        => StreamId.New(streamId.NodeRef, $"{streamId.LocalId}{language.Value.OrdinalReplace("-", "")}");
 
     private Task CreateTranslation(
         TranslationId translationId,
         StreamId streamId,
-        string translatedText,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("Creating streaming translation #{TranslationId}", translationId);
@@ -158,7 +138,7 @@ public class TranslatedTranscripts : ProcessorBase
             null,
             Change.Create(new Translation(translationId) {
                 StreamId = streamId.Value,
-                Content = translatedText,
+                Content = "",
                 TargetLanguage = translationId.Language,
             }));
         return Commander.Call(cmd, cancellationToken)

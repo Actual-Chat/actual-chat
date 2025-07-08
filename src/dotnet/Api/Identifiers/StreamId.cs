@@ -40,6 +40,9 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
     public static StreamId New(NodeRef nodeRef, string localId)
         => new(Format(nodeRef, localId), nodeRef, localId);
 
+    public static StreamId New(StreamId streamId, Language language)
+        => New(streamId.NodeRef, $"{streamId.LocalId}{language.Value.OrdinalReplace("-", "")}"); // Replace Delimiter to avoid issues with parsing
+
     private StreamId(string value, NodeRef nodeRef, string localId) : base(value)
     {
         NodeRef = nodeRef;
