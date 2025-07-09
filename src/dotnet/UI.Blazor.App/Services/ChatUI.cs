@@ -19,12 +19,12 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly StoredState<ChatId?> _selectedChatId;
     private readonly MutableState<ChatViewItemVisibility> _itemVisibility;
     private readonly MutableState<PlaceId?> _selectedPlaceId;
+    private readonly StoredState<string> _selectedNavbarGroupId;
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
     private readonly MutableState<TextEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
     private readonly SyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId? _searchEnabledChatId;
-    private readonly AsyncTaskMethodBuilder _whenActivePlaceRestored = AsyncTaskMethodBuilderExt.New();
     private List<ChatId>? _pendingSelectedChatIds = new();
 
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
@@ -57,7 +57,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenReady => _selectedChatId.WhenRead;
-    public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
     public IMutableState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
 
     public static event Action<(ChatId, long)> OnReadPositionUpdated = _ => { };
@@ -75,6 +74,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _selectedPlaceId = StateFactory.NewMutable(
             (PlaceId?)null,
             StateCategories.Get(type, nameof(SelectedPlaceId)));
+        _selectedNavbarGroupId = StateFactory.NewKvasStored<string>(
+            new (LocalSettings, "SelectedNavbarGroupId") {
+                InitialValue = "",
+            });
         _selectedChatIds = StateFactory.NewKvasStored<IImmutableDictionary<string, ChatId>>(
             new (LocalSettings, nameof(SelectedChatIds)) {
                 InitialValue = ImmutableDictionary<string, ChatId>.Empty,
@@ -611,6 +614,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {
+        _selectedNavbarGroupId.Value = e.Id;
         var placeId = (PlaceId?)null;
         var isChatOrPlace = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats)
             || NavbarUI.IsPlaceSelected(out placeId);
@@ -743,5 +747,14 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var chats = await ChatListUI.List(placeId, chatListSettings, default).ConfigureAwait(false);
             return chats.Count > 0 ? chats[0].Id : null;
         }
+    }
+
+    public async Task RestoreNavbarSelectedGroup()
+    {
+        await _selectedNavbarGroupId.WhenRead.ConfigureAwait(false);
+        var groupId = _selectedNavbarGroupId.Value;
+        NavbarUI.InitSelectedGroup(groupId);
+        if (NavbarUI.IsPlaceSelected(out var placeId))
+            SelectPlaceInternal(placeId);
     }
 }
