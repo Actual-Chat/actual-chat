@@ -55,6 +55,7 @@ public sealed class AppScopedServiceStarter
             // Start AccountUI & UIEventHub
             _ = Hub.AccountUI; // Touch
             _ = Hub.UIEventHub; // Touch
+            _ = Hub.ChatUI; // Touch
 
             // Awaiting completion of initialization tasks.
             // NOTE(AY): It's fine to use .ConfigureAwait(false) below this point,
@@ -77,6 +78,7 @@ public sealed class AppScopedServiceStarter
 
             // Finishing with AccountUI
             await Hub.AccountUI.WhenReady.ConfigureAwait(false);
+            await Hub.ChatUI.RestoreNavbarSelectedGroup().ConfigureAwait(false);
 
             // Finishing with auto-navigation & History init
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);

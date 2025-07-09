@@ -129,7 +129,6 @@ public partial class ChatUI
     private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
     {
         await WhenReady.ConfigureAwait(false);
-        _ = RestoreSelectedNavbarGroup(cancellationToken);
         _ = SynchronizeSelectedChatIds();
     }
 
@@ -145,58 +144,6 @@ public partial class ChatUI
                 _selectedChatIds.Value = selectedChatIds;
             }
             _pendingSelectedChatIds = null;
-        }
-    }
-
-    private async Task RestoreSelectedNavbarGroup(CancellationToken cancellationToken)
-    {
-        try {
-            var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            if (selectedChatId is null)
-                return;
-
-            var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null)
-                return;
-
-            var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
-            var isPlaceSelected = NavbarUI.IsPlaceSelected(out var selectedPlaceId);
-            var isPeerChat = selectedChatId.Kind == ChatKind.Peer;
-            var selectedAsPlaceChatId = selectedChatId as PlaceChatId;
-            var isChatPlaceSelected = selectedAsPlaceChatId is not null
-                && isPlaceSelected
-                && Equals(selectedPlaceId, selectedAsPlaceChatId.PlaceId);
-            if (!isChatsSelected && !(isPeerChat && isPlaceSelected) && !isChatPlaceSelected) {
-                var navbarSettings = await NavbarSettings.Use(cancellationToken).ConfigureAwait(false);
-                if (navbarSettings.PinnedChats.Contains(selectedChatId)) {
-                    await Hub.Dispatcher.InvokeAsync(() => {
-                            Hub.NavbarUI.SelectGroup(selectedChatId.GetNavbarGroupId(), false);
-                        })
-                        .ConfigureAwait(false);
-                    return;
-                }
-            }
-
-            if (selectedAsPlaceChatId is null)
-                return;
-
-            var place = await Hub.Places.Get(Session, selectedAsPlaceChatId.PlaceId, cancellationToken).ConfigureAwait(false);
-            if (place == null)
-                return;
-
-            await Hub.Dispatcher.InvokeAsync(() => {
-                    Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), false);
-                })
-                .ConfigureAwait(false);
-        }
-        catch (Exception ex) {
-            Log.LogError(ex, "RestoreSelectedPlace failed");
-        }
-        finally {
-            _whenActivePlaceRestored.TrySetResult();
-            await Hub.Dispatcher
-                .InvokeAsync(() => ChatListUI.GetPlaceChatListSettings(SelectedPlaceId.Value))
-                .ConfigureAwait(false);
         }
     }
 

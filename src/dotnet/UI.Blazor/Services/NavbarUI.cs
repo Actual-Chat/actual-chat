@@ -16,6 +16,15 @@ public class NavbarUI(IServiceProvider services)
 
     // NOTE(AY): Any public member of this type can be used only from Blazor Dispatcher's thread
 
+    public void InitSelectedGroup(string id)
+    {
+        Log.LogDebug("Init selected group id '{Id}', prev selected group id is '{PrevId}'", id, SelectedGroupId);
+        if (!SelectedGroupId.IsNullOrEmpty())
+            return;
+
+        SelectedGroupId = id;
+    }
+
     public void SelectGroup(string id, bool isUserAction)
     {
         var group = _groups.FirstOrDefault(c => OrdinalEquals(c.Id, id));
