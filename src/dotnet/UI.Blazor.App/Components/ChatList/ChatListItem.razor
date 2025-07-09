@@ -88,13 +88,13 @@
                 @if (audioState?.IsRecording == true) {
                     <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
                 }
-                <div class="listen-wrapper">
-                    <ChatListListenToggle AudioState="@audioState" Class="ending-btn"/>
+                <div class="listen-wrapper ending-btn">
+                    <ChatListListenToggle AudioState="@audioState"/>
                 </div>
             }
             @if (hasMenu) {
                 <div
-                    class="menu"
+                    class="menu ending-btn"
                     data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
                     data-menu-trigger="@MenuTrigger.Primary"
                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">

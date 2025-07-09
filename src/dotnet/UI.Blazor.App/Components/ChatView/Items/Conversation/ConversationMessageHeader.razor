@@ -5,15 +5,15 @@
 
 <div class="@cls">
     <div class="bg-wrapper">
-        <div class="c-title" @onclick="TitleClick">
-            @Title
-        </div>
         <div class="c-ending @_loadingCls" @onclick="OnMessageCountClick">
             <div class="c-content">
                 <i class="icon-message-stars"></i>
                 <span class="c-message-count">@MessageCount</span>
                 <i class="icon-chevron-compact-down rotate-icon"></i>
             </div>
+        </div>
+        <div class="c-title" @onclick="TitleClick">
+            @Title
         </div>
     </div>
 </div>

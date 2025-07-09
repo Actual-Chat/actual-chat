@@ -639,8 +639,8 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply h-fit w-fit;
 }
 
-.chat-view.virtual-list .c-virtual-container div.item > .chat-message-group > .c-left > .avatar-badge {
-    @apply top-14;
+.chat-view.virtual-list .c-virtual-container div.group > .chat-message-group > .c-left > .avatar-badge {
+    @apply top-20 md:top-16;
 }
 
 .chat-view.virtual-list .c-virtual-container .chat-message-group > .c-group-items {
@@ -649,5 +649,5 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 }
 
 .chat-view.virtual-list .c-virtual-container div.item .chat-message > .c-author-badge .avatar-badge {
-    @apply top-14;
+    @apply top-20 md:top-16;
 }

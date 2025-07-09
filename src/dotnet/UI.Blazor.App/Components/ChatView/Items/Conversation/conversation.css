@@ -22,7 +22,7 @@
 
 .conversation-header-short .bg-wrapper,
 .conversation-header .bg-wrapper {
-    @apply flex-1 flex-x items-center justify-between;
+    @apply block;
     @apply min-h-14;
     @apply p-4;
     @apply rounded-t-lg;
@@ -32,13 +32,13 @@
 }
 .conversation-header-short .c-title,
 .conversation-header .c-title {
-    @apply max-w-3/4;
-    @apply text-text-1 text-02;
+    @apply text-text-1 text-02 leading-4;
     @apply cursor-pointer;
 }
 .conversation-header-short .c-ending,
 .conversation-header .c-ending {
     @apply relative;
+    @apply float-end;
     @apply flex-none flex-x self-start gap-x-0.5;
     @apply p-px;
     @apply rounded-full;
@@ -73,7 +73,7 @@
 .conversation-header .c-ending .c-content {
     @apply relative z-10;
     @apply flex-x items-center gap-x-0.5;
-    @apply p-1;
+    @apply pl-0.5;
     @apply rounded-full;
 }
 .conversation-header-short .c-ending.loading-conversation .c-content,
@@ -101,6 +101,9 @@
 .conversation-footer-short,
 .conversation-footer {
     @apply h-14;
+}
+.conversation-footer-short {
+    @apply w-full;
 }
 .conversation-footer {
     @apply mx-2 my-2;
@@ -174,7 +177,9 @@
     font-size: 0.75rem;
 }
 .conversation-header-short .btn-h i,
-.conversation-footer-short .btn-h i {
+.conversation-header .btn-h i,
+.conversation-footer-short .btn-h i,
+.conversation-footer .btn-h i {
     @apply text-xl;
 }
 
