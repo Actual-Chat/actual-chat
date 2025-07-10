@@ -17,7 +17,8 @@
     StatusText="@StatusText"
     Click="@_onClickCallback"
     BadgeContent="@badgeContent"
-    StatusContent="@statusContent">
+    StatusContent="@statusContent"
+    ShowBio="@ShowBio">
 </AvatarBadge>
 
 @code {
@@ -29,6 +30,7 @@
     [Parameter] public bool ShowPresence { get; set; }
     [Parameter] public bool ShowPresenceText { get; set; }
     [Parameter] public string? StatusText { get; set; }
+    [Parameter] public bool ShowBio { get; set; }
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback(OnAvatarBadgeClick);
