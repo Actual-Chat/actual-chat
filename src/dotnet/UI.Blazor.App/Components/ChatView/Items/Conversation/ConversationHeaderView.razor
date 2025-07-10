@@ -1,26 +1,51 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ConversationHeaderView.Model>
 @{
+    var m = State.Value;
     var conversation = Header.Conversation!;
-    var title = conversation.Title;
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
 }
 
 <ConversationMessageHeader
-    Title="@title"
+    Title="@m.Title"
     MessageCount="@messageCount"
     MessageCountClick="@ToggleShowMessage"
     StartsAt="@startsAt"
     IsSeparated="true"/>
 
 @code {
-    private AppUIHub Hub => ChatContext.Hub;
-    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     private ChatUI ChatUI => Hub.ChatUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationHeader Header { get; set; } = null!;
 
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        var conversation = Header.Conversation!;
+        var title = conversation.Title;
+        return ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(TranslatedText.From(title)),
+                Category = GetStateCategory(t),
+            });
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var conversation = Header.Conversation!;
+        var conversationId = conversation.Id;
+        var title = conversation.Title;
+        var mustTranslate = await TranslationUI.MustTranslate(conversation, cancellationToken).ConfigureAwait(false);
+        if (!mustTranslate)
+            return new Model(TranslatedText.From(title));
+
+        var titleTranslation = await TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken).ConfigureAwait(false);
+        return new Model(TranslatedText.From(title, titleTranslation));
+    }
+
     private void ToggleShowMessage()
         => ChatUI.ToggleExpandConversation(Header.Conversation!.Id);
+
+    // Nested types
+    public record Model(TranslatedText Title);
 }

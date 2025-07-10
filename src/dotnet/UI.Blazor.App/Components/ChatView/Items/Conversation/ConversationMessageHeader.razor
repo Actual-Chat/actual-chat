@@ -13,9 +13,10 @@
                 <i class="icon-chevron-compact-down rotate-icon"></i>
             </div>
         </div>
-        <div class="c-title" @onclick="TitleClick">
+        <div class="c-title">
             <span class="c-date">@startDate </span>
-            @Title
+            @Title.Text
+            @TranslationFragments.TranslationMark(Title.State)
         </div>
     </div>
 </div>
@@ -26,12 +27,11 @@
     [Inject] private UIHub Hub { get; set; } = null!;
     private TuneUI TuneUI => Hub.TuneUI;
 
-    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public TranslatedText Title { get; set; } = TranslatedText.None;
     [Parameter] public int MessageCount { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public EventCallback MessageCountClick { get; set; }
-    [Parameter] public EventCallback TitleClick { get; set; }
 
     private void OnMessageCountClick() {
         _ = TuneUI.Play(Tune.ClickButton);

@@ -18,16 +18,7 @@
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
     RenderFragment statusFragment = (__builder) => {
-        @if (m.Translation != TranslationState.None) {
-            <span class="translation-marker entry-marker">
-                @if (m.Translation == TranslationState.Translating) {
-                    <translation-svg size="4" isActive="true"/>
-                } else {
-                    <translation-svg size="4"/>
-                }
-            </span>
-        }
-
+        @TranslationFragments.TranslationMark(m.Translation)
         @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
             <ChatMessageSendingStatus
                 Status="@ChatMessageSendingStatus.MessageStatus.Unread"
@@ -60,9 +51,7 @@
                     <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
                 }
                 @if (m.Translation != TranslationState.None) {
-                    <span class="translation-marker entry-marker">
-                        <translation-svg size="4" isActive="true"/>
-                    </span>
+                    @TranslationFragments.TranslationMark(TranslationState.Translating);
                 }
             }
         </span>
@@ -261,11 +250,5 @@
         bool IsStreaming,
         bool IsTranslating) {
         public static readonly StreamingModel None = new("", "", "", false, false);
-    }
-
-    public enum TranslationState  {
-        None,
-        Translating,
-        Translated,
     }
 }

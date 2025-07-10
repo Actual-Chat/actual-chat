@@ -20,7 +20,7 @@
                 StartsAt="@startsAt"
                 MessageCountClick="@ToggleShowMessage"/>
             <div class="c-short">
-                <MarkupView Markup="@m.Description" />
+                @TranslationFragments.TranslatedMarkupWithMark(m.Description)
                 @if (!_isOpen) {
                     <span class="show-more-btn" @onclick="@ToggleDetails"> Show more</span>
                 }
@@ -29,7 +29,7 @@
         @if (_isOpen) {
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
-                    <MarkupView Markup="@m.Summary" />
+                    @TranslationFragments.TranslatedMarkupWithMark(m.Summary)
                     <span class="show-more-btn" @onclick="@ToggleDetails"> Show less</span>
                 </div>
             </div>
@@ -63,7 +63,10 @@
         var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
         return ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(title, descriptionMarkup, summaryMarkup),
+                InitialValue = new Model(
+                    TranslatedText.From(title),
+                    TranslatedMarkup.From(descriptionMarkup),
+                    TranslatedMarkup.From(summaryMarkup)),
                 Category = GetStateCategory(t),
             });
     }
@@ -86,7 +89,10 @@
         var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
         var mustTranslate = await TranslationUI.MustTranslate(conversation, cancellationToken).ConfigureAwait(false);
         if (!mustTranslate)
-            return new Model(title, descriptionMarkup, summaryMarkup);
+            return new Model(
+                TranslatedText.From(title),
+                TranslatedMarkup.From(descriptionMarkup),
+                TranslatedMarkup.From(summaryMarkup));
 
         var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken);
         var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, cancellationToken);
@@ -95,13 +101,10 @@
         var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
         var summaryTranslation = await summaryTranslationTask.ConfigureAwait(false);
         await Task.WhenAll(titleTranslationTask, descriptionTranslationTask, summaryTranslationTask).ConfigureAwait(false);
-        if (titleTranslation is not null && !titleTranslation.MatchesOriginal(conversation.Title))
-            title = titleTranslation.Content;
-        if (descriptionTranslation is not null && !descriptionTranslation.MatchesOriginal(conversation.Description))
-            descriptionMarkup = ChatMarkupHub.Parser.Parse(descriptionTranslation.Content);
-        if (summaryTranslation is not null && !summaryTranslation.MatchesOriginal(conversation.Summary))
-            summaryMarkup = ChatMarkupHub.Parser.Parse(summaryTranslation.Content);
-        return new Model(title, descriptionMarkup, summaryMarkup);
+        var translatedTitle = TranslatedText.From(conversation.Title, titleTranslation);
+        var translatedDescription = TranslatedMarkup.From(conversation.Description, descriptionTranslation, ChatMarkupHub, descriptionMarkup);
+        var translatedSummary = TranslatedMarkup.From(conversation.Summary, summaryTranslation, ChatMarkupHub, summaryMarkup);
+        return new Model(translatedTitle, translatedDescription, translatedSummary);
     }
 
     private void ToggleShowMessage()
@@ -121,19 +124,19 @@
         var m = State.Value;
         CancellationToken cancellationToken = default;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        sb.AppendLine(m.Title);
+        sb.AppendLine(m.Title.Text);
         sb.AppendLine();
-        var description = await ChatMarkupHub.ApplyMentionNamer(m.Description, cancellationToken).ConfigureAwait(false);
+        var description = await ChatMarkupHub.ApplyMentionNamer(m.Description.Markup, cancellationToken).ConfigureAwait(false);
         sb.AppendLine(description.ToReadableText());
         sb.AppendLine();
-        var summary = await ChatMarkupHub.ApplyMentionNamer(m.Summary, cancellationToken).ConfigureAwait(false);
+        var summary = await ChatMarkupHub.ApplyMentionNamer(m.Summary.Markup, cancellationToken).ConfigureAwait(false);
         sb.AppendLine(summary.ToReadableText());
         return sb.ToStringAndRelease();
     }
 
     // Nested types
     public record Model(
-        string Title,
-        Markup Description,
-        Markup Summary);
+        TranslatedText Title,
+        TranslatedMarkup Description,
+        TranslatedMarkup Summary);
 }

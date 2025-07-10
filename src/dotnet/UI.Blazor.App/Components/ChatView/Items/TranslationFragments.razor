@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@code {
+    @* '__builder' is predefined name used by RazorSourceGenerator *@
+    public static RenderFragment<TranslationState> TranslationMark = state => __builder =>
+    {
+        @if (state == TranslationState.None)
+            return;
+        var isActive = state == TranslationState.Translating;
+        <span class="translation-marker entry-marker">
+            <translation-svg size="4" isActive="@isActive" />
+        </span>
+    };
+
+    @* '__builder' is predefined name used by RazorSourceGenerator *@
+    public static RenderFragment<TranslatedMarkup> TranslatedMarkupWithMark = state => __builder => {
+        var statusFragment = TranslationMark(state.State);
+        MarkupWithState((state.Markup, statusFragment))(__builder);
+    };
+
+    @* '__builder' is predefined name used by RazorSourceGenerator *@
+    public static RenderFragment<(Markup, RenderFragment)> MarkupWithState = state => __builder => {
+        var markup = state.Item1;
+        var statusFragment = state.Item2;
+        var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
+        if (isSimpleMarkup) {
+            <CascadingValue Value="@statusFragment" IsFixed="true">
+                <MarkupView Markup="@markup"/>
+            </CascadingValue>
+        } else {
+            <MarkupView Markup="@markup"/>
+            @statusFragment
+        }
+    };
+}
