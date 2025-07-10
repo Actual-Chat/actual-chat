@@ -4,6 +4,8 @@
     var chat = Message.Chat;
     var m = State.Value;
     var isLoading = m is null;
+    var title = m?.Title ?? TranslatedText.From(chat.Title);
+    var description = m?.Description ?? TranslatedText.From(chat.Description);
     var createdAt = DateTimeConverter.ToLocalTime(chat.CreatedAt.ToDateTime());
     var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now.ToDateTime());
     var daysDelta = (now.Date - createdAt.Date).Days;
@@ -23,7 +25,8 @@
         <div class="c-left">
             <span class="c-text">
                 <span class="c-hash">#</span>
-                @(m?.Title ?? chat.Title)
+                @title.Text
+                @TranslationFragments.TranslationMark(title.State)
             </span>
         </div>
         <div class="c-right" @onclick="@OnGoToTheThread">
@@ -34,7 +37,10 @@
             <i class="icon-chevron-right"></i>
         </div>
     </div>
-    <div class="c-short">@(m?.Description ?? chat.Description)</div>
+    <div class="c-short">
+        @description.Text
+        @TranslationFragments.TranslationMark(description.State)
+    </div>
     <Divider/>
     <div class="c-last-messages">
         @if (isLoading) {
@@ -142,20 +148,17 @@
         }
         var threadStat = await ChatThreads.GetThreadStat(Session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var title = chat.Title;
-        var description = chat.Description;
+        var title = TranslatedText.From(chat.Title);
+        var description = TranslatedText.From(chat.Description);
         var mustTranslate = await TranslationUI.MustTranslate(chat, cancellationToken).ConfigureAwait(false);
         if (mustTranslate) {
-            var threadChatId = (ThreadChatId)chat.Id;
-            var titleTranslationTask = TranslationUI.Get(threadChatId, ThreadTranslationIdKind.Title, cancellationToken);
-            var descriptionTranslationTask = TranslationUI.Get(threadChatId, ThreadTranslationIdKind.Description, cancellationToken);
+            var titleTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Title, cancellationToken);
+            var descriptionTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Description, cancellationToken);
             await Task.WhenAll(titleTranslationTask, descriptionTranslationTask).ConfigureAwait(false);
             var titleTranslation = await titleTranslationTask.ConfigureAwait(false);
-            if (titleTranslation is not null && !titleTranslation.MatchesOriginal(chat.Title))
-                title = titleTranslation.Content;
             var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
-            if (descriptionTranslation is not null && !descriptionTranslation.MatchesOriginal(chat.Description))
-                description = descriptionTranslation.Content;
+            title = TranslatedText.From(chat.Title, titleTranslation);
+            description = TranslatedText.From(chat.Description, descriptionTranslation);
         }
         return new Model(title,  description, chatEntries, threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
     }
@@ -169,10 +172,10 @@
     }
 
     private string GetText() {
-        var threadTitle = Message.Chat.Title;
+        var m = State.Value;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("Thread \"");
-        sb.Append(threadTitle);
+        sb.Append(m?.Title.Text ?? Message.Chat.Title);
         sb.Append("\" on Actual Chat: ");
         sb.Append(UrlMapper.ToAbsolute(Links.Chat(Message.Chat.Id)));
         return sb.ToStringAndRelease();
@@ -180,8 +183,8 @@
 
     // Nested types
     public record Model(
-        string Title,
-        string Description,
+        TranslatedText Title,
+        TranslatedText Description,
         IReadOnlyList<(ChatEntry, Markup)> Entries,
         AuthorId[] TopAuthorIds,
         int AuthorCount,
