@@ -582,43 +582,51 @@ public static class AsyncEnumerableExt
         MomentClock clock,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        // I don't care much about optimization with two value tasks here
+        // (MoveNextAsync and PeriodicTimer.WaitForNextTickAsync) as we still create new lists
         bufferDuration = bufferDuration.Positive();
         var buffer = new List<TSource>();
-        // ReSharper disable once NotDisposedResource
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
         await using var _ = enumerator.ConfigureAwait(false);
-        var moveNextTask = enumerator.MoveNextAsync();
         var delayTask = clock.Delay(bufferDuration, cancellationToken);
         while (true) {
-            if (buffer.Count > 0)
-                await Task.WhenAny(moveNextTask.AsTask(), delayTask).ConfigureAwait(false);
-            else
-                await moveNextTask.ConfigureAwait(false);
-
-            if (moveNextTask.IsCompleted) {
-#pragma warning disable MA0004
-                var hasNext = await moveNextTask.ConfigureAwait(false);
-#pragma warning restore MA0004
-                if (hasNext) {
+            var moveNextValueTask = enumerator.MoveNextAsync();
+            if (buffer.Count == 0) {
+                if (await moveNextValueTask.ConfigureAwait(false)) {
                     buffer.Add(enumerator.Current);
-                    moveNextTask = enumerator.MoveNextAsync();
+                    if (delayTask.IsCompleted) {
+                        // Keep this block - it's not a duplicate of the similar one below - because we want to await the value task once
+                        // The delay has completed, so we yield the current buffer.
+                        yield return buffer;
+                        buffer = new List<TSource>();
+                        delayTask = clock.Delay(bufferDuration, cancellationToken);
+                    }
+                    continue;
                 }
-                else {
-                    yield return buffer;
-
-                    break;
-                }
+                yield break;
             }
 
-            if (delayTask.IsCompleted) {
-#pragma warning disable MA0004
-                await delayTask.ConfigureAwait(false); // Will throw an exception on cancellation
-#pragma warning restore MA0004
-                if (buffer.Count > 0) {
-                    yield return buffer;
+            var moveNextTask = moveNextValueTask.AsTask();
+            var completedTask = await Task.WhenAny(moveNextTask, delayTask).ConfigureAwait(false);
+            if (completedTask == delayTask) {
+                yield return buffer;
 
-                    buffer = new List<TSource>();
-                    delayTask = clock.Delay(bufferDuration, cancellationToken);
+                await delayTask.ConfigureAwait(false); // Propagate any exceptions from the delay.
+                buffer = new List<TSource>(); // Start a new buffer.
+                delayTask = clock.Delay(bufferDuration, cancellationToken); // Restart the delay.
+
+                // Now we must wait for the pending moveNextTask to complete.
+                if (await moveNextTask.ConfigureAwait(false))
+                    buffer.Add(enumerator.Current);
+                else
+                    yield break;
+            }
+            else {
+                if (await moveNextTask.ConfigureAwait(false)) // Propagate any exceptions from the source.
+                    buffer.Add(enumerator.Current);
+                else {
+                    yield return buffer;
+                    yield break;
                 }
             }
         }

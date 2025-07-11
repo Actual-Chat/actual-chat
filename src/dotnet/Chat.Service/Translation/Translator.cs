@@ -1,4 +1,5 @@
 using ActualChat.Chat.Module;
+using ActualLab.Diagnostics;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -29,6 +30,10 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
     [field: AllowNull, MaybeNull]
     private IPromptTemplate PromptTemplate => field ??= BuildPromptTemplate();
 
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Services.LogFor(GetType());
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
+
     public async Task<string> Translate(
         string textToTranslate,
         Language targetLanguage,
@@ -40,9 +45,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             return textToTranslate;
 
         var arguments = new KernelArguments {
-            { "TargetLanguage", $"{targetLanguage.Id} ({targetLanguage.Title})" },
-            { "ContextSeparator", Settings.Translation.ContextSeparator },
-            { "NoTranslationNeeded", Constants.Chat.NoTranslationNeededText },
+            { "TargetLanguage", $"{targetLanguage.Title}" },
         };
         var systemMessage = await PromptTemplate
             .RenderAsync(Kernel, arguments, cancellationToken)
@@ -50,15 +53,17 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
         var text =
             $"""
-             {context}.
-
-             {Settings.Translation.ContextSeparator}
+             {context}
+             [TRANSLATE_BELOW]
              {textToTranslate}
              """;
 
         var executionSettings = new OpenAIPromptExecutionSettings {
-            Temperature = 0,
+            Temperature = 0.1,
             ChatSystemPrompt = systemMessage.Trim(),
+            MaxTokens = textToTranslate.Length * 8, // estimate for the response length
+            FrequencyPenalty = 1.0,
+            ResponseFormat = "text",
         };
         var chatHistory = new ChatHistory();
         chatHistory.AddUserMessage(text);
@@ -71,6 +76,9 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 cancellationToken)
             .ConfigureAwait(false);
         var result = response.Content ?? "";
+
+        DebugLog?.LogDebug("Translate: {Content} = {TranslatedContent}", text, result);
+
         return OrdinalIgnoreCaseEquals(result, Constants.Chat.NoTranslationNeededText)
             ? textToTranslate // If the translation is not needed, return the original text
             : result;
@@ -83,14 +91,6 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             InputVariables = [
                 new InputVariable {
                     Name = "TargetLanguage",
-                    IsRequired = true,
-                },
-                new InputVariable {
-                    Name = "ContextSeparator",
-                    IsRequired = true,
-                },
-                new InputVariable {
-                    Name = "NoTranslationNeeded",
                     IsRequired = true,
                 },
             ],

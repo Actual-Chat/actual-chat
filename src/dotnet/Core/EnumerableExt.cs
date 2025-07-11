@@ -344,6 +344,18 @@ public static class EnumerableExt
         }
     }
 
+    public static IEnumerable<TResult> Scan<TSource, TResult>(
+        this IEnumerable<TSource> source,
+        Func<TResult, TSource, TResult> accumulator,
+        TResult seed)
+    {
+        var current = seed;
+        foreach (var item in source) {
+            current = accumulator(current, item);
+            yield return current;
+        }
+    }
+
     // Nested types
 
     private static IEnumerable<T> ShuffleIterator<T>(this IEnumerable<T> source, Random random)
