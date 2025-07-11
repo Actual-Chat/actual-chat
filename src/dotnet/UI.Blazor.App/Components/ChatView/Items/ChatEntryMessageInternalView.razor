@@ -12,7 +12,7 @@
     _rendered = m;
     var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
     // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
-    //     message.Entry.Id, m.IsStreaming, m.IsTranslated);
+    //     message.Entry.Id, m.IsStreaming, m.Translation);
 
 
     // Should be named __builder
@@ -146,6 +146,17 @@
                 .ToTranscripts()
                 .Throttle(TimeSpan.FromMilliseconds(320), cancellationToken);
             var lastText = "";
+            if (isTranslation) {
+                // Initial state for translation
+                await Dispatcher.InvokeSafeAsync(() => {
+                    StreamingState.Value = new(
+                        RetainedText: "",
+                        ChangedText: "",
+                        AnimatedText: "",
+                        true,
+                        isTranslation);
+                }, Log).ConfigureAwait(false);
+            }
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;
                 var retainedLength = lastText.GetCommonPrefixLength(text);
@@ -200,38 +211,37 @@
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
             return _rendered ?? new Model(markup, message.Entry, TranslationState.None, StreamingModel.None);
         }
-        var isStreaming = entry.IsStreaming || await TranslationUI.IsStreaming(entry, cancellationToken).ConfigureAwait(false);
-
-        // If we're not streaming, handle possible translation
-        if (!isStreaming) {
-            var mustTranslate = await TranslationUI.MustTranslate(entry, false, cancellationToken).ConfigureAwait(false);
-            var hasTranslationChanged = isRenderedTranslated != mustTranslate;
-            var hasStreamingChanged = isRenderedStreaming != isStreaming;
-            if (!renderedEntry.VersionEquals(entry) || hasTranslationChanged || hasStreamingChanged)
-                markup = await ChatMarkupHub.GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
-
-            if (!mustTranslate)
-                return new(markup, entry, TranslationState.None, StreamingModel.None);
-
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
-            if (translation is null)
-                return new(markup, entry, TranslationState.Translating, StreamingModel.None);
-
-            if (translation.MatchesOriginal(entry.Content))
-                return new(markup, entry, TranslationState.None, StreamingModel.None);
-
-            var translatedMarkup = entry.HasMediaEntry
-                ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
-                : MarkupParser.Parse(translation.Content);
-
-            return new(translatedMarkup, entry, TranslationState.Translated, StreamingModel.None);
+        var isStreaming = entry.IsStreaming || StreamingState.Value.IsStreaming;
+        if (isStreaming) {
+            var streamingState = await StreamingState.Use(cancellationToken).ConfigureAwait(false);
+            var translationState = streamingState.IsTranslating
+                ? TranslationState.Translating
+                : TranslationState.None;
+            return new (markup, entry, translationState, streamingState);
         }
 
-        var streamingState = await StreamingState.Use(cancellationToken).ConfigureAwait(false);
-        var translationState = streamingState.IsTranslating
-            ? TranslationState.Translating
-            : TranslationState.None;
-        return new (markup, entry, translationState, streamingState);
+        // If we're not streaming, handle possible translation
+        var mustTranslate = await TranslationUI.MustTranslate(entry, false, cancellationToken).ConfigureAwait(false);
+        var hasTranslationChanged = isRenderedTranslated != mustTranslate;
+        var hasStreamingChanged = isRenderedStreaming != isStreaming;
+        if (!renderedEntry.VersionEquals(entry) || hasTranslationChanged || hasStreamingChanged)
+            markup = await ChatMarkupHub.GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
+
+        if (!mustTranslate)
+            return new(markup, entry, TranslationState.None, StreamingModel.None);
+
+        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+        if (translation is null)
+            return new(markup, entry, TranslationState.Translating, StreamingModel.None);
+
+        if (translation.MatchesOriginal(entry.Content))
+            return new(markup, entry, TranslationState.None, StreamingModel.None);
+
+        var translatedMarkup = entry.HasMediaEntry
+            ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
+            : MarkupParser.Parse(translation.Content);
+
+        return new(translatedMarkup, entry, TranslationState.Translated, StreamingModel.None);
     }
 
     // Nested types

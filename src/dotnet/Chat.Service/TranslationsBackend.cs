@@ -3,6 +3,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Queues;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
@@ -149,8 +150,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var version = ignoreVersion
             ? (long?)null
             : translation.Version;
-        var cmd = new TranslationsBackend_Change(id, version, Change.Upsert(translation));
-        return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        try {
+            var cmd = new TranslationsBackend_Change(id, version, Change.Upsert(translation));
+            return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        }
+        catch (VersionMismatchException) {
+            // Ignore version mismatch if already translated
+        }
+        return await Get(id, cancellationToken).ConfigureAwait(false);
     }
 
     // protected methods

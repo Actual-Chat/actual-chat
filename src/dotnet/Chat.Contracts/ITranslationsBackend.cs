@@ -32,7 +32,7 @@ public sealed partial record TranslationsBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Translate(
     [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
-    [property: DataMember, MemoryPackOrder(1)] bool IgnoreVersion
+    [property: DataMember, MemoryPackOrder(1)] bool OverwriteIfVersionMismatch
 ) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationId>, IHasUuid
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

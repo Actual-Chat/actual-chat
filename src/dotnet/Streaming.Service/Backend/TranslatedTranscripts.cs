@@ -159,6 +159,9 @@ public class TranslatedTranscripts : ProcessorBase
                     // Enqueue the translation command to retranslate full finalized transcript with larger context and model
                     var cmd = new TranslationsBackend_Translate(translationId, true);
                     await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
+
+                    // delay to ensure ITranslationsBackend.Get() will return the finalized translation
+                    await Task.Delay(TranslateThrottleDelay * 2, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex2) {
                     if (error == null)
