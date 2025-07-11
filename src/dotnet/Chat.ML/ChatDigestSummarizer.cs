@@ -1,4 +1,6 @@
 using ActualChat.AI;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace ActualChat.Chat.ML;
 
@@ -9,31 +11,48 @@ public interface IChatDigestSummarizer
         CancellationToken cancellationToken);
 }
 
-internal class ChatDigestSummarizer(
-    IChatDialogFormatter chatDialogFormatter,
-    IPromptHelpers promptHelpers,
-    IAnthropicClient anthropicClient,
-    ILogger<ChatDigestSummarizer> log) : IChatDigestSummarizer
+internal class ChatDigestSummarizer(IServiceProvider services) : IChatDigestSummarizer
 {
+    public const string ServiceKey = ConversationSummarizer.ServiceKey;
+
+    [field: AllowNull, MaybeNull]
+    private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
+    [field: AllowNull, MaybeNull]
+    private IChatCompletionService ChatCompletionService => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
+    [field: AllowNull, MaybeNull]
+    private IPromptHelpers PromptHelpers => field ??= services.GetRequiredService<IPromptHelpers>();
+    [field: AllowNull, MaybeNull]
+    private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
+
     public async Task<IReadOnlyCollection<string>> Summarize(
         IReadOnlyCollection<ChatEntry> chatEntries,
         CancellationToken cancellationToken)
     {
-        var text = await chatDialogFormatter.EntriesToText(chatEntries).ConfigureAwait(false);
-        var prompt = promptHelpers.BuildPrompt(
+        var text = await ChatDialogFormatter.EntriesToText(chatEntries).ConfigureAwait(false);
+        var prompt = PromptHelpers.BuildPrompt(
             Prompt,
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 { "DOCUMENT", text.Substring(0, Math.Min(text.Length, 1_000_000)) },
             });
         try {
-            var response = await anthropicClient.Execute(prompt, cancellationToken).ConfigureAwait(false);
-            var summary = promptHelpers.GetXmlTagValue(response, "summary");
+            var response = await Ask(prompt, cancellationToken).ConfigureAwait(false);
+            var summary = PromptHelpers.GetXmlTagValue(response, "summary");
             return summary.Split("\n", StringSplitOptions.RemoveEmptyEntries).ToList();
         }
         catch (Exception ex) {
-            log.LogError(ex, "Summarization error");
+            Log.LogError(ex, "Summarization error");
             return [];
         }
+    }
+
+    private async Task<string> Ask(string prompt, CancellationToken cancellationToken)
+    {
+        var response = await ChatCompletionService
+            .GetChatMessageContentAsync(prompt, null, Kernel, cancellationToken)
+            .ConfigureAwait(false);
+        return response.Content ?? "";
     }
 
     public const string Prompt =
