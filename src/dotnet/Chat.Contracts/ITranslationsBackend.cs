@@ -32,12 +32,12 @@ public sealed partial record TranslationsBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Translate(
     [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
-    [property: DataMember, MemoryPackOrder(1)] HashString ContentHash
+    [property: DataMember, MemoryPackOrder(1)] bool IgnoreVersion
 ) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationId>, IHasUuid
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public TranslationId ShardKey => Id;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
+    string IHasUuid.Uuid => Id.Value;
 }

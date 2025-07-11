@@ -1,5 +1,7 @@
 using ActualChat.Chat;
+using ActualChat.Hashing;
 using ActualChat.Mesh;
+using ActualChat.Queues;
 using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
@@ -21,10 +23,12 @@ public class TranslatedTranscripts : ProcessorBase
     [field: AllowNull, MaybeNull]
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     [field: AllowNull, MaybeNull]
+    private IQueues Queues => field ??= Services.Queues();
+    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
-    private readonly StreamStore<TranslatedTranscriptDiff> _translatedTranscripts;
+    private readonly StreamStore<TranscriptDiff> _translatedTranscripts;
 
     public TranslatedTranscripts(IServiceProvider services)
     {
@@ -64,8 +68,7 @@ public class TranslatedTranscripts : ProcessorBase
         var worker = _activePublishers.GetOrAdd(streamId, PublisherFactory, (this, translationId, originalStream));
         // since ValueFactory in concurrent dictionary can run concurrently we start only single one
         worker.Start();
-        var stream = await _translatedTranscripts.Get(streamId, cancellationToken).ConfigureAwait(false);
-        return stream?.Select(x => x.Translated);
+        return await _translatedTranscripts.Get(streamId, cancellationToken).ConfigureAwait(false);
 
         static DelegatingWorker PublisherFactory(StreamId streamId, (TranslatedTranscripts, TranslationId, IAsyncEnumerable<TranscriptDiff>) args)
         {
@@ -90,12 +93,12 @@ public class TranslatedTranscripts : ProcessorBase
         await _translatedTranscripts.Publish(streamId, translationDiffs).ConfigureAwait(false);
     }
 
-    private IAsyncEnumerable<TranslatedTranscriptDiff> Translate(
+    private IAsyncEnumerable<TranscriptDiff> Translate(
         TranslationId translationId,
         IAsyncEnumerable<TranscriptDiff> originalStream,
         CancellationToken cancellationToken)
     {
-        var channel = Channel.CreateUnbounded<TranslatedTranscriptDiff>(new UnboundedChannelOptions {
+        var channel = Channel.CreateUnbounded<TranscriptDiff>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
             AllowSynchronousContinuations = true,
@@ -137,7 +140,7 @@ public class TranslatedTranscripts : ProcessorBase
                     // DebugLog?.LogDebug("Translation in progress #{TranslationId}: {Content}->{TranslatedContent}", translationId, content, translatedContent);
                     var translatedTranscript = stableTranslatedTranscript.WithSuffix(translatedContent, diffSinceStable.TimeMapDiff.Suffix.Scale(content.Length, translatedContent.Length));
                     var translatedDiffSinceStable = translatedTranscript - stableTranslatedTranscript;
-                    await writer.WriteAsync(new (diffSinceStable, translatedDiffSinceStable), cancellationToken).ConfigureAwait(false);
+                    await writer.WriteAsync(translatedDiffSinceStable, cancellationToken).ConfigureAwait(false);
                     if (diffSinceStable.IsStable)
                         stableTranslatedTranscript = translatedTranscript with { IsStable = true };
                 }
@@ -146,12 +149,28 @@ public class TranslatedTranscripts : ProcessorBase
                 error = ex;
             }
             finally {
-                // Update the final translation
-                await FinalizeTranslation(translationId, stableTranslatedTranscript.Text, stableTranscript.Text, cancellationToken).ConfigureAwait(false);
-
-                if (error != null)
-                    Log.LogError(error, "Error while translating transcript #{TranslationId}", translationId);
-                writer.Complete(error);
+                try {
+                    // Update the final translation
+                    await FinalizeTranslation(translationId,
+                            stableTranslatedTranscript.Text,
+                            stableTranscript.Text,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    // Enqueue the translation command to retranslate full finalized transcript with larger context and model
+                    var cmd = new TranslationsBackend_Translate(translationId, true);
+                    await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex2) {
+                    if (error == null)
+                        error = ex2; // Preserve the original error if it exists
+                    else
+                        Log.LogError(ex2, "Error while finalizing translation #{TranslationId}", translationId);
+                }
+                finally {
+                    if (error != null)
+                        Log.LogError(error, "Error while translating transcript #{TranslationId}", translationId);
+                    writer.Complete(error);
+                }
             }
         }, CancellationToken.None); // No need to cancel this task, it should finalize translation even if the caller cancels
 
@@ -193,8 +212,4 @@ public class TranslatedTranscripts : ProcessorBase
         return Commander.Call(cmd, cancellationToken)
             .Catch(Log, "Failed to finalize streaming translation #{TranslationId}", translationId);
     }
-
-    // Nested types
-
-    private sealed record TranslatedTranscriptDiff(TranscriptDiff Original, TranscriptDiff Translated);
 }

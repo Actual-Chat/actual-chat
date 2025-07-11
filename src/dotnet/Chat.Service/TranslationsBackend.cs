@@ -34,7 +34,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return translation;
 
         // we only try to enqueue and fast return to allow compute method to cache current result
-        var cmd = new TranslationsBackend_Translate(id, translationSource.ContentHash);
+        var cmd = new TranslationsBackend_Translate(id, false);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
         return translation;
     }
@@ -131,7 +131,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     // [CommandHandler]
     public virtual async Task<Translation?> OnTranslate(TranslationsBackend_Translate command, CancellationToken cancellationToken)
     {
-        var id = command.Id;
+        var (id, ignoreVersion) = command;
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
@@ -146,7 +146,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             SourceContentHash = translationSource.ContentHash,
         };
 
-        var cmd = new TranslationsBackend_Change(id, translation.Version, Change.Upsert(translation));
+        var version = ignoreVersion
+            ? (long?)null
+            : translation.Version;
+        var cmd = new TranslationsBackend_Change(id, version, Change.Upsert(translation));
         return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
