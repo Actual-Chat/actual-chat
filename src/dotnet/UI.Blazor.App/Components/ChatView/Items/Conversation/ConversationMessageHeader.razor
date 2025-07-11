@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var cls = IsSeparated ? "conversation-header sticky" : "conversation-header-short";
+    var startDate = GetStartDateString();
 }
 
 <div class="@cls">
@@ -13,6 +14,7 @@
             </div>
         </div>
         <div class="c-title" @onclick="TitleClick">
+            <span class="c-date">@startDate </span>
             @Title
         </div>
     </div>
@@ -27,6 +29,7 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public int MessageCount { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
+    [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public EventCallback MessageCountClick { get; set; }
     [Parameter] public EventCallback TitleClick { get; set; }
 
@@ -35,5 +38,9 @@
         _loadingCls = string.IsNullOrEmpty(_loadingCls) ? "loading-conversation" : "";
         StateHasChanged();
         MessageCountClick.InvokeAsync();
+    }
+
+    private string GetStartDateString() {
+        return $"{StartsAt:dd MMM}";
     }
 }
