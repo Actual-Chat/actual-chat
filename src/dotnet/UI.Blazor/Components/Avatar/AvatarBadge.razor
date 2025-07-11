@@ -1,20 +1,29 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @inherits FusionComponentBase<UIHub>
+@{
+    var showBio = ShowBio && Avatar != null && !Avatar.Bio.IsNullOrEmpty();
+    var cls = showBio ? "show-bio" : "";
+}
 
 <div class="avatar-badge @Class" @onclick="@Click">
     <AvatarCircle
         Avatar="@Avatar"
         Size="@Size"
         BadgeContent="@BadgeContent" />
-    <div class="c-name">
-        <AvatarName Avatar="@Avatar" Class="@NameClass"/>
-        @if (!StatusText.IsNullOrEmpty()) {
-            <span class="c-status">@StatusText</span>
-        } else if (StatusContent != null) {
-            <span class="c-status">@StatusContent</span>
-        }
-    </div>
+        <div class="c-name @cls">
+            <AvatarName Avatar="@Avatar" Class="@NameClass"/>
+            @if (showBio) {
+                <div class="c-bio">
+                    @Avatar!.Bio
+                </div>
+            }
+            @if (!StatusText.IsNullOrEmpty()) {
+                <span class="c-status">@StatusText</span>
+            } else if (StatusContent != null) {
+                <span class="c-status">@StatusContent</span>
+            }
+        </div>
 </div>
 
 @code {
@@ -25,5 +34,6 @@
     [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string? StatusText { get; set; }
+    [Parameter] public bool ShowBio { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 }
