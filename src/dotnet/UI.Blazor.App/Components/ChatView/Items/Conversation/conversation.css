@@ -32,8 +32,8 @@
 }
 .conversation-header-short .c-title,
 .conversation-header .c-title {
-    @apply text-text-1 text-02 leading-4;
-    @apply cursor-pointer;
+    @apply flex-1;
+    @apply text-text-1 text-02 leading-4.5;
 }
 .conversation-header-short .c-title .c-date,
 .conversation-header .c-title .c-date {
@@ -48,7 +48,7 @@
     @apply p-px;
     @apply rounded-full;
     @apply overflow-hidden;
-    @apply text-cr-item-badge-selected-text text-caption-1;
+    @apply text-cr-item-badge-selected-text text-caption-1 leading-4;
     @apply cursor-pointer;
 }
 .conversation-header .rotate-icon {
