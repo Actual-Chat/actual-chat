@@ -171,6 +171,9 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply whitespace-pre;
     @apply text-caption-1 text-02;
 }
+.chat-list .navbar-item-content .c-last-message .c-name .avatar-name {
+    @apply text-caption-4;
+}
 .chat-list .navbar-item-content .c-last-message .c-name:has(.non-shrinkable) {
     @apply flex-none;
 }
@@ -239,21 +242,17 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
 .chat-list .navbar-item .navbar-item-ending .slot {
     @apply flex;
 }
-body.hoverable .chat-list:not(.chat-list-active) .navbar-item .navbar-item-ending .slot {
-    @apply hidden /* flex */;
+.navbar-item .navbar-item-ending .slot.c-hoverable {
+    @apply hidden;
 }
-body.hoverable .chat-list:not(.chat-list-active) .navbar-item:hover .navbar-item-ending .slot {
+.navbar-item:hover .navbar-item-ending .slot.c-hoverable {
+    @apply flex;
+}
+.navbar-item.visible-ending .navbar-item-ending .slot.c-hoverable {
     @apply flex;
 }
 .chat-list .navbar-item .navbar-item-ending .listen-wrapper {
     @apply mb-0.5;
-}
-.touch-capable .chat-list .navbar-item .navbar-item-ending .ending-btn {
-    @apply hidden;
-}
-.touch-capable .chat-list:not(.chat-list-active) .navbar-item .navbar-item-ending .ending-btn.on,
-.touch-capable .chat-list:not(.chat-list-active) .navbar-item .navbar-item-ending .ending-btn:has(.on) {
-    @apply flex;
 }
 
 /* Tabs */

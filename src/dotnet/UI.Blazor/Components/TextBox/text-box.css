@@ -12,3 +12,7 @@
 .text-box input {
     @apply text-ellipsis;
 }
+.text-box.with-clear-btn input {
+    @apply !pr-3;
+    @apply text-ellipsis;
+}

@@ -5,9 +5,11 @@
 @{
     var emptyClass = CurrentValue.IsNullOrEmpty() && Placeholder.IsNullOrEmpty() ? "" : " not-empty";
     var cls = CssClass + " " + Class;
+    var showClearButton = ClearButton && !CurrentValue.IsNullOrEmpty();
+    var clearBtnCls = showClearButton ? "with-clear-btn" : "";
 }
 
-<div class="text-box flex-x @emptyClass">
+<div class="text-box flex-x @emptyClass @clearBtnCls">
     @if (!Prefix.IsNullOrEmpty()) {
         <span class="prefix">@Prefix</span>
     }
@@ -36,7 +38,7 @@
         </textarea>
     }
 </div>
-@if (ClearButton && !CurrentValue.IsNullOrEmpty()) {
+@if (showClearButton) {
     <ButtonRound
         Class="btn-xs btn-transparent text-box-btn"
         Click="@OnClearClick"
