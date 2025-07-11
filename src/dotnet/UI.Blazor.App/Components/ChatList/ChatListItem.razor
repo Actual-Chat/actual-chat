@@ -5,18 +5,17 @@
     var listKind = m.ListKind ?? ListKind;
     var chat = m.Chat ?? Chat;
     DebugLog?.LogDebug("Rendered: {ListKind} #{ChatTitle}, ChatId='{ChatId}'", listKind, chat.Title, chat.Id);
-    var isWide = ScreenSize.IsWide();
+    var isHoverable = BrowserInfo.IsHoverable.Value;
     var isActiveChatList = listKind == ChatListKind.Active;
     var audioState = m.AudioState;
     var isListeningOrRecording = audioState is not null && (audioState.IsListening || audioState.IsRecording);
-    var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
+    var hasButtons = isActiveChatList || isListeningOrRecording;
     var lastTextEntry = m.LastTextEntry;
     var attributes = listKind == ChatListKind.All && m.IsFirstItem
         ? FirstItemAttributes
         : NoneAttributes;
     _renderedModel = m;
-    var showUnread = m.UnreadCount.Value > 0;
-    var showEnding = ((isListeningOrRecording || showUnread) && !isWide) || isActiveChatList;
+    var showEnding = isListeningOrRecording || isActiveChatList;
     var navbarItemCls = showEnding ? "visible-ending" : "";
 }
 
@@ -76,35 +75,59 @@
         </div>
     </ChildContent>
     <Ending>
-        @{
-            var hasMenu = !isActiveChatList && isWide;
-        }
-        <div class="slot">
-            <UnreadCount
-                Value="@m.UnreadCount"
-                NotificationMode="@m.NotificationMode"
-                HasMentions="@m.HasUnreadMentions"/>
-            @if (hasButtons) {
+        @if (isActiveChatList) {
+            // Active ChatList
+            <div class="slot c-active">
                 @if (audioState?.IsRecording == true) {
                     <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
                 }
                 <div class="listen-wrapper ending-btn">
                     <ChatListListenToggle AudioState="@audioState"/>
                 </div>
-            }
-            @if (hasMenu) {
-                <div
-                    class="menu ending-btn"
-                    data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
-                    data-menu-trigger="@MenuTrigger.Primary"
-                    data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-
-                    <HeaderButton>
-                        <i class="icon-more-vertical text-2xl"></i>
-                    </HeaderButton>
+            </div>
+        } else {
+            // Not active ChatList
+            @if (!isHoverable) {
+                // Touch capable and not hoverable
+                <div class="slot c-touch">
+                    <UnreadCount
+                        Value="@m.UnreadCount"
+                        NotificationMode="@m.NotificationMode"
+                        HasMentions="@m.HasUnreadMentions"/>
+                    @if (hasButtons) {
+                        @if (audioState?.IsRecording == true) {
+                            <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
+                        }
+                        <div class="listen-wrapper ending-btn">
+                            <ChatListListenToggle AudioState="@audioState"/>
+                        </div>
+                    }
+                </div>
+            } else {
+                // Hoverable
+                <div class="slot c-hoverable">
+                <UnreadCount
+                    Value="@m.UnreadCount"
+                    NotificationMode="@m.NotificationMode"
+                    HasMentions="@m.HasUnreadMentions"/>
+                    @if (audioState?.IsRecording == true) {
+                        <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="ending-btn"/>
+                    }
+                    <div class="listen-wrapper ending-btn">
+                        <ChatListListenToggle AudioState="@audioState"/>
+                    </div>
+                    <div
+                        class="menu ending-btn"
+                        data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value, listKind.Format()).ToString())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+                        <HeaderButton>
+                            <i class="icon-more-vertical text-2xl"></i>
+                        </HeaderButton>
+                    </div>
                 </div>
             }
-        </div>
+        }
     </Ending>
 </NavbarItem>
 @if (m.IsLastItemInBlock) {
@@ -128,6 +151,7 @@
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private ChatUI ChatUI => Hub.ChatUI;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
