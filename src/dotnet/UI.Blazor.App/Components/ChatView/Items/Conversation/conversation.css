@@ -35,6 +35,11 @@
     @apply text-text-1 text-02 leading-4;
     @apply cursor-pointer;
 }
+.conversation-header-short .c-title .c-date,
+.conversation-header .c-title .c-date {
+    @apply inline-block;
+    @apply min-w-14;
+}
 .conversation-header-short .c-ending,
 .conversation-header .c-ending {
     @apply relative;
@@ -154,6 +159,22 @@
     @starting-style {
         filter: opacity(0);
     }
+}
+.conversation-message .c-summary .c-short .show-more-btn,
+.conversation-message .c-long .show-more-btn {
+    @apply text-[var(--cr-item-badge-selected-text)];
+}
+body.hoverable .conversation-message .c-summary .c-short .show-more-btn:hover,
+body.hoverable .conversation-message .c-long .show-more-btn:hover {
+    @apply cursor-pointer;
+}
+.conversation-message .c-summary .c-short .show-more-btn:active,
+.conversation-message .c-long .show-more-btn:active {
+    @apply opacity-70;
+}
+.conversation-message .c-long .show-more-btn {
+    @apply self-center;
+    @apply w-fit;
 }
 
 .conversation-message .mention-markup {

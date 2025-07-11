@@ -35,6 +35,6 @@
     [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
 
     private string GetTimeRangeString() {
-        return $"{StartsAt:MM/dd/yyyy HH:mm} - {EndsAt:HH:mm}";
+        return $"{StartsAt:HH:mm} - {EndsAt:HH:mm}";
     }
 }

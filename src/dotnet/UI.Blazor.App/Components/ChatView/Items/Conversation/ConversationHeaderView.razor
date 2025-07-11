@@ -3,12 +3,14 @@
     var conversation = Header.Conversation!;
     var title = conversation.Title;
     var messageCount = conversation.MessageCount;
+    var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
 }
 
 <ConversationMessageHeader
     Title="@title"
     MessageCount="@messageCount"
     MessageCountClick="@ToggleShowMessage"
+    StartsAt="@startsAt"
     IsSeparated="true"/>
 
 @code {
