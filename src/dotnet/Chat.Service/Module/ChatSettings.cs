@@ -23,7 +23,7 @@ public class TranslationSettings
     public int RealtimeContextMessageCount { get; set; } = 3;
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1";
-    public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-mini";
+    public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-nano";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 

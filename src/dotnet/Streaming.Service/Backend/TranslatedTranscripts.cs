@@ -123,7 +123,7 @@ public class TranslatedTranscripts : ProcessorBase
                     var diffSinceStable = transcript - stableTranscript;
                     var content = diffSinceStable.TextDiff.Suffix ?? "";
                     if (!ReferenceEquals(newStableTranscript, Transcript.Empty))
-                        stableTranscript = transcript;
+                        stableTranscript = newStableTranscript;
                     if (content.IsNullOrWhiteSpace())
                         continue;
 
