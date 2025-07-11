@@ -32,7 +32,7 @@ public partial class DigestFlow : PeriodicFlow
             return "No account";
         if (account.TimeZone.IsNullOrEmpty())
             return "Account has no time zone";
-        if (account.Email.IsNullOrEmpty() || !account.IsEmailVerified)
+        if (!account.HasVerifiedEmail())
             return "Account has no verified email";
         if (!account.Email.EndsWith("@actual.chat", StringComparison.OrdinalIgnoreCase))
             return "Account is excluded";
