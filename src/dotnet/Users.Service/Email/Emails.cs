@@ -95,7 +95,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
 
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
-        var cmd = new EmailsBackend_SendDigest(account.Id);
+        var cmd = new EmailsBackend_SendDigest(account.Id) { IsDiagnosticsEnabled = true };
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 

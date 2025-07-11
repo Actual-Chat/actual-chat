@@ -19,6 +19,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private IChatDigestSummarizer ChatDigestSummarizer { get; } = services.GetRequiredService<IChatDigestSummarizer>();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
+    private ILogger Log { get; } = services.LogFor<EmailsBackend>();
 
     // [CommandHandler]
     public virtual async Task<Unit> OnSendDigest(EmailsBackend_SendDigest command, CancellationToken cancellationToken)
@@ -26,15 +27,23 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         if (Invalidation.IsActive)
             return default;
 
+        var isDiagnosticsEnabled = command.IsDiagnosticsEnabled;
+        var diagLog = isDiagnosticsEnabled ? Log : null;
+        diagLog?.LogInformation("-> OnSendDigest");
+
         var account = await AccountsBackend
             .Get(command.UserId, cancellationToken)
             .ConfigureAwait(false);
-        if (account is null)
+        if (account is null) {
+            diagLog?.LogInformation("<- OnSendDigest. No account");
             return default;
+        }
 
         var digestParameters = await FindUnreadChats(account, cancellationToken).ConfigureAwait(false);
-        if (digestParameters.UnreadChats.Count == 0)
+        if (digestParameters.UnreadChats.Count == 0) {
+            diagLog?.LogInformation("<- OnSendDigest. No unread chats");
             return default;
+        }
 
         var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
             { nameof(Digest.Parameters), digestParameters },
@@ -44,7 +53,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         var mjml = await renderer.RenderComponent<Digest>(parameters).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
         var mjmlOptions = new MjmlOptions { Beautify = false };
-        var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
+        var renderResult = await mjmlRenderer.RenderAsync(mjml, mjmlOptions, cancellationToken).ConfigureAwait(false);
 
         await EmailSender.Send(
                 "",
@@ -54,6 +63,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 cancellationToken)
             .ConfigureAwait(false);
 
+        diagLog?.LogInformation("<- OnSendDigest. Completed");
         return default;
     }
 

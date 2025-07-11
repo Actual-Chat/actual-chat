@@ -15,6 +15,9 @@ public sealed partial record EmailsBackend_SendDigest(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
+    [property: DataMember, MemoryPackOrder(1)]
+    public bool IsDiagnosticsEnabled { get; init; }
+
     [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => UserId;
 }
