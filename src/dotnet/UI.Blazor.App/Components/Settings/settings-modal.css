@@ -37,10 +37,11 @@
     @apply whitespace-normal;
     @apply text-caption-6 text-03;
 }
-.render-mode-tile .tile-item:not(.selected):hover label {
+.clickable.transparent.tile-item:not(.selected):hover label,
+.clickable.transparent.tile-item:not(.selected):hover .tile-item-body-caption {
     @apply text-01;
 }
-.render-mode-tile .tile-item:not(.selected):hover .c-comment {
+.clickable.transparent.tile-item:not(.selected):hover .c-comment {
     @apply text-02;
 }
 
