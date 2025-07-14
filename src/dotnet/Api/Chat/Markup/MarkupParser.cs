@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Cysharp.Text;
 using Pidgin;
 using static Pidgin.Parser;
 using static Pidgin.Parser<char>;
@@ -228,13 +227,13 @@ public partial class MarkupParser : IMarkupParser
     // List
     private static readonly Parser<char, Markup> UnorderedListItem =
         from _ in OneOf(Char('-'), Char('*'), Char('+')).Before(WhitespaceChar)
-        from content in TextBlock
+        from content in TextBlock.ManyMarkup()
         from _1 in EndOfLine.Optional()
         select (Markup)new ListItemMarkup(content);
 
     private static readonly Parser<char, Markup> OrderedListItem =
         from number in Digit.AtLeastOnceString().Before(Char('.')).Before(WhitespaceChar)
-        from content in TextBlock
+        from content in TextBlock.ManyMarkup()
         from _ in EndOfLine.Optional()
         select (Markup)new ListItemMarkup(content, int.Parse(number, CultureInfo.InvariantCulture));
 
@@ -258,9 +257,9 @@ public partial class MarkupParser : IMarkupParser
 
     // Full markup
     private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
-        SafeTryOneOf(ListBlock, WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextBlock).ManyMarkup();
+        SafeTryOneOf(CodeBlock, ListBlock, WhitespaceBlock, TextBlock, UnparsedTextBlock).ManyMarkup();
     private static readonly Parser<char, Markup> FullMarkup =
-        SafeTryOneOf(ListBlock, WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
+        SafeTryOneOf(CodeBlock, ListBlock, WhitespaceBlock, TextBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
 
     // Type initializer
     static MarkupParser()

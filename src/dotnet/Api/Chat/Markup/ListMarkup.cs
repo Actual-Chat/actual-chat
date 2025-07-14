@@ -24,8 +24,24 @@ public sealed class ListMarkup : Markup
     public override string Format()
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        foreach (var item in Items)
-            sb.AppendLine(item.Format());
+        foreach (var item in Items) {
+            if (sb.Length > 0)
+                sb.AppendLine();
+            sb.Append(item.Format());
+        }
         return sb.ToStringAndRelease();
+    }
+
+    public override Markup Simplify()
+    {
+        var items = new List<ListItemMarkup>();
+        var isSimplified = false;
+        foreach (var originalItem in Items) {
+            var item = (ListItemMarkup)originalItem.Simplify();
+            if (!ReferenceEquals(item, originalItem))
+                isSimplified = true;
+            items.Add(item);
+        }
+        return !isSimplified ? this : new ListMarkup(items);
     }
 }
