@@ -19,11 +19,11 @@
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.ServerModeFormId" Text="Auto" IsRequired="true"></Label>
-                        <div class="c-comment">
-                            Starts in Server-Side Rendering mode and loads WebAssembly Client in the background.
-                            Switches to WebAssembly Client once it's loaded.
-                        </div>
                     </Content>
+                    <Caption>
+                        Starts in Server-Side Rendering mode and loads WebAssembly Client in the background.
+                        Switches to WebAssembly Client once it's loaded.
+                    </Caption>
                 </TileItem>
 
                 <TileItem
@@ -34,10 +34,10 @@
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.ServerModeFormId" Text="Server-Side Rendering" IsRequired="true"></Label>
-                        <div class="c-comment">
-                            Works best for less powerful devices; less responsive if you're outside of the U.S.
-                        </div>
                     </Content>
+                    <Caption>
+                        Works best for less powerful devices; less responsive if you're outside of the U.S.
+                    </Caption>
                 </TileItem>
 
                 <TileItem
@@ -48,11 +48,11 @@
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.WasmModeFormId" Text="WebAssembly Client" IsRequired="true"></Label>
-                        <div class="c-comment">
-                            Works best on more powerful devices; more responsive, requires less bandwidth,
-                            but downloads ~10MB once you enable this mode.
-                        </div>
                     </Content>
+                    <Caption>
+                        Works best on more powerful devices; more responsive, requires less bandwidth,
+                        but downloads ~10MB once you enable this mode.
+                    </Caption>
                 </TileItem>
 
             </InputRadioGroup>

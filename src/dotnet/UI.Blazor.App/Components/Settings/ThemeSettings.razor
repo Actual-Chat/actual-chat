@@ -10,7 +10,9 @@
             DisplayName="Theme"
             @bind-Value="_formModel.Theme">
 
-            <TileItem>
+            <TileItem
+                Class="@GetTileItemClass(Theme.Light)"
+                Click="@(_ => OnTileClick(Theme.Light))">
                 <Icon>
                     <FormRadio
                         Id="@_formModel.LightThemeFormId"
@@ -21,7 +23,9 @@
                 </Content>
             </TileItem>
 
-            <TileItem>
+            <TileItem
+                Class="@GetTileItemClass(Theme.Ash)"
+                Click="@(_ => OnTileClick(Theme.Ash))">
                 <Icon>
                     <FormRadio
                         Id="@_formModel.AshThemeFormId"
@@ -32,7 +36,9 @@
                 </Content>
             </TileItem>
 
-            <TileItem>
+            <TileItem
+                Class="@GetTileItemClass(Theme.Dark)"
+                Click="@(_ => OnTileClick(Theme.Dark))">
                 <Icon>
                     <FormRadio
                         Id="@_formModel.DarkThemeFormId"
@@ -43,7 +49,9 @@
                 </Content>
             </TileItem>
 
-            <TileItem>
+            <TileItem
+                Class="@GetTileItemClass(null)"
+                Click="@(_ => OnTileClick(null))">
                 <Icon>
                     <FormRadio
                         Id="@_formModel.SystemThemeFormId"
@@ -83,6 +91,12 @@
 
     private Theme? GetTheme(string? themeKey)
         => !themeKey.IsNullOrEmpty() && Enum.TryParse<Theme>(themeKey, true, out var v) ? v : null;
+
+    private void OnTileClick(Theme? theme)
+        => _formModel.Theme = GetThemeKey(theme);
+
+    private string GetTileItemClass(Theme? theme)
+        => GetThemeKey(theme) == _formModel.Theme ? "selected transparent" : "transparent";
 
     public sealed class FormModel {
         private string FormId { get; }

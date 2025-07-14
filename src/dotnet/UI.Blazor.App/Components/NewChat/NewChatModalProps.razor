@@ -53,26 +53,30 @@
     </FormBlock>
     <FormBlock Title="Chat type" Class="with-input-radio">
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
-            <TileItem>
+            <TileItem
+                Class="@(_form.IsPublic ? "transparent selected" : "transparent")"
+                Click="@(() => OnPublicChatClick(true))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatLabel"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatLabel" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="@publicChatHint"></Label>
+                    @publicChatHint
                 </Caption>
             </TileItem>
-            <TileItem>
+            <TileItem
+                Class="@(!_form.IsPublic ? "transparent selected" : "transparent")"
+                Click="@(() => OnPublicChatClick(true))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                    Can be joined only if you are invited / have an invite link
                 </Caption>
             </TileItem>
         </InputRadioGroup>
@@ -85,10 +89,10 @@
                         <i class="icon-guest"></i>
                     </Icon>
                     <Content>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in" IsRequired="true"></Label>
                     </Content>
                     <Caption>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                        Spam messages are more likely if this option is enabled
                     </Caption>
                     <Right>
                         <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
@@ -100,10 +104,10 @@
                     <i class="icon-question-mark-bubble"></i>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                    Signed-in users can join this chat without revealing their identity
                 </Caption>
                 <Right>
                     <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
@@ -160,6 +164,13 @@
 
     private void OnImagePicked(MediaContent mediaContent) {
         _form.Picture = new(mediaContent);
+        StateHasChanged();
+    }
+
+    private void OnPublicChatClick(bool isPublic) {
+        if (_form!.IsPublic == isPublic)
+            return;
+        _form!.IsPublic = isPublic;
         StateHasChanged();
     }
 

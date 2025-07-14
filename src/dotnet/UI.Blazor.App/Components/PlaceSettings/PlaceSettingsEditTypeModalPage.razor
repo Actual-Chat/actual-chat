@@ -24,32 +24,30 @@
     <DataAnnotationsValidator />
     <FormBlock Class="with-input-radio first">
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
-            <TileItem Click="@(() => OnPublicChatClick(true))">
+            <TileItem
+                Class="@(_form.IsPublic ? "selected" : "")"
+                Click="@(() => OnPublicChatClick(true))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canEditProperties)" Value="@true" />
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    <Label
-                        InputId="@_form.IsPublicTrueFormId"
-                        Text="Anyone can join this place by navigating to its URL">
-                    </Label>
+                    Anyone can join this place by navigating to its URL
                 </Caption>
             </TileItem>
-            <TileItem Click="@(() => OnPublicChatClick(false))">
+            <TileItem
+                Class="@(!_form.IsPublic ? "selected" : "")"
+                Click="@(() => OnPublicChatClick(false))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canEditProperties)" Value="@false"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private"></Label>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    <Label
-                        InputId="@_form.IsPublicFalseFormId"
-                        Text="Can be joined only if you are invited / have an invite link">
-                    </Label>
+                    Can be joined only if you are invited / have an invite link
                 </Caption>
             </TileItem>
         </InputRadioGroup>

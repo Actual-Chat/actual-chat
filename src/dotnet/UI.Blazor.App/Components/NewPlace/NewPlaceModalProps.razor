@@ -47,26 +47,30 @@
     </FormBlock>
     <FormBlock Title="Place type" Class="with-input-radio">
         <InputRadioGroup Name="place_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
-            <TileItem>
+            <TileItem
+                Class="@(_form.IsPublic ? "transparent selected" : "transparent")"
+                Click="@(() => OnPublicChatClick(true))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicTrueFormId" Value="@true"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public place"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public place" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this place by navigating to its URL"></Label>
+                    Anyone can join this place by navigating to its URL
                 </Caption>
             </TileItem>
-            <TileItem>
+            <TileItem
+                Class="@(!_form.IsPublic ? "transparent selected" : "transparent")"
+                Click="@(() => OnPublicChatClick(false))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicFalseFormId" Value="@false"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private place"></Label>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private place" IsRequired="true"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                    Can be joined only if you are invited / have an invite link
                 </Caption>
             </TileItem>
         </InputRadioGroup>
@@ -110,6 +114,13 @@
 
     private void OnImagePicked(MediaContent mediaContent) {
         _form.Picture = new(mediaContent);
+        StateHasChanged();
+    }
+
+    private void OnPublicChatClick(bool isPublic) {
+        if (_form!.IsPublic == isPublic)
+            return;
+        _form!.IsPublic = isPublic;
         StateHasChanged();
     }
 
