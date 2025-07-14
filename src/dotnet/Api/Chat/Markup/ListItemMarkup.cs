@@ -13,4 +13,13 @@ public sealed class ListItemMarkup(Markup content, int? order = null) : Markup
 
     public string GetPrefix()
         => Order.HasValue ? $"{Order}. " : "- ";
+
+    public override Markup Simplify()
+    {
+        var content2 = Content.Simplify();
+        if (ReferenceEquals(content2, Content))
+            return this;
+
+        return new ListItemMarkup(content2, Order);
+    }
 }

@@ -25,9 +25,10 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
     protected override void VisitListItem(ListItemMarkup markup, ref StringBuilder state)
     {
+        if (state.Length > 0)
+            state.AppendLine();
         state.Append(markup.GetPrefix());
         Visit(markup.Content, ref state);
-        state.AppendLine();
     }
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)

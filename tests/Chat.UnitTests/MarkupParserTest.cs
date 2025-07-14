@@ -296,7 +296,7 @@ code
     [Fact]
     public void UnorderedListCase()
     {
-        var m = Parse<ListMarkup>("- line1\n- line2\n", out _);
+        var m = Parse<ListMarkup>("- line1\n- line2", out _);
         m.Items.Length.Should().Be(2);
         m.Items[0].Order.Should().BeNull();
         m.Items[0].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1");
@@ -307,12 +307,40 @@ code
     [Fact]
     public void OrderedListCase()
     {
-        var m = Parse<ListMarkup>("1. line1\n2. line2\n", out _);
+        var m = Parse<ListMarkup>("1. line1\n2. line2", out _);
         m.Items.Length.Should().Be(2);
         m.Items[0].Order.Should().Be(1);
         m.Items[0].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1");
         m.Items[1].Order.Should().Be(2);
         m.Items[1].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
+    }
+
+    [Fact]
+    public void UnorderedListWithMentionsCase()
+    {
+        var text =
+            """
+            - Participants @a:chatxyz:3, @a:chatxyz:2 and @a:chatxyz:1 exchanged greetings and discussed the status of current tasks.
+            - @a:chatxyz:2 raised questions about adding and managing the list of images.
+            """;
+        var m = Parse<ListMarkup>(text);
+        m.Items.Length.Should().Be(2);
+        var chatId = ChatId.Parse("chatxyz");
+
+        var item0 = m.Items[0].Content.Should().BeOfType<MarkupSeq>().Subject;
+        item0.Items.Length.Should().Be(7);
+        item0.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("Participants ");
+        item0.Items[1].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 3)));
+        item0.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(", ");
+        item0.Items[3].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
+        item0.Items[4].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" and ");
+        item0.Items[5].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 1)));
+        item0.Items[6].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" exchanged greetings and discussed the status of current tasks.");
+
+        var item1 = m.Items[1].Content.Should().BeOfType<MarkupSeq>().Subject;
+        item1.Items.Length.Should().Be(2);
+        item1.Items[0].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
+        item1.Items[1].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" raised questions about adding and managing the list of images.");
     }
 
     // Helpers
