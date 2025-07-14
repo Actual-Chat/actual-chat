@@ -34,6 +34,16 @@
                 </div>
             </div>
         }
+        @if (m.EnableIncompleteUI) {
+            <div class="c-attachments">
+                @for (var i = 0; i < 5; i++) {
+                    <div class="c-attachment"></div>
+                }
+                <div class="c-attachment c-count">
+                    +8
+                </div>
+            </div>
+        }
     </div>
     </CascadingValue>
     <ConversationMessageFooter
@@ -66,7 +76,8 @@
                 InitialValue = new Model(
                     TranslatedText.From(title),
                     TranslatedMarkup.From(descriptionMarkup),
-                    TranslatedMarkup.From(summaryMarkup)),
+                    TranslatedMarkup.From(summaryMarkup),
+                    false),
                 Category = GetStateCategory(t),
             });
     }
@@ -85,6 +96,7 @@
         var conversation = Message.Conversation!;
         var conversationId = conversation.Id;
         var title = conversation.Title;
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
         var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
         var mustTranslate = await TranslationUI.MustTranslate(conversation, cancellationToken).ConfigureAwait(false);
@@ -92,7 +104,8 @@
             return new Model(
                 TranslatedText.From(title),
                 TranslatedMarkup.From(descriptionMarkup),
-                TranslatedMarkup.From(summaryMarkup));
+                TranslatedMarkup.From(summaryMarkup),
+                enableIncompleteUI);
 
         var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken);
         var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, cancellationToken);
@@ -104,7 +117,7 @@
         var translatedTitle = TranslatedText.From(conversation.Title, titleTranslation);
         var translatedDescription = TranslatedMarkup.From(conversation.Description, descriptionTranslation, ChatMarkupHub, descriptionMarkup);
         var translatedSummary = TranslatedMarkup.From(conversation.Summary, summaryTranslation, ChatMarkupHub, summaryMarkup);
-        return new Model(translatedTitle, translatedDescription, translatedSummary);
+        return new Model(translatedTitle, translatedDescription, translatedSummary, enableIncompleteUI);
     }
 
     private void ToggleShowMessage()
@@ -138,5 +151,6 @@
     public record Model(
         TranslatedText Title,
         TranslatedMarkup Description,
-        TranslatedMarkup Summary);
+        TranslatedMarkup Summary,
+        bool EnableIncompleteUI);
 }
