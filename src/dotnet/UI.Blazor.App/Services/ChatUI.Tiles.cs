@@ -517,7 +517,9 @@ public partial class ChatUI
                     }
 
                     // Conversation header goes before the date line
-                    if (expandedConversation != null && alreadyAddedConversationHeaders.Add(expandedConversation.Id)) {
+                    if (expandedConversation != null && alreadyAddedConversationHeaders.Add(expandedConversation.Id)
+                        && (prevMessage == null || prevMessage.Id < expandedConversation.Id.StartEntryLid)) {
+                        // Add a conversation header only if it wasn't added before
                         var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
                             ReplacementKind = ChatMessageReplacementKind.ConversationStart,
                             ShouldSkipKey = true,
