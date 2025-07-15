@@ -32,14 +32,14 @@ body.device-ios .side-nav {
 }
 .page-with-header-and-footer.rp-open > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
-    @apply md:transition-width md:duration-150 md:ease-linear md:delay-150;
+    @apply md:transition-width md:duration-200 md:ease-linear md:delay-0;
 }
 .page-with-header-and-footer:has(.right-skeleton-panel) > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-110;
 }
 .page-with-header-and-footer.rp-closed > .side-nav.side-nav-left {
     @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
-    @apply md:transition-width md:duration-150 md:ease-linear md:delay-150;
+    @apply md:transition-width md:duration-200 md:ease-linear md:delay-0;
 }
 body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply hidden;
@@ -65,7 +65,7 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"]:has(.wide-left-skele
 }
 @media (min-width: 1280px) {
     .side-nav.side-nav-right {
-        transition: margin-right 250ms ease-in;
+        transition: margin-right 200ms linear;
     }
 }
 body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
@@ -77,7 +77,7 @@ body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
         @apply absolute;
         @apply w-1/2;
         @apply left-1/2;
-        transition: transform 300ms linear;
+        transition: transform 200ms linear;
     }
     .side-nav.side-nav-right[data-side-nav="open"] {
         width: 50%;

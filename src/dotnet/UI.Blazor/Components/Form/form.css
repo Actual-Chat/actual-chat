@@ -249,9 +249,6 @@ form .form-section {
     @apply transition-all duration-500;
     box-shadow: 0 0 4px 0 var(--radio-shadow);
 }
-.form-radio-hidden.form-radio-active .radio {
-    @apply cursor-pointer;
-}
 .form-radio-hidden.form-radio-disabled .radio {
     @apply bg-radio-shadow;
 }

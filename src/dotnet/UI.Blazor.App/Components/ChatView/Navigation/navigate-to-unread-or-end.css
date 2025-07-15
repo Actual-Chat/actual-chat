@@ -1,20 +1,24 @@
 .navigate-to-end {
     @apply relative z-button;
 }
+.navigate-to-end .btn {
+    transform-origin: center center;
+}
 
 /* Animation */
-.navigate-to-end.off-to-on {
-    @apply opacity-100;
-    @apply transition-all ease-in-out duration-300;
+.navigate-to-end.off-to-on .btn {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    transition: opacity 150ms ease-in-out, transform 300ms ease-in-out;
 }
-.navigate-to-end.on-to-off {
-    @apply opacity-0;
-    @apply translate-y-4;
-    @apply transition-all ease-in-out duration-300;
+.navigate-to-end.on-to-off .btn {
+    opacity: 0;
+    transform: scale(0) translateY(1rem);
+    transition: opacity 300ms ease-in-out, transform 150ms ease-in-out;
 }
-.navigate-to-end.off {
-    @apply opacity-0;
-    @apply translate-y-4;
+.navigate-to-end.off .btn {
+    opacity: 0;
+    transform: scale(0) translateY(1rem);
 }
 
 .navigate-to-end > .c-content {
@@ -33,19 +37,10 @@ body.hoverable .navigate-to-end > .c-content {
     @apply cursor-pointer;
 }
 .navigate-to-end .btn.btn-round {
-    @apply shadow-md md:shadow-none;
+    @apply rounded-full border border-modal;
+    @apply bg-01;
+    box-shadow: 0 3px 3px 0 rgba(0, 0, 0, 0.15);
 }
 .navigate-to-end .btn.btn-round {
     @apply font-bold text-4xl;
-}
-/* Hover */
-body.hoverable .navigate-to-end .btn.btn-round:hover {
-    @apply bg-round;
-}
-/* Active */
-.navigate-to-end .btn.btn-round:active,
-.navigate-to-end .btn.btn-round:hover:active,
-.navigate-to-end .btn.btn-round:focus:active,
-.navigate-to-end .btn.btn-round:hover:focus:active {
-    @apply bg-round;
 }

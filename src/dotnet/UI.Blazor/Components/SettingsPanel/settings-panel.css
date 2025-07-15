@@ -133,8 +133,8 @@ body.hoverable .tile-item.clickable:hover,
 .touch-capable .tile-item.clickable:active {
     @apply bg-hover;
 }
-body.hoverable .tile-item.clickable,
-body.hoverable .tile-item.clickable span {
+body.hoverable .tile-item.clickable:not(.selected),
+body.hoverable .tile-item.clickable:not(.selected) span {
     @apply cursor-pointer;
 }
 body.hoverable .tile-item.clickable.transparent:hover,
@@ -148,9 +148,6 @@ body.hoverable .tile-item.clickable.item-danger:hover,
 .tile-item.item-danger .tile-item-icon,
 .tile-item.item-danger .tile-item-body-content {
     @apply text-danger;
-}
-.settings-tab .tile-item label {
-    cursor: inherit;
 }
 .tile-item-icon {
     @apply flex-none flex justify-center;
