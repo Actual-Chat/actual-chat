@@ -26,6 +26,9 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(7)] public Moment EndsAt { get; init; }
     [DataMember, MemoryPackOrder(8)] public int MessageCount { get; init; }
     [DataMember, MemoryPackOrder(9)] public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(10)] public int AttachmentCount { get; init; }
+    [DataMember, MemoryPackOrder(11)] public Symbol[] AttachmentIds { get; init; } = [];
+    [DataMember, MemoryPackOrder(12)] public TextEntryAttachment[] Attachments { get; init; } = []; // Populated only on reads by ConversationsBackend
 
     // This record relies on referential equality
     public bool Equals(Conversation? other) => ReferenceEquals(this, other);
@@ -45,6 +48,8 @@ public sealed partial record ConversationDiff() : RecordDiff
     [DataMember, MemoryPackOrder(5)] public Moment? EndsAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public int? MessageCount { get; init; }
     [DataMember, MemoryPackOrder(7)] public IReadOnlyList<AuthorId>? AuthorIds { get; init; }
+    [DataMember, MemoryPackOrder(8)] public int? AttachmentCount { get; init; }
+    [DataMember, MemoryPackOrder(9)] public Symbol[]? AttachmentIds { get; init; } = [];
 
     public ConversationDiff(Conversation conversation) : this()
     {
@@ -56,5 +61,7 @@ public sealed partial record ConversationDiff() : RecordDiff
         EndsAt = conversation.EndsAt;
         MessageCount = conversation.MessageCount;
         AuthorIds = conversation.AuthorIds;
+        AttachmentCount = conversation.AttachmentCount;
+        AttachmentIds = conversation.AttachmentIds;
     }
 }

@@ -34,15 +34,18 @@
                 </div>
             </div>
         }
-        @if (m.EnableIncompleteUI) {
+        @if (conversation.Attachments.Length > 0) {
+            var extra = Math.Max(0, conversation.AttachmentCount - conversation.Attachments.Length);
             <div class="c-attachments">
-                @for (var i = 0; i < 5; i++) {
-                    <div class="c-attachment"></div>
+                @foreach (var attachment in conversation.Attachments) {
+                    <div class="c-attachment">@attachment.Index</div>
                 }
-                <div class="c-attachment c-count">
-                    +8
-                </div>
-            </div>
+                @if (extra > 0) {
+                    <div class="c-attachment c-count">
+                        +@extra
+                    </div>
+                }
+    </div>
         }
     </div>
     </CascadingValue>

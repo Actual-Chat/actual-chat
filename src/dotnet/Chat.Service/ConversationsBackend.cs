@@ -26,6 +26,25 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbConversation = await DbConversationResolver.Get(conversationId.Value, cancellationToken).ConfigureAwait(false);
         var conversation = dbConversation?.ToModel();
+        if (conversation is null)
+            return null;
+
+        if (conversation.AttachmentIds.Length > 0) {
+            var textEntryIds = conversation.AttachmentIds
+                .Select(DbTextEntryAttachment.ExtractTextEntryId)
+                .Distinct()
+                .ToArray();
+            var textEntries = await textEntryIds
+                .Select(c => ChatsBackend.GetEntry(c, cancellationToken).AsTask())
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            var attachments = textEntries
+                .SkipNullItems()
+                .SelectMany(c => c.Attachments)
+                .Where(c => conversation.AttachmentIds.Contains(c.Id))
+                .ToArray();
+            conversation = conversation with { Attachments = attachments };
+        }
         return conversation;
     }
 
@@ -251,7 +270,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var conversationId = ConversationId.New(chatId, startEntryLid);
         var existingConversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         var expectedVersion = existingConversation?.Version;
-        var entries = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
+        var entriesInfo = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
+        var entries = entriesInfo.TextEntries;
         if (entries.Count == 0)
             return default!;
 
@@ -287,7 +307,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .GroupBy(a => a.AuthorId)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
-                .ToArray()
+                .ToArray(),
+            AttachmentCount = entriesInfo.AttachmentCount,
+            AttachmentIds = entriesInfo.Attachments.Select(c => c.Id).ToArray(),
         };
         var change = existingConversation != null
             ? Change.Update(DiffEngine.Diff<Conversation,ConversationDiff>(existingConversation, conversation))
@@ -319,7 +341,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var conversation = await Get(conversationId, cancellationToken).ConfigureAwait(false);
         conversation.Require();
 
-        var entries = await GetTextEntries(chatId, [conversation.EntryRange, replyIdRange], cancellationToken).ConfigureAwait(false);
+        var entriesInfo = await GetTextEntries(chatId, [conversation.EntryRange, replyIdRange], cancellationToken).ConfigureAwait(false);
+        var entries = entriesInfo.TextEntries;
         var summaryResult = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
         if (!summaryResult.HasResult)
             throw StandardError.Postpone(summaryResult.Postpone ?? TimeSpan.FromMinutes(10));
@@ -336,6 +359,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
                 .ToArray(),
+            AttachmentCount = entriesInfo.AttachmentCount,
+            AttachmentIds = entriesInfo.Attachments.Select(c => c.Id).ToArray(),
         };
         var change = Change.Update(diff);
         var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
@@ -344,7 +369,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Private methods
 
-    private async Task<IReadOnlyCollection<TextEntry>> GetTextEntries(ChatId chatId, Range<long>[] entryIdRanges, CancellationToken cancellationToken)
+    private async Task<ConversationEntriesInfo> GetTextEntries(ChatId chatId, Range<long>[] entryIdRanges, CancellationToken cancellationToken)
     {
         var idTiles = entryIdRanges
             .SelectMany(idRange => IdTileStack.GetOptimalCoveringTiles(idRange))
@@ -355,10 +380,28 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        return tiles
+        var textEntries = new List<TextEntry>();
+        var attachments = new List<TextEntryAttachment>();
+        const int attachmentMaxCount = 5;
+        var attachmentCount = 0;
+        var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
-            .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)))
-            .Select(entry => new TextEntry(entry))
-            .ToList();
+            .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)));
+        foreach (var entry in chatEntries) {
+            textEntries.Add(new TextEntry(entry));
+            attachmentCount += entry.Attachments.Length;
+            if (attachments.Count < attachmentMaxCount && entry.Attachments.Length > 0) {
+                foreach(var attachment in entry.Attachments)
+                    if (attachments.Count < attachmentMaxCount)
+                        attachments.Add(attachment);
+            }
+        }
+        return new ConversationEntriesInfo(textEntries, attachments, attachmentCount);
     }
+
+    // Nested types
+    private record ConversationEntriesInfo(
+        IReadOnlyCollection<TextEntry> TextEntries,
+        IReadOnlyCollection<TextEntryAttachment> Attachments,
+        int AttachmentCount);
 }
