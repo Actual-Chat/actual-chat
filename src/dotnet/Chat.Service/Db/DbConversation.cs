@@ -22,6 +22,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
     public long StartEntryLid { get; set; }
     public long EndEntryLid { get; set; }
     public int MessageCount { get; set; }
+    public int AttachmentCount { get; set; }
     public DateTime StartsAt {
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
@@ -32,10 +33,12 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
     public string AuthorIds { get; set; } = "[]";
+    public string AttachmentIds { get; set; } = "[]";
 
     public Conversation ToModel()
     {
         var authorIds = JsonSerializer.Deserialize<AuthorId[]>(AuthorIds) ?? [];
+        var attachmentIds = JsonSerializer.Deserialize<Symbol[]>(AttachmentIds) ?? [];
 
         return new Conversation(ConversationId.Parse(Id), Version) {
             Title = Title,
@@ -46,6 +49,8 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
             EndsAt = new Moment(EndsAt),
             MessageCount = MessageCount,
             AuthorIds = authorIds,
+            AttachmentCount = AttachmentCount,
+            AttachmentIds = attachmentIds,
         };
     }
 
@@ -66,5 +71,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
         EndsAt = model.EndsAt.ToDateTime();
         MessageCount = model.MessageCount;
         AuthorIds = JsonSerializer.Serialize(model.AuthorIds);
+        AttachmentCount = model.AttachmentCount;
+        AttachmentIds = JsonSerializer.Serialize(model.AttachmentIds);
     }
 }

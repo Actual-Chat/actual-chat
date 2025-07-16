@@ -26,6 +26,16 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public static string IdPrefix(TextEntryId entryId)
         => entryId.Value + IdSeparator;
 
+    public static TextEntryId? ExtractTextEntryId(Symbol id)
+    {
+        var i = id.Value.LastIndexOf(IdSeparator);
+        if (i < 0)
+            return null;
+
+        TextEntryId.TryParse(id.Value[..i], out var textEntryId);
+        return textEntryId;
+    }
+
     public TextEntryAttachment ToModel()
         => new (Id, Version) {
             EntryId = TextEntryId.Parse(EntryId),
