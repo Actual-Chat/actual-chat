@@ -6,14 +6,16 @@
         var localTime = Hub.DateTimeConverter.ToLocalTime(Moment.GetValueOrDefault());
         tooltip = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
     }
+    var text = IsCapitalized ? m.Capitalize() : m;
 }
 
-<span class="@Class live-time-text" title="@tooltip">@m</span>
+<span class="@Class live-time-text" title="@tooltip">@text</span>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public Moment? Moment { get; set; }
     [Parameter] public string NullText { get; set; } = "n/a";
+    [Parameter] public bool IsCapitalized { get; set; }
 
     protected override ComputedState<string>.Options GetStateOptions() {
         var initialValue = Moment.HasValue ? Hub.LiveTime.GetDeltaText(Moment.Value) : NullText;

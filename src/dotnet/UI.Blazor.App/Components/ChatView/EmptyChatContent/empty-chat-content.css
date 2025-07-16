@@ -2,13 +2,17 @@
     @apply flex-y items-center gap-y-4;
     @apply py-8;
 }
-.empty-chat-content > .c-text {
+.empty-chat-content > .c-text,
+.empty-chat-content > .c-text .avatar-name {
     @apply flex-y items-center;
-    @apply w-full;
-    @apply text-lg text-03 text-headline-5;
+    @apply max-w-full;
+    @apply text-03 text-headline-5;
+}
+.empty-chat-content > .c-text .avatar-name {
+    @apply line-clamp-1;
 }
 .empty-chat-content > .c-text > .c-truncated-text {
-    @apply flex-x justify-center gap-x-2;
+    @apply flex-x justify-center;
     @apply w-full;
     @apply px-4;
     @apply truncate;
