@@ -110,7 +110,7 @@ body.hoverable .btn.unhovered:hover::after {
     @apply hidden;
 }
 .btn:active {
-    filter: opacity(0.9) blur(0.04rem);
+    filter: blur(0.04rem);
 }
 .btn.pseudo-disabled:active,
 .btn:disabled:active {
@@ -266,10 +266,6 @@ body.hoverable .btn.btn-modal:hover::after {
 }
 
 /* Button Square and Round Hover */
-body.hoverable .btn.btn-square:hover,
-body.hoverable .btn.btn-round:hover {
-    @apply bg-transparent;
-}
 body.hoverable .btn.btn-square:hover::after,
 body.hoverable .btn.btn-round:hover::after {
     @apply hover-after;

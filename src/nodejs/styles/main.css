@@ -371,40 +371,26 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 @media (min-width: 820px) {
     .page-with-header-and-footer.rp-open > .list-view-layout {
-        animation: animated-text-1 500ms alternate;
+        animation: animated-text-1 400ms alternate;
     }
     .page-with-header-and-footer.rp-closed > .list-view-layout {
-        animation: animated-text-2 500ms alternate;
+        animation: animated-text-2 400ms alternate;
     }
-}
-@keyframes hide-layout {
-    0% { filter: opacity(1); }
-    20%, 100% { filter: opacity(0);}
-}
-@keyframes show-layout  {
-    0%, 80% { filter: opacity(0); }
-    100% { filter: opacity(1);}
 }
 @keyframes animated-text-1 {
     0%, 100% {
         opacity: 1;
     }
-    10% {
-        opacity: 0.4;
-    }
-    90% {
-        opacity: 0.4;
+    10%, 90% {
+        opacity: 0.05;
     }
 }
 @keyframes animated-text-2 {
     0%, 100% {
         opacity: 1;
     }
-    10% {
-        opacity: 0.4;
-    }
-    90% {
-        opacity: 0.4;
+    10%, 90% {
+        opacity: 0.05;
     }
 }
 
