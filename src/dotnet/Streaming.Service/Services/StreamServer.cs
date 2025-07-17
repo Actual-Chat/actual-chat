@@ -32,6 +32,12 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
     }
 
+    public async Task<RpcStream<StringDiff>?> GetTranslation(string streamId, CancellationToken cancellationToken)
+    {
+        var source = await Backend.GetTranslation(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
+        return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
+    }
+
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
         AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);

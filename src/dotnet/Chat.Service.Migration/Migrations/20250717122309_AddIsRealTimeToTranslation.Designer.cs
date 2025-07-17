@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250717122309_AddIsRealTimeToTranslation")]
+    partial class AddIsRealTimeToTranslation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -578,15 +581,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id")
                         .UseCollation("C");
-
-                    b.Property<int>("AttachmentCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("attachment_count");
-
-                    b.Property<string>("AttachmentIds")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("attachment_ids");
 
                     b.Property<string>("AuthorIds")
                         .IsRequired()

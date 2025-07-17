@@ -23,8 +23,10 @@ public class TranslationSettings
     public int RealtimeContextMessageCount { get; set; } = 3;
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1";
+    public int OpenAIModelMaxTokens { get; set; } = 32768;
     public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-nano";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    public int StreamingMinContentLength { get; set; } = 50;
 }
 
 public class LanguageDetectionSettings

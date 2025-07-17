@@ -16,6 +16,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public string StreamId { get; set; } = "";
     public string ChatId { get; set; } = "";
     public string EntryId { get; set; } = "";
+    public bool IsRealtime { get; set; } // TODO(FC,AK): remove when stream api is unified
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -35,6 +36,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
             Content = Content,
             SourceContentHash = new HashString(SourceContentHash),
             StreamId = StreamId,
+            IsRealtime = IsRealtime,
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
         };
@@ -52,6 +54,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
         Content = model.Content;
         SourceContentHash = model.SourceContentHash;
         StreamId = model.StreamId;
+        IsRealtime = model.IsRealtime;
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
     }

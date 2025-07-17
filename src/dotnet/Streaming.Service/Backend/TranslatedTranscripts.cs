@@ -1,5 +1,4 @@
 using ActualChat.Chat;
-using ActualChat.Hashing;
 using ActualChat.Mesh;
 using ActualChat.Queues;
 using ActualChat.Streaming.Services;
@@ -66,7 +65,7 @@ public class TranslatedTranscripts : ProcessorBase
     {
         var streamId = StreamId.New(originalStreamId, translationId.Language);
         var worker = _activePublishers.GetOrAdd(streamId, PublisherFactory, (this, translationId, originalStream));
-        // since ValueFactory in concurrent dictionary can run concurrently we start only single one
+        // Starting only indeed inserted worker
         worker.Start();
         return await _translatedTranscripts.Get(streamId, cancellationToken).ConfigureAwait(false);
 
@@ -131,7 +130,7 @@ public class TranslatedTranscripts : ProcessorBase
                         continue;
 
                     var translatedContent = await TranslationsBackend.Translate(translationId, prefix, content, cancellationToken).ConfigureAwait(false);
-                    if (OrdinalIgnoreCaseEquals(translatedContent, Constants.Chat.NoTranslationNeededText))
+                    if (OrdinalIgnoreCaseEquals(translatedContent, Constants.Translation.NoTranslationNeededText))
                         translatedContent = content; // No translation needed, use original content
 
                     if (!translatedContent.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
@@ -190,8 +189,8 @@ public class TranslatedTranscripts : ProcessorBase
             null,
             Change.Create(new Translation(translationId) {
                 StreamId = streamId.Value,
+                IsRealtime = true,
                 Content = "",
-                TargetLanguage = translationId.Language,
             }));
         return Commander.Call(cmd, cancellationToken)
             .Catch(Log, "Failed to create streaming translation #{TranslationId}", translationId);
@@ -209,7 +208,6 @@ public class TranslatedTranscripts : ProcessorBase
             Change.Update(new Translation(translationId) {
                 StreamId = Symbol.Empty,
                 Content = translatedText,
-                TargetLanguage = translationId.Language,
                 SourceContentHash = ChatEntryHashExt.GetContentHashString(originalText),
             }));
         return Commander.Call(cmd, cancellationToken)

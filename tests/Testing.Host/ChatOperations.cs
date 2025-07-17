@@ -24,10 +24,16 @@ public static class ChatOperations
     public static Task<(ChatId, Symbol)> CreateChat(
         this IWebTester tester,
         bool isPublicChat,
-        [CallerMemberName] string title = "",
+        string title = "",
         PlaceId? placeId = null,
         CancellationToken cancellationToken = default)
-        => CreateChat(tester, c => c with { IsPublic = isPublicChat, Title = title.NullIfEmpty() ?? DefaultChatTitle, PlaceId = placeId, Kind = null }, cancellationToken);
+        => CreateChat(tester,
+            c => c with {
+                IsPublic = isPublicChat,
+                Title = title.NullIfEmpty() ?? tester.Out.GetTest()?.DisplayName.NullIfEmpty() ?? DefaultChatTitle,
+                PlaceId = placeId, Kind = null
+            },
+            cancellationToken);
 
     public static async Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, Func<ChatDiff, ChatDiff> configure, CancellationToken cancellationToken = default)
     {

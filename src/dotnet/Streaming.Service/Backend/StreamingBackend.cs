@@ -13,6 +13,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
     private readonly StreamStore<byte[]> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
+    private readonly StreamStore<StringDiff> _translationStreams;
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -46,14 +47,17 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     {
         Services = services;
 
-        _audioStreams = new StreamStore<byte[]>(ThisNode.Ref) {
+        _audioStreams = new (ThisNode.Ref) {
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.AudioStreamCount,
             Log = services.LogFor($"{GetType().FullName}.AudioStreams"),
         };
-        _transcriptStreams = new StreamStore<TranscriptDiff>(ThisNode.Ref) {
+        _transcriptStreams = new (ThisNode.Ref) {
             StreamIdValidator = ValidateStreamId,
             Log = services.LogFor($"{GetType().FullName}.TranscriptStreams"),
+        };
+        _translationStreams = new (ThisNode.Ref) {
+            Log = services.LogFor($"{GetType().FullName}.TranslationStreams"),
         };
     }
 
@@ -96,6 +100,20 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
 
         return RpcStream.New(translatedStream);
     }
+
+    public async Task<RpcStream<StringDiff>?> GetTranslation(StreamId streamId, CancellationToken cancellationToken)
+    {
+        var stream = await _translationStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
+        return stream == null
+            ? null
+            : RpcStream.New(stream);
+    }
+
+    public Task PublishTranslation(
+        StreamId streamId,
+        IAsyncEnumerable<StringDiff> stream,
+        CancellationToken cancellationToken)
+        => _translationStreams.Publish(streamId, stream);
 
     // Private methods
 

@@ -4,9 +4,9 @@ using ActualChat.Db;
 using ActualChat.Notification.Db;
 using ActualChat.Queues;
 using ActualChat.Users;
+using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
@@ -426,7 +426,10 @@ public class NotificationsBackend(IServiceProvider services)
         // Force loading entry media info
         entry = await ChatsBackend
             .GetEntry(entry.Id, Constants.Notification.EntryWaitTimeout, cancellationToken)
-            .Require().ConfigureAwait(false);
+            .ConfigureAwait(false);
+        if (entry is null)
+            return;
+
         var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken)
             .ConfigureAwait(false);
         var key = chatId.Id.Value;

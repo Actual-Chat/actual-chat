@@ -98,6 +98,8 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public TranslationUI TranslationUI => field ??= Services.GetRequiredService<TranslationUI>();
     [field: AllowNull, MaybeNull]
+    public TranscriptUI TranscriptUI => field ??= Services.GetRequiredService<TranscriptUI>();
+    [field: AllowNull, MaybeNull]
     public LinkPreviewUI LinkPreviewUI => field ??= Services.GetRequiredService<LinkPreviewUI>();
     [field: AllowNull, MaybeNull]
     public MarkupHelpers MarkupHelpers => field ??= new MarkupHelpers(this);

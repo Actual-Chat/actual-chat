@@ -73,6 +73,20 @@ public sealed class StreamBackendClient : IStreamClient
             yield return diff;
     }
 
+    public async IAsyncEnumerable<StringDiff> GetTranslation(
+        string streamId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        Log.LogDebug("GetTranslatedTranscript({StreamId})", streamId);
+        var diffs = await Backend.GetTranslation(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
+        if (diffs == null)
+            yield break;
+
+        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
+        await foreach (var diff in diffs.ConfigureAwait(false))
+            yield return diff;
+    }
+
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
         AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
