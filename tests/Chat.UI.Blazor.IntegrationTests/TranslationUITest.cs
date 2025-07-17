@@ -222,7 +222,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         translation.IsStreaming.Should().Be(true);
 
         // act
-        var diffs = await TranslationUI.GetTranscript(entries[0].Id, cancellationToken).ToListAsync(cancellationToken);
+        var diffs = await TranslationUI.GetTranscript(entries[0], cancellationToken).ToListAsync(cancellationToken);
 
         // assert
         diffs.Should().HaveCountGreaterThan(10);

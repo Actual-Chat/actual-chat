@@ -21,32 +21,36 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
     private static ILogger Log => _log ??= StaticLog.For<StreamId>();
     private static readonly ILruCache<string, StreamId> Cache = CreateCache<StreamId>(32);
 
-    public static Func<string> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();
-    public const char Delimiter = '-';
+    private static Func<string> LocalIdGenerator { get; } = () => Ulid.NewUlid().ToString();
+    private const char Delimiter = '-';
+    private const char LanguageDelimiter = '~';
 
     [IgnoreDataMember]
     public NodeRef NodeRef { get; }
     [IgnoreDataMember]
     public string LocalId { get; }
+    [IgnoreDataMember]
+    public Language? Language { get; }
 
     // Factories and constructors
 
     public static StreamId New(NodeRef nodeRef)
     {
         var localId = LocalIdGenerator.Invoke();
-        return new(Format(nodeRef, localId), nodeRef, localId);
+        return new(Format(nodeRef, localId), nodeRef, localId, null);
     }
 
     public static StreamId New(NodeRef nodeRef, string localId)
-        => new(Format(nodeRef, localId), nodeRef, localId);
+        => new(Format(nodeRef, localId), nodeRef, localId, null);
 
     public static StreamId New(StreamId streamId, Language language)
-        => New(streamId.NodeRef, $"{streamId.LocalId}{language.Value.OrdinalReplace("-", "")}"); // Replace Delimiter to avoid issues with parsing
+        => new(Format(streamId, language), streamId.NodeRef, streamId.LocalId, language);
 
-    private StreamId(string value, NodeRef nodeRef, string localId) : base(value)
+    private StreamId(string value, NodeRef nodeRef, string localId, Language? language) : base(value)
     {
         NodeRef = nodeRef;
         LocalId = localId;
+        Language = language;
     }
 
     // Equality
@@ -71,6 +75,9 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
     public static string Format(NodeRef nodeRef, string localId)
         => $"{nodeRef}{Delimiter}{localId}";
 
+    public static string Format(StreamId streamId, Language language)
+        => $"{streamId.Value}{LanguageDelimiter}{language}";
+
     public static StreamId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<StreamId>(s);
 
@@ -93,6 +100,20 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
             return true;
         }
 
+        var languageParts = s.Split(LanguageDelimiter, 2);
+        if (languageParts.Length == 2) {
+            // StreamId with language
+            if (!TryParse(languageParts[0], out var streamId))
+                return false;
+
+            if (!Language.TryParse(languageParts[1], out var language))
+                return false;
+
+            result = new StreamId(s, streamId.NodeRef, streamId.LocalId, language);
+            result = Cache.AddOrGet(s, result);
+            return true;
+        }
+
         var parts = s.Split(Delimiter, 2);
         if (parts.Length != 2)
             return false;
@@ -104,7 +125,7 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
         if (localId.IsNullOrEmpty() || !Alphabet.AlphaNumericDash.IsMatch(localId))
             return false;
 
-        result = new StreamId(s, nodeRef, localId);
+        result = new StreamId(s, nodeRef, localId, null);
         result = Cache.AddOrGet(s, result);
         return true;
     }

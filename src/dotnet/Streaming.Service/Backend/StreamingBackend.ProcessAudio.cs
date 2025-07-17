@@ -89,7 +89,7 @@ public partial class StreamingBackend
             .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
         var publishAudioTask = mustStreamVoice
             ? BackgroundTask.Run(
-                () => _audioStreams.Publish(openSegment.StreamId, audioStream),
+                () => _audioStreams.Publish(openSegment.StreamId, null, audioStream),
                 Log,
                 "Failed to publish audio stream",
                 cancellationToken)
@@ -176,96 +176,39 @@ public partial class StreamingBackend
         var transcriber = TranscriberFactory.Get(transcriptionEngine);
         var transcripts = transcriber
             .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, cancellationToken)
-            .Throttle(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
+            .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
             .Memoize(CancellationToken.None);
         cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
 
         var transcriptStreamId = audioSegment.StreamId;
-        var publishTask = _transcriptStreams.Publish(
-            transcriptStreamId,
-            transcripts.Replay(cancellationToken).ToTranscriptDiffs());
-        var textEntryTask = CreateAndFinalizeTextEntry(
-            audioSegment.Record.ChatId,
-            audioSegment.Author.Id,
-            beginsAt,
-            audioEntryTask,
-            transcriptStreamId,
-            audioSegment.Record.RepliedEntryId,
-            transcripts.Replay(cancellationToken));
-        await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
-    }
-
-    private async Task<ChatEntry> CreateAudioEntry(
-        OpenAudioSegment audioSegment,
-        Moment beginsAt,
-        Moment recordedAt,
-        CancellationToken cancellationToken)
-    {
-        var delay = beginsAt - recordedAt;
-        DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
-
         var chatId = audioSegment.Record.ChatId;
-        var audioEntryId = AudioEntryId.New(chatId, 0);
-        var command = new ChatsBackend_ChangeEntry(
-            audioEntryId,
-            null,
-            Change.Create(new ChatEntryDiff {
-                AuthorId = audioSegment.Author.Id,
-                Content = "",
-                StreamId = audioSegment.StreamId.Value,
-                BeginsAt = beginsAt,
-                ClientSideBeginsAt = recordedAt,
-            }));
-        var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-        return audioEntry;
-    }
+        var authorId = audioSegment.Author.Id;
+        var repliedEntryId = audioSegment.Record.RepliedEntryId;
 
-    private async Task FinalizeAudioEntry(
-        OpenAudioSegment audioSegment,
-        ChatEntry audioEntry,
-        string? audioBlobId,
-        CancellationToken cancellationToken)
-    {
-        var closedSegment = await audioSegment.ClosedSegment.ConfigureAwait(false);
-        var endsAt = audioEntry.BeginsAt + closedSegment.Duration;
-        var contentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration;
-        contentEndsAt = Moment.Min(endsAt, contentEndsAt);
-        var command = new ChatsBackend_ChangeEntry(
-            audioEntry.Id,
-            null, // do not perform version check there - it might have already been changed and it's OK
-            Change.Update(new ChatEntryDiff {
-                Content = audioBlobId ?? "",
-                StreamId = "",
-                EndsAt = endsAt,
-                ContentEndsAt = contentEndsAt,
-            }));
-        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task CreateAndFinalizeTextEntry(
-        ChatId chatId,
-        AuthorId authorId,
-        Moment beginsAt,
-        Task<ChatEntry>? audioEntryTask,
-        StreamId transcriptStreamId,
-        TextEntryId? repliedEntryId,
-        IAsyncEnumerable<Transcript> transcripts)
-    {
         Transcript? lastTranscript = null;
         ChatEntry? textEntry = null;
         ChatEntryLanguage? entryLanguage = null;
         var audioEntry = (ChatEntry?)null;
         try {
-            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
+            await foreach (var transcript in transcripts.Replay(cancellationToken).ConfigureAwait(false)) {
                 lastTranscript = transcript;
+                if (entryLanguage?.Languages.Length is null or 0 && textEntry != null)
+                    if (lastTranscript.Languages.Length > 0)
+                        entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
                 if (textEntry != null)
                     continue;
                 if (EmptyRegex.IsMatch(transcript.Text))
                     continue;
 
                 // Got first non-empty transcript -> create text entry
+                // The code below is performed only once
                 textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
                 entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
+                var transcriptDiffStream = transcripts.Replay(cancellationToken).ToTranscriptDiffs().Memoize();
+                var textEntryId = TextEntryId.New(chatId, textEntry.LocalId);
+                await _transcriptStreams
+                    .Publish(transcriptStreamId, textEntryId, transcriptDiffStream)
+                    .ConfigureAwait(false);
             }
         }
         finally {
@@ -352,5 +295,52 @@ public partial class StreamingBackend
                 : ChatEntryLanguagesBackend_Change.Upsert(entryLanguage);
             return Commander.Call(cmd, true, CancellationToken.None);
         }
+    }
+
+    private async Task<ChatEntry> CreateAudioEntry(
+        OpenAudioSegment audioSegment,
+        Moment beginsAt,
+        Moment recordedAt,
+        CancellationToken cancellationToken)
+    {
+        var delay = beginsAt - recordedAt;
+        DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
+
+        var chatId = audioSegment.Record.ChatId;
+        var audioEntryId = AudioEntryId.New(chatId, 0);
+        var command = new ChatsBackend_ChangeEntry(
+            audioEntryId,
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = audioSegment.Author.Id,
+                Content = "",
+                StreamId = audioSegment.StreamId.Value,
+                BeginsAt = beginsAt,
+                ClientSideBeginsAt = recordedAt,
+            }));
+        var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        return audioEntry;
+    }
+
+    private async Task FinalizeAudioEntry(
+        OpenAudioSegment audioSegment,
+        ChatEntry audioEntry,
+        string? audioBlobId,
+        CancellationToken cancellationToken)
+    {
+        var closedSegment = await audioSegment.ClosedSegment.ConfigureAwait(false);
+        var endsAt = audioEntry.BeginsAt + closedSegment.Duration;
+        var contentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration;
+        contentEndsAt = Moment.Min(endsAt, contentEndsAt);
+        var command = new ChatsBackend_ChangeEntry(
+            audioEntry.Id,
+            null, // do not perform version check there - it might have already been changed and it's OK
+            Change.Update(new ChatEntryDiff {
+                Content = audioBlobId ?? "",
+                StreamId = "",
+                EndsAt = endsAt,
+                ContentEndsAt = contentEndsAt,
+            }));
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -13,6 +13,9 @@ public sealed class FuncWorker : WorkerBase
     public static FuncWorker New(Func<CancellationToken, Task> taskFactory, CancellationTokenSource? cancellationTokenSource)
         => new(taskFactory, cancellationTokenSource);
 
+    public static FuncWorker New<TARg>(Func<TARg, CancellationToken, Task> taskFactory, TARg args, CancellationTokenSource? cancellationTokenSource)
+        => new(ct => taskFactory(args, ct), cancellationTokenSource);
+
     public static FuncWorker Start(Func<CancellationToken, Task> taskFactory)
         => Start(taskFactory, null);
     public static FuncWorker Start(Func<CancellationToken, Task> taskFactory, CancellationToken cancellationToken)
@@ -20,6 +23,13 @@ public sealed class FuncWorker : WorkerBase
     public static FuncWorker Start(Func<CancellationToken, Task> taskFactory, CancellationTokenSource? cancellationTokenSource)
     {
         var worker = New(taskFactory, cancellationTokenSource);
+        worker.Start();
+        return worker;
+    }
+
+    public static FuncWorker Start<TArg>(Func<TArg, CancellationToken, Task> taskFactory, TArg args, CancellationTokenSource? cancellationTokenSource)
+    {
+        var worker = New(taskFactory, args, cancellationTokenSource);
         worker.Start();
         return worker;
     }
