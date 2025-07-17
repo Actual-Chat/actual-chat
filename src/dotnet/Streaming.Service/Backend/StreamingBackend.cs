@@ -3,6 +3,7 @@ using ActualChat.Chat;
 using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Mesh;
+using ActualChat.Queues;
 using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
@@ -11,9 +12,10 @@ namespace ActualChat.Streaming;
 
 public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
-    private readonly StreamStore<byte[]> _audioStreams;
-    private readonly StreamStore<TranscriptDiff> _transcriptStreams;
-    private readonly StreamStore<StringDiff> _translationStreams;
+    private readonly StreamStore<byte[], TextEntryId> _audioStreams;
+    private readonly StreamStore<TranscriptDiff, TextEntryId> _transcriptStreams;
+    private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
+    private readonly StreamStore<StringDiff, TextEntryId> _translationStreams;
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -37,26 +39,31 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     [field: AllowNull, MaybeNull]
     private IServerKvas ServerKvas => field ??= Services.GetRequiredService<IServerKvas>();
     [field: AllowNull, MaybeNull]
-    private TranslatedTranscripts TranslatedTranscripts => field ??= Services.GetRequiredService<TranslatedTranscripts>();
-    [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= Services.Commander();
     [field: AllowNull, MaybeNull]
     private MomentClockSet Clocks => field ??= Services.Clocks();
+    [field: AllowNull, MaybeNull]
+    private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
+    [field: AllowNull, MaybeNull]
+    private IQueues Queues => field ??= Services.Queues();
 
     public StreamingBackend(IServiceProvider services)
     {
         Services = services;
 
-        _audioStreams = new (ThisNode.Ref) {
+        _audioStreams = new StreamStore<byte[], TextEntryId> {
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.AudioStreamCount,
+            ExpirationDelay = AudioSettings.StreamExpirationDelay,
             Log = services.LogFor($"{GetType().FullName}.AudioStreams"),
         };
-        _transcriptStreams = new (ThisNode.Ref) {
+        _transcriptStreams = new StreamStore<TranscriptDiff, TextEntryId> {
             StreamIdValidator = ValidateStreamId,
+            ExpirationDelay = AudioSettings.StreamExpirationDelay,
             Log = services.LogFor($"{GetType().FullName}.TranscriptStreams"),
+            OnStreamExpire = id => _translatingStreams.Remove(id, out _),
         };
-        _translationStreams = new (ThisNode.Ref) {
+		_translationStreams = new StreamStore<StringDiff, TextEntryId> {
             Log = services.LogFor($"{GetType().FullName}.TranslationStreams"),
         };
     }
@@ -79,26 +86,44 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
 
     public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
     {
-        var stream = await _transcriptStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
+        var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
+        if (stream != null)
+            return RpcStream.New(stream);
+
+        if (streamId.Language == null)
+            return null;
+
+        var originalStreamId = StreamId.New(streamId.NodeRef, streamId.LocalId);
+        if (!_translatingStreams.TryAdd(streamId, originalStreamId)) {
+            stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
+            return RpcStream.New(stream!); // Already translating
+        }
+
+        var language = streamId.Language;
+        if (!_transcriptStreams.TryGetMetadata(originalStreamId, out var textEntryId)) {
+            textEntryId = await _transcriptStreams
+                .GetMetadata(originalStreamId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (textEntryId == null)
+                return null;
+        }
+
+        var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language, TranslationSourceId.New(textEntryId));
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
         return stream == null
             ? null
             : RpcStream.New(stream);
     }
 
-    public virtual async Task<RpcStream<TranscriptDiff>?> GetTranslatedTranscript(
-        StreamId streamId,
-        TranslationId translationId,
-        CancellationToken cancellationToken)
+    public async Task PushTranscript(StreamId streamId, TextEntryId entryId, RpcStream<TranscriptDiff> diffStream, CancellationToken cancellationToken)
     {
-        var stream = await _transcriptStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
-        if (stream is null)
-            return null;
+        ValidateStreamId(streamId);
+        if (diffStream is null)
+            throw new ArgumentNullException(nameof(diffStream));
 
-        var translatedStream = await TranslatedTranscripts.Get(translationId, streamId, stream, cancellationToken).ConfigureAwait(false);
-        if (translatedStream is null)
-            return null;
-
-        return RpcStream.New(translatedStream);
+        await _transcriptStreams.Publish(streamId, entryId, diffStream).ConfigureAwait(false);
     }
 
     public async Task<RpcStream<StringDiff>?> GetTranslation(StreamId streamId, CancellationToken cancellationToken)
@@ -113,7 +138,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         StreamId streamId,
         IAsyncEnumerable<StringDiff> stream,
         CancellationToken cancellationToken)
-        => _translationStreams.Publish(streamId, stream);
+        => _translationStreams.Publish(streamId, null, stream);
 
     // Private methods
 

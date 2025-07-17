@@ -27,12 +27,12 @@ public class TranslatedTranscripts : ProcessorBase
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
-    private readonly StreamStore<TranscriptDiff> _translatedTranscripts;
+    private readonly StreamStore<TranscriptDiff,TextEntryId> _translatedTranscripts;
 
     public TranslatedTranscripts(IServiceProvider services)
     {
         Services = services;
-        _translatedTranscripts = new (ThisNode.Ref) {
+        _translatedTranscripts = new () {
             Log = services.LogFor($"{GetType().FullName}.TranslatedTranscripts"),
             ExpirationDelay = TimeSpan.FromSeconds(30),
             ShareWaitDelay = TimeSpan.FromSeconds(5),
@@ -89,7 +89,7 @@ public class TranslatedTranscripts : ProcessorBase
     {
         await CreateTranslation(translationId, streamId, cancellationToken).ConfigureAwait(false);
         var translationDiffs = Translate(translationId, originalStream, cancellationToken).Memoize(cancellationToken);
-        await _translatedTranscripts.Publish(streamId, translationDiffs).ConfigureAwait(false);
+        await _translatedTranscripts.Publish(streamId, null, translationDiffs).ConfigureAwait(false);
     }
 
     private IAsyncEnumerable<TranscriptDiff> Translate(

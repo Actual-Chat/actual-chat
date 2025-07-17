@@ -15,9 +15,10 @@ public interface IStreamingBackend : IRpcService, IBackendService
         StreamId streamId,
         CancellationToken cancellationToken);
 
-    Task<RpcStream<TranscriptDiff>?> GetTranslatedTranscript(
+    Task PushTranscript(
         StreamId streamId,
-        TranslationId translationId,
+        TextEntryId entryId,
+        RpcStream<TranscriptDiff> diffStream,
         CancellationToken cancellationToken);
 
     Task<RpcStream<StringDiff>?> GetTranslation(

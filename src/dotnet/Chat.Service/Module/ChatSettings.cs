@@ -28,6 +28,7 @@ public class TranslationSettings
     public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-nano";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
     public int StreamingMinContentLength { get; set; } = 50;
+    public TimeSpan StreamExpirationDelay { get; set; } = TimeSpan.FromSeconds(10);
 }
 
 public class LanguageDetectionSettings

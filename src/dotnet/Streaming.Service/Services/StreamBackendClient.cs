@@ -57,22 +57,6 @@ public sealed class StreamBackendClient : IStreamClient
             yield return diff;
     }
 
-    public async IAsyncEnumerable<TranscriptDiff> GetTranslatedTranscript(
-        string streamId,
-        TranslationId translationId,
-        [EnumeratorCancellation]
-        CancellationToken cancellationToken)
-    {
-        Log.LogDebug("GetTranslatedTranscript({StreamId})", streamId);
-        var diffs = await Backend.GetTranslatedTranscript(StreamId.Parse(streamId), translationId, cancellationToken).ConfigureAwait(false);
-        if (diffs == null)
-            yield break;
-
-        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-        await foreach(var diff in diffs.ConfigureAwait(false))
-            yield return diff;
-    }
-
     public async IAsyncEnumerable<StringDiff> GetTranslation(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)

@@ -28,7 +28,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         CancellationToken cancellationToken)
     {
         // We must return another RpcStream here - they aren't "shareable"
-        var source = await Backend.GetTranslatedTranscript(StreamId.Parse(streamId), translationId, cancellationToken).ConfigureAwait(false);
+        var source = await Backend.GetTranscript(StreamId.New(StreamId.Parse(streamId), translationId.Language), cancellationToken).ConfigureAwait(false);
         return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
     }
 

@@ -50,7 +50,7 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
             }
 
             var diffs = isTranslation
-                ? TranslationUI.GetTranscript(entry.Id, cancellationToken)
+                ? TranslationUI.GetTranscript(entry, cancellationToken)
                 : StreamClient.GetTranscript(entry.StreamId, cancellationToken);
             var transcripts = diffs
                 .ToTranscripts()

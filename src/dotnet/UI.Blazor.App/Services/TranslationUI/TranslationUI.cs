@@ -140,8 +140,8 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var targetLanguage = await GetTargetLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
         return await Translations.Get(session, TranslationId.New(translationSourceId, targetLanguage), cancellationToken).ConfigureAwait(false);
     }
-
-   public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntryId entryId, [EnumeratorCancellation] CancellationToken cancellationToken)
+	
+   /*public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntryId entryId, [EnumeratorCancellation] CancellationToken cancellationToken)
    {
        var entry = await ChatUI.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
         var targetLanguage = await GetTargetLanguage(entry.ChatId, cancellationToken).ConfigureAwait(false);
@@ -158,6 +158,25 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         else
             await foreach(var diff in StreamClient.GetTranslation(streamId, cancellationToken).ConfigureAwait(false))
                 yield return new TranscriptDiff(diff, LinearMapDiff.None);
+   }*/
+
+   public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntry entry, [EnumeratorCancellation] CancellationToken cancellationToken) {
+        var targetLanguage = await GetTargetLanguage(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var streamId = entry.IsStreaming
+            ? StreamId.New(StreamId.Parse(entry.StreamId), targetLanguage)
+            : null;
+
+        if (streamId == null) {
+            var translation = await Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+            if (translation == null || translation.StreamId.IsNullOrEmpty())
+                yield break;
+
+            streamId = StreamId.Parse(translation.StreamId);
+        }
+
+        var transcriptStream = StreamClient.GetTranscript(streamId.Value, cancellationToken);
+        await foreach(var diff in transcriptStream.ConfigureAwait(false))
+            yield return diff;
    }
 
    [ComputeMethod]
