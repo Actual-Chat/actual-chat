@@ -9,6 +9,9 @@
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
     var cls = $"conversation-message message-wrapper {openClass}";
+    var maxCount = conversation.Attachments.Length;
+    if (ScreenSize.IsNarrow() && maxCount > 5)
+        maxCount = 5;
 }
 <div class="@cls">
     <CascadingValue Value="@_fakeEntry" IsFixed="true">
@@ -35,17 +38,22 @@
             </div>
         }
         @if (conversation.Attachments.Length > 0) {
-            var extra = Math.Max(0, conversation.AttachmentCount - conversation.Attachments.Length);
-            <div class="c-attachments">
-                @foreach (var attachment in conversation.Attachments) {
-                    <div class="c-attachment">@attachment.Index</div>
+            var extra = Math.Max(0, conversation.AttachmentCount - maxCount);
+            <div class="conversation-attachments">
+                @for(var i = 0; i < maxCount; i++) {
+                    var attachment = conversation.Attachments[i];
+                    @if (attachment.IsVisualMedia()) {
+                        <VisualMediaAttachment Attachment="@attachment"/>
+                    } else {
+                        <FileAttachment Attachment="@attachment" IconOnly="true"/>
+                    }
                 }
                 @if (extra > 0) {
-                    <div class="c-attachment c-count">
+                    <div class="c-extra">
                         +@extra
                     </div>
                 }
-    </div>
+            </div>
         }
     </div>
     </CascadingValue>
@@ -66,6 +74,7 @@
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
 

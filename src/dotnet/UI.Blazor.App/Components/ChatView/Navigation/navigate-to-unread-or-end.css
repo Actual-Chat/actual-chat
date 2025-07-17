@@ -6,17 +6,20 @@
 }
 
 /* Animation */
-.navigate-to-end.off-to-on .btn {
+.navigate-to-end.off-to-on .btn,
+.navigate-to-end.off-to-on .unread-counter {
     opacity: 1;
     transform: scale(1) translateY(0);
     transition: opacity 150ms ease-in-out, transform 300ms ease-in-out;
 }
-.navigate-to-end.on-to-off .btn {
+.navigate-to-end.on-to-off .btn,
+.navigate-to-end.on-to-off .unread-counter {
     opacity: 0;
     transform: scale(0) translateY(1rem);
     transition: opacity 300ms ease-in-out, transform 150ms ease-in-out;
 }
-.navigate-to-end.off .btn {
+.navigate-to-end.off .btn,
+.navigate-to-end.off .unread-counter {
     opacity: 0;
     transform: scale(0) translateY(1rem);
 }

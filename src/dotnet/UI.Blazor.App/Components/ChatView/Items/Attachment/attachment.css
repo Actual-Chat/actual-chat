@@ -143,6 +143,12 @@ body.hoverable .image-line .image-item:hover {
     @apply rounded-full border border-separator;
     @apply bg-01;
 }
+.file-attachment.icon-only {
+    @apply flex-none;
+    @apply min-w-0 max-w-none;
+    @apply p-0;
+    @apply border-none;
+}
 body.hoverable .file-attachment:hover,
 .touch-capable .file-attachment:active {
     filter: brightness(1.1);
