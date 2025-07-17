@@ -22,7 +22,7 @@ body.narrow .btn.btn-square.account-btn {
     @apply p-0;
     @apply bg-transparent;
 }
-.btn-square.account-btn .avatar-badge > .c-name {
+.btn-square.account-btn .avatar-badge > .c-content {
     @apply hidden;
 }
 .btn-square.account-btn .btn-content {

@@ -22,26 +22,38 @@
     };
 
     @* '__builder' is predefined name used by RazorSourceGenerator *@
-    public static RenderFragment<(Presence, Moment?)> PresenceText = tuple  => __builder => {
-        var (presence, lastCheckIn) = tuple;
+    public static RenderFragment<(Presence, Moment?, bool)> PresenceText = tuple  => __builder => {
+        var (presence, lastCheckIn, isShort) = tuple;
         @switch (presence)
         {
             case Presence.Online:
                 @("Online")
                 break;
             case Presence.Recording:
-                @("Speaking...")
+                @if (isShort) {
+                    @("Speaking")
+                } else {
+                    @("Speaking...")
+                }
                 break;
             case Presence.Away or Presence.Offline:
                 @if (lastCheckIn != null) {
-                    @("Last seen ")<LiveTimeDeltaText Moment="@lastCheckIn" NullText=""/>
+                    @if (isShort) {
+                        <LiveTimeDeltaText Moment="@lastCheckIn" NullText="" IsCapitalized="true"/>
+                    } else {
+                        @("Last seen ")<LiveTimeDeltaText Moment="@lastCheckIn" NullText="" />
+                    }
                 } else {
                     @("Offline")
                 }
                 break;
             case Presence.Unknown:
             default:
-                @("...")
+                @if (isShort) {
+                    @("")
+                } else {
+                    @("...")
+                }
                 break;
         }
     };

@@ -22,7 +22,7 @@
     @apply h-full;
 }
 .author-modal .c-header > .c-bottom {
-    @apply flex-y items-start justify-end gap-y-1;
+    @apply flex-y items-start justify-end;
     @apply w-full;
     @apply px-4 pt-10;
     @apply bg-modal;
@@ -34,7 +34,9 @@
 }
 .author-modal .c-header > .c-bottom > .c-public {
     @apply max-h-16;
+    @apply overflow-y-auto overflow-x-hidden;
     @apply text-caption-6 text-03;
+    scrollbar-width: none;
 }
 .author-modal .c-header > .c-center {
     @apply absolute top-12 z-20;

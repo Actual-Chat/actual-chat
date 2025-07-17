@@ -4,7 +4,7 @@
     var m = State.Value;
 }
 
-@PresenceFragments.PresenceText((m.Presence, m.LastCheckIn))
+@PresenceFragments.PresenceText((m.Presence, m.LastCheckIn, IsShortText))
 
 @code {
     private IAuthors Authors => Hub.Authors;
@@ -14,6 +14,7 @@
 
     [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
+    [Parameter] public bool IsShortText { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
