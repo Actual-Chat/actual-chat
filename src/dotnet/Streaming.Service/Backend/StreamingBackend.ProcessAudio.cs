@@ -89,7 +89,7 @@ public partial class StreamingBackend
             .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
         var publishAudioTask = mustStreamVoice
             ? BackgroundTask.Run(
-                () => _audioStreams.Publish(openSegment.StreamId, null, audioStream),
+                () => _audioStreams.Publish(openSegment.StreamId, audioStream),
                 Log,
                 "Failed to publish audio stream",
                 cancellationToken)
@@ -205,9 +205,8 @@ public partial class StreamingBackend
                 textEntry = await CreateTextEntry(transcript).ConfigureAwait(false);
                 entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
                 var transcriptDiffStream = transcripts.Replay(cancellationToken).ToTranscriptDiffs().Memoize();
-                var textEntryId = TextEntryId.New(chatId, textEntry.LocalId);
                 await _transcriptStreams
-                    .Publish(transcriptStreamId, textEntryId, transcriptDiffStream)
+                    .Publish(transcriptStreamId, transcriptDiffStream)
                     .ConfigureAwait(false);
             }
         }
@@ -261,7 +260,7 @@ public partial class StreamingBackend
                     EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
                     TimeMap = audioEntry != null
                         ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
-                        : default
+                        : default,
                 });
 
             var command = new ChatsBackend_ChangeEntry(

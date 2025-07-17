@@ -27,7 +27,7 @@ public class TranslatedTranscripts : ProcessorBase
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
-    private readonly StreamStore<TranscriptDiff,TextEntryId> _translatedTranscripts;
+    private readonly StreamStore<TranscriptDiff> _translatedTranscripts;
 
     public TranslatedTranscripts(IServiceProvider services)
     {
@@ -89,7 +89,7 @@ public class TranslatedTranscripts : ProcessorBase
     {
         await CreateTranslation(translationId, streamId, cancellationToken).ConfigureAwait(false);
         var translationDiffs = Translate(translationId, originalStream, cancellationToken).Memoize(cancellationToken);
-        await _translatedTranscripts.Publish(streamId, null, translationDiffs).ConfigureAwait(false);
+        await _translatedTranscripts.Publish(streamId, translationDiffs).ConfigureAwait(false);
     }
 
     private IAsyncEnumerable<TranscriptDiff> Translate(
@@ -129,12 +129,13 @@ public class TranslatedTranscripts : ProcessorBase
                     if (content.IsNullOrWhiteSpace())
                         continue;
 
-                    var translatedContent = await TranslationsBackend.Translate(translationId, prefix, content, cancellationToken).ConfigureAwait(false);
-                    if (OrdinalIgnoreCaseEquals(translatedContent, Constants.Translation.NoTranslationNeededText))
-                        translatedContent = content; // No translation needed, use original content
-
-                    if (!translatedContent.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
-                        translatedContent = $" {translatedContent}";
+                    var translatedContent = content;
+                    // var translatedContent = await TranslationsBackend.Translate(translationId, prefix, content, cancellationToken).ConfigureAwait(false);
+                    // if (OrdinalIgnoreCaseEquals(translatedContent, Constants.Translation.NoTranslationNeededText))
+                    //     translatedContent = content; // No translation needed, use original content
+                    //
+                    // if (!translatedContent.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
+                    //     translatedContent = $" {translatedContent}";
 
                     // DebugLog?.LogDebug("Translation in progress #{TranslationId}: {Content}->{TranslatedContent}", translationId, content, translatedContent);
                     var translatedTranscript = stableTranslatedTranscript.WithSuffix(translatedContent, diffSinceStable.TimeMapDiff.Suffix.Scale(content.Length, translatedContent.Length));

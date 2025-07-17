@@ -31,7 +31,7 @@ public static partial class Constants
         // Audio
         public static readonly bool WebMReader = false;
         public static readonly bool AudioSource = false;
-        public static readonly bool AudioProcessor = false;
+        public static readonly bool AudioProcessor = true;
         public static readonly bool AudioPlayback = false;
         public static bool AudioPlaybackPlayMyOwnAudio
             => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
@@ -45,6 +45,7 @@ public static partial class Constants
 
         // Translation
         public static readonly bool TranscriptionTranslation = false;
+        public static readonly bool TranslationBackend = true;
 
         // Search
         public static readonly bool OpenSearchRequestResponse = false;
