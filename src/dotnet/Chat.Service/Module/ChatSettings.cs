@@ -19,6 +19,7 @@ public sealed class ChatSettings
 public class TranslationSettings
 {
     public FilePath PromptFile { get; set; } = "";
+    public int ContentMinLengthWithoutContext { get; set; } = 150;
     public int ContextMessageCount { get; set; } = 7;
     public int RealtimeContextMessageCount { get; set; } = 3;
     public string OpenAIKey { get; set; } = "";

@@ -64,6 +64,13 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     [ComputeMethod]
     protected virtual async Task<string> GetTranslationContext(ChatEntryId id, int count, CancellationToken cancellationToken)
     {
+        var translatedEntry = await ChatsBackend.GetEntry(id, cancellationToken).ConfigureAwait(false);
+        if (translatedEntry is null)
+            return "";
+
+        if (translatedEntry.Content.Length > Settings.Translation.ContentMinLengthWithoutContext)
+            return "";
+
         var entries = await ListEntries()
             .Where(x => x.SupportsTranslation(false))
             .Take(count)
