@@ -1,7 +1,7 @@
 @using ActualChat.Media
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    var fileSize = Attachment.Media.Length / (1024 * 1024d);
+    var fileSize = Attachment.Media.Length;
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
     MediaMimeTypes.TryGetExtension(Attachment.Media.ContentType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
@@ -22,7 +22,7 @@
             <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
             <div class="c-bottom">
                 <div class="c-size">
-                    <span>@fileSize.ToString("N2") MB</span>
+                    <span>@FileSizeFormatter.Format(fileSize)</span>
                 </div>
                 @if (_isLoaded) {
                     <a class="c-open" href="@url" role="button">
