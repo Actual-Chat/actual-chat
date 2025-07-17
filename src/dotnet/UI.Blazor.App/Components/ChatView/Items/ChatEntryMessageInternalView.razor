@@ -1,8 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedRenderStateComponent<AppUIHub, ChatEntryMessageInternalView.Model>
-@implements IDisposable
-@using ActualChat.Transcription
-@using ActualChat.Streaming
 @{
     var m = State.Value;
     var sm = m.Streaming;
@@ -13,7 +10,6 @@
     var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
     // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
     //     message.Entry.Id, m.IsStreaming, m.Translation);
-
 
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
@@ -50,11 +46,14 @@
                     var style = $"transition-delay: {spanDelay}ms;";
                     <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
                 }
-                @if (m.Translation != TranslationState.None) {
-                    @TranslationFragments.TranslationMark(TranslationState.Translating);
-                }
             }
         </span>
+        @if (!sm.Tail.IsNullOrEmpty()) {
+            <span>…@sm.Tail</span>
+        }
+        @if (m.Translation != TranslationState.None) {
+            @TranslationFragments.TranslationMark(TranslationState.Translating)
+        }
     } else {
         <CascadingValue Value="@entry" IsFixed="true">
             @if (isSimpleMarkup) {
@@ -76,16 +75,12 @@
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
 
     private Model? _rendered;
-    private CancellationTokenSource? RestartCts { get; set; }
+    private TranscriptStreamer _streamer = null!;
     private ILogger Log => Hub.LogFor(GetType());
-    private IStreamClient StreamClient => Hub.StreamClient;
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
-
-    [field: AllowNull, MaybeNull]
-    private IMutableState<StreamingModel> StreamingState => field ??= Hub.StateFactory.NewMutable(StreamingModel.None);
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
@@ -93,20 +88,14 @@
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
 
-    public void Dispose()
-        => RestartCts.CancelAndDisposeSilently();
+    public override async ValueTask DisposeAsync() {
+        await _streamer.DisposeSilentlyAsync().ConfigureAwait(false);
+        await base.DisposeAsync().ConfigureAwait(false);
+    }
 
     protected override void OnInitialized() {
-        if (!Message.Entry.IsStreaming)
-            return;
-
-        RestartCts.CancelAndDisposeSilently();
-        RestartCts = new();
-        var cancellationToken = RestartCts.Token;
-        _ = BackgroundTask.Run(
-            () => ReadTranscript(Message, cancellationToken),
-            Log, "ReadTranscript failed",
-            cancellationToken);
+        _streamer = new TranscriptStreamer(Message.Entry.Id, Hub);
+        _streamer.Start();
     }
 
     protected override bool ShouldRender() {
@@ -124,65 +113,9 @@
         return shouldRender;
     }
 
-    private async Task ReadTranscript(ChatEntryMessage message, CancellationToken cancellationToken) {
-        try {
-            var entry = message.Entry;
-            var isTranslation = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
-            var diffs = isTranslation
-                ? TranslationUI.GetTranscript(entry, cancellationToken)
-                : StreamClient.GetTranscript(entry.StreamId, cancellationToken);
-            var transcripts = diffs
-                .ToTranscripts()
-                .Throttle(TimeSpan.FromMilliseconds(320), cancellationToken);
-            var lastText = "";
-            if (isTranslation) {
-                // Initial state for translation
-                await Dispatcher.InvokeSafeAsync(() => {
-                    StreamingState.Value = new(
-                        RetainedText: "",
-                        ChangedText: "",
-                        AnimatedText: "",
-                        true,
-                        isTranslation);
-                }, Log).ConfigureAwait(false);
-            }
-            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
-                var text = transcript.Text;
-                var retainedLength = lastText.GetCommonPrefixLength(text);
-                var changedPart = text[retainedLength..];
-                var animatedLength = (text.Length - lastText.Length).Clamp(0, changedPart.Length);
-                var animatedStartIndex = changedPart.Length - animatedLength;
-                await Dispatcher.InvokeSafeAsync(() => {
-                    StreamingState.Value = new(
-                        RetainedText: text[..retainedLength],
-                        ChangedText: changedPart[..animatedStartIndex],
-                        AnimatedText: changedPart[animatedStartIndex..],
-                        true,
-                        isTranslation);
-                }, Log).ConfigureAwait(false);
-                lastText = text;
-            }
-
-            await Dispatcher.InvokeSafeAsync(() => {
-                StreamingState.Value = new(
-                    RetainedText: lastText,
-                    ChangedText: "",
-                    AnimatedText: "",
-                    false,
-                    isTranslation);
-            }, Log);
-        }
-        catch (Exception e) {
-            if (e.GetType().FullName != "Microsoft.AspNetCore.SignalR.HubException" || !e.Message.Contains(nameof(OperationCanceledException)))
-                throw;
-            // Not fully sure if it's the case, but it seems that sometimes SignalR
-            // wraps OperationCanceledException into HubException, so here we suppress it.
-        }
-    }
-
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.
-        var initialData = new Model(Markup, Message.Entry, TranslationState.None, StreamingModel.None);
+        var initialData = new Model(Markup, Message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
         return new() {
             InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
@@ -198,11 +131,10 @@
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
-            return _rendered ?? new Model(markup, message.Entry, TranslationState.None, StreamingModel.None);
+            return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
         }
-        var isStreaming = entry.IsStreaming || StreamingState.Value.IsStreaming;
-        if (isStreaming) {
-            var streamingState = await StreamingState.Use(cancellationToken).ConfigureAwait(false);
+        var streamingState = await _streamer.State.Use(cancellationToken).ConfigureAwait(false);
+        if (streamingState.IsStreaming) {
             var translationState = streamingState.IsTranslating
                 ? TranslationState.Translating
                 : TranslationState.None;
@@ -212,25 +144,25 @@
         // If we're not streaming, handle possible translation
         var mustTranslate = await TranslationUI.MustTranslate(entry, false, cancellationToken).ConfigureAwait(false);
         var hasTranslationChanged = isRenderedTranslated != mustTranslate;
-        var hasStreamingChanged = isRenderedStreaming != isStreaming;
+        var hasStreamingChanged = isRenderedStreaming != streamingState.IsStreaming;
         if (!renderedEntry.VersionEquals(entry) || hasTranslationChanged || hasStreamingChanged)
             markup = await ChatMarkupHub.GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
 
         if (!mustTranslate)
-            return new(markup, entry, TranslationState.None, StreamingModel.None);
+            return new(markup, entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
 
         var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
         if (translation is null)
-            return new(markup, entry, TranslationState.Translating, StreamingModel.None);
+            return new(markup, entry, TranslationState.Translating, TranscriptStreamer.StreamingState.None);
 
         if (translation.MatchesOriginal(entry.Content))
-            return new(markup, entry, TranslationState.None, StreamingModel.None);
+            return new(markup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.None, TranscriptStreamer.StreamingState.None);
 
         var translatedMarkup = entry.HasMediaEntry
             ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
             : MarkupParser.Parse(translation.Content);
 
-        return new(translatedMarkup, entry, TranslationState.Translated, StreamingModel.None);
+        return new(translatedMarkup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.Translated, TranscriptStreamer.StreamingState.None);
     }
 
     // Nested types
@@ -238,17 +170,8 @@
         Markup Markup,
         ChatEntry Entry,
         TranslationState Translation,
-        StreamingModel Streaming)
+        TranscriptStreamer.StreamingState Streaming)
     {
         public bool IsStreaming => Entry.IsStreaming || Streaming.IsStreaming;
-    }
-
-    public sealed record StreamingModel(
-        string RetainedText,
-        string ChangedText,
-        string AnimatedText,
-        bool IsStreaming,
-        bool IsTranslating) {
-        public static readonly StreamingModel None = new("", "", "", false, false);
     }
 }

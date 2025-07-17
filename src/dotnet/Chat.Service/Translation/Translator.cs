@@ -1,4 +1,6 @@
+using System.Text;
 using ActualChat.Chat.Module;
+using ActualChat.Transcription;
 using ActualLab.Diagnostics;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -44,29 +46,8 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         if (!Settings.IsTranslationEnabled)
             return textToTranslate;
 
-        var arguments = new KernelArguments {
-            { "TargetLanguage", $"{targetLanguage.Title}" },
-        };
-        var systemMessage = await PromptTemplate
-            .RenderAsync(Kernel, arguments, cancellationToken)
-            .ConfigureAwait(false);
-
-        var text =
-            $"""
-             {context}
-             [TRANSLATE_BELOW]
-             {textToTranslate}
-             """;
-
-        var executionSettings = new OpenAIPromptExecutionSettings {
-            Temperature = 0.1,
-            ChatSystemPrompt = systemMessage.Trim(),
-            MaxTokens = textToTranslate.Length * 8, // estimate for the response length
-            FrequencyPenalty = 1.0,
-            ResponseFormat = "text",
-        };
-        var chatHistory = new ChatHistory();
-        chatHistory.AddUserMessage(text);
+        var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
+        var chatHistory = BuildRequest(textToTranslate, context);
 
         var response = await Completion
             .GetChatMessageContentAsync(
@@ -77,11 +58,87 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             .ConfigureAwait(false);
         var result = response.Content ?? "";
 
-        DebugLog?.LogDebug("Translate: {Content} = {TranslatedContent}", text, result);
-
-        return OrdinalIgnoreCaseEquals(result, Constants.Chat.NoTranslationNeededText)
+        return OrdinalIgnoreCaseEquals(result, Constants.Translation.NoTranslationNeededText)
             ? textToTranslate // If the translation is not needed, return the original text
             : result;
+    }
+
+    public async IAsyncEnumerable<StringDiff> Stream(string textToTranslate, Language targetLanguage, string context = "", [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        textToTranslate.RequireNonEmpty();
+        if (!Settings.IsTranslationEnabled) {
+            yield return StringDiff.New(textToTranslate, "");
+            yield break;
+        }
+
+        var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
+        var chatHistory = BuildRequest(textToTranslate, context);
+
+        await foreach (var diff in StreamTranslation().ConfigureAwait(false))
+            yield return diff;
+
+        yield break;
+
+        async IAsyncEnumerable<StringDiff> StreamTranslation()
+        {
+            var sb = new StringBuilder();
+            var last = "";
+            var stream = Completion
+                .GetStreamingChatMessageContentsAsync(
+                    chatHistory,
+                    executionSettings,
+                    Kernel,
+                    cancellationToken);
+            await foreach (var response in stream.ConfigureAwait(false)) {
+                var suffix = response.Content;
+                sb.Append(suffix);
+                var translatedText = sb.ToString().Trim();
+                if (OrdinalEquals(translatedText, Constants.Translation.NoTranslationNeededText))
+                    yield break;
+
+                if (Constants.Translation.NoTranslationNeededText.OrdinalStartsWith(translatedText))
+                    yield return StringDiff.None; // wait for the whole NO_TRANSLATION_NEEDED
+
+                yield return StringDiff.New(translatedText, last);
+
+                last = translatedText;
+            }
+        }
+    }
+
+    private async Task<OpenAIPromptExecutionSettings> CreateExecutionSettings(
+        string textToTranslate,
+        Language targetLanguage,
+        CancellationToken cancellationToken)
+    {
+        var arguments = new KernelArguments {
+            { "TargetLanguage", $"{targetLanguage.Title}" },
+        };
+        var systemMessage = await PromptTemplate
+            .RenderAsync(Kernel, arguments, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new OpenAIPromptExecutionSettings {
+            Temperature = 0.1,
+            ChatSystemPrompt = systemMessage.Trim(),
+            MaxTokens = Math.Min(textToTranslate.Length * 8,
+                Settings.Translation.OpenAIModelMaxTokens), // estimate for the response length
+            FrequencyPenalty = 1.0,
+            ResponseFormat = "text",
+        };
+    }
+
+    private static ChatHistory BuildRequest(string textToTranslate, string context)
+    {
+        var text =
+            $"""
+             {context}
+             [TRANSLATE_BELOW]
+             {textToTranslate}
+             """;
+        var chatHistory = new ChatHistory();
+        chatHistory.AddUserMessage(text);
+        return chatHistory;
     }
 
     private IPromptTemplate BuildPromptTemplate()

@@ -9,22 +9,16 @@ public abstract class TranslationSource(TranslationSourceId sourceId)
     public abstract string Content { get; }
 }
 
-internal class TextEntryTranslationSource : TranslationSource
+internal class TextEntryTranslationSource(ChatEntry entry, TranslationSourceId sourceId) : TranslationSource(sourceId)
 {
-    public TextEntryTranslationSource(ChatEntry entry, TranslationSourceId sourceId) : base(sourceId)
-        => ChatEntry = entry;
-
-    public ChatEntry ChatEntry { get; }
+    public ChatEntry ChatEntry { get; } = entry;
     public override HashString ContentHash => ChatEntry.ContentHash;
     public override string Content => ChatEntry.Content;
 }
 
-internal class ConversationTranslationSource : TranslationSource
+internal class ConversationTranslationSource(Conversation conversation, TranslationSourceId sourceId)
+    : TranslationSource(ValidateKind(sourceId))
 {
-    public ConversationTranslationSource(Conversation conversation, TranslationSourceId sourceId)
-        :base(ValidateKind(sourceId))
-        => Conversation = conversation;
-
     private static TranslationSourceId ValidateKind(TranslationSourceId sourceId)
     {
         var kind = sourceId.Kind;
@@ -38,7 +32,7 @@ internal class ConversationTranslationSource : TranslationSource
         return sourceId;
     }
 
-    public Conversation Conversation { get; }
+    public Conversation Conversation { get; } = conversation;
 
     // Surrogate hash.
     // If Conversation is updated => version id is updated, and we consider that we need to update translations.

@@ -1,7 +1,9 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
+using ActualChat.Mesh;
 using ActualChat.Queues;
+using ActualChat.Streaming;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Versioning;
 
@@ -19,6 +21,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     [field: AllowNull, MaybeNull]
     private IQueues Queues => field ??= Services.Queues();
+    [field: AllowNull, MaybeNull]
+    private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
+    [field: AllowNull, MaybeNull]
+    private IStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IStreamingBackend>();
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     [field: AllowNull, MaybeNull]
@@ -59,6 +65,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     protected virtual async Task<string> GetTranslationContext(ChatEntryId id, int count, CancellationToken cancellationToken)
     {
         var entries = await ListEntries()
+            .Where(x => x.SupportsTranslation(false))
             .Take(count)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
@@ -140,24 +147,58 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!translationSource.NeedsTranslation(translation))
             return translation;
 
-        var translatedText = await TranslateInternal(id, "", translationSource.Content, false, cancellationToken).ConfigureAwait(false);
         translation ??= new Translation(id);
-        translation = translation with {
-            Content = translatedText,
-            SourceContentHash = translationSource.ContentHash,
-        };
+        return translationSource.Content.Length < Settings.Translation.StreamingMinContentLength
+            ? await TranslateWithoutStreaming().ConfigureAwait(false)
+            : await StreamTranslation().ConfigureAwait(false);
 
-        var version = ignoreVersion
-            ? (long?)null
-            : translation.Version;
-        try {
-            var cmd = new TranslationsBackend_Change(id, version, Change.Upsert(translation));
-            return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        async Task<Translation?> TranslateWithoutStreaming()
+        {
+            var translatedText = await TranslateInternal(id, "", translationSource.Content, false, cancellationToken).ConfigureAwait(false);
+            return await Save(translation with {
+                        Content = translatedText,
+                        SourceContentHash = translationSource.ContentHash,
+                    },
+                    ignoreVersion,
+                    cancellationToken)
+                .ConfigureAwait(false);
         }
-        catch (VersionMismatchException) {
-            // Ignore version mismatch if already translated
+
+        async Task<Translation?> StreamTranslation()
+        {
+            var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
+            var context = await GetTranslationContext(id.SourceId.GetChatEntryId(), Settings.Translation.ContextMessageCount, cancellationToken).ConfigureAwait(false);
+            var stream = Translator.Stream(translationSource.Content, id.Language, context, cancellationToken).Memoize(cancellationToken);
+            var publishStreamTask = StreamingBackend.PublishTranslation(streamId, stream.Replay(cancellationToken), cancellationToken);
+            // ensure a translation is created
+            translation = await Save(translation with {
+                        StreamId = streamId.Value,
+                        SourceContentHash = translationSource.ContentHash,
+                        IsRealtime = false,
+                    },
+                    ignoreVersion,
+                    cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+
+            var translatedText = "";
+            try {
+                await publishStreamTask.ConfigureAwait(false);
+                await foreach (var diff in stream.Replay(cancellationToken).ConfigureAwait(false))
+                    translatedText = diff.ApplyTo(translatedText);
+            }
+            finally {
+                translation = await Save(translation with {
+                            Content = translatedText,
+                            StreamId = "",
+                            SourceContentHash = translationSource.ContentHash,
+                        },
+                        ignoreVersion,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return translation;
         }
-        return await Get(id, cancellationToken).ConfigureAwait(false);
     }
 
     // protected methods
@@ -214,15 +255,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
     private async Task<string> TranslateInternal(TranslationId id, string prefix, string content, bool isRealtime, CancellationToken cancellationToken)
     {
-        var hasPrefix = !prefix.IsNullOrEmpty();
-        string context = "";
+        var context = "";
         if (id.Kind is TranslationIdKind.TextEntry) {
             var chatEntryId = id.SourceId.GetChatEntryId();
-            var count = hasPrefix
-                ? Settings.Translation.ContextMessageCount
-                : Settings.Translation.RealtimeContextMessageCount;
+            var count = isRealtime
+                ? Settings.Translation.RealtimeContextMessageCount
+                : Settings.Translation.ContextMessageCount;
             context = await GetTranslationContext(chatEntryId, count, cancellationToken).ConfigureAwait(false);
-            if (hasPrefix)
+            if (!prefix.IsNullOrEmpty())
                 context = $"{context}\n{prefix}";
         }
         var translator = isRealtime
@@ -233,5 +273,20 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             id.Language,
             context,
             cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Translation?> Save(Translation translation, bool ignoreVersion, CancellationToken cancellationToken)
+    {
+        try {
+            var version = ignoreVersion
+                ? (long?)null
+                : translation.Version;
+            var cmd = new TranslationsBackend_Change(translation.Id, version, Change.Upsert(translation));
+            return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        }
+        catch (VersionMismatchException) {
+            // Ignore version mismatch if already translated
+            return await Get(translation.Id, cancellationToken).ConfigureAwait(false);
+        }
     }
 }

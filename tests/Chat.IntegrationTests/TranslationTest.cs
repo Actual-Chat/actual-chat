@@ -118,6 +118,29 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task ShouldNotUseRemovedMessagesForContext()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var contextEntry = await Tester.CreateTextEntry(chatId, "I was walking down the river");
+        var entry = await Tester.CreateTextEntry(chatId, "I saw a bank");
+        await Tester.RemoveTextEntry(contextEntry.Id);
+        var targetLang = Languages.Russian;
+
+        // act
+        await ComputedTest.When(async ct => {
+                // act
+                var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), ct);
+
+                // assert
+                translation.Should().NotBeNull();
+                translation.Content.Should().BeSimilarTo("Я увидел банк", 0.7);
+            },
+            TimeSpan.FromSeconds(10));
+    }
+
     [Fact(Skip = "Ignored")] // TODO: enable when translation is better
     public async Task ShouldTranslateWithContextFromPreviousMessages()
     {

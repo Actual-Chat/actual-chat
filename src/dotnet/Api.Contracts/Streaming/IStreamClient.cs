@@ -11,5 +11,8 @@ public interface IStreamClient
         string streamId,
         TranslationId translationId,
         CancellationToken cancellationToken);
+    IAsyncEnumerable<StringDiff> GetTranslation(
+        string streamId,
+        CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);
 }

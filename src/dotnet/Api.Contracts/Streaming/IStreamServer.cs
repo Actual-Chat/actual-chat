@@ -11,5 +11,6 @@ public interface IStreamServer : IRpcService
         TranslationId translationId,
         string streamId,
         CancellationToken cancellationToken);
+    Task<RpcStream<StringDiff>?> GetTranslation(string streamId, CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);
 }

@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
+using ActualChat.Testing.Host.Assertion;
+using ActualChat.Transcription;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 
@@ -187,8 +189,50 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // assert
         await WhenMustTranslate(streamingEntry.TextEntry, true);
-        await WhenTranslated(streamingEntry.TextEntry, "Hello!");
+        await AssertTranslation(streamingEntry.TextEntry, "Hello!");
     }
+
+    [Fact]
+    public async Task ShouldStreamHistoricalTranslationForLongText()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        var text = """
+                   В своих произведениях Айзек Азимов иногда привносит в Три Закона различные модификации и опровергает их, как бы испытывая Законы «на прочность» в разных обстоятельствах.
+
+                   Нулевой Закон
+                   Айзек Азимов однажды добавил Нулевой Закон, сделав его более приоритетным, чем три основных. Этот закон утверждал, что робот должен действовать в интересах всего человечества, а не только отдельного человека. Вот как выражает его робот Дэниел Оливо в романе «Основание и Земля»:
+                   """;
+        var expected = """
+                       In his works, Isaac Asimov sometimes introduces various modifications to the Three Laws and refutes them, as if testing the Laws "for strength" under different circumstances.
+
+                       The Zeroth Law
+                       Isaac Asimov once added the Zeroth Law, making it a higher priority than the three main ones. This law stated that a robot must act in the interests of all humanity, not just an individual person. Here is how robot Daneel Olivaw expresses it in the novel "Foundation and Earth":
+                       """;
+        var entries = await CreateVisibleEntries(chatId, text);
+        var entry = entries[0];
+
+        // act
+        var translation = await AssertTranslation(entry, "");
+
+        // assert
+        translation.IsStreaming.Should().Be(true);
+
+        // act
+        var diffs = await TranslationUI.GetTranscript(entries[0].Id, cancellationToken).ToListAsync(cancellationToken);
+
+        // assert
+        diffs.Should().HaveCountGreaterThan(10);
+        var transcript = diffs.ToTranscripts().Last();
+        transcript.Text.Should().BeSimilarTo(expected, 0.7);
+
+        // act
+        await AssertTranslation(entry, expected);
+    }
+
 
     private async Task<ChatId> CreateChat(CancellationToken cancellationToken)
     {
@@ -222,12 +266,16 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         => ComputedTest.When(async ct => {
             var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsStreaming, ct);
             mustTranslate.Should().Be(expected);
-        }, TimeSpan.FromSeconds(10));
+        }, TimeSpan.FromSeconds(10).Debuggable());
 
-    private Task WhenTranslated(ChatEntry entry, string expected)
+    private Task<Translation> AssertTranslation(ChatEntry entry, string expected)
         => ComputedTest.When(async ct => {
             var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ct).Require();
-            translation.Content.Should().Be(expected);
+            if (expected.IsNullOrEmpty())
+                translation.Content.Should().Be(expected);
+            else
+                translation.Content.Should().BeSimilarTo(expected, 0.7);
             translation.SourceContentHash.Should().Be(entry.ContentHash);
-        }, TimeSpan.FromSeconds(10));
+            return translation;
+        }, TimeSpan.FromSeconds(10).Debuggable());
 }

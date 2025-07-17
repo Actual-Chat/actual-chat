@@ -1,12 +1,12 @@
 using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
 using ActualChat.UI.Blazor.App.Pages.Landing;
 using ActualChat.UI.Blazor.App.Pages.Test;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App.Testing;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
@@ -75,6 +75,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // TranslationUI
         fusion.AddService<TranslationUI>(ServiceLifetime.Scoped);
+
+        // TranscriptUI
+        fusion.AddService<TranscriptUI>(ServiceLifetime.Scoped);
 
         // IMarkupViews
         services.AddTypeMapper<IMarkupView>(map => map
