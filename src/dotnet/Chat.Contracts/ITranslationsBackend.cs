@@ -9,9 +9,6 @@ public interface ITranslationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken);
 
-    // Not a compute method
-    Task<string> Translate(TranslationId id, string prefix, string content, CancellationToken cancellationToken);
-
     // Command handlers
 
     [CommandHandler]
@@ -49,8 +46,7 @@ public sealed partial record TranslationsBackend_Translate(
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_TranslateStream(
     [property: DataMember, MemoryPackOrder(0)] StreamId Id,
-    [property: DataMember, MemoryPackOrder(1)] Language TargetLanguage,
-    [property: DataMember, MemoryPackOrder(2)] TranslationSourceId SourceId
+    [property: DataMember, MemoryPackOrder(1)] Language TargetLanguage
 ) : ICommand<StreamId?>, IBackendCommand, IHasShardKey<StreamId>, IHasUuid
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

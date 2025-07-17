@@ -8,6 +8,7 @@ using ActualChat.Transcription;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Rpc;
 using ActualLab.Versioning;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
@@ -34,6 +35,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     [field: AllowNull, MaybeNull]
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private static bool DebugMode => Constants.DebugMode.TranslationBackend;
+    private ILogger? DebugLog => DebugMode ? Log : null;
 
     // [ComputeMethod]
     public virtual async Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken)
@@ -223,13 +226,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
 
-        var (streamId, targetLanguage, sourceId) = command;
-        return await StartTranscriptStreamTranslation(streamId, targetLanguage, sourceId, cancellationToken).ConfigureAwait(false);
+        var (streamId, targetLanguage) = command;
+        DebugLog?.LogDebug("OnTranslateStream: {StreamId} -> {Language}", streamId, targetLanguage);
+
+        return await StartTranscriptStreamTranslation(streamId, targetLanguage, cancellationToken).ConfigureAwait(false);
     }
 
     // protected methods
 
-    protected virtual async Task<StreamId?> StartTranscriptStreamTranslation(StreamId streamId, Language targetLanguage, TranslationSourceId sourceId, CancellationToken cancellationToken)
+    protected virtual async Task<StreamId?> StartTranscriptStreamTranslation(StreamId streamId, Language targetLanguage, CancellationToken cancellationToken)
     {
         if (!Settings.IsTranslationEnabled)
             return null;
@@ -238,7 +243,44 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (transcript is null)
             return null;
 
+        TranslationSourceId sourceId;
+        var applicationStopping = Services.HostLifetime().ApplicationStopping;
+        var cts = applicationStopping.CreateLinkedTokenSource();
+        var translationCompleted = TaskCompletionSourceExt.New<TranslationResult>();
+        var transcriptStream = transcript.Memoize(cts.Token);
         var translatedStreamId = StreamId.New(streamId, targetLanguage);
+        var worker = _activePublishers.GetOrAdd(translatedStreamId,
+            static (_, args) => {
+                return FuncWorker.New(
+                    (args1, ct) => args1.Item1.TranslateTranscriptStream(
+                        args1.transcriptStream,
+                        args1.translatedStreamId,
+                        args1.translationCompleted,
+                        ct),
+                    args,
+                    args.cts);
+            },
+            (this, transcriptStream, translatedStreamId, translationCompleted, cts));
+
+        DebugLog?.LogDebug("StartTranscriptStreamTranslation: {StreamId} -> {Language}", streamId, targetLanguage);
+        worker.Start();
+        {
+            // ReSharper disable PossiblyMistakenUseOfCancellationToken
+            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            // This query will be executed once - no need to wrap in a compute method
+            var chatEntrySid = await dbContext.ChatEntries
+                .Where(e => e.Kind == ChatEntryKind.Text && e.StreamId == streamId.Value)
+                .Select(e => e.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (chatEntrySid == null)
+                return null; // Already transcribed
+
+            sourceId = TranslationSourceId.New(TextEntryId.Parse(chatEntrySid));
+        }
+
         var translationId = TranslationId.New(sourceId, targetLanguage);
         var newTranslationVersion = VersionGenerator.NextVersion();
         var cmd = new TranslationsBackend_Change(translationId,
@@ -254,26 +296,37 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (newTranslation!.Version != newTranslationVersion)
             return translatedStreamId; // Already being translated
 
-        var worker = _activePublishers.GetOrAdd(translatedStreamId,
-            static (_, args) => {
-                return FuncWorker.New(
-                    (args1, ct) => args1.Item1.TranslateTranscriptStream(args1.streamId, args1.translatedStreamId, args1.translationId, ct),
-                    args,
-                    args.Item1.Services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource());
-            },
-            (this, streamId, translatedStreamId, translationId));
-        // since ValueFactory in concurrent dictionary can run concurrently we start only single one
-        worker.Start();
+        var finalizeTask = translationCompleted.Task.ContinueWith(async r => {
+            var (originalText, translatedText) = await r.ConfigureAwait(false);
+            var finalizeRealtime = new TranslationsBackend_Change(translationId,
+                newTranslationVersion, // Will overwrite the first version only
+                Change.Update(new Translation(translationId) {
+                    StreamId = Symbol.Empty,
+                    Content = translatedText,
+                    SourceContentHash = ChatEntryHashExt.GetContentHashString(originalText),
+                }));
+            return Commander.Call(finalizeRealtime, true, applicationStopping)
+                .Catch(Log, "Failed to finalize streaming translation #{TranslationId}", translationId);
+        }, applicationStopping, TaskContinuationOptions.None, TaskScheduler.Default);
+
+        _ = Task.WhenAll(finalizeTask, transcriptStream.WriteTask).ContinueWith(async _ => {
+            // Wait for Chat Entry Finalization - without delay translation will be skipped due to empty Content
+            // TODO(AK): Think about more robust approach
+            await Clocks.CpuClock.Delay(200, applicationStopping).ConfigureAwait(false);
+
+            // Enqueue the translation command to retranslate full finalized transcript with larger context and model
+            var finalReTranslate = new TranslationsBackend_Translate(translationId, true);
+            await Queues.Enqueue(finalReTranslate, applicationStopping).ConfigureAwait(false);
+        }, applicationStopping, TaskContinuationOptions.None, TaskScheduler.Default);
+
+        // ReSharper enable PossiblyMistakenUseOfCancellationToken
         return translatedStreamId;
     }
 
-    protected async Task TranslateTranscriptStream(StreamId streamId, StreamId translatedStreamId, TranslationId translationId, CancellationToken cancellationToken)
+    private async Task TranslateTranscriptStream(AsyncMemoizer<TranscriptDiff> originalStream, StreamId translatedStreamId, TaskCompletionSource<TranslationResult> translationCompleted, CancellationToken cancellationToken)
     {
-        var originalStream = await StreamingBackend.GetTranscript(streamId, cancellationToken).ConfigureAwait(false);
-        if (originalStream == null) {
-            Log.LogWarning("Transcript stream {StreamId} not found, cannot translate", streamId);
-            return;
-        }
+        var language = translatedStreamId.Language!;
+        DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId}", translatedStreamId);
 
         var channel = Channel.CreateUnbounded<TranscriptDiff>(new UnboundedChannelOptions {
             SingleReader = true,
@@ -290,10 +343,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 var stableTranslatedTranscript = Transcript.Empty;
                 try {
                     // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-                    await foreach (var transcriptDiffBatch in originalStream.Buffer(TranslateThrottleDelay, Clocks.CpuClock, cancellationToken: cancellationToken).ConfigureAwait(false)) {
+                    await foreach (var transcriptDiffBatch in originalStream.Replay(cancellationToken).Buffer(TranslateThrottleDelay, Clocks.CpuClock, cancellationToken: cancellationToken).ConfigureAwait(false)) {
                         if (transcriptDiffBatch.Count == 0)
                             continue; // Skip empty batches
 
+                        if (lastTranscript == Transcript.Empty)
+                            DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - First Transcript", translatedStreamId);
                         var transcriptBatch = transcriptDiffBatch.Scan((t, td) => t + td, lastTranscript).ToList();
                         var transcript = lastTranscript = transcriptBatch[^1];
                         var newStableTranscript = transcriptBatch.FirstOrDefault(t => t.IsStable) ?? Transcript.Empty;
@@ -308,7 +363,13 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         if (content.IsNullOrWhiteSpace())
                             continue;
 
-                        var translatedContent = await Translate(translationId, prefix, content, cancellationToken).ConfigureAwait(false);
+                        var translatedContent = await RealtimeTranslator.Translate(
+                            content,
+                            language,
+                            prefix,
+                            cancellationToken).ConfigureAwait(false);
+
+                        // var translatedContent = await Translate(prefix, content, cancellationToken).ConfigureAwait(false);
                         if (OrdinalIgnoreCaseEquals(translatedContent, Constants.Translation.NoTranslationNeededText))
                             translatedContent = content; // No translation needed, use original content
 
@@ -328,15 +389,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 }
                 finally {
                     try {
-                        // Update the final translation
-                        await FinalizeTranslation(
-                                stableTranslatedTranscript.Text,
-                                stableTranscript.Text,
-                                cancellationToken)
-                            .ConfigureAwait(false);
-                        // Enqueue the translation command to retranslate full finalized transcript with larger context and model
-                        var cmd = new TranslationsBackend_Translate(translationId, true);
-                        await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
+                        if (error != null)
+                            translationCompleted.SetException(error);
+                        else
+                            translationCompleted.SetResult(new TranslationResult(stableTranscript.Text, stableTranslatedTranscript.Text));
 
                         // delay to ensure ITranslationsBackend.Get() will return the finalized translation
                         await Task.Delay(TranslateThrottleDelay * 2, cancellationToken).ConfigureAwait(false);
@@ -345,43 +401,28 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         if (error == null)
                             error = ex2; // Preserve the original error if it exists
                         else
-                            Log.LogError(ex2, "Error while finalizing translation #{TranslationId}", translationId);
+                            Log.LogError(ex2, "Error while finalizing translation {StreamId}", translatedStreamId);
                     }
                     finally {
                         if (error != null)
-                            Log.LogError(error, "Error while translating transcript #{TranslationId}", translationId);
+                            Log.LogError(error, "Error while translating transcript {StreamId}", translatedStreamId);
                         writer.Complete(error);
                     }
                 }
             }, CancellationToken.None); // No need to cancel this task, it should finalize translation even if the caller cancels
 
-            var chatEntryId = translationId.SourceId.GetChatEntryId();
+            DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - Publishing stream", translatedStreamId);
+
             var translatedStream = new RpcStream<TranscriptDiff>(reader.ReadAllAsync(cancellationToken));
             await StreamingBackend
-                .PushTranscript(translatedStreamId, chatEntryId, translatedStream, cancellationToken)
+                .PushTranscript(translatedStreamId, translatedStream, cancellationToken)
                 .ConfigureAwait(false);
+
+            DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - Stream published", translatedStreamId);
         }
         finally {
             if (_activePublishers.Remove(translatedStreamId, out var currentWorker))
                 await currentWorker.DisposeSilentlyAsync().ConfigureAwait(false);
-        }
-
-        return;
-
-        Task FinalizeTranslation(
-            string translatedText,
-            string originalText,
-            CancellationToken cancellationToken1)
-        {
-            var cmd = new TranslationsBackend_Change(translationId,
-                null,
-                Change.Update(new Translation(translationId) {
-                    StreamId = Symbol.Empty,
-                    Content = translatedText,
-                    SourceContentHash = ChatEntryHashExt.GetContentHashString(originalText),
-                }));
-            return Commander.Call(cmd, cancellationToken1)
-                .Catch(Log, "Failed to finalize streaming translation #{TranslationId}", translationId);
         }
     }
 
@@ -471,4 +512,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return await Get(translation.Id, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    // Nested types
+
+    private record TranslationResult(string OriginalText, string TranslatedText);
 }

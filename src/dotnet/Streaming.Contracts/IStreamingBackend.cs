@@ -17,7 +17,6 @@ public interface IStreamingBackend : IRpcService, IBackendService
 
     Task PushTranscript(
         StreamId streamId,
-        TextEntryId entryId,
         RpcStream<TranscriptDiff> diffStream,
         CancellationToken cancellationToken);
 
