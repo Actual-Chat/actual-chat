@@ -13,21 +13,6 @@
 .conversation-message .c-summary {
     @apply flex-y;
 }
-.conversation-message .c-attachments {
-    @apply flex-x gap-x-3;
-    @apply px-4 py-1;
-}
-.conversation-message .c-attachment {
-    @apply flex-none;
-    @apply w-10 h-10;
-    @apply rounded-md;
-    @apply bg-[var(--blue-50-20)];
-}
-.conversation-message .c-attachment.c-count {
-    @apply flex items-center justify-center;
-    @apply rounded-full;
-    @apply bg-03;
-}
 
 .conversation-header {
     @apply mx-2 mb-2;
@@ -240,4 +225,23 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
     @apply flex-x items-center justify-center;
     @apply bg-01;
     @apply text-cr-item-badge-selected-text text-caption-6;
+}
+
+/* Attachments */
+.conversation-attachments {
+    @apply flex-x items-center gap-x-3;
+    @apply px-4;
+}
+.conversation-attachments .image-attachment {
+    @apply flex-none;
+    @apply w-10 h-10;
+    @apply rounded-md;
+}
+.conversation-attachments .image-attachment > .c-content {
+    @apply w-full;
+}
+.conversation-attachments .c-extra {
+    @apply flex items-center justify-center;
+    @apply rounded-full;
+    @apply bg-03;
 }
