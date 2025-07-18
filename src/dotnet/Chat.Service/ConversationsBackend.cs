@@ -371,6 +371,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<ConversationEntriesInfo> GetTextEntries(ChatId chatId, Range<long>[] entryIdRanges, CancellationToken cancellationToken)
     {
+        Log.LogInformation("-> GetTextEntries");
         var idTiles = entryIdRanges
             .SelectMany(idRange => IdTileStack.GetOptimalCoveringTiles(idRange))
             .ToList();
@@ -386,7 +387,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var attachmentCount = 0;
         var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
-            .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)));
+            .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)))
+            .ToArray();
         foreach (var entry in chatEntries) {
             textEntries.Add(new TextEntry(entry));
             attachmentCount += entry.Attachments.Length;
@@ -396,6 +398,11 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                         attachments.Add(attachment);
             }
         }
+        Log.LogInformation("<- GetTextEntries: ChatId='{ChatId}', StartChatEntryId={StartChatEntryId}, AttachmentCount={AttachmentCount}, AttachmentIds={AttachmentIds}",
+            chatId,
+            chatEntries.FirstOrDefault()?.Id.Value ?? "-",
+            attachmentCount,
+            attachments.Select(c => c.Id.Value).ToCommaPhrase());
         return new ConversationEntriesInfo(textEntries, attachments, attachmentCount);
     }
 
