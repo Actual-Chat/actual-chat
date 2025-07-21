@@ -31,15 +31,17 @@ public sealed partial record TranslationsBackend_Change(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Translate(
-    [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
-    [property: DataMember, MemoryPackOrder(1)] bool OverwriteIfVersionMismatch
-) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationId>, IHasUuid
+    [property: DataMember, MemoryPackOrder(0)] TranslationSourceId SourceId,
+    [property: DataMember, MemoryPackOrder(1)] Language TargetLanguage,
+    [property: DataMember, MemoryPackOrder(2)] bool OverwriteIfVersionMismatch,
+    [property: DataMember, MemoryPackOrder(3)] bool SkipRealtimeTranslation
+) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationSourceId>, IHasUuid
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public TranslationId ShardKey => Id;
+    public TranslationSourceId ShardKey => SourceId;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    string IHasUuid.Uuid => Id.Value;
+    string IHasUuid.Uuid => SourceId.Value;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

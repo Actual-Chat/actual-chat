@@ -22,22 +22,6 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
     }
 
-    public async Task<RpcStream<TranscriptDiff>?> GetTranslatedTranscript(
-        TranslationId translationId,
-        string streamId,
-        CancellationToken cancellationToken)
-    {
-        // We must return another RpcStream here - they aren't "shareable"
-        var source = await Backend.GetTranscript(StreamId.New(StreamId.Parse(streamId), translationId.Language), cancellationToken).ConfigureAwait(false);
-        return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
-    }
-
-    public async Task<RpcStream<StringDiff>?> GetTranslation(string streamId, CancellationToken cancellationToken)
-    {
-        var source = await Backend.GetTranslation(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
-        return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
-    }
-
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
         AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);

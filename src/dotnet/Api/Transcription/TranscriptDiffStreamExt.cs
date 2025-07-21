@@ -22,6 +22,17 @@ public static class TranscriptStreamExt
         }
     }
 
+    public static IEnumerable<TranscriptDiff> ToTranscriptDiffs(this IEnumerable<StringDiff> stringDiffs)
+        => stringDiffs.Select(stringDiff => new TranscriptDiff(stringDiff, LinearMapDiff.None) { IsStable = true });
+
+    public static async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(this IAsyncEnumerable<StringDiff> stringDiffs)
+    {
+        await foreach (var stringDiff in stringDiffs.ConfigureAwait(false)) {
+            var diff = new TranscriptDiff(stringDiff, LinearMapDiff.None);
+            yield return diff;
+        }
+    }
+
     public static async IAsyncEnumerable<Transcript> ToTranscripts(this IAsyncEnumerable<TranscriptDiff> diffs)
     {
         var transcript = Transcript.Empty;

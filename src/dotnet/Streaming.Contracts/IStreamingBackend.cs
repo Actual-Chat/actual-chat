@@ -20,15 +20,9 @@ public interface IStreamingBackend : IRpcService, IBackendService
         RpcStream<TranscriptDiff> diffStream,
         CancellationToken cancellationToken);
 
-    Task<RpcStream<StringDiff>?> GetTranslation(
-        StreamId streamId,
-        CancellationToken cancellationToken);
-
     Task ProcessAudio(
         AudioRecord record,
         int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken);
-
-    Task PublishTranslation(StreamId streamId, IAsyncEnumerable<StringDiff> stream, CancellationToken cancellationToken);
 }
