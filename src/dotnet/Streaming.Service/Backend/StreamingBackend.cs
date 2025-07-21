@@ -15,7 +15,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private readonly StreamStore<byte[]> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
-    private readonly StreamStore<StringDiff> _translationStreams;
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -44,8 +43,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private MomentClockSet Clocks => field ??= Services.Clocks();
     [field: AllowNull, MaybeNull]
     private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
-    [field: AllowNull, MaybeNull]
-    private IQueues Queues => field ??= Services.Queues();
 
     public StreamingBackend(IServiceProvider services)
     {
@@ -62,9 +59,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
             Log = services.LogFor($"{GetType().FullName}.TranscriptStreams"),
             OnStreamExpire = id => _translatingStreams.Remove(id, out _),
-        };
-		_translationStreams = new StreamStore<StringDiff> {
-            Log = services.LogFor($"{GetType().FullName}.TranslationStreams"),
         };
     }
 
@@ -120,20 +114,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
 
         await _transcriptStreams.Publish(streamId, diffStream).ConfigureAwait(false);
     }
-
-    public async Task<RpcStream<StringDiff>?> GetTranslation(StreamId streamId, CancellationToken cancellationToken)
-    {
-        var stream = await _translationStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
-        return stream == null
-            ? null
-            : RpcStream.New(stream);
-    }
-
-    public Task PublishTranslation(
-        StreamId streamId,
-        IAsyncEnumerable<StringDiff> stream,
-        CancellationToken cancellationToken)
-        => _translationStreams.Publish(streamId, stream);
 
     // Private methods
 
