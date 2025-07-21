@@ -139,6 +139,9 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     @apply rounded-xl;
     @apply cursor-pointer;
 }
+.author-list-tab .avatar-badge {
+    @apply mt-0.5;
+}
 body.hoverable .author-list-tab .avatar-badge:hover,
 .touch-capable .author-list-tab .avatar-badge:active {
     @apply bg-hover;

@@ -41,8 +41,8 @@ body.hoverable .navigate-to-end > .c-content {
 }
 .navigate-to-end .btn.btn-round {
     @apply rounded-full border border-modal;
-    @apply bg-01;
-    box-shadow: 0 3px 3px 0 rgba(0, 0, 0, 0.15);
+    @apply bg-modal;
+    @apply shadow-modal-wide;
 }
 .navigate-to-end .btn.btn-round {
     @apply font-bold text-4xl;

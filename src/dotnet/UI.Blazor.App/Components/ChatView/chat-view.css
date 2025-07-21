@@ -607,7 +607,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply w-fit h-fit;
     @apply p-1 mr-2 -mt-4;
     @apply rounded-full border border-modal;
-    @apply bg-01;
+    @apply bg-modal;
     @apply shadow-modal-wide;
 }
 .message-hover-menu-new .hover-menu-item {
