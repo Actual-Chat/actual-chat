@@ -14,10 +14,17 @@
 }
 .copy-to-clipboard input {
     @apply flex-auto;
-    @apply bg-transparent border-b border-placeholder;
+    @apply border-b border-placeholder;
+    @apply bg-transparent;
 }
 .copy-to-clipboard .btn.btn-round {
-    @apply bg-transparent hover:bg-04;
+    @apply bg-transparent;
+}
+.copy-to-clipboard .btn.btn-round:hover {
+    @apply bg-04;
+}
+.copy-to-clipboard .btn.btn-round.btn-transparent:hover {
+    @apply bg-transparent;
 }
 .copy-to-clipboard .btn.btn-round .btn-content {
     @apply min-h-10 min-w-10 max-w-10 max-h-10;
