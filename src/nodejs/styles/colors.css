@@ -427,6 +427,7 @@
     --author-name: var(--blue-30);
     --thread-gradient-01: var(--ash-95);
     --thread-gradient-02: var(--white);
+    --tooltip-shadow: var(--black-10);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);
@@ -741,6 +742,7 @@
     --author-name: var(--blue-80);
     --thread-gradient-01: var(--white-10);
     --thread-gradient-02: var(--transparent);
+    --tooltip-shadow: var(--white-10);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--ash-26);
@@ -1054,6 +1056,7 @@
     --author-name: var(--blue-30);
     --thread-gradient-01: var(--ash-95);
     --thread-gradient-02: var(--white);
+    --tooltip-shadow: var(--black-10);
 
     /* Skeletons */
     --skeleton-left-panel-header: var(--gray-70);

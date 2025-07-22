@@ -1,14 +1,28 @@
 .ac-tooltip {
     @apply absolute top-0 left-0 z-tooltip;
-    @apply hidden;
+    @apply block;
+    @apply max-w-none md:max-w-80;
     @apply px-[12px] py-[7px];
     @apply rounded-lg;
     @apply whitespace-nowrap;
     @apply bg-01;
-    @apply text-base text-02;
+    @apply text-text-1 text-02;
     @apply pointer-events-none;
-    @apply shadow-modal-narrow md:shadow-modal-wide;
-    @apply max-w-none md:max-w-80;
+    filter: drop-shadow(0 0px 4px var(--tooltip-shadow));
+    transform-origin: center center;
+    transition-behavior: allow-discrete;
+    opacity: 0;
+    transform: scale(0);
+    transition: opacity 150ms ease-in-out, transform 300ms ease-in-out;
+}
+.ac-tooltip.show {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 300ms ease-in-out, transform 150ms ease-in-out;
+    @starting-style {
+        opacity: 0;
+        transform: scale(0);
+    }
 }
 .ac-tooltip-text {
     @apply truncate;

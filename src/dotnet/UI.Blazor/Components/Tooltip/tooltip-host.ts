@@ -82,12 +82,13 @@ export class TooltipHost implements Disposable {
             return;
 
         this.tooltipTextRef.textContent = tooltipText;
-        this.tooltipRef.style.display = 'block';
+        if (!this.tooltipTextRef.classList.contains('show'))
+            this.tooltipRef.classList.add('show');
         this.updatePosition(triggerRef);
     }
 
     private hideTooltip() {
-        this.tooltipRef.style.display = '';
+        this.tooltipRef.classList.remove('show');
     }
 
     private getPlacement(triggerRef: HTMLElement | SVGElement): Placement {
