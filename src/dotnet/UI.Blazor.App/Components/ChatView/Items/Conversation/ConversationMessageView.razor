@@ -9,7 +9,7 @@
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
     var cls = $"conversation-message message-wrapper {openClass}";
-    var maxCount = conversation.Attachments.Length;
+    var maxCount = _attachments?.Length ?? 0;
     if (ScreenSize.IsNarrow() && maxCount > 5)
         maxCount = 5;
 }
@@ -37,15 +37,15 @@
                 </div>
             </div>
         }
-        @if (conversation.Attachments.Length > 0) {
-            var extra = Math.Max(0, conversation.AttachmentCount - maxCount);
+        @if (_attachments?.Length > 0) {
+            var extra = Math.Max(0, _attachments.Length - maxCount);
             <div class="conversation-attachments">
                 @for(var i = 0; i < maxCount; i++) {
-                    var attachment = conversation.Attachments[i];
-                    @if (attachment.IsVisualMedia()) {
-                        <VisualMediaAttachment Attachment="@attachment"/>
+                    var attachment = _attachments[i];
+                    @if (attachment.TextEntryAttachment.IsVisualMedia()) {
+                        <VisualMediaAttachment Attachment="@attachment.TextEntryAttachment" Conversation="@conversation" ChatEntry="attachment.ChatEntry"/>
                     } else {
-                        <FileAttachment Attachment="@attachment" IconOnly="true"/>
+                        <FileAttachment Attachment="@attachment.TextEntryAttachment" IconOnly="true"/>
                     }
                 }
                 @if (extra > 0) {
@@ -68,11 +68,13 @@
     private bool _isOpen;
     private ConversationMessage? _lastMessage;
     private ChatEntry _fakeEntry = null!;
+    private Attachment[]? _attachments;
 
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
+    private IChats Chats => Hub.Chats;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
@@ -89,7 +91,7 @@
                     TranslatedText.From(title),
                     TranslatedMarkup.From(descriptionMarkup),
                     TranslatedMarkup.From(summaryMarkup),
-                    false),
+                    _attachments),
                 Category = GetStateCategory(t),
             });
     }
@@ -108,16 +110,24 @@
         var conversation = Message.Conversation!;
         var conversationId = conversation.Id;
         var title = conversation.Title;
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
         var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
         var mustTranslate = await TranslationUI.MustTranslate(conversation, cancellationToken).ConfigureAwait(false);
+        if (conversation.Attachments.Length > 0) {
+            var attachmentTasks = conversation.Attachments
+                .Select(async textEntryAttachment => {
+                    var chatEntry = await Chats.GetEntry(Session, textEntryAttachment.EntryId, cancellationToken).ConfigureAwait(false);
+                    return new Attachment(textEntryAttachment, chatEntry);
+                });
+            _attachments = await Task.WhenAll(attachmentTasks).ConfigureAwait(false);
+        }
+
         if (!mustTranslate)
             return new Model(
                 TranslatedText.From(title),
                 TranslatedMarkup.From(descriptionMarkup),
                 TranslatedMarkup.From(summaryMarkup),
-                enableIncompleteUI);
+                _attachments);
 
         var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken);
         var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, cancellationToken);
@@ -129,7 +139,7 @@
         var translatedTitle = TranslatedText.From(conversation.Title, titleTranslation);
         var translatedDescription = TranslatedMarkup.From(conversation.Description, descriptionTranslation, ChatMarkupHub, descriptionMarkup);
         var translatedSummary = TranslatedMarkup.From(conversation.Summary, summaryTranslation, ChatMarkupHub, summaryMarkup);
-        return new Model(translatedTitle, translatedDescription, translatedSummary, enableIncompleteUI);
+        return new Model(translatedTitle, translatedDescription, translatedSummary, null);
     }
 
     private void ToggleShowMessage()
@@ -164,5 +174,9 @@
         TranslatedText Title,
         TranslatedMarkup Description,
         TranslatedMarkup Summary,
-        bool EnableIncompleteUI);
+        Attachment[]? Attachments);
+
+    public record Attachment(
+        TextEntryAttachment TextEntryAttachment,
+        ChatEntry? ChatEntry);
 }

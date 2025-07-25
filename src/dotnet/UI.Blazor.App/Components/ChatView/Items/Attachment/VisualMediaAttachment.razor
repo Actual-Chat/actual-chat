@@ -15,7 +15,7 @@
     <a class="c-content"
        href="@url"
        role="button"
-       @onclick="@(() => VisualMediaViewerUI.Show(url, ChatEntry))"
+       @onclick="@(() => VisualMediaViewerUI.Show(url, Conversation, ChatEntry))"
        @onclick:preventDefault="true">
         @if (attachment.IsSupportedVideo()) {
             <VideoAttachmentThumbnail Attachment="@attachment"/>
@@ -35,5 +35,6 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public TextEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter] public Conversation? Conversation { get; set; }
     [Parameter] public string Class { get; set; } = "";
 }
