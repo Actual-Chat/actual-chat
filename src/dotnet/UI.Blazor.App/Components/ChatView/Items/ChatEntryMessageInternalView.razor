@@ -24,8 +24,19 @@
             <span>[DocId=@message.IndexDocId]</span>
         }
     };
+    var translationCls = "";
+    if (m.Translation != _oldTranslation && !m.IsStreaming) {
+        // TranslationState changed
+        if (_oldTranslation is TranslationState.None or TranslationState.Translating && m.Translation == TranslationState.Translated) {
+            translationCls = "to-translated";
+        } else if (_oldTranslation is TranslationState.Translated or TranslationState.Translating && m.Translation == TranslationState.None) {
+            translationCls = "to-original";
+        } else if (m.Translation == TranslationState.Translating) {
+            translationCls = "translating";
+        }
+    }
 }
-<p class="chat-message-markup">
+<p class="chat-message-markup @translationCls">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
         <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
     }
@@ -68,13 +79,13 @@
     }
 </p>
 
-
 @code {
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
 
     private Model? _rendered;
+    private TranslationState _oldTranslation = TranslationState.None;
     private TranscriptStreamer _streamer = null!;
     private ILogger Log => Hub.LogFor(GetType());
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
@@ -185,6 +196,8 @@
         var isRenderedTranslated = (_rendered?.Translation ?? TranslationState.None) != TranslationState.None;
         var isRenderedStreaming = _rendered?.IsStreaming ?? false;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
+        var oldState = _rendered;
+        _oldTranslation = _rendered?.Translation ?? TranslationState.None;
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
             return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
@@ -218,7 +231,11 @@
             ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
             : MarkupParser.Parse(translation.Content);
 
-        return new(translatedMarkup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.Translated, TranscriptStreamer.StreamingState.None);
+        var newTranslation = translation.IsStreaming ? TranslationState.Translating : TranslationState.Translated;
+        if (oldState == null && newTranslation == TranslationState.Translated)
+            _oldTranslation = TranslationState.Translated;
+
+        return new(translatedMarkup, entry, newTranslation, TranscriptStreamer.StreamingState.None);
     }
 
     // Nested types
