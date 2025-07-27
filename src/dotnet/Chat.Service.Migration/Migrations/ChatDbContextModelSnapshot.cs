@@ -327,6 +327,11 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("chat_id")
                         .UseCollation("C");
 
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_id");
+
                     b.Property<DateTime?>("ClientSideBeginsAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("client_side_begins_at");
@@ -372,6 +377,10 @@ namespace ActualChat.Chat.Migrations
                     b.Property<string>("ForwardedChatTitle")
                         .HasColumnType("text")
                         .HasColumnName("forwarded_chat_title");
+
+                    b.Property<bool>("HasAttachmentUploads")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_attachment_uploads");
 
                     b.Property<bool>("HasAttachments")
                         .HasColumnType("boolean")

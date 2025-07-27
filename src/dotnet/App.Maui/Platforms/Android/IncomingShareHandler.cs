@@ -27,68 +27,68 @@ public static class IncomingShareHandler
         var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
         if (OrdinalEquals(action, Intent.ActionSend)) {
             if (hasExtraStream)
-                _ = HandleFilesSend(mimeType, GetStreams(intent, false));
+                HandleFilesSend(mimeType, GetStreams(intent, false));
             else if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain))
-                _ = HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
+                HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
             else
                 Log.LogWarning("Unsupported send mime type: '{MimiType}'", mimeType);
         }
         else {
             if (hasExtraStream)
-                _ = HandleFilesSend(mimeType, GetStreams(intent, true));
+                HandleFilesSend(mimeType, GetStreams(intent, true));
             else
                 Log.LogWarning("No extra streams for SendMultiple action. Mime type: '{MimiType}'", mimeType);
         }
     }
 
-    private static Task HandlePlainTextSend(string? text)
+    private static void HandlePlainTextSend(string? text)
     {
         if (text.IsNullOrEmpty()) {
             Log.LogWarning("No text to send");
-            return Task.CompletedTask;
+            return;
         }
+        BeginInvokeOnMainThreadAsync(() => HandlePlainTextSendInternal(text));
+    }
+
+    private static void HandlePlainTextSendInternal(string text)
+    {
         Log.LogInformation("About to send text: '{Text}'", text);
-        return DispatchToBlazor(
-            c => c.GetRequiredService<IncomingShareUI>().ShareText(text),
-            "IncomingShareUI.ShareText(...)", true)
+        _ = DispatchToBlazor(
+                c => c.GetRequiredService<IncomingShareUI>().ShareText(text),
+                "IncomingShareUI.ShareText(...)",
+                true)
             .WithErrorLog(Log, "Failed send text")
             .SuppressExceptions();
     }
 
-    private static Task HandleFilesSend(string mimeType, IList? streams)
+    private static void HandleFilesSend(string mimeType, IList? streams)
     {
         if (streams == null || streams.Count == 0) {
             Log.LogWarning("No file streams provided");
-            return Task.CompletedTask;
+            return;
         }
         var uris = streams.OfType<Uri>().ToArray();
         if (uris.Length <= 0) {
             Log.LogWarning("No supported file streams provided. Type: {StreamType}",
                 streams[0]?.GetType().FullName ?? "<null>");
-            return Task.CompletedTask;
+            return;
         }
-        return HandleFilesSend(mimeType, (ICollection<Uri>)uris);
+        BeginInvokeOnMainThreadAsync(() => HandleFilesSendInternal(mimeType, uris));
     }
 
-    private static Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
+    private static void HandleFilesSendInternal(string mimeType, Uri[] uris)
     {
-        Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Count, mimeType);
-        return DispatchToBlazor(scopedServices => {
-            var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
-            var fileInfos = uris
-                .Select(c => {
-                    var url = c.ToString()!;
-                    if (AndroidContentDownloader.TryCreateAppHostRelativeUrl(url, out var relativeUrl))
-                        return new IncomingShareFile(relativeUrl);
-                    Log.LogWarning("Unsupported sent file url: '{Url}'", url);
-                    return null;
-                })
-                .SkipNullItems()
-                .ToArray();
-            incomingShareUI.ShareFiles(fileInfos);
-        }, "IncomingShareUI.ShareFiles(...)", true)
-        .WithErrorLog(Log, "Failed send files")
-        .SuppressExceptions();
+        Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Length, mimeType);
+        _ = DispatchToBlazor(scopedServices => {
+                    var downloader = scopedServices.GetRequiredService<AndroidContentDownloader>();
+                    var fileInfos = downloader.ConvertToAttachFileInfos(uris);
+                    var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
+                    incomingShareUI.ShareFiles(fileInfos);
+                },
+                "IncomingShareUI.ShareFiles(...)",
+                true)
+            .WithErrorLog(Log, "Failed send files")
+            .SuppressExceptions();
     }
 
     private static IList? GetStreams(Intent intent, bool multipleStreams)
@@ -110,5 +110,18 @@ public static class IncomingShareHandler
 #pragma warning restore CA1422
             return streams;
         }
+    }
+
+    // Ensures that the action will be queued for execution on the main thread.
+    private static void BeginInvokeOnMainThreadAsync(Action action)
+    {
+        if (MainThread.IsMainThread) {
+            var dispatcher = Dispatcher.GetForCurrentThread();
+            if (dispatcher != null) {
+                _ = dispatcher.DispatchAsync(action);
+                return;
+            }
+        }
+        action();
     }
 }

@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IDisposable;
+
+<ul>
+    @foreach (var attachment in Uploads.Items) {
+        <AttachmentItem
+            Attachment="@attachment"
+            RestartClick="@(() => OnRestartClick(attachment))"
+            RemoveClick="@(() => OnRemoveClick(attachment))"/>
+    }
+</ul>
+
+@code {
+    private IAttachmentList? _lastUploads;
+
+    [Parameter] public IAttachmentList Uploads { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        if (_lastUploads is not null)
+            _lastUploads.Changed -= OnChanged;
+        Uploads.Changed += OnChanged;
+        _lastUploads = Uploads;
+    }
+
+    public void Dispose() {
+        _lastUploads?.Changed -= OnChanged;
+    }
+
+    private void OnChanged(object? sender, EventArgs e) {
+        StateHasChanged();
+    }
+
+    private Task OnRemoveClick(Attachment attachment)
+        => Uploads.Remove(attachment);
+
+    private Task OnRestartClick(Attachment attachment)
+        => Uploads.Restart(attachment);
+}

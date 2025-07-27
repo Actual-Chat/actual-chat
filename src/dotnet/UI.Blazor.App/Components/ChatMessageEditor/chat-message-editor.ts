@@ -7,11 +7,11 @@ import {
     fromEvent
 } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
-import { AttachmentList } from './attachment-list';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
 import { Log } from 'logging';
+import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult } from './attachment-web-file-picker';
 
 const { debugLog, infoLog, warnLog } = Log.get('MessageEditor');
 
@@ -24,12 +24,14 @@ export class ChatMessageEditor {
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
     private readonly input: HTMLDivElement;
+    private readonly filePickerInput: HTMLInputElement;
+    private readonly filePickerBackend: AttachmentWebFilePickerBackend;
+    private readonly filePicker: AttachmentWebFilePicker;
     private readonly postPanelHeightObserver: ResizeObserver;
     private readonly attachmentListObserver: MutationObserver;
     private readonly sideNavs: NodeListOf<Element>;
     private readonly sideNavObserver: MutationObserver;
     private markupEditor: MarkupEditor;
-    private attachmentList: AttachmentList;
     private attachmentListElement: HTMLDivElement | null;
     private lastHeight: number;
     private lastWidth: number;
@@ -37,16 +39,20 @@ export class ChatMessageEditor {
     private panelModel: PanelMode | null = null; // Intended: updateLayout needs this on the first run
     private hasContent: boolean | null = null; // Intended: updateHasContent needs this on the first run
     private chatId: string;
+    private hasAttachments: boolean;
 
-    static create(editorDiv: HTMLDivElement): ChatMessageEditor {
-        return new ChatMessageEditor(editorDiv);
+    static create(editorDiv: HTMLDivElement, filePickerBlazorRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(editorDiv, filePickerBlazorRef);
     }
 
-    constructor(editorDiv: HTMLDivElement) {
+    constructor(editorDiv: HTMLDivElement, filePickerBlazorRef: DotNet.DotNetObject) {
         let bodyClassList = document.body.classList;
         this.editorDiv = editorDiv;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel')!;
         this.input = this.postPanelDiv.querySelector(':scope .message-input')!;
+        this.filePickerBackend = new AttachmentWebFilePickerBackend(filePickerBlazorRef);
+        this.filePickerInput = this.editorDiv.querySelector(':scope .attachment-web-file-picker')!;
+        this.filePicker = new AttachmentWebFilePicker(this.filePickerBackend, this.filePickerInput);
         this.isSmooth = !bodyClassList.contains('device-ios');
         if (this.isSmooth)
             editorDiv.classList.add('smooth');
@@ -171,7 +177,13 @@ export class ChatMessageEditor {
     });
 
     /** Called by Blazor */
-    public onNestedControlsReady(markupEditor: MarkupEditor, attachmentList: AttachmentList)
+    public notifyAttachmentListChanged(hasAttachments: boolean) {
+        this.hasAttachments = hasAttachments;
+        this.updateHasContent();
+    }
+
+    /** Called by Blazor */
+    public onNestedControlsReady(markupEditor: MarkupEditor)
     {
         this.markupEditor = markupEditor;
 
@@ -186,10 +198,6 @@ export class ChatMessageEditor {
             this.backupRequired$.next();
             this.updateHasContent();
         }
-        this.attachmentList = attachmentList;
-        this.attachmentList.changed = () => {
-            this.updateHasContent();
-        }
         this.updateHasContent();
         if (this.isNarrowScreen)
             this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
@@ -198,23 +206,23 @@ export class ChatMessageEditor {
     /** Called by Blazor */
     public setChatId(chatId: string) {
         this.chatId = chatId;
-        this.attachmentList.setChatId(chatId)
         void this.restoreDraft();
     }
+
+    /** Called by Blazor */
+    public showWebFilePickerDialog = ((acceptTypes: string)=> {
+        void this.filePicker.showFilePicker(acceptTypes);
+        if (this.panelModel == 'Narrow') {
+            this.markupEditor.focus();
+            this.updateHasContent();
+        }
+    });
 
     // Event handlers
 
     private onPostPanelClick = ((event: MouseEvent) => {
         if (event.target === this.postPanelDiv)
             this.markupEditor.focus();
-    });
-
-    private onAttachClick = ((acceptTypes: string) => {
-        this.attachmentList.showFilePicker(acceptTypes);
-        if (this.panelModel == 'Narrow') {
-            this.markupEditor.focus();
-            this.updateHasContent();
-        }
     });
 
     private onReturnFocusOnInput = ((event: MouseEvent) => {
@@ -234,6 +242,7 @@ export class ChatMessageEditor {
             return;
 
         let isAdding = false;
+        const fileResults : PickFileResult[] = [];
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
                 if (!isAdding)
@@ -243,10 +252,10 @@ export class ChatMessageEditor {
                 if (!file)
                     continue; // Should not happen, but just in case
 
-                if (await this.attachmentList.add(this.chatId, file))
-                    this.updateHasContent();
+                fileResults.push({ file: file, fileHandle: null });
             }
         }
+        void this.filePickerBackend.add(fileResults);
     };
 
     // Private methods
@@ -307,8 +316,7 @@ export class ChatMessageEditor {
 
     private updateHasContent() {
         const hasText = this.markupEditor?.hasContent ?? false;
-        const hasAttachments = this.attachmentList?.some();
-        const hasContent = hasText || hasAttachments;
+        const hasContent = hasText || this.hasAttachments;
         if (this.hasContent === hasContent)
             return;
 

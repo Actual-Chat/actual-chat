@@ -196,5 +196,12 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddTypeMap<IModalView>(map => map
             .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
         );
+
+        // Sending messages & File uploads
+        fusion.AddService<ChatSendingMessagesTriggers>(ServiceLifetime.Scoped);
+        services.AddScoped(c => new SendingMessages(c.AppUIHub()));
+        services.AddScoped(c => new FileUploaderService(c));
+        services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
+        services.AddScoped(c => new AttachmentsController(c.AppUIHub()));
     }
 }

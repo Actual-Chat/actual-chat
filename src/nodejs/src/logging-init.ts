@@ -17,6 +17,7 @@ export type LogScope =
     | 'BrowserInit'
     | 'BubbleHost'
     | 'Connectivity'
+    | 'DelayedInvoker'
     | 'Gestures'
     | 'event-handling'
     | 'InertialScroll'
@@ -89,7 +90,8 @@ export type LogScope =
     | 'TooltipHost'
     | 'UserInterface'
     | 'VisualMediaViewer'
-    | 'WebAuth';
+    | 'WebAuth'
+    | 'WebFileProvider';
 
 const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';

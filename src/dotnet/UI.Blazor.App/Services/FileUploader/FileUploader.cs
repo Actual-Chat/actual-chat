@@ -10,13 +10,26 @@ public sealed class FileUploader(UIHub hub) : UIServiceBase<UIHub>(hub)
     private IHttpClientFactory HttpClientFactory => Hub.HttpClientFactory;
 
     [RequiresUnreferencedCode("Uses ReadFromJsonAsync")]
-    public async Task<MediaContent> Upload(ChatId chatId, Stream file, string? contentType, string? fileName, CancellationToken cancellationToken = default)
+    public FileUploadOperation CreateUploadOperation(ChatId chatId, Stream file, string? contentType, string? fileName)
+    {
+        var progress = new UploadProgressTracker();
+        return new FileUploadOperation(token => {
+            HttpContent streamContent = new StreamContentWithProgress(file, progress, token); //new StreamContent(file);
+            return UploadInternal(chatId,
+                streamContent,
+                contentType,
+                fileName,
+                token);
+        }, progress);
+    }
+
+    [RequiresUnreferencedCode("Uses ReadFromJsonAsync")]
+    private async Task<MediaContent> UploadInternal(ChatId chatId, HttpContent httpContent, string? contentType, string? fileName, CancellationToken cancellationToken)
     {
         using var formData = new MultipartFormDataContent();
-        var streamContent = new StreamContent(file);
-        if (contentType != null)
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-        formData.Add(streamContent, "file", fileName.NullIfEmpty() ?? "Upload");
+        if (!contentType.IsNullOrEmpty())
+            httpContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        formData.Add(httpContent, "file", fileName.NullIfEmpty() ?? "Upload");
 
         var httpClient = HttpClientFactory.CreateClient("UploadFile.Client");
         if (HostInfo.HostKind.IsApp()) {
@@ -36,7 +49,8 @@ public sealed class FileUploader(UIHub hub) : UIServiceBase<UIHub>(hub)
                     .ConfigureAwait(false);
                 return result!;
             }
-            var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var error = $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase.NullIfEmpty() ?? response.StatusCode.ToInvariantString()}). Body: {errorBody}";
             throw StandardError.External(error);
         } catch(Exception) when (cancellationToken.IsCancellationRequested) {
             throw new TaskCanceledException();

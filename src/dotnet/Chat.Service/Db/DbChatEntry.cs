@@ -34,6 +34,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsSystemEntry { get; set; }
     public bool IsThreadStartEntry { get; set; }
     public bool IsThreadEntry { get; set; }
+    public bool HasAttachmentUploads { get; set; }
+    public string ClientId { get; set; } = "";
 
     public string? ForwardedChatTitle { get; set; }
     public string? ForwardedAuthorId { get; set; }
@@ -91,6 +93,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
             IsThreadStartEntry = IsThreadStartEntry,
             IsThreadEntry = IsThreadEntry,
+            HasAttachmentUploads = HasAttachmentUploads,
+            ClientId = ClientId,
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
             EndsAt = EndsAt.ToMoment(),
@@ -130,6 +134,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
+        if (!ClientId.IsNullOrEmpty())
+            if (!model.ClientId.IsNullOrEmpty() && OrdinalEquals(model.ClientId, ClientId))
+                throw StandardError.Constraint("Client ID cannot be changed");
 
         Id = id.Value;
         ChatId = model.ChatId.Value;
@@ -139,6 +146,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsRemoved = model.IsRemoved;
         IsThreadStartEntry = model.IsThreadStartEntry;
         IsThreadEntry = model.IsThreadEntry;
+        HasAttachmentUploads = model.HasAttachmentUploads;
+        ClientId = model.ClientId;
 
         AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;

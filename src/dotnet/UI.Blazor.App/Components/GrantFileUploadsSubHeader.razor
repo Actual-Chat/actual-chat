@@ -1,0 +1,39 @@
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComponentBase<AppUIHub>
+@implements GrantFileUploadsSubHeader.IGrantFileUploadsSubHeader
+
+@if (!_isVisible)
+    return;
+
+<div class="grant-file-upload-permissions-subheader subheader-item">
+    <div class="c-content">
+        <Button Click="InvokeGrantFilePermissions">Grant file pending uploads</Button>
+    </div>
+</div>
+
+@code {
+    private bool _isVisible;
+    private DotNetObjectReference<IGrantFileUploadsSubHeader>? BlazorRef { get; set; }
+
+    private Task InvokeGrantFilePermissions()
+        => Hub.JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.WebFileProviders.grantFileUploadPermissions").AsTask();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        BlazorRef = DotNetObjectReference.Create<IGrantFileUploadsSubHeader>(this);
+        await Hub.JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.WebFileProviders.startMonitorGrantPermissionsRequests", BlazorRef);
+    }
+
+    [JSInvokable]
+    public void OnPendingRequestsHaveChanged(bool hasPendingRequests) {
+        _isVisible = hasPendingRequests;
+        StateHasChanged();
+    }
+
+    // Nested types
+    public interface IGrantFileUploadsSubHeader {
+        void OnPendingRequestsHaveChanged(bool hasPendingRequests);
+    }
+}

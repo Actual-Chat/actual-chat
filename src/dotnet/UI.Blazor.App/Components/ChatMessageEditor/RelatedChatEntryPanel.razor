@@ -14,11 +14,16 @@
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private SendingMessages SendingMessages => Hub.SendingMessages;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var relatedChatEntry = await ChatEditorUI.RelatedEntryRef.Use(cancellationToken).ConfigureAwait(false);
         if (relatedChatEntry is not { } vRelatedChatEntry)
             return null;
+
+        var entryRef = vRelatedChatEntry.EntryRef;
+        if (entryRef.ChatEntry is not null)
+            return new Model(entryRef.ChatEntry, vRelatedChatEntry.Kind, true);
 
         var entryId = vRelatedChatEntry.EntryId;
         var chatId = entryId.ChatId;
@@ -27,6 +32,7 @@
         if (entry == null)
             return null;
 
+        entry = await SendingMessages.GetSendingMessages(chatId).GetSelfOrEdited(entry).ConfigureAwait(false);
         return new (entry, vRelatedChatEntry.Kind, ownAuthor?.Id == entry.AuthorId);
     }
 

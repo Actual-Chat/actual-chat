@@ -7,6 +7,6 @@ public class IncomingShareUI(ModalUI modalUI)
     public void ShareText(string plainText)
         => _ = modalUI.Show(new IncomingShareModal.Model(plainText));
 
-    public void ShareFiles(IncomingShareFile[] files)
+    public void ShareFiles(AttachFileInfo[] files)
         => _ = modalUI.Show(new IncomingShareModal.Model(files));
 }

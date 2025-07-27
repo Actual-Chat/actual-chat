@@ -1,0 +1,60 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@{
+    var attachment = Attachment;
+    var progress = attachment.Progress;
+    var uploadProgressClass = "attachment-upload-progress";
+    var plugClass = "blurred-plug";
+    if (attachment.Failed) {
+        progress = Math.Max(progress, 30);
+        uploadProgressClass += " attachment-upload-failed";
+    } else if (attachment.Uploaded) {
+        uploadProgressClass += " attachment-upload-completed";
+        plugClass = "";
+    }
+
+    var uploadStyle = $"width: {progress}%;";
+}
+<li class="attachment-wrapper">
+    <div class="c-content">
+        <div class="attachment-item">
+            <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
+                <i class="icon-trash03 text-2xl font-thin"></i>
+            </ButtonSquare>
+            @if (attachment.IsImage) {
+                <img src="@attachment.PreviewUrl" alt="Image attachment" class="@plugClass"/>
+            } else if (attachment.IsVideo) {
+                <video preload="metadata" class="@plugClass">
+                    <source src="@attachment.PreviewUrl#t=0.5"/>
+                </video>
+            } else {
+                <FileAttachmentView FileType="@attachment.FileType"/>
+            }
+            @if (!attachment.Uploaded) {
+                <span class="spinner-icon-wrapper">
+                    @if (attachment.IsUploading) {
+                        <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
+                    } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                        <ButtonRound Click="@RestartClick">
+                            <i class="icon-sync text-2xl"></i>
+                        </ButtonRound>
+                    }
+                </span>
+            }
+        </div>
+        <div class="attachment-filename" title="@attachment.FileName">
+            @if (attachment.FileName.Length > 0) {
+                <span>@attachment.FileName</span>
+            } else {
+                <span>&nbsp;</span>
+            }
+        </div>
+        <div class="@uploadProgressClass" style="@uploadStyle"></div>
+    </div>
+</li>
+
+@code {
+    [Parameter] public Attachment Attachment { get; set; } = null!;
+    [Parameter] public EventCallback RemoveClick { get; set; }
+    [Parameter] public EventCallback RestartClick { get; set; }
+}
