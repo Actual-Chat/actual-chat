@@ -132,7 +132,11 @@ public class AndroidWebChromeClient : WebChromeClient
         FileChooserParams? fileChooserParams)
     {
         var acceptTypes = fileChooserParams?.GetAcceptTypes() ?? [];
-        if (_visualMediaFileChooser.OnShowFileChooser(acceptTypes, filePathCallback))
+        if (filePathCallback is not null
+            && acceptTypes.Length > 0
+            && _visualMediaFileChooser.OnShowFileChooser(acceptTypes[0], uris => {
+                filePathCallback.OnReceiveValue(uris);
+            }))
             return true;
 
         return _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams);

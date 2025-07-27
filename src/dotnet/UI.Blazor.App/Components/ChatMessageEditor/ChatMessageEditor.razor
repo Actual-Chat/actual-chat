@@ -6,9 +6,17 @@
 @using ActualChat.Pooling
 @using System.Diagnostics.CodeAnalysis
 @inherits ComponentBase<AppUIHub>
+@implements IAttachmentWebFilePickerBackend
 @implements IAsyncDisposable
 @{
     var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
+
+    RenderFragment RenderAttachmentListView() =>
+        @<AttachmentListView
+             @key="AttachmentListKey"
+             AttachmentListHolder="@_attachmentListHolder"
+             OnSendClick="@(() => Post())"
+             OnAddClick="@(() => OnAttachClick(""))"/>;
 }
 
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
@@ -17,14 +25,10 @@
 <OnUIEvent TEvent="@AttachButtonClickEvent" Handler="OnAttachButtonClickEvent" />
 <OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor">
+    <input class="attachment-web-file-picker" type="file" hidden multiple/>
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         @if (ScreenSize.IsWide()) {
-            <AttachmentList
-                @key="AttachmentListKey"
-                @ref="AttachmentListRef"
-                OnSendClick="@(() => Post())"/>
-        }
-        @if (ScreenSize.IsWide()) {
+            @RenderAttachmentListView()
             <RelatedChatEntryPanel/>
         }
         <div class="c-content">
@@ -66,10 +70,7 @@
                 </div>
             </div>
             @if (ScreenSize.IsNarrow()) {
-                <AttachmentList
-                    @key="AttachmentListKey"
-                    @ref="AttachmentListRef"
-                    OnSendClick="@(() => Post())"/>
+                @RenderAttachmentListView()
                 <div class="rounded-sub-footer"></div>
                 <RelatedChatEntryPanel/>
             }
@@ -86,11 +87,13 @@
     private static object MarkupEditorKey { get; } = new();
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
+    private AttachmentListHolder _attachmentListHolder = null!;
+    private bool _hasAttachments;
     private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
     private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<IAttachmentWebFilePickerBackend> BlazorRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
-    private AttachmentList AttachmentListRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
     private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; }
     private SentAttachmentsStorage? AttachmentsStorage { get; set; }
@@ -100,13 +103,22 @@
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
+    private SendingMessages SendingMessages => Hub.SendingMessages;
+    private FileAttachments FileAttachments { get; set; } = null!;
+    private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatMessageEditor))]
     public ChatMessageEditor() { }
+
+    protected override void OnInitialized() {
+        _attachmentListHolder = new AttachmentListHolder(Hub);
+        _attachmentListHolder.Changed += OnAttachmentListChanged;
+        FileAttachments =  new FileAttachments(Hub, Chat.Id);
+        AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
+    }
 
     public async ValueTask DisposeAsync() {
         if (AttachmentsStorage != null)
@@ -116,6 +128,8 @@
         JSRef = null!;
         ReadPositionStateLease.DisposeSilently();
         ReadPositionStateLease = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     protected override async Task OnParametersSetAsync() {
@@ -131,30 +145,35 @@
 
         if (JSRef != null!) {
             // Only when rendered
-            await AttachmentListRef.Clear();
+            await _attachmentListHolder.Attachments.Clear();
             await UpdateChatId();
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
-            await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
-            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+            BlazorRef = DotNetObjectReference.Create<IAttachmentWebFilePickerBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            await MarkupEditorRef.WhenReady;
+            if (JSRef == null! || MarkupEditorRef.JSRef == null!)
                 return; // Dispose may happen during await above
 
-            await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
+            await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef);
             await UpdateChatId();
             await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
-            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+            if (JSRef == null! || MarkupEditorRef.JSRef == null!)
                 return; // Dispose may happen during await above
 
             AttachmentsStorage = Hub.Services.GetRequiredService<SentAttachmentsStorage>();
-            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
+            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.HasFiles)
                 await SetAttachments(AttachmentsStorage);
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
         }
     }
+
+    [JSInvokable]
+    public Task OnFilePicked(WebFileInfo[] fileInfos)
+        => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
     // Private methods
 
@@ -164,13 +183,12 @@
 
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
-        if (AttachmentListRef.IsUploading) {
+
+        var attachmentListSnapshot = _attachmentListHolder.PopSnapshot();
+        if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0) {
+            await attachmentListSnapshot.DisposeAsync();
             return;
         }
-
-        await using var attachmentListSnapshot = AttachmentListRef.PopSnapshot();
-        if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Length == 0)
-            return;
 
         _ = TuneUI.Play(Tune.SendMessage);
         var clearMarkupTask = MarkupEditorRef.Clear();
@@ -179,45 +197,55 @@
             var relatedChatEntryId = relatedChatEntry?.EntryId;
             await ChatEditorUI.HideRelatedEntry(false);
 
-            Chats_UpsertTextEntry cmd;
+            SendMessageRequest cmd;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
                 if (relatedChatEntryId is null)
                     throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
-                cmd = new Chats_UpsertTextEntry(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
+                cmd = new SendMessageRequest(relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
             } else {
                 var repliedEntryLid = relatedChatEntryId?.LocalId;
-                cmd = new Chats_UpsertTextEntry(Session, Chat.Id, null, text) {
+                cmd = new SendMessageRequest(Chat.Id, null, text) {
                     RepliedEntryLid = repliedEntryLid,
-                    EntryAttachments = attachmentListSnapshot.Attachments,
+                    Attachments = attachmentListSnapshot.Attachments,
                 };
             }
-            var chatEntry = await UICommander.Run(cmd, CancellationToken.None);
-            if (cmd.LocalId is null)
-                AnalyticEvents.RaiseMessagePosted(
-                    cmd.RepliedEntryLid.HasValue,
-                    !cmd.Text.IsNullOrEmpty(),
-                    attachmentListSnapshot.Attachments.Length);
-
-            var readEntryLid = chatEntry.Value.LocalId;
-
-            var readPositionState = ReadPositionStateLease?.Resource;
-            if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
-                readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
-            await AttachmentListRef.Clear();
+            var postTask = await SendingMessages.Post(cmd, CancellationToken.None);
+            _ = ForegroundTask.Run(async () => {
+                try {
+                    var chatEntry = await postTask.ConfigureAwait(true);
+                    var readEntryLid = chatEntry.LocalId;
+                    var readPositionState = ReadPositionStateLease?.Resource;
+                    if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
+                        readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+                }
+                catch (OperationCanceledException) {
+                    // Ignore send message cancellation.
+                }
+                catch (Exception e) {
+                    UICommander.ShowError(e);
+                    await attachmentListSnapshot.Rollback();
+                    await MarkupEditorRef.SetText(text);
+                }
+                finally {
+                    await attachmentListSnapshot.DisposeAsync();
+                }
+            });
+            //await AttachmentListRef.Clear();
             SearchUI.Clear();
             await clearMarkupTask;
         }
         catch (Exception e) {
             UICommander.ShowError(e);
-            attachmentListSnapshot.Rollback();
-            await MarkupEditorRef.SetText(text);
             await clearMarkupTask.SilentAwait();
+            await attachmentListSnapshot.Rollback();
+            await MarkupEditorRef.SetText(text);
+            await attachmentListSnapshot.DisposeAsync();
         }
     }
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, (TextEntryId)chatEntry.Id, focusOnEditor: true);
+        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry, focusOnEditor: true);
         await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
     }
 
@@ -229,8 +257,26 @@
         await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
     }
 
-    private async Task OnAttachClick(string acceptTypes)
-        => await JSRef.InvokeVoidAsync("onAttachClick", acceptTypes);
+    private async Task OnAttachClick(string acceptTypes) {
+        if (AttachmentFilePicker is not null) {
+            _ = TuneUI.Play(Tune.ChangeAttachments);
+            var files = await AttachmentFilePicker.PickFiles(acceptTypes);
+            await OnAttachFilesPicked(files);
+        } else {
+            await JSRef.InvokeVoidAsync("showWebFilePickerDialog", acceptTypes);
+        }
+    }
+
+    private void OnAttachmentListChanged(object? sender, EventArgs e) {
+        var lastHasAttachments = _hasAttachments;
+        var hasAttachments = _attachmentListHolder.Attachments.Count > 0;
+        _hasAttachments = hasAttachments;
+        if (hasAttachments != lastHasAttachments)
+            _ = NotifyAttachmentListChanged(hasAttachments);
+    }
+
+    private async Task NotifyAttachmentListChanged(bool hasAttachments)
+        => await JSRef.InvokeVoidAsync("notifyAttachmentListChanged", hasAttachments);
 
     // Event handlers
 
@@ -245,7 +291,7 @@
 
     private void OnAttachmentsStored(object? sender, EventArgs e) {
         var attachmentsStorage = AttachmentsStorage;
-        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.Urls.Length > 0)
+        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.HasFiles)
             _ = Handle();
 
         async Task Handle() {
@@ -256,18 +302,25 @@
 
     private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
     {
-        await AttachmentListRef.SetSentAttachments(attachmentsStorage.Urls);
-        attachmentsStorage.Clear();
+        var fileInfos = attachmentsStorage.Pop();
+        await FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, fileInfos);
     }
+
+    private Task OnAttachFilesPicked(AttachFileInfo[] fileInfos)
+        => FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
     // UIEventHub event handlers
 
     private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
         => await MarkupEditorRef.Focus();
 
-    private Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
+    private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
         var chatEntry = @event.Entry;
-        return Edit(chatEntry, cancellationToken);
+        if (chatEntry.IsStored()) {
+            var chatSendingMessages = SendingMessages.GetSendingMessages(chatEntry.ChatId);
+            chatEntry = await chatSendingMessages.GetSelfOrEdited(chatEntry);
+        }
+        await Edit(chatEntry, cancellationToken);
     }
 
     private Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken)

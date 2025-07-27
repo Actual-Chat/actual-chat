@@ -39,6 +39,16 @@ export class WebKvasBackend {
         return values as Array<string | null>;
     }
 
+    public async getAll(): Promise<Record<string, string>> {
+        await this._whenInitialized;
+        const items = await this.kvas.getAll();
+        return Object.fromEntries(
+            Object.entries(items)
+                .filter(([key]) => key !== this.versionKey)
+                .map(([key, value]) => [key, value as string])
+        ) as Record<string, string>;
+    }
+
     public async setMany(keys: string[], values: Array<string | null>): Promise<void> {
         await this._whenInitialized;
         await this.kvas.setMany(keys, values);

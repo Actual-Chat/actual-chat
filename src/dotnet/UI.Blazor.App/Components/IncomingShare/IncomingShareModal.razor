@@ -63,6 +63,7 @@
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private string _comment = "";
 
+    private SendingMessages SendingMessages => Hub.SendingMessages;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
@@ -89,16 +90,15 @@
             return;
 
         var text = ModalModel.Text;
-        var session = Services.Session();
-        var uiCommander = Services.UICommander();
+        CancellationToken cancellationToken = default;
         foreach (var chatId in selectedChatIds) {
             if (!comment.IsNullOrEmpty()) {
-                var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
-                _ = await uiCommander.Run(cmd2, CancellationToken.None);
+                var cmd2 = new SendMessageRequest(chatId, null, comment);
+                _ = SendingMessages.Post(cmd2, cancellationToken);
             }
 
-            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
-            _ = await uiCommander.Run(cmd, CancellationToken.None);
+            var cmd = new SendMessageRequest(chatId, null, text);
+            _ = SendingMessages.Post(cmd, cancellationToken);
         }
 
         Modal.Close(true);
@@ -115,22 +115,18 @@
         if (showFilePreview) {
             var chatId = SelectedChatIds.First();
             Services.GetRequiredService<SentAttachmentsStorage>()
-                .Store(chatId, ModalModel.Files.Select(c => c.Url).ToArray());
-
+                .Push(chatId, ModalModel.Files);
             Modal.Close(true);
-            await Services.GetRequiredService<History>()
-                .NavigateTo(Links.Chat(chatId));
+            await Hub.History.NavigateTo(Links.Chat(chatId));
         } else {
             Modal.Close(true);
             try {
-                var fileDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
-                var uploader = Services.GetRequiredService<FileUploader>();
                 var postTasks = new List<Task<ChatEntry?>>();
                 foreach (var chatId in selectedChatIds) {
                     var comment = _comment;
                     foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                        var fileUploads = UploadFiles(fileDownloader, uploader, chatId, filesChunk);
-                        var postTask = PostMessage(chatId, comment, fileUploads);
+                        var attachmentList = UploadFiles(filesChunk);
+                        var postTask = PostMessage(chatId, comment, attachmentList);
                         comment = "";
                         postTasks.Add(postTask);
                     }
@@ -174,62 +170,49 @@
         }
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
-    private IReadOnlyCollection<(Task<MediaContent>, string?)> UploadFiles(IIncomingShareFileDownloader filesDownloader, FileUploader uploader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
+    private ReadonlyAttachmentList UploadFiles(IEnumerable<AttachFileInfo> fileInfos) {
         Exception? fileSizeLimitError = null;
-        var fileUploads = new List<(Task<MediaContent>, string?)>();
-        foreach (var file in files) {
-            var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
-            if (stream == null) {
-                Log.LogWarning("Failed to open input stream for '{Url}'", file.Url);
-                continue;
-            }
-            if (stream.Length > Constants.Attachments.FileSizeLimit) {
-                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", file.Url, stream.Length);
+        var attachments = new List<Attachment>();
+        foreach (var fileInfo in fileInfos) {
+            if (fileInfo.Length > Constants.Attachments.FileSizeLimit) {
+                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", fileInfo.FileName, fileInfo.Length);
                 fileSizeLimitError ??= AttachmentList.FileTooBigError();
                 continue;
             }
-            filesDownloader.TryExtractFileName(file.Url, out var fileName);
-            var fileUpload = uploader.Upload(chatId, stream, mediaType, fileName);
-            fileUploads.Add((fileUpload, mediaType));
+            // Do not request preview url here, because we are not going to display attachment,
+            // but rather post a message immediately.
+            const string previewUrl = "";
+            var fileProvider = fileInfo.FileProvider;
+            var attachment = new Attachment(previewUrl, fileInfo.FileName, fileInfo.FileType) {
+                FileProvider = fileProvider
+            };
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
+            attachments.Add(attachment);
         }
         if (fileSizeLimitError != null)
             Services.UICommander().ShowError(fileSizeLimitError);
-        return fileUploads;
+        return new ReadonlyAttachmentList(attachments);
     }
 
-    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IReadOnlyCollection<(Task<MediaContent> UploadTask, string? ContentType)> fileUploads)
+    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IAttachmentList attachments)
     {
-        try {
-            await Task.WhenAll(fileUploads.Select(c => c.UploadTask));
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to upload files for sharing");
-        }
-        var media = fileUploads
-            .Where(c => c.UploadTask.IsCompletedSuccessfully)
-            .Select(c => new { MediaContent = c.UploadTask.Result, ContentType = c.ContentType ?? ""})
-            .ToArray();
-        if (media.Length == 0 && _comment.IsNullOrEmpty())
-            return null;
-        var cmd = new Chats_UpsertTextEntry(Services.Session(), chatId, null, comment) {
+        var cmd = new SendMessageRequest(chatId, null, comment) {
             RepliedEntryLid = null,
-            EntryAttachments = media.Select(x => new TextEntryAttachment {
-                MediaId = x.MediaContent.MediaId,
-                ThumbnailMediaId = x.MediaContent.ThumbnailMediaId,
-            }).ToArray(),
+            Attachments = attachments,
         };
-        var chatEntry = await Services.UICommander().Call(cmd).ConfigureAwait(false);
+        var postTask = await SendingMessages.Post(cmd, default).ConfigureAwait(false);
+        var chatEntry = await postTask.ConfigureAwait(false);
         var textEntryId = TextEntryId.New(chatEntry.ChatId, chatEntry.LocalId);
         // Add pseudo attachments to evaluate file type later
         chatEntry = chatEntry with {
-            Attachments = media
+            Attachments = attachments.Items
+                .Where(c => c.Uploaded)
                 .Select(c => new TextEntryAttachment {
                     EntryId = textEntryId,
-                    MediaId = c.MediaContent.MediaId,
-                    ThumbnailMediaId = c.MediaContent.ThumbnailMediaId,
-                    Media = new Media(c.MediaContent.MediaId) {
-                        ContentType = c.ContentType,
+                    MediaId = c.MediaId!,
+                    ThumbnailMediaId = c.ThumbnailMediaId,
+                    Media = new Media(c.MediaId!) {
+                        ContentType = c.FileType,
                     },
                 }).ToArray(),
             };
@@ -239,14 +222,14 @@
     // Nested types
 
     public sealed record Model {
-        public IncomingShareFile[] Files { get; } = [];
+        public AttachFileInfo[] Files { get; } = [];
         public string Text { get; } = "";
         public bool HasFiles => Files.Length > 0;
 
         public Model(string plainText)
             => Text = plainText;
 
-        public Model(IncomingShareFile[] files)
+        public Model(AttachFileInfo[] files)
             => Files = files;
     }
 }

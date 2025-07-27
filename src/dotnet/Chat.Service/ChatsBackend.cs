@@ -1314,8 +1314,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (changeKind == ChangeKind.Create)
             AppMeters.MessageCount.Add(1);
 
-        if (change.IsCreate(out var create) && create.Attachments is { Length: > 0 } attachments) {
-            var textEntryAttachments = attachments
+        TextEntryAttachment[]? attachmentsProto = null;
+        if (change.IsCreate(out var create) && create.Attachments is { Length: > 0 } attachments1)
+            attachmentsProto = attachments1;
+        if (change.IsUpdate(out var update1) && update1.Attachments is { Length: > 0 } attachments2)
+            attachmentsProto = attachments2;
+
+        if (attachmentsProto is not null) {
+            var textEntryAttachments = attachmentsProto
                 .Select((x, i) => new TextEntryAttachment {
                     EntryId = chatEntryId.ToTextEntryId(),
                     Index = i,

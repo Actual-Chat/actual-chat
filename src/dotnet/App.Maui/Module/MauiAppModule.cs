@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
@@ -78,6 +79,10 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Contacts
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
+
+        // File attachments
+        services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
+        services.AddScoped<IMauiFileProviderImplFactory>(c => new MauiFileProviderImplFactory(c));
 
         // Test Page
 #if ANDROID

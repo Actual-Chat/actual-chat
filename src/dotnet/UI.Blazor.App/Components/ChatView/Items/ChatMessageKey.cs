@@ -24,6 +24,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
         [ChatMessageKind.ConversationStart] = "-conversation",
         [ChatMessageKind.ConversationEnd] = "-conversation-end",
         [ChatMessageKind.Thread] = "-thread",
+        [ChatMessageKind.SendingNewMessage] = "-sending-new-msg",
         [ChatMessageKind.None] = "",
     };
 

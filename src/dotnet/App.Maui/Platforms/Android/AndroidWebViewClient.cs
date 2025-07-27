@@ -61,8 +61,8 @@ public class AndroidWebViewClient(
         var requestUrl = request?.Url;
         if (request != null && requestUrl != null
             && OrdinalEquals(requestUrl.Host, MauiSettings.LocalHost)
-            && ContentDownloader.CanHandlePath(requestUrl.EncodedPath)) {
-            var (stream, mimeType) = ContentDownloader.OpenInputStream(requestUrl.EncodedPath!);
+            && AndroidContentDownloader.CanHandleWebRequestUri(requestUrl.EncodedPath)) {
+            var (stream, mimeType) = ContentDownloader.GetWebRequestStream(requestUrl.EncodedPath!);
             if (stream == null)
                 return null;
 

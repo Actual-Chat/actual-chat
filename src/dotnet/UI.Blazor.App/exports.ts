@@ -14,7 +14,7 @@ export * from './Components/ChatAudioPanel/playback-toggle';
 export * from './Components/ChatAudioPanel/active-recording-svg.lit';
 export * from './Components/ChatAudioPanel/narrow-recording-svg.lit';
 export * from './Components/ChatList/chat-activity-svg.lit';
-export * from './Components/ChatMessageEditor/attachment-list';
+export * from './Components/ChatMessageEditor/attachment-web-file-picker';
 export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-chat-svg.lit';
@@ -36,6 +36,8 @@ export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';
 export * from './Components/TranslationSubHeader/translation-svg.lit';
 export * from './Services/LanguageUI/language-ui';
+export * from './Services/SendingMessages/send-message-requests';
+export * from './Services/FileUploads/upload-sessions';
 
 export * from './notification-ui';
 
@@ -51,3 +53,6 @@ export * from './Services/audio-initializer';
 export * from './Services/web-rtc-aec';
 export * from './Services/audio-context-destination-fallback';
 export * from './Services/observe-directive-lit';
+export * from './Services/FileProviders/file-handle-storage';
+export * from './Services/FileProviders/file-handle-permissions';
+export * from './Services/FileProviders/web-file-providers';

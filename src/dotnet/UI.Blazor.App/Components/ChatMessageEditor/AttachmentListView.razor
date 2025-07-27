@@ -1,0 +1,79 @@
+@inherits ComponentBase<AppUIHub>
+@implements IDisposable
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var attachments = Attachments;
+}
+
+@if (attachments.Count > 0) {
+    <div class="attachment-list-wrapper">
+        <div class="c-btn-group">
+            <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
+                Remove all
+            </Button>
+            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick">
+                Send @attachments.Count @("file".Pluralize(attachments.Count))
+            </Button>
+        </div>
+        <HeaderButton Class="remove-all-btn" Click="_ => Clear()">
+            <i class="icon-trash03 text-xl text-danger"></i>
+        </HeaderButton>
+        <ul class="attachment-list custom-scrollbar-x">
+            @foreach (var attachment in attachments.Items) {
+                <AttachmentItem
+                    @key="attachment.Id"
+                    Attachment="@attachment"
+                    RestartClick="@(() => OnRestartClick(attachment))"
+                    RemoveClick="@(() => OnRemoveClick(attachment))"/>
+            }
+            @if (attachments.Count < 10) {
+                <li class="attachment-wrapper last-element">
+                    <ButtonRound Class="add-attachment" Click="@OnAddClick">
+                        <i class="icon-plus text-2xl"></i>
+                    </ButtonRound>
+                </li>
+            }
+        </ul>
+        <HeaderButton Class="close-keyboard-btn">
+            <i class="icon-chevron-up text-2xl text-03"></i>
+        </HeaderButton>
+    </div>
+}
+
+@code {
+    private AttachmentListHolder? _holder;
+
+    [Parameter] public EventCallback OnSendClick { get; set; }
+    [Parameter] public EventCallback OnAddClick { get; set; }
+    [Parameter] public AttachmentListHolder AttachmentListHolder { get; set; } = null!;
+
+    private AttachmentList Attachments => _holder!.Attachments;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AttachmentListView))]
+    public AttachmentListView() { }
+
+    protected override void OnParametersSet() {
+        if (_holder is null) {
+            _holder = AttachmentListHolder;
+            _holder.Changed += OnAttachmentListChanged;
+        }
+        else if (_holder != AttachmentListHolder)
+            throw StandardError.Constraint("Holder can't be changed");
+    }
+
+    public void Dispose() {
+        _holder?.Changed -= OnAttachmentListChanged;
+    }
+
+    private void OnAttachmentListChanged(object? sender, EventArgs e)
+        => StateHasChanged();
+
+    public Task Clear()
+        => Attachments.Clear();
+
+    private Task OnRemoveClick(Attachment attachment)
+        => Attachments.Remove(attachment);
+
+    private Task OnRestartClick(Attachment attachment)
+        => Attachments.Restart(attachment);
+}

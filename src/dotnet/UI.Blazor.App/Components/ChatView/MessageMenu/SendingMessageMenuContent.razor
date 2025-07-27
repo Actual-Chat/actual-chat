@@ -1,0 +1,40 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@{
+    var e = ChatEntry;
+    var hasSelection = SelectionUI.HasSelection.Value;
+    var isForwarded = e.ForwardedAuthorId is not null;
+    var isTextEntry = e is { Kind: ChatEntryKind.Text, IsStreaming: false };
+    var canEdit = isTextEntry && !isForwarded && !hasSelection;
+    var canCopyText = isTextEntry && !e.Content.IsNullOrEmpty();
+}
+
+@if (canCopyText) {
+    <MenuEntry
+        Icon="icon-copy"
+        Text="Copy text"
+        Click="@(() => SelectionUI.CopyToClipboard(e))">
+    </MenuEntry>
+}
+@if (canEdit) {
+    <MenuEntry
+        Icon="icon-edit"
+        FocusOnEditor="true"
+        Text="Edit"
+        Click="@(() => ChatEditorUI.Edit(e))">
+    </MenuEntry>
+}
+<MenuEntry
+    Icon="icon-stop-fill"
+    FocusOnEditor="true"
+    Text="Cancel send"
+    Click="@(() => SendingMessages.Cancel(e.GetSendingMessage()!))">
+</MenuEntry>
+
+@code {
+    private SelectionUI SelectionUI => Hub.SelectionUI;
+    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private SendingMessages SendingMessages => Hub.SendingMessages;
+
+    [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
+}
