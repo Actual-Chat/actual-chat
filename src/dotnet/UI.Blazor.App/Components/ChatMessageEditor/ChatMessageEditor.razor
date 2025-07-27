@@ -100,7 +100,6 @@
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -191,18 +190,15 @@
                     EntryAttachments = attachmentListSnapshot.Attachments,
                 };
             }
-            var chatEntry = await UICommander.Run(cmd, CancellationToken.None);
-            if (cmd.LocalId is null)
-                AnalyticEvents.RaiseMessagePosted(
-                    cmd.RepliedEntryLid.HasValue,
-                    !cmd.Text.IsNullOrEmpty(),
-                    attachmentListSnapshot.Attachments.Length);
-
-            var readEntryLid = chatEntry.Value.LocalId;
-
-            var readPositionState = ReadPositionStateLease?.Resource;
-            if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
-                readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+            var postTask = Hub.SendingMessages.Post(cmd, CancellationToken.None);
+            _ = ForegroundTask.Run(async () => {
+                // TODO(DF): how to handle failures to send message?
+                var chatEntry = await postTask.ConfigureAwait(true);
+                var readEntryLid = chatEntry.LocalId;
+                var readPositionState = ReadPositionStateLease?.Resource;
+                if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
+                    readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+            });
             await AttachmentListRef.Clear();
             SearchUI.Clear();
             await clearMarkupTask;

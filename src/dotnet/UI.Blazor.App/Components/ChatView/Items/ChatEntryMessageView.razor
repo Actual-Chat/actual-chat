@@ -5,7 +5,7 @@
 @{
     var m = _rendered = State.Value ?? Model.Empty;
     // var chatId = ChatContext.ChatId;
-    // DebugLog?.LogDebug("Rendering ChatEntryMessageView for chat {ChatId} with message {MessageId}", chatId, Message.Entry.Id);
+    // DebugLog?.LogDebug("Rendering ChatEntryMessageView for chat {ChatId} with message {MessageId}, Content='{Content}'", chatId, Message.Entry.Id, Message.Entry.Content);
 
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
@@ -273,7 +273,8 @@
            || !ReferenceEquals(_renderedMessage, Message)
            || !ReferenceEquals(_renderedMarkup, _markup);
         // if (!shouldRender) {
-        //     DebugLog?.LogDebug("Skipping rendering ChatEntryMessageView for chat {ChatId} with message {MessageId} because state has not changed", ChatId, Message.Entry.Id);
+        //     DebugLog?.LogDebug("Skipping rendering ChatEntryMessageView for chat {ChatId} with message {MessageId} because state has not changed (Content = '{Content}')"
+        //         , ChatId, Message.Entry.Id, Message.Entry.Content);
         // }
         return shouldRender;
     }

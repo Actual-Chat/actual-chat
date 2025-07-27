@@ -41,6 +41,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Chat UI
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
+
+        fusion.AddService<ChatSendingMessagesTriggers>(ServiceLifetime.Transient);
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
@@ -54,6 +56,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
+        services.AddScoped(c => new SendingMessages(c.AppUIHub()));
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c.AppUIHub()));

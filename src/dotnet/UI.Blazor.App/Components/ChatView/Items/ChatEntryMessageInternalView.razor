@@ -25,17 +25,20 @@
         translationCls = "translating";
     }
 
-    // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
-    //     message.Entry.Id, m.IsStreaming, m.Translation);
+    // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated}, Content: '{Content}')",
+    //     message.Entry.Id, m.IsStreaming, m.Translation, entry.Content);
 
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
     RenderFragment statusFragment = (__builder) => {
+        var status = entry.IsSending ? ChatMessageSendingStatus.MessageStatus.Sending
+            : IsUnreadByOthers && entry.Attachments.Length == 0 ? ChatMessageSendingStatus.MessageStatus.Unread
+            : ChatMessageSendingStatus.MessageStatus.Default;
+        var isDotOnly = status == ChatMessageSendingStatus.MessageStatus.Unread && !IsUnreadByOthersBlockStart;
+        @* <span>@entry.Id.LocalId : @entry.Version</span> *@
         @TranslationFragments.TranslationMark(m.Translation)
-        @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
-            <ChatMessageSendingStatus
-                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
+        @if (status != ChatMessageSendingStatus.MessageStatus.Default) {
+            <ChatMessageSendingStatus Status="@status" IsDotOnly="@isDotOnly" />
         }
         @if (message.ShowIndexDocId) {
             <span>[DocId=@message.IndexDocId]</span>
@@ -122,14 +125,15 @@
             && (stateValue.IsStreaming
                 || _rendered.IsStreaming != stateValue.IsStreaming
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
+                || _rendered.Entry.IsSending != stateValue.Entry.IsSending
                 || _rendered.Markup != stateValue.Markup
                 || _rendered.Translation != stateValue.Translation
                 || _rendered.IsUnread != stateValue.IsUnread
                 || _rendered.IsUnreadBlockStart != stateValue.IsUnreadBlockStart);
-        if (!shouldRender) {
-            Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
-                Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
-        }
+        // if (!shouldRender) {
+        //     Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
+        //         Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
+        // }
         return shouldRender;
     }
 
@@ -150,7 +154,8 @@
         var isRenderedStreaming = _rendered?.IsStreaming ?? false;
         var isUnreadByOthers = IsUnreadByOthers;
         var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
-        var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
+        // When entry isSending, it's a local chat entry. It does not exist on the server side.
+        var entry = message.Entry.IsSending ? message.Entry : await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
             return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.TranscriptStreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);

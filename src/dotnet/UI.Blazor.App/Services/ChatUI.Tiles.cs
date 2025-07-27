@@ -37,7 +37,6 @@ public partial class ChatUI
         CancellationToken cancellationToken = default)
         => Chats.GetEntry(Session, id, cancellationToken);
 
-
     // Private methods
 
     private async Task<ChatItems> GetChatItemsInternal(
@@ -152,6 +151,8 @@ public partial class ChatUI
             }, cancellationToken).ConfigureAwait(false);
         }
 
+        var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId, chatIdRange.End);
+        var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
         var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
@@ -171,6 +172,7 @@ public partial class ChatUI
                     expandedConversations,
                     prevMessage,
                     lastReadEntryLid,
+                    chatSendingMessagesWrapper,
                     cancellationToken)
                 .ConfigureAwait(false);
             if (tile.Items.Count == 0)
@@ -361,12 +363,14 @@ public partial class ChatUI
         IImmutableSet<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
         long lastReadEntryId,
+        IgnoreComputeArg<ChatSendingMessagesAccessor> chatSendingMessagesWrapper,
         CancellationToken cancellationToken = default)
     {
         // DebugLog?.LogDebug("GetTile: {ChatId} {IdRange} {LastReadEntryId}", chatId, idRange, lastReadEntryId);
         if (idRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(idRange));
 
+        var chatSendingMessages = chatSendingMessagesWrapper.Value;
         var requestedIdRange = prevMessage == null
             ? idRange.MoveStart(-IdTileStack.FirstLayer
                 .TileSize) // to request previous item of requested range to properly render block star - we will drop it off
@@ -399,11 +403,23 @@ public partial class ChatUI
                 cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
-        var entries = tiles
-            .OrderBy(t => t.IdTileRange.Start)
-            .SelectMany(t => t.Entries)
-            .Where(e => !idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
-            .ToList();
+        var entries = new List<ChatEntry>();
+        foreach (var tile in tiles.OrderBy(t => t.IdTileRange.Start)) {
+            foreach (var e in tile.Entries) {
+                if (idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
+                    continue;
+
+                var e2 = await chatSendingMessages.GetSelfOrEdited(e).ConfigureAwait(false);
+                entries.Add(e2);
+            }
+        }
+
+        var isLastTile = idRange.Contains(chatSendingMessages.RangeEnd - 1);
+        if (isLastTile) {
+            chatSendingMessages.RemoveSentNewMessages();
+            var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!).ConfigureAwait(false);
+            entries.AddRange(newMessages);
+        }
         if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(idRange);
 
@@ -460,7 +476,7 @@ public partial class ChatUI
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
                 var isEntryUnread = entry.LocalId > lastReadEntryId;
                 var isAudio = entry.HasAudioEntry;
-                var shouldAddToResult = idRange.Contains(entry.LocalId);
+                var shouldAddToResult = idRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
                 var indexDocId = showIndexDocId ? indexDocIds.GetValueOrDefault(entry.Id, "") : "";
                 if (isBlockStart)
@@ -596,7 +612,6 @@ public partial class ChatUI
                 || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation!.EntryRange).IsEmpty));
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
-
 
     private static List<ChatMessage> GroupAuthorMessages(IEnumerable<ChatMessage> messages)
     {
