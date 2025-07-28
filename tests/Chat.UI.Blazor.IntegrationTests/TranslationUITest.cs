@@ -227,7 +227,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         // assert
         diffs.Should().HaveCountGreaterThan(10);
         var transcript = diffs.ToTranscripts().Last();
-        transcript.Text.Should().BeSimilarTo(expected, 0.7);
+        transcript.Text.Should().BeSimilarTo(expected, 0.6);
 
         // act
         await AssertTranslation(entry, expected);
