@@ -39,7 +39,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
     public async Task<string> Translate(
         string textToTranslate,
         Language targetLanguage,
-        string context = "",
+        TranslationResult[] context,
         CancellationToken cancellationToken = default)
     {
         textToTranslate.RequireNonEmpty();
@@ -63,7 +63,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             : result;
     }
 
-    public async IAsyncEnumerable<StringDiff> Stream(string textToTranslate, Language targetLanguage, string context = "", [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<StringDiff> Stream(string textToTranslate, Language targetLanguage, TranslationResult[] context, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         textToTranslate.RequireNonEmpty();
         if (!Settings.IsTranslationEnabled) {
@@ -106,6 +106,8 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         }
     }
 
+    // Private methods
+
     private async Task<OpenAIPromptExecutionSettings> CreateExecutionSettings(
         string textToTranslate,
         Language targetLanguage,
@@ -128,16 +130,14 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         };
     }
 
-    private static ChatHistory BuildRequest(string textToTranslate, string context)
+    private static ChatHistory BuildRequest(string textToTranslate, TranslationResult[] context)
     {
-        var text =
-            $"""
-             {context}
-             [TRANSLATE_BELOW]
-             {textToTranslate}
-             """;
         var chatHistory = new ChatHistory();
-        chatHistory.AddUserMessage(text);
+        foreach (var (text, translated) in context) {
+            chatHistory.AddUserMessage(text);
+            chatHistory.AddAssistantMessage(translated);
+        }
+        chatHistory.AddUserMessage(textToTranslate);
         return chatHistory;
     }
 

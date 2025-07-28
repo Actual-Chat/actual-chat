@@ -59,7 +59,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     {
         var (id, expectedVersion, change) = command;
         if (Invalidation.IsActive) {
-            _ = Get(id, default);
+            _ = GetInternal(id, default);
             return null!;
         }
 
@@ -128,11 +128,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
         async Task<Translation?> TranslateWithoutStreaming()
         {
-            var context = "";
+            TranslationResult[] context = [];
             if (id.Kind is TranslationIdKind.TextEntry) {
                 var chatEntryId = id.SourceId.GetChatEntryId();
-                var count = Settings.Translation.ContextMessageCount;
-                context = await GetTranslationContext(chatEntryId, count, cancellationToken).ConfigureAwait(false);
+                context = await GetTranslationContext(chatEntryId, targetLanguage, cancellationToken).ConfigureAwait(false);
             }
             var translatedText = await Translator.Translate(
                 translationSource.Content,
@@ -153,7 +152,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         async Task<Translation?> StreamTranslation()
         {
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-            var context = await GetTranslationContext(id.SourceId.GetChatEntryId(), Settings.Translation.ContextMessageCount, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = id.SourceId.GetChatEntryId();
+            var context = await GetTranslationContext(chatEntryId, targetLanguage, cancellationToken).ConfigureAwait(false);
             var stream = Translator
                 .Stream(translationSource.Content, id.Language, context, cancellationToken)
                 .ToTranscriptDiffs()
@@ -208,21 +208,35 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     // protected methods
 
     [ComputeMethod]
-    protected virtual async Task<string> GetTranslationContext(ChatEntryId id, int count, CancellationToken cancellationToken)
+    protected virtual async Task<Translation?> GetInternal(TranslationId id, CancellationToken cancellationToken)
     {
+        var dbTranslation = await EntityResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
+        var translation = dbTranslation?.ToModel();
+        return translation;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<TranslationResult[]> GetTranslationContext(ChatEntryId id, Language language, CancellationToken cancellationToken)
+    {
+        var count = Settings.Translation.ContextMessageCount;
         var translatedEntry = await ChatsBackend.GetEntry(id, cancellationToken).ConfigureAwait(false);
         if (translatedEntry is null)
-            return "";
+            return [];
 
         if (translatedEntry.Content.Length > Settings.Translation.ContentMinLengthWithoutContext)
-            return "";
+            return [];
 
         var entries = await ListEntries()
             .Where(x => x.SupportsTranslation(false))
+            .Take(count * 2)
+            .SelectAwait(async e => (e, await GetInternal(TranslationId.New(TextEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false)))
+            .Where(x => x.Item2 is not null)
+            .OrderBy(x => x.e.LocalId)
+            .Select(x => new TranslationResult(x.e.Content, x.Item2!.Content))
             .Take(count)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        return string.Join(".\n", entries.Select(e => e.Content));
+        return entries.ToArray();
 
         async IAsyncEnumerable<ChatEntry> ListEntries()
         {
@@ -356,7 +370,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         var transcriptBatch = transcriptDiffBatch.Scan((t, td) => t + td, lastTranscript).ToList();
                         var transcript = lastTranscript = transcriptBatch[^1];
                         var newStableTranscript = transcriptBatch.FirstOrDefault(t => t.IsStable) ?? Transcript.Empty;
-                        var prefix = stableTranscript.Text;
                         // The diff represents the changes between the current transcript (transcript) and the stable transcript (stableTranscript).
                         // This diff is distinct from the transcriptDiff object because transcriptDiff is derived from the unstable transcript, which may still be undergoing changes.
                         // The purpose of this calculation is to isolate the differences that have occurred since the last stable state of the transcript.
@@ -370,7 +383,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         var translatedContent = await RealtimeTranslator.Translate(
                             content,
                             language,
-                            prefix,
+                            [new TranslationResult(stableTranscript.Text, stableTranslatedTranscript.Text)],
                             cancellationToken).ConfigureAwait(false);
 
                         // var translatedContent = await Translate(prefix, content, cancellationToken).ConfigureAwait(false);
@@ -475,8 +488,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (source is null)
             return (null, null);
 
-        var dbTranslation = await EntityResolver.Get(id.Value, cancellationToken).ConfigureAwait(false);
-        var translation = dbTranslation?.ToModel();
+        var translation = await GetInternal(id, cancellationToken).ConfigureAwait(false);
         return (source, translation);
     }
 
@@ -491,11 +503,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         }
         catch (VersionMismatchException) {
             // Ignore version mismatch if already translated
-            return await Get(translation.Id, cancellationToken).ConfigureAwait(false);
+            return await GetInternal(translation.Id, cancellationToken).ConfigureAwait(false);
         }
     }
 
     // Nested types
-
-    private record TranslationResult(string OriginalText, string TranslatedText);
 }
