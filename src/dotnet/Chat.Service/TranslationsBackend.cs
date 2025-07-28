@@ -128,11 +128,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
         async Task<Translation?> TranslateWithoutStreaming()
         {
-            TranslationResult[] context = [];
-            if (id.Kind is TranslationIdKind.TextEntry) {
-                var chatEntryId = id.SourceId.GetChatEntryId();
-                context = await GetTranslationContext(chatEntryId, targetLanguage, cancellationToken).ConfigureAwait(false);
-            }
+            var context = await GetTranslationContext1().ConfigureAwait(false);
             var translatedText = await Translator.Translate(
                 translationSource.Content,
                 id.Language,
@@ -152,8 +148,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         async Task<Translation?> StreamTranslation()
         {
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-            var chatEntryId = id.SourceId.GetChatEntryId();
-            var context = await GetTranslationContext(chatEntryId, targetLanguage, cancellationToken).ConfigureAwait(false);
+            var context = await GetTranslationContext1().ConfigureAwait(false);
             var stream = Translator
                 .Stream(translationSource.Content, id.Language, context, cancellationToken)
                 .ToTranscriptDiffs()
@@ -188,6 +183,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     .ConfigureAwait(false);
             }
             return translation;
+        }
+
+        async Task<TranslationResult[]> GetTranslationContext1()
+        {
+            if (id.Kind is not TranslationIdKind.TextEntry)
+                return [];
+
+            var chatEntryId = id.SourceId.GetChatEntryId();
+            return await GetTranslationContext(chatEntryId, targetLanguage, cancellationToken).ConfigureAwait(false);
         }
     }
 
