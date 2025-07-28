@@ -6,6 +6,7 @@
     var message = Message;
     var markup = m.Markup;
     var entry = m.Entry;
+    _oldTranslation = _rendered?.Translation ?? m.Translation;
     _rendered = m;
     var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
     // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
@@ -196,8 +197,6 @@
         var isRenderedTranslated = (_rendered?.Translation ?? TranslationState.None) != TranslationState.None;
         var isRenderedStreaming = _rendered?.IsStreaming ?? false;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
-        var oldState = _rendered;
-        _oldTranslation = _rendered?.Translation ?? TranslationState.None;
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
             return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
@@ -232,7 +231,7 @@
             : MarkupParser.Parse(translation.Content);
 
         var newTranslation = translation.IsStreaming ? TranslationState.Translating : TranslationState.Translated;
-        if (oldState == null && newTranslation == TranslationState.Translated)
+        if (_rendered == null && newTranslation == TranslationState.Translated)
             _oldTranslation = TranslationState.Translated;
 
         return new(translatedMarkup, entry, newTranslation, TranscriptStreamer.StreamingState.None);
