@@ -31,7 +31,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
         var initialState = new ExtractorState(null, null);
         var entries = new List<TextEntry> {
-            new (0, "System message", _authorId, DateTime.Now, null, false, null)
+            new (0, "System message", _authorId, DateTime.Now, null, false, null, false)
         };
 
         // Act
@@ -48,9 +48,9 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var baseTime = new DateTime(2024, 1, 1, 12, 0, 0);
         var entries = new List<TextEntry>
         {
-            new (1, "Entry 1", _authorId, baseTime, null, false, null),
-            new (2, "Entry 2", _authorId, baseTime.AddMinutes(1), null, false, null),
-            new (3, "Entry 3", _authorId, baseTime.AddHours(13 + 1), null, false, null), // 13 hours after entry2
+            new (1, "Entry 1", _authorId, baseTime, null, false, null, false),
+            new (2, "Entry 2", _authorId, baseTime.AddMinutes(1), null, false, null, false),
+            new (3, "Entry 3", _authorId, baseTime.AddHours(13 + 1), null, false, null, false), // 13 hours after entry2
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -84,7 +84,8 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
                 DateTime.Now.AddMinutes(i),
                 null,
                 false,
-                null))
+                null,
+                false))
             .ToList();
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log, groupWordCount);
@@ -103,7 +104,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         // Arrange
         var groupWordCount = 100;
         var entries = Enumerable.Range(0, 10)
-            .Select(i => new TextEntry(i + 1, string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, DateTime.Now.AddMinutes(i), null, false, null))
+            .Select(i => new TextEntry(i + 1, string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, DateTime.Now.AddMinutes(i), null, false, null, false))
             .ToList();
 
         // Use a custom embeddings calculator with low similarity
@@ -124,9 +125,9 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         // Arrange
         var entries = new List<TextEntry>
         {
-            new(1, "Entry 1", _authorId, DateTime.Now, null, false, null),
-            new(2, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1),
-            new(3, "Entry 2", _authorId, DateTime.Now.AddMinutes(1), null, false, null)
+            new(1, "Entry 1", _authorId, DateTime.Now, null, false, null, false),
+            new(2, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1, false),
+            new(3, "Entry 2", _authorId, DateTime.Now.AddMinutes(1), null, false, null, false)
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -148,11 +149,11 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         // Arrange
         var entries = new List<TextEntry>
         {
-            new(2, "Entry 1", _authorId, DateTime.Now, null, false, null),
-            new(3, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1),
-            new(4, "Comment to reply", _authorId, DateTime.Now.AddSeconds(20), null, false, null),
-            new(5, "Another comment", _authorId, DateTime.Now.AddSeconds(30), null, false, null),
-            new(6, "Another comment 2", _authorId, DateTime.Now.AddSeconds(30), null, false, null),
+            new(2, "Entry 1", _authorId, DateTime.Now, null, false, null, false),
+            new(3, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1, false),
+            new(4, "Comment to reply", _authorId, DateTime.Now.AddSeconds(20), null, false, null, false),
+            new(5, "Another comment", _authorId, DateTime.Now.AddSeconds(30), null, false, null, false),
+            new(6, "Another comment 2", _authorId, DateTime.Now.AddSeconds(30), null, false, null, false),
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -172,9 +173,9 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         // Arrange
         var entries = new List<TextEntry>
         {
-            new(2, "Entry 1", _authorId, DateTime.Now, null, false, null),
-            new(3, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1),
-            new(4, "Late Reply", _authorId, DateTime.Now.AddMinutes(5), null, false, null),
+            new(2, "Entry 1", _authorId, DateTime.Now, null, false, null, false),
+            new(3, "Reply to Entry 1", _authorId, DateTime.Now.AddSeconds(10), null, false, 1, false),
+            new(4, "Late Reply", _authorId, DateTime.Now.AddMinutes(5), null, false, null, false),
         };
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -206,7 +207,7 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
     }
 
     [Fact]
-    public async Task ExtractGroups_ExtractGroupsWithBrokenState_ShouldProvideConversations()
+    public void ExtractGroups_ExtractGroupsWithBrokenState_ShouldProvideConversations()
     {
         // Arrange
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -233,11 +234,11 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
         var messageCounter = 1;
 
         var firstBatch = Enumerable.Range(1, 10)
-            .Select(i => new TextEntry(i, $"Message {messageCounter++} " + string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, now.AddSeconds(i).UtcDateTime, null, true, null))
+            .Select(i => new TextEntry(i, $"Message {messageCounter++} " + string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, now.AddSeconds(i).UtcDateTime, null, true, null, false))
             .ToList();
 
         var secondBatch = Enumerable.Range(1, 10)
-            .Select(i => new TextEntry(i + firstBatch.Count, $"Message {messageCounter++} " + string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, now.AddSeconds(i).UtcDateTime, null, true, null))
+            .Select(i => new TextEntry(i + firstBatch.Count, $"Message {messageCounter++} " + string.Join(" ", Enumerable.Repeat("word", 10)), _authorId, now.AddSeconds(i).UtcDateTime, null, true, null, false))
             .ToList();
 
         var extractor = new EntryGroupExtractor(new HighSimilarityEmbeddingsCalculator(), log);
@@ -298,7 +299,8 @@ public class EntryGroupExtractorTest(ITestOutputHelper @out, ILogger<EntryGroupE
                 new Moment(jsonEntry.BeginsAt),
                 jsonEntry.EndsAt != null ? new Moment(jsonEntry.EndsAt.Value) : null,
                 jsonEntry.AudioEntryId != null,
-                jsonEntry.RepliedChatEntryId))
+                jsonEntry.RepliedChatEntryId,
+                false))
             .ToList();
     }
 

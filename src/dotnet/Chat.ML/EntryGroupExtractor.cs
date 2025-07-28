@@ -103,7 +103,7 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
         }
         var lastEntryLid = state.MaxLid;
         foreach (var entry in entries.SkipWhile(e => e.LocalId <= lastEntryLid).OrderBy(e => e.LocalId)) {
-            if (string.IsNullOrWhiteSpace(entry.Content))
+            if (string.IsNullOrWhiteSpace(entry.Content) && !entry.HasAttachments)
                 continue;
 
             // Handle replies

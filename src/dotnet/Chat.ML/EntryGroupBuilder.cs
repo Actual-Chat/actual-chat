@@ -105,8 +105,10 @@ public partial class EntryGroupBuilder
         if (_stringBuilder.Length == 0)
             return this;
 
-        _stringBuilder.Append(entry.Content);
-        _stringBuilder.Append('\n');
+        if (!entry.Content.IsNullOrEmpty()) {
+            _stringBuilder.Append(entry.Content);
+            _stringBuilder.Append('\n');
+        }
         return this;
     }
 
