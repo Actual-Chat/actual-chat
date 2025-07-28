@@ -172,6 +172,109 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply my-0.5;
     @apply text-02 text-text-1;
 }
+.chat-message-markup.translating::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background-image: url("data:image/svg+xml;utf8, <svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='noiseFilter'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23noiseFilter)' /></svg>");
+    background-repeat: repeat;
+    opacity: 0.85;
+    animation: translatingGrain 1s steps(2, end) infinite;
+    mix-blend-mode: difference;
+    border-radius: 0.25rem;
+}
+.chat-message-markup.to-translated::after,
+.chat-message-markup.to-original::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background-image: url("data:image/svg+xml;utf8, <svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='noiseFilter'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23noiseFilter)' /></svg>");
+    background-repeat: repeat;
+    opacity: 0.75;
+    mix-blend-mode: difference;
+    border-radius: 0.25rem;
+}
+.chat-message-markup.to-translated::after {
+    animation: toTranslatedGrain 1s steps(5, end) forwards;
+}
+.chat-message-markup.to-original::after {
+    animation: toOriginalGrain 1s steps(5, end) forwards;
+}
+@keyframes translatingGrain {
+    0% { background-position: 0 0; }
+    25% { background-position: 5% 10%; }
+    50% { background-position: -10% 5%; }
+    75% { background-position: 10% -5%; }
+    100% { background-position: 0 0; }
+}
+@keyframes toTranslatedGrain {
+    0% {
+        background-position: 0 0;
+        opacity: 1;
+    }
+    25% {
+        background-position: 5% 10%;
+        opacity: 1;
+    }
+    50% {
+        background-position: -10% 5%;
+        opacity: 1;
+    }
+    75% {
+        background-position: 10% -5%;
+        opacity: 0.5;
+    }
+    100% {
+        background-position: 0 0;
+        opacity: 0;
+    }
+}
+@keyframes toOriginalGrain {
+    0% {
+        background-position: 0 0;
+        opacity: 1;
+    }
+    25% {
+        background-position: 5% 10%;
+        opacity: 1;
+    }
+    50% {
+        background-position: -10% 5%;
+        opacity: 1;
+    }
+    75% {
+        background-position: 10% -5%;
+        opacity: 0.5;
+    }
+    100% {
+        background-position: 0 0;
+        opacity: 0;
+    }
+}
+.chat-message-markup.translating .plain-text-markup,
+.chat-message-markup.translating .playable-text-markup {
+    filter: blur(3px);
+}
+.chat-message-markup.to-translated .plain-text-markup,
+.chat-message-markup.to-translated .playable-text-markup {
+    animation: toTranslatedBlur 1s steps(10, end) forwards;
+}
+.chat-message-markup.to-original .plain-text-markup,
+.chat-message-markup.to-original .playable-text-markup {
+    animation: toOriginalBlur 1s steps(10, end) forwards;
+}
+@keyframes toTranslatedBlur {
+    0% { filter: blur(3px); }
+    100% { filter: blur(0); }
+}
+@keyframes toOriginalBlur {
+    0% { filter: blur(3px); }
+    100% { filter: blur(0); }
+}
 
 .chat-message-markup span {
     @apply text-text-1;

@@ -6,6 +6,7 @@
     var message = Message;
     var markup = m.Markup;
     var entry = m.Entry;
+    var oldTranslation = _rendered?.Translation ?? m.Translation;
     _rendered = m;
     var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
     // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
@@ -24,8 +25,19 @@
             <span>[DocId=@message.IndexDocId]</span>
         }
     };
+    var translationCls = "";
+    if (m.Translation != oldTranslation && !m.IsStreaming) {
+        // TranslationState changed
+        if (oldTranslation is TranslationState.None or TranslationState.Translating && m.Translation == TranslationState.Translated) {
+            translationCls = "to-translated";
+        } else if (oldTranslation is TranslationState.Translated or TranslationState.Translating && m.Translation == TranslationState.None) {
+            translationCls = "to-original";
+        } else if (m.Translation == TranslationState.Translating) {
+            translationCls = "translating";
+        }
+    }
 }
-<p class="chat-message-markup">
+<p class="chat-message-markup @translationCls">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
         <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
     }
@@ -67,7 +79,6 @@
         </CascadingValue>
     }
 </p>
-
 
 @code {
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
