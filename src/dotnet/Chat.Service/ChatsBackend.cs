@@ -306,7 +306,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     .Select(dbe => dbe.ToModel())
                     .ToArray());
 
-        var allAttachmentsTask = GetAttachments();
+        var allAttachmentsTask = GetAttachments(dbEntries, cancellationToken);
         var allLinkPreviewsTask = GetLinkPreviews();
 
         await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
@@ -341,25 +341,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     .Collect(cancellationToken)
                     .ConfigureAwait(false);
                 return linkPreviews.SkipNullItems().ToDictionary(lp => lp.Id);
-            }
-        }
-
-        Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments()
-        {
-            var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
-                .Select(x => TextEntryId.Parse(x.Id))
-                .ToList();
-
-            return entryIdsWithAttachments.Count > 0
-                ? GetAttachmentsBulk()
-                : EmptyAttachmentsTask;
-
-            async Task<ILookup<TextEntryId,TextEntryAttachment>> GetAttachmentsBulk() {
-                var attachments = await entryIdsWithAttachments
-                    .Select(x => GetEntryAttachments(x, cancellationToken))
-                    .Collect(cancellationToken)
-                    .ConfigureAwait(false);
-                return attachments.SelectMany(x => x).ToLookup(x => x.EntryId);
             }
         }
     }
@@ -790,8 +771,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        var allAttachments = await GetAttachments(dbEntries, cancellationToken).ConfigureAwait(false);
         return dbEntries
-            .Select(x => x.ToModel())
+            .Select(x => {
+                var entryId = TextEntryId.Parse(x.Id);
+                var entryAttachments = allAttachments[entryId];
+                return x.ToModel(entryAttachments);
+            })
             .ToArray();
     }
 
@@ -2383,5 +2369,24 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return false;
 
         return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
+    }
+
+    private Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments(IEnumerable<DbChatEntry> dbEntries, CancellationToken cancellationToken)
+    {
+        var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
+            .Select(x => TextEntryId.Parse(x.Id))
+            .ToList();
+
+        return entryIdsWithAttachments.Count > 0
+            ? GetAttachmentsBulk()
+            : EmptyAttachmentsTask;
+
+        async Task<ILookup<TextEntryId,TextEntryAttachment>> GetAttachmentsBulk() {
+            var attachments = await entryIdsWithAttachments
+                .Select(x => GetEntryAttachments(x, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            return attachments.SelectMany(x => x).ToLookup(x => x.EntryId);
+        }
     }
 }

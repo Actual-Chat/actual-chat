@@ -11,7 +11,8 @@ public sealed partial record TextEntry(
     [property: DataMember(Order = 3), MemoryPackOrder(3)] Moment BeginsAt,
     [property: DataMember(Order = 4), MemoryPackOrder(4)] Moment? EndsAt,
     [property: DataMember(Order = 5), MemoryPackOrder(5)] bool IsTranscript,
-    [property: DataMember(Order = 6), MemoryPackOrder(6)] long? RepliedEntryLid)
+    [property: DataMember(Order = 6), MemoryPackOrder(6)] long? RepliedEntryLid,
+    [property: DataMember(Order = 7), MemoryPackOrder(7)] bool HasAttachments)
 {
     public static Comparer<TextEntry> LocalIdComparer { get; } = Comparer<TextEntry>.Create((a, b) => a.LocalId.CompareTo(b.LocalId));
 
@@ -23,6 +24,7 @@ public sealed partial record TextEntry(
             chatEntry.BeginsAt,
             chatEntry.EndsAt,
             chatEntry.HasAudioEntry,
-            chatEntry.RepliedEntryLid)
+            chatEntry.RepliedEntryLid,
+            chatEntry.Attachments.Length > 0)
     { }
 }
