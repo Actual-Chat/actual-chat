@@ -211,13 +211,27 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.IsEmpty || !WhenInitialized.IsCompletedSuccessfully)
             return;
 
-        UpdateReadPosition(itemVisibility.MaxEntryLid);
+        if (itemVisibility.IsEndAnchorVisible)
+            _ = UpdateReadPositionToTheLastId(ChatId);
+        else
+            UpdateReadPosition(itemVisibility.MaxEntryLid);
         if (_viewPositionLease is not null) {
             var visibleEntryLids = itemVisibility.VisibleEntryLids;
             var entryId = visibleEntryLids.Max();
             _viewPositionLease.Resource.Value = new ReadPosition(ChatId, entryId);
         }
         ChatUI.ItemVisibility.Value = itemVisibility;
+        return;
+
+        async Task UpdateReadPositionToTheLastId(ChatId chatId)
+        {
+            var chatInfo = await ChatUI.Get(chatId, DisposeToken).ConfigureAwait(true);
+            var lastId = chatInfo?.News?.TextEntryIdRange.End - 1;
+            if (lastId is not > 0)
+                return;
+
+            UpdateReadPosition(lastId.Value);
+        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
