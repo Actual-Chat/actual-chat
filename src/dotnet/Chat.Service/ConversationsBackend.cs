@@ -371,7 +371,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<ConversationEntriesInfo> GetTextEntries(ChatId chatId, Range<long>[] entryIdRanges, CancellationToken cancellationToken)
     {
-        Log.LogInformation("-> GetTextEntries");
+        Log.LogInformation("-> GetTextEntries: {Ranges}", entryIdRanges.Select(c => c.ToString()).ToCommaPhrase());
         var idTiles = entryIdRanges
             .SelectMany(idRange => IdTileStack.GetOptimalCoveringTiles(idRange))
             .ToList();
@@ -398,9 +398,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                         attachments.Add(attachment);
             }
         }
-        Log.LogInformation("<- GetTextEntries: ChatId='{ChatId}', StartChatEntryId={StartChatEntryId}, AttachmentCount={AttachmentCount}, AttachmentIds={AttachmentIds}",
+        Log.LogInformation("<- GetTextEntries: ChatId='{ChatId}', StartChatEntryId={StartChatEntryId}, LastChatEntryId={LastChatEntryId}, AttachmentCount={AttachmentCount}, AttachmentIds={AttachmentIds}",
             chatId,
             chatEntries.FirstOrDefault()?.Id.Value ?? "-",
+            chatEntries.LastOrDefault()?.Id.Value ?? "-",
             attachmentCount,
             attachments.Select(c => c.Id.Value).ToCommaPhrase());
         return new ConversationEntriesInfo(textEntries, attachments, attachmentCount);
