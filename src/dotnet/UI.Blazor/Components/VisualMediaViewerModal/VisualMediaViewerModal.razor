@@ -153,12 +153,7 @@
     }
 
     protected override void OnInitialized() {
-        _attachments = ModalModel.Conversation != null
-            ? ModalModel.Conversation.Attachments.ToList()
-            : ModalModel.ChatEntry != null
-                ? ModalModel.ChatEntry.Attachments.ToList()
-                : new();
-
+        _attachments = ModalModel.Attachments.ToList();
         var selectedAttachment = _attachments.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.Media.ContentId), ModalModel.Url));
         if (selectedAttachment != null) {
             _selectedSlide = _attachments.IndexOf(selectedAttachment);
@@ -202,6 +197,5 @@
 
     public sealed record Model(
         string Url,
-        Conversation? Conversation,
-        ChatEntry? ChatEntry = default);
+        TextEntryAttachment[] Attachments);
 }
