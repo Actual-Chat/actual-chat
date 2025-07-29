@@ -86,15 +86,18 @@ export class BrowserInit {
 
         this.reconnectingPromise ??= (async (): Promise<void> => {
             try {
-                const blazor = window['Blazor'];
-                while (blazor) {
+                while (window['Blazor']) {
                     await Connectivity.whenOnline();
                     if (this.whenReloading.isCompleted())
                         return; // Already reloading
 
+                    const blazor = window['Blazor'];
                     warnLog?.log('startReconnecting: reconnecting...');
+                    const reconnect = blazor.reconnect;
+                    if (reconnect == null)
+                        return; // No reconnect function - we use WASM platform
                     try {
-                        if (await blazor.reconnect())
+                        if (await reconnect())
                             return;
                     }
                     catch {
