@@ -10,29 +10,28 @@
         <VisualMediaAttachmentLine
             Row="@row"
             Class="@cls"
-            ChatEntry="@ChatEntry"/>
+            MediaList="@MediaList"/>
     }
 </div>
 
 @code {
     private IEnumerable<ImageRow> _rows = null!;
 
-    [Parameter, EditorRequired] public List<TextEntryAttachment> ImageList { get; set; } = null!;
-    [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter, EditorRequired] public List<TextEntryAttachment> MediaList { get; set; } = null!;
 
     private IEnumerable<ImageRow> GetRows() {
         var line = new List<ImageTile>();
-        foreach (var attachment in ImageList) {
+        foreach (var attachment in MediaList) {
             var tile = new ImageTile(attachment);
             if (attachment.Index == 1
-                && attachment.Index == ImageList.Count - 1
+                && attachment.Index == MediaList.Count - 1
                 && line[0].Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
                 && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) {
                 yield return new ImageRow(line);
                 line = new();
             }
-            if ((attachment.Index != ImageList.Count - 1 && line.Count >= 3)
-                || attachment.Index == ImageList.Count - 1
+            if ((attachment.Index != MediaList.Count - 1 && line.Count >= 3)
+                || attachment.Index == MediaList.Count - 1
                 && line.Count == 3
                 && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
                 && line.Count(t => t.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1) {

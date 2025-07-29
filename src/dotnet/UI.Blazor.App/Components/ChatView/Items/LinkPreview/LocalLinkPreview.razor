@@ -67,11 +67,12 @@
 
             @if (entry.Attachments.Length > 0) {
                 var maxCount = Math.Min(entry.Attachments.Length, 3);
+                var textEntryAttachments = entry.Attachments.Take(maxCount).ToArray();
                 <div class="link-preview-attachment-list">
                     @for (var i = 0; i < maxCount; i++) {
                         var attachment = entry.Attachments[i];
                         if (attachment.IsVisualMedia()) {
-                            <VisualMediaAttachment Attachment="@attachment" ChatEntry="@entry"/>
+                            <VisualMediaAttachment Attachment="@attachment" Attachments="@textEntryAttachments"/>
                         } else {
                             <FileAttachment Attachment="@attachment"/>
                         }

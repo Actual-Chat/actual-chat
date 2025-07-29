@@ -173,7 +173,7 @@
             @if (entry.Attachments.Length > 0) {
                 var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
-                    <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
+                    <VisualMediaAttachmentList MediaList="@mediaList" />
                     <div class="message-file-attachments">
                         @foreach (var attachment in fileList) {
                             <FileAttachment Attachment="@attachment"/>
