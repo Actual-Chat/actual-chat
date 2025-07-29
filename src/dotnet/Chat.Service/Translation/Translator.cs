@@ -58,6 +58,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             .ConfigureAwait(false);
         var result = response.Content ?? "";
 
+        // DebugLog?.LogDebug("Translate: {Content} = {TranslatedContent} with [{Context}]", textToTranslate, result, string.Join(',', context));
         return OrdinalIgnoreCaseEquals(result, Constants.Translation.NoTranslationNeededText)
             ? textToTranslate // If the translation is not needed, return the original text
             : result;
@@ -134,6 +135,11 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
     {
         var chatHistory = new ChatHistory();
         foreach (var (text, translated) in context) {
+            if (string.IsNullOrWhiteSpace(text))
+                continue;
+            if (string.IsNullOrWhiteSpace(translated))
+                continue;
+
             chatHistory.AddUserMessage(text);
             chatHistory.AddAssistantMessage(translated);
         }

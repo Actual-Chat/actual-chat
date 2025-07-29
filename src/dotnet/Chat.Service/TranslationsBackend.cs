@@ -360,6 +360,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             var writer = channel.Writer;
             _ = Task.Run(async () => {
                 Exception? error = null;
+                var lastText = "";
                 var lastTranscript = Transcript.Empty;
                 var stableTranscript = Transcript.Empty;
                 var stableTranslatedTranscript = Transcript.Empty;
@@ -372,37 +373,51 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         if (lastTranscript == Transcript.Empty)
                             DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - First Transcript", translatedStreamId);
                         var transcriptBatch = transcriptDiffBatch.Scan((t, td) => t + td, lastTranscript).ToList();
-                        var transcript = lastTranscript = transcriptBatch[^1];
-                        var newStableTranscript = transcriptBatch.FirstOrDefault(t => t.IsStable) ?? Transcript.Empty;
+                        var transcript = transcriptBatch[^1];
+                        var newStableTranscript = transcriptBatch.FirstOrDefault(t => t.IsStable) ?? stableTranscript;
+                        if (newStableTranscript != stableTranscript) {
+                            // Translate stable diff first, then the diff since stable state
+                            var stableDiff = stableTranscript - newStableTranscript;
+                            await Translate(stableDiff).ConfigureAwait(false);
+                        }
+
                         // The diff represents the changes between the current transcript (transcript) and the stable transcript (stableTranscript).
                         // This diff is distinct from the transcriptDiff object because transcriptDiff is derived from the unstable transcript, which may still be undergoing changes.
                         // The purpose of this calculation is to isolate the differences that have occurred since the last stable state of the transcript.
                         var diffSinceStable = transcript - stableTranscript;
-                        var content = diffSinceStable.TextDiff.Suffix ?? "";
-                        if (!ReferenceEquals(newStableTranscript, Transcript.Empty))
+                        await Translate(diffSinceStable).ConfigureAwait(false);
+                        lastTranscript = transcript;
+                        continue;
+
+                        async Task Translate(TranscriptDiff diff)
+                        {
+                            var text = diff.TextDiff.Suffix ?? "";
+                            if (text.IsNullOrWhiteSpace())
+                                return;
+
+                            if (OrdinalEquals(text, lastText))
+                                return; // No need to translate the same text (it's already been translated')
+
+                            var context = new List<TranslationResult>();
+                            if (!OrdinalEquals(stableTranscript.Text, stableTranslatedTranscript.Text))
+                                context.Add(new TranslationResult(stableTranscript.Text, stableTranslatedTranscript.Text));
+                            var translatedText = await RealtimeTranslator.Translate(
+                                text,
+                                language,
+                                context.ToArray(),
+                                cancellationToken).ConfigureAwait(false);
+                            if (OrdinalIgnoreCaseEquals(translatedText, Constants.Translation.NoTranslationNeededText))
+                                translatedText = text; // No translation needed, use original content
+                            if (!translatedText.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
+                                translatedText = $" {translatedText}";
+                            var translatedStableTranscript = stableTranslatedTranscript.WithSuffix(translatedText, diff.TimeMapDiff.Suffix.Scale(text.Length, translatedText.Length));
+                            var translatedStableDiff = translatedStableTranscript - stableTranslatedTranscript;
+                            await writer.WriteAsync(translatedStableDiff, cancellationToken).ConfigureAwait(false);
+                            if (diff.IsStable)
+                                stableTranslatedTranscript = translatedStableTranscript with { IsStable = true };
                             stableTranscript = newStableTranscript;
-                        if (content.IsNullOrWhiteSpace())
-                            continue;
-
-                        var translatedContent = await RealtimeTranslator.Translate(
-                            content,
-                            language,
-                            [new TranslationResult(stableTranscript.Text, stableTranslatedTranscript.Text)],
-                            cancellationToken).ConfigureAwait(false);
-
-                        // var translatedContent = await Translate(prefix, content, cancellationToken).ConfigureAwait(false);
-                        if (OrdinalIgnoreCaseEquals(translatedContent, Constants.Translation.NoTranslationNeededText))
-                            translatedContent = content; // No translation needed, use original content
-
-                        if (!translatedContent.StartsWith(" ", StringComparison.OrdinalIgnoreCase) && stableTranslatedTranscript.Text.Length > 0)
-                            translatedContent = $" {translatedContent}";
-
-                        // DebugLog?.LogDebug("Translation in progress #{TranslationId}: {Content}->{TranslatedContent}", translationId, content, translatedContent);
-                        var translatedTranscript = stableTranslatedTranscript.WithSuffix(translatedContent, diffSinceStable.TimeMapDiff.Suffix.Scale(content.Length, translatedContent.Length));
-                        var translatedDiffSinceStable = translatedTranscript - stableTranslatedTranscript;
-                        await writer.WriteAsync(translatedDiffSinceStable, cancellationToken).ConfigureAwait(false);
-                        if (diffSinceStable.IsStable)
-                            stableTranslatedTranscript = translatedTranscript with { IsStable = true };
+                            lastText = text;
+                        }
                     }
                 }
                 catch (Exception ex) {

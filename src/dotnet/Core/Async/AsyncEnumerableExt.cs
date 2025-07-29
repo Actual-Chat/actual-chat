@@ -587,7 +587,6 @@ public static class AsyncEnumerableExt
         bufferDuration = bufferDuration.Positive();
         var buffer = new List<TSource>();
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
-        await using var _ = enumerator.ConfigureAwait(false);
         var delayTask = clock.Delay(bufferDuration, cancellationToken);
         while (true) {
             var moveNextValueTask = enumerator.MoveNextAsync();
