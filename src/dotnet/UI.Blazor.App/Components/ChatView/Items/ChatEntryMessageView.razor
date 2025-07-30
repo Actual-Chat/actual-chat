@@ -173,7 +173,7 @@
             @if (entry.Attachments.Length > 0) {
                 var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
-                    <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
+                    <VisualMediaAttachmentList MediaList="@mediaList" />
                     <div class="message-file-attachments">
                         @foreach (var attachment in fileList) {
                             <FileAttachment Attachment="@attachment"/>
@@ -482,17 +482,9 @@
             _messageHoverMenuNew?.Hide();
     }
 
-    private (List<TextEntryAttachment>, List<TextEntryAttachment>) GetOrderedAttachmentList(ChatEntry entry) {
-        var mediaList = new List<TextEntryAttachment>();
-        var fileList = new List<TextEntryAttachment>();
-        foreach (var attachment in entry.Attachments) {
-            if (attachment.IsVisualMedia())
-                mediaList.Add(attachment);
-            else
-                fileList.Add(attachment);
-        }
-        return (mediaList, fileList);
-    }
+    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
+        => (entry.Attachments.Where(a => a.IsVisualMedia()).ToArray(),
+            entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray());
 
     private async Task<Author?> GetForwardedAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
         if (entry.ForwardedAuthorId is null)

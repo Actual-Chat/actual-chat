@@ -4,21 +4,19 @@
 @implements IAsyncDisposable
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
-
 @{
+    _attachments = ModalModel.Attachments.ToList();
     var selectedAttachment = _attachments.ElementAtOrDefault(_selectedSlide);
     var selectedAttachmentDownloadUrl = selectedAttachment != null
         ? UrlMapper.ContentUrl(selectedAttachment.Media.ContentId)
         : ModalModel.Url;
-    var linkPreview = ModalModel.ChatEntry?.LinkPreviews.FirstOrDefault();
-    var isYouTubeVideo = linkPreview?.IsYouTubeVideo ?? false;
     var singleAttachmentCls = _attachments.Count == 1 ? "single-attachment" : "";
 }
 
 <ModalFrame Class="image-viewer-modal">
     <VisualMediaViewerHeader
         CloseClick="CloseModal"
-        ChatEntry="@ModalModel.ChatEntry"
+        Attachment="@selectedAttachment"
         DownloadUrl="@selectedAttachmentDownloadUrl"
         ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
     <swiper-container
@@ -32,15 +30,6 @@
         initial-slide="@_selectedSlide"
         thumbs-swiper=".media-preview-swiper"
         navigation="true">
-        @if (isYouTubeVideo) {
-            <swiper-slide>
-                <div class="swiper-zoom-container">
-                    <div class="video-wrapper youtube-wrapper">
-                        <YoutubePlayer VideoUrl="@(linkPreview!.VideoUrl)"/>
-                    </div>
-                </div>
-            </swiper-slide>
-        }
         @foreach (var attachment in _attachments) {
             var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
             var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
@@ -153,7 +142,6 @@
     }
 
     protected override void OnInitialized() {
-        _attachments = ModalModel.ChatEntry?.Attachments.ToList() ?? new ();
         var selectedAttachment = _attachments.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.Media.ContentId), ModalModel.Url));
         if (selectedAttachment != null) {
             _selectedSlide = _attachments.IndexOf(selectedAttachment);
@@ -197,5 +185,5 @@
 
     public sealed record Model(
         string Url,
-        ChatEntry? ChatEntry = default);
+        TextEntryAttachment[] Attachments);
 }

@@ -9,7 +9,8 @@
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
     var cls = $"conversation-message message-wrapper {openClass}";
-    var maxCount = conversation.Attachments.Length;
+    var attachments = conversation.Attachments;
+    var maxCount = attachments?.Length ?? 0;
     if (ScreenSize.IsNarrow() && maxCount > 5)
         maxCount = 5;
 }
@@ -37,13 +38,13 @@
                 </div>
             </div>
         }
-        @if (conversation.Attachments.Length > 0) {
-            var extra = Math.Max(0, conversation.AttachmentCount - maxCount);
+        @if (attachments?.Length > 0) {
+            var extra = Math.Max(0, attachments.Length - maxCount);
             <div class="conversation-attachments">
                 @for(var i = 0; i < maxCount; i++) {
-                    var attachment = conversation.Attachments[i];
+                    var attachment = attachments[i];
                     @if (attachment.IsVisualMedia()) {
-                        <VisualMediaAttachment Attachment="@attachment"/>
+                        <VisualMediaAttachment Attachment="@attachment" Attachments="@attachments"/>
                     } else {
                         <FileAttachment Attachment="@attachment" IconOnly="true"/>
                     }
@@ -88,8 +89,7 @@
                 InitialValue = new Model(
                     TranslatedText.From(title),
                     TranslatedMarkup.From(descriptionMarkup),
-                    TranslatedMarkup.From(summaryMarkup),
-                    false),
+                    TranslatedMarkup.From(summaryMarkup)),
                 Category = GetStateCategory(t),
             });
     }
@@ -108,16 +108,15 @@
         var conversation = Message.Conversation!;
         var conversationId = conversation.Id;
         var title = conversation.Title;
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
         var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
         var mustTranslate = await TranslationUI.MustTranslate(conversation, cancellationToken).ConfigureAwait(false);
+
         if (!mustTranslate)
             return new Model(
                 TranslatedText.From(title),
                 TranslatedMarkup.From(descriptionMarkup),
-                TranslatedMarkup.From(summaryMarkup),
-                enableIncompleteUI);
+                TranslatedMarkup.From(summaryMarkup));
 
         var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken);
         var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, cancellationToken);
@@ -129,7 +128,7 @@
         var translatedTitle = TranslatedText.From(conversation.Title, titleTranslation);
         var translatedDescription = TranslatedMarkup.From(conversation.Description, descriptionTranslation, ChatMarkupHub, descriptionMarkup);
         var translatedSummary = TranslatedMarkup.From(conversation.Summary, summaryTranslation, ChatMarkupHub, summaryMarkup);
-        return new Model(translatedTitle, translatedDescription, translatedSummary, enableIncompleteUI);
+        return new Model(translatedTitle, translatedDescription, translatedSummary);
     }
 
     private void ToggleShowMessage()
@@ -163,6 +162,5 @@
     public record Model(
         TranslatedText Title,
         TranslatedMarkup Description,
-        TranslatedMarkup Summary,
-        bool EnableIncompleteUI);
+        TranslatedMarkup Summary);
 }

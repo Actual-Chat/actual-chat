@@ -8,7 +8,7 @@
 }
 
 <div class="image-viewer-header">
-    @if (ChatEntry != null && _author != null) {
+    @if (_chatEntry != null && _author != null) {
         <HeaderButton Class="mobile bleached" Click="CloseClick">
             <i class="icon-close"></i>
         </HeaderButton>
@@ -18,7 +18,7 @@
                 Size="SquareSize.Size10"/>
             <div class="c-content">
                 <AvatarName Avatar="@_author.Avatar" Class="c-name"/>
-                <LiveTimeDeltaText Class="c-time" Moment="@ChatEntry.BeginsAt"/>
+                <LiveTimeDeltaText Class="c-time" Moment="@_chatEntry.BeginsAt"/>
             </div>
         </div>
     }
@@ -64,18 +64,19 @@
 </div>
 
 @code {
+    private ChatEntry? _chatEntry;
     private Author? _author;
     private bool _enableIncompleteUI;
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private HostInfo HostInfo => Hub.HostInfo;
     private Session Session => Hub.Session;
     private Features Features => Hub.Features;
     [field: AllowNull, MaybeNull]
     private IAuthors Authors => field ??= Hub.Services.GetRequiredService<IAuthors>();
+    private IChats Chats => Hub.Services.GetRequiredService<IChats>();
     private IUIActionHandler? SaveMediaActionHandler { get; set; }
 
-    [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter] public TextEntryAttachment? Attachment { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
     [Parameter] public string DownloadUrl { set; get; } = "";
     [Parameter] public string ContentType { set; get; } = "";
@@ -91,7 +92,10 @@
     }
 
     protected override async Task OnParametersSetAsync() {
-        if (ChatEntry != null)
-            _author = await Authors.Get(Session, ChatEntry.ChatId, ChatEntry.AuthorId, CancellationToken.None).ConfigureAwait(false);
+        if (Attachment != null) {
+            _chatEntry = await Chats.GetEntry(Session, Attachment.EntryId, CancellationToken.None).ConfigureAwait(false);
+        }
+        if (_chatEntry != null)
+            _author = await Authors.Get(Session, _chatEntry.ChatId, _chatEntry.AuthorId, CancellationToken.None).ConfigureAwait(false);
     }
 }

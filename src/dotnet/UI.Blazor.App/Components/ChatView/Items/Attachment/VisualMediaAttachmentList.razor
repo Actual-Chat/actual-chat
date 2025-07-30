@@ -10,37 +10,43 @@
         <VisualMediaAttachmentLine
             Row="@row"
             Class="@cls"
-            ChatEntry="@ChatEntry"/>
+            MediaList="@MediaList"/>
     }
 </div>
 
 @code {
     private IEnumerable<ImageRow> _rows = null!;
 
-    [Parameter, EditorRequired] public List<TextEntryAttachment> ImageList { get; set; } = null!;
-    [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter, EditorRequired] public TextEntryAttachment[] MediaList { get; set; } = null!;
 
     private IEnumerable<ImageRow> GetRows() {
         var line = new List<ImageTile>();
-        foreach (var attachment in ImageList) {
+        for (var index = 0; index < MediaList.Length; index++) {
+            var attachment = MediaList[index];
             var tile = new ImageTile(attachment);
-            if (attachment.Index == 1
-                && attachment.Index == ImageList.Count - 1
-                && line[0].Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
-                && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) {
+
+            var isLast = index == MediaList.Length - 1;
+            var lineIsFull = line.Count >= 3;
+            var tileIsWide = tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide;
+            var lineHasManyWide = line.Count(imageTile => imageTile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1;
+
+            if (MediaList.Length == 2
+                && index == 1
+                && line is [{ Proportions: ImageProportions.Wide or ImageProportions.ExtraWide }]
+                && tileIsWide) {
                 yield return new ImageRow(line);
-                line = new();
+                line = [];
             }
-            if ((attachment.Index != ImageList.Count - 1 && line.Count >= 3)
-                || attachment.Index == ImageList.Count - 1
-                && line.Count == 3
-                && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
-                && line.Count(t => t.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1) {
+
+            if ((!isLast && lineIsFull)
+                || (isLast && line.Count == 3 && tileIsWide && lineHasManyWide)) {
                 yield return new ImageRow(line);
-                line = new ();
+                line = [];
             }
+
             line.Add(tile);
         }
+
         if (line.Count > 0)
             yield return new ImageRow(line);
     }
