@@ -176,21 +176,30 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup.translating .playable-text-markup {
     filter: blur(3px);
 }
-.chat-message-markup.to-translated,
 .chat-message-markup.to-translated .plain-text-markup,
-.chat-message-markup.to-translated,
 .chat-message-markup.to-translated .playable-text-markup {
     animation: toTranslatedBlur 1s steps(10, end) forwards;
 }
-.chat-message-markup.to-original .plain-text-markup,
-.chat-message-markup.to-original .playable-text-markup {
-    animation: toOriginalBlur 1s steps(10, end) forwards;
+.chat-message-markup.to-translated.from-streaming .plain-text-markup,
+.chat-message-markup.to-translated.from-streaming .playable-text-markup {
+    animation: none;
+}
+.chat-message-markup.from-translated .plain-text-markup,
+.chat-message-markup.from-translated .playable-text-markup {
+    animation: fromTranslatedBlur 1s steps(10, end) forwards;
+}
+.chat-message-markup.from-translated.from-streaming .plain-text-markup,
+.chat-message-markup.from-translated.from-streaming .playable-text-markup {
+    animation: none;
+}
+.chat-message-markup.translating .changes {
+    animation: toTranslatedBlur 1s steps(10, end) forwards;
 }
 @keyframes toTranslatedBlur {
     0% { filter: blur(3px); }
     100% { filter: blur(0); }
 }
-@keyframes toOriginalBlur {
+@keyframes fromTranslatedBlur {
     0% { filter: blur(3px); }
     100% { filter: blur(0); }
 }
