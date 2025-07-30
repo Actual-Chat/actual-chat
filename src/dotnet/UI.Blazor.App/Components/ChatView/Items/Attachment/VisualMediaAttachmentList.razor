@@ -21,17 +21,17 @@
 
     private IEnumerable<ImageRow> GetRows() {
         var line = new List<ImageTile>();
-        foreach (var attachment in MediaList) {
+        foreach (var (attachment, index) in MediaList.Select((value, index) => (value, index))) {
             var tile = new ImageTile(attachment);
-            if (attachment.Index == 1
-                && attachment.Index == MediaList.Count - 1
+            if (index == 1
+                && index == MediaList.Count - 1
                 && line[0].Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
                 && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) {
                 yield return new ImageRow(line);
                 line = new();
             }
-            if ((attachment.Index != MediaList.Count - 1 && line.Count >= 3)
-                || attachment.Index == MediaList.Count - 1
+            if ((index != MediaList.Count - 1 && line.Count >= 3)
+                || index == MediaList.Count - 1
                 && line.Count == 3
                 && tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide
                 && line.Count(t => t.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1) {

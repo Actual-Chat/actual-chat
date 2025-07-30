@@ -5,21 +5,20 @@
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 @{
+    _attachments = ModalModel.Attachments.ToList();
     var selectedAttachment = _attachments.ElementAtOrDefault(_selectedSlide);
     var selectedAttachmentDownloadUrl = selectedAttachment != null
-        ? UrlMapper.ContentUrl(selectedAttachment.EntryAttachment.Media.ContentId)
+        ? UrlMapper.ContentUrl(selectedAttachment.Media.ContentId)
         : ModalModel.Url;
-    var linkPreview = selectedAttachment?.ChatEntry?.LinkPreviews.FirstOrDefault();
-    var isYouTubeVideo = linkPreview?.IsYouTubeVideo ?? false;
     var singleAttachmentCls = _attachments.Count == 1 ? "single-attachment" : "";
 }
 
 <ModalFrame Class="image-viewer-modal">
     <VisualMediaViewerHeader
         CloseClick="CloseModal"
-        ChatEntry="@selectedAttachment?.ChatEntry"
+        Attachment="@selectedAttachment"
         DownloadUrl="@selectedAttachmentDownloadUrl"
-        ContentType="@(selectedAttachment?.EntryAttachment.Media.ContentType ?? "")"/>
+        ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
     <swiper-container
         @ref="@Ref"
         init="false"
@@ -31,19 +30,10 @@
         initial-slide="@_selectedSlide"
         thumbs-swiper=".media-preview-swiper"
         navigation="true">
-        @if (isYouTubeVideo) {
-            <swiper-slide>
-                <div class="swiper-zoom-container">
-                    <div class="video-wrapper youtube-wrapper">
-                        <YoutubePlayer VideoUrl="@(linkPreview!.VideoUrl)"/>
-                    </div>
-                </div>
-            </swiper-slide>
-        }
         @foreach (var attachment in _attachments) {
-            var url = UrlMapper.ContentUrl(attachment.EntryAttachment.Media.ContentId);
+            var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
             var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
-            @if (attachment.EntryAttachment.IsSupportedImage()) {
+            @if (attachment.IsSupportedImage()) {
                 <swiper-slide lazy="true" lazyPreloaderClass="hidden">
                     <div class="swiper-zoom-container image-container">
                         <img src="@url"
@@ -54,20 +44,20 @@
                              alt=""
                              loading="lazy"
                              class="image-plug"
-                             data-height="@attachment.EntryAttachment.Media.Height"
-                             data-width="@attachment.EntryAttachment.Media.Width"/>
+                             data-height="@attachment.Media.Height"
+                             data-width="@attachment.Media.Width"/>
                         <span class="spinner-icon-wrapper">
                             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
                         </span>
                     </div>
                 </swiper-slide>
-            } else if (attachment.EntryAttachment.IsSupportedVideo()) {
+            } else if (attachment.IsSupportedVideo()) {
                 <swiper-slide>
                     <div class="swiper-zoom-container">
                         <div class="video-wrapper @singleAttachmentCls">
                             <div class="video-thumbnail-wrapper">
                                 <VideoAttachmentThumbnail
-                                    Attachment="@attachment.EntryAttachment"
+                                    Attachment="@attachment"
                                     Class="video-plug"/>
                                 <span class="spinner-icon-wrapper">
                                     <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -76,12 +66,12 @@
                             <video
                                 class="swiper-active-video video-original"
                                 playsinline
-                                data-width="@attachment.EntryAttachment.Media.Width"
-                                data-height="@attachment.EntryAttachment.Media.Height"
+                                data-width="@attachment.Media.Width"
+                                data-height="@attachment.Media.Height"
                                 width="auto"
                                 height="auto"
                                 preload="auto">
-                                <source src="@url" type="@attachment.EntryAttachment.Media.ContentType"/>
+                                <source src="@url" type="@attachment.Media.ContentType"/>
                             </video>
                             <div class="video-control hide-control invisible">
                                 <div class="c-line-1">
@@ -118,14 +108,14 @@
             free-mode="true"
             watch-slides-progress="true">
             @foreach (var attachment in _attachments) {
-                @if (attachment.EntryAttachment.IsSupportedImage()) {
-                    var previewUrl = GetPreviewUrl(attachment.EntryAttachment);
+                @if (attachment.IsSupportedImage()) {
+                    var previewUrl = GetPreviewUrl(attachment);
                     <swiper-slide>
                         <image-skeleton src="@previewUrl" class="image-cover"/>
                     </swiper-slide>
-                } else if (attachment.EntryAttachment.IsSupportedVideo()) {
+                } else if (attachment.IsSupportedVideo()) {
                     <swiper-slide>
-                        <VideoAttachmentThumbnail Attachment="@attachment.EntryAttachment"/>
+                        <VideoAttachmentThumbnail Attachment="@attachment"/>
                     </swiper-slide>
                 }
             }
@@ -135,13 +125,11 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create";
-    private List<Attachment> _attachments = new();
+    private List<TextEntryAttachment> _attachments = new();
     private int _selectedSlide;
     private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
-
-    private IChats Chats => Hub.Services.GetRequiredService<IChats>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -153,16 +141,8 @@
         BlazorRef = null!;
     }
 
-    protected override async Task OnInitializedAsync() {
-        var attachmentTasks = ModalModel.Attachments
-            .Select(async textEntryAttachment => {
-                var chatEntry = await Chats.GetEntry(Session, textEntryAttachment.EntryId, CancellationToken.None).ConfigureAwait(false);
-                return new Attachment(textEntryAttachment, chatEntry);
-            });
-        var attachments = await Task.WhenAll(attachmentTasks).ConfigureAwait(false);
-        _attachments = attachments.ToList();
-
-        var selectedAttachment = _attachments.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.EntryAttachment.Media.ContentId), ModalModel.Url));
+    protected override void OnInitialized() {
+        var selectedAttachment = _attachments.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.Media.ContentId), ModalModel.Url));
         if (selectedAttachment != null) {
             _selectedSlide = _attachments.IndexOf(selectedAttachment);
         }
@@ -206,8 +186,4 @@
     public sealed record Model(
         string Url,
         TextEntryAttachment[] Attachments);
-
-    public record Attachment(
-        TextEntryAttachment EntryAttachment,
-        ChatEntry? ChatEntry);
 }
