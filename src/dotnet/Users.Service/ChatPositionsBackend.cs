@@ -1,5 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Db;
+using ActualChat.Queues;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -14,6 +15,7 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         = services.GetRequiredService<IDbEntityResolver<string, DbChatPosition>>();
 
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IQueues Queues { get; } = services.Queues();
 
     // [ComputeMethod]
     public virtual async Task<ChatPosition> Get(
@@ -69,11 +71,9 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
             var needUpdateStat = stat is null || MightUpdateStat(stat, userId, position.EntryLid);
             // Do not send update stat command if we know a priori it won't affect stat.
             if (needUpdateStat)
-                await Commander.Call(new ChatsBackend_UpdateReadPositionsStat(chatId, userId, position.EntryLid),
-                        true,
-                        cancellationToken)
-                    .ConfigureAwait(false);
+                await Queues.Enqueue(new ChatsBackend_UpdateReadPositionsStat(chatId, userId, position.EntryLid), cancellationToken).ConfigureAwait(false);
         }
+        return;
 
         static bool MightUpdateStat(ReadPositionsStatBackend stat, UserId userId, long entryLid)
         {
