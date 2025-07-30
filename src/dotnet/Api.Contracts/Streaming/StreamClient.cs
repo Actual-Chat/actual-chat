@@ -7,7 +7,7 @@ namespace ActualChat.Streaming;
 
 public class StreamClient(IServiceProvider services) : IStreamClient
 {
-    private static readonly int StreamBufferSize = 64;
+    private static readonly int StreamBufferSize = 32;
 
     private IServiceProvider Services { get; } = services;
 
