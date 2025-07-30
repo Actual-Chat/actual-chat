@@ -6,7 +6,7 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks>net9.0-android;net9.0-ios;</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
@@ -570,7 +570,7 @@
     <Message Importance="High" Text="$(ArtifactVersion)" />
   </Target>
 
-  <Target Name="CopyServiseWorkerToTheRoot" AfterTargets="Build">
+  <Target Name="CopyServiseWorkerToTheRoot" AfterTargets="Build" Condition="Exists('$(MSBuildThisFileDirectory)\wwwroot\dist\sw.js')">
     <PropertyGroup>
       <InputFile>$(MSBuildThisFileDirectory)\wwwroot\dist\sw.js</InputFile>
       <OutputFile>$(MSBuildThisFileDirectory)\wwwroot\sw.js</OutputFile>

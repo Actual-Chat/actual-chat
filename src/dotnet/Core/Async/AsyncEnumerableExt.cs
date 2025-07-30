@@ -671,6 +671,35 @@ public static class AsyncEnumerableExt
             : new AsyncEnumerableAdapter<TSource>(source);
     }
 
+    public static async IAsyncEnumerable<T> SuppressException<T, TException>(
+        this IAsyncEnumerable<T> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    where TException : Exception
+    {
+        // ReSharper disable once NotDisposedResource
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
+
+        while (true) {
+            bool hasMore;
+            T item = default!;
+            try {
+                hasMore = await enumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
+                if (hasMore)
+                    item = enumerator.Current;
+            }
+            catch (TException) {
+                yield break;
+            }
+            if (hasMore)
+                yield return item;
+            else
+                yield break;
+        }
+    }
+
+    // Private members
+
     private readonly struct AsyncEnumerableAdapter<T> : IAsyncEnumerable<T>
     {
         private readonly IList<T> _source;

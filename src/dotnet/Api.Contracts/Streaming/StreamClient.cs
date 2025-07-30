@@ -1,6 +1,7 @@
 using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Transcription;
+using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
@@ -26,6 +27,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         var rpcStream = await StreamServer.GetAudio(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<byte[]>();
         var (headerDataTask, dataStream) = stream
+            .SuppressException<byte[], RpcReconnectFailedException>(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken)
             .SplitHead(cancellationToken);
         var frameStream = dataStream
@@ -51,13 +53,19 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetTranscript({StreamId})", streamId);
-        var diffs = await StreamServer.GetTranscript(streamId, cancellationToken).ConfigureAwait(false);
-        if (diffs == null)
+        RpcStream<TranscriptDiff>? diffs;
+        try {
+            Log.LogDebug("GetTranscript({StreamId})", streamId);
+            diffs = await StreamServer.GetTranscript(streamId, cancellationToken).ConfigureAwait(false);
+            if (diffs == null)
+                yield break;
+        }
+        catch (RpcReconnectFailedException) {
             yield break;
+        }
 
-        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-        await foreach (var diff in diffs.ConfigureAwait(false))
+        var diffStream = diffs.SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken);
+        await foreach (var diff in diffStream.ConfigureAwait(false))
             yield return diff;
     }
 

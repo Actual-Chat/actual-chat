@@ -105,7 +105,7 @@
     }
 
     protected override void OnInitialized() {
-        _streamer = new TranscriptStreamer(Message.Entry.Id, Hub);
+        _streamer = new (Message.Entry.Id, Hub);
         _streamer.Start();
     }
 
@@ -117,68 +117,12 @@
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
                 || _rendered.Markup != stateValue.Markup
                 || _rendered.Translation != stateValue.Translation);
-        // if (!shouldRender) {
-        //     Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
-        //         Message.Entry.Id, stateValue.IsStreaming, stateValue.IsTranslated);
-        // }
+        if (!shouldRender) {
+            Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
+                Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
+        }
         return shouldRender;
     }
-
-    /*private async Task ReadTranscript(ChatEntryMessage message, CancellationToken cancellationToken) {
-        try {
-            var entry = message.Entry;
-            var isTranslation = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
-            var diffs = isTranslation
-                ? TranslationUI.GetTranscript(entry, cancellationToken)
-                : StreamClient.GetTranscript(entry.StreamId, cancellationToken);
-            var transcripts = diffs
-                .ToTranscripts()
-                .ThrottleTranscript(TimeSpan.FromMilliseconds(320), Clocks.CpuClock, cancellationToken);
-            var lastText = "";
-            if (isTranslation) {
-                // Initial state for translation
-                await Dispatcher.InvokeSafeAsync(() => {
-                    StreamingState.Value = new(
-                        RetainedText: "",
-                        ChangedText: "",
-                        AnimatedText: "",
-                        true,
-                        isTranslation);
-                }, Log).ConfigureAwait(false);
-            }
-            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
-                var text = transcript.Text;
-                var retainedLength = lastText.GetCommonPrefixLength(text);
-                var changedPart = text[retainedLength..];
-                var animatedLength = (text.Length - lastText.Length).Clamp(0, changedPart.Length);
-                var animatedStartIndex = changedPart.Length - animatedLength;
-                await Dispatcher.InvokeSafeAsync(() => {
-                    StreamingState.Value = new(
-                        RetainedText: text[..retainedLength],
-                        ChangedText: changedPart[..animatedStartIndex],
-                        AnimatedText: changedPart[animatedStartIndex..],
-                        true,
-                        isTranslation);
-                }, Log).ConfigureAwait(false);
-                lastText = text;
-            }
-
-            await Dispatcher.InvokeSafeAsync(() => {
-                StreamingState.Value = new(
-                    RetainedText: lastText,
-                    ChangedText: "",
-                    AnimatedText: "",
-                    false,
-                    isTranslation);
-            }, Log);
-        }
-        catch (Exception e) {
-            if (e.GetType().FullName != "Microsoft.AspNetCore.SignalR.HubException" || !e.Message.Contains(nameof(OperationCanceledException)))
-                throw;
-            // Not fully sure if it's the case, but it seems that sometimes SignalR
-            // wraps OperationCanceledException into HubException, so here we suppress it.
-        }
-    }*/
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.

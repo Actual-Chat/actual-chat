@@ -173,4 +173,26 @@ public class AsyncEnumerableExtTest(ITestOutputHelper @out) : TestBase(@out)
             yield return number;
         }
     }
+
+    [Fact]
+    public async Task SplitHeadTest()
+    {
+        using var testClock = new TestClock();
+        var source = GenerateRandomShuffle(10, testClock, Random.Shared, CancellationToken.None);
+        var (headTask, tail) = source.SplitHead(CancellationToken.None);
+        await headTask;
+        var tailList = await tail.ToListAsync();
+        tailList.Should().HaveCount(9);
+    }
+
+    [Fact]
+    public async Task EmptySplitHeadTest()
+    {
+        using var testClock = new TestClock();
+        var source = AsyncEnumerable.Empty<int>();
+        var (headTask, tail) = source.SplitHead(CancellationToken.None);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await headTask);
+        var tailList = await tail.ToListAsync();
+        tailList.Should().BeEmpty();
+    }
 }
