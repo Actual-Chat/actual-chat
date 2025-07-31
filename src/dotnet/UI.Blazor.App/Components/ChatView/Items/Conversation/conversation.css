@@ -241,7 +241,9 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
     @apply w-full;
 }
 .conversation-attachments .c-extra {
-    @apply flex items-center justify-center;
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
     @apply rounded-full;
-    @apply bg-03;
+    @apply bg-cr-badge-selected;
+    @apply text-cr-badge-selected-text;
 }

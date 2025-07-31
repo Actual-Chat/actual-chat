@@ -37,8 +37,8 @@ body.hoverable .system-entry.message-wrapper:hover,
     @apply ml-0.5;
 }
 .chat-message > .c-author-badge .avatar-badge {
-    @apply sticky z-10 bottom-1 top-2;
-    @apply h-fit w-fit;
+    @apply sticky z-10 bottom-1 top-2 items-start;
+    @apply h-fit w-fit min-h-10;
 }
 .chat-message > .c-author-badge > .c-empty {
     @apply sticky z-10 bottom-0 top-1;
@@ -174,7 +174,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 }
 .chat-message-markup.translating .plain-text-markup,
 .chat-message-markup.translating .playable-text-markup {
-    filter: blur(3px);
+    animation: translatingBlur 5s steps(25, end);
 }
 .chat-message-markup.to-translated .plain-text-markup,
 .chat-message-markup.to-translated .playable-text-markup {
@@ -196,12 +196,22 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     animation: toTranslatedBlur 1s steps(10, end) forwards;
 }
 @keyframes toTranslatedBlur {
-    0% { filter: blur(3px); }
+    0% { filter: blur(2px); }
     100% { filter: blur(0); }
 }
 @keyframes fromTranslatedBlur {
-    0% { filter: blur(3px); }
+    0% { filter: blur(2px); }
     100% { filter: blur(0); }
+}
+@keyframes translatingBlur {
+    0% { filter: blur(1px); }
+    20% { filter: blur(2px); }
+    40% { filter: blur(1px); }
+    60% { filter: blur(2px); }
+    80% { filter: blur(1px); }
+    94% { filter: blur(1px); }
+    98% { filter: blur(0.5px); }
+    100% { filter: blur(0px); }
 }
 
 .chat-message-markup span {

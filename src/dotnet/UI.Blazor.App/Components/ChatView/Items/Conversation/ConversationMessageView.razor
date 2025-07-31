@@ -10,9 +10,10 @@
     var detailsCls = _isOpen ? "show" : "";
     var cls = $"conversation-message message-wrapper {openClass}";
     var attachments = conversation.Attachments;
-    var maxCount = attachments?.Length ?? 0;
-    if (ScreenSize.IsNarrow() && maxCount > 5)
-        maxCount = 5;
+    var attachmentCount = conversation.AttachmentCount;
+    var maxShowCount = attachments?.Length ?? 0;
+    if (ScreenSize.IsNarrow() && maxShowCount > 5)
+        maxShowCount = 5;
 }
 <div class="@cls">
     <CascadingValue Value="@_fakeEntry" IsFixed="true">
@@ -39,14 +40,26 @@
             </div>
         }
         @if (attachments?.Length > 0) {
-            var extra = Math.Max(0, attachments.Length - maxCount);
+            var extra = Math.Max(0, attachmentCount - maxShowCount);
+            var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
+            var totalCount = maxShowCount;
             <div class="conversation-attachments">
-                @for(var i = 0; i < maxCount; i++) {
-                    var attachment = attachments[i];
-                    @if (attachment.IsVisualMedia()) {
-                        <VisualMediaAttachment Attachment="@attachment" Attachments="@attachments"/>
-                    } else {
-                        <FileAttachment Attachment="@attachment" IconOnly="true"/>
+                @if (mediaList.Length > 0) {
+                    @foreach (var media in mediaList) {
+                        if (totalCount == 0)
+                            break;
+
+                        <VisualMediaAttachment Attachment="@media" Attachments="@mediaList"/>
+                        totalCount--;
+                    }
+                }
+                @if (totalCount > 0 && fileList.Length > 0) {
+                    @foreach (var file in fileList) {
+                        if (totalCount == 0)
+                            break;
+
+                        <FileAttachment Attachment="@file" IconOnly="true"/>
+                        totalCount--;
                     }
                 }
                 @if (extra > 0) {
@@ -157,6 +170,10 @@
         sb.AppendLine(summary.ToReadableText());
         return sb.ToStringAndRelease();
     }
+
+    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(TextEntryAttachment[] attachments)
+        => (attachments.Where(a => a.IsVisualMedia()).ToArray(),
+            attachments.Where(a => !a.IsVisualMedia()).ToArray());
 
     // Nested types
     public record Model(
