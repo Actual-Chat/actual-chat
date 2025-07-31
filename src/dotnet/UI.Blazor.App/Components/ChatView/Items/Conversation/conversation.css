@@ -237,6 +237,9 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
     @apply w-10 h-10;
     @apply rounded-md;
 }
+body.hoverable .conversation-attachments .image-attachment:hover {
+    filter: brightness(1.1);
+}
 .conversation-attachments .image-attachment > .c-content {
     @apply w-full;
 }
