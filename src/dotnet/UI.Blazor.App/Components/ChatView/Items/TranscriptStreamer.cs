@@ -42,8 +42,7 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
         try {
             var isTranslation = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
             if (isTranslation) {
-                var isHistoricalStreamingEnabled = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-                var isStreaming = await TranslationUI.IsStreaming(entry, isHistoricalStreamingEnabled ? null : true, cancellationToken);
+                var isStreaming = await TranslationUI.IsStreaming(entry, cancellationToken);
                 if (!isStreaming)
                     // Skip historical streaming if incomplete ui is disabled
                     return;

@@ -51,21 +51,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             return false;
 
         var streamId = await GetStreamId(entry, cancellationToken).ConfigureAwait(false);
-        return !streamId.IsEmpty;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<bool> IsStreaming(ChatEntry entry, bool? isRealtime, CancellationToken cancellationToken)
-    {
-        if (!await MustTranslate(entry, true, cancellationToken).ConfigureAwait(false))
-            return false;
-
-        var streamId = await GetStreamId(entry, cancellationToken).ConfigureAwait(false);
-        if (streamId.IsEmpty)
-            return false;
-
-        var translation = await Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
-        return isRealtime is null || (translation?.IsRealtime ?? true) == isRealtime;
+        return streamId is not null;
     }
 
     [ComputeMethod]
@@ -140,25 +126,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var targetLanguage = await GetTargetLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
         return await Translations.Get(session, TranslationId.New(translationSourceId, targetLanguage), cancellationToken).ConfigureAwait(false);
     }
-	
-   /*public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntryId entryId, [EnumeratorCancellation] CancellationToken cancellationToken)
-   {
-       var entry = await ChatUI.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
-        var targetLanguage = await GetTargetLanguage(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var translationId = TranslationId.New(entry.Id.ToTextEntryId(), targetLanguage);
-        var streamId = await GetStreamId(entry, cancellationToken).ConfigureAwait(false);
-        if (streamId.IsEmpty)
-            yield break;
-
-        var translation = await Get(translationId.SourceId, cancellationToken).ConfigureAwait(false);
-        // TODO(FC,AK): must be unified streaming api
-        if (translation?.IsRealtime ?? true)
-            await foreach(var diff in StreamClient.GetTranslatedTranscript(streamId, translationId, cancellationToken).ConfigureAwait(false))
-                yield return diff;
-        else
-            await foreach(var diff in StreamClient.GetTranslation(streamId, cancellationToken).ConfigureAwait(false))
-                yield return new TranscriptDiff(diff, LinearMapDiff.None);
-   }*/
 
    public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntry entry, [EnumeratorCancellation] CancellationToken cancellationToken) {
         var targetLanguage = await GetTargetLanguage(entry.ChatId, cancellationToken).ConfigureAwait(false);
@@ -166,12 +133,12 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             ? StreamId.New(StreamId.Parse(entry.StreamId), targetLanguage)
             : null;
 
-        if (streamId == null) {
+        if (streamId is null) {
             var translation = await Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
-            if (translation == null || translation.StreamId.IsNullOrEmpty())
+            if (translation?.StreamId is null)
                 yield break;
 
-            streamId = StreamId.Parse(translation.StreamId);
+            streamId = translation.StreamId;
         }
 
         var transcriptStream = StreamClient.GetTranscript(streamId.Value, cancellationToken);
@@ -225,17 +192,16 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
    }
 
    [ComputeMethod]
-   protected virtual async Task<Symbol> GetStreamId(ChatEntry entry, CancellationToken cancellationToken)
+   protected virtual async Task<StreamId?> GetStreamId(ChatEntry entry, CancellationToken cancellationToken)
    {
        if (entry.IsStreaming)
-           return entry.StreamId;
+           return StreamId.Parse(entry.StreamId);
 
        // when entry finished streaming translation is still in progress
        var translation = await Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
-       if (translation is null || !translation.IsStreaming)
-           return Symbol.Empty;
-
-       return translation.StreamId;
+       return translation?.IsStreaming != true
+           ? null
+           : translation.StreamId;
    }
 
    public Task SetIsSubHeaderVisible(ChatId chatId, bool isVisible, CancellationToken cancellationToken = default)

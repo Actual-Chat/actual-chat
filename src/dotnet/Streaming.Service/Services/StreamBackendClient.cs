@@ -50,10 +50,20 @@ public sealed class StreamBackendClient : IStreamClient
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetTranscript({StreamId})", streamId);
-        var diffs = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
-        if (diffs == null)
+        RpcStream<TranscriptDiff>? diffs;
+        try {
+            Log.LogDebug("GetTranscript({StreamId})", streamId);
+            diffs = await Backend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
+            if (diffs == null)
+                yield break;
+        }
+        catch (RpcReconnectFailedException) {
             yield break;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Error getting transcript for {StreamId}", streamId);
+            yield break;
+        }
 
         // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
         var diffStream = diffs.SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken);

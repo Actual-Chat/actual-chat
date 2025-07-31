@@ -13,10 +13,9 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
     [ConcurrencyCheck] public long Version { get; set; }
     public string Content { get; set; } = "";
     public string SourceContentHash { get; set; } = "";
-    public string StreamId { get; set; } = "";
+    public string? StreamId { get; set; }
     public string ChatId { get; set; } = "";
-    public string EntryId { get; set; } = "";
-    public bool IsRealtime { get; set; } // TODO(FC,AK): remove when stream api is unified
+    public string? EntryId { get; set; }
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -35,8 +34,7 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
         => new(TranslationId.Parse(Id), Version) {
             Content = Content,
             SourceContentHash = new HashString(SourceContentHash),
-            StreamId = StreamId,
-            IsRealtime = IsRealtime,
+            StreamId = ActualChat.StreamId.ParseNullable(StreamId),
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
         };
@@ -49,12 +47,11 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
         Id = id.Value;
         var sourceId = id.SourceId;
         ChatId = sourceId.ChatId.Value;
-        EntryId = sourceId.Kind is TranslationIdKind.TextEntry ? sourceId.GetChatEntryId().Value : "";
+        EntryId = sourceId.Kind is TranslationIdKind.TextEntry ? sourceId.GetChatEntryId().Value : null;
         Version = model.Version;
         Content = model.Content;
         SourceContentHash = model.SourceContentHash;
-        StreamId = model.StreamId;
-        IsRealtime = model.IsRealtime;
+        StreamId = model.StreamId?.Value;
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
     }

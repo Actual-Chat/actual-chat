@@ -12,18 +12,17 @@ public sealed partial record Translation(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
 ) : IHasId<TranslationId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember, MemoryPackOrder(3)] public string Content { get; init; } = "";
-    [DataMember, MemoryPackOrder(4)] public HashString SourceContentHash { get; init; }
-    [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
-    [DataMember, MemoryPackOrder(6)] public Moment ModifiedAt { get; init; }
-    [DataMember, MemoryPackOrder(8)] public string StreamId { get; set; } = "";
-    [DataMember, MemoryPackOrder(9)] public bool IsRealtime { get; set; }
+    [DataMember, MemoryPackOrder(2)] public string Content { get; init; } = "";
+    [DataMember, MemoryPackOrder(3)] public HashString SourceContentHash { get; init; }
+    [DataMember, MemoryPackOrder(4)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(5)] public Moment ModifiedAt { get; init; }
+    [DataMember, MemoryPackOrder(6)] public StreamId? StreamId { get; set; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Language TargetLanguage => Id.Language;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsStreaming => !StreamId.IsNullOrEmpty();
+    public bool IsStreaming => StreamId is not null;
 
     public bool MatchesOriginal(string originalContent)
         // we ask llm to ignore text already in the target language
@@ -34,4 +33,14 @@ public sealed partial record Translation(
     // This record relies on referential equality
     public bool Equals(Translation? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+}
+
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record TranslationDiff : RecordDiff
+{
+    [DataMember, MemoryPackOrder(0)] public long? Version { get; init; }
+    [DataMember, MemoryPackOrder(1)] public string? Content { get; init; }
+    [DataMember, MemoryPackOrder(2)] public HashString? SourceContentHash { get; init; }
+    [DataMember, MemoryPackOrder(3)] public Option<StreamId?> StreamId { get; init; }
 }
