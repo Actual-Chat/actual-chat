@@ -66,7 +66,8 @@
         var chatId = chat.Id;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var showMemberTab = rules.CanSeeMembers() && !chat.IsAiSearchChat();
+        // Disable 'members' tab for the announcements chat
+        var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers() && !chat.IsAiSearchChat();
         var showSearchPanel = await PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
 
         return new () {
