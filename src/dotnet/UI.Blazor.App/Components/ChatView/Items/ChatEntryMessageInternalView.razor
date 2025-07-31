@@ -121,7 +121,9 @@
                 || _rendered.IsStreaming != stateValue.IsStreaming
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
                 || _rendered.Markup != stateValue.Markup
-                || _rendered.Translation != stateValue.Translation);
+                || _rendered.Translation != stateValue.Translation
+                || _rendered.IsUnread != stateValue.IsUnread
+                || _rendered.IsUnreadBlockStart != stateValue.IsUnreadBlockStart);
         if (!shouldRender) {
             Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
                 Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
@@ -131,7 +133,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         // Do not use cached options as we need to pass Message and Markup parameters.
-        var initialData = new Model(Markup, Message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
+        var initialData = new Model(Markup, Message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None, IsUnreadByOthers, IsUnreadByOthersBlockStart);
         return new() {
             InitialValue = initialData, // To show the original text immediately
             Category = GetStateCategory(GetType()),
@@ -144,17 +146,20 @@
         var markup = _rendered?.Markup ?? Markup;
         var isRenderedTranslated = (_rendered?.Translation ?? TranslationState.None) != TranslationState.None;
         var isRenderedStreaming = _rendered?.IsStreaming ?? false;
+        var isUnreadByOthers = IsUnreadByOthers;
+        var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
-            return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
+            return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.StreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
         }
+
         var streamingState = await _streamer.State.Use(cancellationToken).ConfigureAwait(false);
         if (streamingState.IsStreaming) {
             var translationState = streamingState.IsTranslating
                 ? TranslationState.Translating
                 : TranslationState.None;
-            return new (markup, entry, translationState, streamingState);
+            return new(markup, entry, translationState, streamingState, isUnreadByOthers, isUnreadByOthersBlockStart);
         }
 
         // If we're not streaming, handle possible translation
@@ -165,20 +170,21 @@
             markup = await ChatMarkupHub.GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
 
         if (!mustTranslate)
-            return new(markup, entry, TranslationState.None, TranscriptStreamer.StreamingState.None);
+            return new(markup, entry, TranslationState.None, TranscriptStreamer.StreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
         var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
         if (translation is null)
-            return new(markup, entry, TranslationState.Translating, TranscriptStreamer.StreamingState.None);
+            return new(markup, entry, TranslationState.Translating, TranscriptStreamer.StreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
         if (translation.MatchesOriginal(entry.Content))
-            return new(markup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.None, TranscriptStreamer.StreamingState.None);
+            return new(markup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.None, TranscriptStreamer.StreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
         var translatedMarkup = entry.HasMediaEntry
             ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
             : MarkupParser.Parse(translation.Content);
 
-        return new(translatedMarkup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.Translated, TranscriptStreamer.StreamingState.None);
+        var translating = translation.IsStreaming ? TranslationState.Translating : TranslationState.Translated;
+        return new(translatedMarkup, entry, translating, TranscriptStreamer.StreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
     }
 
     // Nested types
@@ -186,7 +192,9 @@
         Markup Markup,
         ChatEntry Entry,
         TranslationState Translation,
-        TranscriptStreamer.StreamingState Streaming)
+        TranscriptStreamer.StreamingState Streaming,
+        bool IsUnread,
+        bool IsUnreadBlockStart)
     {
         public bool IsStreaming => Entry.IsStreaming || Streaming.IsStreaming;
     }
