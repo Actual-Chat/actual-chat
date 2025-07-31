@@ -2,6 +2,7 @@ using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Diagnostics;
 using ActualChat.Transcription;
+using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.Services;
 
@@ -23,7 +24,9 @@ public sealed class StreamBackendClient : IStreamClient
         Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
         var rpcStream = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
         var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<byte[]>();
-        var (headerDataTask, dataStream) = stream.SplitHead(cancellationToken);
+        var (headerDataTask, dataStream) = stream
+            .SuppressException<byte[], RpcReconnectFailedException>(cancellationToken)
+            .SplitHead(cancellationToken);
         var frameStream = dataStream
             .Select((data, i) => new AudioFrame {
                 Data = data,
@@ -53,7 +56,8 @@ public sealed class StreamBackendClient : IStreamClient
             yield break;
 
         // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-        await foreach(var diff in diffs.ConfigureAwait(false))
+        var diffStream = diffs.SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken);
+        await foreach(var diff in diffStream.ConfigureAwait(false))
             yield return diff;
     }
 
