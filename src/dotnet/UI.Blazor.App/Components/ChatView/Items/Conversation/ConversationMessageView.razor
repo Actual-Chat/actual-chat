@@ -47,7 +47,7 @@
                 @if (mediaList.Length > 0) {
                     @foreach (var media in mediaList) {
                         if (totalCount == 0)
-                            return;
+                            break;
 
                         <VisualMediaAttachment Attachment="@media" Attachments="@mediaList"/>
                         totalCount--;
@@ -56,7 +56,7 @@
                 @if (totalCount > 0 && fileList.Length > 0) {
                     @foreach (var file in fileList) {
                         if (totalCount == 0)
-                            return;
+                            break;
 
                         <FileAttachment Attachment="@file" IconOnly="true"/>
                         totalCount--;
