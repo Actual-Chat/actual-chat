@@ -53,16 +53,6 @@
 
     private string GetTooltipTitle() {
         var name = Attachment.Media.FileName;
-        var start = "";
-        var end = "";
-        var middle = "";
-        if (name.Length > 24) {
-            end = name[^10..];
-            start = name[..10];
-            middle = "...";
-        } else {
-            start = name;
-        }
-        return $"{start}{middle}{end}";
+        return name.Length <= 24 ? name : $"{name[..10]}...{name[^10..]}";
     }
 }
