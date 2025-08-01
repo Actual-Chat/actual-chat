@@ -7,9 +7,15 @@
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
     var iconOnlyCls = IconOnly ? "icon-only" : "";
+    var tooltipTitle = IconOnly ? GetTooltipTitle() : "";
 }
 
-<a class="file-attachment unfocusable @iconOnlyCls" href="@url" target="_blank" role="button">
+<a class="file-attachment unfocusable @iconOnlyCls"
+   href="@url"
+   target="_blank"
+   role="button"
+   data-tooltip="@tooltipTitle"
+   data-tooltip-position="@FloatingPosition.Top.ToPositionString()">
     <div class="c-file-icon @fileCls">
         @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
             <i class="icon-play-fill text-2xl"></i>
@@ -44,4 +50,9 @@
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public bool IconOnly { get; set; }
+
+    private string GetTooltipTitle() {
+        var name = Attachment.Media.FileName;
+        return name.Length <= 24 ? name : $"{name[..10]}...{name[^10..]}";
+    }
 }
