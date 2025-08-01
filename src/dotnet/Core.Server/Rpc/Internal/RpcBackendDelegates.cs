@@ -31,6 +31,10 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
 
     public RpcPeerRef RouteCall(RpcMethodDef methodDef, ArgumentList arguments)
     {
+        // When invalidation is active, commands must be routed to the local peer to handle it locally
+        if (methodDef.IsCommand && Invalidation.IsActive)
+            return RpcPeerRef.Local;
+
         var serviceDef = methodDef.Service;
         if (!serviceDef.IsBackend)
             throw StandardError.Internal("Only backend service methods can be called by servers.");

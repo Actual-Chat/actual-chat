@@ -60,24 +60,36 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        IQueryable<DbRouletteProfilePrefs> queryable = dbContext.RouletteProfilePrefs;
+
+        // Include only profiles with enabled chat roulette
+        var usersWithEnabledChatRoulette = dbContext.RouletteUserSettings
+            .Where(x => x.IsEnabled).Select(x => x.Id);
+        queryable = queryable.Where(c => usersWithEnabledChatRoulette.Contains(c.UserId));
+
+        // Exclude completed chats
         var completionIdPrefix = ownUserSid + ":";
         var completions = dbContext.RouletteCompletions
             .Where(c => c.Id.StartsWith(completionIdPrefix));
         var completedPeerProfileIds = completions
             .Where(c => c.OwnerProfileId == ownProfileSid)
             .Select(c => c.PeerProfileId);
+        queryable = queryable.Where(c => !completedPeerProfileIds.Contains(c.Id));
 
-        var usersWithEnabledChatRoulette = dbContext.RouletteUserSettings.Where(x => x.IsEnabled).Select(x => x.Id);
-        IQueryable<DbRouletteProfilePrefs> queryable = dbContext.RouletteProfilePrefs;
-        queryable = queryable
-            .Where(c => !completedPeerProfileIds.Contains(c.Id)); // Exclude completed chats
-        queryable = queryable.Where(c => usersWithEnabledChatRoulette.Contains(c.UserId));
-        if (!filter.Country.IsUndefined)
-            queryable = queryable.Where(c => c.Country == filter.Country.Value);
+        // Apply country filter
+        var country = filter.Country ?? Countries.Undefined;
+        if (!country.IsUndefined)
+            queryable = queryable.Where(c => c.Country == country.Value);
+
+        // Apply gender filter
         if (filter.Gender != Gender.Undefined)
             queryable = queryable.Where(c => c.Gender == filter.Gender);
+
+        // Apply language filter
         var filterLanguageIds = filter.Languages.Select(l => l.Id.Value).ToArray();
         queryable = queryable.Where(c => filterLanguageIds.Any(l => c.Languages.Contains(l)));
+
+        // Apply interest filter
         if (filter.Interests.Length > 0) {
             var hasFlexible = filter.Interests.Any(i => i == Interests.Flexible);
             if (hasFlexible) {
@@ -89,8 +101,9 @@ public class RouletteProfilesBackend(IServiceProvider services) : DbServiceBase<
                 queryable = queryable.Where(x => filterInterestCodes.Any(i => x.Interests.Contains(i)));
             }
         }
-        var candidates = await queryable.ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+
+        // And finally, fetch the candidates
+        var candidates = await queryable.ToListAsync(cancellationToken).ConfigureAwait(false);
         return candidates.Select(c => c.ToModel()).ToArray();
     }
 

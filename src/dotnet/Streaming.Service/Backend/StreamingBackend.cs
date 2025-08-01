@@ -48,17 +48,18 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     {
         Services = services;
 
+        var typeFullName = GetType().FullName;
         _audioStreams = new StreamStore<byte[]> {
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.AudioStreamCount,
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
-            Log = services.LogFor($"{GetType().FullName}.AudioStreams"),
+            Log = services.LogFor($"{typeFullName}.AudioStreams"),
         };
         _transcriptStreams = new StreamStore<TranscriptDiff> {
             StreamIdValidator = ValidateStreamId,
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
-            Log = services.LogFor($"{GetType().FullName}.TranscriptStreams"),
             OnStreamExpire = id => _translatingStreams.Remove(id, out _),
+            Log = services.LogFor($"{typeFullName}.TranscriptStreams"),
         };
     }
 

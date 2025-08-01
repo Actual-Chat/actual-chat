@@ -2,6 +2,8 @@ namespace ActualChat;
 
 public static class Countries
 {
+    public static readonly Country Undefined = new ("", "Undefined");
+
     public static readonly Country Andorra = new ("AD", "Andorra");
     public static readonly Country ARE = new ("AE", "United Arab Emirates");
     public static readonly Country Afghanistan = new ("AF", "Afghanistan");

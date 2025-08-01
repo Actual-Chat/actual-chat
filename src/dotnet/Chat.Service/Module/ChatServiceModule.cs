@@ -26,22 +26,22 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IChatsBackend>().IsClient();
 
         // Chats
-        rpcHost.AddApiOrLocal<IChats, Chats>(); // Used by many
+        rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
         services.AddSingleton<MediaStorage>();
 
         // Places
-        rpcHost.AddApiOrLocal<IPlaces, Places>(); // Used by Chats
+        rpcHost.AddLocalApi<IPlaces, Places>(); // Used by Chats
         rpcHost.AddBackend<IPlacesBackend, PlacesBackend>();
 
         // Authors
-        rpcHost.AddApiOrLocal<IAuthors, Authors>(); // Used by Chats
+        rpcHost.AddLocalApi<IAuthors, Authors>(); // Used by Chats
         rpcHost.AddBackend<IAuthorsBackend, AuthorsBackend>();
         rpcHost.AddBackend<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
 
         // Roles
-        rpcHost.AddApiOrLocal<IRoles, Roles>(); // Used by Authors -> Chats
+        rpcHost.AddLocalApi<IRoles, Roles>(); // Used by Authors -> Chats
         rpcHost.AddBackend<IRolesBackend, RolesBackend>();
 
         // Mentions
@@ -53,24 +53,24 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IReactionsBackend, ReactionsBackend>();
 
         // Aliases
-        rpcHost.AddApiOrLocal<IAliases, Aliases>();
+        rpcHost.AddLocalApi<IAliases, Aliases>();
         rpcHost.AddBackend<IAliasBackend, AliasBackend>();
 
         // Chat Roulette
-        rpcHost.AddApiOrLocal<IRoulette, Roulette>();
+        rpcHost.AddLocalApi<IRoulette, Roulette>();
         rpcHost.AddBackend<IRouletteBackend, RouletteBackend>();
 
         // Translation
-        rpcHost.AddApiOrLocal<ITranslations, Translations>();
+        rpcHost.AddLocalApi<ITranslations, Translations>();
         rpcHost.AddBackend<ITranslationsBackend, TranslationsBackend>();
         rpcHost.AddBackend<IChatEntryLanguagesBackend, ChatEntryLanguagesBackend>();
 
         // Conversations
-        rpcHost.AddApiOrLocal<IConversations, Conversations>();
+        rpcHost.AddLocalApi<IConversations, Conversations>();
         rpcHost.AddBackend<IConversationsBackend, ConversationsBackend>();
 
         // Chat threads
-        rpcHost.AddApiOrLocal<IChatThreads, ChatThreads>();
+        rpcHost.AddLocalApi<IChatThreads, ChatThreads>();
         rpcHost.AddBackend<IChatThreadsBackend, ChatThreadsBackend>();
 
         // IBackendChatMarkupHub

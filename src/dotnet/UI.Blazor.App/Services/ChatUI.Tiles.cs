@@ -815,15 +815,5 @@ public partial class ChatUI
 
         int actualOffset = (int)(isForward ? travelled : -travelled);
         return (currentId, actualOffset);
-
-        int Sum(ReadOnlySpan<Range<long>> ranges1)
-        {
-            var sum = 0;
-            foreach (var range in ranges1) {
-                var size = (int)range.Size();
-                sum += size;
-            }
-            return sum;
-        }
     }
 }

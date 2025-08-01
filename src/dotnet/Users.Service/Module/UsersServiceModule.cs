@@ -16,6 +16,7 @@ using Microsoft.Extensions.FileProviders.Physical;
 using Newtonsoft.Json;
 using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.Server;
+using ActualLab.Rpc;
 using Twilio;
 using Twilio.Clients;
 
@@ -115,19 +116,19 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // IAuth
         if (rpcHost.IsApiHost)
-            rpc.Service<IAuth>().HasServer<IAuth>(); // IAuth is registered below
+            rpc.Service<IAuth>().IsServer(); // IAuth is registered below
 
         // Accounts
-        rpcHost.AddApiOrLocal<IAccounts, Accounts>(); // Used by Chats, etc.
+        rpcHost.AddLocalApi<IAccounts, Accounts>(); // Used by Chats, etc.
         rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
         rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // UserPresences
-        rpcHost.AddApiOrLocal<IUserPresences, UserPresences>(); // Used by Authors -> Chats, etc.
+        rpcHost.AddLocalApi<IUserPresences, UserPresences>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IUserPresencesBackend, UserPresencesBackend>();
 
         // Avatars
-        rpcHost.AddApiOrLocal<IAvatars, Avatars>(); // Used by Authors -> Chats, etc.
+        rpcHost.AddLocalApi<IAvatars, Avatars>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IAvatarsBackend, AvatarsBackend>();
 
         // ChatPositions
@@ -139,8 +140,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IChatUsagesBackend, ChatUsagesBackend>();
 
         // ServerKvas
-        rpcHost.AddApiOrLocal<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
-        rpcHost.AddApiOrLocal<IServerSettings, ServerSettings>();
+        rpcHost.AddLocalApi<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
+        rpcHost.AddLocalApi<IServerSettings, ServerSettings>();
         rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();
 
         // PhoneAuth
@@ -157,14 +158,14 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ITimeZones, TimeZones>();
 
         // RouletteProfiles
-        rpcHost.AddApiOrLocal<IRouletteProfiles, RouletteProfiles>();
+        rpcHost.AddLocalApi<IRouletteProfiles, RouletteProfiles>();
         rpcHost.AddBackend<IRouletteProfilesBackend, RouletteProfilesBackend>();
 
         // Mobile authentication
         rpcHost.AddApi<IMobileSessions, MobileSessions>();
 
         // reCAPTCHA
-        rpcHost.AddApiOrLocal<ICaptcha, Captcha>();
+        rpcHost.AddLocalApi<ICaptcha, Captcha>();
 
         // NOTE(AY): We don't have a clear separation between the backend and the front-end
         // due to IAuth & IAuthBackend, so these services are always local, and thus

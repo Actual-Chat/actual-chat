@@ -42,13 +42,13 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
 
             var s1 = new NewtonsoftJsonSerializer();
             s1.Write(id).Should().Be(GetJson(id));
-            s1.Write(new object[] { id }).Should().Be($"[{GetJson(id)}]");
+            s1.Write(new object?[] { id }).Should().Be($"[{GetJson(id)}]");
             var s2 = new SystemJsonSerializer(JsonSerializerOptions.Default);
             s2.Write(id).Should().Be(GetJson(id));
-            s2.Write(new object[] { id }).Should().Be($"[{GetJson(id)}]");
+            s2.Write(new object?[] { id }).Should().Be($"[{GetJson(id)}]");
             var s3 = new SystemJsonSerializer(JsonSerializerOptions.Web);
             s3.Write(id).Should().Be(GetJson(id));
-            s3.Write(new object[] { id }).Should().Be($"[{GetJson(id)}]");
+            s3.Write(new object?[] { id }).Should().Be($"[{GetJson(id)}]");
         }
         return;
 

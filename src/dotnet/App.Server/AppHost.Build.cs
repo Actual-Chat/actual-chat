@@ -69,7 +69,7 @@ public partial class AppHost
         var hostSettings = cfg.Settings<HostSettings>();
         var appKind = hostSettings.AppKind ?? HostKind.Server;
         var isTested = hostSettings.IsTested ?? false;
-        var isLocalDev = hostSettings.BaseUri.StartsWith($"https://{Constants.Hosts.LocalActualChat}");
+        var isLocalDev = hostSettings.BaseUri.OrdinalStartsWith($"https://{Constants.Hosts.LocalActualChat}");
         var services = ctx.Services;
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
         var roles = HostRoles.Server.GetAllRoles(serverRole, isTested);

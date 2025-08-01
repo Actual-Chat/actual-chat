@@ -13,12 +13,6 @@
     };
 
     @* '__builder' is predefined name used by RazorSourceGenerator *@
-    public static RenderFragment<TranslatedMarkup> TranslatedMarkupWithMark = state => __builder => {
-        var statusFragment = TranslationMark(state.State);
-        MarkupWithState((state.Markup, statusFragment))(__builder);
-    };
-
-    @* '__builder' is predefined name used by RazorSourceGenerator *@
     public static RenderFragment<(Markup, RenderFragment)> MarkupWithState = state => __builder => {
         var markup = state.Item1;
         var statusFragment = state.Item2;
@@ -31,5 +25,11 @@
             <MarkupView Markup="@markup"/>
             @statusFragment
         }
+    };
+
+    @* '__builder' is predefined name used by RazorSourceGenerator *@
+    public static RenderFragment<TranslatedMarkup> TranslatedMarkupWithMark = state => __builder => {
+        var statusFragment = TranslationMark(state.State);
+        MarkupWithState((state.Markup, statusFragment))(__builder);
     };
 }

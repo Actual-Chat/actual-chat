@@ -55,42 +55,39 @@ public readonly struct RpcHostBuilder
             });
     }
 
-    // AddApi
+    // AddApi, AddLocalApi, AddBackend
 
     public RpcHostBuilder AddApi<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(Symbol name = default)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(
+        string name = "")
         where TService : class, IRpcService
         where TImplementation : class, TService
-        => AddApiOrLocal(typeof(TService), typeof(TImplementation), false, name);
+        => AddApi(typeof(TService), typeof(TImplementation), makeLocal: false, name);
 
-    public RpcHostBuilder AddApi(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
-        Symbol name = default)
-        => AddApiOrLocal(serviceType, implementationType, false, name);
-
-    // AddApiOrLocal
-
-    public RpcHostBuilder AddApiOrLocal<
+    public RpcHostBuilder AddLocalApi<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(
-        Symbol name = default)
+        string name = "")
         where TService : class, IRpcService
         where TImplementation : class, TService
-        => AddApiOrLocal(typeof(TService), typeof(TImplementation), true, name);
+        => AddApi(typeof(TService), typeof(TImplementation), makeLocal: true, name);
 
-    public RpcHostBuilder AddApiOrLocal(
+    public RpcHostBuilder AddBackend<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(
+        string name = "")
+        where TService : class, IRpcService, IBackendService
+        where TImplementation : class, TService
+        => AddBackend(typeof(TService), typeof(TImplementation), name);
+
+    // Private methods
+
+    private RpcHostBuilder AddApi(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
-        Symbol name = default)
-        => AddApiOrLocal(serviceType, implementationType, true, name);
-
-    private RpcHostBuilder AddApiOrLocal(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
-        bool isLocalServiceRequired,
-        Symbol name = default)
+        bool makeLocal,
+        string name = "")
     {
         if (!typeof(IRpcService).IsAssignableFrom(serviceType))
             throw ActualLab.Internal.Errors.MustImplement<IRpcService>(serviceType, nameof(serviceType));
@@ -99,26 +96,17 @@ public readonly struct RpcHostBuilder
         if (!serviceType.IsAssignableFrom(implementationType))
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
-        if (isLocalServiceRequired || IsApiHost)
+        if (IsApiHost || makeLocal) // Add the implementation on API hosts or if requested explicitly
             AddLocal(serviceType, implementationType);
-        if (IsApiHost)
-            Rpc.Service(serviceType).HasServer(serviceType).HasName(name);
+        if (IsApiHost) // Expose the service only on API hosts
+            Rpc.Service(serviceType).HasName(name).IsServer(serviceType);
         return this;
     }
 
-    // AddBackend
-
-    public RpcHostBuilder AddBackend<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>()
-        where TService : class, IRpcService, IBackendService
-        where TImplementation : class, TService
-        => AddBackend(typeof(TService), typeof(TImplementation));
-
-    public RpcHostBuilder AddBackend(
+    private RpcHostBuilder AddBackend(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
-        Symbol name = default)
+        string name = "")
     {
         if (!serviceType.IsInterface)
             throw ActualLab.Internal.Errors.MustBeInterface(serviceType, nameof(serviceType));
@@ -153,12 +141,10 @@ public readonly struct RpcHostBuilder
             AddDistributed(serviceType, implementationType, name);
             break;
         default:
-            throw StandardError.Internal("Invalid ServiceMode value.");
+            throw StandardError.Internal($"Invalid {nameof(ServiceMode)} value.");
         }
         return this;
     }
-
-    // Private methods
 
     private void AddLocal(Type serviceType, Type implementationType)
     {
@@ -169,7 +155,7 @@ public readonly struct RpcHostBuilder
         Commander.AddHandlers(serviceType);
     }
 
-    private void AddServer(Type serviceType, Type implementationType, Symbol name)
+    private void AddServer(Type serviceType, Type implementationType, string name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
             Fusion.AddServer(serviceType, implementationType, name, false);
@@ -178,7 +164,7 @@ public readonly struct RpcHostBuilder
         Commander.AddHandlers(serviceType);
     }
 
-    private void AddClient(Type serviceType, Symbol name)
+    private void AddClient(Type serviceType, string name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
             Fusion.AddClient(serviceType, name, false);
@@ -187,7 +173,7 @@ public readonly struct RpcHostBuilder
         Commander.AddHandlers(serviceType);
     }
 
-    private void AddDistributed(Type serviceType, Type implementationType, Symbol name)
+    private void AddDistributed(Type serviceType, Type implementationType, string name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
             Fusion.AddDistributedService(serviceType, implementationType, name, false);

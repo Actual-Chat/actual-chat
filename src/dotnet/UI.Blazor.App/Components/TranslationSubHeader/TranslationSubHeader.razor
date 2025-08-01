@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, TranslationSubHeader.Model?>
 @{
-    if (!State.IsSet(out var m))
+    if (State.Value is not { } m)
         return;
 }
 

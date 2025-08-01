@@ -1,9 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IModalView<TranslationTargetLanguageModal.Model>
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<AppUIHub, TranslationTargetLanguageModal.ComputedModel?>
+@inherits ComputedStateComponent<AppUIHub, TranslationTargetLanguageModal.ComputedModel>
 @{
-    if (!State.IsSet(out var m))
+    if (State.IsInitial(out var m))
         return;
 
     var ownMessagesStatus = m.TranslateOwnMessages ? "On" : "Off";
@@ -50,7 +50,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task<ComputedModel?> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
         var languages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
         var targetLanguage = await TranslationUI.GetTargetLanguage(chatId, cancellationToken).ConfigureAwait(false);
@@ -71,12 +71,16 @@
         }
     }
 
-    // Nested types
-
-    public sealed record ComputedModel(IReadOnlyCollection<Language> Languages, Language Selected, ChatId ChatId, bool TranslateOwnMessages);
-
-    public sealed record Model(ChatId ChatId);
-
     private Task OnOpenLanguageSettings()
         => UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));
+
+    // Nested types
+
+    public sealed record ComputedModel(
+        IReadOnlyCollection<Language> Languages,
+        Language Selected,
+        ChatId ChatId,
+        bool TranslateOwnMessages);
+
+    public sealed record Model(ChatId ChatId);
 }
