@@ -96,8 +96,10 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         }
 
         DebugLog?.LogDebug("GetTranscript: {StreamId} - Translate stream", streamId);
+        var applicationStopping = Services.HostLifetime().ApplicationStopping;
         var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
-        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait for the translated stream to be created.
+        await Commander.Call(cmd, applicationStopping).ConfigureAwait(false);
         stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
 
         DebugLog?.LogDebug("GetTranscript: {StreamId} - Return stream", streamId);

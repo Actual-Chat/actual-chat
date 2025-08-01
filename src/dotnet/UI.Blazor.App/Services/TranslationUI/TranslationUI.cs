@@ -22,7 +22,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     [ComputeMethod]
-    public virtual async Task<bool?> IsOn(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<bool?> IsEnabled(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return userChatSettings.MustTranslate;
@@ -45,19 +45,9 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsStreaming(ChatEntry entry, CancellationToken cancellationToken)
-    {
-        if (!await MustTranslate(entry, true, cancellationToken).ConfigureAwait(false))
-            return false;
-
-        var streamId = await GetStreamId(entry, cancellationToken).ConfigureAwait(false);
-        return streamId is not null;
-    }
-
-    [ComputeMethod]
     public virtual async Task<bool> MustTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
     {
-        if (await IsOn(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
+        if (await IsEnabled(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
         return await NeedTranslate(entry, isForStreaming, cancellationToken).ConfigureAwait(false);
@@ -88,7 +78,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (!supportsTranslation)
             return false;
 
-        if (await IsOn(parentChatId, cancellationToken).ConfigureAwait(false) != true)
+        if (await IsEnabled(parentChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
         // Pessimistically, consider that we require translation.
@@ -104,7 +94,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (!supportsTranslation)
             return false;
 
-        if (await IsOn(conversation.Id.ChatId, cancellationToken).ConfigureAwait(false) != true)
+        if (await IsEnabled(conversation.Id.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
         // Pessimistically, consider that we require translation.
@@ -189,19 +179,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
        var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
        return entryLanguage.Languages.Any(x => !spokenLanguages.Contains(x));
-   }
-
-   [ComputeMethod]
-   protected virtual async Task<StreamId?> GetStreamId(ChatEntry entry, CancellationToken cancellationToken)
-   {
-       if (entry.IsStreaming)
-           return StreamId.Parse(entry.StreamId);
-
-       // when entry finished streaming translation is still in progress
-       var translation = await Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
-       return translation?.IsStreaming != true
-           ? null
-           : translation.StreamId;
    }
 
    public Task SetIsSubHeaderVisible(ChatId chatId, bool isVisible, CancellationToken cancellationToken = default)

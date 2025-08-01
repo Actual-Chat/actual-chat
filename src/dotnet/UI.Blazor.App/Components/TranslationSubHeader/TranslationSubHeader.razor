@@ -40,7 +40,7 @@
         if (!isVisible)
             return null;
 
-        var isOn = await TranslationUI.IsOn(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isOn = await TranslationUI.IsEnabled(chat.Id, cancellationToken).ConfigureAwait(false);
         var targetLanguage = await TranslationUI.GetTargetLanguage(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(isOn ?? false, targetLanguage, chat);
     }

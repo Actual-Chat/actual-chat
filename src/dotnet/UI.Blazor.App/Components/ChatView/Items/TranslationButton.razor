@@ -30,7 +30,7 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         var isSubHeaderVisible = await TranslationUI.IsSubHeaderVisible(chatId, cancellationToken).ConfigureAwait(false);
-        var isOn = await TranslationUI.IsOn(chatId, cancellationToken).ConfigureAwait(false) ?? false;
+        var isOn = await TranslationUI.IsEnabled(chatId, cancellationToken).ConfigureAwait(false) ?? false;
         return new(isSubHeaderVisible, isOn, chatId);
     }
 

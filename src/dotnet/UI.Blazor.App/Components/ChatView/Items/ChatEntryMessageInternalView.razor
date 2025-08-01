@@ -110,7 +110,9 @@
     }
 
     protected override void OnInitialized() {
-        _streamer = new (Message.Entry.Id, Hub);
+        var messageEntry = Message.Entry;
+        var textEntryId = TextEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
+        _streamer = new (textEntryId, Hub);
         _streamer.Start();
     }
 

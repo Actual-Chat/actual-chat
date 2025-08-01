@@ -57,6 +57,9 @@ public sealed class StreamBackendClient : IStreamClient
             if (diffs == null)
                 yield break;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            yield break;
+        }
         catch (RpcReconnectFailedException) {
             yield break;
         }
@@ -66,7 +69,9 @@ public sealed class StreamBackendClient : IStreamClient
         }
 
         // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-        var diffStream = diffs.SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken);
+        var diffStream = diffs
+            .SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken)
+            .SuppressCancellation(cancellationToken);
         await foreach(var diff in diffStream.ConfigureAwait(false))
             yield return diff;
     }

@@ -374,7 +374,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         try {
             var reader = channel.Reader;
             var writer = channel.Writer;
-            _ = Task.Run(async () => {
+            _ = BackgroundTask.Run(async () => {
                 Exception? error = null;
                 var lastText = "";
                 var lastTranscript = Transcript.Empty;
@@ -461,7 +461,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         writer.Complete(error);
                     }
                 }
-            }, CancellationToken.None); // No need to cancel this task, it should finalize translation even if the caller cancels
+            }, cancellationToken);
 
             DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - Publishing stream", translatedStreamId);
 

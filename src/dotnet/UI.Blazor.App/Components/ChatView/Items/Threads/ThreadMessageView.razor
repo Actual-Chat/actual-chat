@@ -126,7 +126,7 @@
         var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
         var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
         var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;
-        var translationIsOn = await TranslationUI.IsOn(chatId.ParentChatId, cancellationToken).ConfigureAwait(false) == true;
+        var translationIsOn = await TranslationUI.IsEnabled(chatId.ParentChatId, cancellationToken).ConfigureAwait(false) == true;
         await foreach (var chatEntry in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
             if (chatEntry.IsSystemEntry)
                 continue;

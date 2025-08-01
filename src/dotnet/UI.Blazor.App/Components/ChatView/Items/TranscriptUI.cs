@@ -8,26 +8,30 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
     [ComputeMethod]
-    public virtual async Task<InputModel?> GetStreamingInput(ChatEntryId id, CancellationToken cancellationToken) {
+    public virtual async Task<StreamingState?> GetStreamingState(TextEntryId id, CancellationToken cancellationToken)
+    {
         var entry = await ChatUI.GetEntry(id, cancellationToken).ConfigureAwait(false);
-        if (entry == null)
+        if (entry is null)
             return null;
 
-        var isTranslationStreaming = await TranslationUI.IsStreaming(entry, cancellationToken).ConfigureAwait(false);
-        return new (entry.IsStreaming || isTranslationStreaming, isTranslationStreaming, entry);
+        var mustTranslate = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
+        if (!mustTranslate)
+            return entry.StreamId.IsNullOrEmpty()
+                ? null
+                : new StreamingState(StreamId.Parse(entry.StreamId), entry, false);
+
+        var translation = await TranslationUI.Get(id, cancellationToken).ConfigureAwait(false);
+        if (translation?.StreamId is not null)
+            return new StreamingState(translation.StreamId, entry, true); // Already streaming translated transcript.
+
+        if (entry.StreamId.IsNullOrEmpty())
+            return null; // No source stream. We can't start a translation stream.
+
+        var sourceStreamId = StreamId.Parse(entry.StreamId);
+        var language = await TranslationUI.GetTargetLanguage(id.ChatId, cancellationToken).ConfigureAwait(false);
+        var streamId = StreamId.New(sourceStreamId, language);
+        return new StreamingState(streamId, entry, true); // We can start ad-hoc translation stream.
     }
 
-    public sealed record InputModel(bool IsStreaming, bool IsTranslation, ChatEntry Entry)
-    {
-        public bool MustStart(InputModel? old)
-        {
-            if (IsStreaming && old?.IsStreaming != true)
-                return true;
-
-            if (IsTranslation && old?.IsTranslation != true)
-                return true;
-
-            return false;
-        }
-    }
+    public sealed record StreamingState(StreamId StreamId, ChatEntry ChatEntry, bool IsTranslation);
 }

@@ -5,13 +5,11 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
+public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 {
     private readonly IMutableState<StreamingState> _state = hub.StateFactory.NewMutable(StreamingState.None);
-    private TranslationUI TranslationUI => hub.TranslationUI;
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
-    private Features Features => hub.Features;
     public IState<StreamingState> State => _state;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
@@ -25,45 +23,52 @@ public class TranscriptStreamer(ChatEntryId id, AppUIHub hub) : WorkerBase
 
     private async Task SyncStreamingState(CancellationToken cancellationToken)
     {
-        var cGetState = await Computed.Capture(() => TranscriptUI.GetStreamingInput(id, cancellationToken), cancellationToken).ConfigureAwait(false);
-        TranscriptUI.InputModel? last = null;
-        while (!cancellationToken.IsCancellationRequested) {
-            var last1 = last;
-            var cState = await cGetState.When(s => s != last1, cancellationToken).ConfigureAwait(false);
-            if (cState.Value?.MustStart(last) == true)
-                await StreamTranscript(cState.Value.Entry, cancellationToken);
-            last = cState.Value;
+        var cGetState = await Computed.Capture(() => TranscriptUI.GetStreamingState(id, cancellationToken), cancellationToken).ConfigureAwait(false);
+        TranscriptUI.StreamingState? last = null;
+        CancellationTokenSource? lastCts = null;
+        try {
+            while (!cancellationToken.IsCancellationRequested) {
+                var last1 = last;
+                var ct = cancellationToken;
+                var cState = await cGetState.When(s => s != last1, ct).ConfigureAwait(false);
+                lastCts?.CancelAndDisposeSilently();
+                var streamCts = cancellationToken.CreateLinkedTokenSource();
+                if (cState.Value != null) {
+                    var (_, entry, isTranslation) = cState.Value;
+                    // Initial state
+                    _state.Value = new (
+                        RetainedText: "",
+                        ChangedText: "",
+                        AnimatedText: "",
+                        Tail: entry.Content, // Will be empty for non-translation entries
+                        true,
+                        isTranslation);
+                    _ = BackgroundTask.Run(
+                        () => StreamTranscript(cState.Value, streamCts.Token),
+                        Log,
+                        $"{nameof(StreamTranscript)} failed",
+                        streamCts.Token);
+                }
+                else
+                    // No streaming
+                    _state.Value = StreamingState.None;
+                last = cState.Value;
+                lastCts = streamCts;
+            }
+        }
+        finally {
+            lastCts?.CancelAndDisposeSilently();
         }
     }
 
-    private async Task StreamTranscript(
-        ChatEntry entry,
-        CancellationToken cancellationToken) {
+    private async Task StreamTranscript(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken) {
         try {
-            var isTranslation = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
-            if (isTranslation) {
-                var isStreaming = await TranslationUI.IsStreaming(entry, cancellationToken);
-                if (!isStreaming)
-                    // Skip historical streaming if incomplete ui is disabled
-                    return;
-            }
-
-            var diffs = isTranslation
-                ? TranslationUI.GetTranscript(entry, cancellationToken)
-                : StreamClient.GetTranscript(entry.StreamId, cancellationToken);
+            var (streamId, entry, isTranslation) = streamingState;
+            var diffs = StreamClient.GetTranscript(streamId.Value, cancellationToken);
             var transcripts = diffs
                 .ToTranscripts()
                 .Throttle(TimeSpan.FromMilliseconds(320), cancellationToken);
             var lastText = "";
-            if (isTranslation)
-                // Initial state for translation
-                _state.Value = new (
-                    RetainedText: "",
-                    ChangedText: "",
-                    AnimatedText: "",
-                    Tail: entry.Content,
-                    true,
-                    isTranslation);
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;
                 var retainedLength = lastText.GetCommonPrefixLength(text);
