@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, TranslationButton.Model>
 @{
-    if(!State.IsInitial(out var m))
+    if(State.IsInitial(out var m))
         return;
 
     var isOnCls = m.IsOn ? "on" : "";
