@@ -5,6 +5,7 @@ using ActualChat.Redis.Module;
 using ActualChat.Streaming.Services;
 using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using GoogleTranscriber = ActualChat.Streaming.Services.Transcribers.GoogleTranscriber;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
@@ -44,6 +45,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend
         services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
+        services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
         if (isBackendClient)
             return;
 

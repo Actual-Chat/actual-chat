@@ -92,13 +92,16 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                     cancellationToken);
             await foreach (var response in stream.ConfigureAwait(false)) {
                 var suffix = response.Content;
+                if (suffix.IsNullOrEmpty())
+                    continue;
+
                 sb.Append(suffix);
                 var translatedText = sb.ToString().Trim();
                 if (OrdinalEquals(translatedText, Constants.Translation.NoTranslationNeededText))
                     yield break;
 
                 if (Constants.Translation.NoTranslationNeededText.OrdinalStartsWith(translatedText))
-                    yield return StringDiff.None; // wait for the whole NO_TRANSLATION_NEEDED
+                    continue; // wait for the whole NO_TRANSLATION_NEEDED
 
                 yield return StringDiff.New(translatedText, last);
 

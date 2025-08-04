@@ -144,10 +144,13 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 context,
                 cancellationToken).ConfigureAwait(false);
 
+            var contentHash = translationSource.ContentHash.IsNone
+                ? ChatEntryHashExt.GetContentHashString(translationSource.Content)
+                : translationSource.ContentHash;
             var translationDiff = new TranslationDiff {
                 StreamId = null,
                 Content = translatedText,
-                SourceContentHash = translationSource.ContentHash,
+                SourceContentHash = contentHash,
             };
             var change = translation is null
                 ? Change.Create(translationDiff)
@@ -187,10 +190,13 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     translatedTranscript = diff.ApplyTo(translatedTranscript);
             }
             finally {
+                var contentHash = translationSource.ContentHash.IsNone
+                    ? ChatEntryHashExt.GetContentHashString(translationSource.Content)
+                    : translationSource.ContentHash;
                 var finalizeChange = Change.Update(new TranslationDiff {
                     StreamId = null,
                     Content = translatedTranscript.Text,
-                    SourceContentHash = translationSource.ContentHash,
+                    SourceContentHash = contentHash,
                 });
                 var finalizeCmd = new TranslationsBackend_Change(
                     id,
