@@ -31,6 +31,8 @@ public class UIHub : CircuitHub, IDispatcherResolver
 
     // Generic lazy services
     [field: AllowNull, MaybeNull]
+    public BlazorAppLifecycle BlazorAppLifecycle => field ??= Services.GetRequiredService<BlazorAppLifecycle>();
+    [field: AllowNull, MaybeNull]
     public UIEventHub UIEventHub => field ??= Services.GetRequiredService<UIEventHub>();
     [field: AllowNull, MaybeNull]
     public ITimeZones TimeZones => field ??= Services.GetRequiredService<ITimeZones>();
