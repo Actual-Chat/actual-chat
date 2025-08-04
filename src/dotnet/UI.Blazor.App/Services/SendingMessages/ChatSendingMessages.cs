@@ -21,14 +21,14 @@ public class ChatSendingMessages
     {
         lock (_lock)
             GetCollectionFor(sendingMessage).Add(sendingMessage);
-        if (!sendingMessage.LocalId.HasValue) {
-            using (Invalidation.Begin())
-                _ = _triggers.OnNewMessagesChanged();
-        }
-        else {
-            using (Invalidation.Begin())
-                _ = _triggers.OnEditMessageChanged(TextEntryId.New(ChatId, sendingMessage.LocalId.Value));
-        }
+        InvalidateCollection(sendingMessage);
+    }
+
+    public void ConfirmMessageFailedToSend(SendingMessage sendingMessage)
+    {
+        lock (_lock)
+            GetCollectionFor(sendingMessage).Remove(sendingMessage);
+        InvalidateCollection(sendingMessage);
     }
 
     public void ConfirmMessageHasSent(SendingMessage sendingMessage, ChatEntry chatEntry)
@@ -84,5 +84,17 @@ public class ChatSendingMessages
     {
         lock (_lock)
             _editMessages.Remove(sendingMessage);
+    }
+
+    private void InvalidateCollection(SendingMessage sendingMessage)
+    {
+        if (!sendingMessage.LocalId.HasValue) {
+            using (Invalidation.Begin())
+                _ = _triggers.OnNewMessagesChanged();
+        }
+        else {
+            using (Invalidation.Begin())
+                _ = _triggers.OnEditMessageChanged(TextEntryId.New(ChatId, sendingMessage.LocalId.Value));
+        }
     }
 }

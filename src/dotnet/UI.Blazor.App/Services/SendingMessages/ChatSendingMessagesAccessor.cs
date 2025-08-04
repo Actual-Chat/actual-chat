@@ -33,6 +33,8 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
     public async Task<ChatEntry[]> GetNewMessages(AuthorId ownAuthorId)
     {
         var newMessages = await ChatSendingMessages.GetNewMessages().ConfigureAwait(false);
+        // Log.LogInformation("Found {Count} new messages: {Messages}", newMessages.Length,
+        //     newMessages.Select(c => "'" + c.Content + "' (" + c.PostedChatEntry?.LocalId + ")").ToCommaPhrase());
         if (newMessages.Length == 0)
             return Array.Empty<ChatEntry>();
 

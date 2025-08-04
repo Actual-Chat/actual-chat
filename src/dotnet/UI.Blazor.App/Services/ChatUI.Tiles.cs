@@ -164,6 +164,7 @@ public partial class ChatUI
                 lastReadEntryLid = 0;
             else if (shownReadyEntryLid >= idTile.End - 1)
                 lastReadEntryLid = long.MaxValue;
+            var isLastTile = idTile.Contains(chatSendingMessages.RangeEnd - 1);
             var tile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
@@ -172,6 +173,7 @@ public partial class ChatUI
                     expandedConversations,
                     prevMessage,
                     lastReadEntryLid,
+                    isLastTile,
                     chatSendingMessagesWrapper,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -363,6 +365,7 @@ public partial class ChatUI
         IImmutableSet<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
         long lastReadEntryId,
+        bool isLastTile,
         IgnoreComputeArg<ChatSendingMessagesAccessor> chatSendingMessagesWrapper,
         CancellationToken cancellationToken = default)
     {
@@ -414,7 +417,6 @@ public partial class ChatUI
             }
         }
 
-        var isLastTile = idRange.Contains(chatSendingMessages.RangeEnd - 1);
         if (isLastTile) {
             chatSendingMessages.RemoveSentNewMessages();
             var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!).ConfigureAwait(false);

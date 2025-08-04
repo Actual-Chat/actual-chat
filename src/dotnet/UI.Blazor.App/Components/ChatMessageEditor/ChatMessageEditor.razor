@@ -190,14 +190,18 @@
                     EntryAttachments = attachmentListSnapshot.Attachments,
                 };
             }
-            var postTask = Hub.SendingMessages.Post(cmd, CancellationToken.None);
+            var postTask = await Hub.SendingMessages.Post(cmd, CancellationToken.None);
             _ = ForegroundTask.Run(async () => {
-                // TODO(DF): how to handle failures to send message?
-                var chatEntry = await postTask.ConfigureAwait(true);
-                var readEntryLid = chatEntry.LocalId;
-                var readPositionState = ReadPositionStateLease?.Resource;
-                if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
-                    readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+                try {
+                    var chatEntry = await postTask.ConfigureAwait(true);
+                    var readEntryLid = chatEntry.LocalId;
+                    var readPositionState = ReadPositionStateLease?.Resource;
+                    if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
+                        readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+                }
+                catch (Exception e) {
+                    UICommander.ShowError(e);
+                }
             });
             await AttachmentListRef.Clear();
             SearchUI.Clear();
