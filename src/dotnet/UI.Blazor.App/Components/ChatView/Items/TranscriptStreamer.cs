@@ -1,16 +1,15 @@
 using ActualChat.Streaming;
 using ActualChat.Transcription;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 {
-    private readonly IMutableState<StreamingState> _state = hub.StateFactory.NewMutable(StreamingState.None);
+    private readonly IMutableState<TranscriptStreamingState> _state = hub.StateFactory.NewMutable(TranscriptStreamingState.None);
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
-    public IState<StreamingState> State => _state;
+    public IState<TranscriptStreamingState> State => _state;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
 
@@ -51,7 +50,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
                 }
                 else
                     // No streaming
-                    _state.Value = StreamingState.None;
+                    _state.Value = TranscriptStreamingState.None;
                 last = cState.Value;
                 lastCts = streamCts;
             }
@@ -108,13 +107,13 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
         }
     }
 
-    public sealed record StreamingState(
+    public sealed record TranscriptStreamingState(
         string RetainedText,
         string ChangedText,
         string AnimatedText,
         string Tail,
         bool IsStreaming,
         bool IsTranslating) {
-        public static readonly StreamingState None = new("", "", "", "", false, false);
+        public static readonly TranscriptStreamingState None = new("", "", "", "", false, false);
     }
 }

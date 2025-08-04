@@ -185,9 +185,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
             var translatedTranscript = Transcript.Empty;
             try {
-                await publishStreamTask.ConfigureAwait(false);
                 await foreach (var diff in stream.Replay(cancellationToken).ConfigureAwait(false))
                     translatedTranscript = diff.ApplyTo(translatedTranscript);
+                await publishStreamTask.ConfigureAwait(false);
             }
             finally {
                 var contentHash = translationSource.ContentHash.IsNone
