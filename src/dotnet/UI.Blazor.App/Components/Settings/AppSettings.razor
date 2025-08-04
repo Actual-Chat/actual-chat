@@ -122,29 +122,24 @@
     }
 
     private async Task OnEnableTelemetryClick() {
-        await UpdateSettings(x => x with {
+        await AccountSettings.UpdateUserAppSettings(x => x with {
             IsDataCollectionEnabled = !State.Value.IsDataCollectionEnabled,
         });
         await DataCollectionSettingsUI.UpdateState(!State.Value.IsDataCollectionEnabled, CancellationToken.None);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
-        => UpdateSettings(x => x with {
+        => AccountSettings.UpdateUserAppSettings(x => x with {
             AreExperimentalFeaturesEnabled = !State.Value.AreExperimentalFeaturesEnabled,
         });
 
     private Task OnIncompleteUIEnabledClick()
-        => UpdateSettings(x => x with {
+        => AccountSettings.UpdateUserAppSettings(x => x with {
             IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled,
         });
 
     private void OnLogUIEnabledClick()
         => LogUI.IsEnabled.Value = !State.Value.IsLogUIEnabled;
-
-    private async Task UpdateSettings(Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default) {
-        var settings = await AccountSettings.GetUserAppSettings(cancellationToken);
-        await AccountSettings.SetUserAppSettings(update(settings), cancellationToken);
-    }
 
     // Nested types
 

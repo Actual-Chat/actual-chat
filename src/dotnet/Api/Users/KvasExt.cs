@@ -88,6 +88,11 @@ public static class KvasExt
     public static Task SetUserAppSettings(this IKvas<User> kvas, UserAppSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserAppSettings.KvasKey, value, cancellationToken);
 
+    public static async Task UpdateUserAppSettings(this IKvas<User> kvas, Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default) {
+        var settings = await kvas.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
+        await kvas.SetUserAppSettings(update(settings), cancellationToken).ConfigureAwait(false);
+    }
+
     // UserEmailsSettings
 
     public static async ValueTask<UserEmailsSettings> GetUserEmailsSettings(

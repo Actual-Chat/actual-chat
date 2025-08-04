@@ -153,10 +153,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
             async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken cancellationToken1) {
                 try {
-                    using var processCts = cancellationToken1.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
-                    processCts.CancelAfter(ProcessTimeout);
-
-                    await Process(shardIndex, message, processCts.Token).ConfigureAwait(false);
+                    await Process(shardIndex, message, cancellationToken1).ConfigureAwait(false);
                     Interlocked.Increment(ref handledCount);
                 }
                 catch (ObjectDisposedException) {

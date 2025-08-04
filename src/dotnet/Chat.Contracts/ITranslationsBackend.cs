@@ -38,13 +38,16 @@ public sealed partial record TranslationsBackend_Translate(
     [property: DataMember, MemoryPackOrder(1)] Language TargetLanguage,
     [property: DataMember, MemoryPackOrder(2)] bool OverwriteIfVersionMismatch,
     [property: DataMember, MemoryPackOrder(3)] bool SkipRealtimeTranslation
-) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationSourceId>, IHasUuid
+) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationSourceId>, IHasUuid, IHasTimeout
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public TranslationSourceId ShardKey => SourceId;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     string IHasUuid.Uuid => "Translate:" + SourceId.Value;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public TimeSpan? Timeout => TimeSpan.FromSeconds(180);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
