@@ -155,7 +155,10 @@
         var isUnreadByOthers = IsUnreadByOthers;
         var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
         // When entry isSending, it's a local chat entry. It does not exist on the server side.
-        var entry = message.Entry.IsSending ? message.Entry : await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
+        if (message.Entry.IsSending)
+            return new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.TranscriptStreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+
+        var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
             return _rendered ?? new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.TranscriptStreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
