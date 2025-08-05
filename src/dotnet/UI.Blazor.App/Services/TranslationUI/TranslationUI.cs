@@ -1,5 +1,4 @@
 using ActualChat.Streaming;
-using ActualChat.Transcription;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -59,7 +58,8 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (!entry.SupportsTranslation(isForStreaming))
             return false;
 
-        if (!isForStreaming)
+        if (!isForStreaming && !entry.HasMediaEntry)
+            // always for typed text entries
             return true;
 
         return await IsForeignEntry(entry.Id.ToTextEntryId(), true, cancellationToken).ConfigureAwait(false) == true;
@@ -116,25 +116,6 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var targetLanguage = await GetTargetLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
         return await Translations.Get(session, TranslationId.New(translationSourceId, targetLanguage), cancellationToken).ConfigureAwait(false);
     }
-
-   public async IAsyncEnumerable<TranscriptDiff> GetTranscript(ChatEntry entry, [EnumeratorCancellation] CancellationToken cancellationToken) {
-        var targetLanguage = await GetTargetLanguage(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var streamId = entry.IsStreaming
-            ? StreamId.New(StreamId.Parse(entry.StreamId), targetLanguage)
-            : null;
-
-        if (streamId is null) {
-            var translation = await Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
-            if (translation?.StreamId is null)
-                yield break;
-
-            streamId = translation.StreamId;
-        }
-
-        var transcriptStream = StreamClient.GetTranscript(streamId.Value, cancellationToken);
-        await foreach(var diff in transcriptStream.ConfigureAwait(false))
-            yield return diff;
-   }
 
    [ComputeMethod]
    protected virtual async Task<bool> MustSuggest(ChatId chatId, CancellationToken cancellationToken)
