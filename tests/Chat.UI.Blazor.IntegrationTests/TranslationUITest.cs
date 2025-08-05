@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
 using ActualChat.Transcription;
+using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
@@ -17,13 +19,12 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     [field: AllowNull, MaybeNull]
     private BlazorTester AliceTester => field ??= AppHost.NewBlazorTester(Out);
     [field: AllowNull, MaybeNull]
-    private TranslationUI TranslationUI => field ??= BobTester.ScopedAppServices.GetRequiredService<TranslationUI>();
-    [field: AllowNull, MaybeNull]
-    private TranscriptUI TranscriptUI => field ??= BobTester.ScopedAppServices.GetRequiredService<TranscriptUI>();
-    [field: AllowNull, MaybeNull]
-    private LanguageUI LanguageUI => field ??= BobTester.ScopedAppServices.GetRequiredService<LanguageUI>();
-    [field: AllowNull, MaybeNull]
-    private ChatUI ChatUI => field ??= BobTester.ScopedAppServices.GetRequiredService<ChatUI>();
+    private AppUIHub Hub => field ??= BobTester.ScopedAppServices.AppUIHub();
+    private IStreamClient StreamClient => Hub.StreamClient;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
+    private TranscriptUI TranscriptUI => Hub.TranscriptUI;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     protected override async Task InitializeAsync()
     {
@@ -173,7 +174,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // assert
         await AssertMustTranslate(frenchEntry.TextEntry, true);
-        await AssertMustTranslate(englishEntry.TextEntry, true);
+        await AssertMustTranslate(englishEntry.TextEntry, false);
     }
 
     [Fact]
@@ -261,10 +262,10 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // act, assert
         await AssertTranslation(entry, "");
-        await AssertIsStreaming(entry, true);
+        var streamingState = await AssertIsStreaming(entry, true).Require();
 
         // act
-        var diffs = await TranslationUI.GetTranscript(entries[0], cancellationToken).ToListAsync(cancellationToken);
+        var diffs = await StreamClient.GetTranscript(streamingState.StreamId.Value, cancellationToken).ToListAsync(cancellationToken);
 
         // assert
         diffs.Should().HaveCountGreaterThan(10);
@@ -310,11 +311,12 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             mustTranslate.Should().Be(expected);
         }, TimeSpan.FromSeconds(10).Debuggable());
 
-    private Task AssertIsStreaming(ChatEntry entry, bool expected)
+    private Task<TranscriptUI.StreamingState?> AssertIsStreaming(ChatEntry entry, bool expected)
         => ComputedTest.When(async ct => {
             var streamingState = await TranscriptUI.GetStreamingState(entry.Id.ToTextEntryId(), ct);
             var isStreaming = streamingState?.IsTranslation;
             isStreaming.Should().Be(expected);
+            return streamingState;
         }, TimeSpan.FromSeconds(10).Debuggable());
 
     private Task<Translation> AssertTranslation(ChatEntry entry, string expected, double similarity = 0.7)

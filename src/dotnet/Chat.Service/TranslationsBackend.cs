@@ -321,7 +321,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var translation = await Commander
             .Call(cmd, cancellationToken)
             .ConfigureAwait(false);
-        if (translation!.Version != newTranslationVersion)
+        if (translation.Version != newTranslationVersion)
             return translatedStreamId; // Already being translated
 
         var worker = _activePublishers.GetOrAdd(translatedStreamId,
