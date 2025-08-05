@@ -6,10 +6,10 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 {
-    private readonly IMutableState<TranscriptStreamingState> _state = hub.StateFactory.NewMutable(TranscriptStreamingState.None);
+    private readonly IMutableState<TranscriptStreamerState> _state = hub.StateFactory.NewMutable(TranscriptStreamerState.None);
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
-    public IState<TranscriptStreamingState> State => _state;
+    public IState<TranscriptStreamerState> State => _state;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
 
@@ -50,7 +50,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
                 }
                 else
                     // No streaming
-                    _state.Value = TranscriptStreamingState.None;
+                    _state.Value = TranscriptStreamerState.None;
                 last = cState.Value;
                 lastCts = streamCts;
             }
@@ -106,14 +106,14 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
             // wraps OperationCanceledException into HubException, so here we suppress it.
         }
     }
+}
 
-    public sealed record TranscriptStreamingState(
-        string RetainedText,
-        string ChangedText,
-        string AnimatedText,
-        string Tail,
-        bool IsStreaming,
-        bool IsTranslating) {
-        public static readonly TranscriptStreamingState None = new("", "", "", "", false, false);
-    }
+public sealed record TranscriptStreamerState(
+    string RetainedText,
+    string ChangedText,
+    string AnimatedText,
+    string Tail,
+    bool IsStreaming,
+    bool IsTranslating) {
+    public static readonly TranscriptStreamerState None = new("", "", "", "", false, false);
 }
