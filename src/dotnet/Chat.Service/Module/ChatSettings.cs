@@ -24,7 +24,7 @@ public class TranslationSettings
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1";
     public int OpenAIModelMaxTokens { get; set; } = 32768;
-    public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-nano";
+    public string RealtimeOpenAIModel { get; set; } = "gpt-4.1-mini";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
     public int StreamingMinContentLength { get; set; } = 50;
     public TimeSpan StreamExpirationDelay { get; set; } = TimeSpan.FromSeconds(10);
