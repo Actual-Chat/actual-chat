@@ -20,7 +20,12 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     [field: AllowNull, MaybeNull]
-    private string PromptTemplateString => field ??= File.ReadAllText(Settings.Translation.PromptFile).RequireNonEmpty();
+    private string PromptTemplateString => field
+        ??= File.ReadAllText(
+            OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey) && !Settings.Translation.RealtimePromptFile.IsEmpty
+                ? Settings.Translation.RealtimePromptFile
+                : Settings.Translation.PromptFile
+        ).RequireNonEmpty();
 
     [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
@@ -47,7 +52,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             return textToTranslate;
 
         var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
-        var chatHistory = BuildRequest(textToTranslate, context);
+        var chatHistory = BuildRequest(textToTranslate, targetLanguage, context);
 
         var response = await Completion
             .GetChatMessageContentAsync(
@@ -73,7 +78,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         }
 
         var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
-        var chatHistory = BuildRequest(textToTranslate, context);
+        var chatHistory = BuildRequest(textToTranslate, targetLanguage, context);
 
         await foreach (var diff in StreamTranslation().ConfigureAwait(false))
             yield return diff;
@@ -126,19 +131,53 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             .RenderAsync(Kernel, arguments, cancellationToken)
             .ConfigureAwait(false);
 
+        // estimate for the response length
+        var maxTokens = OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey)
+            ? Math.Min(textToTranslate.Length * 8, Settings.Translation.RealtimeOpenAIModelMaxTokens)
+            : Math.Min(textToTranslate.Length * 8, Settings.Translation.OpenAIModelMaxTokens);
         return new OpenAIPromptExecutionSettings {
             Temperature = 0.1,
             ChatSystemPrompt = systemMessage.Trim(),
-            MaxTokens = Math.Min(textToTranslate.Length * 8,
-                Settings.Translation.OpenAIModelMaxTokens), // estimate for the response length
-            FrequencyPenalty = 1.0,
+            MaxTokens = maxTokens,
+            FrequencyPenalty = 0.5,
+            TopP = 0.1,
             ResponseFormat = "text",
         };
     }
 
-    private static ChatHistory BuildRequest(string textToTranslate, TranslationResult[] context)
+    private static ChatHistory BuildRequest(
+        string textToTranslate,
+        Language targetLanguage,
+        TranslationResult[] context)
     {
         var chatHistory = new ChatHistory();
+        if (context.Length == 0) {
+            // Provide translation examples to improve the quality of the translation
+            if (targetLanguage.IsAnyEnglish) {
+                chatHistory.AddUserMessage("Хорошо.");
+                chatHistory.AddAssistantMessage("Alright.");
+                chatHistory.AddUserMessage("Да");
+                chatHistory.AddAssistantMessage("Yes");
+                chatHistory.AddUserMessage("Bien");
+                chatHistory.AddAssistantMessage("Right");
+            }
+            if (targetLanguage.IsAnySpanish) {
+                chatHistory.AddUserMessage("Good.");
+                chatHistory.AddAssistantMessage("Bueno.");
+                chatHistory.AddUserMessage("Yep");
+                chatHistory.AddAssistantMessage("Sí");
+                chatHistory.AddUserMessage("Right");
+                chatHistory.AddAssistantMessage("Bien");
+            }
+            if (targetLanguage == Languages.Russian) {
+                chatHistory.AddUserMessage("Alright.");
+                chatHistory.AddAssistantMessage("Хорошо.");
+                chatHistory.AddUserMessage("Yes");
+                chatHistory.AddAssistantMessage("Да");
+                chatHistory.AddUserMessage("Bien");
+                chatHistory.AddAssistantMessage("Хорошо");
+            }
+        }
         foreach (var (text, translated) in context) {
             if (string.IsNullOrWhiteSpace(text))
                 continue;

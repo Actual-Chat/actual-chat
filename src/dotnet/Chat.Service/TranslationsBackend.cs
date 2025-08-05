@@ -49,6 +49,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!translationSource.NeedsTranslation(translation))
             return translation;
 
+        if (translation?.Content.IsNullOrEmpty() == false)
+            return translation; // Skip ad-hoc translation if already exists
+
         // we only try to enqueue and fast return to allow compute method to cache current result
         var cmd = new TranslationsBackend_Translate(id.SourceId, id.Language, false, false);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
@@ -71,7 +74,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        await dbContext.Translations.LockShared(id, cancellationToken).ConfigureAwait(false);
         var dbTranslation = await dbContext.Translations.GetAsNoTracking(id.Value, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
 
@@ -128,7 +130,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
         var id = TranslationId.New(sourceId, targetLanguage);
         var (translationSource, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!translationSource.NeedsTranslation(translation))
+        var isRetranslation = translation is not null && ignoreVersion && skipRealtime;
+        if (!translationSource.NeedsTranslation(translation, isRetranslation))
             return translation;
 
         return skipRealtime || translationSource.Content.Length < Settings.Translation.StreamingMinContentLength
@@ -439,10 +442,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 }
                 finally {
                     try {
-                        // Delay to ensure ITranslationsBackend.Get() will return the finalized translation
-                        // Wait for Chat Entry Finalization - without delay translation will be skipped due to empty Content
-                        // TODO(AK): Think about more robust approach
-                        await Task.Delay(TranslateThrottleDelay * 2, cancellationToken).ConfigureAwait(false);
+                        // // Delay to ensure ITranslationsBackend.Get() will return the finalized translation
+                        // // Wait for Chat Entry Finalization - without delay translation will be skipped due to empty Content
+                        // // TODO(AK): Think about more robust approach
+                        // await Task.Delay(TranslateThrottleDelay * 2, cancellationToken).ConfigureAwait(false);
 
                         // Enqueue the translation command to retranslate full finalized transcript with larger context and model
                         // StreamId will be cleaned up by this command

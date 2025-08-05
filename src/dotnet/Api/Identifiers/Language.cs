@@ -26,6 +26,9 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     public string Title { get; }
     [IgnoreDataMember]
     public bool IsAnyEnglish { get; }
+    [IgnoreDataMember]
+    public bool IsAnySpanish { get; }
+
 
     // Factories and constructors
 
@@ -35,6 +38,7 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
         ShortTitle = shortTitle;
         Title = title;
         IsAnyEnglish = shortTitle.OrdinalIgnoreCaseStartsWith("en");
+        IsAnySpanish = shortTitle.OrdinalIgnoreCaseStartsWith("es");
     }
 
     // Equality
