@@ -49,9 +49,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!translationSource.NeedsTranslation(translation))
             return translation;
 
-        if (translation?.Content.IsNullOrEmpty() == false)
-            return translation; // Skip ad-hoc translation if already exists
-
         // we only try to enqueue and fast return to allow compute method to cache current result
         var cmd = new TranslationsBackend_Translate(id.SourceId, id.Language, false, false);
         await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
@@ -74,11 +71,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbTranslation = await dbContext.Translations.GetAsNoTracking(id.Value, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
 
+        DbTranslation? dbTranslation;
         if (change.IsCreate(out var update)) {
-            if (dbTranslation != null)
+            // Lock is required. We can't double-check the existence of the translation because we use RepeatableRead isolation level..
+            await dbContext.Translations.Lock(id, cancellationToken).ConfigureAwait(false);
+
+            dbTranslation = await dbContext.Translations.GetAsNoTracking(id.Value, cancellationToken).ConfigureAwait(false);
+            if (dbTranslation is not null)
                 return dbTranslation.ToModel();
 
             var translation = new Translation(id) {
@@ -90,10 +91,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 CreatedAt = now,
                 ModifiedAt = now,
             };
-            await dbContext.Translations.Lock(id, cancellationToken).ConfigureAwait(false);
+
             dbContext.Add(dbTranslation);
         }
         else if (change.IsUpdate(out update)) {
+            dbTranslation = await dbContext.Translations.GetAsNoTracking(id.Value, cancellationToken).ConfigureAwait(false);
             if (dbTranslation is null)
                 return null;
 
@@ -160,7 +162,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 : Change.Update(translationDiff);
             var version = ignoreVersion ? null : translation?.Version;
             var cmd = new TranslationsBackend_Change(id, version, change);
-            return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+            return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
 
         async Task<Translation?> StreamTranslation()
@@ -205,7 +207,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     id,
                     translation.Version,
                     finalizeChange);
-                translation = await Commander.Call(finalizeCmd, true, cancellationToken).ConfigureAwait(false);
+                translation = await Commander.Call(finalizeCmd, cancellationToken).ConfigureAwait(false);
             }
             return translation;
         }
