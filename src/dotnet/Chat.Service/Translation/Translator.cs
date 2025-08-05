@@ -95,6 +95,8 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 if (suffix.IsNullOrEmpty())
                     continue;
 
+                // DebugLog?.LogDebug("Stream: {TranslatedContent} with [{Context}]", suffix, string.Join(',', context));
+
                 sb.Append(suffix);
                 var translatedText = sb.ToString().Trim();
                 if (OrdinalEquals(translatedText, Constants.Translation.NoTranslationNeededText))

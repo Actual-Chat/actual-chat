@@ -44,7 +44,7 @@ public sealed partial record TranslationsBackend_Translate(
     public TranslationSourceId ShardKey => SourceId;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    string IHasUuid.Uuid => "Translate:" + SourceId.Value;
+    string IHasUuid.Uuid => $"Translate:{SourceId.Value}:{TargetLanguage.Value}";
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public TimeSpan? Timeout => TimeSpan.FromSeconds(180);
