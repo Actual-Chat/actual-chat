@@ -143,10 +143,10 @@
                 || _rendered.Translation != stateValue.Translation
                 || _rendered.IsUnread != stateValue.IsUnread
                 || _rendered.IsUnreadBlockStart != stateValue.IsUnreadBlockStart);
-        if (!shouldRender) {
-            Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
-                Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
-        }
+        // if (!shouldRender) {
+        //     Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
+        //         Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
+        // }
         return shouldRender;
     }
 
