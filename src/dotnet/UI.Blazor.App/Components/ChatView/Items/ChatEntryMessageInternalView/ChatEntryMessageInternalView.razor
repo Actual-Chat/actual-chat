@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedRenderStateComponent<AppUIHub, ChatEntryMessageInternalView.Model>
 @{
     var m = State.Value;
@@ -42,7 +43,7 @@
         }
     };
 }
-<p class="chat-message-markup @translationCls @streamingCls">
+<p @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
         <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
     }
@@ -86,6 +87,8 @@
 </p>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatEntryMessageInternalView.create";
+
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
@@ -97,6 +100,10 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
+
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<ChatEntryMessageInternalView> BlazorRef { get; set; } = null!;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
@@ -114,6 +121,16 @@
         var textEntryId = TextEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
         _streamer = new (textEntryId, Hub);
         _streamer.Start();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod,
+                BlazorRef,
+                Ref);
+        }
     }
 
     protected override bool ShouldRender() {
