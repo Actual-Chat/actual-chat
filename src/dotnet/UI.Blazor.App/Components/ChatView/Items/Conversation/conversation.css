@@ -208,7 +208,7 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
 /* Test styles */
 .author-incut {
     @apply flex-none;
-    @apply w-5 h-5;
+    @apply w-6 h-6;
     @apply rounded-full;
     @apply overflow-hidden;
 }

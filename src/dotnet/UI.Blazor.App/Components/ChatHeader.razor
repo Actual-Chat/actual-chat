@@ -59,11 +59,11 @@
     @if (chat is not null) {
         <div class="chat-header-control-panel">
             <TranslationButton ChatId="@chat.Id"/>
-            @if (m.EnableIncompleteUI) {
-                <HeaderButton Click="@OnSearchClick" Class="@searchCls">
-                    <i class="icon-ai-search"></i>
-                </HeaderButton>
-            }
+            @* @if (m.EnableIncompleteUI) { *@
+                @* <HeaderButton Click="@OnSearchClick" Class="@searchCls"> *@
+                    @* <i class="icon-ai-search"></i> *@
+                @* </HeaderButton> *@
+            @* } *@
             @if (chat.Id.IsThread(out var threadChatId)) {
                 <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId" />
             }
