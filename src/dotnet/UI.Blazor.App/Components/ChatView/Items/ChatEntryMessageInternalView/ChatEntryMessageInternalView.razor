@@ -112,6 +112,10 @@
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
 
     public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
         await _streamer.DisposeSilentlyAsync().ConfigureAwait(false);
         await base.DisposeAsync().ConfigureAwait(false);
     }
