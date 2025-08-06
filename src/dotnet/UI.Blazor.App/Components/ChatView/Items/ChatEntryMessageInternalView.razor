@@ -148,16 +148,16 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
-        var renderedEntry = _rendered?.Entry ?? message.Entry;
-        var markup = _rendered?.Markup ?? Markup;
-        var isRenderedTranslated = (_rendered?.Translation ?? TranslationState.None) != TranslationState.None;
-        var isRenderedStreaming = _rendered?.IsStreaming ?? false;
         var isUnreadByOthers = IsUnreadByOthers;
         var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
         // When entry isSending, it's a local chat entry. It does not exist on the server side.
         if (message.Entry.IsSending)
-            return new Model(markup, message.Entry, TranslationState.None, TranscriptStreamer.TranscriptStreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+            return new Model(Markup, message.Entry, TranslationState.None, TranscriptStreamer.TranscriptStreamingState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
+        var renderedEntry = _rendered?.Entry ?? message.Entry;
+        var markup = _rendered?.Markup ?? Markup;
+        var isRenderedTranslated = (_rendered?.Translation ?? TranslationState.None) != TranslationState.None;
+        var isRenderedStreaming = _rendered?.IsStreaming ?? false;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);
