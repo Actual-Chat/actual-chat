@@ -6,42 +6,61 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncDisposable
 {
-    private readonly ConcurrentDictionary<ChatId, ChatSendingMessages> _chatSendingMessages = new ();
+    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
+
+    private readonly Dictionary<ChatId, ChatSendingMessages> _chatSendingMessages = new ();
+    private readonly Lock _chatSendingMessagesLock = new (); // This lock is used add/remove ChatSendingMessages and add/remove items inside.
     private readonly PostRequestsStorage _requestsStorage;
     private readonly Task _whenReady;
     private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly MessageProcessor<PostMessageQueueItem> _messageProcessor;
+    // ReSharper disable once NotAccessedField.Local
+    private readonly Task _pruneSendingMessagesTask;
 
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
+    private Moment Now => Hub.Clocks.SystemClock.Now;
 
     public SendingMessages(AppUIHub hub) : base(hub)
     {
+        DebugLog?.LogInformation("SendingMessages constructor");
         _requestsStorage = new PostRequestsStorage(hub);
         _whenReady = BackgroundTask.Run(StartStoredPostRequests);
-        _cancellationTokenSource = hub.BlazorAppLifecycle.StopToken.CreateLinkedTokenSource();
+        var cancellationToken = hub.BlazorAppLifecycle.StopToken;
+        _cancellationTokenSource = cancellationToken.CreateLinkedTokenSource();
         _messageProcessor = new MessageProcessor<PostMessageQueueItem>(ProcessQueueItem, _cancellationTokenSource) {
             QueueSize = 100,
             QueueFullMode = BoundedChannelFullMode.Wait,
             ProcessCallTimeout = TimeSpan.Zero, // No limit to command processing
         };
+        _pruneSendingMessagesTask = AsyncChain.From(PruneSendingMessages)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
+            .AppendDelay(Interval)
+            .CycleForever()
+            .RunIsolated(cancellationToken);
     }
 
     public ChatSendingMessagesAccessor GetSendingMessages(ChatId chatId, long rangeEnd)
     {
-        var chatSendingMessages = GetChatSendingMessages(chatId);
+        ChatSendingMessages chatSendingMessages;
+        lock (_chatSendingMessagesLock)
+            chatSendingMessages = GetChatSendingMessages(chatId);
         DebugLog?.LogInformation("-> GetSendingMessages. ChatId='{ChatId}', RangeEnd='{RangeEnd}'", chatId, rangeEnd);
         return new ChatSendingMessagesAccessor(chatSendingMessages, rangeEnd);
     }
 
     public async Task<Task<ChatEntry>> Post(Chats_UpsertTextEntry cmd, CancellationToken cancellationToken)
     {
+        DebugLog?.LogInformation("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry>();
         await _whenReady.ConfigureAwait(false);
         var uuid = Ulid.NewUlid().ToString();
         var entry = new PostRequestEntry(uuid, cmd, now);
+        DebugLog?.LogInformation("About to store post request '{Text}'", cmd.Text);
         await _requestsStorage.Add(entry, cancellationToken).ConfigureAwait(false);
         _ = BackgroundTask.Run(async () => {
+            DebugLog?.LogInformation("About to post internal '{Text}'", cmd.Text);
             await PostInternal(entry, resultSource, cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
         return resultSource.Task;
@@ -49,6 +68,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     private async Task StartStoredPostRequests()
     {
+        DebugLog?.LogInformation("StartStoredPostRequests");
         CancellationToken cancellationToken = CancellationToken.None;
         var entries = await _requestsStorage.GetStored(cancellationToken).ConfigureAwait(false);
         foreach (var entry in entries) {
@@ -74,9 +94,12 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     {
         try {
             var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(entry.Command), cancellationToken);
-            var chatSendingMessages = GetChatSendingMessages(entry.Command.ChatId);
             var sendingMessage = CreateSendingMessage(entry);
-            chatSendingMessages.AddSendingMessage(sendingMessage);
+            ChatSendingMessages chatSendingMessages;
+            lock (_chatSendingMessagesLock) {
+                chatSendingMessages = GetChatSendingMessages(entry.Command.ChatId);
+                chatSendingMessages.AddSendingMessage(sendingMessage);
+            }
             DebugLog?.LogInformation("Sending message: LocalId={LocalId}, Content='{Content}'",
                 entry.Command.LocalId,
                 entry.Command.Text);
@@ -103,7 +126,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                     entry.Command.Text);
             }
             if (result.IsValue(out var chatEntry1, out var exception)) {
-                chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1);
+                chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
                 resultSource.SetResult(chatEntry1);
             }
             else {
@@ -154,7 +177,33 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     }
 
     private ChatSendingMessages GetChatSendingMessages(ChatId chatId)
-        => _chatSendingMessages.GetOrAdd(chatId, static (chatId1, self) => new ChatSendingMessages(self, chatId1), this);
+    {
+        if (_chatSendingMessages.TryGetValue(chatId, out var chatSendingMessages))
+            return chatSendingMessages;
+
+        chatSendingMessages = new ChatSendingMessages(this, chatId);
+        _chatSendingMessages.Add(chatId, chatSendingMessages);
+        return chatSendingMessages;
+    }
+
+    private Task PruneSendingMessages(CancellationToken cancellationToken)
+    {
+        lock (_chatSendingMessagesLock) {
+            var keys = _chatSendingMessages.Keys.ToArray();
+            foreach (var chatId in keys) {
+                if (!_chatSendingMessages.TryGetValue(chatId, out var chatSendingMessages))
+                    continue;
+
+                chatSendingMessages.PruneSentMessages(Now);
+                // NOTE(DF): do not remove empty, they will be recreated on GetSendingMessages again.
+                // if (chatSendingMessages.IsEmpty) {
+                //     _chatSendingMessages.Remove(chatId);
+                //     DebugLog?.LogInformation("Removed ChatSendingMessages for chat '{ChatId}'", chatId);
+                // }
+            }
+        }
+        return Task.CompletedTask;
+    }
 
     public async ValueTask DisposeAsync()
     {

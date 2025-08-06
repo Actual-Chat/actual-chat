@@ -10,11 +10,32 @@ public class ChatSendingMessages
     public SendingMessages Owner { get; init; }
     public ChatId ChatId { get; init; }
 
+    public bool IsEmpty {
+        get {
+            lock (_lock)
+                return _newMessages.Count == 0 && _editMessages.Count == 0;
+        }
+    }
+
     public ChatSendingMessages(SendingMessages owner, ChatId chatId)
     {
         Owner = owner;
         ChatId = chatId;
         _triggers = owner.Hub.Services.GetRequiredService<ChatSendingMessagesTriggers>();
+    }
+
+    public async Task<SendingMessage[]> GetNewMessages()
+    {
+        await _triggers.OnNewMessagesChanged(ChatId).ConfigureAwait(false);
+        lock (_lock)
+            return _newMessages.Count > 0 ? _newMessages.Where(c => !c.ToBeRemoved).ToArray() : [];
+    }
+
+    public async Task<SendingMessage?> GetEditedMessage(ChatEntryId chatEntryId)
+    {
+        await _triggers.OnEditMessageChanged(chatEntryId).ConfigureAwait(false);
+        lock (_lock)
+            return _editMessages.Count > 0 ? _editMessages.FirstOrDefault(c => !c.ToBeRemoved && c.LocalId == chatEntryId.LocalId) : null;
     }
 
     public void AddSendingMessage(SendingMessage sendingMessage)
@@ -24,39 +45,22 @@ public class ChatSendingMessages
         InvalidateCollection(sendingMessage);
     }
 
+    public void ConfirmMessageHasSent(SendingMessage sendingMessage, ChatEntry chatEntry, Moment now)
+    {
+        lock (_lock)
+            sendingMessage.ConfirmHasSent(chatEntry, now);
+
+        if (!sendingMessage.LocalId.HasValue)
+            return;
+
+        using (Invalidation.Begin())
+            _ = _triggers.OnEditMessageChanged(TextEntryId.New(ChatId, sendingMessage.LocalId.Value));
+    }
+
     public void ConfirmMessageFailedToSend(SendingMessage sendingMessage)
     {
-        lock (_lock)
-            GetCollectionFor(sendingMessage).Remove(sendingMessage);
+        sendingMessage.MarkToRemove();
         InvalidateCollection(sendingMessage);
-    }
-
-    public void ConfirmMessageHasSent(SendingMessage sendingMessage, ChatEntry chatEntry)
-    {
-        lock (_lock)
-            sendingMessage.ConfirmHasSent(chatEntry);
-
-        if (sendingMessage.LocalId.HasValue) {
-            using (Invalidation.Begin())
-                _ = _triggers.OnEditMessageChanged(TextEntryId.New(ChatId, sendingMessage.LocalId.Value));
-        }
-
-        _ = BackgroundTask.Run(async () => {
-            // TODO(DF): improve cleanup
-            await Task.Delay(60000).ConfigureAwait(false);
-            lock (_lock)
-                GetCollectionFor(sendingMessage).Remove(sendingMessage);
-        });
-    }
-
-    private List<SendingMessage> GetCollectionFor(SendingMessage sendingMessage)
-        => sendingMessage.LocalId.HasValue ? _editMessages : _newMessages;
-
-    public async Task<SendingMessage[]> GetNewMessages()
-    {
-        await _triggers.OnNewMessagesChanged().ConfigureAwait(false);
-        lock (_lock)
-            return _newMessages.Count == 0 ? Array.Empty<SendingMessage>() : _newMessages.ToArray();
     }
 
     public void RemoveSentNewMessages(long rangeEnd)
@@ -65,36 +69,36 @@ public class ChatSendingMessages
             if (_newMessages.Count == 0)
                 return;
 
-            _newMessages.RemoveAll(m => m.PostedChatEntry is not null && m.PostedChatEntry.LocalId < rangeEnd);
-        }
-    }
-
-    public async Task<SendingMessage?> GetEditedMessage(ChatEntryId chatEntryId)
-    {
-        await _triggers.OnEditMessageChanged(chatEntryId).ConfigureAwait(false);
-        lock (_lock) {
-            if (_editMessages.Count == 0)
-                return null;
-
-            return _editMessages.FirstOrDefault(c => c.LocalId == chatEntryId.LocalId);
+            foreach (var sendingMessage in _newMessages.Where(m => m.PostedChatEntry is not null && m.PostedChatEntry.LocalId < rangeEnd))
+                sendingMessage.MarkToRemove();
         }
     }
 
     public void ConfirmEditedMessagedHasLoaded(SendingMessage sendingMessage)
+        => sendingMessage.MarkToRemove();
+
+    public void PruneSentMessages(Moment now)
     {
-        lock (_lock)
-            _editMessages.Remove(sendingMessage);
+        lock (_lock) {
+            var threshold = now + TimeSpan.FromMinutes(-1);
+            Prune(_editMessages, threshold);
+            Prune(_newMessages, threshold);
+        }
+        return;
+
+        static void Prune(List<SendingMessage> messages, Moment threshold)
+            => messages.RemoveAll(c => c.ToBeRemoved || (c.SentMoment.HasValue && c.SentMoment < threshold));
     }
 
     private void InvalidateCollection(SendingMessage sendingMessage)
     {
-        if (!sendingMessage.LocalId.HasValue) {
-            using (Invalidation.Begin())
-                _ = _triggers.OnNewMessagesChanged();
-        }
-        else {
-            using (Invalidation.Begin())
+        using (Invalidation.Begin())
+            if (!sendingMessage.LocalId.HasValue)
+                _ = _triggers.OnNewMessagesChanged(ChatId);
+            else
                 _ = _triggers.OnEditMessageChanged(TextEntryId.New(ChatId, sendingMessage.LocalId.Value));
-        }
     }
+
+    private List<SendingMessage> GetCollectionFor(SendingMessage sendingMessage)
+        => sendingMessage.LocalId.HasValue ? _editMessages : _newMessages;
 }
