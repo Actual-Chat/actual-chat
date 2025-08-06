@@ -4,6 +4,11 @@
 }
 .translation-marker {
     @apply top-1;
+    @apply pl-1;
+}
+.playable-text-markup .translation-marker,
+.plain-text-markup .translation-marker {
+    @apply pl-0;
 }
 .entry-marker {
     @apply relative;

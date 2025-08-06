@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import { debounce } from 'promises';
+import { setTimeout } from 'timerQueue';
 
 export class ChatEntryMessageInternalView {
     private blazorRef: DotNet.DotNetObject;
@@ -18,6 +19,7 @@ export class ChatEntryMessageInternalView {
         characterData: true,
         characterDataOldValue: true,
     };
+    private isResizing: boolean = false;
     private disposed$: Subject<void> = new Subject<void>();
 
     static create(blazorRef: DotNet.DotNetObject, messageMarkup: HTMLElement): ChatEntryMessageInternalView {
@@ -56,6 +58,21 @@ export class ChatEntryMessageInternalView {
 
         this.disposed$.next();
         this.disposed$.complete();
+
+        if (this.mutationObserver) {
+            this.mutationObserver.disconnect();
+        }
+
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+
+        if (this.retainedMutationObserver) {
+            this.retainedMutationObserver.disconnect();
+        }
+
+        this.retainedText = null;
+        this.changesText = null;
     }
 
     private updateHeightOnWidthChange: ResizeObserverCallback = () => {
@@ -85,6 +102,9 @@ export class ChatEntryMessageInternalView {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach((node) => {
                     if (node instanceof HTMLElement && node.classList.contains('retained')) {
+                        if (this.retainedText)
+                            this.retainedMutationObserver.disconnect();
+
                         this.retainedText = node as HTMLElement;
                         this.retainedMutationObserver.observe(this.retainedText, this.observerOptions);
                     }
@@ -94,8 +114,7 @@ export class ChatEntryMessageInternalView {
                     }
                     if (node instanceof HTMLElement && node.classList.contains('change-item')) {
                         if (!this.changesText) {
-                            const changeItem = node as HTMLElement;
-                            this.changesText = changeItem.closest('.changes');
+                            this.changesText = node.closest('.changes');
                         }
                         this.changeSizeForPlainText(false);
                     }
@@ -103,6 +122,7 @@ export class ChatEntryMessageInternalView {
 
                 mutation.removedNodes.forEach((node) => {
                     if (node instanceof HTMLElement && node.classList.contains('retained')) {
+                        this.retainedMutationObserver.disconnect();
                         this.retainedText = null;
                     }
                     if (node instanceof HTMLElement && node.classList.contains('changes')) {
@@ -116,30 +136,39 @@ export class ChatEntryMessageInternalView {
     private changeSizeDebounced = debounce((height: number) => this.changeSize(height), 200);
 
     private changeSize(height: number) {
-        this.messageMarkup.addEventListener('transitionend', (e: TransitionEvent) => this.onTransitionEnd(e));
-        if (this.markupHeight != height) {
-            this.messageMarkup.style.height = height + 'px';
-        }
+        if (this.isResizing || this.markupHeight === height)
+            return;
+
+        this.isResizing = true;
+
+        this.messageMarkup.removeEventListener('transitionend', this.onTransitionEndBound);
+        this.messageMarkup.addEventListener('transitionend', this.onTransitionEndBound);
+
+        this.messageMarkup.style.height = height + 'px';
+        this.markupHeight = height;
+
+        setTimeout(() => {
+            this.isResizing = false;
+        }, 500);
     }
 
     private changeSizeForPlainText(withDebounce: boolean = true) {
         const range = document.createRange();
         range.selectNodeContents(this.messageMarkup);
-        const height = Math.floor(range.getBoundingClientRect().height);
-        if (height != this.messageMarkup.offsetHeight) {
+        const height = Math.ceil(range.getBoundingClientRect().height);
+        const minDifference = 1;
+        if (Math.abs(height - this.markupHeight) > minDifference) {
             withDebounce ? this.changeSizeDebounced(height) : this.changeSize(height);
         }
     }
 
+    private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);
+
     private onTransitionEnd(e: TransitionEvent) {
         if (e.propertyName === 'height') {
-            this.messageMarkup.style.height = this.messageMarkup.offsetHeight + 'px';
-            this.messageMarkup.removeEventListener('transitionend', (e) => this.onTransitionEnd(e));
+            this.messageMarkup.removeEventListener('transitionend', this.onTransitionEndBound);
             this.markupHeight = this.messageMarkup.offsetHeight;
-
-            if (this.messageMarkup.offsetHeight != this.messageMarkup.scrollHeight) {
-                this.changeSize(this.messageMarkup.scrollHeight);
-            }
+            this.isResizing = false;
         }
     }
 }
