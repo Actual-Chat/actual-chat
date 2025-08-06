@@ -100,6 +100,7 @@
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private SendingMessages SendingMessages => Hub.SendingMessages;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -190,7 +191,7 @@
                     EntryAttachments = attachmentListSnapshot.Attachments,
                 };
             }
-            var postTask = await Hub.SendingMessages.Post(cmd, CancellationToken.None);
+            var postTask = await SendingMessages.Post(cmd, CancellationToken.None);
             _ = ForegroundTask.Run(async () => {
                 try {
                     var chatEntry = await postTask.ConfigureAwait(true);
@@ -265,9 +266,11 @@
     private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
         => await MarkupEditorRef.Focus();
 
-    private Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
+    private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
         var chatEntry = @event.Entry;
-        return Edit(chatEntry, cancellationToken);
+        var chatSendingMessages = SendingMessages.GetSendingMessages(chatEntry.ChatId);
+        var chatEntry2 = await chatSendingMessages.GetSelfOrEdited(chatEntry);
+        await Edit(chatEntry2, cancellationToken);
     }
 
     private Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken)

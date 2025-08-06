@@ -151,7 +151,7 @@ public partial class ChatUI
             }, cancellationToken).ConfigureAwait(false);
         }
 
-        var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId, chatIdRange.End);
+        var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
@@ -164,7 +164,7 @@ public partial class ChatUI
                 lastReadEntryLid = 0;
             else if (shownReadyEntryLid >= idTile.End - 1)
                 lastReadEntryLid = long.MaxValue;
-            var isLastTile = idTile.Contains(chatSendingMessages.RangeEnd - 1);
+            var isLastTile = idTile.Contains(chatIdRange.End - 1);
             var tile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
@@ -173,7 +173,7 @@ public partial class ChatUI
                     expandedConversations,
                     prevMessage,
                     lastReadEntryLid,
-                    isLastTile,
+                    isLastTile ? chatIdRange.End : null,
                     chatSendingMessagesWrapper,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -365,7 +365,7 @@ public partial class ChatUI
         IImmutableSet<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
         long lastReadEntryId,
-        bool isLastTile,
+        long? rangeEnd, /* specified only for last tile */
         IgnoreComputeArg<ChatSendingMessagesAccessor> chatSendingMessagesWrapper,
         CancellationToken cancellationToken = default)
     {
@@ -417,9 +417,10 @@ public partial class ChatUI
             }
         }
 
-        if (isLastTile) {
-            chatSendingMessages.RemoveSentNewMessages();
-            var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!).ConfigureAwait(false);
+        if (rangeEnd.HasValue) {
+            // processing last tile
+            chatSendingMessages.RemoveSentNewMessages(rangeEnd.Value);
+            var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!, rangeEnd.Value).ConfigureAwait(false);
             entries.AddRange(newMessages);
         }
         if (entries.Count == 0 && conversations.Length == 0)

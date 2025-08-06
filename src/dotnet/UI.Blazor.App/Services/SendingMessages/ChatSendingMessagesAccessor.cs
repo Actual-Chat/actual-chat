@@ -1,9 +1,8 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages, long rangeEnd)
+public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages)
 {
     public ChatSendingMessages ChatSendingMessages { get; } = chatSendingMessages;
-    public long RangeEnd { get; init; } = rangeEnd;
     public ChatId ChatId => ChatSendingMessages.ChatId;
     public SendingMessages Owner => ChatSendingMessages.Owner;
     [field: AllowNull, MaybeNull]
@@ -30,7 +29,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
         return chatEntry;
     }
 
-    public async Task<ChatEntry[]> GetNewMessages(AuthorId ownAuthorId)
+    public async Task<ChatEntry[]> GetNewMessages(AuthorId ownAuthorId, long rangeEnd)
     {
         var newMessages = await ChatSendingMessages.GetNewMessages().ConfigureAwait(false);
         // Log.LogInformation("Found {Count} new messages: {Messages}", newMessages.Length,
@@ -39,7 +38,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
             return Array.Empty<ChatEntry>();
 
         var entries = new List<ChatEntry>();
-        var lastId = RangeEnd + 10000;
+        var lastId = rangeEnd + 10000;
         foreach (var sendingMessage in newMessages) {
             var localId = lastId++;
             var entryId = TextEntryId.New(ChatId, localId);
@@ -54,6 +53,6 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
         return entries.ToArray();
     }
 
-    public void RemoveSentNewMessages()
-        => ChatSendingMessages.RemoveSentNewMessages(RangeEnd);
+    public void RemoveSentNewMessages(long rangeEnd)
+        => ChatSendingMessages.RemoveSentNewMessages(rangeEnd);
 }

@@ -40,13 +40,13 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             .RunIsolated(cancellationToken);
     }
 
-    public ChatSendingMessagesAccessor GetSendingMessages(ChatId chatId, long rangeEnd)
+    public ChatSendingMessagesAccessor GetSendingMessages(ChatId chatId)
     {
         ChatSendingMessages chatSendingMessages;
         lock (_chatSendingMessagesLock)
             chatSendingMessages = GetChatSendingMessages(chatId);
-        DebugLog?.LogInformation("-> GetSendingMessages. ChatId='{ChatId}', RangeEnd='{RangeEnd}'", chatId, rangeEnd);
-        return new ChatSendingMessagesAccessor(chatSendingMessages, rangeEnd);
+        DebugLog?.LogInformation("-> GetSendingMessages. ChatId='{ChatId}'", chatId);
+        return new ChatSendingMessagesAccessor(chatSendingMessages);
     }
 
     public async Task<Task<ChatEntry>> Post(Chats_UpsertTextEntry cmd, CancellationToken cancellationToken)

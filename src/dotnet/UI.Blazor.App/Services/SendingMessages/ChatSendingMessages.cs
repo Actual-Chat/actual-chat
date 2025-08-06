@@ -35,7 +35,7 @@ public class ChatSendingMessages
     {
         await _triggers.OnEditMessageChanged(chatEntryId).ConfigureAwait(false);
         lock (_lock)
-            return _editMessages.Count > 0 ? _editMessages.FirstOrDefault(c => !c.ToBeRemoved && c.LocalId == chatEntryId.LocalId) : null;
+            return _editMessages.Count > 0 ? _editMessages.LastOrDefault(c => !c.ToBeRemoved && c.LocalId == chatEntryId.LocalId) : null;
     }
 
     public void AddSendingMessage(SendingMessage sendingMessage)
