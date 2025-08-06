@@ -33,13 +33,13 @@ export class WebKvasBackend {
         return this._whenInitialized;
     }
 
-    public async getMany(keys: string[]): Promise<string[]> {
+    public async getMany(keys: string[]): Promise<Array<string | null>> {
         await this._whenInitialized;
         const values = await this.kvas.getMany(keys);
-        return values as string[];
+        return values as Array<string | null>;
     }
 
-    public async setMany(keys: string[], values: string[]): Promise<void> {
+    public async setMany(keys: string[], values: Array<string | null>): Promise<void> {
         await this._whenInitialized;
         await this.kvas.setMany(keys, values);
     }

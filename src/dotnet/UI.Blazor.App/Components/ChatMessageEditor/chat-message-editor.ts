@@ -349,8 +349,8 @@ export class ChatMessageEditor {
 
         const text = this.markupEditor.getHtml();
         const keys = [`MessageDraft.${this.chatId}.Html`];
-        if (!!text)
-            await localSettings.setMany(keys, [text]);
+        const values = [!!text ? text : null];
+        await localSettings.setMany(keys, values);
     }
 
     private async restoreDraft(): Promise<void> {
