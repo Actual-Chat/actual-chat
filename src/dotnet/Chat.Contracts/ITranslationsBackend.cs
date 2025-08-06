@@ -8,6 +8,10 @@ public interface ITranslationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken);
 
+    // Non-compute methods
+
+    Task<ApiArray<Translation>> ListHanging(int limit, CancellationToken cancellationToken);
+
     // Command handlers
 
     [CommandHandler]

@@ -2,10 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ActualChat.Hashing;
 using ActualLab.Versioning;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Db;
 
 [Table("Translations")]
+[Index(nameof(StreamId), nameof(ModifiedAt))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {

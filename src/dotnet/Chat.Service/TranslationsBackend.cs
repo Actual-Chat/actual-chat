@@ -55,6 +55,21 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return translation;
     }
 
+    // Not a [ComputeMethod]!
+    public virtual async Task<ApiArray<Translation>> ListHanging(int limit, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        DateTime dMinModifiedAt = Clocks.SystemClock.Now - Settings.Translation.HangingTimeout;
+        var dbTranslations = await dbContext.Translations.Where(x => !string.IsNullOrEmpty(x.StreamId) && x.ModifiedAt < dMinModifiedAt)
+            .OrderBy(x => x.ModifiedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbTranslations.Select(x => x.ToModel()).ToApiArray();
+    }
+
     // [CommandHandler]
     public virtual async Task<Translation?> OnChange(TranslationsBackend_Change command, CancellationToken cancellationToken)
     {
@@ -104,8 +119,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             dbContext.Translations.Attach(dbTranslation);
             dbTranslation.UpdateFrom(translation);
         }
-        else
-            throw StandardError.NotSupported("Translations cannot be removed.");
+        else {
+            await dbContext.Translations.Lock(id, cancellationToken).ConfigureAwait(false);
+            dbTranslation = await dbContext.Translations.GetAsNoTracking(id.Value, cancellationToken).ConfigureAwait(false);
+            if (dbTranslation is null)
+                return null;
+
+            dbTranslation.RequireVersion(expectedVersion);
+            dbContext.Remove(dbTranslation);
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbTranslation.ToModel();
