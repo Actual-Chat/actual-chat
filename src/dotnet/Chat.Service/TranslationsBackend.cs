@@ -208,6 +208,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 : Change.Update(translationDiff);
             var version = ignoreVersion ? null : translation?.Version;
             var cmd = new TranslationsBackend_Change(id, version, change);
+
+            // Use `isOutermost = true` to ensure that the translation will appear in streaming mode ASAP
             translation = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
 
             var translatedTranscript = Transcript.Empty;
