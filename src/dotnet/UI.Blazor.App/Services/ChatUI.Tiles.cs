@@ -563,9 +563,15 @@ public partial class ChatUI
                         messages.Add(dateLineMessage);
                         prevMessage = dateLineMessage;
                     }
+                    // This messages should have special visibility keys to
+                    // 1) do not update read position
+                    // 2) do not affect get tiles query
+                    var isSendingNewMsg = entry.Version == 0;
                     var message = new ChatEntryMessage(entry) {
                         Date = date,
                         Flags = flags,
+                        ShouldSkipKey = isSendingNewMsg,
+                        ReplacementKind = isSendingNewMsg ? ChatMessageReplacementKind.SendingNewMessage : ChatMessageReplacementKind.None,
                         PreviousMessage = prevMessage,
                         ShowIndexDocId = showIndexDocId,
                         IndexDocId = indexDocId,

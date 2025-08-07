@@ -11,6 +11,7 @@ public enum ChatMessageReplacementKind
     ConversationBlock,
     ConversationStart,
     ConversationEnd,
+    SendingNewMessage,
 }
 
 public static class ChatMessageReplacementKindExt
@@ -26,6 +27,7 @@ public static class ChatMessageReplacementKindExt
             ChatMessageReplacementKind.ConversationBlock => "-conversation-block",
             ChatMessageReplacementKind.ConversationStart => "-conversation", // We should use same suffix for conversation message and header
             ChatMessageReplacementKind.ConversationEnd => "-conversation-end",
+            ChatMessageReplacementKind.SendingNewMessage => "-sending-new-msg",
             _ => throw new ArgumentOutOfRangeException(nameof(replacementKind), replacementKind, null),
         };
 }

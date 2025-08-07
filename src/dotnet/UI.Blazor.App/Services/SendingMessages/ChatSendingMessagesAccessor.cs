@@ -38,9 +38,8 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
             return Array.Empty<ChatEntry>();
 
         var entries = new List<ChatEntry>();
-        var lastId = rangeEnd + 10000;
+        var localId = rangeEnd;
         foreach (var sendingMessage in newMessages) {
-            var localId = lastId++;
             var entryId = TextEntryId.New(ChatId, localId);
             var chatEntry = new ChatEntry(entryId, 0) {
                 AuthorId = ownAuthorId,
@@ -49,6 +48,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
                 IsSending = true,
             };
             entries.Add(chatEntry);
+            localId++;
         }
         return entries.ToArray();
     }

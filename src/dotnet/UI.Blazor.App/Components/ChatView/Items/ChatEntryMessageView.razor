@@ -59,6 +59,8 @@
             <SearchChatWelcomeBlock Chat="@chat2" />
         }
         return;
+    case ChatMessageReplacementKind.SendingNewMessage:
+        break;
     default:
         throw new ArgumentOutOfRangeException();
     }
