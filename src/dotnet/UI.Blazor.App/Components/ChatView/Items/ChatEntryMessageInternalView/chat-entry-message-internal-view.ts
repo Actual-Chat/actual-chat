@@ -6,13 +6,8 @@ export class ChatEntryMessageInternalView {
     private blazorRef: DotNet.DotNetObject;
     private readonly messageMarkup: HTMLElement;
     private playableText: HTMLElement | null;
-    private plainText: HTMLElement[] | null;
-    private retainedText: HTMLElement | null;
-    private changesText: HTMLElement | null;
     private markupHeight: number;
     private mutationObserver: MutationObserver;
-    private retainedMutationObserver: MutationObserver;
-    private changesMutationObserver: MutationObserver;
     private resizeObserver: ResizeObserver;
     private observerOptions = {
         childList: true,
@@ -30,38 +25,18 @@ export class ChatEntryMessageInternalView {
     constructor(blazorRef: DotNet.DotNetObject, messageMarkup: HTMLElement) {
         this.blazorRef = blazorRef;
         this.messageMarkup = messageMarkup;
+        if (!this.messageMarkup)
+            return;
 
         this.playableText = this.messageMarkup.querySelector('.playable-text-markup');
-        this.plainText = [...this.messageMarkup.querySelectorAll('.plain-text-markup')].map(el => el as HTMLElement);
 
-        if (this.playableText || this.plainText) {
-            this.markupHeight = this.messageMarkup.offsetHeight;
-            this.messageMarkup.style.height = this.markupHeight + 'px';
-            this.mutationObserver = new MutationObserver(this.updateMarkupSize);
-            this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
+        this.markupHeight = this.messageMarkup.offsetHeight;
+        this.messageMarkup.style.height = this.markupHeight + 'px';
+        this.mutationObserver = new MutationObserver(this.updateMarkupSize);
+        this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
 
-            this.resizeObserver = new ResizeObserver(this.updateHeightOnWidthChange)
-            this.resizeObserver.observe(this.messageMarkup);
-
-            this.retainedMutationObserver = new MutationObserver((mutations) => {
-                mutations.forEach(mutation => {
-                    if (mutation.type === 'characterData' && mutation.target.nodeType === Node.TEXT_NODE) {
-                        this.changeSizeForPlainText();
-                    }
-                });
-            });
-            this.changesMutationObserver = new MutationObserver((mutations) => {
-                mutations.forEach(mutation => {
-                    if (mutation.type === 'characterData' && mutation.target.nodeType === Node.TEXT_NODE) {
-                        this.changeSizeForPlainText();
-                    }
-                });
-            });
-            this.changesText = this.messageMarkup.querySelector('.changes');
-            if (this.changesText) {
-                this.changesMutationObserver.observe(this.changesText, this.observerOptions);
-            }
-        }
+        this.resizeObserver = new ResizeObserver(this.updateHeightOnWidthChange);
+        this.resizeObserver.observe(this.messageMarkup);
     }
 
     public dispose() {
@@ -78,30 +53,14 @@ export class ChatEntryMessageInternalView {
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
         }
+    }
 
-        if (this.retainedMutationObserver) {
-            this.retainedMutationObserver.disconnect();
-        }
-
-        if (this.changesMutationObserver) {
-            this.changesMutationObserver.disconnect();
-        }
-
-        this.retainedText = null;
-        this.changesText = null;
+    private getRemInPixels(): number {
+        return parseFloat(getComputedStyle(document.documentElement).fontSize);
     }
 
     private updateHeightOnWidthChange: ResizeObserverCallback = () => {
-        if (this.playableText) {
-            const markupHeight = this.messageMarkup.offsetHeight;
-            const playableHeight = this.playableText.offsetHeight;
-            if (playableHeight != markupHeight) {
-                this.changeSizeDebounced(playableHeight);
-            }
-        }
-        if (this.plainText || this.retainedText || this.changesText) {
-            this.changeSizeForPlainText();
-        }
+        this.changeSizeForText();
     };
 
     private updateMarkupSize: MutationCallback = (mutations) => {
@@ -109,48 +68,17 @@ export class ChatEntryMessageInternalView {
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
                 const element = mutation.target.parentElement as HTMLElement;
-                if (element.classList.contains('playable-text-markup')) {
-                    this.changeSizeDebounced(element.offsetHeight);
-                } else if (element.classList.contains('plain-text-markup')) {
-                    this.changeSizeForPlainText();
+                if (['change-item', 'changes', 'retained'].some(cls => element.classList.contains(cls))) {
+                    this.changeSizeForText(true);
+                } else {
+                    this.changeSizeForText();
                 }
             }
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach((node) => {
-                    if (node instanceof HTMLElement && node.classList.contains('retained')) {
-                        if (this.retainedText)
-                            this.retainedMutationObserver.disconnect();
-
-                        this.retainedText = node as HTMLElement;
-                        this.retainedMutationObserver.observe(this.retainedText, this.observerOptions);
-                    }
-                    if (node instanceof HTMLElement && node.classList.contains('changes')) {
-                        if (this.changesText)
-                            this.changesMutationObserver.disconnect();
-
-                        this.changesText = node as HTMLElement;
-                        this.changesMutationObserver.observe(this.changesText, this.observerOptions);
-                    }
-                    if (node instanceof HTMLElement && node.classList.contains('change-item')) {
-                        if (!this.changesText) {
-                            this.changesText = node.closest('.changes');
-                        }
-                        this.changeSizeForPlainText(false);
-                    }
                     if (node instanceof HTMLElement && node.classList.contains('playable-text-markup')) {
                         this.playableText = node as HTMLElement;
                         this.onTranscriptionFinalizedResize();
-                    }
-                });
-
-                mutation.removedNodes.forEach((node) => {
-                    if (node instanceof HTMLElement && node.classList.contains('retained')) {
-                        this.retainedMutationObserver.disconnect();
-                        this.retainedText = null;
-                    }
-                    if (node instanceof HTMLElement && node.classList.contains('changes')) {
-                        this.changesMutationObserver.disconnect();
-                        this.changesText = null;
                     }
                 });
             }
@@ -165,7 +93,7 @@ export class ChatEntryMessageInternalView {
             this.resizeObserver.disconnect();
         }
         this.isResizing = false;
-        this.changeSizeDebounced(this.playableText?.offsetHeight);
+        this.changeSizeFastDebounced(this.playableText?.offsetHeight);
 
         setTimeout(() => {
             this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
@@ -173,7 +101,8 @@ export class ChatEntryMessageInternalView {
         }, 500);
     }
 
-    private changeSizeDebounced = debounce((height: number) => this.changeSize(height), 150);
+    private changeSizeFastDebounced = debounce((height: number) => this.changeSize(height), 150);
+    private changeSizeSlowDebounced = debounce((height: number) => this.changeSize(height), 1250);
 
     private changeSize(height: number) {
         if (this.isResizing || this.markupHeight === height)
@@ -192,13 +121,18 @@ export class ChatEntryMessageInternalView {
         }, 300);
     }
 
-    private changeSizeForPlainText(withDebounce: boolean = true) {
+    private changeSizeForText(slow: boolean = false) {
         const range = document.createRange();
         range.selectNodeContents(this.messageMarkup);
-        const height = Math.ceil(range.getBoundingClientRect().height);
-        const minDifference = 1;
-        if (Math.abs(height - this.markupHeight) > minDifference) {
-            withDebounce ? this.changeSizeDebounced(height) : this.changeSize(height);
+        const newHeight = Math.ceil(range.getBoundingClientRect().height);
+        const oldHeight = this.markupHeight;
+        const minDelta = this.getRemInPixels();
+        if (Math.abs(newHeight - this.markupHeight) > minDelta) {
+            if (newHeight > oldHeight) {
+                this.changeSizeFastDebounced(newHeight);
+            } else {
+                slow ? this.changeSizeSlowDebounced(newHeight) : this.changeSizeFastDebounced(newHeight);
+            }
         }
     }
 

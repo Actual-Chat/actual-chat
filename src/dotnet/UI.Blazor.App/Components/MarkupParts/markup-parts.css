@@ -1,3 +1,7 @@
+.chat-entry-kind-marker {
+    @apply top-0.5;
+    @apply min-h-4;
+}
 .translation-marker {
     @apply top-1;
     @apply pl-1;
@@ -7,9 +11,9 @@
     @apply pl-0;
 }
 .entry-marker {
-    @apply relative -bottom-0.5;
+    @apply relative;
     @apply inline-flex items-center;
-    @apply w-5 h-5;
+    @apply w-5 h-0;
 }
 
 .mention-markup {
@@ -210,6 +214,7 @@ ul.list-markup {
 .chat-message-markup .playable-text-markup,
 .chat-message-markup .plain-text-markup,
 .chat-message-markup .retained,
-.chat-message-markup .changes {
+.chat-message-markup .changes,
+.chat-message-markup {
     @apply min-h-5;
 }

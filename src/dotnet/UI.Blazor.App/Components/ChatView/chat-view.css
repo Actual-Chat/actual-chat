@@ -179,7 +179,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 }
 .chat-message-markup.to-translated .plain-text-markup,
 .chat-message-markup.to-translated .playable-text-markup {
-    animation: toTranslatedBlur 1s steps(10, end) forwards;
+    animation: toTranslatedBlur 1.25s steps(10, end) forwards;
 }
 .chat-message-markup.to-translated.from-streaming .plain-text-markup,
 .chat-message-markup.to-translated.from-streaming .playable-text-markup {
@@ -187,14 +187,14 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 }
 .chat-message-markup.from-translated .plain-text-markup,
 .chat-message-markup.from-translated .playable-text-markup {
-    animation: fromTranslatedBlur 1s steps(10, end) forwards;
+    animation: fromTranslatedBlur 1.25s steps(10, end) forwards;
 }
 .chat-message-markup.from-translated.from-streaming .plain-text-markup,
 .chat-message-markup.from-translated.from-streaming .playable-text-markup {
     animation: none;
 }
 .chat-message-markup.translating .changes {
-    animation: toTranslatedBlur 1s steps(10, end) forwards;
+    animation: toTranslatedBlur 1.25s steps(10, end) forwards;
 }
 @keyframes toTranslatedBlur {
     0% { filter: blur(2px); }
