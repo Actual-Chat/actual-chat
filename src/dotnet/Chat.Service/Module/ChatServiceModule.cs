@@ -10,6 +10,7 @@ using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
+using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -254,6 +255,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
 
         var coreSettings = Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
+        if (coreSettings.GoogleProjectId.IsNullOrEmpty()) {
+            var platform = Platform.Instance();
+            coreSettings.GoogleProjectId = platform?.ProjectId ?? throw StandardError.NotSupported<ChatServiceModule>(
+                $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}.{nameof(CoreServerSettings.GoogleProjectId)}");
+        }
         var lifetime = ModuleServices.GetRequiredService<IHostApplicationLifetime>();
 
         if (model.IsNullOrEmpty())
