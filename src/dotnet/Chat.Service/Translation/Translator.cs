@@ -1,5 +1,6 @@
 using System.Text;
 using ActualChat.Chat.Module;
+using ActualChat.Diagnostics;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
 using Microsoft.SemanticKernel;
@@ -51,22 +52,30 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         if (!Settings.IsTranslationEnabled)
             return textToTranslate;
 
-        var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
-        var chatHistory = BuildRequest(textToTranslate, targetLanguage, context);
+        using var activity = CoreServerInstruments.ActivitySource.StartActivity(ActivityKind.Client);
+        try {
+            var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
+            var chatHistory = BuildRequest(textToTranslate, targetLanguage, context);
 
-        var response = await Completion
-            .GetChatMessageContentAsync(
-                chatHistory,
-                executionSettings,
-                Kernel,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var result = response.Content ?? "";
+            var response = await Completion
+                .GetChatMessageContentAsync(
+                    chatHistory,
+                    executionSettings,
+                    Kernel,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            var result = response.Content ?? "";
 
-        // DebugLog?.LogDebug("Translate: {Content} = {TranslatedContent} with [{Context}]", textToTranslate, result, string.Join(',', context));
-        return OrdinalIgnoreCaseEquals(result, Constants.Translation.NoTranslationNeededText)
-            ? textToTranslate // If the translation is not needed, return the original text
-            : result;
+            // DebugLog?.LogDebug("Translate: {Content} = {TranslatedContent} with [{Context}]", textToTranslate, result, string.Join(',', context));
+            return OrdinalIgnoreCaseEquals(result, Constants.Translation.NoTranslationNeededText)
+                ? textToTranslate // If the translation is not needed, return the original text
+                : result;
+        }
+        catch (Exception e) {
+            activity?.Finalize(e, cancellationToken);
+            throw;
+        }
     }
 
     public async IAsyncEnumerable<StringDiff> Stream(string textToTranslate, Language targetLanguage, TranslationResult[] context, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -89,12 +98,14 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         {
             var sb = new StringBuilder();
             var last = "";
+            using var activity = CoreServerInstruments.ActivitySource.StartActivity(ActivityKind.Client);
             var stream = Completion
                 .GetStreamingChatMessageContentsAsync(
                     chatHistory,
                     executionSettings,
                     Kernel,
-                    cancellationToken);
+                    cancellationToken)
+                .WithActivity(activity, cancellationToken);
             await foreach (var response in stream.ConfigureAwait(false)) {
                 var suffix = response.Content;
                 if (suffix.IsNullOrEmpty())

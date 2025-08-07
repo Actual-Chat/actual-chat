@@ -1,4 +1,5 @@
 using ActualChat.Internal;
+using ActualLab.Diagnostics;
 
 namespace ActualChat;
 
@@ -697,6 +698,36 @@ public static class AsyncEnumerableExt
                 yield break;
         }
     }
+
+    public static async IAsyncEnumerable<T> WithActivity<T>(
+        this IAsyncEnumerable<T> source,
+        Activity? activity,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
+
+        while (true) {
+            bool hasMore;
+            T item = default!;
+            try {
+                hasMore = await enumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
+                if (hasMore)
+                    item = enumerator.Current;
+            }
+            catch (Exception e) {
+                activity?.Finalize(e, cancellationToken);
+                yield break;
+            }
+            if (hasMore)
+                yield return item;
+            else {
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                yield break;
+            }
+        }
+    }
+
 
     // Private members
 

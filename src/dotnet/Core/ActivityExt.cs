@@ -1,5 +1,3 @@
-using Cysharp.Text;
-
 namespace ActualChat;
 
 public static class ActivityExt
@@ -7,34 +5,6 @@ public static class ActivityExt
     private static ILogger? _log;
 
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(ActivityExt));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void RecordException(this Activity activity, Exception? ex)
-    {
-        if (ex == null)
-            return;
-
-        var activityTagsCollection = new ActivityTagsCollection {
-            { "exception.type", ex.GetType().FullName},
-            { "exception.stacktrace", ToInvariantString(ex)},
-        };
-        if (!string.IsNullOrWhiteSpace(ex.Message)) {
-            activityTagsCollection.Add("exception.message", ex.Message);
-        }
-        activity.AddEvent(new ActivityEvent("exception", default, activityTagsCollection));
-
-        static string ToInvariantString(Exception exception)
-        {
-            var originalUICulture = Thread.CurrentThread.CurrentUICulture;
-            try {
-                Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
-                return exception.ToString();
-            }
-            finally {
-                Thread.CurrentThread.CurrentUICulture = originalUICulture;
-            }
-        }
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Activity AddSentrySimulatedEvent(this Activity activity, ActivityEvent e)
