@@ -5,13 +5,14 @@ import { setTimeout } from 'timerQueue';
 export class ChatEntryMessageInternalView {
     private blazorRef: DotNet.DotNetObject;
     private readonly messageMarkup: HTMLElement;
-    private readonly playableText: HTMLElement | null;
-    private readonly plainText: HTMLElement[] | null;
+    private playableText: HTMLElement | null;
+    private plainText: HTMLElement[] | null;
     private retainedText: HTMLElement | null;
     private changesText: HTMLElement | null;
     private markupHeight: number;
     private mutationObserver: MutationObserver;
     private retainedMutationObserver: MutationObserver;
+    private changesMutationObserver: MutationObserver;
     private resizeObserver: ResizeObserver;
     private observerOptions = {
         childList: true,
@@ -49,6 +50,17 @@ export class ChatEntryMessageInternalView {
                     }
                 });
             });
+            this.changesMutationObserver = new MutationObserver((mutations) => {
+                mutations.forEach(mutation => {
+                    if (mutation.type === 'characterData' && mutation.target.nodeType === Node.TEXT_NODE) {
+                        this.changeSizeForPlainText();
+                    }
+                });
+            });
+            this.changesText = this.messageMarkup.querySelector('.changes');
+            if (this.changesText) {
+                this.changesMutationObserver.observe(this.changesText, this.observerOptions);
+            }
         }
     }
 
@@ -69,6 +81,10 @@ export class ChatEntryMessageInternalView {
 
         if (this.retainedMutationObserver) {
             this.retainedMutationObserver.disconnect();
+        }
+
+        if (this.changesMutationObserver) {
+            this.changesMutationObserver.disconnect();
         }
 
         this.retainedText = null;
@@ -109,14 +125,21 @@ export class ChatEntryMessageInternalView {
                         this.retainedMutationObserver.observe(this.retainedText, this.observerOptions);
                     }
                     if (node instanceof HTMLElement && node.classList.contains('changes')) {
+                        if (this.changesText)
+                            this.changesMutationObserver.disconnect();
+
                         this.changesText = node as HTMLElement;
-                        this.changeSizeForPlainText(false);
+                        this.changesMutationObserver.observe(this.changesText, this.observerOptions);
                     }
                     if (node instanceof HTMLElement && node.classList.contains('change-item')) {
                         if (!this.changesText) {
                             this.changesText = node.closest('.changes');
                         }
                         this.changeSizeForPlainText(false);
+                    }
+                    if (node instanceof HTMLElement && node.classList.contains('playable-text-markup')) {
+                        this.playableText = node as HTMLElement;
+                        this.onTranscriptionFinalizedResize();
                     }
                 });
 
@@ -126,6 +149,7 @@ export class ChatEntryMessageInternalView {
                         this.retainedText = null;
                     }
                     if (node instanceof HTMLElement && node.classList.contains('changes')) {
+                        this.changesMutationObserver.disconnect();
                         this.changesText = null;
                     }
                 });
@@ -133,7 +157,23 @@ export class ChatEntryMessageInternalView {
         });
     }
 
-    private changeSizeDebounced = debounce((height: number) => this.changeSize(height), 200);
+    private onTranscriptionFinalizedResize() {
+        if (this.mutationObserver) {
+            this.mutationObserver.disconnect();
+        }
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+        this.isResizing = false;
+        this.changeSizeDebounced(this.playableText?.offsetHeight);
+
+        setTimeout(() => {
+            this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
+            this.resizeObserver.observe(this.messageMarkup);
+        }, 500);
+    }
+
+    private changeSizeDebounced = debounce((height: number) => this.changeSize(height), 150);
 
     private changeSize(height: number) {
         if (this.isResizing || this.markupHeight === height)
@@ -149,7 +189,7 @@ export class ChatEntryMessageInternalView {
 
         setTimeout(() => {
             this.isResizing = false;
-        }, 500);
+        }, 300);
     }
 
     private changeSizeForPlainText(withDebounce: boolean = true) {
