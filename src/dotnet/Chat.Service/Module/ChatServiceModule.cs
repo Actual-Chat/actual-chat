@@ -6,13 +6,17 @@ using ActualChat.Chat.ML;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
+using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.Google;
 
 namespace ActualChat.Chat.Module;
 
@@ -97,11 +101,17 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 Settings.Translation.OpenAIModel,
                 Settings.Translation.OpenAIKey,
                 Settings.Translation.HttpTimeout);
-            AddKeyedOpenAI(services,
-                Constants.Translation.RealtimeServiceKey,
-                Settings.Translation.RealtimeOpenAIModel,
-                Settings.Translation.OpenAIKey,
-                Settings.Translation.HttpTimeout);
+            if (!Settings.Translation.RealtimeOpenAIModel.IsNullOrEmpty() && Settings.Translation.RealtimeGeminiModel.IsNullOrEmpty())
+                AddKeyedOpenAI(services,
+                    Constants.Translation.RealtimeServiceKey,
+                    Settings.Translation.RealtimeOpenAIModel,
+                    Settings.Translation.OpenAIKey,
+                    Settings.Translation.HttpTimeout);
+            else if (!Settings.Translation.RealtimeGeminiModel.IsNullOrEmpty())
+                AddKeyedVertexAI(services,
+                    Constants.Translation.RealtimeServiceKey,
+                    Settings.Translation.RealtimeGeminiModel,
+                    Settings.Translation.HttpTimeout);
             AddKeyedOpenAI(services,
                 Constants.LanguageDetection.ServiceKey,
                 Settings.LanguageDetection.OpenAIModel,
@@ -233,5 +243,60 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // for serviceKey
         services.AddKeyedSingleton<IChatCompletionService>(serviceKey,
             (c, _) => c.GetRequiredKeyedService<IChatCompletionService>(rateLimitedKey));
+    }
+
+    private void AddKeyedVertexAI(IServiceCollection services, string serviceKey, string model, TimeSpan? httpClientTimeout = null)
+    {
+        var httpClient = new HttpClient(new HttpClientHandler {
+            Proxy = !Settings.OpenAIProxy.IsNullOrEmpty() ? new WebProxy(Settings.OpenAIProxy) : null,
+            UseProxy = !Settings.OpenAIProxy.IsNullOrEmpty(),
+        });
+        services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
+
+        var coreSettings = Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
+        var lifetime = ModuleServices.GetRequiredService<IHostApplicationLifetime>();
+
+        if (model.IsNullOrEmpty())
+            model = "gemini-2.5-flash";
+
+        // unlimited
+        var unlimitedServiceKey = serviceKey + "_Unlimited";
+        services.AddKernel()
+            .AddVertexAIGeminiChatCompletion(model,
+                () => GetBearerToken(lifetime.ApplicationStopping),
+                coreSettings.GoogleRegionId,
+                coreSettings.GoogleProjectId,
+                VertexAIVersion.V1_Beta,
+                unlimitedServiceKey,
+                httpClient);
+
+        // rate-limited
+        var rateLimitedKey = serviceKey + "_RateLimited";
+        services.AddKeyedSingleton<IChatCompletionService>(rateLimitedKey,
+            (c, _) => {
+                var chatCompletion = c.GetRequiredKeyedService<IChatCompletionService>(unlimitedServiceKey);
+                var rateLimiter = RedisTokenBucketRateLimiter.Create<ChatDbContext>(
+                    new RedisTokenBucketRateLimiter.Options(
+                        $"rate_limit:gemini:{serviceKey}",
+                        2_000_000,
+                        TimeSpan.FromSeconds(60)
+                    ),
+                    c);
+                return chatCompletion.WrapWithRateLimiter(rateLimiter);
+            });
+
+        // for serviceKey
+        services.AddKeyedSingleton<IChatCompletionService>(serviceKey,
+            (c, _) => c.GetRequiredKeyedService<IChatCompletionService>(rateLimitedKey));
+    }
+
+    private async ValueTask<string> GetBearerToken(CancellationToken cancellationToken)
+    {
+        var credential = await GoogleCredential.GetApplicationDefaultAsync(cancellationToken).ConfigureAwait(false);
+        // Specify the scope for Vertex AI
+        credential = credential.CreateScoped("https://www.googleapis.com/auth/cloud-platform");
+        // Get the access token
+        var token = await credential.UnderlyingCredential.GetAccessTokenForRequestAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        return token;
     }
 }

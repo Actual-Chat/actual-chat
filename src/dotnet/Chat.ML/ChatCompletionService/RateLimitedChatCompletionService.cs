@@ -11,6 +11,7 @@ public class RateLimitedChatCompletionService(
     : IChatCompletionService
 {
     public IReadOnlyDictionary<string, object?> Attributes => chatCompletionService.Attributes;
+    public IChatCompletionService ChatCompletionService => chatCompletionService;
 
     public async Task<IReadOnlyList<ChatMessageContent>> GetChatMessageContentsAsync(
         ChatHistory chatHistory,

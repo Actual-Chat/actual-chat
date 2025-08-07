@@ -1,18 +1,18 @@
 using System.Text;
+using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Diagnostics;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.Google;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace ActualChat.Chat;
 
 public class Translator(IServiceProvider services, [ServiceKey] string serviceKey = Constants.Translation.ServiceKey)
 {
-    public const string PromptHash = "XYoJnmiu114NtlK7QCi8nGI0rP0zARJ3yvjYOBpQ90A";
-
     private IServiceProvider Services { get; } = services;
 
     private string ServiceKey { get; } = serviceKey;
@@ -55,7 +55,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(ActivityKind.Client);
         try {
             var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
-            var chatHistory = BuildRequest(textToTranslate, targetLanguage, context);
+            var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, cancellationToken).ConfigureAwait(false);
 
             var response = await Completion
                 .GetChatMessageContentAsync(
@@ -87,7 +87,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         }
 
         var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
-        var chatHistory = BuildRequest(textToTranslate, targetLanguage, context);
+        var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, cancellationToken).ConfigureAwait(false);
 
         await foreach (var diff in StreamTranslation().ConfigureAwait(false))
             yield return diff;
@@ -130,38 +130,62 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
     // Private methods
 
-    private async Task<OpenAIPromptExecutionSettings> CreateExecutionSettings(
+    private async Task<PromptExecutionSettings> CreateExecutionSettings(
         string textToTranslate,
         Language targetLanguage,
         CancellationToken cancellationToken)
     {
+        var isGemini = Completion.GetType().Name.Contains("Gemini", StringComparison.Ordinal);
+        var isOpenAI = Completion.GetType().Name.Contains("OpenAI", StringComparison.Ordinal);
+        if (Completion is RateLimitedChatCompletionService rateLimited) {
+            isGemini = rateLimited.ChatCompletionService.GetType().Name.Contains("Gemini", StringComparison.Ordinal);
+            isOpenAI = rateLimited.ChatCompletionService.GetType().Name.Contains("OpenAI", StringComparison.Ordinal);
+        }
+
+        // estimate for the response length
+        var maxTokens = OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey)
+            ? Math.Min(textToTranslate.Length * 8, Settings.Translation.RealtimeOpenAIModelMaxTokens)
+            : Math.Min(textToTranslate.Length * 8, Settings.Translation.OpenAIModelMaxTokens);
+
+        if (isOpenAI)
+            return new OpenAIPromptExecutionSettings {
+                Temperature = 0.1,
+                MaxTokens = maxTokens,
+                FrequencyPenalty = 0.5,
+                TopP = 0.1,
+                ReasoningEffort = null,
+                ResponseFormat = "text",
+            };
+
+        if (isGemini)
+            return new GeminiPromptExecutionSettings {
+                Temperature = 0.3,
+                MaxTokens = maxTokens,
+                TopP = 0.8,
+                ThinkingConfig = new GeminiThinkingConfig {
+                    ThinkingBudget = 0,
+                },
+                ResponseMimeType = "text/plain",
+            };
+
+        throw StandardError.Configuration($"ChatCompletionService = {Completion.GetType()} is not supported.");
+    }
+
+    private async ValueTask<ChatHistory> BuildRequest(
+        string textToTranslate,
+        Language targetLanguage,
+        TranslationResult[] context,
+        CancellationToken cancellationToken)
+    {
+        var chatHistory = new ChatHistory();
         var arguments = new KernelArguments {
             { "TargetLanguage", $"{targetLanguage.Title}" },
         };
         var systemMessage = await PromptTemplate
             .RenderAsync(Kernel, arguments, cancellationToken)
             .ConfigureAwait(false);
+        chatHistory.AddSystemMessage(systemMessage);
 
-        // estimate for the response length
-        var maxTokens = OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey)
-            ? Math.Min(textToTranslate.Length * 8, Settings.Translation.RealtimeOpenAIModelMaxTokens)
-            : Math.Min(textToTranslate.Length * 8, Settings.Translation.OpenAIModelMaxTokens);
-        return new OpenAIPromptExecutionSettings {
-            Temperature = 0.1,
-            ChatSystemPrompt = systemMessage.Trim(),
-            MaxTokens = maxTokens,
-            FrequencyPenalty = 0.5,
-            TopP = 0.1,
-            ResponseFormat = "text",
-        };
-    }
-
-    private static ChatHistory BuildRequest(
-        string textToTranslate,
-        Language targetLanguage,
-        TranslationResult[] context)
-    {
-        var chatHistory = new ChatHistory();
         if (context.Length == 0) {
             // Provide translation examples to improve the quality of the translation
             if (targetLanguage.IsAnyEnglish) {
