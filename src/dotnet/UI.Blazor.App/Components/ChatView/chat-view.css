@@ -173,6 +173,9 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply text-02 text-text-1;
     transition: height 0.25s linear;
 }
+.chat-message-markup.empty {
+    @apply hidden;
+}
 .chat-message-markup.translating .plain-text-markup,
 .chat-message-markup.translating .playable-text-markup {
     animation: translatingBlur 5s steps(25, end);
