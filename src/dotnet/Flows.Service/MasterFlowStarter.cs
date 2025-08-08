@@ -38,7 +38,7 @@ internal class MasterFlowStarter(IServiceProvider services)
             await Flows.StartOrReset(masterFlowType,
                     flowId.Arguments,
                     null,
-                    "MasterFlowStarter",
+                    nameof(MasterFlowStarter),
                     cancellationToken)
                 .ConfigureAwait(false);
         _isCompleted = true;

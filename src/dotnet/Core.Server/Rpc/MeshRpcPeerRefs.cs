@@ -1,11 +1,11 @@
 using ActualChat.Mesh;
+using ActualLab.Rpc;
 
 namespace ActualChat.Rpc;
 
 public sealed class MeshRpcPeerRefs
 {
     private readonly ConcurrentDictionary<MeshRef, MeshRpcPeerRef> _peerRefs = new();
-    private readonly ConcurrentDictionary<NodeRef, CpuTimestamp> _offlineNodeRefs = new();
     private readonly Lock _lock = new ();
 
     private ILogger Log { get; }
@@ -13,8 +13,6 @@ public sealed class MeshRpcPeerRefs
     public MeshWatcher MeshWatcher { get; }
     public IState<MeshState> MeshState { get; }
     public MeshNode ThisNode { get; }
-
-    public TimeSpan NodeOfflineToDeadTimeout { get; init; } = TimeSpan.FromMinutes(10);
 
     public MeshRpcPeerRefs(IServiceProvider services)
     {
@@ -66,8 +64,8 @@ public sealed class MeshRpcPeerRefs
     private async Task MaybeRerouteEventually(MeshRpcPeerRef peerRef, CancellationToken cancellationToken)
     {
         var target = peerRef.Target;
-        if (target.ShardRef.IsNone && target.State == MeshNodeState.Dead)
-            return; // It's a NodeRef target in its final state, so no rerouting is possible
+        if (target.ConnectionKind is RpcPeerConnectionKind.None)
+            return;
 
         await target.WhenChanged(true, cancellationToken).ConfigureAwait(false);
         Log.LogWarning(

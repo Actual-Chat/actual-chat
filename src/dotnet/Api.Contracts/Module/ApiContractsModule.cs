@@ -136,7 +136,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                             ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id);
                         if (Constants.Rpc.Compression.IsClientSideEnabled)
                             ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
-                        return new WebSocketOwner(peer.Ref.Key, ws, client.Services);
+                        return new WebSocketOwner(peer.Ref.Address, ws, client.Services);
 #if false
                         // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2
                         var handler = new SocketsHttpHandler() {
@@ -144,7 +144,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                                 EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                             },
                         };
-                        return new WebSocketOwner(peer.Ref.Key, ws, client.Services) { Handler = handler };
+                        return new WebSocketOwner(peer.Ref.Address, ws, client.Services) { Handler = handler };
 #endif
                     },
                 };

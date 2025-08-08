@@ -3,7 +3,6 @@ using ActualChat.Chat;
 using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Mesh;
-using ActualChat.Queues;
 using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
@@ -24,9 +23,12 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ILogger AudioSourceLog  => field ??= Services.LogFor<AudioSource>();
     private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
+
     private IServiceProvider Services { get; }
     [field: AllowNull, MaybeNull]
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
+    [field: AllowNull, MaybeNull]
+    private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     [field: AllowNull, MaybeNull]
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     [field: AllowNull, MaybeNull]
@@ -41,8 +43,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ICommander Commander => field ??= Services.Commander();
     [field: AllowNull, MaybeNull]
     private MomentClockSet Clocks => field ??= Services.Clocks();
-    [field: AllowNull, MaybeNull]
-    private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
 
     public StreamingBackend(IServiceProvider services)
     {

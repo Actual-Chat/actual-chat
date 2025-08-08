@@ -11,6 +11,7 @@ public enum MeshRefKind
 public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
 {
     public static MeshRef None => default;
+    public static MeshRef ThisNodeAlias => new(NodeRef.ThisNodeAlias);
 
     public ShardRef ShardRef { get; }
     public NodeRef NodeRef { get; }

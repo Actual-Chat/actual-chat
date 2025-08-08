@@ -1,4 +1,5 @@
 using ActualChat.Mesh;
+using ActualLab.Rpc;
 
 namespace ActualChat.Rpc;
 
@@ -15,6 +16,7 @@ public readonly record struct ResolvedMeshRef
     public readonly MeshNode? Node;
     public bool IsLocal => ReferenceEquals(Node, Owner.ThisNode);
     public readonly MeshNodeState State;
+    public readonly RpcPeerConnectionKind ConnectionKind;
 
     public ResolvedMeshRef Latest => new(Owner, MeshRef);
 
@@ -34,6 +36,11 @@ public readonly record struct ResolvedMeshRef
             NodeRef = meshNode?.Ref ?? default;
         }
         (Node, State) = meshState.GetNodeAndState(NodeRef);
+        ConnectionKind = IsLocal
+            ? RpcPeerConnectionKind.Local
+            : ShardRef.IsNone || State is not MeshNodeState.Dead
+                ? RpcPeerConnectionKind.Remote
+                : RpcPeerConnectionKind.None; // NodeRef pointing to a dead node
     }
 
     public override string ToString()
@@ -45,20 +52,22 @@ public readonly record struct ResolvedMeshRef
         return string.Concat("@", shardRefPrefix, nodeRef, isLocalSuffix, stateSuffix);
     }
 
-    public Task WhenChanged(bool offlineIsOnline, CancellationToken cancellationToken)
+    public Task WhenChanged(bool normalizeState, CancellationToken cancellationToken)
     {
         var self = this;
         return Owner.MeshState.Computed
-            .When(_ => !self.Equals(self.Latest, offlineIsOnline), cancellationToken);
+            .When(_ => !self.Equals(self.Latest, normalizeState), cancellationToken);
     }
 
     // Equality
 
-    public bool Equals(ResolvedMeshRef other, bool offlineIsOnline)
+    public bool Equals(ResolvedMeshRef other, bool normalizeState)
         => Owner == other.Owner
             && ShardRef == other.ShardRef
             && NodeRef == other.NodeRef
-            && State.Normalize(offlineIsOnline) == other.State.Normalize(offlineIsOnline);
+            && (normalizeState
+                ? State.Normalize() == other.State.Normalize()
+                : State == other.State);
     public bool Equals(ResolvedMeshRef other)
         => Owner == other.Owner
             && ShardRef == other.ShardRef

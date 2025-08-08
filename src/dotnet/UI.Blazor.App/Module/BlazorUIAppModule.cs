@@ -60,7 +60,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatStreamingActivity>(ServiceLifetime.Transient);
 
         // Settings
-        services.AddSingleton(new AudioSettings());
+        services.AddSingleton(_ => new AudioSettings()); // Used in StreamingServiceModule as well
         fusion.AddService<LanguageUI>(ServiceLifetime.Scoped);
 
         // OnboardingUI

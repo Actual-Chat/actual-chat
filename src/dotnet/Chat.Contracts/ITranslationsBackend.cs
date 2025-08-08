@@ -1,3 +1,4 @@
+using ActualChat.Sharding;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -10,16 +11,14 @@ public interface ITranslationsBackend : IComputeService, IBackendService
 
     // Non-compute methods
 
-    Task<ApiArray<Translation>> ListHanging(int limit, CancellationToken cancellationToken);
+    Task<ApiArray<Translation>> ListHanging(ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken);
 
     // Command handlers
 
     [CommandHandler]
     Task<Translation?> OnChange(TranslationsBackend_Change command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<Translation?> OnTranslate(TranslationsBackend_Translate command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<StreamId?> OnTranslateStream(TranslationsBackend_TranslateStream command, CancellationToken cancellationToken);
 }

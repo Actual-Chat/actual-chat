@@ -52,6 +52,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         // Internal services
+        services.AddSingleton(_ => new AudioSettings()); // Used in BlazorUIAppModule as well
         services.AddSingleton<ITranscriberFactory, TranscriberFactory>();
         services.AddSingleton<GoogleTranscriber>();
         services.AddSingleton<DeepgramTranscriber>();

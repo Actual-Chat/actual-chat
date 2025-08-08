@@ -124,16 +124,16 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var notificationBuilder = new NotificationCompat.Builder(this, NotificationHelper.Constants.DefaultChannelId)
-            .SetContentTitle(data.Title!)
+            .SetContentTitle(data.Title!)!
             // The small icon should be opaque white
             // https://doc.batch.com/android/advanced/customizing-notifications/#setting-up-custom-push-icons
             // ReSharper disable once AccessToStaticMemberViaDerivedType
-            .SetSmallIcon(Resource.Drawable.notification_app_icon)
-            .SetColor(0x0036A3)
-            .SetContentText(body)
-            .SetContentIntent(contentPendingIntent)
-            .SetAutoCancel(true) // closes notification after tap
-            .SetPriority((int)NotificationPriority.High);
+            .SetSmallIcon(Resource.Drawable.notification_app_icon)!
+            .SetColor(0x0036A3)!
+            .SetContentText(body)!
+            .SetContentIntent(contentPendingIntent)!
+            .SetAutoCancel(true)! // closes notification after tap
+            .SetPriority((int)NotificationPriority.High)!;
         var imageUrl = data.ImageUrl;
         if (imageUrl != null) {
             var largeImage = NotificationHelper.GetImage(imageUrl);

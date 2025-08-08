@@ -64,6 +64,7 @@ public static class ShardKeyResolvers
         Register<TranslationSourceId>(static x => ForString(x.ChatId.Value));
         Register<ContentId>(static x => ForString(x.TargetId.Value));
         Register<UserDeviceId>(static x => ForString(x.OwnerId.Value));
+        Register<StreamId>(static x => ForString(x.Value)); // Used as a shard key in TranslationsBackend_TranslateStream
 
         // Classes
         Register<string>(ForString); // Todo: likely, we should get rid of this kind of shard key

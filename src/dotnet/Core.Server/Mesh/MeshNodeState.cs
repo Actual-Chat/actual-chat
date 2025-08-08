@@ -10,8 +10,11 @@ public enum MeshNodeState
 
 public static class MeshNodeStateExt
 {
-    public static MeshNodeState Normalize(this MeshNodeState state, bool offlineIsOnline)
-        => offlineIsOnline
+    public static MeshNodeState Normalize(this MeshNodeState state)
+        => state == MeshNodeState.Offline ? MeshNodeState.Online : state;
+
+    public static MeshNodeState Normalize(this MeshNodeState state, bool normalize)
+        => normalize
             ? state == MeshNodeState.Offline ? MeshNodeState.Online : state
             : state;
 

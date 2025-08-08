@@ -4,6 +4,7 @@ using ActualChat.Db;
 using ActualChat.Diagnostics;
 using ActualChat.Mesh;
 using ActualChat.Queues;
+using ActualChat.Sharding;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
@@ -58,7 +59,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     }
 
     // Not a [ComputeMethod]!
-    public virtual async Task<ApiArray<Translation>> ListHanging(int limit, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Translation>> ListHanging(ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);

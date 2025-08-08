@@ -1,5 +1,6 @@
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
+using ActualChat.Sharding;
 using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
@@ -21,7 +22,7 @@ public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
     protected override async Task Run(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
-            var translations = await TranslationsBackend.ListHanging(BatchSize, cancellationToken).ConfigureAwait(false);
+            var translations = await TranslationsBackend.ListHanging(default, BatchSize, cancellationToken).ConfigureAwait(false);
             if (translations.Count == 0)
                 return;
 

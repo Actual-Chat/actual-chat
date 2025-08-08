@@ -1,3 +1,5 @@
+using ActualChat.Sharding;
+
 namespace ActualChat;
 
 public delegate MeshRef MeshRefResolver<in T>(T source);
@@ -24,8 +26,10 @@ public static class MeshRefResolvers
     {
         Register<NodeRef>(MeshRef.Node);
         Register<NodeRef?>(x => x is { } nodeRef ? MeshRef.Node(nodeRef) : MeshRef.None);
-        Register<StreamId?>(x => x is { } v ? MeshRef.Node(v.NodeRef) : MeshRef.None);
         Register<IHasNodeRef?>(x => x != null ? MeshRef.Node(x.NodeRef) : MeshRef.None);
+        Register<ThisNodeRef>(_ => MeshRef.ThisNodeAlias);
+        Register<IHasThisNodeRef>(_ => MeshRef.ThisNodeAlias);
+        Register<StreamId?>(x => x is { } v ? MeshRef.Node(v.NodeRef) : MeshRef.None);
     }
 
     public static void Register<T>(MeshRefResolver<T> resolver)
