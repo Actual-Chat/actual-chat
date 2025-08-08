@@ -68,7 +68,7 @@ export class ChatEntryMessageInternalView {
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
                 const element = mutation.target.parentElement as HTMLElement;
-                if (['change-item', 'changes', 'retained'].some(cls => element.classList.contains(cls))) {
+                if (['change-item', 'changed-item', 'changes', 'retained'].some(cls => element.classList.contains(cls))) {
                     this.changeSizeForText(true);
                 } else {
                     this.changeSizeForText();
@@ -102,11 +102,16 @@ export class ChatEntryMessageInternalView {
     }
 
     private changeSizeFastDebounced = debounce((height: number) => this.changeSize(height), 150);
-    private changeSizeSlowDebounced = debounce((height: number) => this.changeSize(height), 1250);
+    private changeSizeSlowDebounced = debounce((height: number) => this.changeSize(height), 2000);
 
     private changeSize(height: number) {
         if (this.isResizing || this.markupHeight === height)
             return;
+
+        const actualHeight = this.getActualHeight();
+        if (height < actualHeight) {
+            height = actualHeight;
+        }
 
         this.isResizing = true;
 
@@ -122,18 +127,22 @@ export class ChatEntryMessageInternalView {
     }
 
     private changeSizeForText(slow: boolean = false) {
-        const range = document.createRange();
-        range.selectNodeContents(this.messageMarkup);
-        const newHeight = Math.ceil(range.getBoundingClientRect().height);
+        const actualHeight = this.getActualHeight();
         const oldHeight = this.markupHeight;
         const minDelta = this.getRemInPixels();
-        if (Math.abs(newHeight - this.markupHeight) > minDelta) {
-            if (newHeight > oldHeight) {
-                this.changeSizeFastDebounced(newHeight);
+        if (Math.abs(actualHeight - this.markupHeight) > minDelta) {
+            if (actualHeight > oldHeight) {
+                this.changeSizeFastDebounced(actualHeight);
             } else {
-                slow ? this.changeSizeSlowDebounced(newHeight) : this.changeSizeFastDebounced(newHeight);
+                slow ? this.changeSizeSlowDebounced(actualHeight) : this.changeSizeFastDebounced(actualHeight);
             }
         }
+    }
+
+    private getActualHeight() : number {
+        const range = document.createRange();
+        range.selectNodeContents(this.messageMarkup);
+        return Math.ceil(range.getBoundingClientRect().height);
     }
 
     private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);
