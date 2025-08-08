@@ -66,6 +66,8 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 .ConfigureAwait(false);
             activity?.SetStatus(ActivityStatusCode.Ok);
             var result = response.Content ?? "";
+            if (!textToTranslate.OrdinalEndsWith(" .") && result.OrdinalEndsWith(" ."))
+                result = result[..^2];
 
             // DebugLog?.LogDebug("Translate: {Content} = {TranslatedContent} with [{Context}]", textToTranslate, result, string.Join(',', context));
             return OrdinalIgnoreCaseEquals(result, Constants.Translation.NoTranslationNeededText)
