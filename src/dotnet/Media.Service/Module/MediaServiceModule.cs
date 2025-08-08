@@ -34,6 +34,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<ICrawlingHandler, WebSiteHandler>();
         services.AddSingleton<ICrawlingHandler, ImageLinkHandler>();
         services.AddSingleton<ImageGrabber>();
+        services.AddSingleton<EgressGuard>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

@@ -4,6 +4,7 @@ using ActualLab.Diagnostics;
 namespace ActualChat.Media;
 
 public sealed class Crawler(
+    EgressGuard egressGuard,
     IHttpClientFactory httpClientFactory,
     IEnumerable<ICrawlingHandler> handlers,
     MediaSettings settings,
@@ -27,7 +28,15 @@ public sealed class Crawler(
     public async Task<CrawledLink> Crawl(string url, CancellationToken cancellationToken)
     {
         try {
-            var userAgents = await ListSupportedUserAgents(new Uri(url), cancellationToken).ConfigureAwait(false);
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) {
+                DebugLog?.LogError("Invalid URL: {Url}", url);
+                return CrawledLink.None;
+            }
+
+            if (!await egressGuard.IsAllowed(uri.DnsSafeHost, cancellationToken).ConfigureAwait(false))
+                return CrawledLink.None;
+
+            var userAgents = await ListSupportedUserAgents(uri, cancellationToken).ConfigureAwait(false);
             if (userAgents.Count == 0)
                 return CrawledLink.None;
 

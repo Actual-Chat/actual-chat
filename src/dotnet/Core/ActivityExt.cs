@@ -1,3 +1,5 @@
+using ActualLab.Diagnostics;
+
 namespace ActualChat;
 
 public static class ActivityExt
@@ -5,6 +7,16 @@ public static class ActivityExt
     private static ILogger? _log;
 
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(ActivityExt));
+
+    public static Task<T> WithActivity<T>(this Task<T> task, Activity? activity, CancellationToken cancellationToken = default)
+        => task.ContinueWith(t => {
+                if (t.IsCompletedSuccessfully)
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                else
+                    activity?.Finalize(t, cancellationToken);
+                return t.Result;
+            },
+            TaskScheduler.Default);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Activity AddSentrySimulatedEvent(this Activity activity, ActivityEvent e)
