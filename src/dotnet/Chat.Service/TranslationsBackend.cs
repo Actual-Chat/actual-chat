@@ -515,7 +515,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
             DebugLog?.LogDebug("TranslateTranscriptStream: {StreamId} - Publishing stream", translatedStreamId);
 
-            var translatedStream = new RpcStream<TranscriptDiff>(reader.ReadAllAsync(cancellationToken));
+            var translatedStream = RpcStream.New(reader.ReadAllAsync(cancellationToken));
             await StreamingBackend
                 .PushTranscript(translatedStreamId, translatedStream, cancellationToken)
                 .ConfigureAwait(false);
