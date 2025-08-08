@@ -46,15 +46,6 @@
 
 @code {
     private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
-    private NavbarUI NavbarUI => Hub.NavbarUI;
-
-    protected override void OnInitialized()
-        => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
-
-    public override ValueTask DisposeAsync() {
-        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
-        return base.DisposeAsync();
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -71,11 +62,6 @@
             isChatRouletteEnabled = userSettings?.IsEnabled ?? false;
         }
         return new(ownAccount, isChatRouletteEnabled);
-    }
-
-    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
-        if (NavbarUI.IsPinnedChatSelected(out _))
-            PanelsUI.HidePanels();
     }
 
     // Nested types
