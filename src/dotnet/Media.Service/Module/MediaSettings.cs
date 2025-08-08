@@ -9,4 +9,6 @@ public sealed class MediaSettings
     public TimeSpan ImageDownloadTimeout { get; set; } = TimeSpan.FromSeconds(5);
     public IReadOnlySet<string> DomainsWithoutRobots { get; set; } = ReadOnlySet<string>.Empty;
     public string GithubApiKey { get; set; } = "";
+    public string[] CrawlingCidrDenylist { get; set; } = [];
+    public string[] CrawlingDomainDenylist { get; set; } = [];
 }

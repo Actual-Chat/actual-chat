@@ -1,5 +1,7 @@
+using ActualChat.Diagnostics;
 using ActualChat.Flows;
 using ActualChat.Media.Module;
+using ActualLab.Diagnostics;
 using MemoryPack;
 
 namespace ActualChat.Media.Flows;
@@ -32,7 +34,10 @@ public sealed partial class LinkPreviewFlow : Flow
         if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt))
             return;
 
-        var linkMeta = await Crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
+        using var activity = CoreServerInstruments.ActivitySource.StartActivity(typeof(Crawler), nameof(Crawler.Crawl), ActivityKind.Client);
+        var linkMeta = await Crawler.Crawl(url, cancellationToken)
+            .WithActivity(activity, cancellationToken)
+            .ConfigureAwait(false);
         var videoMeta = linkMeta.OpenGraph.Video;
         linkPreview ??= new LinkPreview {
             Id = LinkPreview.ComposeId(url),
