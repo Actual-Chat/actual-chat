@@ -24,7 +24,7 @@ public static class ChatEntryExt
         if (translation.IsStreaming)
             return false;
 
-        return translation.SourceContentHash != source.ContentHash && !isRetranslation;
+        return translation.SourceContentHash != source.ContentHash || isRetranslation;
     }
 
     public static bool NeedsLanguageDetection([NotNullWhen(true)] this ChatEntry? entry, ChatEntryLanguage? entryLanguage)
