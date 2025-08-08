@@ -16,6 +16,8 @@
         streamingCls = "not-streaming";
     } else if (oldStreaming && !m.IsStreaming) {
         streamingCls = "from-streaming";
+    } else if (m.IsStreaming) {
+        streamingCls = "streaming";
     }
     var translationCls = "";
     if (oldTranslation is TranslationState.None or TranslationState.Translating && m.Translation == TranslationState.Translated) {

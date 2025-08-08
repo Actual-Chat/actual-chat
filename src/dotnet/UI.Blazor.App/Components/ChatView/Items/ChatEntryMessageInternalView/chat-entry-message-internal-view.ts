@@ -30,7 +30,7 @@ export class ChatEntryMessageInternalView {
             return;
 
         let content = this.messageMarkup.textContent;
-        if (!content)
+        if (!content && !this.messageMarkup.classList.contains('streaming'))
             this.messageMarkup.classList.add('empty');
 
         this.playableText = this.messageMarkup.querySelector('.playable-text-markup');
