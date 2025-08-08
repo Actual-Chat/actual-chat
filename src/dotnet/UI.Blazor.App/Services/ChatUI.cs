@@ -632,8 +632,24 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (!e.IsUserAction)
             return;
 
-        _ = SelectLastUsedChat();
+        if (pinnedChatId is not null)
+            _ = NavigateToPinnedChat();
+        else
+            _ = SelectLastUsedChat();
+
         return;
+
+        async Task NavigateToPinnedChat()
+        {
+            try {
+                var mustReplace = History.LocalUrl.IsChat();
+                await History.NavigateTo(Links.Chat(pinnedChatId), mustReplace).ConfigureAwait(true);
+                PanelsUI.HidePanels();
+            }
+            catch (Exception ex) {
+                Log.LogError(ex, "NavigateToPinnedChat failed");
+            }
+        }
 
         async Task SelectLastUsedChat(CancellationToken cancellationToken = default) {
             try {
