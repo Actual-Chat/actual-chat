@@ -90,7 +90,8 @@ export class ChatEntryMessageInternalView {
                         this.playableText = node as HTMLElement;
                         this.onTranscriptionFinalizedResize();
                     }
-                    if (node instanceof HTMLElement && node.classList.contains('plain-text-markup')
+                    if (node instanceof HTMLElement
+                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))
                         && this.messageMarkup.classList.contains('empty')) {
                         this.messageMarkup.classList.remove('empty');
                     }
