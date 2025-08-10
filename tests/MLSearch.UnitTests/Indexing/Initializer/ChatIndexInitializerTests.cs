@@ -212,7 +212,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Returns(() => new MeshWatcher(moqServices.Object, false));
         moqServices
             .Setup(x => x.GetService(typeof(MeshNode)))
-            .Returns(() => new MeshNode(NodeRef.None, string.Empty, new ApiSet<HostRole>()));
+            .Returns(() => new MeshNode(NodeRef.None, string.Empty, new ApiSet<HostRole>(), MeshNodeState.Online));
         return moqServices;
     }
 }

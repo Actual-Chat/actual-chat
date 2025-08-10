@@ -7,7 +7,7 @@ namespace ActualChat.Rpc;
 /// In fact, it's a resolved ShardRef/NodeRef - with cached Node, IsLocal, IsOffline, etc.
 /// </summary>
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct ResolvedMeshRef
+public readonly struct ResolvedMeshRef
 {
     public readonly MeshRpcPeerRefs Owner;
     public readonly ShardRef ShardRef;
@@ -15,7 +15,6 @@ public readonly record struct ResolvedMeshRef
     public MeshRef MeshRef => ShardRef.IsNone ? NodeRef : ShardRef;
     public readonly MeshNode? Node;
     public bool IsLocal => ReferenceEquals(Node, Owner.ThisNode);
-    public readonly MeshNodeState State;
     public readonly RpcPeerConnectionKind ConnectionKind;
 
     public ResolvedMeshRef Latest => new(Owner, MeshRef);
@@ -35,10 +34,10 @@ public readonly record struct ResolvedMeshRef
             var meshNode = shardMap[ShardRef.Key];
             NodeRef = meshNode?.Ref ?? default;
         }
-        (Node, State) = meshState.GetNodeAndState(NodeRef);
+        Node = meshState[NodeRef];
         ConnectionKind = IsLocal
             ? RpcPeerConnectionKind.Local
-            : ShardRef.IsNone || State is not MeshNodeState.Dead
+            : ShardRef.IsNone || Node?.State is not MeshNodeState.Dead
                 ? RpcPeerConnectionKind.Remote
                 : RpcPeerConnectionKind.None; // NodeRef pointing to a dead node
     }
@@ -48,31 +47,27 @@ public readonly record struct ResolvedMeshRef
         var shardRefPrefix = ShardRef.IsNone ? "" : $"{ShardRef.Format()}->-";
         var nodeRef = NodeRef.Id.Value.NullIfEmpty() ?? "n/a";
         var isLocalSuffix = IsLocal ? "-local" : "";
-        var stateSuffix = ShardRef.IsNone ? State.FormatSuffix() : "";
+        var stateSuffix = ShardRef.IsNone
+            ? (Node?.State ?? MeshNodeState.Unknown).FormatSuffix()
+            : "";
         return string.Concat("@", shardRefPrefix, nodeRef, isLocalSuffix, stateSuffix);
     }
 
-    public Task WhenChanged(bool normalizeState, CancellationToken cancellationToken)
+    public Task WhenChanged(bool collapseState, CancellationToken cancellationToken)
     {
         var self = this;
         return Owner.MeshState.Computed
-            .When(_ => !self.Equals(self.Latest, normalizeState), cancellationToken);
+            .When(_ => !self.IsChanged(collapseState), cancellationToken);
     }
 
-    // Equality
+    public bool IsChanged(bool collapseState)
+        => IsChanged(Latest, collapseState);
 
-    public bool Equals(ResolvedMeshRef other, bool normalizeState)
+    public bool IsChanged(ResolvedMeshRef other, bool collapseState)
         => Owner == other.Owner
             && ShardRef == other.ShardRef
             && NodeRef == other.NodeRef
-            && (normalizeState
-                ? State.Normalize() == other.State.Normalize()
-                : State == other.State);
-    public bool Equals(ResolvedMeshRef other)
-        => Owner == other.Owner
-            && ShardRef == other.ShardRef
-            && NodeRef == other.NodeRef
-            && State == other.State;
-    public override int GetHashCode()
-        => HashCode.Combine(Owner, ShardRef, NodeRef, State);
+            && (collapseState
+                ? Node?.State.IsLive() == other.Node?.State.IsLive()
+                : (Node?.State).OrUnknown() == (other.Node?.State).OrUnknown());
 }

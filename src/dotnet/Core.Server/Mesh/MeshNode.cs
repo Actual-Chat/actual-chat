@@ -1,30 +1,100 @@
 using ActualChat.Hashing;
 using ActualChat.Hosting;
-using MemoryPack;
 
 namespace ActualChat.Mesh;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record MeshNode(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] NodeRef Ref,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Endpoint,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] IReadOnlySet<HostRole> Roles
+public sealed record MeshNode(
+    NodeRef Ref,
+    string Endpoint,
+    IReadOnlySet<HostRole> Roles,
+    MeshNodeState State,
+    Moment? DeadAt = null
     ) : IComparable<MeshNode>, IHasId<NodeRef>, IHasId<Symbol>
 {
     private static readonly ListFormat Formatter = new(' ');
 
-    private string? _toString;
+    private string? _lockKey;
+    private string? _toStringCached;
 
     NodeRef IHasId<NodeRef>.Id => Ref;
     Symbol IHasId<Symbol>.Id => Ref.Id;
 
+    public string LockKey
+        => _lockKey ??= Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
+
     public override string ToString()
-        => _toString ??= Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
+        => _toStringCached ??= $"{LockKey}: {State}{(DeadAt is { } deadAt ? $", dead at: {deadAt}" : "")}";
 
-    public static MeshNode Parse(string value)
-        => TryParse(value, out var result) ? result : throw StandardError.Format<MeshNode>();
+    public static MeshNode FromLockKey(string lockKey)
+        => TryParseLockKey(lockKey, out var result)
+            ? result
+            : throw StandardError.Format<MeshNode>();
 
-    public static bool TryParse(string value, [NotNullWhen(true)] out MeshNode? nodeInfo)
+    // Helpers
+
+    public MeshNode ToOffline(Moment deadAt)
+        => State is not MeshNodeState.Online
+            ? throw StandardError.StateTransition<MeshNode>($"Expected {nameof(State.Online)} state, but got {State}.")
+            : this with {
+                State = MeshNodeState.Offline,
+                DeadAt = deadAt,
+            };
+
+    public MeshNode ToOnline()
+        => State is not MeshNodeState.Offline
+            ? throw StandardError.StateTransition<MeshNode>($"Expected {nameof(State.Offline)} state, but got {State}.")
+            : this with {
+                State = MeshNodeState.Online,
+                DeadAt = null,
+            };
+
+    public MeshNode ToDead()
+        => State is not MeshNodeState.Offline
+            ? throw StandardError.StateTransition<MeshNode>($"Expected {nameof(State.Offline)} state, but got {State}.")
+            : this with {
+                State = MeshNodeState.Dead,
+            };
+
+    // Equality: uses only Ref
+
+    public bool Equals(MeshNode? other)
+    {
+        if (ReferenceEquals(null, other))
+            return false;
+        return ReferenceEquals(this, other) || Equals(Ref.Id, other.Ref.Id);
+    }
+
+    public override int GetHashCode() => Ref.Id.HashCode;
+
+    public IEnumerable<T> GetHashes<T>()
+        where T : unmanaged
+    {
+        for (var hashSource = Ref.Value;; hashSource += Ref.Value) {
+            var hashes = hashSource.Hash().Blake2b().AsSpan<T>().ToArray();
+            foreach (var hash in hashes)
+                yield return hash;
+        }
+    }
+
+    // Comparison: uses only Ref
+
+    public int CompareTo(MeshNode? other)
+        => ReferenceEquals(other, null)
+            ? 1
+            : StringComparer.Ordinal.Compare(Ref.Value, other.Ref.Value);
+
+    public static bool operator <(MeshNode left, MeshNode right)
+        => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : left.CompareTo(right) < 0;
+    public static bool operator <=(MeshNode left, MeshNode right)
+        => ReferenceEquals(left, null) || left.CompareTo(right) <= 0;
+    public static bool operator >(MeshNode left, MeshNode right)
+        => !ReferenceEquals(left, null) && left.CompareTo(right) > 0;
+    public static bool operator >=(MeshNode left, MeshNode right)
+        => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.CompareTo(right) >= 0;
+
+    // Private methods
+
+    private static bool TryParseLockKey(string value, [NotNullWhen(true)] out MeshNode? nodeInfo)
     {
         nodeInfo = null;
         var parser = Formatter.CreateParser(value);
@@ -50,44 +120,7 @@ public sealed partial record MeshNode(
                 return false;
         }
 
-        nodeInfo = new MeshNode(@ref, endpoint, new HashSet<HostRole>(roles));
+        nodeInfo = new MeshNode(@ref, endpoint, new HashSet<HostRole>(roles), MeshNodeState.Online);
         return true;
     }
-
-    // Equality: uses only Ref
-
-    public bool Equals(MeshNode? other)
-    {
-        if (ReferenceEquals(null, other))
-            return false;
-        return ReferenceEquals(this, other) || Equals(Ref.Id, other.Ref.Id);
-    }
-
-    public override int GetHashCode() => Ref.Id.HashCode;
-
-    public IEnumerable<T> GetHashes<T>()
-        where T : unmanaged
-    {
-        for (var hashSource = Ref.Value;; hashSource += Ref.Value) {
-            var hashes = hashSource.Hash().Blake2b().AsSpan<T>().ToArray();
-            foreach (var hash in hashes)
-                yield return hash;
-        }
-    }
-
-    // Comparison: uses only Id
-
-    public int CompareTo(MeshNode? other)
-        => ReferenceEquals(other, null)
-            ? 1
-            : StringComparer.Ordinal.Compare(Ref.Value, other.Ref.Value);
-
-    public static bool operator <(MeshNode left, MeshNode right)
-        => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : left.CompareTo(right) < 0;
-    public static bool operator <=(MeshNode left, MeshNode right)
-        => ReferenceEquals(left, null) || left.CompareTo(right) <= 0;
-    public static bool operator >(MeshNode left, MeshNode right)
-        => !ReferenceEquals(left, null) && left.CompareTo(right) > 0;
-    public static bool operator >=(MeshNode left, MeshNode right)
-        => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.CompareTo(right) >= 0;
 }

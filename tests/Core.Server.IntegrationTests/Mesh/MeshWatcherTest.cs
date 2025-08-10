@@ -15,23 +15,27 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         var s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         Out.WriteLine(s.ToString());
 
-        var syncTimeout = w1.NodeTimeout * 2;
-        await w1.State.Computed.When(x => x.Nodes.Length == 1).WaitAsync(syncTimeout);
+        var syncTimeout = w1.OfflineTimeout * 2;
+        await w1.State.Computed.When(x => x.AllNodes.Count == 1).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
         s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         Out.WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 
         using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
-        await w1.State.Computed.When(x => x.Nodes.Length == 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.Nodes.Length == 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
         s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         Out.WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 
         _ = w1.DisposeAsync();
         await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.Nodes.Length == 1).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
 
         _ = w2.DisposeAsync();
         await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
@@ -53,8 +57,8 @@ public class MeshWatcherTest(ITestOutputHelper @out)
 
         _ = w2.DisposeAsync();
 
-        var t1a = Task.Delay(w1.NodeTimeout * 0.5, w1w2.RerouteToken);
-        var t1b = Task.Delay(w1.NodeTimeout * 1.5, w1w2.RerouteToken);
+        var t1a = Task.Delay(w1.OfflineTimeout * 0.5, w1w2.RerouteToken);
+        var t1b = Task.Delay(w1.OfflineTimeout * 1.5, w1w2.RerouteToken);
         var t2 = Task.Delay(TimeSpan.FromSeconds(1), w2w1.RerouteToken);
         var r1a = await t1a.ResultAwait();
         var r1b = await t1b.ResultAwait();

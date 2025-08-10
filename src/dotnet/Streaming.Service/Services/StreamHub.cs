@@ -67,7 +67,7 @@ public class StreamHub(IServiceProvider services) : Hub
             return;
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        var nodes = MeshWatcher.State.Value.NodesByRole[HostRole.AudioBackend];
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.AudioBackend];
         if (nodes.Length == 0) {
             Log.LogError("No nodes serving {Role} role!", HostRole.AudioBackend);
             return; // No backends

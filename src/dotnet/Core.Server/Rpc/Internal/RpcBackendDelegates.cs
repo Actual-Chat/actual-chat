@@ -62,7 +62,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         var node = target.Node;
         if (node is null) {
             // No node -> target.State is Unknown or Dead
-            if (target.ShardRef.IsNone && target.State == MeshNodeState.Dead) // Such targets are never rerouted
+            if (target.ShardRef.IsNone && target.Node?.State == MeshNodeState.Dead) // Such targets are never rerouted
                 throw new RpcReconnectFailedException($"Node {target.NodeRef} is dead."); // Makes peer to terminate
 
             return null; // null Uri = peer will hang waiting for RpcPeerRef.RerouteToken cancellation

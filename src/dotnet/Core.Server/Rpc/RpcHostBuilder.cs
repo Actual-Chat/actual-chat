@@ -208,7 +208,8 @@ public readonly struct RpcHostBuilder
             var node = new MeshNode(
                 nodeId, // $"{host}-{Ulid.NewUlid().ToString()}";
                 $"{host}:{port.Format()}",
-                hostInfo.Roles);
+                hostInfo.Roles,
+                MeshNodeState.Online);
             log?.LogInformation("MeshNode: {MeshNode}", node.ToString());
             return node;
         });

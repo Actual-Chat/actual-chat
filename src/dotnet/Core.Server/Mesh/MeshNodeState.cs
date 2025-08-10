@@ -10,14 +10,6 @@ public enum MeshNodeState
 
 public static class MeshNodeStateExt
 {
-    public static MeshNodeState Normalize(this MeshNodeState state)
-        => state == MeshNodeState.Offline ? MeshNodeState.Online : state;
-
-    public static MeshNodeState Normalize(this MeshNodeState state, bool normalize)
-        => normalize
-            ? state == MeshNodeState.Offline ? MeshNodeState.Online : state
-            : state;
-
     public static string FormatSuffix(this MeshNodeState state)
         => state switch {
             MeshNodeState.Unknown => "-unknown",
@@ -26,4 +18,13 @@ public static class MeshNodeStateExt
             MeshNodeState.Dead => "-dead",
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
         };
+
+    public static bool IsLive(this MeshNodeState state)
+        => state is not MeshNodeState.Dead;
+
+    public static bool IsLive(this MeshNodeState? state)
+        => state is not MeshNodeState.Dead;
+
+    public static MeshNodeState OrUnknown(this MeshNodeState? state)
+        => state ?? MeshNodeState.Unknown;
 }

@@ -7,50 +7,45 @@ public sealed class MeshState
     private readonly Lock _lock = new();
     private volatile Dictionary<ShardScheme, ShardMap>? _shardMapCache;
 
-    public ImmutableArray<MeshNode> OnlineNodes { get; }
-    public ImmutableDictionary<NodeRef, CpuTimestamp> DyingNodes { get; }
-    public ImmutableArray<MeshNode> Nodes { get; }
+    public MomentClock Clock { get; set; }
+    public ImmutableDictionary<NodeRef, MeshNode> AllNodes { get; }
     public bool IsFinal { get; }
 
     // Computed properties
-    public IReadOnlySet<HostRole> Roles { get; }
-        = ImmutableHashSet<HostRole>.Empty;
-    public IReadOnlyDictionary<NodeRef, MeshNode> NodeByRef { get; }
-        = ImmutableDictionary<NodeRef, MeshNode>.Empty;
-    public IReadOnlyDictionary<HostRole, ImmutableArray<MeshNode>> NodesByRole { get; }
+    public IReadOnlySet<HostRole> AllRoles { get; } = ImmutableHashSet<HostRole>.Empty;
+    public ImmutableArray<MeshNode> LiveNodes { get; } = ImmutableArray<MeshNode>.Empty;
+    public IReadOnlyDictionary<HostRole, ImmutableArray<MeshNode>> LiveNodesByRole { get; }
         = ImmutableDictionary<HostRole, ImmutableArray<MeshNode>>.Empty;
 
-    public MeshState(
-        ImmutableArray<MeshNode> onlineNodes,
-        ImmutableDictionary<NodeRef, CpuTimestamp> dyingNodes,
-        ImmutableArray<MeshNode> nodes,
-        bool isFinal = false)
+    // Indexer
+    public MeshNode? this[NodeRef nodeRef] => AllNodes.GetValueOrDefault(nodeRef);
+
+    public MeshState(MomentClock clock, ImmutableDictionary<NodeRef, MeshNode> allNodes, bool isFinal = false)
     {
-        OnlineNodes = onlineNodes;
-        DyingNodes = dyingNodes;
-        Nodes = nodes;
+        Clock = clock;
+        AllNodes = allNodes;
         IsFinal = isFinal;
-        if (nodes.IsEmpty)
+        if (allNodes.IsEmpty)
             return;
 
-        Roles = Nodes.SelectMany(x => x.Roles).ToHashSet();
-        NodeByRef = Nodes.ToDictionary(x => x.Ref, x => x);
-        NodesByRole = Roles.Select(r => new KeyValuePair<HostRole, ImmutableArray<MeshNode>>(
+        AllRoles = AllNodes.Values.SelectMany(x => x.Roles).ToHashSet();
+        LiveNodes = [..AllNodes.Values.Where(x => x.State.IsLive()).Order()];
+        LiveNodesByRole = AllRoles.Select(r => new KeyValuePair<HostRole, ImmutableArray<MeshNode>>(
             r,
-            [..Nodes.Where(n => n.Roles.Contains(r))])
+            [..LiveNodes.Where(n => n.Roles.Contains(r))])
         ).ToDictionary();
     }
 
     public override string ToString()
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        sb.Append("MeshState(").Append(Nodes.Length).AppendLine(" node(s)) {");
-        var now = CpuTimestamp.Now;
+        sb.Append("MeshState(").Append(AllNodes.Count).AppendLine(" node(s)) {");
+        var now = Clock.Now;
         var i = 0;
-        foreach (var node in Nodes) {
-            sb.Append("  [").Append(i).Append("] = ").Append(node);
-            if (DyingNodes.TryGetValue(node.Ref, out var dyingAt) && dyingAt > now)
-                sb.Append($", dying in {(now - dyingAt).ToShortString()}");
+        foreach (var node in AllNodes.Values.Order()) {
+            sb.Append("  [").Append(i).Append("] = ").Append(node.LockKey).Append(": ").Append(node.State);
+            if (node.DeadAt is { } deadAt)
+                sb.Append($", dies in: {(deadAt - now).Positive().ToShortString()}");
             sb.AppendLine();
             i++;
         }
@@ -61,23 +56,7 @@ public sealed class MeshState
     public MeshState ToFinal()
         => IsFinal
             ? this
-            : new MeshState(OnlineNodes, DyingNodes, Nodes, true);
-
-    public (MeshNode? Node, MeshNodeState State) GetNodeAndState(NodeRef nodeRef)
-    {
-        if (nodeRef.IsNone)
-            return (null, MeshNodeState.Dead);
-
-        var node = NodeByRef.GetValueOrDefault(nodeRef);
-        var state = DyingNodes.TryGetValue(nodeRef, out var dyingAt)
-            ? dyingAt <= CpuTimestamp.Now
-                ? MeshNodeState.Dead
-                : MeshNodeState.Offline
-            : node is not null
-                ? MeshNodeState.Online
-                : MeshNodeState.Unknown;
-        return (node, state);
-    }
+            : new MeshState(Clock, AllNodes, isFinal: true);
 
     public ShardMap GetShardMap(ShardScheme shardScheme)
     {
@@ -91,7 +70,7 @@ public sealed class MeshState
             if (cache != null && cache.TryGetValue(shardScheme, out shardMap))
                 return shardMap;
 
-            if (!NodesByRole.TryGetValue(shardScheme.HostRole, out var nodes))
+            if (!LiveNodesByRole.TryGetValue(shardScheme.HostRole, out var nodes))
                 nodes = ImmutableArray<MeshNode>.Empty;
             shardMap = new ShardMap(shardScheme, nodes);
             cache = cache == null ? new() : new Dictionary<ShardScheme, ShardMap>(cache);
