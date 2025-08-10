@@ -390,7 +390,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             SingleWriter = true,
             AllowSynchronousContinuations = true,
         });
-        using var activity = CoreServerInstruments.ActivitySource.StartActivity(ActivityKind.Client);
+        using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
         try {
             var reader = channel.Reader;
             var writer = channel.Writer;

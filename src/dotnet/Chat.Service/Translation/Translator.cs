@@ -52,7 +52,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         if (!Settings.IsTranslationEnabled)
             return textToTranslate;
 
-        using var activity = CoreServerInstruments.ActivitySource.StartActivity(ActivityKind.Client);
+        using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
         try {
             var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
             var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, cancellationToken).ConfigureAwait(false);
@@ -100,7 +100,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         {
             var sb = new StringBuilder();
             var last = "";
-            using var activity = CoreServerInstruments.ActivitySource.StartActivity(ActivityKind.Client);
+            using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
             var stream = Completion
                 .GetStreamingChatMessageContentsAsync(
                     chatHistory,
