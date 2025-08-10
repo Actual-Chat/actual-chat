@@ -25,7 +25,7 @@ public sealed class MeshRpcPeerRefs
     public MeshRpcPeerRef Get(MeshRef meshRef)
     {
         if (meshRef.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(meshRef));
+            throw new ArgumentOutOfRangeException(nameof(meshRef), "Can't route call to MeshRef.None.");
 
         // Normalizing meshRef
         var shardRef = meshRef.ShardRef;

@@ -1,3 +1,4 @@
+using ActualChat.Sharding;
 using ActualLab.Interception;
 using ActualLab.Rpc;
 
@@ -17,7 +18,7 @@ public static class RpcMethodDefExt
             static (methodDef) => {
                 var parameterTypes = methodDef.ParameterTypes;
                 if (parameterTypes.Length == 0)
-                    return RouteCall<Unit>;
+                    return RouteCall<ThisNodeRef>; // No parameters = we'll route it to the local node
 
                 var arg0Type = parameterTypes[0];
                 return RouteCallMethod.MakeGenericMethod(arg0Type).CreateDelegate<MeshRpcCallRouter>();

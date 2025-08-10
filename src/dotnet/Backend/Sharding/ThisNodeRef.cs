@@ -2,7 +2,10 @@ namespace ActualChat.Sharding;
 
 #pragma warning disable CS0169 // Field is never used
 
-// This type is used as an extra parameter of constructors to indicate no validation is required
+// This type is used as the first parameter of RPC methods requiring routing to the local node
+public interface IRequiresThisNode;
+
+// This type is used as the first parameter of RPC methods requiring routing to the local node
 [StructLayout(LayoutKind.Sequential, Pack = 1)] // Important!
 public readonly struct ThisNodeRef : IEquatable<ThisNodeRef>
 {

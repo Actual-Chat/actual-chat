@@ -20,15 +20,25 @@ public static class MeshRefResolvers
     private static readonly MethodInfo CreateShardKeyBasedResolverMethod = typeof(MeshRefResolvers)
         .GetMethod(nameof(CreateShardKeyBasedResolver), BindingFlags.Static | BindingFlags.NonPublic)!;
 
-    public static MeshRef ForNull() => MeshRef.Shard(ShardKeyResolvers.ForNull());
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static MeshRef RandomShard() => MeshRef.Shard(ShardKeyResolvers.RandomShard());
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static MeshRef ForString(string? x) => MeshRef.Shard(x?.GetXxHash3() ?? 0);
 
     static MeshRefResolvers()
     {
-        Register<NodeRef>(MeshRef.Node);
-        Register<NodeRef?>(x => x is { } nodeRef ? MeshRef.Node(nodeRef) : MeshRef.None);
-        Register<IHasNodeRef?>(x => x != null ? MeshRef.Node(x.NodeRef) : MeshRef.None);
+        // NOTE(AY):Returning MeshRef.None from MeshRefResolver means
+        // MeshRpcPeerRef.Get(MeshRef meshRef) will fail with an exception,
+        // so the call with such an argument will fail too.
         Register<ThisNodeRef>(_ => MeshRef.ThisNodeAlias);
-        Register<IHasThisNodeRef>(_ => MeshRef.ThisNodeAlias);
+        Register<IRequiresThisNode>(_ => MeshRef.ThisNodeAlias);
+        Register<ZeroShardRef>(_ => MeshRef.ZeroShard);
+        Register<IRequiresZeroShard>(_ => MeshRef.ZeroShard);
+        Register<RandomShardRef>(_ => RandomShard());
+        Register<IRequiresRandomShard>(_ => RandomShard());
+        Register<NodeRef>(MeshRef.Node);
+        Register<NodeRef?>(x => x ?? MeshRef.None);
+        Register<IHasNodeRef?>(x => x != null ? MeshRef.Node(x.NodeRef) : MeshRef.None);
         Register<StreamId?>(x => x is { } v ? MeshRef.Node(v.NodeRef) : MeshRef.None);
     }
 

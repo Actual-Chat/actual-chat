@@ -25,19 +25,18 @@ public static class ShardKeyResolvers
     private static readonly MethodInfo NewNotFoundMethod = typeof(ShardKeyResolvers)
         .GetMethod(nameof(NewNotFound), BindingFlags.Static | BindingFlags.Public)!;
 
-    public static ShardKeyResolver<T> NewHashBased<T>() => static x => x?.GetHashCode() ?? ForNull();
+    public static ShardKeyResolver<T> NewHashBased<T>() => static x => x?.GetHashCode() ?? 0;
     public static ShardKeyResolver<T?> NewNullable<T>(ShardKeyResolver<T> nonNullableResolver)
         where T : struct
         => source => source is { } v
             ? nonNullableResolver.Invoke(v)
-            : ForNull();
+            : 0;
     public static ShardKeyResolver<T> NewNotFound<T>() => NewHashBased<T>();
 
     // These properties can be set!
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ForNull() => 0;
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ForRandom() => Random.Shared.Next();
+    public static int RandomShard() => Random.Shared.Next();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ForString(string? x) => x?.GetXxHash3() ?? 0;
 
@@ -153,7 +152,7 @@ public static class ShardKeyResolvers
             return x => resolver.Invoke(x.ShardKey);
 
         return x => ReferenceEquals(x, null)
-            ? ForNull()
+            ? 0
             : resolver.Invoke(x.ShardKey);
     }
 }

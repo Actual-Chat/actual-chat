@@ -6,8 +6,8 @@ namespace ActualChat.Mesh;
 public sealed class MeshWatcher : WorkerBase, IHasServices
 {
     private static readonly TimeSpan DefaultOfflineTimeout = TimeSpan.FromMinutes(1);
-    private static readonly TimeSpan DefaultOfflineTimeoutIfTest = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan DefaultOfflineTimeoutIfDebug = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan DefaultOfflineTimeoutIfTested = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DefaultOfflineTimeoutIfDebugged = TimeSpan.FromMinutes(10);
 
     private readonly AsyncTaskMethodBuilder _whenAnnouncedSource = AsyncTaskMethodBuilderExt.New();
     private readonly MutableState<ImmutableArray<MeshNode>> _onlineNodes;
@@ -52,9 +52,9 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
             ComputeState);
         var hostInfo = services.GetRequiredService<HostInfo>();
         OfflineTimeout = hostInfo.IsTested
-            ? DefaultOfflineTimeoutIfTest
+            ? DefaultOfflineTimeoutIfTested
 #if DEBUG
-            : DefaultOfflineTimeoutIfDebug;
+            : Debugger.IsAttached ? DefaultOfflineTimeoutIfDebugged : DefaultOfflineTimeout;
 #else
             : DefaultOfflineTimeout;
 #endif

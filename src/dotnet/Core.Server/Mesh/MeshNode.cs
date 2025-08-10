@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 
 namespace ActualChat.Mesh;
 
+[DebuggerDisplay("{" + nameof(DebugValue) + "}")]
 public sealed record MeshNode(
     NodeRef Ref,
     string Endpoint,
@@ -13,22 +14,25 @@ public sealed record MeshNode(
 {
     private static readonly ListFormat Formatter = new(' ');
 
-    private string? _lockKey;
     private string? _toStringCached;
 
     NodeRef IHasId<NodeRef>.Id => Ref;
     Symbol IHasId<Symbol>.Id => Ref.Id;
 
-    public string LockKey
-        => _lockKey ??= Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
+    private string DebugValue
+        => $"{ToString()}{(State is MeshNodeState.Offline ? $", dies in: {(DeadAt - Moment.Now)?.ToShortString() ?? "null"}" : "")}";
 
-    public override string ToString()
-        => _toStringCached ??= $"{LockKey}: {State}{(DeadAt is { } deadAt ? $", dead at: {deadAt}" : "")}";
+    [field: AllowNull, MaybeNull]
+    public string LockKey
+        => field ??= Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
 
     public static MeshNode FromLockKey(string lockKey)
         => TryParseLockKey(lockKey, out var result)
             ? result
             : throw StandardError.Format<MeshNode>();
+
+    public override string ToString()
+        => _toStringCached ??= $"{LockKey}: {State}";
 
     // Helpers
 
