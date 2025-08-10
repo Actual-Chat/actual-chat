@@ -265,7 +265,6 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                     _whenAnnouncedSource.TrySetResult();
                     Log.LogInformation("[+] {MeshNode}", lockKey);
 
-
                     using var linkedTokenSource = cancellationToken.LinkWith(holderStopToken);
                     using var dTask = linkedTokenSource.Token.ToTask();
                     await dTask.Resource.ConfigureAwait(false); //
