@@ -368,6 +368,7 @@ jobs:
           ChatSettings__OpenAIApiKey: ${{secrets.OPENAI_API_KEY}}
           ChatSettings__Translation__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
           ChatSettings__Translation__PromptFile: ${{github.workspace}}/.config/prompts/translate.md
+          ChatSettings__Translation__RealtimePromptFile: ${{github.workspace}}/.config/prompts/translate-realtime.md
           ChatSettings__LanguageDetection__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
           ChatSettings__LanguageDetection__PromptFile: ${{github.workspace}}/.config/prompts/detect-languages.md
         run: |-
@@ -377,6 +378,7 @@ jobs:
 
           mkdir -p ./.config/prompts
           echo -n "${{secrets.CHATSETTINGS_TRANSLATEPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__Translation__PromptFile }} >/dev/null
+          echo -n "${{secrets.CHATSETTINGS_TRANSLATEREALTIMEPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__Translation__RealtimePromptFile }} >/dev/null
           echo -n "${{secrets.CHATSETTINGS_DETECTLANGUAGESPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__LanguageDetection__PromptFile }} >/dev/null
 
           ./run-build.cmd integration-tests --configuration Debug
