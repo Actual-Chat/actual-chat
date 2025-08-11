@@ -41,7 +41,7 @@
             case UrlMarkupKind.Www:
                 var isRenderedAsLocal = await LinkPreviewUI.IsRenderedAsLocal(url, CancellationToken.None);
                 if (isRenderedAsLocal)
-                    _linkRenderMode = LinkRenderMode.LinkPreview;
+                    _linkRenderMode = !Entry.IsSending ? LinkRenderMode.LinkPreview : LinkRenderMode.Local;
                 else {
                     _localUrl = TryGetLocalUrl(url);
                     if (_localUrl is not null)
