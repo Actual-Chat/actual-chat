@@ -196,6 +196,12 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Returns(Mock.Of<IHostApplicationLifetime>(MockBehavior.Loose));
         var moqMeshLocks = new Mock<IMeshLocks<InfrastructureDbContext>>(MockBehavior.Loose);
         moqMeshLocks
+            .Setup(x => x.Clock)
+            .Returns(MomentClockSet.Default.CoarseSystemClock);
+        moqMeshLocks
+            .Setup(x => x.LockOptions)
+            .Returns(new MeshLockOptions(1000, 300));
+        moqMeshLocks
             .Setup(x => x.With(It.IsAny<string>(), It.IsAny<MeshLockOptions?>()))
             .Returns(moqMeshLocks.Object);
         moqServices
