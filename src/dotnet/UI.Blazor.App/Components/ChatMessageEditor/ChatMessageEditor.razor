@@ -218,7 +218,7 @@
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, (TextEntryId)chatEntry.Id, focusOnEditor: true);
+        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry, focusOnEditor: true);
         await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
     }
 
@@ -268,9 +268,11 @@
 
     private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
         var chatEntry = @event.Entry;
-        var chatSendingMessages = SendingMessages.GetSendingMessages(chatEntry.ChatId);
-        var chatEntry2 = await chatSendingMessages.GetSelfOrEdited(chatEntry);
-        await Edit(chatEntry2, cancellationToken);
+        if (chatEntry.IsStored()) {
+            var chatSendingMessages = SendingMessages.GetSendingMessages(chatEntry.ChatId);
+            chatEntry = await chatSendingMessages.GetSelfOrEdited(chatEntry);
+        }
+        await Edit(chatEntry, cancellationToken);
     }
 
     private Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken)

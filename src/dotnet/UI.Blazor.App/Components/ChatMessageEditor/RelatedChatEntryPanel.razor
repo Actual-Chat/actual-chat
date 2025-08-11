@@ -21,6 +21,10 @@
         if (relatedChatEntry is not { } vRelatedChatEntry)
             return null;
 
+        var entryRef = vRelatedChatEntry.EntryRef;
+        if (entryRef.ChatEntry is not null)
+            return new Model(entryRef.ChatEntry, vRelatedChatEntry.Kind, true);
+
         var entryId = vRelatedChatEntry.EntryId;
         var chatId = entryId.ChatId;
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
