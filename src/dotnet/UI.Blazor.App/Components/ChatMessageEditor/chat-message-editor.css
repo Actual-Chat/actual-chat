@@ -585,7 +585,7 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 }
 
 .rounded-sub-footer {
-    @apply absolute z-minus;
+    @apply absolute z-10;
     @apply -top-8;
     @apply flex;
     @apply h-8 inset-x-0;
