@@ -63,6 +63,7 @@
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private string _comment = "";
 
+    private SendingMessages SendingMessages => Hub.SendingMessages;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
@@ -90,15 +91,15 @@
 
         var text = ModalModel.Text;
         var session = Services.Session();
-        var uiCommander = Services.UICommander();
+        CancellationToken cancellationToken = default;
         foreach (var chatId in selectedChatIds) {
             if (!comment.IsNullOrEmpty()) {
                 var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
-                _ = await uiCommander.Run(cmd2, CancellationToken.None);
+                _ = SendingMessages.Post(cmd2, cancellationToken);
             }
 
             var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
-            _ = await uiCommander.Run(cmd, CancellationToken.None);
+            _ = SendingMessages.Post(cmd, cancellationToken);
         }
 
         Modal.Close(true);
@@ -212,6 +213,7 @@
             .ToArray();
         if (media.Length == 0 && _comment.IsNullOrEmpty())
             return null;
+
         var cmd = new Chats_UpsertTextEntry(Services.Session(), chatId, null, comment) {
             RepliedEntryLid = null,
             EntryAttachments = media.Select(x => new TextEntryAttachment {
@@ -219,7 +221,9 @@
                 ThumbnailMediaId = x.MediaContent.ThumbnailMediaId,
             }).ToArray(),
         };
-        var chatEntry = await Services.UICommander().Call(cmd).ConfigureAwait(false);
+
+        var postTask = await SendingMessages.Post(cmd, default).ConfigureAwait(false);
+        var chatEntry = await postTask.ConfigureAwait(false);
         var textEntryId = TextEntryId.New(chatEntry.ChatId, chatEntry.LocalId);
         // Add pseudo attachments to evaluate file type later
         chatEntry = chatEntry with {
