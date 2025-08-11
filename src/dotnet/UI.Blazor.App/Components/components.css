@@ -120,11 +120,12 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-header-center > .chat-header-title {
     @apply flex-1 flex-y items-start justify-center;
     @apply select-none;
-    @apply line-clamp-1;
+    @apply overflow-hidden;
     @apply no-highlight;
 }
 .chat-header-center > .chat-header-title > .c-title-wrapper {
     @apply flex-x items-center gap-x-1;
+    @apply max-w-full;
 }
 .chat-header-center > .chat-header-title > .c-title-wrapper > .c-title {
     @apply h-6;
