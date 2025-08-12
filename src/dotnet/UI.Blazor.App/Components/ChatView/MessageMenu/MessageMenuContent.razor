@@ -16,6 +16,7 @@
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
     var canCopyMessageLink = !IsSystem;
     var canForward = !e.IsStreaming && !IsSystem && !hasSelection;
+    var canStartThread = !e.IsStreaming && !IsSystem && !hasSelection;
     // Selection
     var canSelect = !e.IsStreaming && !IsSystem && !isSelected;
     var canUnselect = isSelected;
@@ -79,6 +80,13 @@
             Icon="icon-share"
             Text="Forward"
             Click="@(() => SelectionUI.Forward(e.Id))">
+        </MenuEntry>
+    }
+    @if (canStartThread) {
+        <MenuEntry
+            Icon="icon-conversation"
+            Text="Start Thread"
+            Click="@(() => SelectionUI.StartThread(e.Id))">
         </MenuEntry>
     }
     @if (canDelete) {
