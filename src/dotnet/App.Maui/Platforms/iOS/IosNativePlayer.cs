@@ -36,6 +36,23 @@ public class IosNativePlayer : IDisposable
     }
 
     public void Dispose()
-        // TODO: dispose pool with all nodes
-        => _engine.Stop();
+    {
+        // TODO (AY): ConcurrentPool must provide some way to dispose/release
+        foreach (var node in _engine.AttachedNodes) {
+            try {
+                if (node is AVAudioPlayerNode playerNode)
+                    playerNode.Stop();
+                _engine.DetachNode(node);
+            }
+            catch {
+                // ignored
+            }
+        }
+        try {
+            _engine.Stop();
+        }
+        catch {
+            // ignored
+        }
+    }
 }
