@@ -6,6 +6,5 @@ public static class ServiceCollectionExt
     {
         services.AddSingleton<IChatDialogFormatter, ChatDialogFormatter>();
         services.AddSingleton<IAuthorNameRetriever, DefaultAuthorNameRetriever>();
-        services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizer>();
     }
 }

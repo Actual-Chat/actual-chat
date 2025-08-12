@@ -16,6 +16,7 @@ public sealed class ChatSettings
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
     public int MinConversationWords { get; set; } = 400;
     public int MinConversationEntries { get; set; } = 3;
+    public FilePath SummarizeChatDigestPromptFile { get; set; } = "";
 }
 
 public class TranslationSettings
