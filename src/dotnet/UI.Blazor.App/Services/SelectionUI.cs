@@ -178,6 +178,8 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         }
     }
 
+    public Task StartThread(ChatEntryId chatEntryId)
+        => StartThread(ImmutableHashSet.Create(chatEntryId));
     public async Task StartThread(IReadOnlySet<ChatEntryId>? selection = null) {
         selection ??= Selection.Value;
         if (selection.Count == 0)
