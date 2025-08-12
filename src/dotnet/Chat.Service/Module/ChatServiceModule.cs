@@ -133,19 +133,19 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<IConversationSummarizer>(
                 c => new ConversationSummarizer(
                     new ConversationSummarizer.Options {
-                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeConversationPromptFile
+                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeConversationPromptFile,
                     },
                     c));
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>(
                 c => new ThreadInsightExtractor(
                     new ThreadInsightExtractor.Options {
-                        PromptFile = c.GetRequiredService<ChatSettings>().ChatThreads.SuggestTitlePromptFile
+                        PromptFile = c.GetRequiredService<ChatSettings>().SuggestChatThreadTitlePromptFile,
                     },
                     c));
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizer>(
                 c => new ChatDigestSummarizer(
                     new ChatDigestSummarizer.Options {
-                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeChatDigestPromptFile
+                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeChatDigestPromptFile,
                     },
                     c));
         }
