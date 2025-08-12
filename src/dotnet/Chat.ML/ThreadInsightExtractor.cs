@@ -1,5 +1,6 @@
 using System.Net;
 using ActualChat.AI;
+using ActualLab.IO;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using HttpOperationException = Microsoft.SemanticKernel.HttpOperationException;
@@ -13,8 +14,13 @@ public interface IThreadInsightExtractor
         CancellationToken cancellationToken);
 }
 
-public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightExtractor
+public class ThreadInsightExtractor(ThreadInsightExtractor.Options settings, IServiceProvider services): IThreadInsightExtractor
 {
+    public class Options
+    {
+        public FilePath PromptFile { get; set; } = "";
+    }
+
     public const string ServiceKey = ConversationSummarizer.ServiceKey;
 
     private readonly ChatDialogFormatterOptions _chatDialogFormatterOptions = new () {
@@ -23,6 +29,7 @@ public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightEx
         UseSquareBracketsFormat = true,
     };
 
+    private Options Settings { get; } = settings;
     [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
     [field: AllowNull, MaybeNull]
@@ -33,14 +40,20 @@ public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightEx
     private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private string PromptTemplate => field ??= File.ReadAllText(Settings.PromptFile).Trim();
 
     public async Task<ThreadInsight> GetInsight(
         IReadOnlyCollection<TextEntry> chatEntries,
         CancellationToken cancellationToken)
     {
+        var promptTemplate = PromptTemplate;
+        if (promptTemplate.IsNullOrEmpty())
+            throw StandardError.Constraint("Suggest thread title prompt is not configured.");
+
         var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
-         var prompt = PromptHelpers.BuildPrompt(
-            PromptTemplate,
+        var prompt = PromptHelpers.BuildPrompt(
+            promptTemplate,
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 { "DISCUSSION", discussion.Truncate(10_000) },
             });
@@ -48,8 +61,8 @@ public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightEx
         try {
             reply = await Ask(prompt, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpOperationException e) when (e.StatusCode == HttpStatusCode.TooManyRequests)  {
-            Log.LogDebug(e, "Can't get thread insight. Rate limit exceeded");
+        catch (Exception e) {
+            Log.LogError(e, "Failed to suggest thread title");
             return new ThreadInsight("", "");
         }
         if (reply.IsNullOrEmpty())
@@ -68,26 +81,6 @@ public class ThreadInsightExtractor(IServiceProvider services): IThreadInsightEx
             .ConfigureAwait(false);
         return response.Content;
     }
-
-    private const string PromptTemplate =
-        """
-        Summarize the following text discussion of several people in several sentences.
-        Generate a catchy, informal title that captures the emotional tone or mood of the conversation (e.g., "Weekend Vibes", "Fishing Time", "No Boredom This Saturday!").
-        Write a friendly, lively description (1–4 sentences) that sounds like a teaser or post from a social media feed.
-        Provide all results in the language of the discussion.
-        Present your final decision in the following XML format:
-
-        <title>
-        [A short, catchy, and informal title reflecting the discussion.]
-        </title>
-        <description>
-        [A friendly and emotional description of the conversation.]
-        </description>
-
-        Do not add any extra formatting such as code blocks. Output must be valid XML. No extra characters, no missing tags, no formatting issues.
-
-        {{DISCUSSION}}
-        """;
 }
 
 public record ThreadInsight(string Title, string Description);

@@ -22,6 +22,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     private ICommander Commander => field ??= services.GetRequiredService<ICommander>();
     [field: AllowNull, MaybeNull]
     private IThreadInsightExtractor ThreadInsightExtractor => field ??= services.GetRequiredService<IThreadInsightExtractor>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
 
     // [ComputeMethod]
     public virtual async Task<ThreadChatId[]> ListIdsForChat(
@@ -138,8 +140,14 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         if (textEntries.Count is 0)
             return ("", "");
 
-        var insight = await ThreadInsightExtractor.GetInsight(textEntries, cancellationToken).ConfigureAwait(false);
-        return (insight.Title, insight.Description);
+        try {
+            var insight = await ThreadInsightExtractor.GetInsight(textEntries, cancellationToken).ConfigureAwait(false);
+            return (insight.Title, insight.Description);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to suggest thread title");
+            return ("", "");
+        }
     }
 
     // [CommandHandler]
