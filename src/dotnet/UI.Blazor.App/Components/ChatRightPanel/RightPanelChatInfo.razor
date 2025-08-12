@@ -47,12 +47,11 @@
         if (chat.HasSingleAuthor || !chat.IsMember())
             return new() { HideNotificationsToggle = true };
 
-        var enableSummarizationFeature = await Features.Get<Features_EnableChatSummarization>(cancellationToken).ConfigureAwait(false);
         var isOwner = chat.Rules.IsOwner();
         var userChatSettings = await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,
-            ShowSummarizationToggle = enableSummarizationFeature && isOwner,
+            ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
         };
     }
