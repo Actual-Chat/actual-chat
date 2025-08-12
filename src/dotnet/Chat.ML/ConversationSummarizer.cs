@@ -1,6 +1,6 @@
 using System.Net;
 using ActualChat.AI;
-using Cysharp.Text;
+using ActualLab.IO;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using HttpOperationException = Microsoft.SemanticKernel.HttpOperationException;
@@ -14,8 +14,13 @@ public interface IConversationSummarizer
         CancellationToken cancellationToken);
 }
 
-public class ConversationSummarizer(IServiceProvider services): IConversationSummarizer
+public class ConversationSummarizer(ConversationSummarizer.Options settings, IServiceProvider services): IConversationSummarizer
 {
+    public class Options
+    {
+        public FilePath PromptFile { get; set; } = "";
+    }
+
     public const string ServiceKey = nameof(ConversationSummarizer);
 
     private readonly ChatDialogFormatterOptions _chatDialogFormatterOptions = new () {
@@ -24,6 +29,7 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
         UseSquareBracketsFormat = true,
     };
 
+    private Options Settings { get; } = settings;
     [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
     [field: AllowNull, MaybeNull]
@@ -35,12 +41,16 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
     [field: AllowNull, MaybeNull]
     private IAuthorNameRetriever AuthorNameRetriever => field ??= services.GetRequiredService<IAuthorNameRetriever>();
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= services.LogFor(GetType());
+    private ILogger Log => field ??= services.LogFor(GetType());[field: AllowNull, MaybeNull]
+    private string PromptTemplate => field ??= File.ReadAllText(Settings.PromptFile).Trim();
 
     public async Task<ConversationSummarizerResult> Summarize(
         IReadOnlyCollection<TextEntry> chatEntries,
         CancellationToken cancellationToken)
     {
+        if (PromptTemplate.IsNullOrEmpty())
+            throw StandardError.Constraint("Summarize conversation prompt is not configured.");
+
         var authorIds = chatEntries.Select(c => c.AuthorId).Distinct().ToArray();
         var mentionsMap = await BuildMentionsMap(authorIds).ConfigureAwait(false);
         var discussion = await ChatDialogFormatter.EntriesToText(chatEntries, _chatDialogFormatterOptions).ConfigureAwait(false);
@@ -132,40 +142,6 @@ public class ConversationSummarizer(IServiceProvider services): IConversationSum
             .ConfigureAwait(false);
         return response.Content;
     }
-
-    private const string PromptTemplate =
-        """
-        Summarize the following text discussion of several people in several sentences.
-        Specify what topics have been discussed and key moments.
-        Who made commitments and what commitments are.
-        Additionally:
-
-        Provide all results in the language of the discussion.
-        Provide a title that reflects the essence of the discussion.
-        Give a brief description of the discussion (3-4 sentences).
-        Provide a summary as list of points with using markdown.
-        Summary length should be at least 10% from original discussion.
-        To refer to discussion participants in summary and description use special mention format (sequence started with @) instead of name:
-        {{MENTIONS_MAP}}
-
-        ### Output Format
-        Return the final result **strictly** in the following XML format without any additional symbols such as triple backticks:
-        <title>
-        [Title of the discussion]
-        </title>
-        <description>
-        [Brief description of the discussion (3-4 sentences)]
-        </description>
-        <summary>
-        [List of key points summarizing the discussion]
-        </summary>
-
-        Do not add any extra formatting such as Markdown code blocks (```xml) at the beginning or end.
-        Ensure that the <summary> section is properly closed with </summary>.
-        The output must be valid XML. No extra characters, missing tags, or formatting issues.
-
-        {{DISCUSSION}}
-        """;
 }
 
 public record ConversationSummary(string Title, string Description, string Summary);

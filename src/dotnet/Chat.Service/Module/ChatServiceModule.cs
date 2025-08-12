@@ -130,9 +130,14 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         if (Settings.IsSummarizationEnabled) {
             AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIChatModel, Settings.OpenAIApiKey);
-            services.AddSingleton<IConversationSummarizer, ConversationSummarizer>();
-            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>(c
-                => new ThreadInsightExtractor(
+            services.AddSingleton<IConversationSummarizer>(
+                c => new ConversationSummarizer(
+                    new ConversationSummarizer.Options {
+                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeConversationPromptFile
+                    },
+                    c));
+            services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>(
+                c => new ThreadInsightExtractor(
                     new ThreadInsightExtractor.Options {
                         PromptFile = c.GetRequiredService<ChatSettings>().ChatThreads.SuggestTitlePromptFile
                     },

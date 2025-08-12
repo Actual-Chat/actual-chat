@@ -12,6 +12,7 @@ public sealed class ChatSettings
     public LanguageDetectionSettings LanguageDetection { get; set; } = new ();
     public ChatThreadSettings ChatThreads { get; set; } = new ();
     public bool IsSummarizationEnabled { get; set; }
+    public FilePath SummarizeConversationPromptFile { get; set; } = "";
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
     public int MinConversationWords { get; set; } = 400;
     public int MinConversationEntries { get; set; } = 3;
