@@ -1,9 +1,8 @@
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.Firebase.Analytics;
 using Plugin.Firebase.CloudMessaging;
@@ -26,6 +25,7 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new IosRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));
+        services.AddScoped<IosNativePlayer>(c => new IosNativePlayer(c.UIHub()));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMediaSaver>(c => new IosMediaSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));

@@ -48,10 +48,10 @@ public class TuneUI : ITuneUIBackend, IDisposable
 
     protected virtual bool UseJsVibration => true;
 
-    private UIHub Hub { get; }
+    protected UIHub Hub { get; }
     private IJSRuntime JS => Hub.JS;
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Hub.LogFor<TuneUI>();
+    protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneUI))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneInfo))]
@@ -78,13 +78,13 @@ public class TuneUI : ITuneUIBackend, IDisposable
         _blazorRef = null!;
     }
 
-    public Task Play(Tune tune)
+    public virtual Task Play(Tune tune)
         => ForegroundTask.Run(() => {
             _ = VibrateNoJs(tune);
             return JS.InvokeVoidAsync(JSPlayMethod, tune).AsTask();
         });
 
-    public ValueTask PlayAndWait(Tune tune)
+    public virtual ValueTask PlayAndWait(Tune tune)
         => TaskExt.WhenAll(VibrateNoJs(tune), JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune));
 
     [JSInvokable]

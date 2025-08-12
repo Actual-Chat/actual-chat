@@ -8,13 +8,14 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
 {
     private const float Intensity = 0.5f;
     private const float Sharpness = 0.5f;
-    private readonly object _lock = new ();
+    private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
     [field: AllowNull, MaybeNull]
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
+    [field: AllowNull, MaybeNull]
+    private IosNativePlayer IosNativePlayer => field ??= Hub.Services.GetRequiredService<IosNativePlayer>();
 
     protected override bool UseJsVibration => false;
-    private ILogger Log { get; } = hub.LogFor<IosTuneUI>();
 
     public override void Dispose()
     {
@@ -29,6 +30,19 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
         }
         foreach (var player in toDispose)
             player.DisposeSilently();
+    }
+
+    public override Task Play(Tune tune)
+        => ForegroundTask.Run(() => {
+            var (_, sound) = Tunes[tune];
+            _ = Vibrate(tune);
+            return IosNativePlayer.Play(sound);
+        });
+
+    public override ValueTask PlayAndWait(Tune tune)
+    {
+        var (_, sound) = Tunes[tune];
+        return TaskExt.WhenAll(Vibrate(tune), IosNativePlayer.Play(sound).ToValueTask());
     }
 
     // Protected methods
@@ -89,7 +103,7 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
     {
         var curve = BuildIntensityCurve(vibration);
         var hapticEvent = BuildHapticEvent(vibration);
-        var pattern = new CHHapticPattern(new[] { hapticEvent }, new[] { curve, }, out var error);
+        var pattern = new CHHapticPattern([hapticEvent], [curve], out var error);
         error.Assert();
         return pattern;
     }
