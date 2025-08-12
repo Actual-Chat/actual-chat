@@ -142,10 +142,17 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                         PromptFile = c.GetRequiredService<ChatSettings>().ChatThreads.SuggestTitlePromptFile
                     },
                     c));
+            services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizer>(
+                c => new ChatDigestSummarizer(
+                    new ChatDigestSummarizer.Options {
+                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeChatDigestPromptFile
+                    },
+                    c));
         }
         else {
             services.AddSingleton<IConversationSummarizer, ConversationSummarizerStub>();
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractorStub>();
+            services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizerStub>();
         }
 
         // Embeddings

@@ -41,7 +41,8 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
     [field: AllowNull, MaybeNull]
     private IAuthorNameRetriever AuthorNameRetriever => field ??= services.GetRequiredService<IAuthorNameRetriever>();
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= services.LogFor(GetType());[field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
     private string PromptTemplate => field ??= File.ReadAllText(Settings.PromptFile).Trim();
 
     public async Task<ConversationSummarizerResult> Summarize(
