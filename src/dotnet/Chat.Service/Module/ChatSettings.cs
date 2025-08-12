@@ -10,6 +10,7 @@ public sealed class ChatSettings
     public bool IsTranslationEnabled { get; set; }
     public TranslationSettings Translation { get; set; } = new ();
     public LanguageDetectionSettings LanguageDetection { get; set; } = new ();
+    public ChatThreadSettings ChatThreads { get; set; } = new ();
     public bool IsSummarizationEnabled { get; set; }
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
     public int MinConversationWords { get; set; } = 400;
@@ -40,4 +41,9 @@ public class LanguageDetectionSettings
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1-nano";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromMinutes(3);
+}
+
+public class ChatThreadSettings
+{
+    public FilePath SuggestTitlePromptFile { get; set; } = "";
 }
