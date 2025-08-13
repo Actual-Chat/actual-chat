@@ -43,11 +43,11 @@ export class ChatMessageEditor {
     }
 
     constructor(editorDiv: HTMLDivElement) {
-        let domClassList = document.documentElement.classList;
+        let bodyClassList = document.body.classList;
         this.editorDiv = editorDiv;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel')!;
         this.input = this.postPanelDiv.querySelector(':scope .message-input')!;
-        this.isSmooth = !domClassList.contains('device-ios');
+        this.isSmooth = !bodyClassList.contains('device-ios');
         if (this.isSmooth)
             editorDiv.classList.add('smooth');
 

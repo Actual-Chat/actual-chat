@@ -125,7 +125,7 @@
     @apply truncate;
 }
 .left-panel-content-header.place .c-info > .c-left > .c-top i {
-    @apply text-xl text-03;
+    @apply text-headline-7 text-03;
 }
 body.hoverable .left-panel-content-header.place .c-info > .c-left > .c-top:hover i {
     @apply text-01;
