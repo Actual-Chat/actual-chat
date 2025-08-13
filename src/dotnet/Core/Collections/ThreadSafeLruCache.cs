@@ -4,7 +4,7 @@ public class ThreadSafeLruCache<TKey, TValue>(LruCache<TKey, TValue> cache)
     : IThreadSafeLruCache<TKey, TValue>
     where TKey : notnull
 {
-    public object Lock { get; } = new();
+    public Lock Lock { get; } = new();
     public LruCache<TKey, TValue> Cache { get; } = cache;
 
     public ThreadSafeLruCache(int capacity, IEqualityComparer<TKey>? comparer = null)
@@ -50,6 +50,19 @@ public class ThreadSafeLruCache<TKey, TValue>(LruCache<TKey, TValue> cache)
     public void Add(TKey key, TValue value)
     {
         lock (Lock) Cache.Add(key, value);
+    }
+
+    public TValue GetOrAdd(TKey key, Func<TKey, TValue> valueFactory)
+    {
+        lock (Lock) {
+            if (Cache.TryGetValue(key, out var existing))
+                return existing;
+
+            var created = valueFactory(key);
+            return Cache.TryAdd(key, created)
+                ? created
+                : Cache[key];
+        }
     }
 
     public bool Remove(TKey key)

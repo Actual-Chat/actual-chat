@@ -3,6 +3,7 @@
     var m = Message;
     var firstItem = m.Items.FirstOrDefault();
     var showAuthorBadge = !(firstItem?.Entry.IsSystemEntry ?? false);
+    // Log.LogInformation("Render ChatEntryAuthorGroupView: {Id}, Count = {Count}", firstItem?.Entry.Id, m.Items.Count);
 }
 
 

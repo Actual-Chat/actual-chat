@@ -92,9 +92,9 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
 
     public bool Remove(TKey key)
     {
-        if (!_dictionary.TryGetValue(key, out var node))
+        if (!_dictionary.Remove(key, out var node))
             return false;
-        _dictionary.Remove(key);
+
         _list.Remove(node);
         return true;
     }
