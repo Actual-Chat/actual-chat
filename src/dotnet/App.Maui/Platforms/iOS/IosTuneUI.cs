@@ -32,18 +32,19 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
             player.DisposeSilently();
     }
 
-    public override Task Play(Tune tune)
-        => ForegroundTask.Run(() => {
-            var (_, sound) = Tunes[tune];
-            _ = Vibrate(tune);
-            return IosNativePlayer.Play(sound);
-        });
-
-    public override ValueTask PlayAndWait(Tune tune)
-    {
-        var (_, sound) = Tunes[tune];
-        return TaskExt.WhenAll(Vibrate(tune), IosNativePlayer.Play(sound).ToValueTask());
-    }
+    // TODO: uncomment when playback/recording is implemented via ios native api
+    // public override Task Play(Tune tune)
+    //     => ForegroundTask.Run(() => {
+    //         var (_, sound) = Tunes[tune];
+    //         _ = Vibrate(tune);
+    //         return IosNativePlayer.Play(sound);
+    //     });
+    //
+    // public override ValueTask PlayAndWait(Tune tune)
+    // {
+    //     var (_, sound) = Tunes[tune];
+    //     return TaskExt.WhenAll(Vibrate(tune), IosNativePlayer.Play(sound).ToValueTask());
+    // }
 
     // Protected methods
 
