@@ -141,13 +141,17 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     }
 
     protected FlowTransition WaitForEvent(Symbol nextStep, Moment hardResumeAt, string? tag = null)
-        => new(this, nextStep, tag, hardResumeAt) { MustStore = true };
+    {
+        Event.MarkHandled();
+        return new FlowTransition(this, nextStep, tag, hardResumeAt) { MustStore = true };
+    }
 
     protected FlowTransition WaitForTimer(Symbol nextStep, TimeSpan delay, string? tag = null)
     {
         if (delay <= TimeSpan.Zero)
             return StoreAndResume(nextStep);
 
+        Event.MarkHandled();
         var resumeAt = Clocks.SystemClock.Now + delay;
         var timerEvent = new OperationEvent(resumeAt, new FlowTimerEvent(Id, tag));
         return new(this, nextStep, tag, resumeAt, timerEvent);
