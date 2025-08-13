@@ -197,12 +197,23 @@ body.hoverable .playable-text-markup > span:hover {
 }
 
 ol.list-markup {
-    @apply flex-y;
+    /*@apply flex-y;*/
+    @apply inline-block;
     @apply list-decimal list-inside;
 }
 ul.list-markup {
-    @apply flex-y;
-    @apply list-disc list-inside;
+    /*@apply flex-y;*/
+    @apply inline-block;
+}
+ul {
+    list-style: none;
+}
+ul.list-markup li::before {
+    content: "\2012";
+    display: inline-block;
+    width: 0.5em;
+    margin-right: 0.5em;
+    color: var(--text-01);
 }
 
 .unknown-markup {

@@ -38,7 +38,8 @@
     var selectionStartClass = m.IsSelectionStart ? "selection-start" : "";
     var selectionEndClass = m.IsSelectionEnd ? "selection-end" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
-    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {paddingClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} {selectionStartClass} {selectionEndClass} message-wrapper";
+    var showAuthorClass = showAuthorBadge ? "show-author" : "";
+    var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {paddingClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} {selectionStartClass} {selectionEndClass} {showAuthorClass} message-wrapper";
 
     switch (message.ReplacementKind) {
     case ChatMessageReplacementKind.None:
