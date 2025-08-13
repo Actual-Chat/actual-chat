@@ -90,6 +90,9 @@ body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
     @apply min-h-6;
     overflow-anchor: none;
 }
+.virtual-list > .c-wrapper > ul.c-virtual-container .item:has(.show-author) {
+    @apply min-h-14;
+}
 
 .virtual-list > .c-wrapper > ul.c-virtual-container .group {
     @apply min-h-6;

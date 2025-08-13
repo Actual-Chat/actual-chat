@@ -1,9 +1,13 @@
 .message-wrapper {
     @apply relative;
     @apply flex-y;
+    @apply min-h-6;
     @apply border-l-2 border-bg-01 rounded-lg;
     @apply md:select-text;
     @apply translate-z-0;
+}
+.message-wrapper.show-author {
+    @apply min-h-12;
 }
 body.hoverable .message-wrapper:hover,
 .touch-capable .message-wrapper:active {
@@ -221,6 +225,9 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup span {
     @apply text-text-1;
     -webkit-line-break: after-white-space;
+}
+.chat-message-markup strong span {
+    @apply font-bold;
 }
 .chat-message-markup span.one-container {
     white-space: nowrap;

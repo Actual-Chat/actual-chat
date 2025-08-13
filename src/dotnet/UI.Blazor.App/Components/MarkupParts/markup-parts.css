@@ -204,7 +204,16 @@ ol.list-markup {
 ul.list-markup {
     /*@apply flex-y;*/
     @apply inline-block;
-    @apply list-disc list-inside;
+}
+ul {
+    list-style: none;
+}
+ul.list-markup li::before {
+    content: "\2012";
+    display: inline-block;
+    width: 0.5em;
+    margin-right: 0.5em;
+    color: var(--text-01);
 }
 
 .unknown-markup {
