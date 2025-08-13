@@ -1207,7 +1207,7 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null, useRaf = false): Promise<void> {
+    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null): Promise<void> {
         const { hasUnmeasuredItems, defaultSpacerSize, endAnchorSize } = this;
         const result = new PromiseSource();
         // debugLog?.log(`restoreScrollPosition: start`);
@@ -1221,7 +1221,9 @@ export class VirtualList {
         let spacerSize = 0;
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
-        let isInteractivePositioning = [...this.pivots].some(p => p.isInteractive);
+        let isInteractivePositioning = [...this.pivots].some(p => p.isInteractive)
+            && scrollMetadata?.scrollType !== 'sticky-edge'
+            && scrollMetadata?.scrollType !== 'last-item';
 
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
@@ -1402,17 +1404,16 @@ export class VirtualList {
                 result.resolve(undefined);
             }
         };
-        if (useRaf) {
-            fastRaf(options);
-            await result;
+
+        // Handle restore position synchronously after render
+        options.read();
+        options.write();
+        if (!isInteractivePositioning) {
+            scrollMetadata?.scroll?.();
+            // debugLog?.log(`restoreScrollPosition: scroll set synchronously`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
         }
-        else {
-            // Handle restore position synchronously after render
-            options.read();
-            options.write();
-            if (!isInteractivePositioning)
-                scrollMetadata?.scroll?.();
-        }
+        else
+            // debugLog?.log(`restoreScrollPosition: scroll skipped`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
         this.scrollPositionRestoredAt = Date.now();
 
