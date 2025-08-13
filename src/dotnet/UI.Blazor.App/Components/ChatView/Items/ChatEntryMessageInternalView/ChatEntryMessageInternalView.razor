@@ -121,7 +121,7 @@
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
 
-        Log.LogInformation("ChatEntryMessageInternalView.DisposeAsync: {Id}", _textEntryId);
+        // Log.LogInformation("ChatEntryMessageInternalView.DisposeAsync: {Id}", _textEntryId);
         // Keep active streamers in the cache
         var isStreaming = _streamer.State.ValueOrDefault?.IsStreaming == true;
         StreamersCache.TryGetValue(_textEntryId, out var cached);
