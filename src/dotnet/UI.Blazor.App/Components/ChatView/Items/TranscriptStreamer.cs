@@ -6,12 +6,15 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 {
+    private static readonly TimeSpan TranscriptThrottleInterval = TimeSpan.FromMilliseconds(320); // LLM usually responds within this threshold
     private readonly IMutableState<TranscriptStreamerState> _state = hub.StateFactory.NewMutable(TranscriptStreamerState.None);
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
-    public IState<TranscriptStreamerState> State => _state;
+    private MomentClockSet Clocks => hub.Clocks;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
+
+    public IState<TranscriptStreamerState> State => _state;
 
     protected override Task OnRun(CancellationToken cancellationToken)
         => AsyncChain.From(SyncStreamingState)
@@ -22,6 +25,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 
     private async Task SyncStreamingState(CancellationToken cancellationToken)
     {
+        Log.LogInformation("SyncStreamingState: {Id}", id);
         var cGetState = await Computed.Capture(() => TranscriptUI.GetStreamingState(id, cancellationToken), cancellationToken).ConfigureAwait(false);
         TranscriptUI.StreamingState? last = null;
         CancellationTokenSource? lastCts = null;
@@ -30,16 +34,20 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
                 var last1 = last;
                 var ct = cancellationToken;
                 var cState = await cGetState.When(s => s != last1, ct).ConfigureAwait(false);
+                if (cState.ValueOrDefault == last1)
+                    continue; // Double-check
+
                 lastCts?.CancelAndDisposeSilently();
                 var streamCts = cancellationToken.CreateLinkedTokenSource();
                 if (cState.Value != null) {
-                    var (_, entry, isTranslation) = cState.Value;
+                    var (_, content, isTranslation) = cState.Value;
+                    Log.LogWarning("Reset state for {MessageId}, State = {State}, OldState = {OldState}, {Hash}, {OldHash}", id, cState.Value, last1, cState.Value.GetHashCode(), last1?.GetHashCode() ?? 0);
                     // Initial state
                     _state.Value = new (
                         RetainedText: "",
                         ChangedText: "",
                         AnimatedText: "",
-                        Tail: entry.Content, // Will be empty for non-translation entries
+                        Tail: content, // Will be empty for non-translation entries
                         true,
                         isTranslation);
                     _ = BackgroundTask.Run(
@@ -62,24 +70,40 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 
     private async Task StreamTranscript(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken) {
         try {
-            var (streamId, entry, isTranslation) = streamingState;
+            var (streamId, content, isTranslation) = streamingState;
             var diffs = StreamClient.GetTranscript(streamId.Value, cancellationToken);
             var transcripts = diffs
                 .ToTranscripts()
-                .Throttle(TimeSpan.FromMilliseconds(320), cancellationToken);
+                .ThrottleTranscript(TranscriptThrottleInterval, Clocks.SystemClock, cancellationToken);
+
+            // Optimization state:
+            // - stablePrefixLength: length of text that is known to be immutable (based on IsStable snapshots)
+            var stablePrefixLength = 0;
             var lastText = "";
+            // Precompute once for translation tail splitting
+            var lastWordIndex = isTranslation
+                ? content.LastIndexOf(' ') + 1
+                : 0;
+
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;
-                var retainedLength = lastText.GetCommonPrefixLength(text);
+                var isStable = transcript.IsStable;
+
+                // Fast retained prefix calc using stable prefix knowledge
+                var retainedLength = GetRetainedLength(lastText, text, stablePrefixLength);
+
                 var changedPart = text[retainedLength..];
+
+                // Animate only the delta growth; if it shrinks or equal, no animation
                 var animatedLength = (text.Length - lastText.Length).Clamp(0, changedPart.Length);
                 var animatedStartIndex = changedPart.Length - animatedLength;
+
                 var tail = "";
                 if (isTranslation) {
-                    var lastWordIndex = entry.Content.LastIndexOf(' ') + 1;
                     var tailStartIndex = text.Length.Clamp(0, lastWordIndex);
-                    tail = entry.Content[tailStartIndex..];
+                    tail = content[tailStartIndex..];
                 }
+
                 _state.Value = new (
                     RetainedText: text[..retainedLength],
                     ChangedText: changedPart[..animatedStartIndex],
@@ -87,6 +111,11 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
                     Tail: tail,
                     true,
                     isTranslation);
+
+                // If current snapshot is stable, lock in the known-immutable prefix
+                if (isStable)
+                    stablePrefixLength = Math.Max(stablePrefixLength, text.Length);
+
                 lastText = text;
             }
 
@@ -105,6 +134,41 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
             // Not fully sure if it's the case, but it seems that sometimes SignalR
             // wraps OperationCanceledException into HubException, so here we suppress it.
         }
+    }
+
+    // Uses knowledge of an immutable prefix (stablePrefixLength) to avoid re-comparing it.
+    // Also handles fast-paths for pure appends/truncations within the unstable suffix.
+    private static int GetRetainedLength(string previous, string current, int stablePrefixLength)
+    {
+        if (previous.Length == 0 || current.Length == 0)
+            return 0;
+
+        var baseLen = Math.Min(stablePrefixLength, Math.Min(previous.Length, current.Length));
+
+        // Fast append: current = previous + delta (beyond baseLen)
+        if (previous.Length <= current.Length) {
+            var prevSuffix = previous.AsSpan(baseLen);
+            var currSuffix = current.AsSpan(baseLen);
+            if (currSuffix.StartsWith(prevSuffix, StringComparison.Ordinal))
+                return previous.Length;
+        }
+
+        // Fast truncate: previous = current + removed tail (beyond baseLen)
+        if (current.Length <= previous.Length) {
+            var currSuffix = current.AsSpan(baseLen);
+            var prevSuffix = previous.AsSpan(baseLen);
+            if (prevSuffix.StartsWith(currSuffix, StringComparison.Ordinal))
+                return current.Length;
+        }
+
+        // Generic suffix common prefix scan after the stable base
+        var a = previous.AsSpan(baseLen);
+        var b = current.AsSpan(baseLen);
+        var n = Math.Min(a.Length, b.Length);
+        var i = 0;
+        while (i < n && a[i] == b[i])
+            i++;
+        return baseLen + i;
     }
 }
 

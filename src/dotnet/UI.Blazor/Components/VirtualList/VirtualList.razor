@@ -82,7 +82,7 @@
 
             @foreach (var item in items) {
                 @if (item.IsGroup) {
-                    <li class="group">
+                    <li @key="@item.RenderKey" class="group">
                         @Item(item)
                     </li>
                 } else {

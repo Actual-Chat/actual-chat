@@ -67,6 +67,20 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
         lock (cache) cache.Add(key, value);
     }
 
+    public TValue GetOrAdd(TKey key, Func<TKey, TValue> valueFactory)
+    {
+        var cache = GetCache(key);
+        lock (cache) {
+            if (cache.TryGetValue(key, out var existing))
+                return existing;
+
+            var created = valueFactory(key);
+            return cache.TryAdd(key, created)
+                ? created
+                : cache[key];
+        }
+    }
+
     public bool Remove(TKey key)
     {
         var cache = GetCache(key);

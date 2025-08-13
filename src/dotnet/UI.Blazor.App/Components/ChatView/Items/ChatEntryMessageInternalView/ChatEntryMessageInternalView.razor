@@ -28,8 +28,8 @@
         translationCls = "translating";
     }
 
-    // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
-    //     message.Entry.Id, m.IsStreaming, m.Translation);
+    // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated}) - {State}",
+    //     message.Entry.Id, m.IsStreaming, m.Translation, m.Streaming);
 
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
@@ -94,9 +94,11 @@
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
+    private static readonly IThreadSafeLruCache<TextEntryId, TranscriptStreamer> StreamersCache = new ThreadSafeLruCache<TextEntryId, TranscriptStreamer>(100);
 
     private Model? _rendered;
     private TranscriptStreamer _streamer = null!;
+    private TextEntryId _textEntryId = null!;
     private ILogger Log => Hub.LogFor(GetType());
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -118,15 +120,55 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-        await _streamer.DisposeSilentlyAsync().ConfigureAwait(false);
+
+        Log.LogInformation("ChatEntryMessageInternalView.DisposeAsync: {Id}", _textEntryId);
+        // Keep active streamers in the cache
+        var isStreaming = _streamer.State.ValueOrDefault?.IsStreaming == true;
+        StreamersCache.TryGetValue(_textEntryId, out var cached);
+
+        if (ReferenceEquals(cached, _streamer)) {
+            // We are the cached instance
+            if (!isStreaming) {
+                StreamersCache.Remove(_textEntryId);
+                await _streamer.DisposeSilentlyAsync().ConfigureAwait(false);
+            }
+            // If still streaming, keep cached for reuse and do not dispose
+        } else {
+            await _streamer.DisposeSilentlyAsync().ConfigureAwait(false);
+        }
+
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
     protected override void OnInitialized() {
         var messageEntry = Message.Entry;
-        var textEntryId = TextEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
-        _streamer = new (textEntryId, Hub);
-        _streamer.Start();
+        _textEntryId = TextEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
+        // Log.LogInformation("ChatEntryMessageInternalView.OnInitialized: {Id}", _textEntryId);
+
+        if (StreamersCache.TryGetValue(_textEntryId, out var cached)) {
+            var isStreaming = cached.State.ValueOrDefault?.IsStreaming == true;
+            if (isStreaming) {
+                // Reuse active streamer
+                _streamer = cached;
+                // Log.LogInformation("Reusing active TranscriptStreamer for {Id}. TotalCount = {TotalCount}", _textEntryId, StreamersCache.Count);
+                return;
+            }
+
+            // Remove inactive streamer to avoid reuse and simplify cleanup
+            StreamersCache.Remove(_textEntryId);
+        }
+
+        _streamer = new(_textEntryId, Hub);
+        if (Message.Entry.IsStreaming) {
+            // Add if the entry was created as streaming
+            var added = StreamersCache.GetOrAdd(_textEntryId, _ => _streamer);
+            // If the instance in the cache is the newly created _streamer, start streaming.
+            if (ReferenceEquals(added, _streamer))
+                _streamer.Start();
+        }
+        else
+            _streamer.Start();
+        // Log.LogInformation("Created new TranscriptStreamer for {Id}", _textEntryId);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
