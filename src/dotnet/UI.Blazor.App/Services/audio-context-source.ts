@@ -367,8 +367,6 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         const testCycleCount = 5;
         const testIntervalMs = isLongTest ? LongTestIntervalMs : ShortTestIntervalMs;
         for (let i = 0; i < testCycleCount; i++) {
-            if (!this.testPlayback(context))
-                throw new Error(`${logScope}.test: playback test failed.`);
             await delayAsync(testIntervalMs);
             if (context.state !== 'running')
                 throw new Error(`${logScope}.test: AudioContext isn't running.`);
@@ -381,29 +379,6 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
         if (context.currentTime == lastTime) // AudioContext isn't running
             throw new Error(`${logScope}.test: AudioContext is running, but didn't pass currentTime test.`);
-    }
-
-    private testPlayback(context: AudioContext): boolean {
-        try {
-            const oscillator = context.createOscillator();
-            const gainNode = context.createGain();
-
-            gainNode.gain.setValueAtTime(0.001, context.currentTime); // Very low volume
-
-            // Connect oscillator -> gain -> destination
-            oscillator.connect(gainNode);
-            gainNode.connect(context.destination);
-
-            // Use a very high frequency (less audible)
-            oscillator.frequency.setValueAtTime(20000, context.currentTime); // 20kHz - near upper limit of hearing
-
-            oscillator.start();
-            oscillator.stop(context.currentTime + 0.1); // Short test sound
-            return true; // Assume success if no error
-        } catch (error) {
-            console.error('Audio output test failed:', error);
-            return false;
-        }
     }
 
     protected async closeSilently(context: OverridenAudioContext | null): Promise<void> {
@@ -879,7 +854,8 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         this.suspendContextDebounced.reset();
         this.closeContextDebounced.reset();
         let context = await this.whenReady();
-        if (context.state === 'suspended') {
+        // @ts-ignore
+        if (context.state === 'suspended' || context.state === 'interrupted') {
             const whenDelayCompleted = delayAsync(MaxResumeTimeMs);
             await Promise.race([context.resume(), whenDelayCompleted])
                 .then(async () => {
@@ -889,11 +865,6 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
                     }
                     await context.destinationFallback?.play();
                 });
-        }
-        else if (context.state === 'running') {
-            // Test the context to ensure it's actually working
-            context = await this.ensureContextIsRunning(context);
-            await context.destinationFallback?.play();
         }
         else
             await context.destinationFallback?.play();
@@ -907,20 +878,6 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
 
             this.suspendContextDebounced();
         });
-    }
-
-
-    private async ensureContextIsRunning(context: OverridenAudioContext): Promise<OverridenAudioContext> {
-        try {
-            // Perform a lightweight test to ensure context is working
-            await this.test(context, false); // Non-interactive test
-            return context;
-        } catch (e) {
-            warnLog?.log('useRef: context test failed, recreating context', e);
-            // Context is broken, close and recreate
-            void context.close();
-        }
-        return this.whenReady();
     }
 }
 
