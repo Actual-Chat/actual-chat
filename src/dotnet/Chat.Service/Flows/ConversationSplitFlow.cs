@@ -62,7 +62,8 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         var lastLid = Cursor;
         var chatId = ChatId;
         Log.LogDebug("`{Id}`.OnIndex: Started at cursor {LastLid}", Id, lastLid);
-        var (entries, hasMore) = await GetEntries(lastLid, cancellationToken).ConfigureAwait(false);
+
+        var (entries, hasMore, hasImmature) = await GetEntries(lastLid, cancellationToken).ConfigureAwait(false);
         var (state, groups, replySequences) = EntryGroupExtractor.ExtractGroups(ExtractorState ?? new ExtractorState(null, null), entries);
         ExtractorState = state;
 
@@ -91,17 +92,11 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         if (groups.Count == 0 && hasMore) {
             // No groups found, but we have more entries to process
             Event.MarkHandled();
-            if (entries.Count > 0) {
+            if (entries.Count > 0)
                 Cursor = entries[^1].LocalId;
-                var lastEntry = entries[^1];
-                var now = Clocks.CoarseSystemClock.Now;
-                var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
-                if ((lastEntry.EndsAt ?? lastEntry.BeginsAt) < immatureMoment)
-                    // Run the flow again to process the next batch of entries
-                    return StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch");
-            }
 
-            return WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay);
+            // Continue immediately to process the next batch
+            return StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch");
         }
 
         foreach (var group in groups) {
@@ -119,9 +114,12 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         // If we reached the end of the entries, we might want to summarize the last group
         if (!hasMore) {
             var lastEntry = state.LastEntry;
-            if (lastEntry != null && (lastEntry.EndsAt ?? lastEntry.BeginsAt) < Clocks.CoarseSystemClock.Now - Settings.ChatEntrySummarizationDelay)
-                if (state.WordCount >= Settings.MinConversationWords && state.EntryCount >= Settings.MinConversationEntries) {
-                    var groupBuilder = state.CurrentGroup!.AddRange(state.CurrentChunk?.Entries ?? []);
+            if (lastEntry != null
+                && (lastEntry.EndsAt ?? lastEntry.BeginsAt) <= Clocks.CoarseSystemClock.Now - Settings.ChatEntrySummarizationDelay)
+                if (state.CurrentGroup != null // Defensive
+                    && state.WordCount >= Settings.MinConversationWords
+                    && state.EntryCount >= Settings.MinConversationEntries) {
+                    var groupBuilder = state.CurrentGroup.AddRange(state.CurrentChunk?.Entries ?? []);
                     var group = groupBuilder.Build();
 
                     var idRanges = group.LocalIdRanges;
@@ -134,10 +132,15 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
                         new EntryGroupBuilder()
                     );
                 }
+
             if (entries.Count > 0)
                 Cursor = entries[^1].LocalId;
             Event.MarkHandled();
-            return WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
+
+            // Important: if there are immature entries in the current window, schedule a timer instead of waiting for an external event
+            return hasImmature
+                ? WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay)
+                : WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
         }
 
         if (entries.Count > 0)
@@ -145,25 +148,45 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         Event.MarkHandled();
         return hasMore
             ? StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch")
-            : WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
+            : hasImmature
+                ? WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay)
+                : WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
     }
 
     // Private methods
 
-    private async Task<(IReadOnlyList<TextEntry> Entries, bool HasMore)> GetEntries(
+    private async Task<(IReadOnlyList<TextEntry> Entries, bool HasMore, bool HasImmatureInWindow)> GetEntries(
         long lastId,
         CancellationToken cancellationToken)
     {
         var chatId = ChatId;
         var now = Clocks.CoarseSystemClock.Now;
         var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
+
+        // Fetch up to BatchSize + 1 items
         var entries = await ChatsBackend.ListNewEntries(chatId, lastId, BatchSize + 1, cancellationToken).ConfigureAwait(false);
+
+        // Detect the first immature entry index within the fetched window
+        var firstImmatureIndex = -1;
+        for (var i = 0; i < entries.Length; i++) {
+            var ts = entries[i].EndsAt ?? entries[i].BeginsAt;
+            if (ts <= immatureMoment)
+                continue;
+
+            firstImmatureIndex = i;
+            break;
+        }
+
+        var maturedCount = firstImmatureIndex >= 0 ? firstImmatureIndex : entries.Length;
+        var take = Math.Min(maturedCount, BatchSize);
         var textEntries = entries
-            .TakeWhile(e => (e.EndsAt ?? e.BeginsAt) <= immatureMoment)
+            .Take(take)
             .Select(e => new TextEntry(e))
-            .Take(BatchSize)
             .ToList();
-        var hasMore = entries.Length > BatchSize;
-        return (textEntries, hasMore);
+
+        var hasMore = entries.Length > BatchSize;   // More pages exist
+        var hasImmature = firstImmatureIndex >= 0;  // At least one immature entry in this window
+
+        return (textEntries, hasMore, hasImmature);
     }
 }

@@ -25,7 +25,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 
     private async Task SyncStreamingState(CancellationToken cancellationToken)
     {
-        Log.LogInformation("SyncStreamingState: {Id}", id);
+        // Log.LogInformation("SyncStreamingState: {Id}", id);
         var cGetState = await Computed.Capture(() => TranscriptUI.GetStreamingState(id, cancellationToken), cancellationToken).ConfigureAwait(false);
         TranscriptUI.StreamingState? last = null;
         CancellationTokenSource? lastCts = null;
@@ -41,7 +41,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
                 var streamCts = cancellationToken.CreateLinkedTokenSource();
                 if (cState.Value != null) {
                     var (_, content, isTranslation) = cState.Value;
-                    Log.LogWarning("Reset state for {MessageId}, State = {State}, OldState = {OldState}, {Hash}, {OldHash}", id, cState.Value, last1, cState.Value.GetHashCode(), last1?.GetHashCode() ?? 0);
+                    // Log.LogWarning("Reset state for {MessageId}, State = {State}, OldState = {OldState}, {Hash}, {OldHash}", id, cState.Value, last1, cState.Value.GetHashCode(), last1?.GetHashCode() ?? 0);
                     // Initial state
                     _state.Value = new (
                         RetainedText: "",
