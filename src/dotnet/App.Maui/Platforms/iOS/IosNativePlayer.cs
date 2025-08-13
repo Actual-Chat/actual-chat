@@ -17,7 +17,7 @@ public class IosNativePlayer : IDisposable
     public IosNativePlayer(UIHub hub)
     {
         Hub = hub;
-        _playerNodePool = new ConcurrentPool<PlayerNode>(() => PlayerNode.Create(_engine, Format));
+        _playerNodePool = new ConcurrentPool<PlayerNode>(() => PlayerNode.Create(_engine, Format)); // TODO: reduce when not used
     }
 
     public async Task Play(string soundName)
