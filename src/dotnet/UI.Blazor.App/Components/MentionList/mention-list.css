@@ -28,7 +28,7 @@
     animation: show-mention-list 400ms ease-in-out forwards;
 }
 body.narrow .mention-list {
-    @apply border-post-panel;
+    @apply border-b border-separator;
     @apply bg-post-panel text-post-panel-text;
 }
 body.narrow .narrow-panel .mention-list {

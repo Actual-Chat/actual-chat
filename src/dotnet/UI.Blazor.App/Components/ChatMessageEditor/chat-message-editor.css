@@ -594,6 +594,9 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 .narrow-panel .rounded-sub-footer {
     @apply -top-8;
 }
+.chat-message-editor:has(.show-mention-list) .rounded-sub-footer {
+    @apply hidden;
+}
 .rounded-sub-footer::before {
     content: '';
     @apply absolute left-0;
