@@ -26,7 +26,7 @@ const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const RequestDataTimeout: number = 800;
 
-type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'unknown';
+type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'unknown';
 interface ScrollMetadata {
     shouldUseSmoothScroll: boolean;
     scrollType: ScrollToEdgeReason;
@@ -745,6 +745,7 @@ export class VirtualList {
                     const blockPosition: ScrollLogicalPosition = rs.scrollToKeyInTheMiddle
                         ? 'center'
                         : 'end'
+                    scrollType = 'item';
                     scrollFunc = () => this.scrollTo(scrollToItemRef, false, blockPosition);
                 }
             } else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
@@ -1223,7 +1224,8 @@ export class VirtualList {
         let totalSizeDiff = 0;
         let isInteractivePositioning = [...this.pivots].some(p => p.isInteractive)
             && scrollMetadata?.scrollType !== 'sticky-edge'
-            && scrollMetadata?.scrollType !== 'last-item';
+            && scrollMetadata?.scrollType !== 'last-item'
+            && scrollMetadata?.scrollType !== 'item';
 
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
@@ -1410,10 +1412,11 @@ export class VirtualList {
         options.write();
         if (!isInteractivePositioning) {
             scrollMetadata?.scroll?.();
-            // debugLog?.log(`restoreScrollPosition: scroll set synchronously`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
+            // debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
         }
-        else
-            // debugLog?.log(`restoreScrollPosition: scroll skipped`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
+        // else {
+        //     debugLog?.log(`restoreScrollPosition: scroll skipped`, scrollMetadata?.scrollType);
+        // }
 
         this.scrollPositionRestoredAt = Date.now();
 
