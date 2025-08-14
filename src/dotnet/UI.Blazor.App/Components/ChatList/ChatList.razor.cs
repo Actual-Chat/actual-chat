@@ -41,9 +41,9 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
 
         var firstItem = renderedData.FirstItem;
         var lastItem = renderedData.LastItem;
-        var isFirstRender = firstItem == null && query.IsNone;
-        var hasQuery = !query.IsNone;
         var visibleIndices = _visibility?.VisibleKeys.Select(int.Parse).ToList() ?? [];
+        var isFirstRender = (firstItem is null || visibleIndices.Count == 0) && query.IsNone;
+        var hasQuery = !query.IsNone;
         var minVisibleIndex = visibleIndices.DefaultIfEmpty(firstItem?.Position ?? 0).Min();
         var maxVisibleIndex = visibleIndices.DefaultIfEmpty(lastItem?.Position ?? 0).Max();
         var range = (hasQuery, isFirstRender) switch {
@@ -96,6 +96,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = scrollToKey,
+            ScrollToKeyInTheMiddle = scrollToKey is not null ? true : null,
         };
 
         // Return the old data if the new one is identical (to prevent re-renders)
