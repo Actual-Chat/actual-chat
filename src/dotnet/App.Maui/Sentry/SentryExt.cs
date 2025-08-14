@@ -20,6 +20,8 @@ public static class SentryExt
         if (MauiSettings.IsDevApp)
             options.Environment = "dev";
         options.CreateHttpMessageHandler = CreateHttpMessageHandler;
+        options.AttachStacktrace = true;
+        options.SendDefaultPii = false;
 
         if (useOpenTelemetry) {
             // TODO(DF): decide what sample settings we need to setup
@@ -42,7 +44,7 @@ public static class SentryExt
                     resource.AddService(
                         serviceName: serviceName,
                         serviceVersion: AppUIInstruments.ActivitySource.Version))
-            // .AddSentry() // <-- Configure OpenTelemetry to send traces to Sentry
+            .AddSentry() // <-- Configure OpenTelemetry to send traces to Sentry
             .Build();
 
     private static HttpMessageHandler CreateHttpMessageHandler()
