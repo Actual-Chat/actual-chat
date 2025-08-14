@@ -230,7 +230,7 @@ public class CodeWithIndent
 code
 ```
 2");
-        m.Items.Length.Should().Be(6);
+        m.Items.Length.Should().Be(4);
     }
 
     [Fact]
@@ -242,7 +242,7 @@ code
 code
 ```
 2 ```cs");
-        m.Items.Length.Should().Be(10);
+        m.Items.Length.Should().Be(8);
     }
 
     [Fact]
@@ -341,6 +341,94 @@ code
         item1.Items.Length.Should().Be(2);
         item1.Items[0].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
         item1.Items[1].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" raised questions about adding and managing the list of images.");
+    }
+
+    [Fact]
+    public void CodeBlockWithExtraText()
+    {
+        var text =
+            """
+            Text before the code block.
+            ```
+            Code block
+            is here
+            ```
+            Text after the code block.
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text before the code block.");
+        m.Items[2].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text after the code block.");
+        m.Items[1].Should().BeOfType<CodeBlockMarkup>()
+            .Which.Code.Should().Be("Code block\r\nis here\r\n");
+    }
+
+    [Fact]
+    public void UnorderedListSurroundedWithText()
+    {
+        var text =
+            """
+            Text before the list.
+            - List item 1 is here.
+            - List item 2 is here.
+            - List item 3 is the last one.
+            Text after the list.
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text before the list.");
+        m.Items[2].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text after the list.");
+
+        var item1 = m.Items[1].Should().BeOfType<ListMarkup>().Subject;
+        item1.Items.Should().HaveCount(3);
+        item1.IsOrdered.Should().BeFalse();
+        item1.Items[0].Should().BeOfType<ListItemMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("List item 1 is here.");
+        item1.Items[1].Should().BeOfType<ListItemMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("List item 2 is here.");
+        item1.Items[2].Should().BeOfType<ListItemMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("List item 3 is the last one.");
+    }
+
+    [Fact]
+    public void UnorderedListAndCodeBlockSurroundedWithText()
+    {
+        var text =
+            """
+            Text before the list.
+            - List item 1 is here.
+            - List item 2 is here.
+            ```
+            some code
+            ```
+            Text after the list.
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(4);
+        m.Items[0].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text before the list.");
+        m.Items[3].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Text after the list.");
+
+        var item1 = m.Items[1].Should().BeOfType<ListMarkup>().Subject;
+        item1.Items.Should().HaveCount(2);
+        item1.IsOrdered.Should().BeFalse();
+        item1.Items[0].Should().BeOfType<ListItemMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("List item 1 is here.");
+        item1.Items[1].Should().BeOfType<ListItemMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("List item 2 is here.");
+
+        m.Items[2].Should().BeOfType<CodeBlockMarkup>()
+            .Which.Code.Should().Be("some code\r\n");
     }
 
     // Helpers

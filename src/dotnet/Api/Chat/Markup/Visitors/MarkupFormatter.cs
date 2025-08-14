@@ -23,10 +23,31 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
     // Protected methods
 
+    protected override void VisitList(ListMarkup markup, ref StringBuilder state)
+    {
+        var isFirst = true;
+        foreach (var item in markup.Items) {
+            if (!isFirst)
+                state.AppendLine();
+            VisitListItem(item, ref state);
+            isFirst = false;
+        }
+    }
+
+    protected override void VisitSeq(MarkupSeq markup, ref StringBuilder state)
+    {
+        Markup? prevItem = null;
+        foreach (var item in markup.Items) {
+            // NOTE: Add new line separator between block markups and between block and inline markups.
+            if (prevItem is not null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup()))
+                state.Append(NewLineMarkup.Instance.Format());
+            Visit(item, ref state);
+            prevItem = item;
+        }
+    }
+
     protected override void VisitListItem(ListItemMarkup markup, ref StringBuilder state)
     {
-        if (state.Length > 0)
-            state.AppendLine();
         state.Append(markup.GetPrefix());
         Visit(markup.Content, ref state);
     }
