@@ -3,6 +3,7 @@ import { audioContextSource } from '../../../UI.Blazor.App/Services/audio-contex
 import { Log } from 'logging';
 import { AUDIO_PLAY as AP } from '_constants';
 import { AudioContextInUse, AudioContextRef } from '../../../UI.Blazor.App/Services/audio-context-ref';
+import { BrowserInfo } from '../BrowserInfo/browser-info';
 
 const { debugLog, warnLog } = Log.get('SoundsPlayer');
 const DEFAULT_COOLDOWN = 3; // 3s
@@ -102,4 +103,5 @@ export class SoundPlayer {
 }
 
 export const soundPlayer = new SoundPlayer();
-void soundPlayer.play(SILENCE_URL);
+if (BrowserInfo.hostKind === 'MauiApp')
+    void soundPlayer.play(SILENCE_URL);

@@ -1419,11 +1419,11 @@ export class VirtualList {
         options.write();
         if (!isInteractivePositioning) {
             scrollMetadata?.scroll?.();
-            // debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
+            debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
         }
-        // else {
-        //     debugLog?.log(`restoreScrollPosition: scroll skipped`, scrollMetadata?.scrollType);
-        // }
+        else {
+            debugLog?.log(`restoreScrollPosition: scroll skipped`, scrollMetadata?.scrollType);
+        }
 
         this.scrollPositionRestoredAt = Date.now();
 
@@ -1575,6 +1575,9 @@ export class VirtualList {
         else
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
 
+        if (orderedItems.some(i => i.range == null))
+            return false;
+
         this.itemRange = new NumberRange(
             orderedItems[0].range!.start,
             orderedItems[orderedItems.length - 1].range!.end - this.rowGap);
@@ -1610,11 +1613,16 @@ export class VirtualList {
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
-        const viewport = this.calculateViewport();
-        if (viewport === null)
+        let viewport = this.calculateViewport();
+        if (viewport === null && this.viewport == null)
             return null; // viewport is not ready yet
 
-        this.viewport = viewport;
+        // Use current viewport if new one is not available
+        if (viewport != null)
+            this.viewport = viewport;
+        else
+            viewport = this.viewport!;
+
         if (orderedItems.length === 0)
             return null;
 

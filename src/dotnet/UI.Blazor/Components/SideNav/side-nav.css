@@ -106,13 +106,8 @@ body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     }
 }
 
-/* If one SideNav is open, the other one should be hidden to prevent its pull */
-body.narrow.side-nav-left-open .side-nav.side-nav-right {
-    @apply hidden;
-}
-body.narrow.side-nav-right-open .side-nav.side-nav-left {
-    @apply hidden;
-}
+/* removed rules that hides opposite side nav when one is open to prevent virtual list from jumping in narrow mode */
+
 /* This rule prioritizes left SideNav over the right one when both are open */
 body.narrow.side-nav-right-open .side-nav.side-nav-left.open {
     @apply block;
