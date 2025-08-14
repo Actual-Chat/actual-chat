@@ -197,13 +197,11 @@ body.hoverable .playable-text-markup > span:hover {
 }
 
 ol.list-markup {
-    /*@apply flex-y;*/
-    @apply inline-block;
+    @apply flex-y;
     @apply list-decimal list-inside;
 }
 ul.list-markup {
-    /*@apply flex-y;*/
-    @apply inline-block;
+    @apply flex-y;
     @apply list-disc list-inside;
 }
 
