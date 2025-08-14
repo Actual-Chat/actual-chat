@@ -15,8 +15,14 @@ public sealed class MarkupSeq : Markup
     public override string Format()
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        foreach (var item in Items)
+        Markup? prevItem = null;
+        foreach (var item in Items) {
+            // NOTE: Add new line separator between block markups and between block and inline markups.
+            if (prevItem is not null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup()))
+                sb.Append(NewLineMarkup.Instance.Format());
             sb.Append(item.Format());
+            prevItem = item;
+        }
         return sb.ToStringAndRelease();
     }
 
@@ -37,11 +43,22 @@ public sealed class MarkupSeq : Markup
                 if (lastPlainText != null && !lastPlainText.Text.IsNullOrEmpty())
                     items.Add(lastPlainText);
                 lastPlainText = null;
-                items.Add(item);
+                var lastItem = items.LastOrDefault();
+                var isBlockMarkup = lastItem?.IsBlockMarkup() ?? false;
+                if (!isBlockMarkup) {
+                    items.Add(item);
+                    isSimplified = true;
+                }
             } else if (item is not PlainTextMarkup pt) {
                 if (lastPlainText != null)
                     items.Add(lastPlainText);
                 lastPlainText = null;
+                if (item.IsBlockMarkup()) {
+                    var lastItem = items.LastOrDefault();
+                    if (lastItem is NewLineMarkup)
+                        items.RemoveAt(items.Count - 1);
+                    isSimplified = true;
+                }
                 items.Add(item);
             } else if (lastPlainText == null) {
                 lastPlainText = pt;

@@ -30,4 +30,7 @@ public static partial class MarkupExt
 
     public static string ToClipboardText(this Markup markup)
         => MarkupFormatter.Readable.Format(markup);
+
+    public static bool IsBlockMarkup(this Markup markup)
+        => markup is CodeBlockMarkup or ListMarkup;
 }
