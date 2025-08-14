@@ -122,7 +122,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     {
         var shouldRender = !Data.IsSimilarTo(LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
-            || LastReportedItemVisibility.VisibleKeys.Count == 0;
+            || (LastReportedItemVisibility.VisibleKeys.Count == 0 && !Data.HasAllItems);
         if (JSRef != null! && !shouldRender)
             _ = JSRef.InvokeVoidAsync("renderSkipped");
 
