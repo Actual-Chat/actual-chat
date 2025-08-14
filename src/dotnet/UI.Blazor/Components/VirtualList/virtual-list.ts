@@ -817,13 +817,20 @@ export class VirtualList {
         if (this.isDisposed || this.isRendering)
             return;
 
-        this.viewport = this.calculateViewport();
+        const viewport = this.calculateViewport();
+        if (viewport == null)
+            return;
+
+        this.viewport = viewport;
         await this.requestData();
     }
 
-    private calculateViewport(): NumberRange {
+    private calculateViewport(): NumberRange | null {
         const viewportHeight = this.ref.clientHeight;
         const scrollTop = this.ref.scrollTop;
+        if (viewportHeight === 0 && scrollTop === 0)
+            return null; // Unable to calculate viewport as the element is hidden
+
         const viewport = this.defaultEdge === VirtualListEdge.End
             ? new NumberRange(scrollTop - viewportHeight, scrollTop)
             : new NumberRange(scrollTop, scrollTop + viewportHeight);
@@ -1603,7 +1610,11 @@ export class VirtualList {
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
 
-        const viewport = this.viewport = this.calculateViewport();
+        const viewport = this.calculateViewport();
+        if (viewport === null)
+            return null; // viewport is not ready yet
+
+        this.viewport = viewport;
         if (orderedItems.length === 0)
             return null;
 
