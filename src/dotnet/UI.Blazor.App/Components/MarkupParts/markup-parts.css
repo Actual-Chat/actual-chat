@@ -212,8 +212,6 @@ ul.list-markup li::before {
     width: 0.5em;
     margin-right: 0.5em;
     color: var(--text-01);
-    @apply flex-y;
-    @apply list-disc list-inside;
 }
 
 .unknown-markup {
