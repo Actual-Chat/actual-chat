@@ -100,7 +100,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             return null;
 
         if (chat.IsChatRoulette())
-            return null; // NOTE(DF): Do not reveal account id. Do not allow starting peer chat.
+            return null; // NOTE(DF): Do not reveal account ID, do not allow creating a new peer chat.
 
         var author = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)

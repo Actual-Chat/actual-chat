@@ -148,7 +148,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         var authorHasLeft = false;
 
         if (existingAuthor != null) {
-            // Update existing author, incl. one of the default ones in peer chat
+            // Update existing author, incl. one of the default ones in a peer chat
             existingAuthor.RequireVersion(expectedVersion).RequireValid(userId!);
             var account = await AccountsBackend.Get(existingAuthor.UserId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -169,7 +169,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             authorHasLeft = dbAuthor is { HasLeft: false } && author.HasLeft;
 
             if (dbAuthor == null) {
-                // First author update in peer chat = create it
+                // First author update in a peer chat = create it
                 dbAuthor = new DbAuthor(author);
                 dbContext.Add(dbAuthor);
             }
