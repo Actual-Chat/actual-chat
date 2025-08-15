@@ -5,6 +5,7 @@
 @code {
     private IAccounts Accounts => Hub.Accounts;
     private IAliases Aliases => Hub.Aliases;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
     [Parameter] public string? PageRoute { get; set; }
 
@@ -23,7 +24,11 @@
         }
 
         if (ownAccount.Id == account.Id) { // Own account
-            _ = History.NavigateTo(Links.Chats, true);
+            var url = Links.Chats;
+            var notesChatInfo = ChatListUI.NotesChat.Value;
+            if (notesChatInfo is not null)
+                url = Links.Chat(notesChatInfo.Id);
+            _ = History.NavigateTo(url, true);
             return;
         }
 
