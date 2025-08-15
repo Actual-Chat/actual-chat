@@ -29,7 +29,7 @@ public static class AuthorExt
 
         var peerIndex = peerChatId.IndexOf(author.UserId);
         if (author.LocalId != peerIndex + 1)
-            throw StandardError.Constraint($"Peer chat authors' LocalId should indicate position at peer chat id, but found '{author}'.");
+            throw StandardError.Constraint($"Peer chat authors' LocalId should be its index in chat, but found '{author}'.");
 
         ValidateUserId();
         return author;

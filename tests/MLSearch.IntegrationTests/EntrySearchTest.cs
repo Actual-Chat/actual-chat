@@ -152,7 +152,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var bobEntries = await CreateEntries(groups.Joined(), "Let's go");
         allPlaceEntries.AddRange(bobEntries.Select(x => ((x.ChatId as PlaceChatId)?.PlaceId, x)));
         foreach (var userContact in people) {
-            var entry = await CreateEntry(PeerChatId.New(bob.Id, userContact.Value.Id), "Let's go - in peer chat");
+            var entry = await CreateEntry(PeerChatId.New(bob.Id, userContact.Value.Id), "Let's go - to a peer chat");
             if (userContact.Key.PlaceKey is { } placeKey) {
                 var place = places[placeKey];
                 allPlaceEntries.Add((place.Id, entry));
