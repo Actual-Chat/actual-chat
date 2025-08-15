@@ -218,8 +218,10 @@
         scrollbar-width: thin;
         scrollbar-color: transparent transparent;
     }
-    .custom-scrollbar:hover,
-    .custom-scrollbar-x:hover {
+    .touch-capable .custom-scrollbar,
+    .touch-capable .custom-scrollbar-x,
+    body.hoverable .custom-scrollbar:hover,
+    body.hoverable .custom-scrollbar-x:hover {
         scrollbar-color: var(--scrollbar) transparent;
     }
     .custom-scrollbar-hide {
