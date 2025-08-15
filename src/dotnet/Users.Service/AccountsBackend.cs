@@ -187,8 +187,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         var oldAliasId = existing?.AliasId;
         var newAliasId = account.AliasId;
-        if (oldAliasId != newAliasId)
-            context.Operation.Items.KeylessSet(new[] { oldAliasId, newAliasId }.SkipNullItems());
+        if (oldAliasId != newAliasId) {
+            var aliasesToInvalidate = new List<AliasId>();
+            if (oldAliasId is not null)
+                aliasesToInvalidate.Add(oldAliasId);
+            if (newAliasId is not null)
+                aliasesToInvalidate.Add(newAliasId);
+            context.Operation.Items.KeylessSet(aliasesToInvalidate);
+        }
     }
 
     // [CommandHandler]
