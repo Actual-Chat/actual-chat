@@ -96,7 +96,7 @@ public static partial class MauiProgram
                 ConfigureMauiApp(appBuilder);
             }
 #if DEBUG
-            // NOTE: It's enabled in Debug mode only hence there is no performance penalties in Release mode.
+            // NOTE: It's enabled in Debug mode only hence there are no performance penalties in Release mode.
             EnableContainerValidation(appBuilder);
 #endif
             var app = appBuilder.Build();
@@ -235,9 +235,8 @@ public static partial class MauiProgram
         // Core MAUI services
         services.AddMauiBlazorWebView();
         AddSafeJSRuntime(services);
-#if DEBUG
-        services.AddBlazorWebViewDeveloperTools();
-#endif
+        if (MauiSettings.AreDevToolsEnabled)
+            services.AddBlazorWebViewDeveloperTools();
         ConfigureBlazorWebViewAppServices(services);
     }
 

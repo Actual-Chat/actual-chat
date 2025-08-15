@@ -8,8 +8,14 @@ public static class MauiSettings
     public static readonly string LocalHost = "0.0.0.1";
 #if IS_DEV_MAUI
     public const bool IsDevApp = true;
+    public const bool AreDevToolsEnabled = true;
 #else
     public const bool IsDevApp = false;
+#if DEBUG
+    public const bool AreDevToolsEnabled = true;
+#else
+    public const bool AreDevToolsEnabled = false;
+#endif
 #endif
     // public const string DefaultHost = "local.actual.chat";
     public const string DefaultHost = IsDevApp ? "dev.actual.chat" : "actual.chat";
