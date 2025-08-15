@@ -64,6 +64,14 @@
                 <Toggle IsChecked="@m.IsLogUIEnabled"/>
             </Right>
         </TileItem>
+        @if (m.IsLogUIEnabled) {
+            <TileItem Click="@OnLogsClick">
+                <Icon><i class="icon-hash-fill text-2xl"></i></Icon>
+                <Content>
+                    See logs
+                </Content>
+            </TileItem>
+        }
     </Tile>
 }
 
@@ -140,6 +148,11 @@
 
     private void OnLogUIEnabledClick()
         => LogUI.IsEnabled.Value = !State.Value.IsLogUIEnabled;
+
+    private void OnLogsClick() {
+        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
+        _ = History.NavigateTo(Links.Logs);
+    }
 
     // Nested types
 

@@ -31,6 +31,7 @@ public partial class CustomBlazorWebViewHandler
         settings.MediaPlaybackRequiresUserGesture = false;
         settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
         settings.CacheMode = CacheModes.Default;
+        settings.TextZoom = 100;
         // settings.OffscreenPreRaster = true;
 #pragma warning disable CS0618
         settings.EnableSmoothTransition();
