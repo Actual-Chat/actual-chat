@@ -5,7 +5,7 @@ using ActualChat.Users.Module;
 using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.EntityFramework;
 
-namespace ActualChat.Users;
+namespace ActualChat.Users.Phone;
 
 public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IPhoneAuth
 {
@@ -123,7 +123,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
     private async Task<bool> ValidateCode(
         Session session,
-        Phone phone,
+        ActualChat.Phone phone,
         int totp,
         TotpPurpose purpose,
         CancellationToken cancellationToken)
@@ -137,7 +137,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
     private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
         Session session,
-        Phone phone,
+        ActualChat.Phone phone,
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
@@ -147,7 +147,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         return (securityTokens, modifier);
     }
 
-    private bool TryGetPredefined(Phone phone, out int predefinedTotp)
+    private bool TryGetPredefined(ActualChat.Phone phone, out int predefinedTotp)
         // removing dashes due to issue with dash in bash env var names
-        => Settings.PredefinedTotps.TryGetValue(Phone.NormalizePart(phone.Value), out predefinedTotp);
+        => Settings.PredefinedTotps.TryGetValue(ActualChat.Phone.NormalizePart(phone.Value), out predefinedTotp);
 }

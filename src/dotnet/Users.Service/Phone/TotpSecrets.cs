@@ -1,11 +1,11 @@
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
-using Microsoft.AspNetCore.DataProtection;
-using StackExchange.Redis;
 using ActualLab.Generators;
 using ActualLab.Redis;
+using Microsoft.AspNetCore.DataProtection;
+using StackExchange.Redis;
 
-namespace ActualChat.Users;
+namespace ActualChat.Users.Phone;
 
 public sealed class TotpSecrets
 {

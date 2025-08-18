@@ -9,6 +9,8 @@ using ActualChat.Users.Db;
 using ActualChat.Users.Email;
 using ActualChat.Users.Flows;
 using ActualChat.Users.Models;
+using ActualChat.Users.Phone;
+using ActualChat.Users.Phone.Internal;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
@@ -188,13 +190,17 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Email sender - used by IEmails (API)
         services.AddSingleton<IEmailSender, EmailSender>();
 
-        // Text message sender / Twilio - used by IPhoneAuth (API)
+        // Text message sender registration (keyed) and composite - used by IPhoneAuth (API)
         if (Settings.IsTwilioEnabled) {
+            // Key "SMSTo" is used for Russian and Kazakhstan numbers (+7)
+            services.AddKeyedSingleton<ITextMessageSender>("SMSTo", (c, _) => new SMSToTextMessageSender(c));
+
             services.AddSingleton<ITwilioRestClient>(_ => {
                 TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
                 return TwilioClient.GetRestClient();
             });
-            services.AddSingleton<ITextMessageSender, TwilioTextMessageSender>();
+            services.AddKeyedSingleton<ITextMessageSender>("Default", (c, _) => new TwilioTextMessageSender(c));
+            services.AddSingleton<ITextMessageSender, CompositeTextMessageSender>();
         }
         else
             services.AddSingleton<ITextMessageSender, LogOnlyTextMessageSender>();

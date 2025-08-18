@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
-namespace ActualChat.Users;
+namespace ActualChat.Users.Phone;
 
 public sealed class PhoneAuthOptions : RemoteAuthenticationOptions
 {

@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ActualChat.Users.Module;
 
-namespace ActualChat.Users;
+namespace ActualChat.Users.Phone;
 
 // Implements TOTP code generation & verification per RFC 6238.
 // Licensed to the .NET Foundation under one or more agreements.
