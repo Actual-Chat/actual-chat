@@ -13,11 +13,11 @@ public sealed class CompositeTextMessageSender(IServiceProvider services) : ITex
     public Task Send(ActualChat.Phone phone, string text)
     {
         var number = phone.E164Value;
-        if (number.StartsWith("+7", StringComparison.Ordinal)) {
-            Log.LogDebug("Routing SMS via SMS.to for phone {Phone}", number);
-            return SmsTo.Send(phone, text);
-        }
+        if (!number.StartsWith("+7", StringComparison.Ordinal))
+            return Default.Send(phone, text);
 
-        return Default.Send(phone, text);
+        Log.LogDebug("Routing SMS via SMS.to for phone {Phone}", number);
+        return SmsTo.Send(phone, text);
+
     }
 }
