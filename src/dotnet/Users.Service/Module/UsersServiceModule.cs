@@ -190,9 +190,16 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Email sender - used by IEmails (API)
         services.AddSingleton<IEmailSender, EmailSender>();
 
-        // Text message sender registration (keyed) and composite - used by IPhoneAuth (API)
-        if (Settings.IsTwilioEnabled) {
-            // Key "SMSTo" is used for Russian and Kazakhstan numbers (+7)
+        // Text message sender registration - covers all combinations of Twilio / SMS.to availability
+        var isTwilioEnabled = Settings.IsTwilioEnabled;
+        var isSmsToEnabled = Settings.IsSMSToEnabled;
+
+        if (!isTwilioEnabled && !isSmsToEnabled)
+            // Neither enabled -> log-only sender
+            services.AddSingleton<ITextMessageSender, LogOnlyTextMessageSender>();
+        else if (isTwilioEnabled && isSmsToEnabled) {
+            // Both enabled -> use Composite to route +7 through SMS.to, everything else through Twilio
+            // Key "SMSTo" is used for numbers starting with +7
             services.AddKeyedSingleton<ITextMessageSender>("SMSTo", (c, _) => new SMSToTextMessageSender(c));
 
             services.AddSingleton<ITwilioRestClient>(_ => {
@@ -202,8 +209,19 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddKeyedSingleton<ITextMessageSender>("Default", (c, _) => new TwilioTextMessageSender(c));
             services.AddSingleton<ITextMessageSender, CompositeTextMessageSender>();
         }
-        else
-            services.AddSingleton<ITextMessageSender, LogOnlyTextMessageSender>();
+        else if (isTwilioEnabled) {
+            // Only Twilio enabled -> use Twilio directly
+            services.AddSingleton<ITwilioRestClient>(_ => {
+                TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
+                return TwilioClient.GetRestClient();
+            });
+            services.AddSingleton<ITextMessageSender, TwilioTextMessageSender>();
+        }
+        else {
+            // Only SMS.to enabled -> use SMS.to directly (also register keyed instance for consistency)
+            services.AddKeyedSingleton<ITextMessageSender>("SMSTo", (c, _) => new SMSToTextMessageSender(c));
+            services.AddSingleton<ITextMessageSender, SMSToTextMessageSender>();
+        }
 
         // IAuth & IAuthBackend
         fusion.AddDbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>(auth => {
