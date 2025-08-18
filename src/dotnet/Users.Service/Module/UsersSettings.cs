@@ -37,4 +37,7 @@ public sealed class UsersSettings
         && !TwilioApiKey.IsNullOrEmpty()
         && !TwilioApiSecret.IsNullOrEmpty()
         && !TwilioSmsFrom.IsNullOrEmpty();
+
+    public bool IsSMSToEnabled => !SMSToApiKey.IsNullOrEmpty()
+        && !SMSToFrom.IsNullOrEmpty();
 }
