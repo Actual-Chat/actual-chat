@@ -1,4 +1,5 @@
 using System.Text;
+using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
@@ -16,6 +17,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private ITextMessageSender TextMessage { get; } = services.GetRequiredService<ITextMessageSender>();
     private TotpCodes Totps { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
+    private ActualLab.Redis.RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<ActualLab.Redis.RedisDb<UsersDbContext>>();
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
@@ -25,9 +27,8 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
 
     // [ComputeMethod]
-    // TODO: move to Features_EnablePhoneAuth
     public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
-        => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled);
+        => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled || Settings.IsSMSToEnabled);
 
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
@@ -38,10 +39,13 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive)
             return default; // It just spawns other commands, so nothing to do here
 
-        // TODO: throttle
         var (session, phone, purpose) = command;
         if (TryGetPredefined(phone, out _))
             return GetExpiresAt(); // no need to send predefined totp
+
+        // Throttle to prevent SMS pumping: limit by phone and by session
+        if (await IsThrottled(session, phone, cancellationToken).ConfigureAwait(false))
+            return GetExpiresAt();
 
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         var totp = Totps.Generate(securityToken, modifier); // generate totp with the newest one
@@ -120,6 +124,29 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return true;
     }
+
+    private async Task<bool> IsThrottled(Session session, ActualChat.Phone phone, CancellationToken cancellationToken)
+    {
+        // Fixed-window throttle using a single Redis call per scope (SET NX with TTL)
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var window = Settings.TotpUIThrottling;
+
+        var phoneKey = $".SmsTotpThrottle:phone:{Hash(phone.E164Value)}";
+        var sessionKey = $".SmsTotpThrottle:session:{Hash(session.Id)}";
+
+        // true => first request in window; false => already requested (throttled)
+        var phoneOk = await db.StringSetAsync(phoneKey, "1", window, StackExchange.Redis.When.NotExists).ConfigureAwait(false);
+        var sessionOk = await db.StringSetAsync(sessionKey, "1", window, StackExchange.Redis.When.NotExists).ConfigureAwait(false);
+
+        // Throttle if either phone or session key already exists in the window
+        return !(phoneOk && sessionOk);
+    }
+
+    private static string Hash(string value)
+        => value
+            .Hash()
+            .SHA256()
+            .ToBase64HashString(HashAlgorithm.SHA256);
 
     private async Task<bool> ValidateCode(
         Session session,
