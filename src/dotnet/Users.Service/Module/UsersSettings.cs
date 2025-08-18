@@ -23,6 +23,8 @@ public sealed class UsersSettings
     public string TwilioApiKey { get; set; } = "";
     public string TwilioApiSecret { get; set; } = "";
     public string TwilioSmsFrom { get; set; } = "";
+    public string SMSToApiKey { get; set; } = "";
+    public string SMSToFrom { get; set; } = "SMSto";
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Active;
