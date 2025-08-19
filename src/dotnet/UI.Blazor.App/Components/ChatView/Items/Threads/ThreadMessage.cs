@@ -17,14 +17,14 @@ public sealed class ThreadMessage(ChatEntry entry, Chat.Chat chat): ChatMessage(
             return false;
 
         return Entry.VersionEquals(otherThreadMessage.Entry)
-            && ReplacementKind == other.ReplacementKind
+            && Kind == other.Kind
             && Date == other.Date
             && Flags == other.Flags;
     }
 
     public override int GetHashCode()
         => HashCode.Combine(Entry,
-            ReplacementKind,
+            Kind,
             Date,
             Flags);
 }

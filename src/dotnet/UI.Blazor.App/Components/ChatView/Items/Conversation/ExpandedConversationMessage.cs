@@ -7,7 +7,7 @@ public sealed class ExpandedConversationMessage : ChatMessage, IVirtualListGroup
     {
         Conversation = conversation;
         Items = items;
-        ReplacementKind = ChatMessageReplacementKind.ConversationBlock;
+        Kind = ChatMessageKind.ConversationBlock;
     }
 
     public override bool IsGroup => true;

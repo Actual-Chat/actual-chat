@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualLab.Diagnostics
 @using ActualChat.Media
+@using ActualLab.Diagnostics
 @inherits ComputedStateComponent<AppUIHub, ChatEntryMessageView.Model?>
 @{
     var m = _rendered = State.Value ?? Model.Empty;
@@ -40,29 +40,29 @@
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
     var showAuthorClass = showAuthorBadge ? "show-author" : "";
     var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {paddingClass} {unreadBlockClass} {highlightClass} {repliedClass} {selectedClass} {selectionStartClass} {selectionEndClass} {showAuthorClass} message-wrapper";
+}
 
-    switch (message.ReplacementKind) {
-    case ChatMessageReplacementKind.None:
+@switch (message.Kind) {
+    case ChatMessageKind.None:
         break;
-    case ChatMessageReplacementKind.DateLine:
+    case ChatMessageKind.DateLine:
         <ChatMessageDateLine Date="@message.Date"/>
         return;
-    case ChatMessageReplacementKind.NewMessagesLine:
+    case ChatMessageKind.NewMessagesLine:
         <Separator Title="New messages" TitleClass="new-separator-title"/>
         return;
-    case ChatMessageReplacementKind.WelcomeBlock:
+    case ChatMessageKind.WelcomeBlock:
         @if (m.Chat is { } chat1) {
             <ChatWelcomeBlock Chat="@chat1" />
         }
         return;
-    case ChatMessageReplacementKind.SearchWelcomeBlock:
+    case ChatMessageKind.SearchWelcomeBlock:
         @if (m.Chat is { } chat2) {
             <SearchChatWelcomeBlock Chat="@chat2" />
         }
         return;
     default:
         throw new ArgumentOutOfRangeException();
-    }
 }
 
 @if (isSystem) {
@@ -347,10 +347,10 @@
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken).ConfigureAwait(false);
         var isPreviousSelected = previousMessage != null
             && selectedChatEntries.Contains(previousMessage.Entry.Id)
-            && previousMessage.ReplacementKind == ChatMessageReplacementKind.None;
+            && previousMessage.Kind == ChatMessageKind.None;
         var isNextSelected = nextMessage != null
             && selectedChatEntries.Contains(nextMessage.Entry.Id)
-            && nextMessage.ReplacementKind == ChatMessageReplacementKind.None;
+            && nextMessage.Kind == ChatMessageKind.None;
         var isSelected = selectedChatEntries.Contains(entry.Id);
 
         var isSelectionStart = isSelected && !isPreviousSelected;

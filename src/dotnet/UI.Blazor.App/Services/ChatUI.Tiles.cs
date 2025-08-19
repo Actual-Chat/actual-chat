@@ -424,8 +424,8 @@ public partial class ChatUI
             prevEntry = prevEntryMessage.Entry;
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
             isPrevAudio = prevEntry.HasAudioEntry || prevEntry.IsStreaming;
-            hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
-            hasVeryFirstSearchItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.SearchWelcomeBlock;
+            hasVeryFirstItem = prevMessage.Kind == ChatMessageKind.WelcomeBlock;
+            hasVeryFirstSearchItem = prevMessage.Kind == ChatMessageKind.SearchWelcomeBlock;
         }
 
         var messages = new List<ChatMessage>(entries.Count);
@@ -442,6 +442,7 @@ public partial class ChatUI
                     var message = new ThreadMessage(entry, threadChat) {
                         Date = date,
                         PreviousMessage = prevMessage,
+                        Kind = ChatMessageKind.Thread,
                     };
                     messages.Add(message);
                     prevMessage = message;
@@ -479,7 +480,7 @@ public partial class ChatUI
                     if (!isWelcomeBlockAdded) {
                         if (hasVeryFirstItem) {
                             var welcomeMessage = new ChatEntryMessage(entry) {
-                                ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+                                Kind = ChatMessageKind.WelcomeBlock,
                                 ShouldSkipKey = true,
                                 PreviousMessage = prevMessage,
                             };
@@ -490,7 +491,7 @@ public partial class ChatUI
                         }
                         if (hasVeryFirstSearchItem) {
                             var welcomeMessage = new ChatEntryMessage(entry) {
-                                ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock,
+                                Kind = ChatMessageKind.SearchWelcomeBlock,
                                 ShouldSkipKey = true,
                                 PreviousMessage = prevMessage,
                             };
@@ -504,7 +505,7 @@ public partial class ChatUI
 
                     if (isEntryUnread && !isPrevUnread) {
                         var newLineMessage = new ChatEntryMessage(entry) {
-                            ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
+                            Kind = ChatMessageKind.NewMessagesLine,
                             ShouldSkipKey = true,
                             Date = date,
                             PreviousMessage = prevMessage,
@@ -521,7 +522,7 @@ public partial class ChatUI
                         && (prevMessage == null || prevMessage.Id < expandedConversation.Id.StartEntryLid)) {
                         // Add a conversation header only if it wasn't added before
                         var conversationHeaderMessage = new ConversationHeader(expandedConversation) {
-                            ReplacementKind = ChatMessageReplacementKind.ConversationStart,
+                            Kind = ChatMessageKind.ConversationStart,
                             ShouldSkipKey = true,
                             Date = date,
                             PreviousMessage = prevMessage,
@@ -533,7 +534,7 @@ public partial class ChatUI
                     }
                     if (date != prevDate) {
                         var dateLineMessage = new ChatEntryMessage(entry) {
-                            ReplacementKind = ChatMessageReplacementKind.DateLine,
+                            Kind = ChatMessageKind.DateLine,
                             ShouldSkipKey = true,
                             Date = date,
                             PreviousMessage = prevMessage,
@@ -560,7 +561,7 @@ public partial class ChatUI
                     if (expandedConversation != null)
                         if (entry.Id.LocalId == expandedConversation.EndEntryLid) {
                             var conversationFooterMessage = new ConversationFooter(expandedConversation) {
-                                ReplacementKind = ChatMessageReplacementKind.ConversationEnd,
+                                Kind = ChatMessageKind.ConversationEnd,
                                 ShouldSkipKey = true,
                                 Date = date,
                                 PreviousMessage = prevMessage,
@@ -576,7 +577,7 @@ public partial class ChatUI
             }
             else if (conversation != null && !expandedConversations.Contains(conversation.Id)) {
                 var message = new ConversationMessage(conversation) {
-                    ReplacementKind = ChatMessageReplacementKind.ConversationStart,
+                    Kind = ChatMessageKind.ConversationStart,
                     Date = date,
                     PreviousMessage = prevMessage,
                 };

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
@@ -378,11 +379,11 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     {
         var chatId = entries.Select(x => x.ChatId).Distinct().Single();
         var lids = entries.Select(x => x.LocalId).ToHashSet();
-        ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId, lids, true);
+        ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId, lids.Select(lid => ChatMessageKey.New(ChatMessageKind.None, lid)).ToHashSet(), true);
     }
 
     private void ClearVisibleItems(ChatId chatId)
-        => ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId, ApiSet<long>.Empty, true);
+        => ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId, ReadOnlySet<ChatMessageKey>.Empty, true);
 
     private Task AssertIsSubHeaderVisible(ChatId chatId, bool expected)
         => ComputedTest.When(async ct => {
