@@ -34,6 +34,8 @@
     <!-- <InternalsVisibleTo Include="DynamicProxyGenAssembly2" /> -->
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(BaseName).Chat.UI.Blazor.UnitTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(BaseName).Chat.UI.Blazor.IntegrationTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(BaseName).Testing$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(BaseName).Testing.Host$(AssemblyPublicKey)" />
 

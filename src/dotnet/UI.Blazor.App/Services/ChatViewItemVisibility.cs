@@ -14,6 +14,7 @@ public sealed record ChatViewItemVisibility(
     public bool IsEmpty => VisibleEntryLids.Count == 0;
     public IEnumerable<TextEntryId> VisibleEntryIds => VisibleEntryLids.Select(lid => TextEntryId.New(ChatId, lid));
 
+    // TODO: consider threads, conversations, etc.
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
             ChatId.Parse(source.ListIdentity),

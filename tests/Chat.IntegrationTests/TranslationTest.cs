@@ -109,7 +109,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         await ComputedTest.When(async ct => {
             // act
-            var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), ct);
+            var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), true, ct);
 
             // assert
             translation.Should().NotBeNull();
@@ -132,7 +132,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         // act
         await ComputedTest.When(async ct => {
                 // act
-                var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), ct);
+                var translation = await Translations.Get(Tester.Session, TranslationId.New((TextEntryId)entry.Id, targetLang), true, ct);
 
                 // assert
                 translation.Should().NotBeNull();
@@ -187,7 +187,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
         Task<Translation> WhenTranslated(TextEntryId id, Language language)
             => ComputedTest.When(
-                ct => Translations.Get(Tester.Session, TranslationId.New(id, language), ct).Require(),
+                ct => Translations.Get(Tester.Session, TranslationId.New(id, language), true, ct).Require(),
                 TimeSpan.FromSeconds(10));
     }
 

@@ -1,6 +1,4 @@
-using System.Text;
 using ActualChat.UI.Blazor.Services;
-using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -75,7 +73,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             var mustTranslate = await TranslationUI.MustTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false);
             Translation? translation = null;
             if (mustTranslate) {
-                translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+                translation = await TranslationUI.GetExisting(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
                 if (translation is not null && translation.MatchesOriginal(chatEntry.Content))
                     translation = null;
             }

@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using StringBuilderExt = ActualLab.Text.StringBuilderExt
 @inherits ComputedStateComponent<AppUIHub, ConversationMessageView.Model>
 @{
     var m = State.Value;
@@ -131,9 +132,9 @@
                 TranslatedMarkup.From(descriptionMarkup),
                 TranslatedMarkup.From(summaryMarkup));
 
-        var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken);
-        var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, cancellationToken);
-        var summaryTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Summary, cancellationToken);
+        var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, TranslationConsumers.ChatView, cancellationToken);
+        var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, TranslationConsumers.ChatView, cancellationToken);
+        var summaryTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Summary, TranslationConsumers.ChatView, cancellationToken);
         var titleTranslation = await titleTranslationTask.ConfigureAwait(false);
         var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
         var summaryTranslation = await summaryTranslationTask.ConfigureAwait(false);
@@ -160,7 +161,7 @@
     private async Task<string> GetText() {
         var m = State.Value;
         CancellationToken cancellationToken = default;
-        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        var sb = StringBuilderExt.Acquire();
         sb.AppendLine(m.Title.Text);
         sb.AppendLine();
         var description = await ChatMarkupHub.ApplyMentionNamer(m.Description.Markup, cancellationToken).ConfigureAwait(false);

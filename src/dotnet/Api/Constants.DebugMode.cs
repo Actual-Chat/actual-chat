@@ -59,5 +59,6 @@ public static partial class Constants
 
         // Misc.
         public static readonly bool KubeEmulation = false;
+        public const bool ThrottledWorkQueue = false;
     }
 }

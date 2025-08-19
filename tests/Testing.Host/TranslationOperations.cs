@@ -9,14 +9,16 @@ public static class TranslationOperations
         this IWebTester tester,
         TextEntryId entryId,
         Language language,
+        bool translateIfMissing,
         CancellationToken cancellationToken = default)
-        => tester.GetTranslation(TranslationId.New(entryId, language), cancellationToken);
+        => tester.GetTranslation(TranslationId.New(entryId, language), translateIfMissing, cancellationToken);
 
     public static Task<Translation?> GetTranslation(
         this IWebTester tester,
         TranslationId id,
+        bool translateIfMissing,
         CancellationToken cancellationToken = default)
-        => tester.Translations.Get(tester.Session, id, cancellationToken);
+        => tester.Translations.Get(tester.Session, id, translateIfMissing, cancellationToken);
 
     public static Task<ChatEntryLanguage?> GetEntryLanguage(
         this IWebTester tester,

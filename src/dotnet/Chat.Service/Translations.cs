@@ -9,11 +9,20 @@ public class Translations(IServiceProvider services) : ITranslations
     [field: AllowNull, MaybeNull]
     private IChatEntryLanguagesBackend ChatEntryLanguagesBackend => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
 
+    [Obsolete("2025.08: Use Get with translateIfMissing flag instead.")]
     // [ComputeMethod]
-    public virtual async Task<Translation?> Get(Session session, TranslationId id, CancellationToken cancellationToken)
+    public virtual Task<Translation?> Get(Session session, TranslationId id, CancellationToken cancellationToken)
+        => Get(session, id, true, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<Translation?> Get(
+        Session session,
+        TranslationId id,
+        bool translateIfMissing,
+        CancellationToken cancellationToken)
     {
         _ = await Chats.Get(session, id.SourceId.ChatId, cancellationToken).Require().ConfigureAwait(false);
-        return await Backend.Get(id, cancellationToken).ConfigureAwait(false);
+        return await Backend.Get(id, translateIfMissing, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

@@ -39,7 +39,7 @@
         if (!mustTranslate)
             return new Model(TranslatedText.From(title));
 
-        var titleTranslation = await TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, cancellationToken).ConfigureAwait(false);
+        var titleTranslation = await TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
         return new Model(TranslatedText.From(title, titleTranslation));
     }
 

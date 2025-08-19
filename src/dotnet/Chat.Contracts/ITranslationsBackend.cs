@@ -7,7 +7,7 @@ namespace ActualChat.Chat;
 public interface ITranslationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken);
+    Task<Translation?> Get(TranslationId id, bool translateIfMissing, CancellationToken cancellationToken);
 
     // Non-compute methods
 

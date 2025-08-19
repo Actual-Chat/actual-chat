@@ -43,13 +43,13 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     // [ComputeMethod]
-    public virtual async Task<Translation?> Get(TranslationId id, CancellationToken cancellationToken)
+    public virtual async Task<Translation?> Get(TranslationId id, bool translateIfMissing, CancellationToken cancellationToken)
     {
         if (!Settings.IsTranslationEnabled)
             return null;
 
         var (translationSource, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
-        if (!translationSource.NeedsTranslation(translation))
+        if (!translateIfMissing || !translationSource.NeedsTranslation(translation))
             return translation;
 
         // we only try to enqueue and fast return to allow compute method to cache current result
