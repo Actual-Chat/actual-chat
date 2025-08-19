@@ -202,15 +202,16 @@ ol.list-markup {
 }
 ul.list-markup {
     @apply flex-y;
+    @apply pl-2;
 }
 ul {
-    list-style: none;
+    list-style: none outside;
 }
-ul.list-markup li::before {
+ul.list-markup li {
+    @apply pl-2;
+}
+ul.list-markup li::marker {
     content: "\2012";
-    display: inline-block;
-    width: 0.5em;
-    margin-right: 0.5em;
     color: var(--text-01);
 }
 

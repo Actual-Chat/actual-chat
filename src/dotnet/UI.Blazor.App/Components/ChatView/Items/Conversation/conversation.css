@@ -186,17 +186,8 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
 .conversation-message ol {
     @apply ml-4;
 }
-.conversation-message ul {
-    @apply ml-6;
-}
 .conversation-message ol {
     list-style-type: decimal;
-}
-.conversation-message ul li {
-    list-style: disc outside;
-}
-.conversation-message ul li::marker {
-    font-size: 0.75rem;
 }
 .conversation-header-short .btn-h i,
 .conversation-header .btn-h i,
