@@ -28,8 +28,8 @@
         translationCls = "translating";
     }
 
-    // Log.LogInformation("Rendering ChatEntryMessageInternalView for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated}) - {State}",
-    //     message.Entry.Id, m.IsStreaming, m.Translation, m.Streaming);
+    // Log.LogInformation("Rendering ChatEntryMessageInternalView for #{EntryId} (IsStreaming: {IsStreaming}, Translation: {TranslationState})",
+    //     message.Entry.Id, m.IsStreaming, m.Translation);
 
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
@@ -77,7 +77,7 @@
     } else {
         <CascadingValue Value="@entry" IsFixed="true">
             @if (isSimpleMarkup) {
-                <CascadingValue Value="@statusFragment" IsFixed="true">
+                <CascadingValue Value="@statusFragment">
                     <MarkupView Markup="@markup"/>
                 </CascadingValue>
             } else {
@@ -192,7 +192,7 @@
                 || _rendered.IsUnread != stateValue.IsUnread
                 || _rendered.IsUnreadBlockStart != stateValue.IsUnreadBlockStart);
         // if (!shouldRender) {
-        //     Log.LogInformation("Skipping render for {MessageId} (IsStreaming: {IsStreaming}, IsTranslated: {IsTranslated})",
+        //     Log.LogInformation("Skipping render for {EntryId} (IsStreaming: {IsStreaming}, Translation: {TranslationState})",
         //         Message.Entry.Id, stateValue.IsStreaming, stateValue.Translation);
         // }
         return shouldRender;
@@ -239,7 +239,7 @@
         if (!mustTranslate)
             return new(markup, entry, TranslationState.None, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
-        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
         if (translation is null)
             return new(markup, entry, TranslationState.Translating, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 

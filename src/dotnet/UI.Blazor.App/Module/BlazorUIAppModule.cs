@@ -75,6 +75,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // TranslationUI
         fusion.AddService<TranslationUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ThrottledTranslations>(ServiceLifetime.Scoped);
 
         // TranscriptUI
         fusion.AddService<TranscriptUI>(ServiceLifetime.Scoped);

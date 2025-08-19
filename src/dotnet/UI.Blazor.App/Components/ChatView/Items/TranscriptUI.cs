@@ -20,7 +20,7 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
                 ? null
                 : new StreamingState(StreamId.Parse(entry.StreamId), entry.Content, false);
 
-        var translation = await TranslationUI.Get(id, cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (translation?.StreamId is not null)
             return new StreamingState(translation.StreamId, entry.Content, true); // Already streaming translated transcript.
 

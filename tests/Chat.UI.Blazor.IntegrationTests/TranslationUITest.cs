@@ -6,7 +6,6 @@ using ActualChat.Transcription;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -22,9 +21,11 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     private AppUIHub Hub => field ??= BobTester.ScopedAppServices.AppUIHub();
     private IStreamClient StreamClient => Hub.StreamClient;
     private TranslationUI TranslationUI => Hub.TranslationUI;
+    private ThrottledTranslations ThrottledTranslations => Hub.Services.GetRequiredService<ThrottledTranslations>();
     private TranscriptUI TranscriptUI => Hub.TranscriptUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private string ConsumerId { get; } = UniqueNames.Name(nameof(TranslationUITest));
 
     protected override async Task InitializeAsync()
     {
@@ -32,11 +33,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await AliceTester.SignInAsUniqueAlice();
         await BobTester.SignInAsUniqueBobAdmin();
         await LanguageUI.WhenReady.WaitAsync(TimeSpan.FromSeconds(5).Debuggable());
-        var appSettings = await BobTester.AccountSettings.GetUserAppSettings(CancellationToken.None);
-        await BobTester.AccountSettings.SetUserAppSettings(appSettings with {
-            IsIncompleteUIEnabled = true,
-            AreExperimentalFeaturesEnabled = true,
-        }, CancellationToken.None);
     }
 
     protected override async Task DisposeAsync()
@@ -202,7 +198,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         // arrange
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60).Debuggable());
         var cancellationToken = cts.Token;
-        await BobTester.AccountSettings.UpdateUserAppSettings(x => x with { IsIncompleteUIEnabled = true }, cancellationToken);
+        // await BobTester.AccountSettings.UpdateUserAppSettings(x => x with { IsIncompleteUIEnabled = true }, cancellationToken);
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
@@ -276,6 +272,83 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await AssertTranslation(entry, expected, 0.4);
     }
 
+    [Fact]
+    public async Task ShouldThrottleTranslations()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
+        var entries = await CreateEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ParallelismDegree + 10).Select(i => $"Hello {i}"));
+
+        // act
+        var translations = await GetTranslations(entries, cancellationToken);
+
+        // assert
+        translations.Should().AllSatisfy(x => x.Should().BeNull());
+
+        // act
+        while (true) {
+            // reverse requests to avoid random failures
+            translations = await GetTranslations(entries.Revert(), cancellationToken);
+            translations.Reverse();
+            var running = translations.Select((x, i) => new { Translation = x, Index = i })
+                .Where(x => x.Translation is null)
+                .Take(ThrottledTranslations.ParallelismDegree)
+                .ToList();
+
+            // assert
+            if (running.Count == 0) {
+                translations.Should().NotContainNulls();
+                break; // all translations completed
+            }
+
+            if (running.Count >= ThrottledTranslations.ParallelismDegree) {
+                var firstWaitingIndex = running[^1].Index + 1;
+                for (var i = firstWaitingIndex; i < translations.Count; i++)
+                    translations[i]
+                        .Should()
+                        .BeNull(
+                            "only {0} parallel simultaneous translations allowed, current running are at indices [{1}]",
+                            ThrottledTranslations.ParallelismDegree,
+                            string.Join(',', running.Select(x => x.Index)));
+            }
+            await Task.Delay(TimeSpan.FromSeconds(0.1), cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldDequeueTranslationWhenItemBecomesInvisible()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
+        var entries = await CreateVisibleEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ParallelismDegree + 10).Select(i => $"Hello {i}"));
+
+        // act
+        var translations = await GetTranslations(entries, cancellationToken);
+        var queued = ThrottledTranslations.ListQueued();
+
+        // assert
+        translations.Should().AllSatisfy(x => x.Should().BeNull());
+
+        // act
+        ClearVisibleItems(chatId);
+
+        // assert
+        await TestExt.When(() => {
+                queued.Should().AllSatisfy(x => ThrottledTranslations.GetWorkItem(x.Id).Should().BeNull());
+                queued.Should().AllSatisfy(x => x.Task.IsCompleted.Should().BeTrue());
+            },
+            TimeSpan.FromSeconds(10));
+        await TestExt.When(() => {
+            ThrottledTranslations.ListQueued().Should().BeEmpty();
+            ThrottledTranslations.ListRunning().Should().BeEmpty();
+        }, TimeSpan.FromSeconds(10));
+    }
 
     private async Task<ChatId> CreateChat(CancellationToken cancellationToken)
     {
@@ -284,11 +357,20 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         return chatId;
     }
 
-    private async Task<ChatEntry[]> CreateVisibleEntries(ChatId chatId, params string[] texts)
+    private async Task<List<ChatEntry>> CreateVisibleEntries(ChatId chatId, params IEnumerable<string> texts)
     {
-        await AliceTester.JoinChat(chatId, Symbol.Empty, false);
-        var entries = await texts.Select(x => AliceTester.CreateTextEntry(chatId, x)).Collect();
+        var entries = await CreateEntries(chatId, texts);
         SetVisibleItems(entries);
+        return entries;
+    }
+
+    private async Task<List<ChatEntry>> CreateEntries(ChatId chatId, params IEnumerable<string> texts)
+    {
+        var entries = new List<ChatEntry>();
+        foreach (var text in texts) {
+            var entry = await AliceTester.CreateTextEntry(chatId, text);
+            entries.Add(entry);
+        }
         return entries;
     }
 
@@ -298,6 +380,9 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var lids = entries.Select(x => x.LocalId).ToHashSet();
         ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId, lids, true);
     }
+
+    private void ClearVisibleItems(ChatId chatId)
+        => ChatUI.ItemVisibility.Value = new ChatViewItemVisibility(chatId, ApiSet<long>.Empty, true);
 
     private Task AssertIsSubHeaderVisible(ChatId chatId, bool expected)
         => ComputedTest.When(async ct => {
@@ -321,7 +406,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     private Task<Translation> AssertTranslation(ChatEntry entry, string expected, double similarity = 0.7)
         => ComputedTest.When(async ct => {
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ct).Require();
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ConsumerId, ct).Require();
             if (expected.IsNullOrEmpty())
                 translation.Content.Should().Be(expected);
             else
@@ -329,4 +414,14 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             translation.SourceContentHash.Should().Be(entry.ContentHash);
             return translation;
         }, TimeSpan.FromSeconds(10).Debuggable());
+
+    private async Task<List<Translation?>> GetTranslations(IEnumerable<ChatEntry> entries, CancellationToken cancellationToken)
+    {
+        var translations = new List<Translation?>();
+        foreach (var entry in entries) {
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ConsumerId, cancellationToken);
+            translations.Add(translation);
+        }
+        return translations;
+    }
 }

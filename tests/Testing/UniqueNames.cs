@@ -1,6 +1,6 @@
 using ActualLab.Generators;
 
-namespace ActualChat.Testing.Host;
+namespace ActualChat.Testing;
 
 public static class UniqueNames
 {

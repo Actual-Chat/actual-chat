@@ -1,15 +1,14 @@
-using ActualChat.Streaming;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
 public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private ITranslations Translations => Hub.Translations;
+    [field: AllowNull, MaybeNull]
+    private ThrottledTranslations Translations => field ??= Hub.Services.GetRequiredService<ThrottledTranslations>();
     private ChatUI ChatUI => Hub.ChatUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private AuthorUI AuthorUI => Hub.AuthorUI;
-    private IStreamClient StreamClient => Hub.StreamClient;
 
     [ComputeMethod]
     public virtual async Task<bool> IsSubHeaderVisible(ChatId chatId, CancellationToken cancellationToken = default) {
@@ -104,23 +103,24 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         return true;
     }
 
-    public virtual async Task<Translation?> Get(TextEntryId entryId, CancellationToken cancellationToken = default)
-        => await Get(TranslationSourceId.New(entryId), cancellationToken).ConfigureAwait(false);
-
-    public virtual async Task<Translation?> Get(ThreadChatId threadChatId, ThreadTranslationIdKind kind, CancellationToken cancellationToken = default)
-        => await Get(TranslationSourceId.New(threadChatId, kind), cancellationToken).ConfigureAwait(false);
-
-    public virtual async Task<Translation?> Get(ConversationId conversationId, ConversationTranslationIdKind kind, CancellationToken cancellationToken = default)
-        => await Get(TranslationSourceId.New(conversationId, kind), cancellationToken).ConfigureAwait(false);
-
     [ComputeMethod]
-    public virtual async Task<Translation?> Get(TranslationSourceId translationSourceId, CancellationToken cancellationToken = default){
-        var session = Session;
-        var targetLanguage = await GetTargetLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
-        return await Translations.Get(session, TranslationId.New(translationSourceId, targetLanguage), cancellationToken).ConfigureAwait(false);
+    public virtual async Task<Translation?> Get(TranslationSourceId translationSourceId, string consumerId, CancellationToken cancellationToken = default){
+        var translationId = await ToTranslationId(translationSourceId, cancellationToken).ConfigureAwait(false);
+        return await Translations
+            .Get(translationId, consumerId, cancellationToken)
+            .ConfigureAwait(false);
     }
 
-   [ComputeMethod]
+    [ComputeMethod]
+    public virtual async Task<Translation?> GetExisting(TranslationSourceId translationSourceId, CancellationToken cancellationToken = default)
+    {
+        var translationId = await ToTranslationId(translationSourceId, cancellationToken).ConfigureAwait(false);
+        return await Translations
+            .GetExisting(translationId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
    protected virtual async Task<bool> MustSuggest(ChatId chatId, CancellationToken cancellationToken)
    {
        var itemVisibility = await ChatUI.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
@@ -149,7 +149,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
                return false;
        }
 
-       var entryLanguage = await Translations.GetLanguage(session, entryId, cancellationToken).ConfigureAwait(false);
+       var entryLanguage = await Translations.GetLanguage(entryId, TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
        if (entryLanguage == null)
            return null;
 
@@ -194,6 +194,12 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
        chatId = GetTranslationSettingsTargetChatId(chatId);
        var settings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
        return settings.IsTranslationSubHeaderVisible;
+   }
+
+   private async Task<TranslationId> ToTranslationId(TranslationSourceId translationSourceId, CancellationToken cancellationToken)
+   {
+       var targetLanguage = await GetTargetLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
+       return TranslationId.New(translationSourceId, targetLanguage);
    }
 
    private ChatId GetTranslationSettingsTargetChatId(ChatId chatId)

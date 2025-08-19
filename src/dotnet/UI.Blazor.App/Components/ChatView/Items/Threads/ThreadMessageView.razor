@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using StringBuilderExt = ActualLab.Text.StringBuilderExt
 @inherits ComputedStateComponent<AppUIHub, ThreadMessageView.Model?>
 @{
     var chat = Message.Chat;
@@ -135,7 +136,7 @@
             if (translationIsOn) {
                 var needTranslate = await TranslationUI.NeedTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false);
                 if (needTranslate) {
-                    var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+                    var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
                     if (translation is not null && !translation.MatchesOriginal(chatEntry.Content)) {
                         var translatedMarkup = _chatMarkupHub.Parser.Parse(translation.Content);
                         markup = translatedMarkup;
@@ -152,8 +153,8 @@
         var description = TranslatedText.From(chat.Description);
         var mustTranslate = await TranslationUI.MustTranslate(chat, cancellationToken).ConfigureAwait(false);
         if (mustTranslate) {
-            var titleTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Title, cancellationToken);
-            var descriptionTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Description, cancellationToken);
+            var titleTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Title, TranslationConsumers.ChatView, cancellationToken);
+            var descriptionTranslationTask = TranslationUI.Get(chatId, ThreadTranslationIdKind.Description, TranslationConsumers.ChatView, cancellationToken);
             await Task.WhenAll(titleTranslationTask, descriptionTranslationTask).ConfigureAwait(false);
             var titleTranslation = await titleTranslationTask.ConfigureAwait(false);
             var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
@@ -173,7 +174,7 @@
 
     private string GetText() {
         var m = State.Value;
-        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        var sb = StringBuilderExt.Acquire();
         sb.Append("Thread \"");
         sb.Append(m?.Title.Text ?? Message.Chat.Title);
         sb.Append("\" on Actual Chat: ");
