@@ -6,7 +6,7 @@
 .empty-chat-content > .c-text .avatar-name {
     @apply flex-y items-center;
     @apply max-w-full;
-    @apply text-03 text-headline-5;
+    @apply text-03 text-headline-1;
 }
 .empty-chat-content > .c-text .avatar-name {
     @apply line-clamp-1;
