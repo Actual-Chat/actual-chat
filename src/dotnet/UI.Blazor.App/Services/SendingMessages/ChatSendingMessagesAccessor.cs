@@ -10,20 +10,22 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
 
     public async Task<ChatEntry> GetSelfOrEdited(ChatEntry chatEntry)
     {
-        var e2 = await ChatSendingMessages.GetEditedMessage(chatEntry.Id).ConfigureAwait(false);
-        if (e2 is null)
+        var sendingMessage = await ChatSendingMessages.GetEditedMessage(chatEntry.Id).ConfigureAwait(false);
+        if (sendingMessage is null)
             return chatEntry;
 
-        if (e2.PostedChatEntry is not null && e2.PostedChatEntry.Version <= chatEntry.Version)
-            ChatSendingMessages.ConfirmEditedMessagedHasLoaded(e2);
+        if (sendingMessage.PostedChatEntry is not null && sendingMessage.PostedChatEntry.Version <= chatEntry.Version)
+            ChatSendingMessages.ConfirmEditedMessagedHasLoaded(sendingMessage);
         else {
             chatEntry = chatEntry with {
                 //BeginsAt = e2.BeginsAt,
                 Version = chatEntry.Version + 1,
-                IsSending = true,
-                Content = e2.Content,
-                ContentHash = e2.ContentHash,
+                SendingTag = sendingMessage,
+                Content = sendingMessage.Content,
+                ContentHash = sendingMessage.ContentHash,
+                ClientUid = Guid.NewGuid().ToString(),
             };
+            Owner.RegisterEntryByClientId(chatEntry);
             // Log.LogInformation("Edited message: {Text}", chatEntry.Content);
         }
         return chatEntry;
@@ -45,8 +47,10 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
                 AuthorId = ownAuthorId,
                 Content = sendingMessage.Content,
                 BeginsAt = sendingMessage.BeginsAt,
-                IsSending = true,
+                SendingTag = sendingMessage,
+                ClientUid = Guid.NewGuid().ToString(),
             };
+            Owner.RegisterEntryByClientId(chatEntry);
             entries.Add(chatEntry);
             localId++;
         }
@@ -55,4 +59,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
 
     public void RemoveSentNewMessages(long rangeEnd)
         => ChatSendingMessages.RemoveSentNewMessages(rangeEnd);
+
+    public Task<bool> IsSending(SendingMessage sendingMessage)
+        => ChatSendingMessages.IsSending(sendingMessage);
 }

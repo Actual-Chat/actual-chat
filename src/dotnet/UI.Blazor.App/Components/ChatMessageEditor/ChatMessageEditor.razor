@@ -200,6 +200,9 @@
                     if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
                         readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
                 }
+                catch (OperationCanceledException) {
+                    // Ignore send message cancellation.
+                }
                 catch (Exception e) {
                     UICommander.ShowError(e);
                 }

@@ -48,19 +48,21 @@ public class ChatSendingMessages
     public void ConfirmMessageHasSent(SendingMessage sendingMessage, ChatEntry chatEntry, Moment now)
     {
         lock (_lock)
-            sendingMessage.ConfirmHasSent(chatEntry, now);
+            sendingMessage.Complete(chatEntry, now);
 
-        if (!sendingMessage.LocalId.HasValue)
-            return;
-
+        if (sendingMessage.LocalId.HasValue)
+            InvalidateCollection(sendingMessage);
         using (Invalidation.Begin())
-            _ = _triggers.OnEditMessageChanged(TextEntryId.New(ChatId, sendingMessage.LocalId.Value));
+            _ = _triggers.IsSending(sendingMessage);
     }
 
-    public void ConfirmMessageFailedToSend(SendingMessage sendingMessage)
+    public void ConfirmMessageFailedToSend(SendingMessage sendingMessage, Exception error)
     {
+        sendingMessage.Complete(error);
         sendingMessage.MarkToRemove();
         InvalidateCollection(sendingMessage);
+        using (Invalidation.Begin())
+            _ = _triggers.IsSending(sendingMessage);
     }
 
     public void RemoveSentNewMessages(long rangeEnd)
@@ -87,7 +89,13 @@ public class ChatSendingMessages
         return;
 
         static void Prune(List<SendingMessage> messages, Moment threshold)
-            => messages.RemoveAll(c => c.ToBeRemoved || (c.SentMoment.HasValue && c.SentMoment < threshold));
+        {
+            var toRemove = messages.FindAll(c => c.ToBeRemoved || (c.SentMoment.HasValue && c.SentMoment < threshold));
+            foreach (var sendingMessage in toRemove) {
+                messages.Remove(sendingMessage);
+                sendingMessage.Dispose();
+            }
+        }
     }
 
     private void InvalidateCollection(SendingMessage sendingMessage)
@@ -101,4 +109,7 @@ public class ChatSendingMessages
 
     private List<SendingMessage> GetCollectionFor(SendingMessage sendingMessage)
         => sendingMessage.LocalId.HasValue ? _editMessages : _newMessages;
+
+    public Task<bool> IsSending(SendingMessage sendingMessage)
+        => _triggers.IsSending(sendingMessage);
 }

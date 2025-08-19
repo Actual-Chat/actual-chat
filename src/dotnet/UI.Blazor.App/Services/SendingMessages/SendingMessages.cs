@@ -9,6 +9,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
 
     private readonly Dictionary<ChatId, ChatSendingMessages> _chatSendingMessages = new ();
+    private readonly WeakValueTable<string, ChatEntry> _clientEntries = new ();
     private readonly Lock _chatSendingMessagesLock = new (); // This lock is used add/remove ChatSendingMessages and add/remove items inside.
     private readonly PostRequestsStorage _requestsStorage;
     private readonly Task _whenReady;
@@ -66,6 +67,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         return resultSource.Task;
     }
 
+    public void Cancel(SendingMessage sendingMessage)
+        => sendingMessage.Cancel();
+
     private async Task StartStoredPostRequests()
     {
         DebugLog?.LogInformation("StartStoredPostRequests");
@@ -93,8 +97,10 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private async Task PostInternal(PostRequestEntry entry, TaskCompletionSource<ChatEntry> resultSource, CancellationToken cancellationToken)
     {
         try {
-            var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(entry.Command), cancellationToken);
-            var sendingMessage = CreateSendingMessage(entry);
+            var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var cancellationToken1 = cancellationTokenSource.Token;
+            var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(entry.Command), cancellationToken1);
+            var sendingMessage = CreateSendingMessage(entry, cancellationTokenSource);
             ChatSendingMessages chatSendingMessages;
             lock (_chatSendingMessagesLock) {
                 chatSendingMessages = GetChatSendingMessages(entry.Command.ChatId);
@@ -105,7 +111,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 entry.Command.Text);
             Result<ChatEntry> result;
             try {
-                var postResult = await queueMessageProcess.WhenCompleted.ConfigureAwait(false);
+                // NOTE: wait on the cancellation token to fail fast on send message request cancellation
+                // (not await when the command will be processed by queue processor)
+                var postResult = await queueMessageProcess.WhenCompleted.WaitAsync(cancellationToken1).ConfigureAwait(false);
                 var chatEntry = (ChatEntry)postResult!;
                 result = new Result<ChatEntry>(chatEntry);
                 DebugLog?.LogInformation("Sent message: LocalId={LocalId}, Content='{Content}'",
@@ -117,7 +125,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 result = Result.NewError<ChatEntry>(e);
             }
             try {
-                await _requestsStorage.Remove(entry.Uuid, cancellationToken).SilentAwait(false);
+                // TODO: decide when we can cancel remove request.
+                CancellationToken cancellationToken2 = default;
+                await _requestsStorage.Remove(entry.Uuid, cancellationToken2).SilentAwait(false);
             }
             catch (Exception e) {
                 Log.LogError(e,
@@ -129,8 +139,12 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
                 resultSource.SetResult(chatEntry1);
             }
+            else if (cancellationToken1.IsCancellationRequested) {
+                chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception);
+                resultSource.TrySetCanceled();
+            }
             else {
-                chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage);
+                chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception);
                 resultSource.TrySetException(exception);
             }
         }
@@ -142,13 +156,21 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         }
     }
 
-    private static SendingMessage CreateSendingMessage(PostRequestEntry entry)
+    private static SendingMessage CreateSendingMessage(
+        PostRequestEntry entry,
+        CancellationTokenSource cancellationTokenSource)
     {
         var cmd = entry.Command;
         var isNewMessage = cmd.LocalId is null;
         // NOTE(DF): we need to set content hash to trigger ChatEntryMessageInternalView re-rendering for edited messages.
         var textHash = isNewMessage ? HashString.None : cmd.Text.Hash().Blake2b().ToBase64HashString(HashAlgorithm.Blake2b);
-        var sendingMessage = new SendingMessage(cmd.ChatId, cmd.LocalId, entry.Now, cmd.Text, textHash);
+        var sendingMessage = new SendingMessage(cmd.ChatId,
+            cmd.LocalId,
+            entry.Now,
+            cmd.Text,
+            textHash,
+            entry.Uuid,
+            cancellationTokenSource);
         return sendingMessage;
     }
 
@@ -164,7 +186,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     {
         var cmd = command.Command;
         // Simulate long sending
-        await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(8000, cancellationToken).ConfigureAwait(false);
         var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         var chatEntry = postResult.Result.Value;
         var isNewMessage = cmd.LocalId is null;
@@ -210,6 +232,18 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         await _messageProcessor.Complete(CancellationToken.None).SilentAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
         _cancellationTokenSource.Dispose();
+    }
+
+    public void RegisterEntryByClientId(ChatEntry chatEntry)
+    {
+        lock (_clientEntries.SyncObject)
+            _clientEntries.AddOrUpdate(chatEntry.ClientUid, chatEntry);
+    }
+
+    public ChatEntry? TryGetChatEntryByClientId(string clientId)
+    {
+        lock (_clientEntries.SyncObject)
+            return _clientEntries.TryGetValue(clientId, out var chatEntry) ? chatEntry : null;
     }
 
     // Nested types
