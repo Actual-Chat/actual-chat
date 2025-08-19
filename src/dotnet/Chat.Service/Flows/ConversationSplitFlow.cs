@@ -118,7 +118,8 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
                 && (lastEntry.EndsAt ?? lastEntry.BeginsAt) <= Clocks.CoarseSystemClock.Now - Settings.ChatEntrySummarizationDelay)
                 if (state.CurrentGroup != null // Defensive
                     && state.WordCount >= Settings.MinConversationWords
-                    && state.EntryCount >= Settings.MinConversationEntries) {
+                    && state.EntryCount >= Settings.MinConversationEntries
+                    && entries.Count > 0) { // Only finalize when this batch brought new entries
                     var groupBuilder = state.CurrentGroup.AddRange(state.CurrentChunk?.Entries ?? []);
                     var group = groupBuilder.Build();
 
@@ -126,7 +127,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
                     var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
                     await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
 
-                    // Reset the extractor state last chunk but keep the current group
+                    // Keep the group (we may extend it later with new entries), but clear the chunk
                     ExtractorState = new ExtractorState(
                         groupBuilder,
                         new EntryGroupBuilder()

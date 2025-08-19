@@ -116,7 +116,6 @@ public partial class EntryGroupBuilder
     {
         if (entries is ICollection<TextEntry> entryList) {
             _entries.AddRange(entryList);
-            _wordCount += entryList.Sum(entry => CountWords(entry.Content));
             _text = null;
             RecalculateAveragePause();
             if (_stringBuilder.Length != 0)
