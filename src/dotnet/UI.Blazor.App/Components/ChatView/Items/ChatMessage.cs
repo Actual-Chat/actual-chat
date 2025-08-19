@@ -3,14 +3,14 @@ namespace ActualChat.UI.Blazor.App.Components;
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMessage>
 {
-    private Symbol? _key;
-
-    public string Key => _key ??= GetKey();
+    [field: AllowNull, MaybeNull]
+    public ChatMessageKey Key => field ??= ChatMessageKey.New(Kind, Id);
+    string IVirtualListItem.Key => Key.Value;
     public long Id { get; } = id;
 
     public bool ShouldSkipKey { get; init; }
 
-    public ChatMessageReplacementKind ReplacementKind { get; init; }
+    public ChatMessageKind Kind { get; init; }
     public DateOnly Date { get; init; }
     public ChatMessageFlags Flags { get; init; }
     public ChatMessage? PreviousMessage { get; init; }
@@ -21,7 +21,7 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public virtual bool IsGroup => false;
 
     public bool IsReplacement
-        => ReplacementKind != ChatMessageReplacementKind.None;
+        => Kind != ChatMessageKind.None;
 
     public IEnumerable<ChatMessage> GetLeafMessages()
     {
@@ -39,9 +39,6 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public override string ToString()
         => $"(#{Key})";
 
-    private Symbol GetKey()
-        => Id.Format() + ReplacementKind.GetKeySuffix();
-
     // Equality
 
     public abstract bool Equals(ChatMessage? other);
@@ -58,7 +55,7 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     {
         var chatEntry = new ChatEntry(TextEntryId.New(chatId, 0L));
         return isBot
-            ? new ChatEntryMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.SearchWelcomeBlock }
-            : new ChatEntryMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
+            ? new ChatEntryMessage(chatEntry) { Kind = ChatMessageKind.SearchWelcomeBlock }
+            : new ChatEntryMessage(chatEntry) { Kind = ChatMessageKind.WelcomeBlock };
     }
 }

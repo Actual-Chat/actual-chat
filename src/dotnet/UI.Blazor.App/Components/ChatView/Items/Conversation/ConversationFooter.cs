@@ -17,14 +17,14 @@ public sealed class ConversationFooter : ChatMessage
             return false;
 
         return Conversation!.VersionEquals(otherConversationFooter.Conversation)
-            && ReplacementKind == other.ReplacementKind
+            && Kind == other.Kind
             && Date == other.Date
             && Flags == other.Flags;
     }
 
     public override int GetHashCode()
         => HashCode.Combine(Conversation,
-            ReplacementKind,
+            Kind,
             Date,
             Flags);
 }

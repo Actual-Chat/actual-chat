@@ -20,7 +20,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
         return Entry.Id == otherEntryMessage.Entry.Id
             && Entry.IsRemoved == otherEntryMessage.Entry.IsRemoved
             && Entry.HasReactions == otherEntryMessage.Entry.HasReactions
-            && ReplacementKind == other.ReplacementKind
+            && Kind == other.Kind
             && Date == other.Date
             && Flags == other.Flags
             && Entry.Attachments.SequenceEqual(otherEntryMessage.Entry.Attachments)
@@ -29,7 +29,7 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
 
     public override int GetHashCode()
         => HashCode.Combine(Entry.Id,
-            ReplacementKind,
+            Kind,
             Date,
             Flags,
             Entry.Attachments.Length);

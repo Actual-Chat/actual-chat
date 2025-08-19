@@ -3,25 +3,25 @@ namespace ActualChat.UI.Blazor.App.Services;
 // EntryLid = Entry's LocalId
 public sealed record ChatViewItemVisibility(
     ChatId ChatId,
-    IReadOnlySet<long> VisibleEntryLids,
+    IReadOnlySet<ChatMessageKey> VisibleKeys,
     bool IsEndAnchorVisible)
 {
-    public static readonly ChatViewItemVisibility Empty = new(null!, ImmutableHashSet<long>.Empty, false);
+    public static readonly ChatViewItemVisibility Empty = new(null!, ImmutableHashSet<ChatMessageKey>.Empty, false);
 
     // EntryLid = Entry's LocalId
-    public long MinEntryLid { get; } = VisibleEntryLids.Count == 0 ? -1 : VisibleEntryLids.Min();
-    public long MaxEntryLid { get; } = VisibleEntryLids.Count == 0 ? -1 : VisibleEntryLids.Max();
-    public bool IsEmpty => VisibleEntryLids.Count == 0;
-    public IEnumerable<TextEntryId> VisibleEntryIds => VisibleEntryLids.Select(lid => TextEntryId.New(ChatId, lid));
+    public long MinEntryLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Min(x => x.LocalId);
+    public long MaxEntryLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Max(x => x.LocalId);
+    public bool IsEmpty => VisibleKeys.Count == 0;
+    public IEnumerable<TextEntryId> VisibleEntryIds => VisibleKeys.Select(x => TextEntryId.New(ChatId, x.LocalId));
+    public IReadOnlySet<long> VisibleEntryLids => VisibleKeys.Select(x => x.LocalId).ToHashSet();
 
     // TODO: consider threads, conversations, etc.
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
             ChatId.Parse(source.ListIdentity),
             source.VisibleKeys
-                .Select(k => k.Split('-')[0])
-                .Select(k =>NumberExt.TryParseLong(k, out var lid) ? lid : 0)
-                .Where(lid => lid > 0)
+                .Select(ChatMessageKey.Parse)
+                .Where(x => x.LocalId > 0)
                 .ToHashSet(),
             source.IsEndAnchorVisible)
     { }
@@ -43,8 +43,8 @@ public sealed record ChatViewItemVisibility(
         if (IsEndAnchorVisible != other.IsEndAnchorVisible)
             return false;
 
-        foreach (var entryLid in other.VisibleEntryLids)
-            if (!VisibleEntryLids.Contains(entryLid))
+        foreach (var key in other.VisibleKeys)
+            if (!VisibleKeys.Contains(key))
                 return false;
 
         return true;

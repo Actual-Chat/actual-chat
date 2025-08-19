@@ -7,7 +7,7 @@ public class ChatEntryAuthorGroup : ChatMessage, IVirtualListGroup<ChatEntryMess
     {
         AuthorId = authorId;
         Items = items;
-        ReplacementKind = ChatMessageReplacementKind.Group;
+        Kind = ChatMessageKind.Group;
     }
 
     public override bool IsGroup => true;
@@ -26,7 +26,7 @@ public class ChatEntryAuthorGroup : ChatMessage, IVirtualListGroup<ChatEntryMess
             return false;
 
         return Key.Equals(chatEntryAuthorGroup.Key)
-            && ReplacementKind == other.ReplacementKind
+            && Kind == other.Kind
             && Date == other.Date
             && Flags == other.Flags
             && Items.Count == chatEntryAuthorGroup.Items.Count
@@ -34,5 +34,5 @@ public class ChatEntryAuthorGroup : ChatMessage, IVirtualListGroup<ChatEntryMess
     }
 
     public override int GetHashCode()
-        => Key.GetOrdinalHashCode();
+        => Key.GetHashCode();
 }

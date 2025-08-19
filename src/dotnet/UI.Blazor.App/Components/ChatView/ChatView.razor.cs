@@ -1,8 +1,8 @@
-using ActualChat.UI.Blazor.App.Events;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
+using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Diagnostics;
@@ -431,7 +431,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var navChatMessage = items
                 .SelectMany(item => item.GetLeafMessages())
                 .LastOrDefault(x => x.Id <= nav.EntryLid);
-            navKey = navChatMessage?.Key;
+            navKey = navChatMessage?.Key.Value;
             if (navChatMessage == null)
                 Log.LogWarning("GetData: entry not found in the loaded set: #{EntryLid}", nav.EntryLid);
             else if (nav.MustHighlight)
@@ -548,7 +548,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var shownReadEntryLid = _shownReadEntryLid.Value;
         var newMessagesLine = items
             .SkipWhile(i => i.Id < shownReadEntryLid)
-            .FirstOrDefault(i => i.ReplacementKind == ChatMessageReplacementKind.NewMessagesLine);
+            .FirstOrDefault(i => i.Kind == ChatMessageKind.NewMessagesLine);
         var hasNewMessagesLine = newMessagesLine != null;
         if (!hasNewMessagesLine) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no new messages line");
