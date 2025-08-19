@@ -105,6 +105,7 @@
     private IChatMarkupHub _chatMarkupHub = null!;
 
     private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
     private IChatThreads ChatThreads => Hub.ChatThreads;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
@@ -122,32 +123,12 @@
         if (chat is null)
             return null;
 
-        var threadCreator = await ChatThreads.GetThreadCreator(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var session = Session;
+        var threadCreator = await ChatThreads.GetThreadCreator(session, chatId, cancellationToken).ConfigureAwait(false);
         var ownerName = threadCreator?.Avatar.Name ?? "Unknown";
-        var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
-        var entryReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryKind.Text);
-        var chatEntries = ImmutableList<(ChatEntry, Markup)>.Empty;
-        var translationIsOn = await TranslationUI.IsEnabled(chatId.ParentChatId, cancellationToken).ConfigureAwait(false) == true;
-        await foreach (var chatEntry in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
-            if (chatEntry.IsSystemEntry)
-                continue;
-
-            var markup = await _chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
-            if (translationIsOn) {
-                var needTranslate = await TranslationUI.NeedTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false);
-                if (needTranslate) {
-                    var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
-                    if (translation is not null && !translation.MatchesOriginal(chatEntry.Content)) {
-                        var translatedMarkup = _chatMarkupHub.Parser.Parse(translation.Content);
-                        markup = translatedMarkup;
-                    }
-                }
-            }
-            chatEntries = chatEntries.Insert(0, (chatEntry, markup));
-            if (chatEntries.Count >= 2)
-                break;
-        }
-        var threadStat = await ChatThreads.GetThreadStat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatEntries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken).ConfigureAwait(false);
+        var markups = await chatEntries.Select(x => GetMarkup(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
+        var threadStat = await ChatThreads.GetThreadStat(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var title = TranslatedText.From(chat.Title);
         var description = TranslatedText.From(chat.Description);
@@ -161,7 +142,21 @@
             title = TranslatedText.From(chat.Title, titleTranslation);
             description = TranslatedText.From(chat.Description, descriptionTranslation);
         }
-        return new Model(title,  description, chatEntries, threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
+
+        return new Model(title, description, chatEntries.Zip(markups).ToList(), threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
+    }
+
+    private async Task<Markup> GetMarkup(ChatEntry chatEntry, CancellationToken cancellationToken)
+    {
+        var markup = await _chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.MessageView, cancellationToken).ConfigureAwait(false);
+        if (!await TranslationUI.MustTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false))
+            return markup;
+
+        var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
+        if (translation is null || translation.MatchesOriginal(chatEntry.Content))
+            return markup;
+
+        return _chatMarkupHub.Parser.Parse(translation.Content);
     }
 
     private void OnGoToTheThread()

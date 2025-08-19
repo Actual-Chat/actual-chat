@@ -15,7 +15,6 @@ public sealed record ChatViewItemVisibility(
     public IEnumerable<TextEntryId> VisibleEntryIds => VisibleKeys.Select(x => TextEntryId.New(ChatId, x.LocalId));
     public IReadOnlySet<long> VisibleEntryLids => VisibleKeys.Select(x => x.LocalId).ToHashSet();
 
-    // TODO: consider threads, conversations, etc.
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
             ChatId.Parse(source.ListIdentity),

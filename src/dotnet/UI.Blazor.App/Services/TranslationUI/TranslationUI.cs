@@ -51,11 +51,11 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         if (await IsEnabled(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
-        return await NeedTranslate(entry, isForStreaming, cancellationToken).ConfigureAwait(false);
+        return await NeedsTranslate(entry, isForStreaming, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> NeedTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
+    public virtual async Task<bool> NeedsTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
     {
         if (!entry.SupportsTranslation(isForStreaming))
             return false;

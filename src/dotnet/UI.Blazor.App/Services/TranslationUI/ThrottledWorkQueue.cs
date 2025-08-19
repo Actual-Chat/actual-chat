@@ -2,16 +2,31 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ThrottledWorkQueue<TKey, TResult>(int parallelismDegree, Func<TKey, CancellationToken, Task<TResult>> taskFactory, ILogger log, IEqualityComparer<TKey>? keyComparer = null) : WorkerBase where TKey : notnull
+public class ThrottledWorkQueue<TKey, TResult> : WorkerBase where TKey : notnull
 {
-    private readonly SemaphoreSlim _semaphore = new(parallelismDegree);
-    private readonly WorkItems _workItems = new (keyComparer);
+    private readonly SemaphoreSlim _semaphore;
+    private readonly WorkItems _workItems;
     private readonly Channel<WorkItem> _queuedItems = Channel.CreateUnbounded<WorkItem>(new () {
         SingleReader = true,
     });
-    private readonly ConcurrentDictionary<TKey, WorkItem> _runningItems = new (keyComparer);
+    private readonly ConcurrentDictionary<TKey, WorkItem> _runningItems;
+    private readonly Func<TKey, CancellationToken, Task<TResult>> _taskFactory;
+    private readonly ILogger _log;
+    private readonly IEqualityComparer<TKey>? _keyComparer;
 
-    private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug, Constants.DebugMode.ThrottledWorkQueue);
+    public ThrottledWorkQueue(int parallelismDegree, Func<TKey, CancellationToken, Task<TResult>> taskFactory, ILogger<ThrottledWorkQueue<TKey, TResult>> log, IEqualityComparer<TKey>? keyComparer = null, bool start = true)
+    {
+        _taskFactory = taskFactory;
+        _log = log;
+        _keyComparer = keyComparer;
+        _semaphore = new SemaphoreSlim(parallelismDegree);
+        _workItems = new WorkItems(keyComparer);
+        _runningItems = new ConcurrentDictionary<TKey, WorkItem>(keyComparer);
+        if (start)
+            this.Start();
+    }
+
+    private ILogger? DebugLog => _log.IfEnabled(LogLevel.Debug, Constants.DebugMode.ThrottledWorkQueue);
 
     public async Task<TResult> Execute(TKey key, string consumerId, CancellationToken cancellationToken)
     {
@@ -52,7 +67,7 @@ public class ThrottledWorkQueue<TKey, TResult>(int parallelismDegree, Func<TKey,
         => _runningItems.Values.Select(x => x.AsTuple()).ToList();
 
     internal IReadOnlyList<(TKey Key, Task<TResult> Task)> ListQueued()
-        => _workItems.List().ExceptBy(_runningItems.Keys, x => x.Key, keyComparer).ToList();
+        => _workItems.List().ExceptBy(_runningItems.Keys, x => x.Key, _keyComparer).ToList();
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
@@ -63,8 +78,8 @@ public class ThrottledWorkQueue<TKey, TResult>(int parallelismDegree, Func<TKey,
         return (
             from chain in baseChains
             select chain
-                .Log(LogLevel.Debug, log)
-                .RetryForever(retryDelays, log)
+                .Log(LogLevel.Debug, _log)
+                .RetryForever(retryDelays, _log)
             ).RunIsolated(cancellationToken);
 
     }
@@ -77,7 +92,7 @@ public class ThrottledWorkQueue<TKey, TResult>(int parallelismDegree, Func<TKey,
                 DebugLog?.LogDebug("Enqueued work item #{Key}", key);
             }
             catch (Exception e) {
-                log.LogError(e, "Failed to enqueue work item #{Key}", key);
+                _log.LogError(e, "Failed to enqueue work item #{Key}", key);
                 _workItems.Remove(key, consumerId);
                 throw;
             }
@@ -90,7 +105,7 @@ public class ThrottledWorkQueue<TKey, TResult>(int parallelismDegree, Func<TKey,
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             var workItem = await _queuedItems.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             _ = BackgroundTask.Run(() => ProcessWorkItem(workItem),
-                log,
+                _log,
                 $"Failed to start processing work item #{workItem.Key}",
                 cancellationToken);
         }
@@ -105,15 +120,15 @@ public class ThrottledWorkQueue<TKey, TResult>(int parallelismDegree, Func<TKey,
             try {
                 var sw = Stopwatch.StartNew();
                 DebugLog?.LogDebug("Processing work item #{Key}", workItem.Key);
-                var result = await taskFactory(workItem.Key, processCancellationToken).ConfigureAwait(false);
+                var result = await _taskFactory(workItem.Key, processCancellationToken).ConfigureAwait(false);
                 DebugLog?.LogDebug("Finished processing work item #{Key}, {TimeSpent}", workItem.Key, sw.Elapsed);
                 workItem.TaskCompletionSource.TrySetResult(result);
             }
             catch (Exception e) {
                 if (e.IsCancellationOf(processCancellationToken))
-                    log.LogDebug("Work item #{Key} cancelled", workItem.Key);
+                    _log.LogDebug("Work item #{Key} cancelled", workItem.Key);
                 else
-                    log.LogError(e, "Work item #{Key} failed", workItem.Key);
+                    _log.LogError(e, "Work item #{Key} failed", workItem.Key);
                 workItem.TaskCompletionSource.TrySetException(e);
             }
             finally {

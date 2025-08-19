@@ -31,4 +31,17 @@ public static class ChatsExt
             return null;
         }
     }
+
+    public static async IAsyncEnumerable<ChatEntry> ReadReverse(
+        this IChats chats,
+        Session session,
+        ChatId chatId,
+        ChatEntryKind entryKind,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var idRange = await chats.GetIdRange(session, chatId, entryKind, cancellationToken).ConfigureAwait(false);
+        var entryReader = chats.NewEntryReader(session, chatId, entryKind);
+        await foreach (var chatEntry in entryReader.ReadReverse(idRange, cancellationToken).ConfigureAwait(false))
+            yield return chatEntry;
+    }
 }
