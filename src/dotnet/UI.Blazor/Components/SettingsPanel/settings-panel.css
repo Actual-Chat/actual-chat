@@ -98,8 +98,13 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i,
 .settings-tab {
     @apply flex-1 flex-x;
     @apply pb-4;
+    @apply custom-scrollbar;
     @apply bg-02 md:bg-01;
-    @apply custom-scrollbar overflow-y-auto;
+}
+@media (min-width: 820px) {
+    .settings-tab {
+        overflow-y: auto;
+    }
 }
 .tab-inner {
     @apply flex-1 flex-y items-center;
@@ -207,15 +212,22 @@ body.hoverable .tile-btn:hover,
 .settings-tab-content {
     @apply flex-y gap-y-4;
     @apply w-full md:w-88;
-    @apply p-2 md:p-0 md:pb-4;
+    @apply p-2 md:px-4 md:pb-4;
+    @apply overflow-y-auto md:overflow-y-visible custom-scrollbar;
 }
 .settings-tab-header {
+    @apply sticky top-0 z-10;
     @apply ordinary-header;
-    @apply px-4 md:px-0;
+    @apply px-4;
     @apply w-full md:w-88;
     @apply text-title-1;
-    @apply bg-03 md:bg-transparent;
+    @apply bg-03 md:bg-01;
     @apply border-b border-separator md:border-none;
+}
+@media (min-width: 820px) {
+    .settings-tab-header {
+        box-shadow: 0 0 1rem 1rem var(--background-01);
+    }
 }
 
 .settings-tab-item {

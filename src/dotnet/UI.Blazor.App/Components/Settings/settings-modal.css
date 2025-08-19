@@ -109,7 +109,7 @@ body.narrow .docs-tab .docs-content {
 }
 
 .close-settings-btn {
-    @apply absolute top-4 right-4;
+    @apply absolute top-4 right-4 z-button;
 }
 body.narrow .close-settings-btn {
     @apply hidden;
