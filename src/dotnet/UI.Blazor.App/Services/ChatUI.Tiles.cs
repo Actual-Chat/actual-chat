@@ -598,6 +598,16 @@ public partial class ChatUI
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
 
+    [ComputeMethod]
+    public virtual async Task<IReadOnlyList<ChatEntry>> GetThreadPreviewEntries(
+        ChatId chatId,
+        CancellationToken cancellationToken = default)
+        => await Chats.ReadReverse(Session, chatId, ChatEntryKind.Text, cancellationToken)
+            .Where(x => !x.IsSystemEntry)
+            .Take(2)
+            .Reverse()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 
     private static List<ChatMessage> GroupAuthorMessages(IEnumerable<ChatMessage> messages)
     {

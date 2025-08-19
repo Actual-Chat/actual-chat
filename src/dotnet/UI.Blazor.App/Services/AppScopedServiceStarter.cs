@@ -122,6 +122,7 @@ public sealed class AppScopedServiceStarter
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Hub.Services.GetRequiredService<AppActivity>().Start();
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
+            Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)
                 Hub.Services.GetRequiredService<DebugUI>();
 
