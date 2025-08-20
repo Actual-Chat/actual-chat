@@ -88,17 +88,28 @@
 
     protected override void OnAfterRender(bool firstRender) {
         var tabs = SortedTabs.ToList();
+        var selectedTabId = SelectedTabId;
         if (_renderedSelectedTab == null) {
             if (AutoSelectInitialTab)
                 SelectedTabId = tabs.Count == 0 ? null : tabs[0].Id;
-            return;
+        } else {
+            var newSelectedTab = _renderedTabs
+                                     .SkipWhile(x => x != _renderedSelectedTab)
+                                     .FirstOrDefault(x => tabs.Contains(x))
+                                 ?? tabs.LastOrDefault();
+            SelectedTabId = newSelectedTab?.Id;
         }
+        var tabsHaveChanged = !_renderedTabs.SequenceEqual(tabs);
+        // If a tab list has changed, we need to rerender tab buttons.
+        if (!tabsHaveChanged)
+            return;
 
-        var newSelectedTab = _renderedTabs
-            .SkipWhile(x => x != _renderedSelectedTab)
-            .FirstOrDefault(x => tabs.Contains(x))
-            ?? SortedTabs.LastOrDefault();
-        SelectedTabId = newSelectedTab?.Id;
+        // But if the selected tab has changed, we already did it, do not do it again.
+        if (SelectedTabId != selectedTabId)
+            return;
+
+        // Rerender tab buttons.
+        StateHasChanged();
     }
 
     internal void RegisterTab(Tab tab)
