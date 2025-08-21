@@ -265,6 +265,9 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup .chat-message-sending-status {
     @apply ml-1;
 }
+.chat-message-markup .list-markup + .chat-message-sending-status {
+    @apply -right-1;
+}
 
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
@@ -387,6 +390,10 @@ body.hoverable .chat-message-quote:hover,
 }
 .message-file-attachments {
     @apply flex-y gap-y-1;
+    @apply max-w-96;
+}
+body.narrow .message-file-attachments {
+    max-width: 75vw;
 }
 
 .chat-welcome-block {
