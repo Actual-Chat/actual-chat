@@ -91,9 +91,18 @@ export class ChatEntryMessageInternalView {
                         this.onTranscriptionFinalizedResize();
                     }
                     if (node instanceof HTMLElement
-                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))
-                        && this.messageMarkup.classList.contains('empty')) {
-                        this.messageMarkup.classList.remove('empty');
+                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))) {
+                        if (this.messageMarkup.classList.contains('empty')) {
+                            this.messageMarkup.classList.remove('empty');
+                        } else {
+                            this.changeSizeForText(true);
+                        }
+                    }
+                });
+                mutation.removedNodes.forEach((node) => {
+                    if (node instanceof HTMLElement
+                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))) {
+                        this.changeSizeForText();
                     }
                 });
             }
@@ -149,10 +158,22 @@ export class ChatEntryMessageInternalView {
         }
     }
 
-    private getActualHeight() : number {
+    private getActualHeight(): number {
+        const sendingStatus = this.messageMarkup.querySelector('.chat-message-sending-status') as HTMLElement | null;
+        let style = sendingStatus ? getComputedStyle(sendingStatus) : new CSSStyleDeclaration();
+        if (sendingStatus && style.position === 'absolute') {
+            sendingStatus.style.display = 'none';
+        }
+
         const range = document.createRange();
         range.selectNodeContents(this.messageMarkup);
-        return Math.ceil(range.getBoundingClientRect().height);
+        const height = Math.ceil(range.getBoundingClientRect().height);
+
+        if (sendingStatus && style.position === 'absolute') {
+            sendingStatus.style.display = '';
+        }
+
+        return height;
     }
 
     private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);

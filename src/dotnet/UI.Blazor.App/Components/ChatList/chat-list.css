@@ -89,7 +89,9 @@
     @apply -mb-1;
 }
 .navbar-chats .chat-list-sort-btn.btn {
-    @apply min-w-fit max-w-fit min-h-fit rounded-full;
+    @apply min-w-fit max-w-fit min-h-fit;
+    @apply ml-0.5;
+    @apply rounded-full;
 }
 body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
     @apply text-primary;
@@ -108,10 +110,12 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
     @apply flex-1;
 }
 .chat-list.chat-list-all {
-    @apply flex-1 p-2;
+    @apply flex-1;
+    @apply p-2;
 }
 .chat-list.chat-list-skeleton {
-    @apply flex-1 px-2;
+    @apply flex-1;
+    @apply px-2;
 }
 
 /* Buttons - listening, recording, etc. */

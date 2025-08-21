@@ -138,7 +138,6 @@ body.hoverable .image-line .image-item:hover {
 /* File Attachment */
 .file-attachment {
     @apply gap-x-2;
-    @apply min-w-64 max-w-80;
     @apply p-1 pr-4;
     @apply rounded-full border border-separator;
     @apply bg-01;

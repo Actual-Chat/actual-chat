@@ -316,7 +316,10 @@ body.hoverable .btn.btn-square.unhovered:hover,
 body.hoverable .btn.btn-round.unhovered:hover {
     @apply bg-round;
     @apply text-03;
-    @apply cursor-default;
+}
+body.hoverable .btn.btn-square.btn-square.unhovered:hover,
+body.hoverable .btn.btn-round.btn-round.unhovered:hover {
+    @apply bg-transparent;
 }
 
 body.hoverable .btn.btn-square.unhovered:active,
