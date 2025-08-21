@@ -57,6 +57,15 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         await ClipboardUI.WriteText(textToCopy).ConfigureAwait(true);
         Clear();
     }
+    public async Task CopyToClipboard(ChatEntry sendingChatEntry)
+    {
+        if (sendingChatEntry.Kind != ChatEntryKind.Text)
+            throw new ArgumentOutOfRangeException(nameof(sendingChatEntry), "Given chat entry should be a text chat entry.");
+        if (!sendingChatEntry.IsSending)
+            throw new ArgumentOutOfRangeException(nameof(sendingChatEntry), "Given chat entry should be a sending chat entry.");
+        var textToCopy = await GetTextToCopy(sendingChatEntry).ConfigureAwait(true); // Get back to the Blazor Dispatcher
+        await ClipboardUI.WriteText(textToCopy).ConfigureAwait(true);
+    }
 
     private async Task<string> GetTextToCopy(IReadOnlySet<ChatEntryId> selection)
     {
@@ -101,6 +110,18 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         }
 
         return sb.ToStringAndRelease();
+    }
+
+    private async Task<string> GetTextToCopy(ChatEntry sendingChatEntry)
+    {
+        var chatId = sendingChatEntry.ChatId;
+        var chatMarkupHub = ChatMarkupHubFactory[chatId];
+        CancellationToken cancellationToken = default;
+        var markup = await chatMarkupHub
+            .GetMarkup(sendingChatEntry, null, MarkupConsumer.MessageView, cancellationToken)
+            .ConfigureAwait(false);
+        markup = await chatMarkupHub.ApplyMentionNamer(markup, cancellationToken).ConfigureAwait(false);
+        return markup.ToClipboardText();
     }
 
     public Task Delete(ChatEntryId chatEntryId)

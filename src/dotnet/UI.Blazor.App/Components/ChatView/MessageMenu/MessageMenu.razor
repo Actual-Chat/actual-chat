@@ -16,14 +16,8 @@
     </MessageMenuContent>
 }
 @if (State.Value.SendingMessage is { } m2) {
-    <MenuEntry
-        Icon="icon-stop-fill"
-        Class="important-item"
-        FocusOnEditor="true"
-        Text="Cancel send"
-        Click="@(() => CancelSend(m2.ChatEntry))">
-
-    </MenuEntry>
+    <SendingMessageMenuContent
+        ChatEntry="@m2.ChatEntry" />
 }
 
 @code {
@@ -111,9 +105,6 @@
         var isSending = await chatSendingMessages.IsSending(sendingMessage);
         return (chatEntry, isSending);
     }
-
-    private void CancelSend(ChatEntry chatEntry)
-        => SendingMessages.Cancel(chatEntry.GetSendingMessage()!);
 
     // Nested types
 

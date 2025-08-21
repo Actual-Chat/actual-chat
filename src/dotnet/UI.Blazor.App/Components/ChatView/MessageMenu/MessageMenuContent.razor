@@ -4,14 +4,14 @@
     var e = ChatEntry;
     var hasSelection = SelectionUI.HasSelection.Value;
     var isSelected = SelectionUI.IsSelected(e.Id);
-    var isForwarded = ChatEntry.ForwardedAuthorId is not null;
+    var isForwarded = e.ForwardedAuthorId is not null;
     var showPlayButton = ScreenSize.IsNarrow() && e.AudioEntryLid.HasValue && !hasSelection;
-    var isTextEntry = ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false };
+    var isTextEntry = e is { Kind: ChatEntryKind.Text, IsStreaming: false };
     var canDelete = CanWrite && (IsOwnEntry || IsOwner) && isTextEntry && !hasSelection;
     var canEdit = CanWrite && IsOwnEntry && isTextEntry && !isForwarded && !hasSelection;
     var messageLink = Links.Chat(e.Id.ToTextEntryId()).ToAbsolute(UrlMapper);
     var canReply = !e.IsStreaming && CanWrite && !IsSystem;
-    var canCopyText = e is { Kind: ChatEntryKind.Text, IsStreaming: false } && !e.Content.IsNullOrEmpty();
+    var canCopyText = isTextEntry && !e.Content.IsNullOrEmpty();
     var canCopyLink = !ClickedLinkUrl.IsNullOrEmpty();
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
     var canCopyMessageLink = !IsSystem;
