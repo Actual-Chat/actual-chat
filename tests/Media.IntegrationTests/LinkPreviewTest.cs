@@ -1,5 +1,4 @@
 using ActualChat.Chat;
-using ActualChat.Media.Module;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -14,7 +13,6 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private HttpHandlerMock Http { get; } = fixture.AppHost.Services.GetRequiredService<HttpHandlerMock>();
     private IMediaLinkPreviews Previews { get; } = fixture.AppHost.Services.GetRequiredService<IMediaLinkPreviews>();
-    private MediaSettings Settings { get; } = fixture.AppHost.Services.GetRequiredService<MediaSettings>();
     private Session Session => Tester.Session;
 
     protected override async Task DisposeAsync()
@@ -27,8 +25,8 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldRefreshOnTextEntryChanges()
     {
         // arrange
-        var url1 = $"https://domain.some/{RandomStringGenerator.Next()}";
-        var url2 = $"https://domain.some/{RandomStringGenerator.Next()}";
+        var url1 = $"https://domain1.some/{RandomStringGenerator.Next()}";
+        var url2 = $"https://domain1.some/{RandomStringGenerator.Next()}";
         var id1 = LinkPreview.ComposeId(url1);
         var id2 = LinkPreview.ComposeId(url2);
         var img1Url = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
@@ -128,7 +126,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldSkipEmails()
     {
         // arrange
-        var url1 = $"https://domain.some/{RandomStringGenerator.Next()}";
+        var url1 = $"https://domain1.some/{RandomStringGenerator.Next()}";
         var id1 = LinkPreview.ComposeId(url1);
         var img1Url = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
         Http.SetupImage(img1Url)
@@ -138,7 +136,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         // act
         await Tester.SignInAsAlice();
         var (chatId, _) = await Tester.CreateChat(false);
-        var entry = await Tester.CreateTextEntry(chatId, $"a b c alice@actual.chat  {url1} 123");
+        var entry = await Tester.CreateTextEntry(chatId, $"a b c alice{Constants.Team.EmailSuffix} {url1} 123");
 
         // assert
         var entryLinkPreview = await GetEntryLinkPreview(entry.Id, id1).Require();
@@ -154,7 +152,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldSkipInvalidSchemes()
     {
         // arrange
-        var url1 = $"https://domain.some/{RandomStringGenerator.Next()}";
+        var url1 = $"https://domain1.some/{RandomStringGenerator.Next()}";
         var id1 = LinkPreview.ComposeId(url1);
         var img1Url = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
         Http.SetupImage(img1Url)
@@ -164,7 +162,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         // act
         await Tester.SignInAsAlice();
         var (chatId, _) = await Tester.CreateChat(false);
-        var entry = await Tester.CreateTextEntry(chatId, $"a b c mailto://alice@actual.chat ftp://domaine.some/123 app://domain.some/123  {url1} 123");
+        var entry = await Tester.CreateTextEntry(chatId, $"a b c mailto://alice{Constants.Team.EmailSuffix} ftp://domaine.some/123 app://domain.some/123  {url1} 123");
 
         // assert
         var entryLinkPreview = await GetEntryLinkPreview(entry.Id, id1).Require();

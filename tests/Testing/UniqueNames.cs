@@ -33,6 +33,6 @@ public static class UniqueNames
     public static string GoogleId()
         => Rng.Next(5);
 
-    public static string Email(string prefix, string domain = "actual.chat")
+    public static string Email(string prefix, string domain = Constants.Team.EmailDomain)
         => $"{prefix}.{Rsg.Next()}@{domain}";
 }

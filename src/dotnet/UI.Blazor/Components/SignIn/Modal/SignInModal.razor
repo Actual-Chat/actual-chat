@@ -1,7 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.Users
 @inherits ComputedStateComponent<UIHub, AccountFull>
+@using ActualChat.Users
 @implements IModalView<SignInModal.Model>
 @{
     if (!State.Value.IsGuestOrNull())

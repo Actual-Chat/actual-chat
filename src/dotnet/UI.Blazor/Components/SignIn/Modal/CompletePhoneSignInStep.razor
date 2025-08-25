@@ -1,8 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using ActualChat.UI.Blazor.Services
 @using TaskExt = ActualLab.Async.TaskExt
-@using ActualChat.Hosting
 @inherits SimpleStep<UIHub>;
 
 @{
@@ -19,7 +17,7 @@
         <p class="c-title">Enter the code</p>
         <p class="c-text">
             Please verify your phone number to be able to sign in with it and to allow your friends to find your account
-            in their list of contacts on Actual Chat
+            in their list of contacts on @CoreConstants.AppName
         </p>
     </div>
     <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.SignIn" Phone="@phone" Verified="OnTotpVerified"/>

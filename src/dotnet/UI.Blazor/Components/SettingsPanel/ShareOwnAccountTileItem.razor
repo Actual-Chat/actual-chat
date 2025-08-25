@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<UIHub, ActualChat.Users.AccountFull>
+@using ActualChat.Users
+@inherits ComputedStateComponent<UIHub, AccountFull>
 @{
     var account = State.Value;
     if (account.IsGuestOrNull())
@@ -39,7 +39,7 @@
 
     private void OnShareClick(AccountFull account, string name) {
         var shareUI = Services.GetRequiredService<ShareUI>();
-        var request = new ShareRequest($"{name} on Actual Chat", Links.User(account.AliasInfo));
+        var request = new ShareRequest($"{name} on {CoreConstants.AppName}", Links.User(account.AliasInfo));
         shareUI.Share(ShareKind.Contact, "Share your contact", name, request);
     }
 }

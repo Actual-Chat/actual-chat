@@ -1,6 +1,6 @@
-using ActualChat.UI.Blazor.App;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using Android;
 using Android.App;
@@ -44,10 +44,10 @@ public class AndroidNotificationsPermission(AppUIHub hub) : UIServiceBase<AppUIH
                 new AlertDialog.Builder(activity)
                     .SetTitle("Notifications permission isn't granted")!
                     .SetMessage(
-                        """
-                        Actual Chat can notify you about new content in chats, friend requests, and other activities related to your account.
+                        $"""
+                        {CoreConstants.AppName} can notify you about new content in chats, friend requests, and other activities related to your account.
 
-                        Do you want to allow Actual Chat sending notifications to this device?
+                        Do you want to allow {CoreConstants.AppName} sending notifications to this device?
                         """)!
                     .SetNegativeButton("Decline", (_, _) => whenCompletedSource.TrySetResult(false))!
                     .SetPositiveButton("Allow", (_, _) => RequestPermission())!

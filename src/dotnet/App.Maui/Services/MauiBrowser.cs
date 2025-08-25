@@ -10,7 +10,7 @@ public static class MauiBrowser
     public static Task<bool> Open(string url)
     {
 #if IOS || MACCATALYST
-        return UIApplication.SharedApplication.OpenUrlAsync(new NSUrl(url), new UIApplicationOpenUrlOptions());
+        return MainThread.InvokeOnMainThreadAsync(() => UIApplication.SharedApplication.OpenUrlAsync(new NSUrl(url), new UIApplicationOpenUrlOptions()));
 #else
         return Browser.Default.OpenAsync(url, BrowserLaunchMode.External);
 #endif

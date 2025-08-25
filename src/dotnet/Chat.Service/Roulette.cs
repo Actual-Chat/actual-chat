@@ -180,7 +180,7 @@ public class Roulette(IServiceProvider services) : IRoulette
     }
 
     public virtual Task<bool> EnableChatRouletteUI(Session session, CancellationToken cancellationToken)
-        => Task.FromResult(!UrlMapper.IsActualChat);
+        => Task.FromResult(!UrlMapper.IsVoxt);
 
     // Commands
 

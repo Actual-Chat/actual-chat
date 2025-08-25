@@ -49,7 +49,7 @@ Candidate tasks:
 - Google / crawler support for any public chat & place: 
   - Open graph tags for /chat/xxx & u/xxx URLs
   - Render the most recent content (up to 1K messages?) - probably implement it as pre-rendering & fetching stored content
-- Custom chat & account IDs (actual.chat/u/xxx URLs, should be aliases requiring no redirect)
+- Custom chat & account IDs (voxt.ai/u/xxx URLs, should be aliases requiring no redirect)
 - iOS: render correct unread message counter on app icon
     - See https://stackoverflow.com/questions/77007133/how-to-make-firebase-push-notification-increase-badge-count-when-receive-notific
 

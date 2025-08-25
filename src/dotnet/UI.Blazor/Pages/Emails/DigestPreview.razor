@@ -4,11 +4,11 @@
 @{
     var parameters = new DigestParameters {
         OtherUnreadCount = 12,
-        OtherUnreadLink = "https://actual.chat",
+        OtherUnreadLink = $"https://{Constants.Hosts.Voxt}",
         UnreadChats = [
             new DigestParameters.DigestChat {
                 Name = "Kate Green",
-                Link = "https://actual.chat",
+                Link = $"https://{Constants.Hosts.Voxt}",
                 UnreadCount = 1,
                 BulletPoints =
                 [
@@ -17,7 +17,7 @@
             },
             new DigestParameters.DigestChat {
                 Name = "Max B.",
-                Link = "https://actual.chat",
+                Link = $"https://{Constants.Hosts.Voxt}",
                 UnreadCount = 10,
                 BulletPoints =
                 [

@@ -1,7 +1,6 @@
 using ActualChat.App.Server.Logging;
 using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Contacts.Module;
 using ActualChat.Db.Module;
 using ActualChat.Flows.Module;
@@ -15,6 +14,7 @@ using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualLab.Diagnostics;
@@ -69,7 +69,7 @@ public partial class AppHost
         var hostSettings = cfg.Settings<HostSettings>();
         var appKind = hostSettings.AppKind ?? HostKind.Server;
         var isTested = hostSettings.IsTested ?? false;
-        var isLocalDev = hostSettings.BaseUri.OrdinalStartsWith($"https://{Constants.Hosts.LocalActualChat}");
+        var isLocalDev = hostSettings.BaseUri.OrdinalStartsWith($"https://{Constants.Hosts.LocalVoxt}");
         var services = ctx.Services;
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
         var roles = HostRoles.Server.GetAllRoles(serverRole, isTested);

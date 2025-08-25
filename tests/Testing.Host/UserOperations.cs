@@ -1,7 +1,5 @@
 using System.Security.Claims;
 using ActualChat.Users;
-using ActualLab.Generators;
-using Bunit.Extensions;
 using Microsoft.AspNetCore.Authentication.Google;
 
 namespace ActualChat.Testing.Host;
@@ -34,11 +32,10 @@ public static class UserOperations
     public static Task<AccountFull> SignInAsUniqueBobAdmin(this IWebTester tester)
     {
         var googleId = UniqueNames.GoogleId();
-        return tester.SignIn(NewAdmin(email: $"bob.admin.{googleId}@actual.chat", googleId: googleId));
+        return tester.SignIn(NewAdmin(email: $"bob.admin.{googleId}{Constants.Team.EmailSuffix}", googleId: googleId));
     }
-
-
-    public static User NewAdmin(string name = "BobAdmin", string email = "bob@actual.chat", string googleId = "123")
+    
+    public static User NewAdmin(string name = "BobAdmin", string email = $"bob{Constants.Team.EmailSuffix}", string googleId = "123")
         => new User("", name)
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, googleId))
             .WithClaim(ClaimTypes.Email, email);

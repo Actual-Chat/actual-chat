@@ -1,15 +1,15 @@
-# Actual Chat
+# Voxt
 
 ![unit tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/build-test-deploy-dev.yml/badge.svg)
 
 ![slow tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/test-slow.yml/badge.svg)
 
-Web site: [actual.chat](https://actual.chat)
+Web site: [voxt.ai](https://voxt.ai)
 
 ## Join Team Chats 
 
-- Unsurprisingly, our team uses [Actual Chat](https://actual.chat) to communicate  
-- If you're a part of our team, please contact [Alex Yakunin](https://actual.chat/u/hjp639qb6bp1) to get access.
+- Unsurprisingly, our team uses [Voxt](https://voxt.ai) to communicate  
+- If you're a part of our team, please contact [Alex Yakunin](https://voxt.ai/u/hjp639qb6bp1) to get access.
 
 ## Prerequisites
 
@@ -83,9 +83,9 @@ Possible issues:
 
 ## Accessing Web App
 
-NGINX (which runs in Docker) is configured to serve the app + its assets from https://local.actual.chat, which means you need to setup a few extra things to access it.
+NGINX (which runs in Docker) is configured to serve the app + its assets from https://local.voxt.ai, which means you need to setup a few extra things to access it.
 
-### Setting up https://local.actual.chat
+### Setting up https://local.voxt.ai
 
 Run:
 ```bash
@@ -96,10 +96,9 @@ Alternatively, you  hosts and trust certificate manually:
 
 - Add this line with aliases to [Hosts file](https://www.howtogeek.com/howto/27350/beginner-geek-how-to-edit-your-hosts-file/).
      ```
-     127.0.0.1  local.actual.chat media.local.actual.chat cdn.local.actual.chat
+     127.0.0.1  local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai
      ```
- - Import [local.actual.chat.crt](./.config/local.actual.chat/ssl/local.actual.chat.crt) to "Trusted Root Certification Authorities". You can do it with [Microsoft Management Console](https://www.thesslstore.com/knowledgebase/ssl-install/how-to-import-intermediate-root-certificates-using-mmc/#import-root-certificate-using-mmc12/) or [Chrome](https://www.pico.net/kb/how-do-you-get-chrome-to-accept-a-self-signed-certificate/).
-
+ - Import [local.voxt.ai.crt](./.config/local.voxt.ai/ssl/local.voxt.ai.crt) to "Trusted Root Certification Authorities". You can do it with [Microsoft Management Console](https://www.thesslstore.com/knowledgebase/ssl-install/how-to-import-intermediate-root-certificates-using-mmc/#import-root-certificate-using-mmc12/) or [Chrome](https://www.pico.net/kb/how-do-you-get-chrome-to-accept-a-self-signed-certificate/).
 ## Building Mobile and Desktop Apps
 
 The instructions below imply you're on Windows.

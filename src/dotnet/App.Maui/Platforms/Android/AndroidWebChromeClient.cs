@@ -28,13 +28,13 @@ public class AndroidWebChromeClient : WebChromeClient
 
     // In a real app, you would probably use more convincing rationales tailored toward what your app does.
     private const string CameraAccessRationale
-        = "Actual Chat can use your camera to take and share pictures upon your request. "
+        = $"{CoreConstants.AppName} can use your camera to take and share pictures upon your request. "
         + "Please grant access to your camera when requested.";
     private const string LocationAccessRationale
-        = "Actual Chat can share your location with your friends upon your request. "
+        = $"{CoreConstants.AppName} can share your location with your friends upon your request. "
         + "Please grant access to your precise location when requested.";
     private const string MicrophoneAccessRationale
-        = "Actual Chat uses your microphone to record and transcribe your audio messages. "
+        = $"{CoreConstants.AppName} uses your microphone to record and transcribe your audio messages. "
         + "Please grant access to your microphone when requested.";
 
     private static readonly Dictionary<string, string> RationalesByPermission = new(StringComparer.Ordinal) {

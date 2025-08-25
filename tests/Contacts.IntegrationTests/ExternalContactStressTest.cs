@@ -178,5 +178,5 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         => Phone.Parse($"1-{Math.Abs(prefix.GetDjb2HashCode() % 100000):00000}{i:00000}");
 
     private static string BuildEmail(string prefix, int i)
-        => $"{prefix}.user.{i:00000}@actual.chat";
+        => $"{prefix}.user.{i:00000}{Constants.Team.EmailSuffix}";
 }

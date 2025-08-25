@@ -68,7 +68,7 @@ public static class ShareUIExt
         var targetTitle = place is null
             ? chat.Title
             : string.Concat(place.Title, "/", chat.Title);
-        var text = $"\"{targetTitle}\" on Actual Chat";
+        var text = $"\"{targetTitle}\" on {CoreConstants.AppName}";
         if ((place is null || place.IsPublic) && chat.IsPublic) {
             var localUrl = Links.Chat(chat.AliasInfo, place?.AliasInfo);
             return new ShareModalModel(
@@ -105,7 +105,7 @@ public static class ShareUIExt
         if (place == null)
             return null;
 
-        var text = $"\"{place.Title}\" on Actual Chat";
+        var text = $"\"{place.Title}\" on {CoreConstants.AppName}";
         if (place.IsPublic) {
             var welcomeChatId = await places.GetWelcomeChatId(session, placeId, cancellationToken).ConfigureAwait(false);
             // NOTE(DF): Direct navigation to place does not work well so far. Let's share place via welcome chat link.
@@ -156,7 +156,7 @@ public static class ShareUIExt
 
         var name = account.Avatar.Name;
         var title = $"Share {name}'s contact";
-        var text = $"{name} on Actual Chat";
+        var text = $"{name} on {CoreConstants.AppName}";
         return new ShareModalModel(
             ShareKind.Contact, title, name,
             new(text, Links.User(account.Id)),
@@ -174,7 +174,7 @@ public static class ShareUIExt
 
         var name = ownAccount.Avatar.Name;
         var title = "Share your contact";
-        var text = $"{name} on Actual Chat";
+        var text = $"{name} on {CoreConstants.AppName}";
         return new ShareModalModel(
             ShareKind.Contact, title, name,
             new(text, Links.User(ownAccount.AliasInfo)),

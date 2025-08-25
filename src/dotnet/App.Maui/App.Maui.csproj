@@ -28,8 +28,8 @@
     -->
 
     <!-- Display name -->
-    <ApplicationTitle>Actual Chat</ApplicationTitle>
-    <appname>actual.chat</appname>
+    <ApplicationTitle>Voxt</ApplicationTitle>
+    <appname>voxt.ai</appname>
 
     <!-- App Identifier -->
     <ApplicationId>chat.actual.app</ApplicationId>
@@ -75,7 +75,7 @@
   <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
     <DefineConstants>$(DefineConstants);IS_DEV_MAUI</DefineConstants>
     <!-- Display name -->
-    <ApplicationTitle>Actual Chat (Dev)</ApplicationTitle>
+    <ApplicationTitle>Voxt (Dev)</ApplicationTitle>
     <!-- App Identifier -->
     <ApplicationId>chat.actual.dev.app</ApplicationId>
   </PropertyGroup>

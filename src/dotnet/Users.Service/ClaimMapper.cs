@@ -1,5 +1,3 @@
-using Cysharp.Text;
-
 namespace ActualChat.Users;
 
 public class ClaimMapper
@@ -9,8 +7,8 @@ public class ClaimMapper
     public const string GivenNameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname";
     public const string GithubNameClaim = "urn:github:name";
 
-    public const string OwnNameClaim = "urn:actual.chat:name";
-    public const string OwnFullNameClaim = "urn:actual.chat:fullname";
+    public const string OwnNameClaim = $"urn:{Constants.Hosts.Voxt}:name";
+    public const string OwnFullNameClaim = $"urn:{Constants.Hosts.Voxt}:fullname";
 
     public virtual User UpdateClaims(User user, Dictionary<string, string> httpClaims)
     {

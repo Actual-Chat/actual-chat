@@ -30,9 +30,9 @@ public sealed record HostInfo
     {
         _baseUrlKindLazy = LazySlim.New(this, static self => {
             var host = self.BaseUrl.EnsureSuffix("/").ToUri().Host;
-            return OrdinalIgnoreCaseEquals(host, "actual.chat") ? BaseUrlKind.Production
-                : OrdinalIgnoreCaseEquals(host, "dev.actual.chat") ? BaseUrlKind.Development
-                : OrdinalIgnoreCaseEquals(host, "local.actual.chat") ? BaseUrlKind.Local
+            return OrdinalIgnoreCaseEquals(host, CoreConstants.Hosts.Prod) ? BaseUrlKind.Production
+                : OrdinalIgnoreCaseEquals(host, CoreConstants.Hosts.Dev) ? BaseUrlKind.Development
+                : OrdinalIgnoreCaseEquals(host, CoreConstants.Hosts.Local) ? BaseUrlKind.Local
                 : BaseUrlKind.Unknown;
         });
         _isProductionInstanceLazy = LazySlim.New(this,

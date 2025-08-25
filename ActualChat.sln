@@ -233,7 +233,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Media.Service.Migration", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nginx", "nginx", "{A1F100F7-92DF-4B51-BF55-A90700BD9423}"
 	ProjectSection(SolutionItems) = preProject
-		.config\local.actual.chat\nginx\nginx.conf = .config\local.actual.chat\nginx\nginx.conf
+		.config\local.voxt.ai\nginx\nginx.conf = .config\local.voxt.ai\nginx\nginx.conf
+		.config\local.voxt.ai\ssl\create-certificate.cmd = .config\local.voxt.ai\ssl\create-certificate.cmd
+		.config\local.voxt.ai\nginx\nginx.proxy-headers.conf = .config\local.voxt.ai\nginx\nginx.proxy-headers.conf
+		.config\local.voxt.ai\nginx\snippets\ssl-params.conf = .config\local.voxt.ai\nginx\snippets\ssl-params.conf
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{16126688-A04E-44A8-9EA3-A6A45A1D2CE8}"

@@ -1,12 +1,15 @@
-@using ActualChat.Mjml.Blazor.Components;
+@using ActualChat.Mjml.Blazor.Components
 @using ActualChat.Mjml.Blazor.Enums
 @namespace ActualChat.Users.Templates
+@{
+    var imgSrc = $"https://{Constants.Hosts.Voxt}/dist/images/emails/email-cat.png";
+}
 
 <EmailBody>
     <MjmlImage
         Align="MjmlImageAlign.Center"
         Width="221px"
-        Src="https://actual.chat/dist/images/emails/email-cat.png">
+        Src="@imgSrc">
     </MjmlImage>
     <MjmlText
         Align="MjmlTextAlign.Center"
@@ -25,7 +28,7 @@
         FontWeight="400"
         LineHeight="20px"
         Color="#1C1C1C">
-        Please enter your verification code in Actual Chat app when prompted:
+        Please enter your verification code in @CoreConstants.AppName app when prompted:
     </MjmlText>
     <MjmlText
         Align="MjmlTextAlign.Center"

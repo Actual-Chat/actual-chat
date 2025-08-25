@@ -1,19 +1,20 @@
 import {
     audioContextSource,
-    OverridenAudioContext, resetMediaSessionDebounced,
+    OverridenAudioContext,
+    resetMediaSessionDebounced,
 } from '../../Services/audio-context-source';
 import { AudioContextInUse, AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
-import { catchErrors, debounce, PromiseSource, retry } from 'promises';
+import { catchErrors, PromiseSource } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
-import { ObjectPool } from "object-pool";
-import { Resettable } from "resettable";
-import { AudioInitializer } from "../../Services/audio-initializer";
+import { ObjectPool } from 'object-pool';
+import { Resettable } from 'resettable';
+import { AudioInitializer } from '../../Services/audio-initializer';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
@@ -267,7 +268,7 @@ export class AudioPlayer implements Resettable {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: `${title} @ ${album}`,
                     album: album,
-                    artist: 'Actual Chat',
+                    artist: 'Voxt',
                     artwork: [{ src: '/_applogo-dark.svg' }],
                 });
                 navigator.mediaSession.playbackState = 'playing';

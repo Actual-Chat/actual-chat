@@ -1,5 +1,5 @@
-@using ActualChat.Hosting
 @implements IModalView<SettingsModal.Model>
+@using ActualChat.Hosting
 @inherits ComputedStateComponent<AppUIHub, SettingsModal.ComputedModel>
 @{
     var m = State.Value;
@@ -9,6 +9,7 @@
     var showNotifications = !isGuest && _enableIncompleteUI;
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
+    var quitTitle = $"Quit {CoreConstants.AppName}";
 }
 
 <ModalFrame Class="settings-modal">
@@ -73,7 +74,7 @@
             </SettingsTab>
         }
         @if (showQuit) {
-            <SettingsTab @key="101" TabIndex="101" Title="Quit Actual Chat" Id="@SettingsTabId.Quit" IconClass="icon-close">
+            <SettingsTab @key="101" TabIndex="101" Title="@quitTitle" Id="@SettingsTabId.Quit" IconClass="icon-close">
             </SettingsTab>
         }
 

@@ -14,18 +14,24 @@
     set hostsFile=%WINDIR%\system32\drivers\etc\hosts
     echo determining ip address...
     FOR /F "tokens=4 delims= " %%i in ('route print ^| find " 0.0.0.0"') do set localIp=%%i
-    set hosts=local.actual.chat media.local.actual.chat cdn.local.actual.chat
-    set hostsLine=%localIp%  local.actual.chat media.local.actual.chat cdn.local.actual.chat
+    set hosts=local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai
+    set altHosts=local.actual.chat media.local.actual.chat cdn.local.actual.chat
+    set hostsLine=%localIp%  %hosts%
+    set altHostsLine=%localIp%  %altHosts%
 
-    set removeHostEntriesScript="(Get-Content "%hostsFile%") | where-object { $_ -notmatch '[0-9\.]+\s+%hosts%.*' } | Set-Content "%hostsFile%""
-    powershell -Command %removeHostEntriesScript%;
+    set "removeHostEntriesScript=@(Get-Content '%hostsFile%' | where-object { $_ -notmatch '[0-9\.]+\s+%hosts%.*' } | where-object { $_ -notmatch '[0-9\.]+\s+%altHosts%.*' }) + '' | Set-Content '%hostsFile%' -Force"
+    powershell -Command "%removeHostEntriesScript%";
+
     set addHostEntryScript="Add-Content -Path '%hostsFile%' -Value '%hostsLine%'"
+    set addAltHostEntryScript="Add-Content -Path '%hostsFile%' -Value '%altHostsLine%'"
     powershell -Command %addHostEntryScript%;
+    powershell -Command %addAltHostEntryScript%;
     echo hosts file patched
 
-    echo trusting certificate...
     set wd=%~dp0
-    certutil -addstore -f "ROOT" "%wd%.config\local.actual.chat\ssl\local.actual.chat.crt"
+    set certFilePath=%wd%.config\local.voxt.ai\ssl\local.voxt.ai.crt
+    echo trusting certificate '%certFilePath%'...
+    certutil -addstore -f "ROOT" "%certFilePath%"
 
     echo installing dotnet dev certs
     dotnet dev-certs https -ep $env:USERPROFILE\.aspnet\https\aspnetapp.pfx -p crypticpassword
@@ -58,7 +64,7 @@ updateHostsFile() {
 }
 
 trustCertificate() {
-    certPath=.config/local.actual.chat/ssl/local.actual.chat.crt
+    certPath=.config/local.voxt.ai/ssl/local.voxt.ai.crt
     case `uname` in
       Darwin)
         sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $certPath
@@ -79,9 +85,10 @@ trustCertificate() {
 echo patching hosts...
 localIp=$(ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}' | head -1)
 [ -z "$localIp" ] && echo "Failed to detect local ip address" && exit 1
+updateHostsFile "$localIp" "local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai" "/etc/hosts"
 updateHostsFile "$localIp" "local.actual.chat media.local.actual.chat cdn.local.actual.chat" "/etc/hosts"
 
-echo trusting actual.chat certificate...
+echo trusting voxt.ai certificate...
 trustCertificate
 
 echo installing dotnet dev certs...

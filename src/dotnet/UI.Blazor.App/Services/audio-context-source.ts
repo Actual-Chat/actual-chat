@@ -1,12 +1,5 @@
 import { AUDIO_PLAY as AP, AUDIO_REC as AR } from '_constants';
-import {
-    Cancelled,
-    debounce,
-    delayAsync,
-    PromiseSource,
-    ResolvedPromise,
-    waitAsync,
-} from 'promises';
+import { Cancelled, debounce, delayAsync, PromiseSource, ResolvedPromise, waitAsync } from 'promises';
 import { EventHandler } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
@@ -51,7 +44,7 @@ export function resetMediaSessionMetadata(): void {
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `Ready`,
-            artist: 'Actual Chat',
+            artist: 'Voxt',
             artwork: [{ src: '/_applogo-dark.svg' }]
         });
         navigator.mediaSession.playbackState = 'none';

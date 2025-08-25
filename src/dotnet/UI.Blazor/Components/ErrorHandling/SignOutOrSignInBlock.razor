@@ -1,5 +1,5 @@
-@using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
 @inherits FusionComponentBase<UIHub>
 @{
     var account = Account;
@@ -13,7 +13,7 @@
 }
 
 <SignInLayout>
-    <h1 class="text-02">Welcome to Actual Chat, @account.Name!</h1>
+    <h1 class="text-02">Welcome to @CoreConstants.AppName, @account.Name!</h1>
     <p class="text-02 my-5">
         @ChildContent
     </p>

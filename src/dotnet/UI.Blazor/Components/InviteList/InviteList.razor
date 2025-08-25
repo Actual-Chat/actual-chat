@@ -1,6 +1,6 @@
-@using ActualChat.Invite
-@using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Chat
+@using ActualChat.Invite
 @inherits ComponentBase<UIHub>
 
 @if (Invites.Count > 0) {
@@ -69,8 +69,8 @@
         var link = GetLink(invite);
         switch (invite.Details.Option) {
             case UserInviteOption: {
-                var request = new ShareRequest("Your Actual Chat invite", link);
-                _ = ShareUI.Share(ShareKind.ActualChatInvite, "Share Actual Chat invite", "", request);
+                var request = new ShareRequest($"Your {CoreConstants.AppName} invite", link);
+                _ = ShareUI.Share(ShareKind.ActualChatInvite, $"Share {CoreConstants.AppName} invite", "", request);
                 return;
             }
             case ChatInviteOption chatDetails: {
@@ -93,7 +93,7 @@
                     ? chat.Title
                     : string.Concat(place.Title, "/", chat.Title);
                 var title = "Share private chat join link";
-                var text = $"\"{targetTitle}\" on Actual Chat";
+                var text = $"\"{targetTitle}\" on {CoreConstants.AppName}";
                 var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
                 var shareModel = new ShareModalModel(
                     ShareKind.ChatInvite, title, targetTitle,
@@ -109,7 +109,7 @@
                     return;
 
                 var title = "Share private place join link";
-                var text = $"\"{place.Title}\" on Actual Chat";
+                var text = $"\"{place.Title}\" on {CoreConstants.AppName}";
                 var shareModel = new ShareModalModel(
                     ShareKind.PlaceInvite, title, place.Title,
                     new(text, link),

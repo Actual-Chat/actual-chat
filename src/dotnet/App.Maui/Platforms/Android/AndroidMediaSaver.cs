@@ -17,7 +17,7 @@ namespace ActualChat.App.Maui;
 public class AndroidMediaSaver(IServiceProvider services)
     : IMediaSaver
 {
-    private const string AppSubFolder = "Actual Chat";
+    private const string AppSubFolder = CoreConstants.AppName;
 
     [field: AllowNull, MaybeNull]
     private ToastUI ToastUI => field ??= services.GetRequiredService<ToastUI>();

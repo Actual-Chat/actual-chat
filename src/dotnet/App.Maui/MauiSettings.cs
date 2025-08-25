@@ -17,8 +17,8 @@ public static class MauiSettings
     public const bool AreDevToolsEnabled = false;
 #endif
 #endif
-    // public const string DefaultHost = "local.actual.chat";
-    public const string DefaultHost = IsDevApp ? "dev.actual.chat" : "actual.chat";
+    // public const string DefaultHost = Constants.Hosts.LocalVoxt;
+    public const string DefaultHost = IsDevApp ? Constants.Hosts.DevVoxt : Constants.Hosts.Voxt;
     public static readonly string Host;
     public static bool IsHostOverriden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
     public static readonly Uri BaseUri;

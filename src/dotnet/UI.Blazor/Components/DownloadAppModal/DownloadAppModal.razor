@@ -1,9 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IModalView<DownloadAppModal.Model>
+@{
+    var title = $"Get {CoreConstants.AppName}";
+}
 
 <DialogFrame
     Class="download-app-modal"
-    Title="Get Actual Chat"
+    Title="@title"
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>

@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<AppUIHub>
 
 <div class="docs-content">
     <h1>Terms and Conditions</h1>
@@ -16,7 +17,7 @@
         <li>
             <p>
                 <strong>Application</strong> means the software program provided by the Company downloaded by You on
-                any electronic device, named Actual Chat
+                any electronic device, named @CoreConstants.AppName
             </p>
         </li>
         <li>
@@ -84,8 +85,8 @@
         </li>
         <li>
             <p>
-                <strong>Website</strong> refers to Actual Chat, accessible from
-                <a href="https://actual.chat" rel="external nofollow noopener" target="_blank">https://actual.chat</a>
+                <strong>Website</strong> refers to @CoreConstants.AppName, accessible from
+                <a href="@Links.Home.ToAbsolute(UrlMapper)" rel="external nofollow noopener" target="_blank">@Links.Home.ToAbsolute(UrlMapper)</a>
             </p>
         </li>
         <li>
@@ -224,7 +225,7 @@
     <p>
         If You are a copyright owner, or authorized on behalf of one, and You believe that the copyrighted work has
         been copied in a way that constitutes copyright infringement that is taking place through the Service, You must
-        submit Your notice in writing to the attention of our copyright agent via email at dmca@actual.chat and include
+        submit Your notice in writing to the attention of our copyright agent via email at @Constants.Team.CopyrightAgentEmail and include
         in Your notice a detailed description of the alleged infringement.
     </p>
     <p>
@@ -260,7 +261,7 @@
         </li>
     </ul>
     <p>
-        You can contact our copyright agent via email at dmca@actual.chat.
+        You can contact our copyright agent via email at @Constants.Team.CopyrightAgentEmail.
         Upon receipt of a notification, the Company will take whatever action, in its sole discretion, it deems
         appropriate, including removal of the challenged content from the Service.
     </p>
@@ -397,7 +398,7 @@
     <p>If you have any questions about these Terms and Conditions, You can contact us:</p>
     <ul>
         <li>By email:
-            <a href="mailto:support@actual.chat" target="_blank">support@actual.chat</a>
+            <a href="mailto:@Constants.Team.SupportEmail" target="_blank">@Constants.Team.SupportEmail</a>
         </li>
     </ul>
     <div id="rememberry__extension__root" style="all: unset;"></div>

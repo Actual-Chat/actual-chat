@@ -11,4 +11,5 @@ public sealed class MediaSettings
     public string GithubApiKey { get; set; } = "";
     public string[] CrawlingCidrDenylist { get; set; } = [];
     public string[] CrawlingDomainDenylist { get; set; } = [];
+    public string[] CrawlingHostAllowList { get; set; } = [];
 }

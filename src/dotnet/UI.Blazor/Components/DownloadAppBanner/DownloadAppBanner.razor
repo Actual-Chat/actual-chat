@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.Kvas
 @using ActualChat.Hosting
+@using ActualChat.Kvas
 @inherits ComputedStateComponent<UIHub, bool>
 @{
     if (State.Value)
@@ -13,7 +13,7 @@
         @onclick="@OnDownload">
         <div class="download-app-banner-filler"></div>
         <div class="download-app-banner-title">
-            Get Actual Chat App
+            Get @CoreConstants.AppName App
         </div>
         <i class="icon-download"></i>
         <div class="download-app-banner-filler"></div>

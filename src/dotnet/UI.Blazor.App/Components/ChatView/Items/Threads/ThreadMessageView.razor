@@ -172,7 +172,9 @@
         var sb = StringBuilderExt.Acquire();
         sb.Append("Thread \"");
         sb.Append(m?.Title.Text ?? Message.Chat.Title);
-        sb.Append("\" on Actual Chat: ");
+        sb.Append("\" on");
+        sb.Append(CoreConstants.AppName);
+        sb.Append(": ");
         sb.Append(UrlMapper.ToAbsolute(Links.Chat(Message.Chat.Id)));
         return sb.ToStringAndRelease();
     }

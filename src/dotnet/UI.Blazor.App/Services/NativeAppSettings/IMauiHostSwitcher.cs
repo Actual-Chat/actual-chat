@@ -10,8 +10,8 @@ public interface IMauiHostSwitcher
 
 public record MauiHost(string Host)
 {
-    public static readonly MauiHost Prod = new (Constants.Hosts.ActualChat);
-    public static readonly MauiHost Dev = new (Constants.Hosts.DevActualChat);
+    public static readonly MauiHost Prod = new (Constants.Hosts.Voxt);
+    public static readonly MauiHost Dev = new (Constants.Hosts.DevVoxt);
     public bool IsWellKnown => OrdinalIgnoreCaseEquals(Host, Prod.Host) || OrdinalIgnoreCaseEquals(Host, Dev.Host);
     public bool IsCustom => !IsWellKnown;
 

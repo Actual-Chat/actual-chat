@@ -98,7 +98,7 @@ public class SettingsRoundTripSerializationTest
     {
         yield return ("Empty", new ());
         yield return ("OnlyOrigin", new () {
-            Origin = "https://actual.chat",
+            Origin = $"https://actual.chat",
         });
         yield return ("OnlyPrimaryEnglish", new () {
             Primary = Languages.EnglishUK,
@@ -113,7 +113,7 @@ public class SettingsRoundTripSerializationTest
             Primary = Languages.Russian,
             Secondary = Languages.English,
             Tertiary = Languages.Italian,
-            Origin = "https://actual.chat",
+            Origin = $"https://actual.chat",
         });
     }
 }

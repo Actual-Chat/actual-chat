@@ -4,30 +4,30 @@ using ActualChat.App.Server.Health;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
 using ActualChat.Hosting;
+using ActualChat.MLSearch.Diagnostics;
 using ActualChat.Module;
 using ActualChat.Redis.Module;
+using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Services;
 using ActualLab.CommandR.Diagnostics;
+using ActualLab.Fusion.Diagnostics;
+using ActualLab.Fusion.Server;
+using ActualLab.IO;
+using ActualLab.Rpc.Diagnostics;
+using ActualLab.Rpc.Server;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Rewrite;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using ActualLab.Fusion.Diagnostics;
-using ActualLab.IO;
-using ActualLab.Rpc.Diagnostics;
-using ActualLab.Rpc.Server;
-using ActualChat.MLSearch.Diagnostics;
-using ActualChat.UI.Blazor;
-using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Fusion.Server;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.FileProviders;
 
 namespace ActualChat.App.Server.Module;
 
@@ -192,15 +192,13 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             "app://localhost",
         };
         if (Env.IsDevelopment()) {
-            origins.Add("https://local.actual.chat");
-            origins.Add("https://dev.actual.chat");
+            origins.AddRange(Constants.Hosts.AllDev.Select(host => $"https://{host}"));
+            origins.AddRange(Constants.Hosts.AllLocal.Select(host => $"https://{host}"));
         }
-        else if (Env.IsStaging()) {
-            origins.Add("https://dev.actual.chat");
-            origins.Add("https://stg.actual.chat");
-        }
+        else if (Env.IsStaging())
+            origins.AddRange(Constants.Hosts.AllDev.Select(host => $"https://{host}"));
         else
-            origins.Add("https://actual.chat");
+            origins.AddRange(Constants.Hosts.AllProd.Select(host => $"https://{host}"));
 
         services.AddCors(options => {
             options.AddPolicy("Default", builder => {
@@ -218,12 +216,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     .WithExposedHeaders("Content-Encoding","Content-Length","Content-Range", "Content-Type");
             });
         });
-        /*
-        services.Configure<HstsOptions>(options => {
-            options.ExcludedHosts.Add("local.actual.chat");
-            options.ExcludedHosts.Add("localhost");
-        });
-        */
+        // services.Configure<HstsOptions>(options => {
+        // options.ExcludedHosts.Add(Constants.Hosts.LocalVoxt);
+        //     options.ExcludedHosts.Add("localhost");
+        // });
         services.Configure<ForwardedHeadersOptions>(options => {
             options.ForwardedHeaders = ForwardedHeaders.All;
             if (Settings.AssumeHttps)

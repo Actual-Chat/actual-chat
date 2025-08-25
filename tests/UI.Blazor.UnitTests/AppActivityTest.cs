@@ -15,7 +15,7 @@ public class AppActivityTest: TestBase
             HostKind = HostKind.MauiApp,
             AppKind = AppKind.Ios,
             Environment = Environments.Development,
-            BaseUrl = "https://local.actual.chat",
+            BaseUrl = $"https://{Constants.Hosts.LocalVoxt}",
             IsTested = true,
         };
         Services = new ServiceCollection()

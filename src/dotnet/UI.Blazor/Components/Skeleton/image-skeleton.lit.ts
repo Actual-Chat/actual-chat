@@ -2,6 +2,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { createRef, Ref, ref } from 'lit/directives/ref.js';
 import { css, html, LitElement, nothing } from 'lit';
 import { delayAsync } from 'promises';
+import { PROD_HOST } from '_constants';
 
 @customElement('image-skeleton')
 class ImageSkeleton extends LitElement {
@@ -158,6 +159,6 @@ class ImageSkeleton extends LitElement {
     }
 
     isSubDomain(url: string): boolean {
-        return url.indexOf('actual.chat') > -1;
+        return url.indexOf(PROD_HOST) > -1;
     }
 }

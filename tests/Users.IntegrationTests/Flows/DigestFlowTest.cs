@@ -19,7 +19,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(f0.Id.Arguments, ct);
             flow.Should().NotBeNull();
-            flow!.Step.Should().Be(FlowSteps.OnEnd);
+            flow.Step.Should().Be(FlowSteps.OnEnd);
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -33,11 +33,11 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = UserId.Parse("actual-admin");
-        var account = await accountsBackend.Get(userId, default).Require();
+        var account = await accountsBackend.Get(userId, CancellationToken.None).Require();
         var updateCmd = new AccountsBackend_Update(
             account with {
                 TimeZone = "America/New_York",
-                Email = "admin@actual.chat",
+                Email = $"admin{Constants.Team.EmailSuffix}",
                 IsEmailVerified = true,
             },
             null);
@@ -46,7 +46,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
-            flow!.Step.Should().Be("OnCheck");
+            flow.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -64,7 +64,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var updateCmd = new AccountsBackend_Update(
             account with {
                 TimeZone = "America/New_York",
-                Email = "admin@actual.chat",
+                Email = $"admin{Constants.Team.EmailSuffix}",
                 IsEmailVerified = true,
             },
             null);
@@ -73,7 +73,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
-            flow!.Step.Should().Be("OnCheck");
+            flow.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -106,7 +106,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var updateCmd = new AccountsBackend_Update(
             account with {
                 TimeZone = TimeZoneInfo.Local.Id,
-                Email = "admin@actual.chat",
+                Email = $"admin{Constants.Team.EmailSuffix}",
                 IsEmailVerified = true,
             },
             null);
@@ -115,7 +115,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.Get<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
-            flow!.RunCount.Should().BeGreaterThan(0);
+            flow.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
     }
 }

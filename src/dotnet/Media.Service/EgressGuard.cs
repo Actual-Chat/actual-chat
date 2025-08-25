@@ -6,21 +6,27 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.Media;
 
-public class EgressGuard(HostInfo hostInfo, MediaSettings mediaSettings, ILogger<EgressGuard> log)
+public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<EgressGuard> log)
 {
     private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
     [field: AllowNull, MaybeNull]
-    private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(mediaSettings.CrawlingCidrDenylist, StringComparer.Ordinal).Select(IPNetwork.Parse)];
+    private HostWildcard[] AllowedHostWildcards => field ??= [..settings.CrawlingHostAllowList.Select(x => new HostWildcard(x))];
+
+    [field: AllowNull, MaybeNull]
+    private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist, StringComparer.Ordinal).Select(IPNetwork.Parse)];
 
     [field: AllowNull, MaybeNull]
     private string[] DomainDenyList => field ??= [
-        ..new[] { ".local" }.Union(mediaSettings.CrawlingCidrDenylist, StringComparer.OrdinalIgnoreCase),
+        ..new[] { ".local" }.Union(settings.CrawlingCidrDenylist, StringComparer.OrdinalIgnoreCase),
     ];
 
     public async Task<bool> IsAllowed(string host, CancellationToken cancellationToken = default)
     {
         if (hostInfo is { IsDevelopmentInstance: true, IsTested: false })
+            return true;
+
+        if (AllowedHostWildcards.Any(x => x.IsMatch(host)))
             return true;
 
         if (IPAddress.TryParse(host, out var ipAddress))
@@ -30,7 +36,7 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings mediaSettings, ILogger
             return false;
 
         var addresses = await Resolve(host, cancellationToken).ConfigureAwait(false);
-        return addresses.All(IsAllowedIpAddress);
+        return addresses.Length != 0 && addresses.All(IsAllowedIpAddress);
     }
 
     private bool IsAllowedDomain(string host)

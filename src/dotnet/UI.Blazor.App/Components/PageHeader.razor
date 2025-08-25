@@ -1,7 +1,7 @@
 ﻿@inherits ComputedStateComponent<AppUIHub, PageHeader.Model>
 @{
     var m = State.Value;
-    var title = "Actual Chat";
+    var title = CoreConstants.AppName;
     if (m.Count > 0)
         title += " (" + m.Count + ")";
 }

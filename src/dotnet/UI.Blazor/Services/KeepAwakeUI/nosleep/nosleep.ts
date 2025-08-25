@@ -1,6 +1,7 @@
 import { ResolvedPromise } from 'promises';
-import { webm, mp4 } from './media';
+import { mp4, webm } from './media';
 import { Log } from 'logging';
+import { APP_NAME } from '_constants';
 
 const { debugLog, warnLog, errorLog } = Log.get('NoSleep');
 // Detect iOS browsers < version 10
@@ -40,8 +41,8 @@ export class NoSleep {
             this.noSleepVideo = document.createElement("video");
 
             const noSleepVideo = this.noSleepVideo;
-            noSleepVideo.setAttribute("title", "Actual Chat");
-            noSleepVideo.setAttribute("playsinline", "");
+            this.noSleepVideo.setAttribute("title", APP_NAME);
+            this.noSleepVideo.setAttribute("playsinline", "");
 
             this.addSourceToVideo(noSleepVideo, "webm", webm);
             this.addSourceToVideo(noSleepVideo, "mp4", mp4);

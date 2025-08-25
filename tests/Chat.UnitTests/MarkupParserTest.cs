@@ -45,7 +45,7 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
-        m = Parse<UrlMarkup>("https://actual.chat/?ws=!1m4!1m3", out text);
+        m = Parse<UrlMarkup>($"https://{Constants.Hosts.Voxt}/?ws=!1m4!1m3", out text);
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
     }
@@ -87,11 +87,11 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void UrlWithQuoteInQuery()
     {
-        var url = "https://actual.chat?k='v'";
+        var url = $"https://{Constants.Hosts.Voxt}?k='v'";
         var m = Parse<MarkupSeq>($"{url} x");
         m.Items.Length.Should().Be(2);
         var urlMarkup = (UrlMarkup)m.Items[0];
-        urlMarkup.Url.Should().Be("https://actual.chat?k='v'");
+        urlMarkup.Url.Should().Be($"https://{Constants.Hosts.Voxt}?k='v'");
         var text = (PlainTextMarkup)m.Items[1];
         text.Text.Should().Be(" x");
     }

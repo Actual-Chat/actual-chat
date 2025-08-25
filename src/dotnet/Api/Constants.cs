@@ -7,9 +7,17 @@ public static partial class Constants
 {
     public static class Hosts
     {
-        public const string ActualChat = "actual.chat";
-        public const string DevActualChat = "dev.actual.chat";
-        public const string LocalActualChat = "local.actual.chat";
+        public const string Voxt = CoreConstants.Hosts.Prod;
+        public const string DevVoxt = CoreConstants.Hosts.Dev;
+        public const string LocalVoxt = CoreConstants.Hosts.Local;
+
+        public static readonly IReadOnlySet<string> AltProd = new HashSet<string>(["actual.chat"], StringComparer.OrdinalIgnoreCase);
+        public static readonly IReadOnlySet<string> AltDev = new HashSet<string>(["dev.actual.chat"], StringComparer.OrdinalIgnoreCase);
+        public static readonly IReadOnlySet<string> AltLocal = new HashSet<string>(["local.actual.chat"], StringComparer.OrdinalIgnoreCase);
+
+        public static readonly IReadOnlySet<string> AllProd = new HashSet<string>([Voxt, ..AltProd], StringComparer.OrdinalIgnoreCase);
+        public static readonly IReadOnlySet<string> AllDev = new HashSet<string>([DevVoxt, ..AltDev], StringComparer.OrdinalIgnoreCase);
+        public static readonly IReadOnlySet<string> AllLocal = new HashSet<string>([LocalVoxt, ..AltLocal], StringComparer.OrdinalIgnoreCase);
     }
 
     public static class Rpc
@@ -94,8 +102,9 @@ public static partial class Constants
     {
         public static class Admin
         {
+            // TODO: voxt.ai: voxt-admin:
             public static readonly UserId UserId = UserId.Parse("actual-admin");
-            public static readonly string Name =  "Actual Chat Admin";
+            public static readonly string Name =  $"{CoreConstants.AppName} Admin";
             public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12333323132";
         }
 
@@ -136,9 +145,12 @@ public static partial class Constants
 
     public static class Team
     {
-        public static string EmailSuffix => "@actual.chat";
-        public static string Member1Email => "alex.yakunin@actual.chat";
-        public static string Member2Email => "alexey.kochetov@actual.chat";
+        public const string EmailDomain = "actual.chat"; // NOTE: !!! used for admin detection!!!
+        public const string EmailSuffix = $"@{EmailDomain}";
+        public static string SupportEmail => $"support{EmailSuffix}";
+        public static string Member1Email => $"alex.yakunin{EmailSuffix}";
+        public static string Member2Email => $"alexey.kochetov{EmailSuffix}";
+        public static string CopyrightAgentEmail => $"dmca{EmailSuffix}";
     }
 
     public static class Attachments

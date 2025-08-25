@@ -1,12 +1,11 @@
 using System.Security.Claims;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Security;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
-using Microsoft.AspNetCore.Authentication.Google;
 using ActualLab.Generators;
+using Microsoft.AspNetCore.Authentication.Google;
 
 namespace ActualChat.Contacts.UI.Blazor.IntegrationTests;
 
@@ -20,7 +19,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     private Symbol DeviceId { get; set; } = RandomStringGenerator.Default.Next();
     private List<ExternalContactFull> DeviceContacts { get; set; } = new ();
     private static Phone BobPhone { get; } = Phone.Parse("1-2345678901");
-    private static string BobEmail => "bob@actual.chat";
+    private static string BobEmail => $"bob{Constants.Team.EmailSuffix}";
 
     private static User Bob { get; } = new User("", "BobAdmin")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
@@ -28,10 +27,10 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         .WithClaim(ClaimTypes.Email, BobEmail);
 
     private static Phone JackPhone => Phone.Parse("1-3456789012");
-    private static string JackEmail => "jack@actual.chat";
+    private static string JackEmail => $"jack{Constants.Team.EmailSuffix}";
 
     private static Phone JanePhone => Phone.Parse("1-3456789012");
-    private static string JaneEmail => "jane@actual.chat";
+    private static string JaneEmail => $"jane{Constants.Team.EmailSuffix}";
 
     protected override async Task InitializeAsync()
     {
