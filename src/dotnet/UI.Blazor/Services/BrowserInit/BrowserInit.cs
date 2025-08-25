@@ -29,6 +29,7 @@ public sealed class BrowserInit(UIHub hub) : UIServiceBase<UIHub>(hub)
                     appKind.ToString(),
                     apiVersion,
                     baseUri,
+                    HostInfo.GetHosts(),
                     sessionHash,
                     browserInfoBlazorRef)
                 .ConfigureAwait(false);

@@ -15,7 +15,7 @@ public class WindowsAppSettings : INativeAppSettings
             StartupTaskState.DisabledByPolicy => new AutoStartState(false, false,
                 "Auto-start is disabled by group/machine policy or is not supported on this device."),
             StartupTaskState.DisabledByUser => new AutoStartState(false, false,
-                "Actual Chat auto-start is disabled in Task Manager. "
+                $"{CoreConstants.AppName} auto-start is disabled in Task Manager. "
                 + "You can re-enable it in its Startup tab.",
                 OpenTaskManager),
             _ => new AutoStartState(false), // We assume it's disabled in any other case

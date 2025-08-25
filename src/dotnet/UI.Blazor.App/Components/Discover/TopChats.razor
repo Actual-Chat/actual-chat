@@ -1,3 +1,7 @@
+@{
+    var title2 = $"{CoreConstants.AppName} 2";
+    var title3 = $"{CoreConstants.AppName} 3";
+}
 <TopContainer
     Title="Top public chats"
     Class="top-chats">
@@ -6,13 +10,13 @@
 
     <TopChatItem
         AvatarColor="bg-[var(--blue-80)]"
-        Title="Actual Chat 2"
+        Title="@title2"
         OnlineCount="76"
         MemberCount="187"/>
 
     <TopChatItem
         AvatarColor="bg-[var(--emerald-80)]"
-        Title="Actual Chat 3"
+        Title="@title3"
         OnlineCount="21"
         MemberCount="1487"/>
 </TopContainer>

@@ -12,7 +12,7 @@ public static class JumpListManager
         var count = jumpList.Items.Count;
         // NOTE(AY): "x.svg" icon doesn't work (nothing is showing up), but the .png version is displayed
         // in a wrong color, if your Windows theme is dark. So let's keep it as-is for now.
-        AddJumpListItem(jumpList, QuitArgs, "Quit Actual Chat", "ms-appx:///Platforms/Windows/Assets/x.svg");
+        AddJumpListItem(jumpList, QuitArgs, $"Quit {CoreConstants.AppName}", "ms-appx:///Platforms/Windows/Assets/x.svg");
         if (jumpList.Items.Count == count)
             return;
 

@@ -1,11 +1,11 @@
-@using ActualChat.UI.Blazor.Services
-@using Cysharp.Text
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
+@using StringBuilderExt = ActualLab.Text.StringBuilderExt
 @namespace ActualChat.UI.Blazor.Components
 @{
     if (HostInfo.HostKind.IsServer())
         return;
-    if (UrlMapper.IsActualChat && AccountUI.OwnAccount.ValueOrDefault?.IsAdmin != true)
+    if (UrlMapper.IsVoxt && AccountUI.OwnAccount.ValueOrDefault?.IsAdmin != true)
         return;
 
     var appBuildTime = (int)LoadingUI.AppBuildTime.TotalMilliseconds;
@@ -16,7 +16,7 @@
     if (loadTime <= 0)
         return;
 
-    var sb = ActualLab.Text.StringBuilderExt.Acquire();
+    var sb = StringBuilderExt.Acquire();
     if (appBuildTime > 0)
         sb.AppendLine($"App build time: {appBuildTime}ms");
     sb.AppendLine($"App creation time: {appCreationTime}ms");

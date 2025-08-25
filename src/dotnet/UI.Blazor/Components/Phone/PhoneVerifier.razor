@@ -1,6 +1,6 @@
-@using ActualChat.Users
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
 @inherits ComponentBase<UIHub>
 
 @{
@@ -14,7 +14,7 @@
     var description = _validationState switch {
         ValidationState.Invalid => "Please try again later.",
         ValidationState.CodeSentRecently => "You can try again in a few minutes.",
-        _ => "Verify your phone number to sign in to Actual Chat.",
+        _ => $"Verify your phone number to sign in to {CoreConstants.AppName}.",
     };
     var isDisabled = _validationState is ValidationState.Invalid or ValidationState.Validating;
 }

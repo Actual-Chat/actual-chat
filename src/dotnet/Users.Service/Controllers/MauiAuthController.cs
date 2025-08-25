@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Security;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,6 +12,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
 
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
+    private HostInfo HostInfo { get; } = services.HostInfo();
     private ILogger Log { get; } = services.LogFor<MauiAuthController>();
 
     [HttpGet("start")]
@@ -23,7 +25,8 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
     {
         var session = SecureTokensBackend.ParseSessionToken(sessionToken);
         HttpContext.AddSessionCookie(session);
-        var closeFlowUrl = UrlMapper.ToAbsolute(Links.CloseFlow(flowName, false, redirectUrl));
+        var baseUrl = HostInfo.GetAllowedBaseUrl(Request.Host.Host);
+        var closeFlowUrl = UrlMapper.ToAbsolute(baseUrl, Links.CloseFlow(flowName, false, redirectUrl));
         if (!endpoint.OrdinalStartsWith("/"))
             endpoint = $"/{endpoint}";
         return Redirect($"{endpoint}?returnUrl={closeFlowUrl.UrlEncode()}");

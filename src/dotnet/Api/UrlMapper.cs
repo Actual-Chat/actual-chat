@@ -10,15 +10,15 @@ public sealed partial class UrlMapper
     private static partial Regex IsAbsoluteUrlRegexFactory();
 
     private static readonly Regex IsAbsoluteUrlRegex = IsAbsoluteUrlRegexFactory();
-    private static readonly char[] UriPathEndChar = { '#', '?' };
-    private static readonly string[] ExtensionsToExclude = { ".svg", ".gif" };
+    private static readonly char[] UriPathEndChar = ['#', '?'];
+    private static readonly string[] ExtensionsToExclude = [".svg", ".gif"];
 
     private readonly string _baseUrlWithoutBackslash;
 
     public Uri BaseUri { get; }
-    public bool IsActualChat { get; }
-    public bool IsDevActualChat { get; }
-    public bool IsLocalActualChat { get; }
+    public bool IsVoxt { get; }
+    public bool IsDevVoxt { get; }
+    public bool IsLocalVoxt { get; }
     public bool HasImageProxy { get; }
 
     public string BaseUrl { get; }
@@ -38,20 +38,20 @@ public sealed partial class UrlMapper
         _baseUrlWithoutBackslash = baseUrl.TrimSuffix("/");
         BaseUrl = baseUrl;
         BaseUri = baseUrl.ToUri();
-        IsActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.ActualChat);
-        IsDevActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.DevActualChat);
-        IsLocalActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.LocalActualChat);
+        IsVoxt = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.Voxt);
+        IsDevVoxt = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.DevVoxt);
+        IsLocalVoxt = OrdinalIgnoreCaseEquals(BaseUri.Host, Constants.Hosts.LocalVoxt);
 
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";
         ImageProxyBaseUrl = "";
         HasImageProxy = false;
-        if (IsActualChat || IsLocalActualChat) {
+        if (IsVoxt || IsLocalVoxt) {
             ContentBaseUrl = $"{BaseUri.Scheme}://cdn.{BaseUri.Host}/";
             ImageProxyBaseUrl = $"{BaseUri.Scheme}://media.{BaseUri.Host}/";
             HasImageProxy = true;
         }
-        else if (IsDevActualChat) {
+        else if (IsDevVoxt) {
             ContentBaseUrl = $"{BaseUri.Scheme}://cdn-{BaseUri.Host}/";
             ImageProxyBaseUrl = $"{BaseUri.Scheme}://media-{BaseUri.Host}/";
             HasImageProxy = true;
@@ -99,7 +99,7 @@ public sealed partial class UrlMapper
     /// <returns>A relative URI path.</returns>
     public string ToBaseRelativePath(string url)
     {
-        if (url.OrdinalStartsWith(BaseUri!.OriginalString))
+        if (url.OrdinalStartsWith(BaseUri.OriginalString))
         {
             // The absolute URI must be of the form "{baseUri}something" (where
             // baseUri ends with a slash), and from that we return "something"

@@ -1,3 +1,4 @@
+using ActualChat.Media.Module;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Media.IntegrationTests;
@@ -6,9 +7,12 @@ namespace ActualChat.Media.IntegrationTests;
 public class MediaCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink)
-    : ActualChat.Testing.Host.AppHostFixture("media", messageSink, TestAppHostOptions.Default with {
+    : Testing.Host.AppHostFixture("media", messageSink, TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
             services.AddSingleton<HttpClientFactoryMock>().AddAlias<IHttpClientFactory, HttpClientFactoryMock>();
             services.AddSingleton<HttpHandlerMock>().AddAlias<IHttpClientFactory, HttpClientFactoryMock>();
         },
+        ConfigureHost = (_, cfg) => {
+            cfg.AddInMemory<MediaSettings>((x => x.CrawlingHostAllowList, "domain*.some"));
+        }
     });

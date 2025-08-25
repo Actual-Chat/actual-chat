@@ -84,7 +84,7 @@ IServiceProvider CreateServiceProvider()
     });
     services.AddTracers(Tracer.Default, useScopedTracers: true);
     services.AddSingleton(_ => {
-        var baseUrl = "https://actual.chat/";
+        var baseUrl = $"https://{Constants.Hosts.Voxt}";
         return new HostInfo {
             HostKind = HostKind.MauiApp,
             AppKind = AppKind.Windows,

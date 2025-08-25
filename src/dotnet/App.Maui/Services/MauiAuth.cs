@@ -75,7 +75,7 @@ internal sealed class MauiAuth(UIHub hub) : UIServiceBase<UIHub>(hub), IClientAu
 
             // WebView-based authentication
             var redirectUrl = UrlMapper.ToAbsolute( isSignIn ? Links.Chats : Links.Home);
-            // NOTE(AY): returnUrl here points to https://[xxx.]actual.chat/xxx ,
+            // NOTE(AY): returnUrl here points to https://[xxx.]voxt.ai/xxx ,
             // but MauiNavigationInterceptor will correct it to the local one anyway.
             url = $"{url}&redirectUrl={redirectUrl.UrlEncode()}";
             Nav.NavigateTo(url);

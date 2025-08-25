@@ -5,6 +5,8 @@ using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Redis;
+using StackExchange.Redis;
 
 namespace ActualChat.Users.Phone;
 
@@ -17,7 +19,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private ITextMessageSender TextMessage { get; } = services.GetRequiredService<ITextMessageSender>();
     private TotpCodes Totps { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
-    private ActualLab.Redis.RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<ActualLab.Redis.RedisDb<UsersDbContext>>();
+    private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
@@ -52,7 +54,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var expiresAt = GetExpiresAt();
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
-        await TextMessage.Send(phone, $"Actual Chat: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
+        await TextMessage.Send(phone, $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
         return expiresAt;
 
         DateTimeOffset GetExpiresAt()
@@ -135,8 +137,8 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var sessionKey = $".SmsTotpThrottle:session:{Hash(session.Id)}";
 
         // true => first request in window; false => already requested (throttled)
-        var phoneOk = await db.StringSetAsync(phoneKey, "1", window, StackExchange.Redis.When.NotExists).ConfigureAwait(false);
-        var sessionOk = await db.StringSetAsync(sessionKey, "1", window, StackExchange.Redis.When.NotExists).ConfigureAwait(false);
+        var phoneOk = await db.StringSetAsync(phoneKey, "1", window, When.NotExists).ConfigureAwait(false);
+        var sessionOk = await db.StringSetAsync(sessionKey, "1", window, When.NotExists).ConfigureAwait(false);
 
         // Throttle if either phone or session key already exists in the window
         return !(phoneOk && sessionOk);

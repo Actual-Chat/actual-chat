@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
-    var reason = Reason.NullIfEmpty() ?? "to ActualChat";
+    var reason = Reason.NullIfEmpty() ?? $"to {CoreConstants.AppName}";
 }
 
 <Stepper Context="stepper">

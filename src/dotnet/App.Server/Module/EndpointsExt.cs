@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
 namespace ActualChat.App.Server.Module;
 
 public static class EndpointsExt
@@ -22,7 +23,7 @@ public static class EndpointsExt
 
     public static IEndpointRouteBuilder MapAppMetrics(this IEndpointRouteBuilder endpoints, params string[] tags)
     {
-        var host = Environment.GetEnvironmentVariable("POD_IP") ?? "local.actual.chat";
+        var host = Environment.GetEnvironmentVariable("POD_IP") ?? Constants.Hosts.LocalVoxt;
         endpoints.MapPrometheusScrapingEndpoint().RequireHost("localhost", host);
         return endpoints;
     }

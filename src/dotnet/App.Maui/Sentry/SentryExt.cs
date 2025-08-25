@@ -31,7 +31,7 @@ public static class SentryExt
     }
 
     /// <summary>
-    /// Create a trace provider that exports Actual.Chat telemetry to sentry
+    /// Create a trace provider that exports voxt.ai telemetry to sentry
     /// </summary>
     /// <param name="serviceName"></param>
     /// <returns></returns>
@@ -54,7 +54,7 @@ public static class SentryExt
         // Otherwise, it causes CORS request failure in WebAssembly mode.
         // Error:
         // Access to fetch at 'https://o4504632882233344.ingest.sentry.io/api/4504639283789824/envelope/'
-        // from origin 'https://*.actual.chat'
+        // from origin 'https://*.voxt.ai'
         // has been blocked by CORS policy: Request header field traceparent is not allowed by Access-Control-Allow-Headers in preflight response.
         // See also:
         // https://github.com/dotnet/runtime/issues/85883

@@ -8,6 +8,9 @@
 	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
+        <string>applinks:voxt.ai</string>
+        <string>applinks:dev.voxt.ai</string>
+<!-- TODO: voxt.ai: Remove when backward compatibility is not required -->
 		<string>applinks:actual.chat</string>
 		<string>applinks:dev.actual.chat</string>
 	</array>

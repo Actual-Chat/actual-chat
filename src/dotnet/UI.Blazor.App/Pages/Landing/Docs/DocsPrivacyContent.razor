@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<AppUIHub>
 
 <div class="docs-content">
     <h1 id="introduction">Privacy Policy</h1>
@@ -34,7 +35,7 @@
             </p>
         </li>
         <li>
-            <p><strong>Application</strong> refers to Actual Chat, the software program provided by the Company.</p>
+            <p><strong>Application</strong> refers to @CoreConstants.AppName, the software program provided by the Company.</p>
         </li>
         <li>
             <p>
@@ -136,8 +137,8 @@
         </li>
         <li>
             <p>
-                <strong>Website</strong> refers to Actual Chat, accessible from
-                <a href="https://actual.chat" rel="external nofollow noopener" target="_blank">https://actual.chat</a>
+                <strong>Website</strong> refers to @CoreConstants.AppName, accessible from
+                <a href="@Links.Home.ToAbsolute(UrlMapper)" rel="external nofollow noopener" target="_blank">"@Links.Home.ToAbsolute(UrlMapper)"</a>
             </p>
         </li>
         <li>
@@ -894,7 +895,7 @@
     </p>
     <ul>
         <li>
-            <a href="mailto:support@actual.chat" target="_blank">support@actual.chat</a>
+            <a href="mailto:@Constants.Team.SupportEmail" target="_blank">@Constants.Team.SupportEmail</a>
         </li>
     </ul>
     <p>
@@ -1003,7 +1004,7 @@
     <p>If you have any questions about this Privacy Policy, You can contact us:</p>
     <ul>
         <li>By email:
-            <a href="mailto:support@actual.chat" target="_blank">support@actual.chat</a>
+            <a href="mailto:@Constants.Team.SupportEmail" target="_blank">@Constants.Team.SupportEmail</a>
         </li>
     </ul>
     <div id="rememberry__extension__root" style="all: unset;"></div>

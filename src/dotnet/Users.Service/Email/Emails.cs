@@ -2,8 +2,8 @@ using System.Text;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualChat.Users.Phone;
-using ActualLab.Fusion.EntityFramework;
 using ActualChat.Users.Templates;
+using ActualLab.Fusion.EntityFramework;
 using Mjml.Net;
 
 namespace ActualChat.Users.Email;
@@ -48,7 +48,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         await EmailSender.Send(
                 "",
                 email,
-                "Actual Chat: email verification",
+                $"{CoreConstants.AppName}: email verification",
                 renderResult.Html,
                 cancellationToken)
             .ConfigureAwait(false);

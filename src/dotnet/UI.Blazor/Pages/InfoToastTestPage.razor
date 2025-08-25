@@ -1,6 +1,6 @@
 ﻿@page "/test/toasts"
-@using ActualChat.UI.Blazor.Services
 @using System.Text
+@using ActualChat.UI.Blazor.Services
 @inherits ComponentBase<UIHub>
 
 <RequireAccount MustBeAdmin="true"/>
@@ -35,9 +35,9 @@
         Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
     </div>
     <div>
-        At the moment, Actual Chat is entirely free for personal use, and we intend to keep it that way. However, we do plan to generate revenue from commercial usage and a small subset of advanced features we plan to add in near future.
+        At the moment, @CoreConstants.AppName is entirely free for personal use, and we intend to keep it that way. However, we do plan to generate revenue from commercial usage and a small subset of advanced features we plan to add in near future.
 
-        So, if you're using Actual Chat for your personal communication needs, you can rest assured that there won't be any changes to the pricing.
+        So, if you're using @CoreConstants.AppName for your personal communication needs, you can rest assured that there won't be any changes to the pricing.
     </div>
 </div>
 

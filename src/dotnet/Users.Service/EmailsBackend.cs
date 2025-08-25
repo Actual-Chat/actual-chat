@@ -58,7 +58,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         await EmailSender.Send(
                 "",
                 account.Email,
-                "Actual Chat: digest",
+                $"{CoreConstants.AppName}: digest",
                 renderResult.Html,
                 cancellationToken)
             .ConfigureAwait(false);

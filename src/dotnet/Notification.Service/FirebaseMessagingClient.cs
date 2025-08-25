@@ -34,7 +34,7 @@ public class FirebaseMessagingClient(
             lastEntryLocalId = notification.GetAttentionNotification.LastEntryLocalId;
 
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
-        var isDev = UrlMapper.IsDevActualChat;
+        var isDev = UrlMapper.IsDevVoxt;
 
         var isChatRelated = chatId is not null;
         var isEntryRelated = entryId is not null;

@@ -29,7 +29,7 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var user = new User("", "BobAdmin")
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "123"))
-            .WithClaim(ClaimTypes.Email, "bob@actual.chat");
+            .WithClaim(ClaimTypes.Email, $"bob{Constants.Team.EmailSuffix}");
 
         // act
         var account = await _tester.SignIn(user);
@@ -45,7 +45,7 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var user = new User("", "JackNotAdmin")
             .WithIdentity(MicrosoftAccountDefaults.AuthenticationScheme)
-            .WithClaim(ClaimTypes.Email, "jack@actual.chat");
+            .WithClaim(ClaimTypes.Email, $"jack{Constants.Team.EmailSuffix}");
 
         // act
         var account = await _tester.SignIn(user);

@@ -1,4 +1,6 @@
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
+using Application = Microsoft.Maui.Controls.Application;
 
 namespace ActualChat.App.Maui;
 
@@ -15,7 +17,7 @@ public class App : Application
     {
         Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.Application.SetWindowSoftInputModeAdjust(
             this,
-            Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.WindowSoftInputModeAdjust.Resize);
+            WindowSoftInputModeAdjust.Resize);
 #if WINDOWS
         // Allows loading of mixed content into WebView on Windows
         Environment.SetEnvironmentVariable(
@@ -29,7 +31,7 @@ public class App : Application
     {
 		var window = new Window(new MainPage());
         window.Destroying += (_, _) => FlushSentryData();
-        window.Title = MauiSettings.IsDevApp ? "Actual Chat (Dev)" : "Actual Chat";
+        window.Title = MauiSettings.IsDevApp ? $"{CoreConstants.AppName} (Dev)" : CoreConstants.AppName;
         return window;
     }
 

@@ -4,7 +4,7 @@
 @{
     var baseUri = HostInfo.BaseUrl.ToUri();
     var domain = HostInfo.IsDevelopmentInstance
-        ? "cdn.local.actual.chat"
+        ? $"cdn.{Constants.Hosts.DevVoxt}"
         : baseUri.IdnHost;
     var feedbackTemplateUrl = $"https://{domain}/embedded/feedback-template";
     var showChat = _mustShowChat;

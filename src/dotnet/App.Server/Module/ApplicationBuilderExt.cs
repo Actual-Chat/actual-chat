@@ -22,6 +22,10 @@ public static class ApplicationBuilderExt
             if (requestPath.OrdinalIgnoreCaseStartsWith(EndpointsExt.PrometheusPathPrefix))
                 return next();
 
+            var hostInfo = context.RequestServices.HostInfo();
+            if (hostInfo.GetHosts().Contains(context.Request.Host.Host))
+                return next();
+
             context.Request.Scheme = scheme;
             context.Request.Host = port > 0
                 ? new HostString(host, port)

@@ -1,10 +1,10 @@
 import { Connectivity } from 'connectivity';
-import { EventHandlerSet } from "event-handling";
+import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'promises';
-import { HostKind, BrowserInfo, AppKind } from '../BrowserInfo/browser-info';
-import { Log, LogLevel } from 'logging';
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAnalytics, setAnalyticsCollectionEnabled, Analytics } from 'firebase/analytics';
+import { AppKind, BrowserInfo, HostKind } from '../BrowserInfo/browser-info';
+import { Log } from 'logging';
+import { FirebaseApp, initializeApp } from 'firebase/app';
+import { Analytics, getAnalytics, setAnalyticsCollectionEnabled } from 'firebase/analytics';
 import { Versioning } from 'versioning';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
@@ -32,6 +32,7 @@ export class BrowserInit {
         appKind: AppKind,
         apiVersion: string,
         baseUri: string,
+        supportedHosts: string[],
         sessionHash: string,
         browserInfoBackendRef: DotNet.DotNetObject
     ): Promise<void> {
@@ -39,7 +40,8 @@ export class BrowserInit {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
             window['App']?.markBlazorReady?.(); // It must be called no matter what at this point
             this.apiVersion = apiVersion;
-            this.baseUri = baseUri;
+            let documentBaseUri = new URL(document.baseURI);
+            this.baseUri = supportedHosts.includes(documentBaseUri.host) ? `${documentBaseUri.protocol}//${documentBaseUri.host}` : baseUri;
             this.sessionHash = sessionHash;
             this.initWindowId();
             void this.initAndroidWebViewClipboardHandlers();

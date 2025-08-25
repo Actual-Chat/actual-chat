@@ -33,7 +33,7 @@
         timeout 3
         adb -e get-state 1>NUL 2>NUL || goto :repeat3
     "%adb%" -e pull /system/etc/hosts artifacts/hosts
-    echo 10.0.2.2 local.actual.chat media.local.actual.chat cdn.local.actual.chat >> artifacts/hosts
+    echo 10.0.2.2 local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai >> artifacts/hosts
     "%adb%" -e push artifacts/hosts /system/etc/
 
     exit /b

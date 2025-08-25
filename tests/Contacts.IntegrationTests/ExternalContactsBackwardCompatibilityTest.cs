@@ -15,7 +15,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     private IExternalContacts _externalContacts = null!;
     private ICommander _commander = null!;
 
-    private static string BobEmail => "bob@actual.chat";
+    private static string BobEmail => $"bob{Constants.Team.EmailSuffix}";
     private static Phone BobPhone => Phone.Parse("1-2345678901");
     private static User Bob { get; } = new User("", $"Bob-{nameof(ExternalContactsTest)}")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))

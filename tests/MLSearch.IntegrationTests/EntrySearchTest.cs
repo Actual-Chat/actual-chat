@@ -72,17 +72,17 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.SignInAsUniqueBob();
         var (chatId, _) = await Tester.CreateChat(false);
 
-        var entry = await CreateEntry(chatId, "https://actual.chat");
+        var entry = await CreateEntry(chatId, $"https://{Constants.Hosts.Voxt}");
 
         // act, assert
-        var searchResults = await Find("actual");
+        var searchResults = await Find("voxt");
         // var searchResults = await Find("chat"); TODO: uncomment when links are handled properly
         searchResults.Should()
             .BeEquivalentTo([
                 entry.BuildSearchResult(
-                    ["actual.chat"],
+                    [Constants.Hosts.Voxt],
                     UniquePart,
-                    (8, 19)),
+                    (8, 15)),
             ]);
     }
 

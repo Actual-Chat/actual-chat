@@ -7,7 +7,7 @@
 
 <div>
     @if (Stepper.CurrentStepIndex == 0) {
-        <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+        <p class="text-title-1 text-center">Welcome to @CoreConstants.AppName!</p>
     }
     <div class="analytics-step">
         <p class="c-subtitle">
@@ -15,7 +15,7 @@
         </p>
         <div class="c-content">
             <div>
-                Actual Chat collects certain telemetry data,
+                @CoreConstants.AppName collects certain telemetry data,
                 such as critical user actions preceding errors and crashes,
                 to help us fix user experience issues faster.
                 The data is currently processed by
@@ -25,7 +25,7 @@
             </div>
             <div><br/></div>
             <div>
-                Please help us improve Actual Chat by consenting to the collection and
+                Please help us improve @CoreConstants.AppName by consenting to the collection and
                 processing of your telemetry data.
             </div>
         </div>

@@ -16,7 +16,7 @@
     <option name="PROJECT_WORKING_DIRECTORY_TRACKING" value="1" />
     <option name="PROJECT_KIND" value="DotNetCore" />
     <option name="PROJECT_TFM" value="net9.0" />
-    <browser url="https://local.actual.chat/chat/the-actual-one" />
+    <browser url="https://local.voxt.ai/chat/the-actual-one" />
     <method v="2">
       <option name="Build" />
     </method>

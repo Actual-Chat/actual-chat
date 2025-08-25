@@ -58,7 +58,7 @@ internal static class Program
     /// <param name="verbose">Enable verbose output.</param>
     /// <param name="cancellationToken">The terminate program cancellation</param>
     /// <param name="configuration">The configuration for building</param>
-    /// <param name="isDevMaui">If false then app connects to actual.chat, it true - to dev.actual.chat</param>
+    /// <param name="isDevMaui">If false then app connects to voxt.ai, it true - to dev.voxt.ai</param>
     private static async Task<int> Main(
         string[] arguments,
         bool clear,

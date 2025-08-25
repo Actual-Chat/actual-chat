@@ -15,6 +15,9 @@ public class EgressGuardTest
         NullLogger<EgressGuard>.Instance);
 
     [Theory]
+    [InlineData("voxt.ai")]
+    [InlineData("cdn.voxt.ai")]
+    [InlineData("media.voxt.ai")]
     [InlineData("actual.chat")]
     [InlineData("cdn.actual.chat")]
     [InlineData("media.actual.chat")]
@@ -28,6 +31,9 @@ public class EgressGuardTest
     }
 
     [Theory]
+    [InlineData("voxt.a1")]
+    [InlineData("voxt.al")]
+    [InlineData("local.voxt.ai")]
     [InlineData("local.actual.chat")]
     [InlineData("svc.cluster.local")]
     [InlineData("192.168.1.1")] // Private IP

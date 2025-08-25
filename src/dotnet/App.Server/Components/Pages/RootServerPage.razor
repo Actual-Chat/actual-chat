@@ -1,13 +1,13 @@
 @using ActualChat.Chat
 @using ActualChat.Hosting
 @using ActualChat.Security
+@using ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using ActualChat.Users.Module
 @using ActualLab.Fusion.Blazor
 @using ActualLab.Fusion.Server.Endpoints
 @using ActualLab.Generators
-@using ActualChat.UI.Blazor.App
 @using Microsoft.AspNetCore.Http.Extensions
 @{
     // Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
@@ -47,20 +47,18 @@
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         img-src 'self'
-                    https://actual.chat
-                    https://*.actual.chat
-                    https://*.local.actual.chat
-                    https://*.dev.actual.chat
-                    https://*.stg.local.actual.chat
+                    https://@Constants.Hosts.Voxt
+                    https://*.@Constants.Hosts.Voxt
+                    https://*.@Constants.Hosts.LocalVoxt
+                    https://*.@Constants.Hosts.DevVoxt
                     https://*.dicebear.com
                     https://i.ytimg.com
                     https://www.googletagmanager.com
                     blob: data:;
         media-src 'self'
-                    https://*.actual.chat
-                    https://*.local.actual.chat
-                    https://*.dev.actual.chat
-                    https://*.stg.actual.chat
+                    https://*.@Constants.Hosts.Voxt
+                    https://*.@Constants.Hosts.DevVoxt
+                    https://*.@Constants.Hosts.LocalVoxt
                     blob: data:;
         style-src 'self'
                     'unsafe-inline'
@@ -86,8 +84,8 @@
                     https://www.gstatic.com/recaptcha/releases/;
         connect-src 'self'
                     @extraConnectSrc
-                    https://actual.chat
-                    https://*.actual.chat
+                    https://@Constants.Hosts.Voxt
+                    https://*.@Constants.Hosts.Voxt
                     https://*.dicebear.com
                     https://*.ingest.sentry.io
                     https://firebaseinstallations.googleapis.com
@@ -102,11 +100,11 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="msapplication-TileColor" content="#0036a3">
     <meta name="theme-color" content="#444444">
-    <title>Actual Chat</title>
+    <title>@CoreConstants.AppName</title>
     <base href="/" />
 
     @{
-        var title = "Actual Chat: The New Voice of Everyday Communication";
+        var title = $"{CoreConstants.AppName}: The New Voice of Everyday Communication";
         var description =
             "We fuse real-time audio, live transcription, and AI assistance to let you communicate with utmost efficiency. " +
             "Reply 5x faster, read for quick context, defer without fear of losing clarity, " +
@@ -130,7 +128,7 @@
     <meta property="og:image" content="@image" />
     <meta property="og:url" content="@(UrlMapper.BaseUrl)" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Actual Chat" />
+    <meta property="og:site_name" content="@(CoreConstants.AppName)}" />
     <meta property="og:locale" content="en_US" />
 
     @* Twitter Cards (they can be beneficial too) *@
@@ -181,9 +179,9 @@
                 await window.App.whenBundleReady;
                 return true;
             },
-            browserInit: async function(hostKind, appKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef) {
+            browserInit: async function(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef) {
                 await window.App.whenBundleReady;
-                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, sessionHash, browserInfoBackendRef);
+                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef);
             },
         };
         window.App.whenBlazorReady = new Promise((resolve, _) => {

@@ -8,7 +8,7 @@ public record MediaMetadata(
     public static MediaMetadata FromTrack(ChatAudioTrackInfo trackInfo)
         => new (
             $"{trackInfo.Author.Avatar.Name} @ {trackInfo.Chat.Title}",
-            "Actual Chat",
+            "Voxt",
             "/_applogo-dark.svg");
 }
 

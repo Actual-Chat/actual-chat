@@ -4,15 +4,15 @@ using ActualChat.Flows;
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
+using ActualLab.Fusion.EntityFramework;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
-    private const string AdminEmailDomain = "actual.chat";
+    private const string AdminEmailDomain = Constants.Team.EmailDomain;
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) {
         "alex.yakunin@gmail.com",
         "ustinovas@gmail.com",
@@ -277,7 +277,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (AdminEmails.Contains(email))
             return true; // Predefined admin email
         if (HasGoogleIdentity(user) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
-            return true; // actual.chat email
+            return true; // company email
         return false;
     }
 

@@ -38,7 +38,7 @@
                 <uap5:StartupTask
                     TaskId="{2720A628-2446-460A-9B15-9F3B41104E79}"
                     Enabled="false"
-                    DisplayName="Actual Chat Local" />
+                    DisplayName="Voxt Local" />
             </uap5:Extension>
       </Extensions>
     </Application>

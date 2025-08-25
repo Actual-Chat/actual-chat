@@ -1,5 +1,5 @@
-@using ActualChat.Notification
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Notification
 @inherits ComputedStateComponent<AppUIHub, NotifyAllButton.Model>
 @{
     var m = State.Value;
@@ -23,7 +23,7 @@
 @code {
     private string AlertTarget => State.Value.AlertTarget;
     private string AlertClass => State.Value.AlertClass;
-    private string AlertInfo => $"<div class='alert-text'>Actual Chat sends regular notifications for every message, but an" +
+    private string AlertInfo => $"<div class='alert-text'>{CoreConstants.AppName} sends regular notifications for every message, but an" +
                                 $" <span class='font-bold'>\"Alert\" is a notification similar to a phone call</span>" +
                                 $" — it’s louder, and the user must swipe it or open the app to stop the sound." +
                                 $" If you don’t need to distract <span class='{AlertClass}'>{AlertTarget}</span> right now, consider not sending it.</div>";

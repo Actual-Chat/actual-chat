@@ -2,8 +2,8 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Mathematics.Internal;
 using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
 using ActualLab.IO;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
@@ -65,7 +65,7 @@ public partial class ChatsUpgradeBackend
             null,
             new () {
                 Create = new ChatDiff {
-                    Title = "Actual Chat Announcements",
+                    Title = $"{CoreConstants.AppName} Announcements",
                     IsPublic = true,
                 },
             },
@@ -408,7 +408,7 @@ public partial class ChatsUpgradeBackend
             null,
             new () {
                 Create = new ChatDiff {
-                    Title = "Actual Chat Feedback",
+                    Title = $"{CoreConstants.AppName} Feedback",
                     IsPublic = true,
                     IsTemplate = true,
                     AllowGuestAuthors = true,

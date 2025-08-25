@@ -1,5 +1,6 @@
-@using ActualChat.Mjml.Blazor.Components;
+@using ActualChat.Mjml.Blazor.Components
 @using ActualChat.Mjml.Blazor.Enums
+@using Constants = Constants
 @namespace ActualChat.Users.Templates
 
 <Mjml>
@@ -55,13 +56,13 @@
                             <td width="30px"
                                 height="40px">
                                 <img width="30px"
-                                     src="https://actual.chat/dist/images/emails/ac-icon-light.png"
+                                     src="https://@Constants.Hosts.Voxt/dist/images/emails/ac-icon-light.png"
                                      alt=""/>
                             </td>
                             <td width="10px"/>
                             <td width="121px">
                                 <img width="121px"
-                                     src="https://actual.chat/dist/images/emails/ac-title-light.png"
+                                     src="https://@Constants.Hosts.Voxt/dist/images/emails/ac-title-light.png"
                                      alt=""/>
                             </td>
                         </tr>
@@ -82,7 +83,7 @@
                                 <a href="https://apps.apple.com/us/app/actual-chat/id6450874551">
                                     <img width="136px"
                                          height="40px"
-                                         src="https://actual.chat/dist/images/emails/get-ios.png"
+                                         src="https://@Constants.Hosts.Voxt/dist/images/emails/get-ios.png"
                                          alt=""/>
                                 </a>
                             </td>
@@ -91,7 +92,7 @@
                                 <a href="https://play.google.com/store/apps/details?id=chat.actual.app">
                                     <img width="136px"
                                          height="40px"
-                                         src="https://actual.chat/dist/images/emails/get-android.png"
+                                         src="https://@Constants.Hosts.Voxt/dist/images/emails/get-android.png"
                                          alt=""/>
                                 </a>
                             </td>
@@ -103,12 +104,12 @@
                         CssClass="grey-text">
                         <tr>
                             <td>
-                                <a href="https://actual.chat/docs/privacy">Privacy Policy</a>
+                                <a href="https://@Constants.Hosts.Voxt/docs/privacy">Privacy Policy</a>
                             </td>
                             <td width="10px">
                             </td>
                             <td>
-                                <a href="https://actual.chat/docs/terms">Terms and Conditions</a>
+                                <a href="https://@Constants.Hosts.Voxt/docs/terms">Terms and Conditions</a>
                             </td>
                         </tr>
                     </MjmlTable>
@@ -119,13 +120,13 @@
                         FontFamily="Arial"
                         LineHeight="14px"
                         Color="#A0A0A0">
-                        2024 Actual chat, LLC, All Rights Reserved
+                        @CoreConstants.Copyright
                     </MjmlText>
                     <MjmlText Align="MjmlTextAlign.Center">
                         <a href="https://github.com/Actual-Chat/">
                             <img width="30px"
                                  height="28px"
-                                 src="https://actual.chat/dist/images/emails/github.png"
+                                 src="https://@Constants.Hosts.Voxt/dist/images/emails/github.png"
                                  alt=""/>
                         </a>
                     </MjmlText>

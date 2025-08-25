@@ -61,7 +61,7 @@
             @if (IsGuest && ScreenSize.IsNarrow()) {
                 <button class="btn-download transparent" @onclick="@ShowVideoClick">
                     <i class="icon-play-fill text-2xl"></i>
-                    <span>Watch Actual Chat in action</span>
+                    <span>Watch @CoreConstants.AppName in action</span>
                 </button>
             }
         </div>
@@ -74,7 +74,7 @@
             </video>
             <img draggable="false"
                  src="/dist/images/landing/landing-tutorial-plug.png"
-                 alt="Loading Actual Chat intro video..."
+                 alt="Loading @CoreConstants.AppName intro video..."
                  class="landing-video-plug flex">
             <div class="hover-plug">
                 <div class="play-btn">

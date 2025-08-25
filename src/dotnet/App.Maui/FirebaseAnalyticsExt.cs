@@ -53,7 +53,7 @@ public static class FirebaseAnalyticsExt
 
             var parameters = CreateBaseParameters();
             parameters.Add("page_referrer", _location);
-            parameters.Add("page_title", "Actual Chat"); // NOTE: to mimic automatic firebase events
+            parameters.Add("page_title", CoreConstants.AppName); // NOTE: to mimic automatic firebase events
             LogEvent("page_view", parameters);
             _location = location;
         }

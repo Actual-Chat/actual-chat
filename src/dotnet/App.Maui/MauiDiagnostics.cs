@@ -2,7 +2,6 @@
 using ActualChat.App.Maui.Sentry;
 using ActualChat.App.Maui.Services;
 using ActualChat.Audio.WebM;
-using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
@@ -27,7 +26,7 @@ public static class MauiDiagnostics
 
     private static SentryOptions? _sentryOptions;
 
-    public static readonly string LogTag = MauiSettings.IsDevApp ? "dev.actual.chat" : "actual.chat";
+    public static readonly string LogTag = MauiSettings.IsDevApp ? Constants.Hosts.DevVoxt : Constants.Hosts.Voxt;
     public static FilePath AppDataLogFilePath { get; private set; }
     public static TracerProvider? TracerProvider { get; private set; }
     public static bool IsAnalyticsCollectionEnabled { get; private set; }
