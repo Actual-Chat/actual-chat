@@ -5,7 +5,6 @@ import { isSupportedImage, isSupportedVideo } from "media-types";
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
-import { MarkupEditor } from '../MarkupEditor/markup-editor';
 
 const { debugLog, errorLog } = Log.get('Attachments');
 
@@ -28,20 +27,18 @@ interface MediaContent {
 
 type ProgressReporter = (progressPercent: number) => void;
 
-export class AttachmentList {
+export class AttachmentListView {
     private readonly disposed$: Subject<void> = new Subject<void>();
-    private markupEditor: MarkupEditor;
-    private attachments: Map<number, Attachment> = new Map<number, Attachment>();
-    private uploads: Map<number, FileUpload> = new Map<number, FileUpload>();
-    private attachmentsIdSeed: number = 0;
+    private attachments: AttachmentList;
     private chatId: string;
     public changed: () => void = () => { };
 
-    public static create(blazorRef: DotNet.DotNetObject, inputElement: HTMLInputElement) {
-        return new AttachmentList(blazorRef, inputElement);
+    public static create(inputElement: HTMLInputElement) {
+        return new AttachmentListView(inputElement);
     }
 
-    public constructor(private readonly blazorRef: DotNet.DotNetObject, private readonly filePickerElement: HTMLInputElement) {
+    public constructor(private readonly filePickerElement: HTMLInputElement) {
+        this.attachments = new AttachmentList();
         fromEvent(this.filePickerElement, 'change').pipe(takeUntil(this.disposed$)).subscribe(this.onFilePickerChange);
     }
 
@@ -53,6 +50,27 @@ export class AttachmentList {
         this.disposed$.complete();
     }
 
+    public setChatId(chatId: string) {
+        this.chatId = chatId;
+    }
+
+    /** Called by Blazor */
+    public attachList(blazorRef: DotNet.DotNetObject)
+    {
+        if (this.attachments.isAttached())
+            this.attachments = new AttachmentList();
+        this.attachments.attach(blazorRef);
+        return this.attachments;
+    }
+
+    /** Called by Blazor */
+    public showFilePicker = (acceptTypes: string = "") => {
+        TuneUI.play(Tune.ChangeAttachments);
+        this.filePickerElement.accept = acceptTypes;
+        this.filePickerElement.click();
+    };
+
+    /** Called by Blazor */
     public async addBlobs(urls: string[], fileNames: string[]): Promise<number> {
         let addedBlobs = 0;
         for (let i = 0; i < urls.length; i++){
@@ -60,7 +78,7 @@ export class AttachmentList {
             const fileName = fileNames[i];
             await fetch(url)
                 .then(r => r.blob())
-                .then(blob => this.addBlob(this.chatId, url, blob, fileName, true))
+                .then(blob => this.attachments.addBlob(this.chatId, url, blob, fileName, true))
                 .then(isAdded => {
                     if (isAdded) {
                         addedBlobs++;
@@ -73,13 +91,59 @@ export class AttachmentList {
         return addedBlobs;
     }
 
-    private closeKeyboard() {
-        console.log('closeKeyboard invoked.');
-        this.markupEditor.contentDiv.blur();
+    public some() {
+        return this.attachments.some();
     }
 
     public async add(chatId: string, file: File): Promise<boolean> {
-        return this.addBlob(chatId, '', file, file.name, false);
+        return this.attachments.addBlob(chatId, '', file, file.name, false);
+    }
+
+    private onFilePickerChange = (async (event: Event & { target: Element; }) => {
+        for (const file of this.filePickerElement.files ?? []) {
+            const isAdded = await this.add(this.chatId, file);
+            if (!isAdded)
+                break;
+
+            this.changed();
+        }
+        this.filePickerElement.value = '';
+    });
+}
+
+class AttachmentList {
+    private readonly disposed$: Subject<void> = new Subject<void>();
+    private attachments: Map<number, Attachment> = new Map<number, Attachment>();
+    private uploads: Map<number, FileUpload> = new Map<number, FileUpload>();
+    private attachmentsIdSeed: number = 0;
+    private blazorRef: DotNet.DotNetObject | null = null;
+    public changed: () => void = () => { };
+    private get BlazorRef() {
+        if (this.blazorRef == null)
+            throw new Error('BlazorRef is not set');
+        return this.blazorRef;
+    }
+
+    public isAttached() {
+        return this.blazorRef != null;
+    }
+
+    public constructor() {}
+
+    public attach(blazorRef: DotNet.DotNetObject)
+    {
+        if (this.blazorRef != null)
+            throw new Error('Already attached');
+
+        this.blazorRef = blazorRef;
+    }
+
+    public dispose() {
+        if (this.disposed$.closed)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
     }
 
     public async addBlob(chatId: string, url: string, blob: Blob, fileName: string, silent : boolean): Promise<boolean> {
@@ -120,10 +184,6 @@ export class AttachmentList {
         return isAdded;
     }
 
-    public setChatId(chatId: string) {
-        this.chatId = chatId;
-    }
-
     /** Called by Blazor */
     public remove(id: number) {
         TuneUI.play(Tune.ChangeAttachments);
@@ -140,13 +200,6 @@ export class AttachmentList {
 
         this.changed();
     }
-
-    /** Called by Blazor */
-    public showFilePicker = (acceptTypes: string = "") => {
-        TuneUI.play(Tune.ChangeAttachments);
-        this.filePickerElement.accept = acceptTypes;
-        this.filePickerElement.click();
-    };
 
     /** Called by Blazor */
     public clear() {
@@ -167,32 +220,21 @@ export class AttachmentList {
         return this.attachments.size > 0
     }
 
-    private onFilePickerChange = (async (event: Event & { target: Element; }) => {
-        for (const file of this.filePickerElement.files ?? []) {
-            const isAdded = await this.add(this.chatId, file);
-            if (!isAdded)
-                break;
-
-            this.changed();
-        }
-        this.filePickerElement.value = '';
-    });
-
     private async invokeAttachmentAdded(attachment: Attachment, blob: Blob, fileName: string) {
-        return this.blazorRef.invokeMethodAsync<boolean>(
+        return this.BlazorRef.invokeMethodAsync<boolean>(
             'OnAttachmentAdded', attachment.id, attachment.url, fileName, blob.type, blob.size);
     }
 
     private async invokeUploadProgress(id: number, progressPercent: number) {
-        return  this.blazorRef.invokeMethodAsync('OnUploadProgress', id, Math.trunc(progressPercent));
+        return this.BlazorRef.invokeMethodAsync('OnUploadProgress', id, Math.trunc(progressPercent));
     }
 
     private async invokeUploadSucceed(id: number, mediaId: string, thumbnailMediaId?: string) {
-        return  this.blazorRef.invokeMethodAsync('OnUploadSucceed', id, mediaId, thumbnailMediaId);
+        return this.BlazorRef.invokeMethodAsync('OnUploadSucceed', id, mediaId, thumbnailMediaId);
     }
 
     private async invokeUploadFailed(id: number) {
-        return  this.blazorRef.invokeMethodAsync('OnUploadFailed', id);
+        return this.BlazorRef.invokeMethodAsync('OnUploadFailed', id);
     }
 }
 

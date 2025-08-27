@@ -7,7 +7,7 @@ import {
     fromEvent
 } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
-import { AttachmentList } from './attachment-list';
+import { AttachmentListView } from './attachment-list';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
@@ -29,7 +29,7 @@ export class ChatMessageEditor {
     private readonly sideNavs: NodeListOf<Element>;
     private readonly sideNavObserver: MutationObserver;
     private markupEditor: MarkupEditor;
-    private attachmentList: AttachmentList;
+    private attachmentList: AttachmentListView;
     private attachmentListElement: HTMLDivElement | null;
     private lastHeight: number;
     private lastWidth: number;
@@ -171,7 +171,7 @@ export class ChatMessageEditor {
     });
 
     /** Called by Blazor */
-    public onNestedControlsReady(markupEditor: MarkupEditor, attachmentList: AttachmentList)
+    public onNestedControlsReady(markupEditor: MarkupEditor, attachmentList: AttachmentListView)
     {
         this.markupEditor = markupEditor;
 
@@ -202,19 +202,20 @@ export class ChatMessageEditor {
         void this.restoreDraft();
     }
 
-    // Event handlers
-
-    private onPostPanelClick = ((event: MouseEvent) => {
-        if (event.target === this.postPanelDiv)
-            this.markupEditor.focus();
-    });
-
-    private onAttachClick = ((acceptTypes: string) => {
+    /** Called by Blazor */
+    public onAttachClick = ((acceptTypes: string) => {
         this.attachmentList.showFilePicker(acceptTypes);
         if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
             this.updateHasContent();
         }
+    });
+
+    // Event handlers
+
+    private onPostPanelClick = ((event: MouseEvent) => {
+        if (event.target === this.postPanelDiv)
+            this.markupEditor.focus();
     });
 
     private onReturnFocusOnInput = ((event: MouseEvent) => {

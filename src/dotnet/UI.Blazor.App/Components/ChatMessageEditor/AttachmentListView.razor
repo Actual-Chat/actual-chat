@@ -1,0 +1,170 @@
+@using ActualChat.UI.Blazor.App.Module
+@using System.Diagnostics.CodeAnalysis
+@inherits ComponentBase<AppUIHub>
+@implements IAsyncDisposable
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var successUploads = _attachments.Items.Count(x => x.Uploaded);
+    var isSendButtonDisabled = _attachments.Count != successUploads;
+}
+
+<input @ref="FilePickerRef" type="file" hidden multiple/>
+
+@if (_attachments.Count > 0) {
+    <div class="attachment-list-wrapper">
+        <div class="c-btn-group">
+            <Button Class="attachment-list-btn btn-danger btn-transparent unhovered c-remove" Click="_ => Clear()">
+                Remove all
+            </Button>
+            <Button Class="attachment-list-btn btn-primary btn-transparent unhovered c-send" Click="OnSendClick" IsDisabled="@isSendButtonDisabled">
+                Send @_attachments.Count @("file".Pluralize(_attachments.Count))
+            </Button>
+        </div>
+        <HeaderButton Class="remove-all-btn" Click="_ => Clear()">
+            <i class="icon-trash03 text-xl text-danger"></i>
+        </HeaderButton>
+        <ul class="attachment-list custom-scrollbar-x">
+            @foreach (var attachment in _attachments.Items) {
+                <AttachmentItem
+                    Attachment="@attachment"
+                    RemoveClick="@(() => OnRemoveClick(attachment))"/>
+            }
+            <SendOrAddAttachmentButton
+                Count="@_attachments.Count"
+                AddClick="@OnAddClick"/>
+        </ul>
+        <HeaderButton Class="close-keyboard-btn">
+            <i class="icon-chevron-up text-2xl text-03"></i>
+        </HeaderButton>
+    </div>
+}
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AttachmentListView.create";
+
+    private readonly Lock _lock = new();
+    private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
+    private AttachmentList _attachments = new ();
+    private ElementReference FilePickerRef { get; set; }
+
+    [Parameter] public EventCallback OnSendClick { get; set; }
+
+    public IJSObjectReference JSRef { get; private set; } = null!;
+    public Task WhenReady => _whenReadySource.Task;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AttachmentListView))]
+    public AttachmentListView() { }
+
+    public async ValueTask DisposeAsync() {
+        _whenReadySource.TrySetCanceled();
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, FilePickerRef);
+        SubscribeToListEvents(_attachments);
+        await _attachments.AttachTo(JSRef);
+        _whenReadySource.TrySetResult();
+    }
+
+    private void SubscribeToListEvents(AttachmentList attachments)
+    {
+        attachments.Changed += OnAttachmentListChanged;
+        attachments.FailedToAdd += OnFailedToAddAttachment;
+    }
+
+    private void UnsubscribeFromListEvents(AttachmentList attachments)
+    {
+        attachments.Changed -= OnAttachmentListChanged;
+        attachments.FailedToAdd -= OnFailedToAddAttachment;
+    }
+
+    private void OnFailedToAddAttachment(object? sender, Exception e) {
+        UICommander.ShowError(e);
+    }
+
+    private void OnAttachmentListChanged(object? sender, EventArgs e) {
+        StateHasChanged();
+    }
+
+    public Task Clear()
+        => _attachments.Clear();
+
+    public async Task SetSentAttachments(string[] urls) {
+        var downloader = Hub.Services.GetRequiredService<IIncomingShareFileDownloader>();
+        var fileNames = urls
+            .Select(c => {
+                downloader.TryExtractFileName(c, out var fileName);
+                return fileName;
+            })
+            .ToArray();
+        await JSRef.InvokeAsync<int>("addBlobs", [urls, fileNames]).ConfigureAwait(false);
+    }
+
+    public async ValueTask<ResetIntent> PopSnapshot() {
+        // TODO(DF): review these code correctness.
+        AttachmentList attachments;
+        lock (_lock) {
+            UnsubscribeFromListEvents(_attachments);
+            attachments = _attachments;
+            _attachments = new AttachmentList();
+            SubscribeToListEvents(_attachments);
+        }
+        await _attachments.AttachTo(JSRef);
+        StateHasChanged();
+
+        return new (attachments, () => Rollback(attachments), () => Release(attachments));
+    }
+
+    private async ValueTask Release(AttachmentList attachments) {
+        await attachments.DisposeSilentlyAsync();
+    }
+
+    private async ValueTask Rollback(AttachmentList attachments) {
+        AttachmentList? backup = null;
+        lock (_lock) {
+            if (_attachments.Count == 0) {
+                backup = _attachments;
+                _attachments = attachments;
+            }
+        }
+
+        if (backup != null) {
+            UnsubscribeFromListEvents(backup);
+            await backup.DisposeSilentlyAsync();
+            SubscribeToListEvents(attachments);
+        }
+        StateHasChanged();
+    }
+
+    private Task OnAddClick()
+        => JSRef.InvokeVoidAsync("showFilePicker").AsTask();
+
+    private Task OnRemoveClick(Attachment attachment)
+        => _attachments.Remove(attachment);
+
+    public sealed class ResetIntent : IAsyncDisposable {
+        private readonly Func<ValueTask> _confirm;
+        private readonly Func<ValueTask> _rollback;
+        private bool _isRolledBack;
+        public AttachmentList Attachments { get; }
+
+        public ValueTask DisposeAsync()
+            => !_isRolledBack ? _confirm.Invoke() : default;
+
+        internal ResetIntent(AttachmentList attachments, Func<ValueTask> rollback, Func<ValueTask> confirm) {
+            Attachments = attachments;
+            _rollback = rollback;
+            _confirm = confirm;
+        }
+
+        public async ValueTask Rollback() {
+            await _rollback();
+            _isRolledBack = true;
+        }
+    }
+}

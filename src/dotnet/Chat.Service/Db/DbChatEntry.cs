@@ -34,6 +34,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsSystemEntry { get; set; }
     public bool IsThreadStartEntry { get; set; }
     public bool IsThreadEntry { get; set; }
+    public bool HasAttachmentUploads { get; set; }
 
     public string? ForwardedChatTitle { get; set; }
     public string? ForwardedAuthorId { get; set; }
@@ -91,6 +92,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
             IsThreadStartEntry = IsThreadStartEntry,
             IsThreadEntry = IsThreadEntry,
+            HasAttachmentUploads = HasAttachmentUploads,
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
             EndsAt = EndsAt.ToMoment(),
@@ -139,6 +141,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsRemoved = model.IsRemoved;
         IsThreadStartEntry = model.IsThreadStartEntry;
         IsThreadEntry = model.IsThreadEntry;
+        HasAttachmentUploads = model.HasAttachmentUploads;
 
         AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;

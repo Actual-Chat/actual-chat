@@ -47,7 +47,7 @@ public class PostRequestsStorage(AppUIHub hub)
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record PostRequestEntry(
     [property: DataMember, MemoryPackOrder(0)] string Uuid,
-    [property: DataMember, MemoryPackOrder(1)] Chats_UpsertTextEntry Command,
+    [property: DataMember, MemoryPackOrder(1)] PostMessageRequest Request,
     [property: DataMember, MemoryPackOrder(2)] Moment Now) : IHasId<string>
 {
     string IHasId<string>.Id => Uuid;

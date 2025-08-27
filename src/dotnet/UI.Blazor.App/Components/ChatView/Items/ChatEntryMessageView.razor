@@ -188,6 +188,21 @@
                     }
                 </div>
             }
+            else if (entry.HasAttachmentUploads) {
+                if (m.IsOwnMessage) {
+                    // Check if we can display uploading medias.
+                    var mediaUploads = Hub.SendingMessages.GetMediaUploads(entry);
+                    if (mediaUploads is not null) {
+                        <ul>
+                            @foreach (var attachment in mediaUploads.Attachments.Items) {
+                                <AttachmentItem Attachment="@attachment" />
+                            }
+                        </ul>
+                    }
+                } else {
+                    // Display progress indicator or something else indicating that we expect addition content to be shown soon.
+                }
+            }
             @if (entry.LinkPreviews.Length > 0) {
                 <div class="message-links">
                     @foreach (var linkPreview in entry.LinkPreviews) {

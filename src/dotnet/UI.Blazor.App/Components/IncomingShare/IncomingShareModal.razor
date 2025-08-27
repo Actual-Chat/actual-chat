@@ -94,11 +94,11 @@
         CancellationToken cancellationToken = default;
         foreach (var chatId in selectedChatIds) {
             if (!comment.IsNullOrEmpty()) {
-                var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
+                var cmd2 = new PostMessageRequest(chatId, null, comment);
                 _ = SendingMessages.Post(cmd2, cancellationToken);
             }
 
-            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
+            var cmd = new PostMessageRequest(chatId, null, text);
             _ = SendingMessages.Post(cmd, cancellationToken);
         }
 
@@ -214,14 +214,15 @@
         if (media.Length == 0 && _comment.IsNullOrEmpty())
             return null;
 
-        var cmd = new Chats_UpsertTextEntry(Services.Session(), chatId, null, comment) {
+        var textEntryAttachments = media.Select(x => new TextEntryAttachment {
+            MediaId = x.MediaContent.MediaId,
+            ThumbnailMediaId = x.MediaContent.ThumbnailMediaId,
+        }).ToArray();
+        throw new NotImplementedException("Convert to MediaUploads");
+        var cmd = new PostMessageRequest(chatId, null, comment) {
             RepliedEntryLid = null,
-            EntryAttachments = media.Select(x => new TextEntryAttachment {
-                MediaId = x.MediaContent.MediaId,
-                ThumbnailMediaId = x.MediaContent.ThumbnailMediaId,
-            }).ToArray(),
+            // MediaUploads =
         };
-
         var postTask = await SendingMessages.Post(cmd, default).ConfigureAwait(false);
         var chatEntry = await postTask.ConfigureAwait(false);
         var textEntryId = TextEntryId.New(chatEntry.ChatId, chatEntry.LocalId);

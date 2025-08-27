@@ -9,6 +9,7 @@ public record SendingMessage(
     string Content,
     HashString ContentHash,
     string Uuid,
+    AttachmentMediaUploads? MediaUploads,
     CancellationTokenSource CancellationTokenSource) : IDisposable
 {
     private bool _isDisposed;

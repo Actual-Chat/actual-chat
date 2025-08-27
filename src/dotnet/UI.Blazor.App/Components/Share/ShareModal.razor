@@ -127,8 +127,8 @@
         }
 
         foreach (var chatId in selectedChatIds) {
-            var cmd = new Chats_UpsertTextEntry(Session, chatId, null, text);
-            _ = await SendingMessages.Post(cmd, CancellationToken.None);
+            var request = new PostMessageRequest(chatId, null, text);
+            _ = await SendingMessages.Post(request, CancellationToken.None);
         }
         Modal.Close(true);
     }

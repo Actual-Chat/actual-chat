@@ -49,6 +49,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
                 BeginsAt = sendingMessage.BeginsAt,
                 SendingTag = sendingMessage,
                 ClientUid = Guid.NewGuid().ToString(),
+                HasAttachmentUploads = sendingMessage.MediaUploads is not null,
             };
             Owner.RegisterEntryByClientId(chatEntry);
             entries.Add(chatEntry);
