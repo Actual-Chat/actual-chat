@@ -58,7 +58,7 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
 
 .navbar-button .badge {
     @apply absolute -right-0.5 -top-0.5;
-    @apply min-w-4 min-h-4 w-4 h-4;
+    @apply min-w-4 max-w-7 min-h-4 w-auto h-4;
     @apply text-[0.625rem];
     @apply bg-danger;
 }
