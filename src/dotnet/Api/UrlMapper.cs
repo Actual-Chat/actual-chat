@@ -46,14 +46,9 @@ public sealed partial class UrlMapper
         ContentBaseUrl = $"{ApiBaseUrl}content/";
         ImageProxyBaseUrl = "";
         HasImageProxy = false;
-        if (IsVoxt || IsLocalVoxt) {
+        if (IsVoxt || IsDevVoxt || IsLocalVoxt) {
             ContentBaseUrl = $"{BaseUri.Scheme}://cdn.{BaseUri.Host}/";
             ImageProxyBaseUrl = $"{BaseUri.Scheme}://media.{BaseUri.Host}/";
-            HasImageProxy = true;
-        }
-        else if (IsDevVoxt) {
-            ContentBaseUrl = $"{BaseUri.Scheme}://cdn-{BaseUri.Host}/";
-            ImageProxyBaseUrl = $"{BaseUri.Scheme}://media-{BaseUri.Host}/";
             HasImageProxy = true;
         }
         WebsocketBaseUrl = GetWebSocketUrl(_baseUrlWithoutBackslash);
