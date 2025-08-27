@@ -5,9 +5,9 @@ using MemoryPack;
 namespace ActualChat.Users;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record UserLanguageSettings : IHasOrigin
+public sealed partial record UserLanguageSettings : IHasOrigin, IHasKvasKey<UserLanguageSettings>
 {
-    public const string KvasKey = nameof(UserLanguageSettings);
+    public static string KvasKey => nameof(UserLanguageSettings);
 
     [DataMember, MemoryPackOrder(0), LegacyLanguageFormatter(false)]
     [field: AllowNull, MaybeNull]

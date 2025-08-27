@@ -27,85 +27,60 @@ public static class KvasExt
     // UserAvatarSettings
 
     public static async ValueTask<UserAvatarSettings> GetUserAvatarSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
-    {
-        var value = await kvas.Get<UserAvatarSettings>(UserAvatarSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return value ?? new();
-    }
+        => await kvas.Get<UserAvatarSettings>(cancellationToken).ConfigureAwait(false) ?? new ();
 
     public static Task SetUserAvatarSettings(this IKvas<User> kvas, UserAvatarSettings value, CancellationToken cancellationToken)
-        => kvas.Set(UserAvatarSettings.KvasKey, value, cancellationToken);
+        => kvas.Set(value, cancellationToken);
 
     // UserLanguageSettings
 
     public static async ValueTask<UserLanguageSettings> GetUserLanguageSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
-    {
-        var value = await kvas.Get<UserLanguageSettings>(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return value ?? new();
-    }
+        => await kvas.Get<UserLanguageSettings>(cancellationToken).ConfigureAwait(false) ?? new ();
 
     public static Task SetUserLanguageSettings(this IKvas<User> kvas, UserLanguageSettings value, CancellationToken cancellationToken)
-        => kvas.Set(UserLanguageSettings.KvasKey, value, cancellationToken);
+        => kvas.Set(value, cancellationToken);
 
     // UserListeningSettings
 
     public static async ValueTask<UserListeningSettings> GetUserListeningSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
-    {
-        var value = await kvas.Get<UserListeningSettings>(UserListeningSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return value ?? new();
-    }
+        => await kvas.Get<UserListeningSettings>(cancellationToken).ConfigureAwait(false) ?? new ();
 
     public static Task SetUserListeningSettings(this IKvas<User> kvas, UserListeningSettings value, CancellationToken cancellationToken)
-        => kvas.Set(UserListeningSettings.KvasKey, value, cancellationToken);
+        => kvas.Set(value, cancellationToken);
 
-    public static async Task<UserListeningSettings> UpdateUserListeningSettings(
+    public static Task<UserListeningSettings> UpdateUserListeningSettings(
         this IKvas<User> kvas, Func<UserListeningSettings, UserListeningSettings> updater, CancellationToken cancellationToken)
-    {
-        var settings = await GetUserListeningSettings(kvas, cancellationToken).ConfigureAwait(false);
-        settings = updater.Invoke(settings);
-        await kvas.SetUserListeningSettings(settings, cancellationToken).ConfigureAwait(false);
-        return settings;
-    }
+        => kvas.Update(updater, cancellationToken);
 
     // TranscriptionEngineSettings
 
     public static async ValueTask<UserTranscriptionEngineSettings> GetUserTranscriptionEngineSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
-    {
-        var value = await kvas.Get<UserTranscriptionEngineSettings>(UserTranscriptionEngineSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return value ?? new();
-    }
+        => await kvas.Get<UserTranscriptionEngineSettings>(cancellationToken).ConfigureAwait(false) ?? new ();
 
     public static Task SetUserTranscriptionEngineSettings(this IKvas<User> kvas, UserTranscriptionEngineSettings value, CancellationToken cancellationToken)
-        => kvas.Set(UserTranscriptionEngineSettings.KvasKey, value, cancellationToken);
+        => kvas.Set(value, cancellationToken);
 
     // UserAppSettings
 
     public static async ValueTask<UserAppSettings> GetUserAppSettings(this IKvas<User> kvas, CancellationToken cancellationToken)
-    {
-        var value = await kvas.Get<UserAppSettings>(UserAppSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return value ?? new();
-    }
+        => await kvas.Get<UserAppSettings>(cancellationToken).ConfigureAwait(false) ?? new UserAppSettings();
 
     public static Task SetUserAppSettings(this IKvas<User> kvas, UserAppSettings value, CancellationToken cancellationToken)
-        => kvas.Set(UserAppSettings.KvasKey, value, cancellationToken);
+        => kvas.Set(value, cancellationToken);
 
-    public static async Task UpdateUserAppSettings(this IKvas<User> kvas, Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default) {
-        var settings = await kvas.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
-        await kvas.SetUserAppSettings(update(settings), cancellationToken).ConfigureAwait(false);
-    }
+    public static Task UpdateUserAppSettings(this IKvas<User> kvas, Func<UserAppSettings, UserAppSettings> update, CancellationToken cancellationToken = default)
+        => kvas.Update(update, cancellationToken);
 
     // UserEmailsSettings
 
-    public static async ValueTask<UserEmailsSettings> GetUserEmailsSettings(
+    public static async Task<UserEmailsSettings> GetUserEmailsSettings(
         this IKvas<User> kvas,
         CancellationToken cancellationToken)
-    {
-        var value = await kvas.Get<UserEmailsSettings>(UserEmailsSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return value ?? new();
-    }
+        => await kvas.Get<UserEmailsSettings>(cancellationToken).ConfigureAwait(false) ?? new ();
 
     public static Task SetUserEmailsSettings(
         this IKvas<User> kvas,
         UserEmailsSettings value,
         CancellationToken cancellationToken)
-        => kvas.Set(UserEmailsSettings.KvasKey, value, cancellationToken);
+        => kvas.Set(value, cancellationToken);
 }

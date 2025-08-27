@@ -1,7 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using ActualChat.Kvas;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.Services;
+
+// ReSharper disable WithExpressionModifiesAllMembers
 
 namespace ActualChat.UI.Blazor.IntegrationTests;
 
@@ -13,6 +16,8 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
     [field: AllowNull, MaybeNull]
     private LogUI LogUI => field ??= Tester.ScopedAppServices.GetRequiredService<LogUI>();
+    [field: AllowNull, MaybeNull]
+    private LocalSettings LocalSettings => field ??= Tester.Services.LocalSettings();
     [field: AllowNull, MaybeNull]
     private ILogger ScopedLog => field ??= Tester.ScopedAppServices.LogFor(GetType());
 
@@ -27,7 +32,7 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsBobAdmin();
-        LogUI.IsEnabled.Value = true;
+        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = true });
         await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
         await LogUI.WhenReady;
         ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");
@@ -47,10 +52,10 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsBobAdmin();
-        LogUI.IsEnabled.Value = false;
+        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = false });
         await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeFalse(), TimeSpan.FromSeconds(10));
         await LogUI.WhenReady;
-        ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");;
+        ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");
 
         // act
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -95,7 +100,7 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsBobAdmin();
-        LogUI.IsEnabled.Value = true;
+        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = true });
         await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
         await LogUI.WhenReady;
         for (int i = 0; i < 1000; i++) {
