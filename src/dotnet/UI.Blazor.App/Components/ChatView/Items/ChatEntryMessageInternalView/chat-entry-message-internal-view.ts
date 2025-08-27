@@ -160,8 +160,8 @@ export class ChatEntryMessageInternalView {
 
     private getActualHeight(): number {
         const sendingStatus = this.messageMarkup.querySelector('.chat-message-sending-status') as HTMLElement | null;
-        let style = sendingStatus ? getComputedStyle(sendingStatus) : new CSSStyleDeclaration();
-        if (sendingStatus && style.position === 'absolute') {
+        let style = sendingStatus ? getComputedStyle(sendingStatus) : null;
+        if (sendingStatus && style && style.position === 'absolute') {
             sendingStatus.style.display = 'none';
         }
 
@@ -169,7 +169,7 @@ export class ChatEntryMessageInternalView {
         range.selectNodeContents(this.messageMarkup);
         const height = Math.ceil(range.getBoundingClientRect().height);
 
-        if (sendingStatus && style.position === 'absolute') {
+        if (sendingStatus && style && style.position === 'absolute') {
             sendingStatus.style.display = '';
         }
 
