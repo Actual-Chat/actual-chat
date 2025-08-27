@@ -1,3 +1,4 @@
+using ActualChat.Kvas;
 using ActualChat.Logging;
 using ActualChat.Users;
 using ActualLab.Interception;
@@ -6,31 +7,26 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
 {
-    private const string IsEnabledKvasKey = $"{nameof(LogUI)}_{nameof(IsEnabled)}";
     private static readonly string OwnLogCategory = $"{typeof(LogUI).Namespace}.{nameof(LogUI)}";
     private static readonly TileStack<long> IdTileStack = Constants.TileStacks.Long5To80;
     private readonly Lock _lock = new();
     private readonly AsyncTaskMethodBuilder _whenReady = AsyncTaskMethodBuilderExt.New();
     private RingBuffer<LogEntry> _events = new(10_000);
     private long _entryIdGenerator = 1;
-    private MutableState<bool>? _isEnabled;
+    private ComputedState<bool>? _isEnabled;
 
     private LogSinks LogSinks => Hub.LogSinks;
 
     public static ILogger? DiagLog { get; set; }
-    public IMutableState<bool> IsEnabled => _isEnabled!;
+    public IState<bool> IsEnabled => _isEnabled!;
     public Task WhenReady => _whenReady.Task;
 
     void INotifyInitialized.Initialized()
     {
-        // TODO: uncomment when AY fixes issue with KvasSyncedState
-        // _isEnabled = Hub.StateFactory()
-        //     .NewKvasSynced<bool>(new(LocalSettings, IsEnabledKvasKey) {
-        //         InitialValue = false,
-        //         Category = StateCategories.Get(GetType(), nameof(IsEnabled)),
-        //         UpdateDelayer = FixedDelayer.NextTick,
-        //     });
-        _isEnabled = Hub.StateFactory.NewMutable<bool>();
+        _isEnabled = Hub.StateFactory.NewComputed(async ct => {
+            var settings = await LocalSettings.Get<LocalAppSettings>(ct).ConfigureAwait(false);
+            return settings?.IsLogViewerEnabled ?? false;
+        });
         Hub.RegisterDisposable(_isEnabled);
         Hub.RegisterDisposable(() => LogSinks.Remove(this));
         Hub.RegisterDisposable(() => _whenReady.TrySetException(new ObjectDisposedException("LogUI is disposed")));

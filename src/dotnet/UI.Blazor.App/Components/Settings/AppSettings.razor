@@ -1,4 +1,5 @@
 @using ActualChat.Hosting
+@using ActualChat.Kvas
 @inherits ComputedStateComponent<AppUIHub, AppSettings.Model>
 @{
     var m = State.Value;
@@ -146,8 +147,11 @@
             IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled,
         });
 
-    private void OnLogUIEnabledClick()
-        => LogUI.IsEnabled.Value = !State.Value.IsLogUIEnabled;
+    private Task OnLogUIEnabledClick()
+        // ReSharper disable once WithExpressionModifiesAllMembers
+        => LocalSettings.Update<LocalAppSettings>(x => x with {
+            IsLogViewerEnabled = !State.Value.IsLogUIEnabled,
+        });
 
     private void OnLogsClick() {
         _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();

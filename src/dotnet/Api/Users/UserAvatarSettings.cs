@@ -1,12 +1,11 @@
+using ActualChat.Kvas;
 using MemoryPack;
 
 namespace ActualChat.Users;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record UserAvatarSettings
+public sealed partial record UserAvatarSettings : IHasKvasKey<UserAvatarSettings>
 {
-    public const string KvasKey = nameof(UserAvatarSettings);
-
     [DataMember, MemoryPackOrder(0), MemoryPackInclude]
     private ApiArray<Symbol> LegacyAvatarIds {
         get => AvatarIds.ToApiArray();

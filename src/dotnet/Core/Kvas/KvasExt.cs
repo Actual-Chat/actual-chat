@@ -22,6 +22,13 @@ public static class KvasExt
   }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
+    public static ValueTask<T?> Get<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+        (this IKvas kvas, CancellationToken cancellationToken = default)
+        where T : class, IHasKvasKey<T>
+        => kvas.Get<T>(T.KvasKey, cancellationToken);
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     [UnconditionalSuppressMessage("Tasks", "MA0100", Justification = "Don't need to wait for Set completion to dispose buffer writer.")]
     public static Task Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
@@ -34,6 +41,38 @@ public static class KvasExt
         using var buffer = new ArrayPoolBufferWriter<byte>();
         Serializer.Write(buffer, value);
         return kvas.Set(key, buffer.WrittenMemory.ToArray(), cancellationToken);
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
+    [UnconditionalSuppressMessage("Tasks", "MA0100", Justification = "Don't need to wait for Set completion to dispose buffer writer.")]
+    public static Task Set<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+        (this IKvas kvas, T? value, CancellationToken cancellationToken = default)
+        where T : class, IHasKvasKey<T>
+        => kvas.Set(T.KvasKey, value, cancellationToken);
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
+    public static async Task<T> Update<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+        (this IKvas kvas, string key, Func<T, T> update, CancellationToken cancellationToken = default)
+        where T : class, new()
+    {
+        var value = await kvas.Get<T>(key, cancellationToken).ConfigureAwait(false);
+        var newValue = update(value ?? new T());
+        await kvas.Set(key, newValue, cancellationToken).ConfigureAwait(false);
+        return newValue;
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
+    public static async Task<T> Update<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+        (this IKvas kvas, Func<T, T> update, CancellationToken cancellationToken = default)
+        where T : class, IHasKvasKey<T>, new()
+    {
+        var value = await kvas.Get<T>(cancellationToken);
+        var newValue = update(value ?? new T());
+        await kvas.Set(newValue, cancellationToken).ConfigureAwait(false);
+        return newValue;
     }
 
     public static async Task WhenMigrated(this IKvas kvas, CancellationToken cancellationToken = default)
