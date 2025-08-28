@@ -11,7 +11,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     private readonly Dictionary<ChatId, ChatSendingMessages> _chatSendingMessages = new ();
     private readonly WeakValueTable<string, ChatEntry> _clientEntries = new ();
-    private readonly List<(SendingMessage, AttachmentMediaUploads)> _uploads = new ();
+    private readonly List<(SendingMessage, AttachmentUploads)> _uploads = new ();
     private readonly Lock _chatSendingMessagesLock = new (); // This lock is used add/remove ChatSendingMessages and add/remove items inside.
     private readonly PostRequestsStorage _requestsStorage;
     private readonly Task _whenReady;
@@ -102,8 +102,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             lock (_chatSendingMessagesLock) {
                 chatSendingMessages = GetChatSendingMessages(entry.Request.ChatId);
                 chatSendingMessages.AddSendingMessage(sendingMessage);
-                if (entry.Request.MediaUploads is not null)
-                    _uploads.Add((sendingMessage, entry.Request.MediaUploads));
+                if (entry.Request.AttachmentUploads is not null)
+                    _uploads.Add((sendingMessage, entry.Request.AttachmentUploads));
             }
             DebugLog?.LogInformation("Sending message: LocalId={LocalId}, Content='{Content}'",
                 entry.Request.LocalId,
@@ -138,8 +138,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             }
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
-                if (entry.Request.MediaUploads is not null)
-                    await CreateAttachments(chatEntry1, entry.Request.MediaUploads, default).ConfigureAwait(false);
+                if (entry.Request.AttachmentUploads is not null)
+                    await CreateAttachments(chatEntry1, entry.Request.AttachmentUploads, default).ConfigureAwait(false);
                 resultSource.SetResult(chatEntry1);
             }
             else if (cancellationToken1.IsCancellationRequested) {
@@ -173,7 +173,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             cmd.Text,
             textHash,
             entry.Uuid,
-            cmd.MediaUploads,
+            cmd.AttachmentUploads,
             cancellationTokenSource);
         return sendingMessage;
     }
@@ -190,10 +190,10 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     {
         var request = command.Request;
         var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid) {
-            HasAttachmentUploads = request.MediaUploads is not null && request.MediaUploads.Attachments.Count > 0,
+            HasAttachmentUploads = request.AttachmentUploads is not null && request.AttachmentUploads.Attachments.Count > 0,
         };
         // Simulate long sending
-        await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(8000, cancellationToken).ConfigureAwait(false);
         var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         var chatEntry = postResult.Result.Value;
         var isNewMessage = cmd.LocalId is null;
@@ -205,7 +205,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         return chatEntry;
     }
 
-    private async Task CreateAttachments(ChatEntry chatEntry, AttachmentMediaUploads mediaUploads, CancellationToken cancellationToken = default)
+    private async Task CreateAttachments(ChatEntry chatEntry, AttachmentUploads mediaUploads, CancellationToken cancellationToken = default)
     {
         // An attachment should have several states: loading, loading error, canceled (removed), loaded.
         // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
@@ -233,6 +233,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             };
             await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         }
+        await mediaUploads.Attachments.DisposeSilentlyAsync().ConfigureAwait(false);
     }
 
     private ChatSendingMessages GetChatSendingMessages(ChatId chatId)
@@ -287,7 +288,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     public record PostMessageQueueItem(PostMessageRequest Request);
 
-    public AttachmentMediaUploads? GetMediaUploads(ChatEntry entry)
+    public AttachmentUploads? GetMediaUploads(ChatEntry entry)
     {
         lock (_chatSendingMessagesLock) {
             if (entry.IsSending) {
@@ -314,17 +315,20 @@ public sealed partial record PostMessageRequest(
     // [DataMember, MemoryPackOrder(11)] public TextEntryAttachment[] EntryAttachments { get; set; } = [];
     //[DataMember, MemoryPackOrder(12)]
     [IgnoreDataMember, MemoryPackIgnore]
-    public AttachmentMediaUploads? MediaUploads { get; init; }
+    public AttachmentUploads? AttachmentUploads { get; init; }
 }
 
-public sealed class AttachmentMediaUploads
+public sealed class AttachmentUploads
 {
     private readonly TaskCompletionSource _whenUploaded = TaskCompletionSourceExt.New();
 
-    public AttachmentList Attachments { get; }
+    public IAttachmentList Attachments { get; }
     public Task WhenUploaded => _whenUploaded.Task;
 
-    public AttachmentMediaUploads(AttachmentList attachments)
+    public static AttachmentUploads? From(IAttachmentList attachments)
+        => attachments.Count > 0 ? new AttachmentUploads(attachments) : null;
+
+    public AttachmentUploads(IAttachmentList attachments)
     {
         if (attachments.Count is 0)
             throw new ArgumentException("Attachments must not be empty.", nameof(attachments));

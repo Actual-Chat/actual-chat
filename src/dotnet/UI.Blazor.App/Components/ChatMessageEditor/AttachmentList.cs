@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList : IAttachmentListBackend, IAsyncDisposable
+public class AttachmentList : IAttachmentList, IAttachmentListBackend
 {
     private readonly Lock _lock = new();
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
@@ -9,8 +9,8 @@ public class AttachmentList : IAttachmentListBackend, IAsyncDisposable
 
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
-    public EventHandler? Changed;
-    public EventHandler<Exception>? FailedToAdd { get; set; }
+    public event EventHandler? Changed;
+    public event EventHandler<Exception>? FailedToAdd;
 
     public async Task AttachTo(IJSObjectReference jsRef)
     {

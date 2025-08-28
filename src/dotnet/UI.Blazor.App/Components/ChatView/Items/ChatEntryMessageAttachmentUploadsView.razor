@@ -10,9 +10,9 @@
 </ul>
 
 @code {
-    private AttachmentList? _lastUploads;
+    private IAttachmentList? _lastUploads;
 
-    [Parameter] public AttachmentList Uploads { get; set; } = null!;
+    [Parameter] public IAttachmentList Uploads { get; set; } = null!;
 
     protected override void OnParametersSet() {
         if (_lastUploads is not null)
