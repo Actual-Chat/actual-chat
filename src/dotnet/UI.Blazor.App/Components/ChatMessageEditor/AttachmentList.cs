@@ -28,11 +28,14 @@ public class AttachmentList : IAttachmentListBackend, IAsyncDisposable
         BlazorRef = null;
     }
 
-    public Task Remove(Attachment attachment) {
-        lock (_lock)
+    public async Task Remove(Attachment attachment) {
+        lock (_lock) {
+            if (!_attachments.Contains(attachment))
+                throw StandardError.Internal("Attachment not found.");
             _attachments = _attachments.Remove(attachment);
-
-        return JSRef?.InvokeVoidAsync("remove", attachment.Id).AsTask() ?? Task.CompletedTask;
+        }
+        await InvokeRemove(attachment);
+        OnChanged();
     }
 
     public async Task Clear() {
@@ -40,7 +43,7 @@ public class AttachmentList : IAttachmentListBackend, IAsyncDisposable
             _attachments = ImmutableList<Attachment>.Empty;
 
         await InvokeClear();
-        StateHasChanged();
+        OnChanged();
     }
 
     [JSInvokable]
@@ -51,7 +54,7 @@ public class AttachmentList : IAttachmentListBackend, IAsyncDisposable
             return false;
         }
 
-        StateHasChanged();
+        OnChanged();
         return true;
 
         Exception? TryAdd() {
@@ -72,26 +75,29 @@ public class AttachmentList : IAttachmentListBackend, IAsyncDisposable
     [JSInvokable]
     public void OnUploadProgress(int id, int progress) {
         UpdateAttachment(id, x => x with { Progress = progress });
-        StateHasChanged();
+        OnChanged();
     }
-
-    private void StateHasChanged()
-        => Changed?.Invoke(this, EventArgs.Empty);
 
     [JSInvokable]
     public void OnUploadSucceed(int id, MediaId mediaId, MediaId thumbnailMediaId) {
         UpdateAttachment(id, x => x with { MediaId = mediaId, ThumbnailMediaId = thumbnailMediaId });
-        StateHasChanged();
+        OnChanged();
     }
 
     [JSInvokable]
     public void OnUploadFailed(int id) {
         UpdateAttachment(id, x => x with { Failed = true });
-        StateHasChanged();
+        OnChanged();
     }
+
+    private void OnChanged()
+        => Changed?.Invoke(this, EventArgs.Empty);
 
     private ValueTask InvokeClear()
         => JSRef?.InvokeVoidAsync("clear") ?? ValueTask.CompletedTask;
+
+    private ValueTask InvokeRemove(Attachment attachment)
+        => JSRef?.InvokeVoidAsync("remove", attachment.Id) ?? ValueTask.CompletedTask;
 
     private void UpdateAttachment(int id, Func<Attachment, Attachment> updater) {
         lock (_lock) {

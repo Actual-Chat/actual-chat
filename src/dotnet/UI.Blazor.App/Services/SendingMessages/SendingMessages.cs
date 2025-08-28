@@ -118,8 +118,6 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 DebugLog?.LogInformation("Sent message: LocalId={LocalId}, Content='{Content}'",
                     chatEntry.LocalId,
                     chatEntry.Content);
-                if (entry.Request.MediaUploads is not null)
-                    await CreateAttachments(chatEntry, entry.Request.MediaUploads, default).ConfigureAwait(false);
             }
             catch (Exception e) {
                 // NOTE(DF): react on critical errors like have no longer permissions to send a message.
@@ -140,6 +138,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             }
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
+                if (entry.Request.MediaUploads is not null)
+                    await CreateAttachments(chatEntry1, entry.Request.MediaUploads, default).ConfigureAwait(false);
                 resultSource.SetResult(chatEntry1);
             }
             else if (cancellationToken1.IsCancellationRequested) {
@@ -193,7 +193,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             HasAttachmentUploads = request.MediaUploads is not null && request.MediaUploads.Attachments.Count > 0,
         };
         // Simulate long sending
-        await Task.Delay(8000, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
         var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         var chatEntry = postResult.Result.Value;
         var isNewMessage = cmd.LocalId is null;
@@ -317,7 +317,7 @@ public sealed class AttachmentMediaUploads
             throw new ArgumentException("Attachments must not be empty.", nameof(attachments));
 
         Attachments = attachments;
-        attachments.Changed += (s, e) => ReviewState();
+        attachments.Changed += (_, _) => ReviewState();
         ReviewState();
     }
 
