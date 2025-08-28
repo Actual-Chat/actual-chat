@@ -207,19 +207,32 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     private async Task CreateAttachments(ChatEntry chatEntry, AttachmentMediaUploads mediaUploads, CancellationToken cancellationToken = default)
     {
+        // An attachment should have several states: loading, loading error, canceled (removed), loaded.
+        // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
         await mediaUploads.WhenUploaded.ConfigureAwait(false);
+        // When all attachments are loaded, we can continue execution.
         var entryAttachments = mediaUploads.Attachments.Items
             .Where(x => x.Uploaded)
             .Select(x => new TextEntryAttachment {
                 MediaId = x.MediaId!,
                 ThumbnailMediaId = x.ThumbnailMediaId,
             }).ToArray();
-        // NOTE(DF): may be better to introduce a new command for this.
-        var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
-            HasAttachmentUploads = false,
-            EntryAttachments = entryAttachments,
-        };
-        await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
+        if (entryAttachments.Length == 0 && chatEntry.Content.IsNullOrEmpty()) {
+            // If there are no loaded attachments and the ChatEntry Content is empty,
+            // then we delete this ChatEntry altogether.
+            var cmd = new Chats_RemoveTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId);
+            await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            // If there are loaded attachments,
+            // then we add them to the ChatEntry and mark that there are no more loadings.
+            // NOTE(DF): may be better to introduce a new command for this.
+            var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
+                HasAttachmentUploads = false,
+                EntryAttachments = entryAttachments,
+            };
+            await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private ChatSendingMessages GetChatSendingMessages(ChatId chatId)
