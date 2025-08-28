@@ -193,11 +193,7 @@
                     // Check if we can display uploading medias.
                     var mediaUploads = Hub.SendingMessages.GetMediaUploads(entry);
                     if (mediaUploads is not null) {
-                        <ul>
-                            @foreach (var attachment in mediaUploads.Attachments.Items) {
-                                <AttachmentItem Attachment="@attachment" />
-                            }
-                        </ul>
+                        <ChatEntryMessageAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
                     }
                 } else {
                     // Display progress indicator or something else indicating that we expect addition content to be shown soon.
