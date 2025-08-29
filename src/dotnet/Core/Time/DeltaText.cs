@@ -31,7 +31,7 @@ public static class DeltaText
         var localTimeDate = time.Date;
         var localToday = now.Date;
         if (localTimeDate == localToday) {
-            result = $"today at {time.ToShortTimeString()}";
+            result = $"{time.ToShortTimeString()}";
             delay = TimeSpan.FromDays(1) - now.TimeOfDay;
         }
         else if (isFuture && localTimeDate == localToday.AddDays(1)) {

@@ -4,6 +4,8 @@
     var readablePhone = account.Phone?.ToReadable() ?? "";
 }
 
+<TileTopic Topic="Information"/>
+
 <Tile>
     <TileItem IsHoverable="false" Class="first-tile-item">
         <Icon>
@@ -63,8 +65,10 @@
             <i class="icon-phone text-xl"></i>
         </Icon>
         <Right>
-            <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
-            <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
+            @if (account.Phone != null) {
+                <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
+                <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
+            }
         </Right>
         <Content>
             @account.Phone?.ToReadable()

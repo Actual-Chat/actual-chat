@@ -2,21 +2,22 @@
     @apply w-full;
 }
 .download-app-banner .download-app-banner-button {
-    @apply relative flex flex-x items-center justify-center;
+    @apply relative;
+    @apply flex flex-x items-center justify-center gap-x-2;
     @apply w-full h-10;
-    @apply px-4;
+    @apply px-2;
     @apply rounded-lg;
     @apply hover:cursor-pointer;
     background: linear-gradient(269deg, #2970FF 0.4%, #C60077 100.32%);
 }
 .download-app-banner .download-app-banner-title {
-    @apply always-white text-headline-1 mr-1;
+    @apply always-white text-headline-1;
 }
 .download-app-banner .download-app-banner-filler {
     @apply flex grow;
 }
 .download-app-banner .icon-download {
-    @apply text-2xl font-thin always-white;
+    @apply always-white text-title-1;
 }
 .download-app-banner .icon-close {
     @apply always-white;
