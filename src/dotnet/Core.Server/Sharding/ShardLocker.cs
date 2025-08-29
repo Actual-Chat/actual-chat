@@ -22,7 +22,6 @@ public abstract class ShardLocker : WorkerBase
     public string KeyPrefix { get; }
     public MeshLockOptions LockOptions { get; init; }
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
-    public bool MustRelockOnShardUseCompletion { get; init; }
     public MomentClock Clock => ShardLocks.Clock;
     public IReadOnlyList<ShardState> ShardStates { get; protected set; } // You can't modify it
 
@@ -145,13 +144,12 @@ public abstract class ShardLocker : WorkerBase
                 }
 
                 // We need this check here, coz shardLock could be lost during Clock.Delay as well
-                var isLost = shardLock.IsLost;
-                if (!(isLost || MustRelockOnShardUseCompletion))
+                if (!shardLock.IsLost)
                     continue;
 
                 await shardLock.DisposeSilentlyAsync().ConfigureAwait(false);
                 shardLock = null;
-                Log.LogWarning("Shard #{ShardIndex}: -- {ThisNodeId} (IsLost: {IsLost})", shardIndex, ThisNode.Ref, isLost);
+                Log.LogWarning("Shard #{ShardIndex}: -- {ThisNodeId} (lock is lost)", shardIndex, ThisNode.Ref);
             }
         }
         finally {

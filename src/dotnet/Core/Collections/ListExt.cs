@@ -48,7 +48,7 @@ public static class ListExt
                     oldIndex++;
                     break;
                 default:
-                    // New item is smaller, it was added
+                    // The new item is smaller, it was added
                     added.Add(newItem);
                     newIndex++;
                     break;
@@ -85,5 +85,35 @@ public static class ListExt
             return -1;
 
         return --i < 0 ? list.Count - 1 : i;
+    }
+
+    // AsAsyncEnumerable
+
+    public static IAsyncEnumerable<TSource> AsAsyncEnumerable<TSource>(this IReadOnlyList<TSource> source)
+        => source.Count == 0
+            ? AsyncEnumerable.Empty<TSource>()
+            : new ListAsyncEnumerable<TSource>(source);
+
+    // Nested types
+
+    private readonly struct ListAsyncEnumerable<T>(IReadOnlyList<T> source) : IAsyncEnumerable<T>
+    {
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+            => new ListAsyncEnumerator(source);
+
+        // Nested type
+
+        private sealed class ListAsyncEnumerator(IReadOnlyList<T> source) : IAsyncEnumerator<T>
+        {
+            private int _index = -1;
+
+            public ValueTask DisposeAsync()
+                => ValueTask.CompletedTask;
+
+            public ValueTask<bool> MoveNextAsync()
+                => new (++_index < source.Count);
+
+            public T Current => source[_index];
+        }
     }
 }

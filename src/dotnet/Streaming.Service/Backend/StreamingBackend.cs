@@ -141,6 +141,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         var (headerDataTask, dataStream) = stream.SplitHead(cancellationToken);
         return dataStream
             .SkipWhile((_, i) => i < skipToFrameN)
-            .Prepend(headerDataTask);
+            .PrependOne(headerDataTask);
     }
 }

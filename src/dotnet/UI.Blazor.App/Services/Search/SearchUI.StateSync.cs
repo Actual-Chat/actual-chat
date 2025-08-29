@@ -27,7 +27,7 @@ public partial class SearchUI
         var criteriaChanges = cCriteria.Changes(cancellationToken)
             .Where(x => !x.HasError)
             .Select(x => x.Value)
-            .DeduplicateNeighbors();
+            .AdjacentDistinct();
         var debouncer = Debouncer.New<Criteria>(DebounceInterval, UpdateSearchResults);
         await using var _ = debouncer.ConfigureAwait(false);
         await foreach (var criteria in criteriaChanges.ConfigureAwait(false))

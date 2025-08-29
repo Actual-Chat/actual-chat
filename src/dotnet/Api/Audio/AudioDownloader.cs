@@ -32,7 +32,7 @@ public abstract class AudioDownloader(IServiceProvider services)
         else
             throw new InvalidOperationException("Unsupported audio stream container.");
 
-        var restoredByteStream = tail.Prepend(head, cancellationToken);
+        var restoredByteStream = tail.PrependOne(head, cancellationToken);
         return await streamConverter.FromByteStream(restoredByteStream, cancellationToken).ConfigureAwait(false);
     }
 }
