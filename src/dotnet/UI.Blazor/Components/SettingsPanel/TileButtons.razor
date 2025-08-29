@@ -1,19 +1,19 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@using ActualChat.Kvas
 @inherits ComputedStateComponent<UIHub, bool>
 @{
     var m = State.Value;
-    var cls = m ? "text-primary" : "text-03 hover:text-02";
+    var cls = m ? "btn-xs btn-transparent selected" : "btn-xs btn-transparent text-03 hover:text-02";
+    var setDefaultBtnTooltip = m ? "" : "Set default";
 }
 
 @if (SetDefaultClick.HasDelegate) {
     <ButtonRound
-        Class="btn-xs btn-transparent"
-        Tooltip="Set default"
+        Class="@cls"
+        Tooltip="@setDefaultBtnTooltip"
         TooltipPosition="FloatingPosition.Top"
         Click="@SetDefaultClick">
-        <i class="icon-star text-xl @cls"></i>
+        <i class="icon-star text-xl"></i>
     </ButtonRound>
 }
 @if (EditClick.HasDelegate) {

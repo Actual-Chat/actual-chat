@@ -297,3 +297,12 @@ body.hoverable .tile-btn:hover,
     @apply h-auto;
     @apply py-1;
 }
+
+.tile-item .btn.btn-round.selected {
+    @apply text-primary;
+    @apply cursor-default;
+}
+body.hoverable .tile-item .btn.btn-round.selected:hover,
+.touch-capable .tile-item .btn.btn-round.selected:active {
+    @apply text-primary;
+}
