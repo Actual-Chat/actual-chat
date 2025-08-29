@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.App.Services;
+
 namespace ActualChat.UI.Blazor.App.Components;
 
 public sealed class AttachmentUploadOperation : IAsyncDisposable
@@ -6,25 +8,48 @@ public sealed class AttachmentUploadOperation : IAsyncDisposable
 
     private bool _isDisposed;
     private Attachment _attachment;
-    private readonly CancellationTokenSource _cancellationTokenSource;
+    private readonly FileUploadOperation<MediaContent> _fileUploadOperation;
 
     public event EventHandler? Updated;
     public Attachment Attachment => _attachment;
 
     public AttachmentUploadOperation(
         Attachment attachment,
-        Task<MediaContent> fileUpload,
-        CancellationTokenSource cancellationTokenSource)
+        FileUploadOperation<MediaContent> fileUploadOperation)
     {
-        _cancellationTokenSource = cancellationTokenSource;
         _attachment = attachment;
-        TrackProgress(fileUpload);
+        _fileUploadOperation = fileUploadOperation;
+        StartTrackProgress();
     }
 
-    private void TrackProgress(Task<MediaContent> fileUpload)
-        => _ = BackgroundTask.Run(async () => {
+    public Task Cancel()
+    {
+        _fileUploadOperation.Cancel();
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_isDisposed)
+            return;
+
+        _isDisposed = true;
+        await Cancel().ConfigureAwait(false);
+    }
+
+    private void StartTrackProgress()
+    {
+        _fileUploadOperation.Progress?.ProgressChanged += (_, value) => {
+            _attachment = _attachment with {
+                // Max progress value is limited to 99%.
+                // 100% is applied when the upload result is received.
+                Progress = Math.Min(99, (int)value),
+            };
+            RaiseUpdated();
+        };
+        _ = BackgroundTask.Run(async () => {
             try {
-                var uploadResult = await fileUpload.ConfigureAwait(false);
+                var uploadResult = await _fileUploadOperation.Task.ConfigureAwait(false);
                 _attachment = _attachment with {
                     Progress = 100,
                     MediaId = uploadResult.MediaId,
@@ -42,23 +67,8 @@ public sealed class AttachmentUploadOperation : IAsyncDisposable
             }
             RaiseUpdated();
         });
+    }
 
     private void RaiseUpdated()
         => Updated?.Invoke(this, EventArgs.Empty);
-
-    public Task Cancel()
-    {
-        _cancellationTokenSource.Cancel();
-        return Task.CompletedTask;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_isDisposed)
-            return;
-
-        _isDisposed = true;
-        await Cancel().ConfigureAwait(false);
-        _cancellationTokenSource.DisposeSilently();
-    }
 }

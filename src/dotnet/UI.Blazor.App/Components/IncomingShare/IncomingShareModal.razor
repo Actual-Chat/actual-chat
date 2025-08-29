@@ -177,35 +177,32 @@
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
     private AttachmentList2 UploadFiles(IIncomingShareFileDownloader filesDownloader, FileUploader uploader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
         Exception? fileSizeLimitError = null;
-        var attachments = new List<(Attachment, AttachmentUploadOperation)>();
+        var attachments = new List<AttachmentUploadOperation>();
         foreach (var file in files) {
             var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
             if (stream == null) {
                 Log.LogWarning("Failed to open input stream for '{Url}'", file.Url);
                 continue;
             }
-            if (stream.Length > Constants.Attachments.FileSizeLimit) {
-                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", file.Url, stream.Length);
+            var streamLength = stream.Length;
+            if (streamLength > Constants.Attachments.FileSizeLimit) {
+                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", file.Url, streamLength);
                 fileSizeLimitError ??= AttachmentList.FileTooBigError();
                 stream.DisposeSilently();
                 continue;
             }
             filesDownloader.TryExtractFileName(file.Url, out var fileName);
-            var cancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = cancellationTokenSource.Token;
-            var fileUpload = uploader.Upload(chatId, stream, mediaType, fileName, cancellationToken);
-            var fileUpload2 = BackgroundTask.Run(async () => {
-                try {
-                    return await fileUpload.ConfigureAwait(false);
-                }
-                finally {
-                    // NOTE: dispose stream when upload completed.
-                    await stream.DisposeSilentlyAsync();
-                }
-            }, CancellationToken.None);
-            var attachment = new Attachment(attachments.Count, file.Url, fileName,  mediaType ?? "", (int)stream.Length);
-            var uploadOperation = new AttachmentUploadOperation(attachment, fileUpload2, cancellationTokenSource);
-            attachments.Add((attachment, uploadOperation));
+            var progress = new Progress<double>();
+            var fileUploadOperation = uploader.CreateUploadOperation(chatId, stream, mediaType, fileName, progress);
+            _ = fileUploadOperation.Task.ContinueWith(async _ => {
+                await fileUploadOperation.Task.SilentAwait(false);
+                // NOTE: dispose stream when upload completed or canceled.
+                await stream.DisposeSilentlyAsync();
+            }, TaskScheduler.Default);
+            fileUploadOperation.Start();
+            var attachment = new Attachment(attachments.Count, file.Url, fileName,  mediaType ?? "", (int)streamLength);
+            var uploadOperation = new AttachmentUploadOperation(attachment, fileUploadOperation);
+            attachments.Add(uploadOperation);
         }
         if (fileSizeLimitError != null)
             Services.UICommander().ShowError(fileSizeLimitError);

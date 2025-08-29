@@ -2,27 +2,28 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public sealed class AttachmentList2 : IAttachmentList
 {
-    private readonly List<(Attachment, AttachmentUploadOperation)> _attachments;
+    private readonly List<AttachmentUploadOperation> _attachments;
+    private readonly SynchronizationContext _syncContext;
     private bool _isDisposed;
     public int Count => _attachments.Count;
-    public IEnumerable<Attachment> Items => _attachments.Select(x => x.Item1);
+    public IEnumerable<Attachment> Items => _attachments.Select(x => x.Attachment);
     public event EventHandler? Changed;
 
-    public AttachmentList2(IReadOnlyCollection<(Attachment, AttachmentUploadOperation)> attachments)
+    public AttachmentList2(IReadOnlyCollection<AttachmentUploadOperation> attachments)
     {
+        _syncContext = SynchronizationContext.Current ?? new SynchronizationContext();
         _attachments = attachments.ToList();
-        foreach (var (_, uploadOperation) in _attachments)
+        foreach (var uploadOperation in _attachments)
             uploadOperation.Updated += OnUpdated;
     }
 
     public async Task Remove(Attachment attachment)
     {
-        var found = _attachments.FirstOrDefault(c => c.Item1 == attachment);
-        if (found.Item1 is null)
+        var uploadOperation = _attachments.FirstOrDefault(c => c.Attachment.Id == attachment.Id);
+        if (uploadOperation is null)
             throw StandardError.Internal("Attachment not found.");
 
-        _attachments.Remove(found);
-        var uploadOperation = found.Item2;
+        _attachments.Remove(uploadOperation);
         await uploadOperation.DisposeSilentlyAsync();
         uploadOperation.Updated -= OnUpdated;
         OnChanged();
@@ -32,7 +33,9 @@ public sealed class AttachmentList2 : IAttachmentList
         => OnChanged();
 
     private void OnChanged()
-        => Changed?.Invoke(this, EventArgs.Empty);
+        => _syncContext.Post(_ => {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }, null);
 
     public async ValueTask DisposeAsync()
     {
@@ -41,7 +44,7 @@ public sealed class AttachmentList2 : IAttachmentList
 
         _isDisposed = true;
         var tasks = new List<Task>();
-        foreach (var (_, uploadOperation) in _attachments) {
+        foreach (var uploadOperation in _attachments) {
             tasks.Add(uploadOperation.DisposeSilentlyAsync().AsTask());
             uploadOperation.Updated -= OnUpdated;
         }
