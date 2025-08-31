@@ -156,5 +156,5 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     protected Flow? Deserialize(byte[]? data)
         => data == null || data.Length == 0
             ? null
-            : Serializer.Read<Flow?>(data);
+            : (Flow?)Serializer.Read(data, typeof(Flow), out _);
 }

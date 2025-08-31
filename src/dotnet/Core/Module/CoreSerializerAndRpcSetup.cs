@@ -16,19 +16,17 @@ public static class CoreSerializerAndRpcSetup
     {
         RpcSerializationFormat.All = ImmutableList.Create(
             RpcSerializationFormat.SystemJsonV3,
-            RpcSerializationFormat.MemoryPackV2,
-            RpcSerializationFormat.MemoryPackV2C,
-            RpcSerializationFormat.MemoryPackV2NP,
-            RpcSerializationFormat.MemoryPackV2CNP,
             RpcSerializationFormat.MemoryPackV3,
-            RpcSerializationFormat.MemoryPackV3C);
+            RpcSerializationFormat.MemoryPackV3C,
+            RpcSerializationFormat.MemoryPackV4,
+            RpcSerializationFormat.MemoryPackV4C);
 
         RpcSerializationFormatResolver.Default = RpcSerializationFormatResolver.Default with {
             DefaultClientFormatKey =
 #if DEBUG
-                "mempack3",
+                "mempack4",
 #else
-                isServer ? "mempack3" : "mempack3c",
+                isServer ? "mempack4" : "mempack4c",
 #endif
         };
     }

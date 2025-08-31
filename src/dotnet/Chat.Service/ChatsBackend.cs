@@ -1898,13 +1898,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         // Reading the current author; we may need to wait for its creation here, so...
-        AuthorFull? readAuthor = null;
-        var retrier = new Retrier(5, RetryDelaySeq.Exp(0.25, 1));
-        while (retrier.NextOrThrow()) {
-            await Clocks.CoarseCpuClock.Delay(retrier.Delay, cancellationToken).ConfigureAwait(false);
+        AuthorFull? readAuthor;
+        var retryTracker = new RetryTracker(5, RetryDelaySeq.Exp(0.25, 1));
+        while (true) {
+            await Clocks.CoarseCpuClock.Delay(retryTracker.Delay, cancellationToken).ConfigureAwait(false);
             readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (readAuthor?.Avatar != null)
                 break;
+
+            if (!retryTracker.WillRetry())
+                throw StandardError.NotFound<Avatar>();
         }
         var isAnonymous = readAuthor?.IsAnonymous ?? author.IsAnonymous;
         var authorId = isAnonymous ? null : author.Id;

@@ -25,7 +25,7 @@ public static class TaskExt
             await task.ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            errorHandler(e);
+            errorHandler.Invoke(e);
             throw;
         }
     }
@@ -36,7 +36,7 @@ public static class TaskExt
             return await task.ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            errorHandler(e);
+            errorHandler.Invoke(e);
             throw;
         }
     }
@@ -47,7 +47,7 @@ public static class TaskExt
             await task.ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            errorHandler(e);
+            errorHandler.Invoke(e);
             throw;
         }
     }
@@ -58,102 +58,8 @@ public static class TaskExt
             return await task.ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            errorHandler(e);
+            errorHandler.Invoke(e);
             throw;
-        }
-    }
-
-    public static async Task Catch(this Task task, ILogger errorLog, string? message, params object[] args)
-    {
-        try {
-            await task.ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            errorLog.LogError(e, message, args);
-        }
-    }
-
-    public static Task<T> Catch<T>(
-        this Task<T> task,
-        T defaultValue,
-        ILogger errorLog,
-        string message,
-        params object[] args)
-        => task.Catch(defaultValue,
-            errorLog,
-            LogLevel.Error,
-            message,
-            args);
-
-    public static Task<T> Catch<T>(
-        this Task<T> task,
-        T defaultValue,
-        ILogger errorLog,
-        LogLevel level,
-        string message,
-        params object[] args)
-        => task.Catch(_ => defaultValue,
-            errorLog,
-            level,
-            message,
-            args);
-
-    public static async Task<T> Catch<T>(
-        this Task<T> task,
-        Func<Exception, T> defaultValueFactory,
-        ILogger errorLog,
-        LogLevel level,
-        string message,
-        params object[] args)
-    {
-        try {
-            return await task.ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            errorLog.Log(level, e, message, args);
-            return defaultValueFactory(e);
-        }
-    }
-
-    public static ValueTask Catch(this ValueTask task, ILogger errorLog, string message, params object[] args)
-        => task.Catch(errorLog, LogLevel.Error, message, args);
-
-    public static async ValueTask Catch(this ValueTask task, ILogger errorLog, LogLevel level, string message, params object[] args)
-    {
-        try {
-            await task.ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            errorLog.Log(level, e, message, args);
-        }
-    }
-
-    public static ValueTask<T> Catch<T>(
-        this ValueTask<T> task,
-        T defaultValue,
-        ILogger errorLog,
-        string message,
-        params object[] args)
-        => task.Catch(_ => defaultValue,
-            errorLog,
-            LogLevel.Error,
-            message,
-            args);
-
-    public static async ValueTask<T> Catch<T>(
-        this ValueTask<T> task,
-        Func<Exception, T> defaultValueFactory,
-        ILogger errorLog,
-        LogLevel level,
-        string message,
-        params object[] args)
-    {
-        try {
-            return await task.ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            errorLog.Log(level, e, message, args);
-            return defaultValueFactory(e);
         }
     }
 

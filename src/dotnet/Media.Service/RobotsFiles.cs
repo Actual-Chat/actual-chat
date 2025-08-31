@@ -30,9 +30,18 @@ public class RobotsFiles(
             return robotsFile;
 
         var baseUri = uri.ToBase();
-        robotsFile = await RobotsParser
-            .FromUriAsync(new (baseUri, "/robots.txt"), RobotsFileAccessRules.LikeGoogle, cancellationToken)
-            .Catch(_ => RobotsFile.AllowAllRobots(baseUri), log, LogLevel.Warning, "Failed to fetch robots for {BaseUri}", baseUri)
+        robotsFile = await BackgroundTask
+            .Run(async () => {
+                try {
+                    return await RobotsParser
+                        .FromUriAsync(new (baseUri, "/robots.txt"), RobotsFileAccessRules.LikeGoogle, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
+                    log.LogWarning(e, "Failed to fetch robots for {BaseUri}", baseUri);
+                    return RobotsFile.AllowAllRobots(baseUri);
+                }
+            }, cancellationToken)
             .ConfigureAwait(false);
         _robotsByDomain.TryAdd(host, robotsFile);
         DebugLog?.LogInformation("Retrieved RobotsFile for '{Host}'", baseUri);

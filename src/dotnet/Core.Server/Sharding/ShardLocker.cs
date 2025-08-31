@@ -23,7 +23,7 @@ public abstract class ShardLocker : WorkerBase
     public MeshLockOptions LockOptions { get; init; }
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
     public MomentClock Clock => ShardLocks.Clock;
-    public IReadOnlyList<ShardState> ShardStates { get; protected set; } // You can't modify it
+    public MutableState<ShardLockerState> State { get; protected set; }
 
     protected ShardLocker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
         : base(services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource())
@@ -37,7 +37,11 @@ public abstract class ShardLocker : WorkerBase
         KeyPrefix = keyPrefix ?? GetType().GetName();
         ShardLocks = GetMeshLocks(nameof(ShardLocks));
         LockOptions = ShardLocks.LockOptions;
-        ShardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
+        State = StateFactory.NewMutable(
+            initialValue: new ShardLockerState(
+                MeshWatcher.State.LastNonErrorValue,
+                new List<ShardState>(shardScheme.ShardCount)),
+            category: StateCategories.Get(GetType(), nameof(State)));
     }
 
     protected IMeshLocks GetMeshLocks(string name)
@@ -55,9 +59,10 @@ public abstract class ShardLocker : WorkerBase
         var addedShards = new List<int>();
         var removedShards = new List<int>();
         var disposeTasks = new List<Task>();
+        var shardStates = State.Value.ShardStates; // Initial value
         try {
             var changes = MeshWatcher.State.Computed.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
-            await foreach (var (state, error) in changes.ConfigureAwait(false)) {
+            await foreach (var (meshState, error) in changes.ConfigureAwait(false)) {
                 if (error != null) {
                     if (error is ObjectDisposedException)
                         return;
@@ -68,14 +73,14 @@ public abstract class ShardLocker : WorkerBase
 
                 addedShards.Clear();
                 removedShards.Clear();
-                var shardMap = state.GetShardMap(ShardScheme);
+                var shardMap = meshState.GetShardMap(ShardScheme);
                 var nodes = shardMap.Nodes;
                 var nodeIndexes = shardMap.NodeIndexes;
-                var nextShardStates = new ShardState[ShardScheme.ShardCount];
+                var nextShardStates = new ShardState[shardStates.Count];
                 foreach (var shardIndex in ShardScheme.ShardIndexes) {
                     var nodeIndex = nodeIndexes[shardIndex];
                     var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
-                    var shardState = ShardStates[shardIndex];
+                    var shardState = shardStates[shardIndex];
                     var mustLock = node == ThisNode;
                     if (shardState.MustLock == mustLock) {
                         nextShardStates[shardIndex] = shardState;
@@ -89,8 +94,7 @@ public abstract class ShardLocker : WorkerBase
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
-                lock (Lock)
-                    ShardStates = nextShardStates;
+                State.Value = new ShardLockerState(meshState, shardStates = nextShardStates);
                 if (addedShards.Count > 0 || removedShards.Count > 0)
                     Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
@@ -101,9 +105,15 @@ public abstract class ShardLocker : WorkerBase
             }
         }
         finally {
-            await Task.WhenAll(ShardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait(false);
+            await Task.WhenAll(shardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait(false);
         }
     }
+
+    // This is the primary method to override in this class
+    protected virtual Task UseShard(ShardLock shardLock, CancellationToken cancellationToken)
+        => ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(cancellationToken);
+
+    // Private methods
 
     private async Task LockShard(ShardState shardState, ShardState previousState)
     {
@@ -162,11 +172,13 @@ public abstract class ShardLocker : WorkerBase
         }
     }
 
-    // This is the primary method to override in this class
-    protected virtual Task UseShard(ShardLock shardLock, CancellationToken cancellationToken)
-        => ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(cancellationToken);
-
     // Nested types
+
+    public sealed class ShardLockerState(MeshState meshState, IReadOnlyList<ShardState> shardStates)
+    {
+        public MeshState MeshState { get; } = meshState;
+        public IReadOnlyList<ShardState> ShardStates { get; } = shardStates;
+    }
 
     public sealed class ShardState : IAsyncDisposable
     {
