@@ -27,6 +27,14 @@ public sealed record BackendServiceDef(
             $"{prefix} as {ServiceMode:G}, hosted by {HostedByRole ?? "None"} * {ShardScheme}";
     }
 
+    public BackendServiceDef RequireClientOrDistributedServiceMode()
+    {
+        if (ServiceMode is not ServiceMode.Client and not ServiceMode.Distributed)
+            throw StandardError.Internal($"{this} must be a ServiceMode.Client or Distributed mode service.");
+
+        return this;
+    }
+
     // This record relies on referential equality
     public bool Equals(BackendServiceDef? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

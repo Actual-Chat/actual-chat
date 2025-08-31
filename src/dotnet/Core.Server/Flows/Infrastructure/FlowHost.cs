@@ -5,11 +5,12 @@ namespace ActualChat.Flows.Infrastructure;
 public sealed class FlowHost : ShardWorker, IHasServices
 {
     private static readonly Requester Requester = new(typeof(FlowHost));
-    private IFlows? _flows;
 
     public new IServiceProvider Services => base.Services;
     public FlowRegistry Registry { get; }
-    public IFlows Flows => _flows ??= Services.GetRequiredService<IFlows>();
+
+    [field: AllowNull, MaybeNull]
+    public IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
 

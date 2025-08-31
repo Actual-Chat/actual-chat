@@ -51,17 +51,17 @@ public partial class AppHost : IDisposable
         // since all of them are still initializing (and listening yet).
         // See e.g. UsersDbInitializer.EnsureAdminExists - apparently, it's going to resort to
         // an RPC call in Hybrid or Client mode, so the initialization will stuck right there.
-        var rpcBackendDelegates = Services.GetRequiredService<RpcBackendDelegates>();
-        rpcBackendDelegates.StartRouting();
+        var rpcBackendHelpers = Services.GetRequiredService<RpcBackendHelpers>();
+        rpcBackendHelpers.StartRouting();
     }
 
-    public virtual Task Run(CancellationToken cancellationToken = default)
+    public Task Run(CancellationToken cancellationToken = default)
         => App.RunAsync(cancellationToken);
 
-    public virtual Task Start(CancellationToken cancellationToken = default)
+    public Task Start(CancellationToken cancellationToken = default)
         => App.StartAsync(cancellationToken);
 
-    public virtual Task Stop(CancellationToken cancellationToken = default)
+    public Task Stop(CancellationToken cancellationToken = default)
         => App.StopAsync(cancellationToken);
 
     // Private methods

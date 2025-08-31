@@ -11,7 +11,7 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
 
     private readonly ConcurrentDictionary<(Type, Type), Unit> _missingBackendServiceTypes = new();
 
-    private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
+    private BackendServiceDefs BackendServiceDefs { get; } = services.BackendServiceDefs();
     private CommandHandlerResolver CommandHandlerResolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
     private ILogger Log { get; } = services.LogFor<QueueRefResolver>();
 

@@ -7,6 +7,10 @@ namespace ActualChat;
 public static class ServiceProviderExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static BackendServiceDefs BackendServiceDefs(this IServiceProvider services)
+        => services.GetRequiredService<BackendServiceDefs>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IHostApplicationLifetime HostLifetime(this IServiceProvider services)
         => services.GetRequiredService<IHostApplicationLifetime>();
 

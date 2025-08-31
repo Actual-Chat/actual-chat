@@ -12,8 +12,9 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         using var h1 = await NewAppHost();
         await using var w1a = new ShardWorker1(h1.Services, Out, "w1a");
         w1a.Start();
+
         var count = 0;
-        if (await w1a.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => ++count >= shardScheme.ShardCount))
+        if (await w1a.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => IncrAndCheck("w1a", shardScheme.ShardCount)))
             await w1a.DisposeSilentlyAsync();
 
         await using var w1b = new ShardWorker1(h1.Services, Out, "w1b");
@@ -26,12 +27,20 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         w2b.Start();
 
         count = 0;
-        if (await w2a.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => ++count >= shardScheme.ShardCount / 2))
+        if (await w2a.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => IncrAndCheck("w2a", shardScheme.ShardCount / 2)))
             await w2a.DisposeSilentlyAsync();
 
         count = 0;
-        if (await w2b.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => ++count >= shardScheme.ShardCount / 2))
+        if (await w2b.Channel.Reader.ReadAllAsync().Distinct().AnyAsync(_ => IncrAndCheck("w2b", shardScheme.ShardCount / 2)))
             await w2b.DisposeSilentlyAsync();
+        return;
+
+        bool IncrAndCheck(string workerName, int maxCount) {
+            ++count;
+            Out.WriteLine($"{workerName} -> {count}");
+            return count >= maxCount;
+        }
+
     }
 
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
@@ -45,21 +54,30 @@ public class ShardWorkerTest(ITestOutputHelper @out)
 
     // Nested types
 
-    public class ShardWorker1(IServiceProvider services, ITestOutputHelper @out, string name)
-        : ShardWorker(services, ShardScheme.TestBackend)
+    public class ShardWorker1 : ShardWorker
     {
+        private readonly string _name;
+
         private static readonly object?[] ShardOwners = new object?[ShardScheme.TestBackend.ShardCount];
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
-        private ITestOutputHelper Out { get; } = @out;
+        private ITestOutputHelper Out { get; }
 
         public Channel<int> Channel { get; } = System.Threading.Channels.Channel.CreateUnbounded<int>(new UnboundedChannelOptions() {
             SingleReader = false,
             SingleWriter = false,
         });
 
+        public ShardWorker1(IServiceProvider services, ITestOutputHelper @out, string name)
+            : base(services, ShardScheme.TestBackend)
+        {
+            _name = name;
+            Out = @out;
+            MustRelockOnShardUseCompletion = true;
+        }
+
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{_name})");
             lock (ShardOwners) {
                 if (ShardOwners[shardIndex] != null)
                     Channel.Writer.TryComplete(StandardError.Constraint("Shard is used by another worker!"));
@@ -75,7 +93,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
                         Channel.Writer.TryComplete(StandardError.Constraint("Shard must be used by this worker!"));
                     ShardOwners[shardIndex] = null;
                 }
-                Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+                Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{_name})");
             }
         }
 
@@ -86,18 +104,27 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         }
     }
 
-    public class ShardWorker2(IServiceProvider services, ITestOutputHelper @out1, string name)
-        : ShardWorker(services, ShardScheme.TestBackend)
+    public class ShardWorker2 : ShardWorker
     {
-        private ITestOutputHelper Out { get; } = @out1;
+        private readonly string _name;
+
+        private ITestOutputHelper Out { get; }
+
+        public ShardWorker2(IServiceProvider services, ITestOutputHelper @out, string name)
+            : base(services, ShardScheme.TestBackend)
+        {
+            _name = name;
+            Out = @out;
+            MustRelockOnShardUseCompletion = true;
+        }
 
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{_name})");
             await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
                 .WaitAsync(cancellationToken)
                 .SilentAwait();
-            Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+            Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{_name})");
         }
     }
 }

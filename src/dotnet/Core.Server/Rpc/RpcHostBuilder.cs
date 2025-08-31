@@ -42,7 +42,7 @@ public readonly struct RpcHostBuilder
             RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto(); // Only for API host!
         RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
         Services.AddSingleton(c => new BackendServiceDefs(c));
-        Services.AddSingleton(c => new RpcBackendDelegates(c));
+        Services.AddSingleton(c => new RpcBackendHelpers(c));
         AddMeshServices();
         AddRpcServer();
         AddRpcClient();
@@ -229,7 +229,7 @@ public readonly struct RpcHostBuilder
         });
 
         // Replace RpcBackendServiceDetector (it's used by both RPC client & server)
-        Services.AddSingleton<RpcBackendServiceDetector>(c => c.GetRequiredService<RpcBackendDelegates>().IsBackendService);
+        Services.AddSingleton<RpcBackendServiceDetector>(c => c.GetRequiredService<RpcBackendHelpers>().IsBackendService);
 
         // Remove SessionMiddleware - we don't use it
         Services.RemoveAll<SessionMiddleware.Options>();
@@ -240,7 +240,7 @@ public readonly struct RpcHostBuilder
         Rpc.AddInboundMiddleware<RpcBackendDefaultSessionReplacerMiddleware>();
 
         // Replace RpcServerConnectionFactory
-        Services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<RpcBackendDelegates>().GetServerConnection);
+        Services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<RpcBackendHelpers>().GetServerConnection);
     }
 
     private void AddRpcClient()
@@ -251,11 +251,11 @@ public readonly struct RpcHostBuilder
         Services.AddSingleton(c => new MeshRpcPeerRefs(c));
 
         // Replace RpcCallRouter
-        Services.AddSingleton<RpcCallRouter>(c => c.GetRequiredService<RpcBackendDelegates>().RouteCall);
+        Services.AddSingleton<RpcCallRouter>(c => c.GetRequiredService<RpcBackendHelpers>().RouteCall);
 
         // Replace RpcWebSocketClient.Options
         Services.AddSingleton(c => RpcWebSocketClient.Options.Default with {
-            ConnectionUriResolver = c.GetRequiredService<RpcBackendDelegates>().GetConnectionUri,
+            ConnectionUriResolver = c.GetRequiredService<RpcBackendHelpers>().GetConnectionUri,
         });
 
         // Replace RpcClientPeerReconnectDelayer
