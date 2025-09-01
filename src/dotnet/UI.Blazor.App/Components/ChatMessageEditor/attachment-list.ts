@@ -161,27 +161,47 @@ class AttachmentList {
         if (!isAdded) {
             if (attachment.tempUrl)
                 URL.revokeObjectURL(attachment.tempUrl);
+            return false;
         }
-        else {
-            this.attachmentsIdSeed++;
-            this.attachments.set(attachment.id, attachment);
-            if (!silent)
-                TuneUI.play(Tune.ChangeAttachments);
-            const upload = new FileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
-            upload.whenCompleted.then(x => {
-                attachment.mediaId = x.mediaId;
-                attachment.thumbnailMediaId = x.thumbnailMediaId;
-                this.invokeUploadSucceed(attachment.id, x.mediaId, x.thumbnailMediaId);
-            }).catch(e => {
-                if (!(e instanceof OperationCancelledError)) {
-                    errorLog?.log('Failed to upload file', e);
-                    this.invokeUploadFailed(attachment.id);
-                }
-            });
+
+        this.attachmentsIdSeed++;
+        this.attachments.set(attachment.id, attachment);
+        if (!silent)
+            TuneUI.play(Tune.ChangeAttachments);
+        const upload = new FileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
+        upload.whenCompleted.then(x => {
+            attachment.mediaId = x.mediaId;
+            attachment.thumbnailMediaId = x.thumbnailMediaId;
+            this.invokeUploadSucceed(attachment.id, x.mediaId, x.thumbnailMediaId);
+        }).catch(e => {
+            if (!(e instanceof OperationCancelledError)) {
+                errorLog?.log('Failed to upload file', e);
+                this.invokeUploadFailed(attachment.id);
+            }
+        });
+        this.uploads.set(attachment.id, upload);
+        await this.invokeUploaderPrepared(attachment);
+        return true;
+    }
+
+    /** Called by Blazor */
+    public startUpload(id: number) {
+        debugLog?.log(`startUpload: ${id}`);
+        const upload = this.uploads.get(id);
+        if (upload) {
             upload.start();
-            this.uploads.set(attachment.id, upload);
+            debugLog?.log(`startedUpload: ${id}`);
         }
-        return isAdded;
+    }
+
+    /** Called by Blazor */
+    public cancelUpload(id: number) {
+        debugLog?.log(`cancelUpload: ${id}`);
+        const upload = this.uploads.get(id);
+        if (upload) {
+            upload.cancel();
+            debugLog?.log(`cancelledUpload: ${id}`);
+        }
     }
 
     /** Called by Blazor */
@@ -223,6 +243,11 @@ class AttachmentList {
     private async invokeAttachmentAdded(attachment: Attachment, blob: Blob, fileName: string) {
         return this.BlazorRef.invokeMethodAsync<boolean>(
             'OnAttachmentAdded', attachment.id, attachment.url, fileName, blob.type, blob.size);
+    }
+
+    private async invokeUploaderPrepared(attachment: Attachment) {
+        return this.BlazorRef.invokeMethodAsync<boolean>(
+            'OnUploaderPrepared', attachment.id);
     }
 
     private async invokeUploadProgress(id: number, progressPercent: number) {

@@ -199,7 +199,8 @@
                 // NOTE: dispose stream when upload completed or canceled.
                 await stream.DisposeSilentlyAsync();
             }, TaskScheduler.Default);
-            fileUploadOperation.Start();
+            //fileUploadOperation.Start();
+            Hub.Services.GetRequiredService<FileUploadQueue>().Enqueue(fileUploadOperation);
             var attachment = new Attachment(attachments.Count, file.Url, fileName,  mediaType ?? "", (int)streamLength);
             var uploadOperation = new AttachmentUploadOperation(attachment, fileUploadOperation);
             attachments.Add(uploadOperation);

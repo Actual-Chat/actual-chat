@@ -1,15 +1,17 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class FileUploadOperation<TResult> : IDisposable
+public sealed class FileUploadOperation<TResult> : IFileUploadOperation, IDisposable
 {
     private readonly Func<CancellationToken, Task<TResult>> _startFunc;
     private readonly CancellationTokenSource _cts;
     private readonly TaskCompletionSource<TResult> _tcs = new ();
-    private int _state;
+    private long _state;
 
     public Progress<double>? Progress { get; init; }
     public Task<TResult> Task => _tcs.Task;
+    public bool HasStarted => Interlocked.Read(ref _state) != 0;
     public CancellationToken CancellationToken { get; }
+    Task IFileUploadOperation.Task => Task;
 
     public FileUploadOperation(Func<CancellationToken, Task<TResult>> startFunc)
     {

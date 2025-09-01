@@ -44,7 +44,7 @@
 
     private readonly Lock _lock = new();
     private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
-    private AttachmentList _attachments = new ();
+    private AttachmentList _attachments;
     private ElementReference FilePickerRef { get; set; }
 
     [Parameter] public EventCallback OnSendClick { get; set; }
@@ -53,7 +53,9 @@
     public Task WhenReady => _whenReadySource.Task;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AttachmentListView))]
-    public AttachmentListView() { }
+    public AttachmentListView() {
+        _attachments = new AttachmentList(EnqueueFileUploadOperation);
+    }
 
     public async ValueTask DisposeAsync() {
         _whenReadySource.TrySetCanceled();
@@ -111,7 +113,7 @@
         lock (_lock) {
             UnsubscribeFromListEvents(_attachments);
             attachments = _attachments;
-            _attachments = new AttachmentList();
+            _attachments = new AttachmentList(EnqueueFileUploadOperation);
             SubscribeToListEvents(_attachments);
         }
         await _attachments.AttachTo(JSRef);
@@ -146,6 +148,9 @@
 
     private Task OnRemoveClick(Attachment attachment)
         => _attachments.Remove(attachment);
+
+    private void EnqueueFileUploadOperation(IFileUploadOperation fileUploadOperation)
+        => Hub.Services.GetRequiredService<FileUploadQueue>().Enqueue(fileUploadOperation);
 
     public sealed class ResetIntent : IAsyncDisposable {
         private readonly Func<ValueTask> _confirm;

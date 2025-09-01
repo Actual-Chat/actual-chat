@@ -30,6 +30,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
+        services.AddScoped(_ => new FileUploadQueue());
         services.AddScoped(c => new AppUIHub(c));
         services.AddAlias<UIHub, AppUIHub>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new AnalyticEvents());
