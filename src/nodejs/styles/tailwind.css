@@ -184,28 +184,29 @@
     /* Webkit */
     .custom-scrollbar::-webkit-scrollbar,
     .custom-scrollbar-x::-webkit-scrollbar {
-        @apply w-1;
-        @apply h-1;
+        width: 0.25rem;
+        height: 0.25rem;
     }
     body.narrow .custom-scrollbar::-webkit-scrollbar,
     body.narrow .custom-scrollbar-x::-webkit-scrollbar {
-        @apply w-0.5;
-        @apply h-0.5;
+        width: 0.125rem;
+        height: 0.125rem;
     }
     .custom-scrollbar-hide::-webkit-scrollbar {
-        @apply w-0;
-        @apply h-0;
+        width: 0;
+        height: 0;
     }
 
     .custom-scrollbar::-webkit-scrollbar-track,
     .custom-scrollbar-x::-webkit-scrollbar-track {
-        @apply bg-transparent rounded-full;
+        border-radius: 9999px;
+        background: transparent;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb,
     .custom-scrollbar-x::-webkit-scrollbar-thumb {
-        @apply bg-scrollbar rounded-full;
-        @apply border border-scrollbar;
-        @apply shadow-inner shadow-scrollbar;
+        background: var(--scrollbar);
+        border-radius: 9999px;
+        border: 1px solid var(--scrollbar);
     }
 
     .custom-scrollbar-outside {
