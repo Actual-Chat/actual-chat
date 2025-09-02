@@ -42,8 +42,15 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
 
     [DataMember(Order = 104), MemoryPackOrder(104)]
     public Moment LastRunAt { get; protected set; }
+
     [DataMember(Order = 105), MemoryPackOrder(105), Obsolete("Deprecated.")]
     public Moment? NextRecheckAt { get; protected set; }
+
+    [DataMember(Order = 106), MemoryPackOrder(106)]
+    public Moment LastSummaryAt { get; protected set; }
+
+    [DataMember(Order = 107), MemoryPackOrder(107)]
+    public Range<long>[] LastSummaryRanges { get; protected set; } = [];
 
     // Flow transitions
 
@@ -53,12 +60,13 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         if (chat.IsSummarized ?? false) // Only process summarized chats
             return Resume(nameof(OnIndex));
 
-        return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
+        return WaitForEvent(FlowSteps.OnReset);
     }
 
     protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
     {
-        LastRunAt = Clocks.SystemClock.Now;
+        var now = Clocks.CoarseSystemClock.Now;
+        LastRunAt = now;
         var lastLid = Cursor;
         var chatId = ChatId;
         Log.LogDebug("`{Id}`.OnIndex: Started at cursor {LastLid}", Id, lastLid);
@@ -66,6 +74,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         var (entries, hasMore, hasImmature) = await GetEntries(lastLid, cancellationToken).ConfigureAwait(false);
         var (state, groups, replySequences) = EntryGroupExtractor.ExtractGroups(ExtractorState ?? new ExtractorState(null, null), entries);
         ExtractorState = state;
+        var hasEntries = entries.Count > 0;
 
         // process replies
         foreach (var replySequence in replySequences) {
@@ -83,7 +92,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
                 new Range<long>(firstEntry.LocalId, lastEntry.LocalId + 1)
             ) {
                 DelayUntil = existingConversationIds.Length == 0
-                    ? Host.Clocks.CoarseSystemClock.Now + (2 * Settings.ChatEntrySummarizationDelay)
+                    ? now + (2 * Settings.ChatEntrySummarizationDelay)
                     : default,
             };
             await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
@@ -109,49 +118,63 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
             var idRanges = group.LocalIdRanges;
             var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
             await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+            LastSummaryAt = now;
+            LastSummaryRanges = idRanges.ToArray();
         }
 
         // If we reached the end of the entries, we might want to summarize the last group
         if (!hasMore) {
-            var lastEntry = state.LastEntry;
-            if (lastEntry != null
-                && (lastEntry.EndsAt ?? lastEntry.BeginsAt) <= Clocks.CoarseSystemClock.Now - Settings.ChatEntrySummarizationDelay)
-                if (state.CurrentGroup != null // Defensive
-                    && state.WordCount >= Settings.MinConversationWords
-                    && state.EntryCount >= Settings.MinConversationEntries
-                    && entries.Count > 0) { // Only finalize when this batch brought new entries
-                    var groupBuilder = state.CurrentGroup.AddRange(state.CurrentChunk?.Entries ?? []);
-                    var group = groupBuilder.Build();
+            var lastRanges = LastSummaryRanges;
+            var currentRanges = new EntryGroupBuilder(state.CurrentGroup)
+                .AddRange(state.CurrentChunk?.Entries ?? [])
+                .Build().LocalIdRanges;
+            var rangesAreEqual = lastRanges.SequenceEqual(currentRanges);
+            var hasCurrentRanges = currentRanges.Count > 0;
 
-                    var idRanges = group.LocalIdRanges;
-                    var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
-                    await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+            var tooOften = LastSummaryAt + Settings.ChatEntrySummarizationDelay >= now;
+            var readyToSummarize =
+                state.CurrentGroup != null
+                && state.WordCount >= Settings.MinConversationWords
+                && state.EntryCount >= Settings.MinConversationEntries
+                && !rangesAreEqual;
 
-                    // Keep the group (we may extend it later with new entries), but clear the chunk
-                    ExtractorState = new ExtractorState(
-                        groupBuilder,
-                        new EntryGroupBuilder()
-                    );
-                }
-
-            if (entries.Count > 0)
+            if (hasEntries)
                 Cursor = entries[^1].LocalId;
             Event.MarkHandled();
 
+            if (readyToSummarize && !tooOften) {
+                // Summarize the current group
+                var groupBuilder = state.CurrentGroup!.AddRange(state.CurrentChunk?.Entries ?? []);
+                var group = groupBuilder.Build();
+
+
+                var idRanges = group.LocalIdRanges;
+                var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
+                await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+
+                // Keep the group if there are immature items, otherwise clear the chunk
+                ExtractorState = new ExtractorState(
+                    hasImmature ? groupBuilder : new EntryGroupBuilder(),
+                    new EntryGroupBuilder()
+                );
+                LastSummaryAt = now;
+                LastSummaryRanges = idRanges.ToArray();
+            }
+
             // Important: if there are immature entries in the current window, schedule a timer instead of waiting for an external event
-            return hasImmature
+            return hasImmature || (tooOften && !rangesAreEqual && hasCurrentRanges)
                 ? WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay)
-                : WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
+                : WaitForEvent(FlowSteps.OnIndex);
         }
 
-        if (entries.Count > 0)
+        if (hasEntries)
             Cursor = entries[^1].LocalId;
         Event.MarkHandled();
         return hasMore
             ? StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch")
             : hasImmature
                 ? WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay)
-                : WaitForEvent(FlowSteps.OnIndex, InfiniteHardResumeAt);
+                : WaitForEvent(FlowSteps.OnIndex);
     }
 
     // Private methods

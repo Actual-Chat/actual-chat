@@ -140,6 +140,9 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
         return new(this, nextStep, tag, hardResumeAt) { MustStore = true };
     }
 
+    protected FlowTransition WaitForEvent(Symbol nextStep, string? tag = null)
+        => WaitForEvent(nextStep, InfiniteHardResumeAt, tag);
+
     protected FlowTransition WaitForEvent(Symbol nextStep, Moment hardResumeAt, string? tag = null)
     {
         Event.MarkHandled();
