@@ -67,6 +67,9 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
+    public ValueTask<(string Key, byte[] Value)[]> GetAll(CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
     public Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
         if (_connectionPool == null || updates.Count == 0)

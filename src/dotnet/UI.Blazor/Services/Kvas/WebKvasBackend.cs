@@ -6,6 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed class WebKvasBackend : IBatchingKvasBackend
 {
     private readonly bool _isDisabled;
+    private readonly string _getAllName;
     private readonly string _getManyName;
     private readonly string _setManyName;
     private readonly string _clearName;
@@ -22,6 +23,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         Services = services;
         JS = services.JSRuntime();
+        _getAllName = $"{name}.getAll";
         _getManyName = $"{name}.getMany";
         _setManyName = $"{name}.setMany";
         _clearName = $"{name}.clear";
@@ -50,6 +52,21 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
             result[i] = value == null ? null : Convert.FromBase64String(value);
         }
         return result;
+    }
+
+    public async ValueTask<(string Key, byte[] Value)[]> GetAll(CancellationToken cancellationToken = default)
+    {
+        if (_isDisabled)
+            return Array.Empty<(string Key, byte[] Value)>();
+        if (!WhenReady.IsCompleted)
+            await WhenReady.ConfigureAwait(false);
+
+        DebugLog?.LogDebug("GetAll");
+        var items = await JS
+            .InvokeAsync<Dictionary<string, string>>(_getAllName, CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("GetAll. Retrieved {Count} items", items.Count);
+        return items.Select(item => (item.Key, Convert.FromBase64String(item.Value))).ToArray();
     }
 
     public async Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
