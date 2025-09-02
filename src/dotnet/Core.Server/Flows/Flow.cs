@@ -135,6 +135,7 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     protected FlowTransition WaitForEvent(Symbol nextStep, TimeSpan hardResumeDelay, string? tag = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(hardResumeDelay, TimeSpan.Zero);
+        Event.MarkHandled();
 
         var hardResumeAt = Clocks.SystemClock.Now + hardResumeDelay;
         return new(this, nextStep, tag, hardResumeAt) { MustStore = true };
@@ -151,38 +152,60 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
 
     protected FlowTransition WaitForTimer(Symbol nextStep, TimeSpan delay, string? tag = null)
     {
+        Event.MarkHandled();
         if (delay <= TimeSpan.Zero)
             return StoreAndResume(nextStep);
 
-        Event.MarkHandled();
         var resumeAt = Clocks.SystemClock.Now + delay;
-        var timerEvent = new OperationEvent(resumeAt, new FlowTimerEvent(Id, tag));
+        var uuid = GetEventUuid(nameof(FlowTimerEvent), resumeAt);
+        var timerEvent = new OperationEvent(
+            uuid,
+            resumeAt,
+            new FlowTimerEvent(Id, tag),
+            KeyConflictStrategy.Skip);
         return new(this, nextStep, tag, resumeAt, timerEvent);
     }
 
     protected FlowTransition WaitForTimer(Symbol nextStep, Moment resumeAt, string? tag = null)
     {
+        Event.MarkHandled();
         var now = Clocks.SystemClock.Now;
         var delay = resumeAt - now;
         if (delay <= TimeSpan.Zero)
             return StoreAndResume(nextStep);
 
-        var timerEvent = new OperationEvent(resumeAt, new FlowTimerEvent(Id, tag));
+        var uuid = GetEventUuid(nameof(FlowTimerEvent), resumeAt);
+        var timerEvent = new OperationEvent(
+            uuid,
+            resumeAt,
+            new FlowTimerEvent(Id, tag),
+            KeyConflictStrategy.Skip);
         return new(this, nextStep, tag, resumeAt, timerEvent);
     }
 
     protected FlowTransition QueueResume(Symbol nextStep, string? tag = null)
     {
+        Event.MarkHandled();
         // NOTE: InfiniteHardResumeAt to avoid FlowWorklet to schedule extra FlowResumeEvent
-        var queueEvent = new OperationEvent(InfiniteHardResumeAt, new FlowResumeEvent(Id, false, tag));
+        var queueEvent = new OperationEvent(
+            GetEventUuid(nameof(FlowResumeEvent), InfiniteHardResumeAt),
+            InfiniteHardResumeAt,
+            new FlowResumeEvent(Id, false, tag),
+            KeyConflictStrategy.Skip);
         return new FlowTransition(this, nextStep, tag, queueEvent);
     }
 
     protected FlowTransition StoreAndResume(Symbol nextStep, string? tag = null)
-        => new(this, nextStep, tag) { MustStore = true };
+    {
+        Event.MarkHandled();
+        return new FlowTransition(this, nextStep, tag) { MustStore = true };
+    }
 
     protected FlowTransition Resume(Symbol nextStep, string? tag = null)
-        => new(this, nextStep, tag);
+    {
+        Event.MarkHandled();
+        return new FlowTransition(this, nextStep, tag);
+    }
 
     protected FlowTransition End(string? tag = null)
     {
@@ -235,6 +258,15 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     {
         if (!typeof(Flow).IsAssignableFrom(flowType))
             throw ActualLab.Internal.Errors.MustBeAssignableTo<Flow>(flowType);
+    }
+
+    // Calculates deterministic UUID for operation events: Flow.Id + event name + resumeAt quantized by minute
+    private string GetEventUuid(string eventName, Moment resumeAt)
+    {
+        var quantized = resumeAt.ToLastIntervalStart(TimeSpan.FromMinutes(1));
+        // Using ISO 8601 round-trip for stable string
+        var q = quantized.ToDateTimeOffset().UtcDateTime;
+        return $"{Id.Value}:{eventName}:{q:yyyy-MM-ddTHH:mm:00Z}";
     }
 
     private FlowWorklet RequireWorklet()
