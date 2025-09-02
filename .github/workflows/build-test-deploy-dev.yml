@@ -104,6 +104,18 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Checkout configs
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CONFIGS_REPO_GITHUB_TOKEN }}
+          fetch-depth: 1
+          repository: Actual-Chat/configs
+          path: ./.config/
+          sparse-checkout: |
+            prompts/
+          sparse-checkout-cone-mode: false
+          ref: ${{ startsWith(github.ref_name, 'release/') && github.ref_name || 'master' }}
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
@@ -320,6 +332,18 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Checkout configs
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CONFIGS_REPO_GITHUB_TOKEN }}
+          fetch-depth: 1
+          repository: Actual-Chat/configs
+          path: ./.config/
+          sparse-checkout: |
+            prompts/
+          sparse-checkout-cone-mode: false
+          ref: ${{ startsWith(github.ref_name, 'release/') && github.ref_name || 'master' }}
+
       - name: Build OpenSearch configurator image
         run: |
           docker build \
@@ -375,11 +399,6 @@ jobs:
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
           EOF
-
-          mkdir -p ./.config/prompts
-          echo -n "${{secrets.CHATSETTINGS_TRANSLATEPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__Translation__PromptFile }} >/dev/null
-          echo -n "${{secrets.CHATSETTINGS_TRANSLATEREALTIMEPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__Translation__RealtimePromptFile }} >/dev/null
-          echo -n "${{secrets.CHATSETTINGS_DETECTLANGUAGESPROMPT_BASE64}}" | base64 -d | tee ${{ env.ChatSettings__LanguageDetection__PromptFile }} >/dev/null
 
           ./run-build.cmd integration-tests --configuration Debug
 
