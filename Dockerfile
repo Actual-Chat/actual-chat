@@ -129,6 +129,7 @@ ENTRYPOINT ["./entrypoint.sh"]
 
 FROM runtime AS app
 COPY --from=dotnet-build /app .
+COPY --from=dotnet-build /src/.config/prompts /app/config/prompts
 COPY --from=nodejs-build /src/src/dotnet/App.Wasm/wwwroot/ /app/wwwroot/
 ENV ASPNETCORE_URLS=http://*:80
 ENTRYPOINT ["dotnet", "ActualChat.App.Server.dll"]
