@@ -198,5 +198,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddTypeMap<IModalView>(map => map
             .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
         );
+
+        // File uploads
+        services.AddSingleton(_ => new UploadSessionRepositoryInternal.Options {
+            BackendFactory = c => new WebKvasBackend($"{ImportName}.uploadSessions", c),
+        });
+        services.AddScoped<IUploadSessionRepository>(c => new UploadSessionRepository(c));
     }
 }

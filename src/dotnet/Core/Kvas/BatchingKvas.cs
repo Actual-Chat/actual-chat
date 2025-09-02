@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.Kvas;
 
-public class BatchingKvas : SafeAsyncDisposableBase, IKvas
+public class BatchingKvas : SafeAsyncDisposableBase, IKvas, IKvas2
 {
     public record Options
     {
@@ -55,6 +55,12 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
     {
         await Writer.DisposeAsync().ConfigureAwait(false);
         await Reader.DisposeAsync().ConfigureAwait(false);
+    }
+
+    public async ValueTask<(string Key, byte[] Value)[]> GetAll(CancellationToken cancellationToken = default)
+    {
+        await Flush(cancellationToken).ConfigureAwait(false);
+        return await Backend.GetAll(cancellationToken).ConfigureAwait(false);
     }
 
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)

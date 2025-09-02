@@ -22,6 +22,16 @@ public static class KvasExt
   }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
+    public static async ValueTask<(string, T)[]> GetAll<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+        (this IKvas2 kvas, CancellationToken cancellationToken = default)
+        where T : class?
+    {
+        var data = await kvas.GetAll(cancellationToken).ConfigureAwait(false);
+        return data.Select(x => (x.Key, Serializer.Read<T>(x.Value))).ToArray();
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     [UnconditionalSuppressMessage("Tasks", "MA0100", Justification = "Don't need to wait for Set completion to dispose buffer writer.")]
     public static Task Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
