@@ -185,3 +185,7 @@ body.hoverable .add-members-btn:hover {
     @apply bg-cr-btn;
     @apply text-white;
 }
+
+.navbar-button .voxt-btn {
+    @apply p-1;
+}

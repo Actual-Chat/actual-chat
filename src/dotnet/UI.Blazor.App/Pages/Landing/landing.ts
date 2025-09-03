@@ -9,10 +9,12 @@ const { debugLog } = Log.get('Landing');
 
 export class Landing {
     private readonly disposed$ = new Subject<void>();
-    private readonly header: HTMLElement;
-    private readonly downloadLinksPage: HTMLElement;
-    private readonly scrollContainer: HTMLElement;
+    private readonly header: HTMLElement | null;
+    private readonly firstPage: HTMLElement | null;
+    private readonly downloadLinksPage: HTMLElement | null;
+    private readonly scrollContainer: HTMLElement | null;
     private lastPosition: number = 0;
+    private vh: number = 0;
     private isVideoPlayStarted = false;
     private observer: IntersectionObserver;
     private canScroll: boolean = true;
@@ -26,6 +28,13 @@ export class Landing {
     ) {
         this.disableAutoDarkMode();
         this.header = landing.querySelector('.landing-header');
+        if (!this.header)
+            return;
+
+        this.firstPage = landing.querySelector('.page-1');
+        this.vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${this.vh}px`);
+
         this.onScreenSizeChange();
         ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
@@ -70,10 +79,30 @@ export class Landing {
         });
 
         this.downloadLinksPage = this.landing.querySelector('.page-links');
-        this.scrollContainer = getScrollContainer(this.downloadLinksPage);
+        if (this.downloadLinksPage)
+            this.scrollContainer = getScrollContainer(this.downloadLinksPage);
 
-        let vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        const remInPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const offset = 3 * remInPx;
+        const rootMargin = this.firstPage ? `-${this.firstPage.scrollHeight - offset}px 0px 0px 0px` : '0px';
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (this.header)
+                        this.header.classList.remove('blur-bg');
+                } else {
+                    if (this.header)
+                        this.header.classList.add('blur-bg');
+                }
+            });
+        }, {
+            root: null,
+            threshold: 0,
+            rootMargin: rootMargin,
+        });
+
+        if (this.firstPage)
+            observer.observe(this.firstPage);
     }
 
     public dispose() {
@@ -82,7 +111,9 @@ export class Landing {
 
         this.disposed$.next();
         this.disposed$.complete();
-        document.querySelector("[name='color-scheme']").remove();
+        const colorScheme = document.querySelector("[name='color-scheme']");
+        if (colorScheme)
+            colorScheme.remove();
         this.observer.disconnect();
     }
 
@@ -97,8 +128,8 @@ export class Landing {
             this.landing.classList.remove('no-full-screen-pages');
         else
             this.landing.classList.add('no-full-screen-pages');
-        let vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        this.vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${this.vh}px`);
     }
 
     private onKeyDown(event: KeyboardEvent): void {
@@ -138,7 +169,7 @@ export class Landing {
         const cardVideos = [...this.landing.querySelectorAll<HTMLVideoElement>('.landing-card-video')];
         for (const cardVideo of cardVideos) {
             cardVideo.muted = true;
-            const isVideoPlaying = !!(cardVideo.currentTime > 0 && !cardVideo.paused && !cardVideo.ended && cardVideo.readyState > 2);
+            const isVideoPlaying = (cardVideo.currentTime > 0 && !cardVideo.paused && !cardVideo.ended && cardVideo.readyState > 2);
             if (!isVideoPlaying) {
                 this.isVideoPlayStarted = true;
                 void cardVideo.play().then(_ => {
@@ -154,8 +185,10 @@ export class Landing {
     }
 
     private updateHeader(): void {
-        const page1 = this.landing.querySelector('.page-1');
-        let isNotFirstPage = page1.getBoundingClientRect().bottom <= 0;
+        if (this.header == null)
+            return;
+
+        let isNotFirstPage = this.firstPage && this.firstPage.getBoundingClientRect().bottom <= 0;
 
         if ((isNotFirstPage && this.canScroll)) {
             this.header.classList.add('filled');
@@ -165,7 +198,7 @@ export class Landing {
 
         let downloadBtn = this.header.querySelector('.download-app');
         let mainPageBtn = this.header.querySelector('.btn-to-main-page');
-        if (this == null || mainPageBtn == null)
+        if (!this || !mainPageBtn || !downloadBtn)
             return;
         if (!this.canScroll) {
             downloadBtn.classList.add('!hidden');
@@ -180,6 +213,9 @@ export class Landing {
         this.downloadLinksToggle();
         let landingTop = this.landing.getBoundingClientRect().top;
         this.lastPosition = landingTop;
+        if (!this.downloadLinksPage || !this.scrollContainer)
+            return;
+
         let top = this.downloadLinksPage.getBoundingClientRect().top;
         const options = {
             behavior: 'auto',
@@ -189,6 +225,9 @@ export class Landing {
     }
 
     private scrollFromPageLinks(): void {
+        if (!this.scrollContainer)
+            return;
+
         this.downloadLinksToggle();
         let top = -(this.lastPosition);
         const options = {
@@ -199,7 +238,11 @@ export class Landing {
     }
 
     private scrollToWhyUs(): void {
-        let rect = this.landing.querySelector('.page-4').getBoundingClientRect();
+        const page4 = this.landing.querySelector('.page-4');
+        if (!page4 || !this.scrollContainer)
+            return;
+
+        let rect = page4.getBoundingClientRect();
         let top = rect.top;
         let landingTop = this.landing.getBoundingClientRect().top;
         const options = {
@@ -211,6 +254,9 @@ export class Landing {
 
     private downloadLinksToggle(): void {
         let page = this.downloadLinksPage;
+        if (!page)
+            return;
+
         if (page.classList.contains('hidden')) {
             page.classList.remove('hidden');
             this.canScroll = false;
@@ -238,6 +284,8 @@ export class Landing {
         const video = this.landing.querySelector<HTMLVideoElement>('.landing-video');
         const plug = this.landing.querySelector<HTMLImageElement>('.landing-video-plug');
         const hoverPlug = this.landing.querySelector('.hover-plug');
+        if (!video || !plug || !hoverPlug)
+            return;
 
         video.load();
         video.oncanplay = _ => {
