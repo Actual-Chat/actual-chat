@@ -29,6 +29,8 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     public Symbol Step { get; private set; }
     [IgnoreDataMember, MemoryPackIgnore]
     public Moment? HardResumeAt { get; private set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TimeSpan EventUuidQuantizationInterval { get; protected set; } = TimeSpan.FromMinutes(1);
 
     // Used by FlowWorklet
     [IgnoreDataMember, MemoryPackIgnore]
@@ -263,10 +265,10 @@ public abstract class Flow : IHasId<FlowId>, IFlowImpl
     // Calculates deterministic UUID for operation events: Flow.Id + event name + resumeAt quantized by minute
     private string GetEventUuid(string eventName, Moment resumeAt)
     {
-        var quantized = resumeAt.ToLastIntervalStart(TimeSpan.FromMinutes(1));
+        var quantized = resumeAt.ToLastIntervalStart(EventUuidQuantizationInterval);
         // Using ISO 8601 round-trip for stable string
         var q = quantized.ToDateTimeOffset().UtcDateTime;
-        return $"{Id.Value}:{eventName}:{q:yyyy-MM-ddTHH:mm:00Z}";
+        return $"{Id.Value}:{eventName}:{q:yyyy-MM-ddTHH:mm:ssZ}";
     }
 
     private FlowWorklet RequireWorklet()
