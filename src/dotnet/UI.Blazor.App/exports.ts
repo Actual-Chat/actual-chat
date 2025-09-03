@@ -23,7 +23,6 @@ export * from './Components/ChatView/Items/ChatEntryMessageInternalView/chat-ent
 export * from './Components/ClientUpgradeCover/upgrade-app-cat-svg.lit';
 export * from './Components/DateVisor/date-visor';
 export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';
-export * from './Components/LeftPanel/logo-button-svg.lit';
 export * from './Components/LeftPanel/chat-roulette-svg.lit';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MarkupParts/playable-text-markup-view';

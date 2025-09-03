@@ -302,11 +302,28 @@ body.app-maui .landing .landing-header .btn-download {
 /* Page 1 styles */
 .landing .page-1 {
     @apply relative;
+    @apply flex items-center justify-center;
+    @apply h-full w-full;
+    @apply overflow-hidden;
+    background: #0C003D;
 }
 .landing .page-1 {
     @apply min-h-screen;
     min-height: calc(var(--vh, 1vh) * 100);
-
+}
+.landing .page-1 .bg-wrapper:before {
+    @apply content-empty;
+    @apply absolute;
+    @apply w-full h-full;
+    @apply opacity-40;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='12' numOctaves='2' stitchTiles='stitch' /%3E%3C/filter%3E%3Cmask id='edge-fade'%3E%3CradialGradient id='fade' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='50%25' stop-color='white' /%3E%3Cstop offset='90%25' stop-color='blue' /%3E%3C/radialGradient%3E%3Crect width='100%25' height='100%25' fill='url(%23fade)' /%3E%3C/mask%3E%3C/defs%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' mask='url(%23edge-fade)' /%3E%3C/svg%3E");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+.landing .page-1 .bg-wrapper > img {
+    @apply absolute top-0 z-10;
+    @apply h-full w-[120%];
 }
 .landing .page-1 > .c-content {
     @apply z-10;
@@ -324,24 +341,24 @@ body.narrow .landing .page-1 > .c-content {
     @apply pt-16;
     @apply bg-transparent;
 }
-body.narrow .landing .page-1 {
-    @apply min-h-screen;
-    @apply bg-gradient-to-b from-[var(--indigo-30)] to-[--magenta-60];
-    min-height: calc(var(--vh, 1vh) * 100);
-}
-body.narrow .landing .page-1 .page-1-wrapper,
+/*body.narrow .landing .page-1 {*/
+/*    @apply min-h-screen;*/
+/*    @apply bg-gradient-to-b from-[var(--indigo-30)] to-[--magenta-60];*/
+/*    min-height: calc(var(--vh, 1vh) * 100);*/
+/*}*/
+/*body.narrow .landing .page-1 .page-1-wrapper,*/
 body.narrow .landing .page-links .page-links-wrapper {
     @apply h-full;
     @apply pt-12 px-4;
     @apply bg-cover bg-repeat-round;
     @apply bg-[url('images/ellipses-mobile.svg')];
 }
-.landing .page-1 > .c-content .main-text {
-    @apply gap-y-8;
+.landing .page.page-1 > .c-content .main-text {
+    @apply gap-y-8 items-start;
     @apply pt-0;
 }
-body.narrow .landing .page-1 > .c-content .main-text {
-    @apply gap-y-4;
+body.narrow .landing .page.page-1 > .c-content .main-text {
+    @apply gap-y-4 items-center;
 }
 .landing .page-1 > .c-content .main-text {
     @apply md:items-center;
@@ -380,7 +397,7 @@ body.narrow .landing .page-1 .main-text .c-description {
 }
 .landing .page-1 .main-text .c-btn-group {
     @apply flex-y gap-4;
-    @apply w-auto md:w-100 lg:w-120;
+    @apply w-full md:w-100 lg:w-120;
     @apply py-4;
 }
 .landing .page-1 > .c-content .main-image {
@@ -402,26 +419,26 @@ body.narrow .landing .page-1 .main-text .main-text-wrapper .c-btn-group {
     @apply w-screen h-full;
     @apply overflow-hidden;
 }
-.landing .page-1 .bg-wrapper > .c-ground {
-    @apply absolute;
-    @apply h-full w-screen;
-    @apply bg-no-repeat;
-    background: radial-gradient(circle at 40% 95%, var(--magenta-60), var(--blue-30) 50%) 0 60% / 120% 200%;
-}
-.landing .page-1 .bg-wrapper > .c-image {
-    @apply absolute;
-    @apply h-full w-screen;
-    @apply bg-repeat-y;
-    @apply bg-contain;
-    @apply bg-[url('images/ellipses.svg')];
-}
-body.narrow .landing .page-1 .bg-wrapper > .c-ground {
-    background: radial-gradient(circle at 50% 95%, var(--magenta-60), var(--blue-30) 40%);
-}
-body.narrow .landing .page-1 .bg-wrapper > .c-image {
-    @apply bg-cover bg-repeat-round;
-    @apply bg-[url('images/ellipses-mobile.svg')];
-}
+/*.landing .page-1 .bg-wrapper > .c-ground {*/
+/*    @apply absolute;*/
+/*    @apply h-full w-screen;*/
+/*    @apply bg-no-repeat;*/
+/*    background: radial-gradient(circle at 40% 95%, var(--magenta-60), var(--blue-30) 50%) 0 60% / 120% 200%;*/
+/*}*/
+/*.landing .page-1 .bg-wrapper > .c-image {*/
+/*    @apply absolute;*/
+/*    @apply h-full w-screen;*/
+/*    @apply bg-repeat-y;*/
+/*    @apply bg-contain;*/
+/*    @apply bg-[url('images/ellipses.svg')];*/
+/*}*/
+/*body.narrow .landing .page-1 .bg-wrapper > .c-ground {*/
+/*    background: radial-gradient(circle at 50% 95%, var(--magenta-60), var(--blue-30) 40%);*/
+/*}*/
+/*body.narrow .landing .page-1 .bg-wrapper > .c-image {*/
+/*    @apply bg-cover bg-repeat-round;*/
+/*    @apply bg-[url('images/ellipses-mobile.svg')];*/
+/*}*/
 
 /* Page 2 */
 

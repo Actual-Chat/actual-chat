@@ -5,7 +5,7 @@
 }
 
 @* Header *@
-<div class="landing-header blur-bg">
+<div class="landing-header">
     @if (ScreenSize.IsNarrow()) {
         <ButtonRound Class="menu-button btn-sm" Click="@Click">
             <i class="icon-menu text-2xl"></i>
@@ -14,14 +14,14 @@
             <div class="light-header">
                 <div class="c-title-wrapper">
                     <div class="c-title">
-                        <img draggable="false" src="/dist/images/ac-white-logo-alpha.svg" alt="" class="light-title">
+                        <img draggable="false" src="/dist/images/voxt-white-horizontal.svg" alt="" class="light-title">
                     </div>
                 </div>
             </div>
             <div class="dark-header">
                 <div class="c-title-wrapper">
                     <div class="c-title">
-                        <img draggable="false" src="/dist/images/ac-black-logo-alpha.svg" alt="" class="dark-title">
+                        <img draggable="false" src="/dist/images/voxt-black-horizontal.svg" alt="" class="dark-title">
                     </div>
                 </div>
             </div>
@@ -48,10 +48,10 @@
             <div class="light-header">
                 <div class="c-title-wrapper">
                     <div class="c-title">
-                        <img draggable="false" src="/dist/images/ac-white-logo-alpha.svg" alt="" class="light-title">
+                        <img draggable="false" src="/dist/images/voxt-white-horizontal.svg" alt="" class="light-title">
                     </div>
                     <div class="c-btn-group">
-                        <div class="w-4"></div>
+                        <div class="w-16"></div>
                         @if (!HostInfo.HostKind.IsMauiApp()) {
                             <Button
                                 Click="@WhyUsClick"
@@ -73,7 +73,7 @@
             <div class="dark-header">
                 <div class="c-title-wrapper">
                     <div class="c-title">
-                        <img draggable="false" src="/dist/images/ac-black-logo-alpha.svg" alt="" class="dark-title">
+                        <img draggable="false" src="/dist/images/voxt-black-horizontal.svg" alt="" class="dark-title">
                     </div>
                     <div class="c-btn-group">
                         <div class="w-4"></div>
