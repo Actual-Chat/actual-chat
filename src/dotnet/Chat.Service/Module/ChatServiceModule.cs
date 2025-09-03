@@ -92,11 +92,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         if (Settings.IsTranslationEnabled) {
-            Settings.LanguageDetection.PromptFile.RequireFileExists();
-            Settings.Translation.PromptFile.RequireFileExists();
-            // TODO(AK): Disable hash check for now, as it is not work at DEV now
-            // Settings.Translation.PromptFile.RequireHash(Translator.PromptHash);
-            // Settings.LanguageDetection.PromptFile.RequireHash(LanguageDetector.PromptHash);
             AddKeyedOpenAI(services,
                 Constants.Translation.ServiceKey,
                 Settings.Translation.OpenAIModel,
@@ -133,19 +128,19 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<IConversationSummarizer>(
                 c => new ConversationSummarizer(
                     new ConversationSummarizer.Options {
-                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeConversationPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SummarizeConversationPromptFile,
                     },
                     c));
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>(
                 c => new ThreadInsightExtractor(
                     new ThreadInsightExtractor.Options {
-                        PromptFile = c.GetRequiredService<ChatSettings>().SuggestChatThreadTitlePromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SuggestChatThreadTitlePromptFile,
                     },
                     c));
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizer>(
                 c => new ChatDigestSummarizer(
                     new ChatDigestSummarizer.Options {
-                        PromptFile = c.GetRequiredService<ChatSettings>().SummarizeChatDigestPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SummarizeChatDigestPromptFile,
                     },
                     c));
         }

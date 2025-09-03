@@ -2,6 +2,7 @@ using System.Text;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Diagnostics;
+using ActualChat.Module;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
 using Microsoft.SemanticKernel;
@@ -21,11 +22,14 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     [field: AllowNull, MaybeNull]
+    private CoreServerSettings CoreServerSettings => field ??= Services.GetRequiredService<CoreServerSettings>();
+
+    [field: AllowNull, MaybeNull]
     private string PromptTemplateString => field
         ??= File.ReadAllText(
             OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey) && !Settings.Translation.RealtimePromptFile.IsEmpty
-                ? Settings.Translation.RealtimePromptFile
-                : Settings.Translation.PromptFile
+                ? CoreServerSettings.PromptsDir | Settings.Translation.RealtimePromptFile
+                : CoreServerSettings.PromptsDir | Settings.Translation.PromptFile
         ).RequireNonEmpty();
 
     [field: AllowNull, MaybeNull]
