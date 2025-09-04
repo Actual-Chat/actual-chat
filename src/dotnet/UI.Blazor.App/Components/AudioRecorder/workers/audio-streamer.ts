@@ -204,6 +204,16 @@ export class AudioStreamer {
         c['_launchStreams'] = _launchStreams.bind(c);
         c.start();
         this.connection = c;
+
+        // Network-aware reconnect: reconnect ASAP when the window goes online
+        try {
+            globalThis.addEventListener('online', () => {
+                if (AudioStreamer.connection?.state !== HubConnectionState.Connected) {
+                    debugLog?.log('online: ensuring SignalR connection ASAP');
+                    void AudioStreamer.ensureConnected(true);
+                }
+            });
+        } catch { }
     }
 
     public static get isInitialized(): boolean {
@@ -229,6 +239,21 @@ export class AudioStreamer {
         infoLog?.log(`ensureConnected(${quickReconnect}): connection.state:`, c.state);
         while (!this.isConnected) {
             try {
+                // If the browser reports we're offline, wait for the 'online' event to avoid futile reconnect attempts
+                if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                    warnLog?.log('ensureConnected: offline, waiting for window.online event...');
+                    await new Promise<void>(resolve => {
+                        const handler = () => {
+                            globalThis.removeEventListener('online', handler as any);
+                            resolve();
+                        };
+                        // Some runtimes don't type 'globalThis' with EventTarget in TS config
+                        globalThis.addEventListener('online', handler as any, { once: true } as any);
+                    });
+                    // Use quick reconnect once we're back online
+                    quickReconnect = true;
+                }
+
                 if (c.state === HubConnectionState.Disconnecting)
                     await c.stop();
                 if (c.state === HubConnectionState.Disconnected) {
