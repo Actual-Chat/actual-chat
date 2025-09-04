@@ -116,6 +116,13 @@ jobs:
           sparse-checkout-cone-mode: false
           ref: ${{ startsWith(github.ref_name, 'release/') && github.ref_name || 'master' }}
 
+      - name: Verify checked-out configs commit
+        run: |
+          cd configs/  # Navigate to the checked-out repo
+          git pull  # Update the repo
+          git log --oneline -1  # Show the latest commit
+          cd ../
+
       - name: Copy prompts
         run: |
           mv configs/prompts .config/
