@@ -7,4 +7,5 @@ public record ChatDialogFormatterOptions
     public bool DisplayAuthorPerEntry { get; init; }
     public bool DisplayTimestamp { get; init; }
     public bool UseSquareBracketsFormat { get; init; }
+    public bool AddAuthorId { get; init; }
 }
