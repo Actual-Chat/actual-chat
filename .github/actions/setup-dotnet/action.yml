@@ -1,5 +1,4 @@
 name: 'Setup dotnet environment for Voxt build'
-description: 'Install apple provisioning profile on Mac'
 inputs:
   restore:
     default: "true"

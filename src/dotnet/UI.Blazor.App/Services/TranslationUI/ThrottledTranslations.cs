@@ -40,8 +40,7 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
 
     public async Task<ChatEntryLanguage?> GetLanguage(TextEntryId entryId, string consumerId, CancellationToken cancellationToken)
     {
-        var session = Session;
-        var existing = await Translations.GetLanguage(session, entryId, cancellationToken).ConfigureAwait(false);
+        var existing = await GetLanguageInternal(entryId, cancellationToken).ConfigureAwait(false);
         if (existing is null)
             await _languageQueue.Enqueue(entryId, consumerId, cancellationToken).ConfigureAwait(false);
 
@@ -71,6 +70,10 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         var targetLanguage = await TranslationUI.GetTargetLanguage(itemVisibility.ChatId, cancellationToken).ConfigureAwait(false);
         return new(itemVisibility, targetLanguage);
     }
+
+    [ComputeMethod]
+    protected virtual Task<ChatEntryLanguage?> GetLanguageInternal(TextEntryId entryId, CancellationToken cancellationToken)
+        => Translations.GetLanguage(Session, entryId, cancellationToken);
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
@@ -130,7 +133,7 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         => WhenNotNull(() => Translations.Get(Session, translationId, true, cancellationToken), cancellationToken);
 
     private Task<ChatEntryLanguage> WhenLanguageDetected(TextEntryId id, CancellationToken cancellationToken)
-        => WhenNotNull(() => Translations.GetLanguage(Session, id, cancellationToken), cancellationToken);
+        => WhenNotNull(() => GetLanguageInternal(id, cancellationToken), cancellationToken);
 
     private async Task<T> WhenNotNull<T>(Func<Task<T?>> taskFactory, CancellationToken cancellationToken)
     {
