@@ -34,7 +34,7 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "maxNodeModuleJsDepth": 1,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     // change to true (?)
     "noImplicitAny": false,
     // change to true (?)
@@ -45,7 +45,7 @@
     "checkJs": false,
     "sourceMap": true,
     /* Basic Options */
-    "target": "es2017",
+    "target": "es2020",
     "module": "es2020",
     "jsx": "react",
     "lib": [
@@ -54,6 +54,7 @@
       "es6",
       "es2017",
       "es2018",
+      "es2022",
     ],
     "typeRoots": [
       "./node_modules/@types",
