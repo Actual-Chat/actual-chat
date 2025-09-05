@@ -59,7 +59,7 @@ internal class UserIntentDetector(Kernel kernel): IUserIntentDetector
             .FirstAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var content = response.Content ?? string.Empty;
+        var content = response.Message.Content ?? string.Empty;
 
         return content.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Aggregate(UserIntent.None, (result, token) => ResponseMap.TryGetValue(token, out var intent) ? result | intent : result);
