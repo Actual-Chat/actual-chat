@@ -24,7 +24,7 @@ public static class MauiSettings
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly AppKind AppKind;
-    public static readonly Color SplashBackgroundColor = Color.FromArgb("#0036A3");
+    public static readonly Color SplashBackgroundColor = Color.FromArgb("#0C003D");
 
     static MauiSettings()
     {
