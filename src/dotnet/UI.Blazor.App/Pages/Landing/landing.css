@@ -169,7 +169,7 @@ body.narrow .landing .landing-header {
     @apply px-2;
 }
 body.wide.app-maui .landing .landing-header {
-    @apply px-8;
+    @apply px-32;
 }
 .landing .landing-header .light-icon,
 .landing .landing-header .dark-icon,
@@ -303,13 +303,14 @@ body.app-maui .landing .landing-header .btn-download {
 .landing .page-1 {
     @apply relative;
     @apply flex items-center justify-center;
-    @apply h-full w-full;
+    @apply w-full;
     @apply overflow-hidden;
     background: #0C003D;
 }
 .landing .page-1 {
-    @apply min-h-screen;
+    @apply min-h-screen max-h-screen;
     min-height: calc(var(--vh, 1vh) * 100);
+    max-height: calc(var(--vh, 1vh) * 100);
 }
 .landing .page-1 .bg-wrapper > img {
     @apply absolute top-0 z-10;

@@ -200,6 +200,10 @@ class SideNavPullDetectGesture extends Gesture {
             if (!event.target)
                 return; // Not sure if this is possible, but just in case
 
+            const editor = document.querySelector('.chat-message-editor');
+            if (editor && editor.contains(event.target as Node))
+                return;
+
             const prePullDistance = getPrePullDistance(event.target);
             if (!prePullDistance)
                 return;
