@@ -32,19 +32,17 @@
 .web-splash .bg-wrapper {
     @apply absolute inset-0 z-10;
 }
-.web-splash .bg-wrapper:before {
-    @apply content-empty;
-    @apply absolute;
-    @apply w-full h-full;
-    @apply opacity-40;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='12' numOctaves='2' stitchTiles='stitch' /%3E%3C/filter%3E%3Cmask id='edge-fade'%3E%3CradialGradient id='fade' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='50%25' stop-color='white' /%3E%3Cstop offset='90%25' stop-color='blue' /%3E%3C/radialGradient%3E%3Crect width='100%25' height='100%25' fill='url(%23fade)' /%3E%3C/mask%3E%3C/defs%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' mask='url(%23edge-fade)' /%3E%3C/svg%3E");
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
-}
 .web-splash .bg-wrapper > img {
     @apply absolute top-0 z-10;
-    @apply h-full w-[120%];
+    @apply h-full w-full;
+}
+body.wide .web-splash .narrow-image,
+body.narrow .web-splash .wide-image {
+    @apply hidden;
+}
+body.narrow .web-splash .narrow-image,
+body.wide .web-splash .wide-image {
+    @apply block;
 }
 .web-splash .c-content {
     @apply z-10;
@@ -59,12 +57,6 @@
     min-width: 100px;
     max-height: 100px;
     max-width: 100px;
-}
-body.app-maui.device-ios .web-splash .c-content > img {
-    @apply hidden;
-}
-body.app-maui.device-android .web-splash .c-content > img {
-    @apply hidden;
 }
 .web-splash .progress {
     @apply relative;

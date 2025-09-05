@@ -154,6 +154,11 @@ export class SideNav extends DisposableBag {
                     parent.classList.add('rp-open');
                 }
             }
+            if (ScreenSize.isNarrow() || (!ScreenSize.isNarrow()) && window.getComputedStyle(this.element).position === 'absolute') {
+                const selection = window.getSelection();
+                if (selection)
+                    selection.removeAllRanges();
+            }
         } else {
             document.body.classList.remove(this.bodyClassWhenOpen);
             if (parent) {
