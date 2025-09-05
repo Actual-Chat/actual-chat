@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "dotnet-ef": {
-      "version": "9.0.5",
+      "version": "9.0.8",
       "commands": [
         "dotnet-ef"
       ],
@@ -24,7 +24,7 @@
       "rollForward": false
     },
     "dotnet-trace": {
-      "version": "9.0.607501",
+      "version": "9.0.621003",
       "commands": [
         "dotnet-trace"
       ],
