@@ -1,4 +1,5 @@
 import { Log } from 'logging';
+import { EventHandlerSet } from 'event-handling';
 
 const { debugLog, errorLog } = Log.get('DelayedInvoker');
 
@@ -7,6 +8,8 @@ export class DelayedInvoker {
     private currentResolve: (() => void) | null = null;
     private currentPromise: Promise<void> = this.createNewPromise();
 
+    public readonly hasCallbacksChanged = new EventHandlerSet<void>();
+
     private createNewPromise(): Promise<void> {
         return new Promise<void>((resolve) => {
             this.currentResolve = resolve;
@@ -14,8 +17,18 @@ export class DelayedInvoker {
     }
 
     public registerCallback(cb: () => void | Promise<void>): Promise<void> {
+        const hasCallbacks = this.hasCallbacks();
         this.callbacks.push(cb);
+        if (!hasCallbacks) {
+            setTimeout(() => {
+                this.hasCallbacksChanged.triggerSilently();
+            }, 0);
+        }
         return this.currentPromise;
+    }
+
+    public hasCallbacks(): boolean {
+        return this.callbacks.length > 0;
     }
 
     public async invoke(): Promise<void> {
@@ -38,6 +51,8 @@ export class DelayedInvoker {
             }
 
             this.currentPromise = this.createNewPromise();
+
+            this.hasCallbacksChanged.triggerSilently();
         }
     }
 }

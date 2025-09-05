@@ -90,7 +90,8 @@ export type LogScope =
     | 'TooltipHost'
     | 'UserInterface'
     | 'VisualMediaViewer'
-    | 'WebAuth';
+    | 'WebAuth'
+    | 'WebFileProvider';
 
 const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';

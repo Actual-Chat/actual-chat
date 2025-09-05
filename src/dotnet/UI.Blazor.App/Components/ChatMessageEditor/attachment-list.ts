@@ -114,7 +114,7 @@ export class AttachmentListView {
 class AttachmentList {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
-    private uploads: Map<number, FileUpload> = new Map<number, FileUpload>();
+    private uploads: Map<number, ChatMediaFileUpload> = new Map<number, ChatMediaFileUpload>();
     private attachmentsIdSeed: number = 0;
     private blazorRef: DotNet.DotNetObject | null = null;
     public changed: () => void = () => { };
@@ -168,7 +168,7 @@ class AttachmentList {
         this.attachments.set(attachment.id, attachment);
         if (!silent)
             TuneUI.play(Tune.ChangeAttachments);
-        const upload = new FileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
+        const upload = new ChatMediaFileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
         upload.whenCompleted.then(x => {
             attachment.mediaId = x.mediaId;
             attachment.thumbnailMediaId = x.thumbnailMediaId;
@@ -263,7 +263,7 @@ class AttachmentList {
     }
 }
 
-class FileUpload {
+export class ChatMediaFileUpload {
     private readonly xhr: XMLHttpRequest;
     private readonly whenCompletedSource: PromiseSource<MediaContent> = new PromiseSource<MediaContent>();
     private isCancelled = false;
