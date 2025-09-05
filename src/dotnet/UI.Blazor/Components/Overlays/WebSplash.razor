@@ -1,18 +1,11 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="web-splash">
     <div class="c-wrapper">
         <div class="bg-wrapper">
-            <svg width="100%" height="100%" viewBox="0 0 360 513" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="180" cy="248" r="265" fill="url(#paint0_radial_24091_2558)"/>
-                <defs>
-                    <radialGradient id="paint0_radial_24091_2558" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(180 248) rotate(90) scale(286.5)">
-                        <stop stop-color="#0153AC"/>
-                        <stop offset="1" stop-color="#0C003D" stop-opacity="0"/>
-                    </radialGradient>
-                </defs>
-            </svg>
-            <img draggable="false" src="/dist/images/landing/voxt-landing-background-logo.svg" alt="voxt">
+            <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="voxt">
+            <img draggable="false" class="narrow-image" src="/dist/images/voxt-galaxy-vertical.svg" alt="voxt">
         </div>
 
         <div class="c-content">
@@ -23,3 +16,7 @@
         </div>
     </div>
 </div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}
