@@ -18,7 +18,7 @@
     @apply w-screen h-screen;
     @apply transition-opacity ease-in duration-300;
     will-change: transform;
-    background: #0C003D;
+    background-color: #0C003D;
 }
 .web-splash.removing {
     @apply transition-opacity ease-out duration-350 opacity-0;
