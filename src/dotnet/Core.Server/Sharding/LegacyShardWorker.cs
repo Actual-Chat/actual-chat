@@ -2,7 +2,7 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat;
 
-public abstract class OldShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
+public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
     : WorkerBase, IHasServices
 {
     private static bool DebugMode => Constants.DebugMode.OldShardWorker;
@@ -12,14 +12,13 @@ public abstract class OldShardWorker(IServiceProvider services, ShardScheme shar
     protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public IServiceProvider Services { get; } = services;
-    [field: AllowNull, MaybeNull]
-    public ShardLocker ShardLocker => field ??= Services.ShardLockers()[shardScheme, keyPrefix];
-    public ShardScheme ShardScheme => ShardLocker.ShardScheme;
-    public string KeyPrefix => ShardLocker.KeyPrefix;
+    public ShardScheduler ShardScheduler { get; } = services.ShardSchedulers()[shardScheme, keyPrefix];
+    public ShardScheme ShardScheme => ShardScheduler.ShardScheme;
+    public string KeyPrefix => ShardScheduler.KeyPrefix;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        await using var _ = ShardLocker.Schedule(OnRun).ConfigureAwait(false);
+        await using var _ = ShardScheduler.Schedule(OnRun).ConfigureAwait(false);
         await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).SilentAwait(false);
     }
 

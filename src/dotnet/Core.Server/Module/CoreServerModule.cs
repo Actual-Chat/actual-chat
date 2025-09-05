@@ -39,7 +39,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         services.AddRpcHost(HostInfo, Log);
 
         // ShardLockers
-        services.AddSingleton(c => new ShardLockers(c));
+        services.AddSingleton(c => new ShardSchedulerSet(c));
 
         // Queues
         services.AddSingleton(c => new EventHandlerRegistry(c));

@@ -15,7 +15,7 @@ internal sealed class ChatIndexInitializer(
     IChatIndexInitializerShard chatIndexInitializerShard,
     IServiceCoordinator serviceCoordinator,
     ILogger<ChatIndexInitializer> log
-) : OldShardWorker(services, shardScheme, nameof(ChatIndexInitializer)), IChatIndexInitializer
+) : LegacyShardWorker(services, shardScheme, nameof(ChatIndexInitializer)), IChatIndexInitializer
 {
     private record DummyEvent : IHasShardKey<string>
     {

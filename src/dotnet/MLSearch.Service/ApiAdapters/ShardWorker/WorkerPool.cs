@@ -36,7 +36,7 @@ internal sealed class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
     IShardIndexResolver<TShardKey> shardIndexResolver,
     IWorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey> workerPoolFactory,
     IServiceCoordinator serviceCoordinator
-) : OldShardWorker(services, ShardScheme.MLSearchBackend, typeof(TWorker).Name), IWorkerPool<TJob, TJobId, TShardKey>
+) : LegacyShardWorker(services, ShardScheme.MLSearchBackend, typeof(TWorker).Name), IWorkerPool<TJob, TJobId, TShardKey>
     where TWorker : class, IWorker<TJob>
     where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull

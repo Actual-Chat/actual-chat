@@ -27,8 +27,8 @@ public static class ServiceProviderExt
         => services.GetRequiredService<MeshWatcher>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ShardLockers ShardLockers(this IServiceProvider services)
-        => services.GetRequiredService<ShardLockers>();
+    public static ShardSchedulerSet ShardSchedulers(this IServiceProvider services)
+        => services.GetRequiredService<ShardSchedulerSet>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IBlobStorages BlobStorages(this IServiceProvider services)

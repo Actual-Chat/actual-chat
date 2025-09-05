@@ -2,8 +2,8 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests;
 
-public class ShardWorkerTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(ShardWorkerTest)}", TestAppHostOptions.None, @out)
+public class LegacyShardWorkerTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(LegacyShardWorkerTest)}", TestAppHostOptions.None, @out)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
@@ -56,13 +56,13 @@ public class ShardWorkerTest(ITestOutputHelper @out)
     // Nested types
 
     public class TestShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
-        : OldShardWorker(services, ShardScheme.TestBackend)
+        : LegacyShardWorker(services, ShardScheme.TestBackend)
     {
         private ITestOutputHelper Out { get; } = @out;
 
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            var thisNode = ShardLocker.ShardLockers.ThisNode;
+            var thisNode = ShardScheduler.Owner.ThisNode;
             Out.WriteLine($"-> OnRun({shardIndex} @ {thisNode.Ref}-{name})");
             await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
                 .WaitAsync(cancellationToken)
@@ -72,7 +72,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
     }
 
     public class TestChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
-        : OldShardWorker(services, ShardScheme.TestBackend)
+        : LegacyShardWorker(services, ShardScheme.TestBackend)
     {
         private static readonly HashSet<TestChannelShardWorker>[] ShardOwners
             = Enumerable
@@ -89,7 +89,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
 
         public override string ToString()
         {
-            var thisNode = ShardLocker.ShardLockers.ThisNode;
+            var thisNode = ShardScheduler.Owner.ThisNode;
             return $"{thisNode.Ref}-{name}";
         }
 
@@ -98,7 +98,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
             Out.WriteLine($"-> OnRun({shardIndex} @ {this})");
             lock (ShardOwners) {
                 var shardOwners = ShardOwners[shardIndex];
-                if (shardOwners.Any(x => x.ShardLocker != ShardLocker))
+                if (shardOwners.Any(x => x.ShardScheduler != ShardScheduler))
                     UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                         $"Shard {shardIndex} @ {this} is used by a worker from another host!"));
                 shardOwners.Add(this);
