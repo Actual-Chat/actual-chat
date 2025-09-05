@@ -18,6 +18,9 @@ public sealed class RunnableScheduler : ProcessorBase
         return Task.WhenAll(tasks).SuppressExceptions();
     }
 
+    public IAsyncDisposable Activate(IRunnable runnable)
+        => new RunnableScope(this, runnable);
+
     public bool Add(IRunnable runnable)
     {
         lock (Lock) {
@@ -34,6 +37,9 @@ public sealed class RunnableScheduler : ProcessorBase
             return true;
         }
     }
+
+    public IAsyncDisposable Activate(IRunnableRunner runner)
+        => new RunnableRunnerScope(this, runner);
 
     public bool Add(IRunnableRunner runner)
     {
@@ -88,5 +94,47 @@ public sealed class RunnableScheduler : ProcessorBase
         return mustStop
             ? runner.DisposeAsync()
             : default;
+    }
+
+    // Nested types
+
+    public sealed class RunnableScope : IAsyncDisposable
+    {
+        private readonly RunnableScheduler? _scheduler;
+        private readonly IRunnable? _runnable;
+
+        public RunnableScope(RunnableScheduler scheduler, IRunnable runnable)
+        {
+            if (!scheduler.Add(runnable))
+                return;
+
+            _scheduler = scheduler;
+            _runnable = runnable;
+        }
+
+        public ValueTask DisposeAsync()
+            => _scheduler is null || _runnable is null
+                ? default
+                : _scheduler.Remove(_runnable);
+    }
+
+    public sealed class RunnableRunnerScope : IAsyncDisposable
+    {
+        private readonly RunnableScheduler? _scheduler;
+        private readonly IRunnableRunner? _runner;
+
+        public RunnableRunnerScope(RunnableScheduler scheduler, IRunnableRunner runner)
+        {
+            if (!scheduler.Add(runner))
+                return;
+
+            _scheduler = scheduler;
+            _runner = runner;
+        }
+
+        public ValueTask DisposeAsync()
+            => _scheduler is null || _runner is null
+                ? default
+                : _scheduler.Remove(_runner);
     }
 }

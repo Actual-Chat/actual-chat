@@ -2,7 +2,7 @@ using ActualLab.Internal;
 
 namespace ActualChat.Flows.Infrastructure;
 
-public sealed class FlowHost : ShardWorker, IHasServices
+public sealed class FlowHost : OldShardWorker, IHasServices
 {
     private static readonly Requester Requester = new(typeof(FlowHost));
 

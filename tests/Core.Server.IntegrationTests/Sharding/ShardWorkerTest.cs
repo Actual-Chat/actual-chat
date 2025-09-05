@@ -12,29 +12,25 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         using var h1 = await NewAppHost();
         await using var w1a = new TestChannelShardWorker(h1.Services, Out, "w1a");
         w1a.Start();
-
-        // w1a should lock all shards
+        // w1a should use all shards
         await ToShardIndexSets(w1a.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
-        await w1a.DisposeSilentlyAsync();
 
         await using var w1b = new TestChannelShardWorker(h1.Services, Out, "w1b");
         w1b.Start();
-
-        // w1b should lock all shards, coz w1a was disposed
+        // w1b should use all shards as well
         await ToShardIndexSets(w1b.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
 
         using var h2 = await NewAppHost();
-        await using var w2a = new TestChannelShardWorker(h2.Services, Out, "w2a");
-        w2a.Start();
-        await using var w2b = new TestChannelShardWorker(h2.Services, Out, "w2b");
-        w2b.Start();
+        await using var w2 = new TestChannelShardWorker(h2.Services, Out, "w2");
+        w2.Start();
+        // w2 workers should use half of the shards
+        var w2Shards = await ToShardIndexSets(w2.UsedShardIndexes).FirstAsync(x => x.Count == shardScheme.ShardCount / 2);
 
-        // h2 workers should lock half of the shards, splitting them between them
-        var h2UsedShardIndexes = ActualLab.Channels.ChannelExt.Create<int>(new UnboundedChannelOptions());
-        _ = w2a.UsedShardIndexes.Reader.Copy(h2UsedShardIndexes.Writer, ChannelCopyMode.CopyAll);
-        _ = w2b.UsedShardIndexes.Reader.Copy(h2UsedShardIndexes.Writer, ChannelCopyMode.CopyAll);
-        await ToShardIndexSets(h2UsedShardIndexes)
-            .FirstAsync(x => x.Count == shardScheme.ShardCount / 2);
+        // w1c workers should use half of the shards
+        await using var w1 = new TestChannelShardWorker(h1.Services, Out, "w1");
+        w1.Start();
+        var w1Shards = await ToShardIndexSets(w1.UsedShardIndexes).FirstAsync(x => x.Count == shardScheme.ShardCount / 2);
+        w1Shards.Intersect(w2Shards).Should().BeEmpty();
     }
 
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
@@ -60,24 +56,29 @@ public class ShardWorkerTest(ITestOutputHelper @out)
     // Nested types
 
     public class TestShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
-        : ShardWorker(services, ShardScheme.TestBackend)
+        : OldShardWorker(services, ShardScheme.TestBackend)
     {
         private ITestOutputHelper Out { get; } = @out;
 
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+            var thisNode = ShardLocker.ShardLockers.ThisNode;
+            Out.WriteLine($"-> OnRun({shardIndex} @ {thisNode.Ref}-{name})");
             await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
                 .WaitAsync(cancellationToken)
                 .SilentAwait();
-            Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+            Out.WriteLine($"<- OnRun({shardIndex} @ {thisNode.Ref}-{name})");
         }
     }
 
     public class TestChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
-        : ShardWorker(services, ShardScheme.TestBackend)
+        : OldShardWorker(services, ShardScheme.TestBackend)
     {
-        private static readonly object?[] ShardOwners = new object?[ShardScheme.TestBackend.ShardCount];
+        private static readonly HashSet<TestChannelShardWorker>[] ShardOwners
+            = Enumerable
+                .Range(0, ShardScheme.TestBackend.ShardCount)
+                .Select(_ => new HashSet<TestChannelShardWorker>())
+                .ToArray();
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
         private ITestOutputHelper Out { get; } = @out;
 
@@ -86,25 +87,34 @@ public class ShardWorkerTest(ITestOutputHelper @out)
             SingleWriter = false,
         });
 
+        public override string ToString()
+        {
+            var thisNode = ShardLocker.ShardLockers.ThisNode;
+            return $"{thisNode.Ref}-{name}";
+        }
+
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+            Out.WriteLine($"-> OnRun({shardIndex} @ {this})");
             lock (ShardOwners) {
-                if (ShardOwners[shardIndex] != null)
-                    UsedShardIndexes.Writer.TryComplete(StandardError.Constraint("Shard is used by another worker!"));
-                ShardOwners[shardIndex] = this;
+                var shardOwners = ShardOwners[shardIndex];
+                if (shardOwners.Any(x => x.ShardLocker != ShardLocker))
+                    UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
+                        $"Shard {shardIndex} @ {this} is used by a worker from another host!"));
+                shardOwners.Add(this);
             }
             try {
                 await UsedShardIndexes.Writer.WriteAsync(shardIndex, cancellationToken);
-                await Clock.Delay(WaitDelay.Next(), cancellationToken);
+                await Task.Delay(WaitDelay.Next(), cancellationToken);
             }
             finally {
                 lock (ShardOwners) {
-                    if (ShardOwners[shardIndex] != this)
-                        UsedShardIndexes.Writer.TryComplete(StandardError.Constraint("Shard must be used by this worker!"));
-                    ShardOwners[shardIndex] = null;
+                    var shardOwners = ShardOwners[shardIndex];
+                    if (!shardOwners.Remove(this))
+                        UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
+                            $"Shard {shardIndex} must be used {this}!"));
                 }
-                Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
+                Out.WriteLine($"<- OnRun({shardIndex} @ {this})");
             }
         }
 

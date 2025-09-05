@@ -6,7 +6,7 @@ using OpenTelemetry.Context.Propagation;
 
 namespace ActualChat.Queues.Internal;
 
-public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardWorker, IQueueProcessor
+public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : OldShardWorker, IQueueProcessor
     where TSettings : QueueSettings
     where TQueues : IQueues
 {

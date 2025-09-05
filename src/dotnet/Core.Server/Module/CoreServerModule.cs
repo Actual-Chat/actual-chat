@@ -38,6 +38,9 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // RPC host
         services.AddRpcHost(HostInfo, Log);
 
+        // ShardLockers
+        services.AddSingleton(c => new ShardLockers(c));
+
         // Queues
         services.AddSingleton(c => new EventHandlerRegistry(c));
         if (Settings.UseNatsQueues) {
