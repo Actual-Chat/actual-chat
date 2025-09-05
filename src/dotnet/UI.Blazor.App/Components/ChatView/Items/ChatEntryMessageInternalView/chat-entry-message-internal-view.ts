@@ -16,6 +16,7 @@ export class ChatEntryMessageInternalView {
         characterDataOldValue: true,
     };
     private isResizing: boolean = false;
+    private skipNext: boolean = false;
     private slowDebouncedChangeSize: ResettableFunc<(height: number) => Promise<void>>;
     private disposed$: Subject<void> = new Subject<void>();
 
@@ -71,7 +72,13 @@ export class ChatEntryMessageInternalView {
         return parseFloat(getComputedStyle(document.documentElement).fontSize);
     }
 
-    private updateHeightOnWidthChange: ResizeObserverCallback = () => this.changeSizeForText();
+    private updateHeightOnWidthChange: ResizeObserverCallback = () => {
+        if (this.skipNext) {
+            this.skipNext = false;
+            return;
+        }
+        this.changeSizeForText();
+    };
 
     private updateMarkupSize: MutationCallback = (mutations) => {
         mutations.forEach(mutation => {
@@ -110,19 +117,15 @@ export class ChatEntryMessageInternalView {
     }
 
     private onTranscriptionFinalizedResize() {
-        if (this.mutationObserver) {
-            this.mutationObserver.disconnect();
-        }
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-        }
+        this.mutationObserver.disconnect();
+        this.resizeObserver.disconnect();
+
         this.isResizing = false;
         this.fastDebouncedChangeSize(this.playableText?.offsetHeight);
 
-        setTimeout(() => {
-            this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
-            this.resizeObserver.observe(this.messageMarkup);
-        }, 500);
+        this.skipNext = true;
+        this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
+        this.resizeObserver.observe(this.messageMarkup);
     }
 
     private fastDebouncedChangeSize = debounce((height: number) => this.changeSize(height), 150);
