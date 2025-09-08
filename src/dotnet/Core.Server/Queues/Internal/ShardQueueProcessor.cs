@@ -17,7 +17,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
 
     protected ICommander Commander { get; }
     protected CommandHandlerResolver CommandHandlerResolver { get; }
-    protected new MomentClock Clock { get; }
+    protected MomentClock Clock { get; }
     protected new ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected TimeSpan ProcessTimeout

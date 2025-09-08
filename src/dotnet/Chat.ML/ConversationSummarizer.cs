@@ -178,7 +178,8 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
         var tiles = await idTiles
             .Select(idTile => ChatEntryLanguagesBackend.GetTile(chatId, idTile.Range, cancellationToken))
-            .Collect(cancellationToken);
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
 
         // Build a fast lookup set of the requested local IDs
         var idSet = new HashSet<long>(localIds);
