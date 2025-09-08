@@ -69,8 +69,8 @@ public static class KvasExt
         (this IKvas kvas, Func<T, T> update, CancellationToken cancellationToken = default)
         where T : class, IHasKvasKey<T>, new()
     {
-        var value = await kvas.Get<T>(cancellationToken);
-        var newValue = update(value ?? new T());
+        var value = await kvas.Get<T>(cancellationToken).ConfigureAwait(false);
+        var newValue = update.Invoke(value ?? new T());
         await kvas.Set(newValue, cancellationToken).ConfigureAwait(false);
         return newValue;
     }
