@@ -10,7 +10,7 @@ public sealed class FileUploader(UIHub hub) : UIServiceBase<UIHub>(hub)
     private IHttpClientFactory HttpClientFactory => Hub.HttpClientFactory;
 
     [RequiresUnreferencedCode("Uses ReadFromJsonAsync")]
-    public FileUploadOperation<MediaContent> CreateUploadOperation(ChatId chatId, Stream file, string? contentType, string? fileName, Progress<double>? progress = null)
+    public FileUploadOperation CreateUploadOperation(ChatId chatId, Stream file, string? contentType, string? fileName, Progress<double>? progress = null)
         => new (token => {
             HttpContent streamContent = progress != null
                 ? new StreamContentWithProgress(file, progress, token)

@@ -4,10 +4,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public interface IUploadSessionRepository
 {
-    Task SaveAsync(UploadSession session);
-    Task<UploadSession?> GetAsync(string sessionId);
-    Task<IEnumerable<UploadSession>> GetAllAsync();
-    Task DeleteAsync(string sessionId);
+    Task Save(UploadSession session);
+    Task<UploadSession?> Get(string sessionId);
+    Task<IEnumerable<UploadSession>> GetAll();
+    Task Delete(string sessionId);
+    Task Flush();
 }
 
 public class UploadSessionRepository : IUploadSessionRepository
@@ -23,22 +24,25 @@ public class UploadSessionRepository : IUploadSessionRepository
         _internal = new UploadSessionRepositoryInternal(options, services);
     }
 
-    public async Task SaveAsync(UploadSession session)
+    public async Task Save(UploadSession session)
     {
         await _internal.Set(Key(session.SessionId), session).ConfigureAwait(false);
         await _internal.Flush().ConfigureAwait(false);
     }
 
-    public Task<UploadSession?> GetAsync(string sessionId)
+    public Task<UploadSession?> Get(string sessionId)
         => _internal.Get<UploadSession>(Key(sessionId)).AsTask();
 
-    public async Task<IEnumerable<UploadSession>> GetAllAsync()
+    public async Task<IEnumerable<UploadSession>> GetAll()
         => (await _internal.GetAll<UploadSession>().ConfigureAwait(false))
             .Select(c => c.Item2)
             .ToArray();
 
-    public Task DeleteAsync(string sessionId)
+    public Task Delete(string sessionId)
         => _internal.Set(Key(sessionId), null);
+
+    public Task Flush()
+        => _internal.Flush();
 }
 
 internal class UploadSessionRepositoryInternal : BatchingKvas

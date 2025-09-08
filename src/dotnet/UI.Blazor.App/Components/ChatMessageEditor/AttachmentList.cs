@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList(Action<IFileUploadOperation> enqueueFileUploadOperation) : IAttachmentList, IAttachmentListBackend
+public class AttachmentList(UploadSessionManager uploadSessionManager, ILogger<AttachmentList> log) : IAttachmentList, IAttachmentListBackend
 {
     public static Exception FileTooBigError()
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
@@ -34,26 +34,30 @@ public class AttachmentList(Action<IFileUploadOperation> enqueueFileUploadOperat
     }
 
     public async Task Remove(Attachment attachment) {
+        AttachmentInfo? attachmentInfo;
         lock (_lock) {
-            var attachmentInfo = _attachments.Find(c => c.Attachment == attachment);
+            attachmentInfo = _attachments.Find(c => c.Attachment == attachment);
             if (attachmentInfo is null)
                 throw StandardError.Internal("Attachment not found.");
             _attachments = _attachments.Remove(attachmentInfo);
-            attachmentInfo.UploadOperation.Dispose();
         }
+        if (attachmentInfo.UploadSession is not null)
+            await uploadSessionManager.CancelSession(attachmentInfo.UploadSession.SessionId);
         await InvokeRemove(attachment);
         OnChanged();
     }
 
     public async Task Clear()
     {
+        ImmutableList<AttachmentInfo> clone;
         lock (_lock) {
-            var clone = _attachments;
+            clone = _attachments;
             _attachments = _attachments.Clear();
-            foreach (var info in clone)
-                info.UploadOperation.Dispose();
         }
-
+        foreach (var attachmentInfo in clone) {
+            if (attachmentInfo.UploadSession is not null)
+                await uploadSessionManager.CancelSession(attachmentInfo.UploadSession.SessionId).ConfigureAwait(false);
+        }
         await InvokeClear();
         OnChanged();
     }
@@ -77,59 +81,83 @@ public class AttachmentList(Action<IFileUploadOperation> enqueueFileUploadOperat
                 return StandardError.Constraint("Too many files. Max allowed number is 10.");
 
             var attachment = new Attachment(id, url, fileName ?? "", fileType ?? "", length);
-            var progress = new Progress<double>();
-            var tcs = TaskCompletionSourceExt.New<MediaContent>();
-            var uploadOperation = new FileUploadOperation<MediaContent>(async ct => {
-                ct.Register(() => {
-                    tcs.TrySetCanceled();
-                    _ = InvokeCancelUpload(attachment.Id);
-                });
-                await InvokeStartUpload(attachment.Id);
-                return await tcs.Task;
-            }) {
-                Progress = progress,
-            };
-            _attachments = _attachments.Add(new AttachmentInfo(attachment, uploadOperation, progress, tcs));
+            _attachments = _attachments.Add(new AttachmentInfo(attachment));
             return null;
         }
     }
 
     [JSInvokable]
-    public void OnUploaderPrepared(int id) {
+    public async Task OnCreateUploaderRequested(int id, string sChatId) {
         var info = FindAttachmentById(id);
         if (info is null)
             return;
 
-        var uploadOperation = info.UploadOperation;
-        //uploadOperation.Start();
-        enqueueFileUploadOperation(uploadOperation);
+        WebFileProviderInternal? webFileProviderInternal;
+        var chatId = ChatId.Parse(sChatId);
+        var fileUploaderBackend = new FileUploaderBackend();
+        try {
+            var webProviderInternalRef = await JSRef!
+                .InvokeAsync<IJSObjectReference>("createFileProvider", id, fileUploaderBackend.BlazorRef)
+                .ConfigureAwait(true); // Continue on Blazor context.
+            webFileProviderInternal = new WebFileProviderInternal(
+                webProviderInternalRef,
+                fileUploaderBackend,
+                true);
+        }
+        catch (Exception ex) {
+            log.LogError(ex, "Failed to create file provider");
+            fileUploaderBackend.Dispose();
+            return;
+        }
+
+        var attachment = info.Attachment;
+        var webFileProvider = new WebFileProvider {
+            FileName = attachment.FileName,
+            FileSize = attachment.Length,
+            WebFileProviderInternal = webFileProviderInternal,
+        };
+
+        try {
+            var uploadSession = await uploadSessionManager.CreateSession(chatId, webFileProvider);
+            info.UploadSession = uploadSession;
+            await uploadSessionManager.ResumeSession(uploadSession.SessionId);
+            ObserveUploadProgress(uploadSession, attachment);
+        }
+        catch (Exception ex) {
+            log.LogError(ex, "Failed to create/resume upload session");
+            fileUploaderBackend.Dispose();
+        }
     }
 
-    [JSInvokable]
-    public void OnUploadProgress(int id, int progress) {
-        var info = FindAttachmentById(id);
-        if (info is not null)
-            ((IProgress<double>)info.Progress).Report(progress);
-        UpdateAttachment(id, x => x with { Progress = progress });
-        OnChanged();
-    }
-
-    [JSInvokable]
-    public void OnUploadSucceed(int id, MediaId mediaId, MediaId thumbnailMediaId) {
-        var info = FindAttachmentById(id);
-        if (info is not null)
-            info.TaskSource.TrySetResult(new MediaContent(mediaId, "", thumbnailMediaId, ""));
-        UpdateAttachment(id, x => x with { MediaId = mediaId, ThumbnailMediaId = thumbnailMediaId });
-        OnChanged();
-    }
-
-    [JSInvokable]
-    public void OnUploadFailed(int id) {
-        var info = FindAttachmentById(id);
-        if (info is not null)
-            info.TaskSource.TrySetException(StandardError.Internal("Upload failed."));
-        UpdateAttachment(id, x => x with { Failed = true });
-        OnChanged();
+    private void ObserveUploadProgress(UploadSession uploadSession, Attachment attachment)
+    {
+        // TODO: get rid of this hack, ProgressTracker should be able to report progress on the current thread.
+        var synchronousContext = SynchronizationContext.Current;
+        // Observe upload progress.
+        var tracker = uploadSession.ProgressTracker;
+        var id = attachment.Id;
+        tracker.Progress.ProgressChanged += (_, value) => {
+            synchronousContext.Post(v => {
+                UpdateAttachment(id, x => x with { Progress = (int)(double)v! });
+                OnChanged();
+            }, value);
+        };
+        _ = tracker.Task.ContinueWith(t => {
+            if (t.IsCompletedSuccessfully) {
+                var mediaContent = t.Result;
+                UpdateAttachment(id, x => x with {
+                    MediaId = mediaContent.MediaId,
+                    ThumbnailMediaId = mediaContent.ThumbnailMediaId,
+                });
+                OnChanged();
+            }
+            else if (t.IsFaulted) {
+                UpdateAttachment(id, x => x with {
+                    Failed = true,
+                });
+                OnChanged();
+            }
+        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     private void OnChanged()
@@ -140,12 +168,6 @@ public class AttachmentList(Action<IFileUploadOperation> enqueueFileUploadOperat
 
     private ValueTask InvokeRemove(Attachment attachment)
         => JSRef?.InvokeVoidAsync("remove", attachment.Id) ?? ValueTask.CompletedTask;
-
-    private ValueTask InvokeStartUpload(int attachmentId)
-        => JSRef?.InvokeVoidAsync("startUpload", attachmentId) ?? ValueTask.CompletedTask;
-
-    private ValueTask InvokeCancelUpload(int attachmentId)
-        => JSRef?.InvokeVoidAsync("cancelUpload", attachmentId) ?? ValueTask.CompletedTask;
 
     private AttachmentInfo? FindAttachmentById(int id)
         => _attachments.Find(c => c.Attachment.Id == id);
@@ -162,9 +184,8 @@ public class AttachmentList(Action<IFileUploadOperation> enqueueFileUploadOperat
         }
     }
 
-    private sealed record AttachmentInfo(
-        Attachment Attachment,
-        FileUploadOperation<MediaContent> UploadOperation,
-        Progress<double> Progress,
-        TaskCompletionSource<MediaContent> TaskSource);
+    private sealed record AttachmentInfo(Attachment Attachment)
+    {
+        public UploadSession? UploadSession { get; set; }
+    }
 }

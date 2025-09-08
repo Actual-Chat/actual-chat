@@ -44,7 +44,7 @@
 
     private readonly Lock _lock = new();
     private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
-    private AttachmentList _attachments;
+    private AttachmentList _attachments = null!;
     private ElementReference FilePickerRef { get; set; }
 
     [Parameter] public EventCallback OnSendClick { get; set; }
@@ -53,8 +53,10 @@
     public Task WhenReady => _whenReadySource.Task;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AttachmentListView))]
-    public AttachmentListView() {
-        _attachments = new AttachmentList(EnqueueFileUploadOperation);
+    public AttachmentListView() { }
+
+    protected override void OnInitialized() {
+        _attachments = CreateAttachmentList();
     }
 
     public async ValueTask DisposeAsync() {
@@ -113,7 +115,7 @@
         lock (_lock) {
             UnsubscribeFromListEvents(_attachments);
             attachments = _attachments;
-            _attachments = new AttachmentList(EnqueueFileUploadOperation);
+            _attachments = CreateAttachmentList();
             SubscribeToListEvents(_attachments);
         }
         await _attachments.AttachTo(JSRef);
@@ -122,9 +124,8 @@
         return new (attachments, () => Rollback(attachments), () => Release(attachments));
     }
 
-    private async ValueTask Release(AttachmentList attachments) {
-        await attachments.DisposeSilentlyAsync();
-    }
+    private ValueTask Release(AttachmentList attachments)
+        => attachments.DisposeSilentlyAsync();
 
     private async ValueTask Rollback(AttachmentList attachments) {
         AttachmentList? backup = null;
@@ -149,8 +150,8 @@
     private Task OnRemoveClick(Attachment attachment)
         => _attachments.Remove(attachment);
 
-    private void EnqueueFileUploadOperation(IFileUploadOperation fileUploadOperation)
-        => Hub.Services.GetRequiredService<FileUploadQueue>().Enqueue(fileUploadOperation);
+    private AttachmentList CreateAttachmentList()
+        => new(Services.GetRequiredService<UploadSessionManager>(), Services.LogFor<AttachmentList>());
 
     public sealed class ResetIntent : IAsyncDisposable {
         private readonly Func<ValueTask> _confirm;

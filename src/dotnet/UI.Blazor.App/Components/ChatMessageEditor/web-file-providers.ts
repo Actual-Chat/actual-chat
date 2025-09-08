@@ -1,10 +1,21 @@
-import { deleteFileHandle, getFileHandle } from './file-handle-storage';
+import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
 import { grantFileUploadPermissionsInvoker, requestFileHandlePermission } from './file-handle-permissions';
-import { OperationCancelledError } from 'promises';
-import { ChatMediaFileUpload } from './attachment-list';
 import { Log } from 'logging';
+import { OperationCancelledError, PromiseSource } from 'promises';
+import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
+import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
+import { v4 as uuidv4 } from "uuid";
 
 const { debugLog, errorLog } = Log.get('WebFileProvider');
+
+interface MediaContent {
+    mediaId: string;
+    contentId: string;
+    thumbnailMediaId?: string;
+    thumbnailContentId?: string;
+}
+
+type ProgressReporter = (progressPercent: number) => void;
 
 export class WebFileProviders
 {
@@ -19,9 +30,8 @@ export class WebFileProviders
         if (!granted) {
             return undefined;
         }
-        const reporter = new FileUploadProgressReporter(blazorRef, 0);
         const file = await fileHandle.getFile();
-        return new WebFileProvider(fileHandleDbKey, fileHandle, file, chatId, reporter);
+        return new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name, chatId, blazorRef);
     }
 
     public static grantFileUploadPermissions() {
@@ -37,26 +47,54 @@ export class WebFileProviders
     }
 }
 
-class WebFileProvider {
-    private readonly fileUpload: ChatMediaFileUpload;
+
+export class WebFileProvider {
+    private readonly fileUpload: FileUpload;
+    private readonly reporter: FileUploadProgressReporter;
 
     constructor(
-        private readonly fileHandleDbKey: string,
-        private readonly fileHandle: FileSystemFileHandle,
-        private readonly file: File,
-        private readonly chatId: string,
-        private readonly reporter: FileUploadProgressReporter
+        private fileHandleDbKey: string,
+        private readonly fileHandle: FileSystemFileHandle | null,
+        file: Blob,
+        fileName: string,
+        chatId: string,
+        blazorRef: DotNet.DotNetObject
     )
     {
-        this.fileUpload = new ChatMediaFileUpload(chatId, file, file.name, pct => reporter.reportProgress(pct))
+        this.reporter = new FileUploadProgressReporter(blazorRef);
+        this.fileUpload = new FileUpload(chatId, file, fileName, pct => this.reporter.reportProgress(pct))
         this.fileUpload.whenCompleted.then(x => {
-            void reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
+            void this.reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
         }).catch(e => {
             if (!(e instanceof OperationCancelledError)) {
                 errorLog?.log('Failed to upload file', e);
-                void reporter.reportUploadFailed();
+                void this.reporter.reportUploadFailed();
             }
         });
+    }
+
+    public async saveFileHandleToDb() : Promise<string>
+    {
+        if (!this.fileHandle)
+            return "";
+
+        if (this.fileHandleDbKey.length > 0)
+            return this.fileHandleDbKey;
+
+        const fileHandleDbKey = uuidv4();
+        await saveFileHandle(fileHandleDbKey, this.fileHandle);
+        this.fileHandleDbKey = fileHandleDbKey;
+        return fileHandleDbKey;
+    }
+
+    public async removeFileHandleFromDb(): Promise<boolean>
+    {
+        if (this.fileHandleDbKey.length == 0)
+            return false;
+
+        await deleteFileHandle(this.fileHandleDbKey);
+        this.fileHandleDbKey = "";
+        return true;
     }
 
     public start()
@@ -70,20 +108,68 @@ class WebFileProvider {
     }
 }
 
-class FileUploadProgressReporter {
-    constructor(private blazorRef: DotNet.DotNetObject, private id: number)
+export class FileUploadProgressReporter {
+    constructor(private blazorRef: DotNet.DotNetObject)
     {
     }
 
     public async reportProgress(progressPercent: number) {
-        return this.blazorRef.invokeMethodAsync('OnUploadProgress', this.id, Math.trunc(progressPercent));
+        return this.blazorRef.invokeMethodAsync('OnUploadProgress', Math.trunc(progressPercent));
     }
 
     public async reportUploadSucceed(mediaId: string, thumbnailMediaId?: string) {
-        return this.blazorRef.invokeMethodAsync('OnUploadSucceed', this.id, mediaId, thumbnailMediaId);
+        return this.blazorRef.invokeMethodAsync('OnUploadSucceed', mediaId, thumbnailMediaId);
     }
 
     public async reportUploadFailed() {
-        return this.blazorRef.invokeMethodAsync('OnUploadFailed', this.id);
+        return this.blazorRef.invokeMethodAsync('OnUploadFailed');
+    }
+}
+
+class FileUpload {
+    private readonly xhr: XMLHttpRequest;
+    private readonly whenCompletedSource: PromiseSource<MediaContent> = new PromiseSource<MediaContent>();
+    private isCancelled = false;
+
+    constructor(
+        private readonly chatId: string,
+        private readonly blob: Blob,
+        private readonly fileName: string,
+        private readonly progressReporter: ProgressReporter) {
+        this.xhr = new XMLHttpRequest();
+        if (!this.fileName)
+            this.fileName = "upload";
+    }
+
+    public get whenCompleted(): Promise<MediaContent> {
+        return this.whenCompletedSource;
+    }
+
+    public start() {
+        const formData = new FormData();
+        formData.append('file', this.blob, this.fileName);
+        this.xhr.upload.onprogress = (e) => {
+            const progress = Math.floor(e.loaded / e.total * 1000) / 10;
+            this.progressReporter(progress);
+        };
+        this.xhr.onreadystatechange = () => {
+            if (this.xhr.readyState === XMLHttpRequest.DONE) {
+                if (this.xhr.status === 200) {
+                    this.whenCompletedSource.resolve(JSON.parse(this.xhr.response));
+                } else if (this.isCancelled)
+                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled: ' + this.xhr.statusText));
+                else
+                    this.whenCompletedSource.reject(this.xhr.responseText);
+            }
+        };
+        const url = BrowserInit.getUrl(`api/chat-media/${this.chatId}/upload`);
+        this.xhr.open('post', url, true);
+        this.xhr.setRequestHeader(SessionTokens.headerName, SessionTokens.current);
+        this.xhr.send(formData);
+    }
+
+    public cancel() {
+        this.isCancelled = true;
+        this.xhr.abort();
     }
 }

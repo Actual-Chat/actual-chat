@@ -132,8 +132,9 @@ public sealed class AppScopedServiceStarter
 
             await ConfigureDataCollection(cancellationToken).ConfigureAwait(false);
 
-            await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
             Hub.Services.GetRequiredService<ContactSync>().Start();
+            _ = Hub.Services.GetRequiredService<UploadApp>().Start();
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");

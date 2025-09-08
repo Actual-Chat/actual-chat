@@ -1,16 +1,17 @@
 import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
-import { OperationCancelledError, PromiseSource } from 'promises';
 import { Log } from 'logging';
 import { isSupportedImage, isSupportedVideo } from "media-types";
 import { fromEvent, Subject, takeUntil } from 'rxjs';
-import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
-import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
+import { WebFileProvider } from './web-file-providers';
+
 
 const { debugLog, errorLog } = Log.get('Attachments');
 
 interface Attachment {
+    chatId: string;
     fileBlob: Blob;
     fileName: string;
+    fileHandle: FileSystemFileHandle | null;
     url: string;
     tempUrl: string;
     id: number;
@@ -18,14 +19,11 @@ interface Attachment {
     thumbnailMediaId?: string;
 }
 
-interface MediaContent {
-    mediaId: string;
-    contentId: string;
-    thumbnailMediaId?: string;
-    thumbnailContentId?: string;
+function hasShowOpenFilePicker(
+    win: Window
+): win is Window & { showOpenFilePicker: (options?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]> } {
+    return "showOpenFilePicker" in win;
 }
-
-type ProgressReporter = (progressPercent: number) => void;
 
 export class AttachmentListView {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -64,10 +62,19 @@ export class AttachmentListView {
     }
 
     /** Called by Blazor */
-    public showFilePicker = (acceptTypes: string = "") => {
+    public showFilePicker = async (acceptTypes: string = "") => {
         TuneUI.play(Tune.ChangeAttachments);
-        this.filePickerElement.accept = acceptTypes;
-        this.filePickerElement.click();
+        // NOTE: acceptTypes is not empty on an Android platform only. Let's implement it later.
+        if (acceptTypes === "" && hasShowOpenFilePicker(window)) {
+            const files = await window.showOpenFilePicker({
+                multiple: true,
+            });
+            await this.onFilesPicked(files);
+        }
+        else {
+            this.filePickerElement.accept = acceptTypes;
+            this.filePickerElement.click();
+        }
     };
 
     /** Called by Blazor */
@@ -78,7 +85,7 @@ export class AttachmentListView {
             const fileName = fileNames[i];
             await fetch(url)
                 .then(r => r.blob())
-                .then(blob => this.attachments.addBlob(this.chatId, url, blob, fileName, true))
+                .then(blob => this.attachments.addBlob(this.chatId, url, blob, fileName, null, true))
                 .then(isAdded => {
                     if (isAdded) {
                         addedBlobs++;
@@ -95,13 +102,13 @@ export class AttachmentListView {
         return this.attachments.some();
     }
 
-    public async add(chatId: string, file: File): Promise<boolean> {
-        return this.attachments.addBlob(chatId, '', file, file.name, false);
+    public async add(chatId: string, file: File, fileHandle: FileSystemFileHandle | null): Promise<boolean> {
+        return this.attachments.addBlob(chatId, '', file, file.name, fileHandle, false);
     }
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
         for (const file of this.filePickerElement.files ?? []) {
-            const isAdded = await this.add(this.chatId, file);
+            const isAdded = await this.add(this.chatId, file, null);
             if (!isAdded)
                 break;
 
@@ -109,12 +116,23 @@ export class AttachmentListView {
         }
         this.filePickerElement.value = '';
     });
+
+    private async onFilesPicked(fileHandles : FileSystemFileHandle[])
+    {
+        console.log(fileHandles);
+        for (const fileHandle of fileHandles) {
+            const file = await fileHandle.getFile();
+           const isAdded = await this.add(this.chatId, file, fileHandle);
+            if (!isAdded)
+                break;
+        }
+    }
 }
 
 class AttachmentList {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
-    private uploads: Map<number, ChatMediaFileUpload> = new Map<number, ChatMediaFileUpload>();
+    private uploads: Map<number, WebFileProvider> = new Map<number, WebFileProvider>();
     private attachmentsIdSeed: number = 0;
     private blazorRef: DotNet.DotNetObject | null = null;
     public changed: () => void = () => { };
@@ -146,18 +164,20 @@ class AttachmentList {
         this.disposed$.complete();
     }
 
-    public async addBlob(chatId: string, url: string, blob: Blob, fileName: string, silent : boolean): Promise<boolean> {
+    public async addBlob(chatId: string, url: string, blob: Blob, fileName: string, fileHandle : FileSystemFileHandle | null, silent : boolean): Promise<boolean> {
         const attachment: Attachment = {
             id: this.attachmentsIdSeed,
+            chatId: chatId,
             fileBlob: blob,
             fileName: fileName,
+            fileHandle: fileHandle,
             url : url,
             tempUrl: '',
             mediaId: '',
         };
         if (!url && (isSupportedImage(blob.type) || isSupportedVideo(blob.type)))
             attachment.url = attachment.tempUrl = URL.createObjectURL(blob);
-        const isAdded = await this.invokeAttachmentAdded(attachment, blob, fileName);
+        const isAdded = await this.invokeAttachmentAdded(attachment);
         if (!isAdded) {
             if (attachment.tempUrl)
                 URL.revokeObjectURL(attachment.tempUrl);
@@ -168,61 +188,54 @@ class AttachmentList {
         this.attachments.set(attachment.id, attachment);
         if (!silent)
             TuneUI.play(Tune.ChangeAttachments);
-        const upload = new ChatMediaFileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
-        upload.whenCompleted.then(x => {
-            attachment.mediaId = x.mediaId;
-            attachment.thumbnailMediaId = x.thumbnailMediaId;
-            this.invokeUploadSucceed(attachment.id, x.mediaId, x.thumbnailMediaId);
-        }).catch(e => {
-            if (!(e instanceof OperationCancelledError)) {
-                errorLog?.log('Failed to upload file', e);
-                this.invokeUploadFailed(attachment.id);
-            }
-        });
-        this.uploads.set(attachment.id, upload);
-        await this.invokeUploaderPrepared(attachment);
-        return true;
-    }
 
-    /** Called by Blazor */
-    public startUpload(id: number) {
-        debugLog?.log(`startUpload: ${id}`);
-        const upload = this.uploads.get(id);
-        if (upload) {
-            upload.start();
-            debugLog?.log(`startedUpload: ${id}`);
+        try {
+            await this.invokeCreateUploaderRequested(attachment);
+            return true;
+        }
+        catch (e) {
+            await this.remove(attachment.id);
+            return false;
         }
     }
 
     /** Called by Blazor */
-    public cancelUpload(id: number) {
-        debugLog?.log(`cancelUpload: ${id}`);
-        const upload = this.uploads.get(id);
-        if (upload) {
-            upload.cancel();
-            debugLog?.log(`cancelledUpload: ${id}`);
-        }
+    public createFileProvider(id: number, blazorRef: DotNet.DotNetObject): WebFileProvider {
+        debugLog?.log(`createFileProvider: ${id}`);
+        const upload1 = this.uploads.get(id);
+        if (upload1)
+            throw new Error('Already created');
+        const attachment = this.attachments.get(id);
+        if (!attachment)
+            throw new Error('Attachment not found');
+
+        const provider = new WebFileProvider('', attachment.fileHandle, attachment.fileBlob, attachment.fileName, attachment.chatId, blazorRef);
+        this.uploads.set(attachment.id, provider);
+        return provider;
     }
 
     /** Called by Blazor */
-    public remove(id: number) {
+    public async remove(id: number) {
         TuneUI.play(Tune.ChangeAttachments);
         const upload = this.uploads.get(id);
         if (upload) {
             upload.cancel();
+            await upload.removeFileHandleFromDb();
             this.uploads.delete(id);
         }
 
         const attachment = this.attachments.get(id);
         this.attachments.delete(id);
-        if (attachment?.tempUrl)
-            URL.revokeObjectURL(attachment.tempUrl);
+        if (attachment) {
+            if (attachment?.tempUrl)
+                URL.revokeObjectURL(attachment.tempUrl);
+        }
 
         this.changed();
     }
 
     /** Called by Blazor */
-    public clear() {
+    public async clear() {
         if (this.attachments.size != 0)
             TuneUI.play(Tune.ChangeAttachments);
         for (const attachment of this.attachments.values()) {
@@ -231,7 +244,10 @@ class AttachmentList {
         }
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
-        this.uploads.forEach((upload, key) => upload.cancel());
+        for (const upload of this.uploads.values()) {
+            upload.cancel();
+            await upload.removeFileHandleFromDb();
+        }
         this.uploads.clear();
         this.changed();
     }
@@ -240,73 +256,14 @@ class AttachmentList {
         return this.attachments.size > 0
     }
 
-    private async invokeAttachmentAdded(attachment: Attachment, blob: Blob, fileName: string) {
+    private async invokeAttachmentAdded(attachment: Attachment) {
+        const blob = attachment.fileBlob;
         return this.BlazorRef.invokeMethodAsync<boolean>(
-            'OnAttachmentAdded', attachment.id, attachment.url, fileName, blob.type, blob.size);
+            'OnAttachmentAdded', attachment.id, attachment.url, attachment.fileName, blob.type, blob.size);
     }
 
-    private async invokeUploaderPrepared(attachment: Attachment) {
+    private async invokeCreateUploaderRequested(attachment: Attachment) {
         return this.BlazorRef.invokeMethodAsync<boolean>(
-            'OnUploaderPrepared', attachment.id);
-    }
-
-    private async invokeUploadProgress(id: number, progressPercent: number) {
-        return this.BlazorRef.invokeMethodAsync('OnUploadProgress', id, Math.trunc(progressPercent));
-    }
-
-    private async invokeUploadSucceed(id: number, mediaId: string, thumbnailMediaId?: string) {
-        return this.BlazorRef.invokeMethodAsync('OnUploadSucceed', id, mediaId, thumbnailMediaId);
-    }
-
-    private async invokeUploadFailed(id: number) {
-        return this.BlazorRef.invokeMethodAsync('OnUploadFailed', id);
-    }
-}
-
-export class ChatMediaFileUpload {
-    private readonly xhr: XMLHttpRequest;
-    private readonly whenCompletedSource: PromiseSource<MediaContent> = new PromiseSource<MediaContent>();
-    private isCancelled = false;
-
-    constructor(
-        private readonly chatId: string,
-        private readonly blob: Blob,
-        private readonly fileName: string,
-        private readonly progressReporter: ProgressReporter) {
-        this.xhr = new XMLHttpRequest();
-        if (!this.fileName)
-            this.fileName = "upload";
-    }
-
-    public get whenCompleted(): Promise<MediaContent> {
-        return this.whenCompletedSource;
-    }
-
-    public start() {
-        const formData = new FormData();
-        formData.append('file', this.blob, this.fileName);
-        this.xhr.upload.onprogress = (e) => {
-            const progress = Math.floor(e.loaded / e.total * 1000) / 10;
-            this.progressReporter(progress);
-        };
-        this.xhr.onreadystatechange = () => {
-            if (this.xhr.readyState === XMLHttpRequest.DONE) {
-                if (this.xhr.status === 200) {
-                    this.whenCompletedSource.resolve(JSON.parse(this.xhr.response));
-                } else if (this.isCancelled)
-                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled: ' + this.xhr.statusText));
-                else
-                    this.whenCompletedSource.reject(this.xhr.responseText);
-            }
-        };
-        const url = BrowserInit.getUrl(`api/chat-media/${this.chatId}/upload`);
-        this.xhr.open('post', url, true);
-        this.xhr.setRequestHeader(SessionTokens.headerName, SessionTokens.current);
-        this.xhr.send(formData);
-    }
-
-    public cancel() {
-        this.isCancelled = true;
-        this.xhr.abort();
+            'OnCreateUploaderRequested', attachment.id, attachment.chatId);
     }
 }

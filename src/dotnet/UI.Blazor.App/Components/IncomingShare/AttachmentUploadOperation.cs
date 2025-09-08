@@ -8,14 +8,14 @@ public sealed class AttachmentUploadOperation : IAsyncDisposable
 
     private bool _isDisposed;
     private Attachment _attachment;
-    private readonly FileUploadOperation<MediaContent> _fileUploadOperation;
+    private readonly FileUploadOperation _fileUploadOperation;
 
     public event EventHandler? Updated;
     public Attachment Attachment => _attachment;
 
     public AttachmentUploadOperation(
         Attachment attachment,
-        FileUploadOperation<MediaContent> fileUploadOperation)
+        FileUploadOperation fileUploadOperation)
     {
         _attachment = attachment;
         _fileUploadOperation = fileUploadOperation;

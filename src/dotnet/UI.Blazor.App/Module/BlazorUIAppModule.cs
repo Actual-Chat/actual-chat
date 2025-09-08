@@ -30,7 +30,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        services.AddScoped(_ => new FileUploadQueue());
         services.AddScoped(c => new AppUIHub(c));
         services.AddAlias<UIHub, AppUIHub>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new AnalyticEvents());
@@ -204,5 +203,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             BackendFactory = c => new WebKvasBackend($"{ImportName}.uploadSessions", c),
         });
         services.AddScoped<IUploadSessionRepository>(c => new UploadSessionRepository(c));
+        services.AddScoped<IFileUploaderService>(c => new FileUploaderService(c));
+        services.AddScoped<UploadSessionManager>(c => new UploadSessionManager(
+            c.GetRequiredService<IUploadSessionRepository>(),
+            c.GetRequiredService<IFileUploaderService>()));
+        services.AddScoped(c => new UploadApp(c.GetRequiredService<UploadSessionManager>(), c));
+        services.AddScoped(c => new FileUploadQueue());
     }
 }
