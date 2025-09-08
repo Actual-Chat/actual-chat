@@ -8,7 +8,7 @@ public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme s
     private static bool DebugMode => Constants.DebugMode.OldShardWorker;
 
     [field: AllowNull, MaybeNull]
-    protected ILogger Log => field ??= Services.LoggerFactory().CreateLogger(GetType(), $"({KeyPrefix}.{ShardScheme.Id.Value})");
+    protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public IServiceProvider Services { get; } = services;

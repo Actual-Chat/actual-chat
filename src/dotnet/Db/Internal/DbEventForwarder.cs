@@ -14,8 +14,8 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
     : DbEventProcessor<TDbContext>(services)
     where TDbContext : DbContext
 {
-    private readonly string ProcessActivityName =
-        $"{nameof(Process)}@{nameof(DbEventForwarder<TDbContext>)}<{typeof(TDbContext).Name}>";
+    [field: AllowNull, MaybeNull]
+    private string ProcessActivityName => field ??= $"{nameof(Process)}@{GetType().GetName()}>";
     private IQueues Queues { get; } = services.Queues();
 
     public override async Task Process(OperationEvent operationEvent, CancellationToken cancellationToken)
@@ -30,6 +30,7 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
 
         // Forwards everything to Queues
         switch (value) {
+
         case ICommand command: {
             using var activity = DbInstruments.ActivitySource
                 .StartActivity(ProcessActivityName);
@@ -47,7 +48,8 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
                 throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
             }
         }
-            break;
+        break;
+
         case QueuedCommand queuedCommand: {
             ActivityContext senderContext = default;
             IEnumerable<ActivityLink>? links = null;
@@ -77,7 +79,8 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
                 throw new RetryRequiredException("Queues.Enqueue failed, retry required.", e);
             }
         }
-            break;
+        break;
+
         default:
             var eventType = value?.GetType().GetName() ?? "null";
             Log.LogError("Unsupported event {EventType}: {Info}", eventType, info);

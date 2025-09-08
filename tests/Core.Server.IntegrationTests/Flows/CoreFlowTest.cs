@@ -2,7 +2,6 @@ using ActualChat.Flows;
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
-using ActualLab.Versioning;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
@@ -42,7 +41,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
         var f0 = await flows.GetOrStart<TimerFlow>("f0,5");
         f0.Should().NotBeNull();
 
-        // Waiting for RemainingCount to hit 3
+        // Waiting for the RemainingCount to hit 3
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
             flow!.RemainingCount.Should().Be(3);
@@ -50,7 +49,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
 
         await queues.Enqueue(new FlowKillEvent(f0.Id, "Die, digital creature!"));
 
-        // Waiting for flow to end quickly
+        // Waiting for the flow to end quickly
         var diedQuickly = true;
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
@@ -71,7 +70,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
         var f0 = await flows.GetOrStart<TimerFlow>("f0,5");
         f0.Should().NotBeNull();
 
-        // Waiting for RemainingCount to hit 3
+        // Waiting for the RemainingCount to hit 3
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
             flow!.RemainingCount.Should().Be(3);

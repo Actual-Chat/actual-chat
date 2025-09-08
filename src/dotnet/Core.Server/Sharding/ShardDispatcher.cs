@@ -8,9 +8,9 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
     private static bool DebugMode => Constants.DebugMode.ShardLocker;
 
     [field: AllowNull, MaybeNull]
-    public ILogger Log => field ??= Services.LoggerFactory().CreateLogger(
-        GetType(), $"({ShardDispatchers.ComposeFullKeyPrefix(ShardScheme, KeyPrefix)})");
-    public ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
+    internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(
+        GetType(), $"@{ShardDispatchers.ComposeFullKeyPrefix(ShardScheme, KeyPrefix)}");
+    private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     private IMeshLocks ShardLocks { get; }
     private MeshWatcher MeshWatcher => Host.MeshWatcher;
