@@ -31,8 +31,21 @@ public partial class AppHost : IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (disposing)
-            App.DisposeSilently();
+        if (!disposing)
+            return;
+
+        var disposeTask = BackgroundTask.Run(async () => {
+            try {
+                await App.StopAsync(CancellationToken.None).SilentAwait(false);
+            }
+            catch {
+                // Intended
+            }
+            await App.DisposeSilentlyAsync().SilentAwait(false);
+        }, CancellationToken.None);
+#pragma warning disable VSTHRD002
+        disposeTask.Wait();
+#pragma warning restore VSTHRD002
     }
 
     public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)
