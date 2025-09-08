@@ -4,7 +4,7 @@
     --web-splash-bg-color: var(--blue-30); /* Old: --background-01 */
     --web-splash-box-size: 24rem;
     --web-splash-shine-size: 30%;
-    --web-splash-logo-size: 12rem;
+    --web-splash-logo-size: 8rem;
 }
 @media (min-width: 1024px) {
     :root {
@@ -35,6 +35,17 @@
 .web-splash .bg-wrapper > img {
     @apply absolute top-0 z-10;
     @apply h-full w-full;
+    filter: blur(2px) opacity(0);
+    animation: showSplashImage 0.5s linear forwards;
+
+}
+@keyframes showSplashImage {
+    0%, 50% {
+        filter: blur(2px) opacity(0);
+    }
+    100% {
+        filter: blur(0) opacity(1);
+    }
 }
 body.wide .web-splash .narrow-image,
 body.narrow .web-splash .wide-image {
@@ -45,21 +56,16 @@ body.wide .web-splash .wide-image {
     @apply block;
 }
 .web-splash .c-content {
-    @apply z-10;
+    @apply relative z-10;
     @apply flex-y items-center justify-center gap-y-8;
-    min-height: 240px;
-    min-width: 240px;
-    max-height: 240px;
-    max-width: 240px;
+    min-height: 16rem;
+    min-width: 12rem;
 }
 .web-splash .c-content > img {
-    min-height: 100px;
-    min-width: 100px;
-    max-height: 100px;
-    max-width: 100px;
+    @apply h-[var(--web-splash-logo-size)] w-[var(--web-splash-logo-size)];
 }
 .web-splash .progress {
-    @apply relative;
+    @apply absolute bottom-[32px];
     @apply flex justify-start items-center;
     @apply min-w-full max-w-full min-h-1 overflow-hidden;
     @apply rounded-full;

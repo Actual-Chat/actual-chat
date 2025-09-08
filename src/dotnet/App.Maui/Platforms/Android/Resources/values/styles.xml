@@ -11,5 +11,6 @@
     <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     <item name="android:statusBarColor">@color/colorSplash</item>
     <item name="android:navigationBarColor">@color/colorSplash</item>
+    <item name="android:gravity">center</item>
   </style>
 </resources>
