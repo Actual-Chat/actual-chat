@@ -1,15 +1,16 @@
 namespace ActualChat;
 
-public struct RetryTracker(int maxCount, RetryDelaySeq? delays = null)
+public struct RetryTracker(RetryDelaySeq delays, int? maxCount = null)
 {
+    public RetryDelaySeq Delays { get; } = delays;
+    public int? MaxCount { get; } = maxCount;
+
     public Exception? LastError { get; private set; }
     public int Count { get; set; }
-    public int MaxCount { get; } = maxCount;
-    public RetryDelaySeq? Delays { get; } = delays;
-    public TimeSpan Delay => Delays == null ? TimeSpan.Zero : Delays[Math.Max(0, Count)];
+    public TimeSpan Delay => Delays[Math.Max(0, Count)];
 
     public override string ToString()
-        => $"{GetType().GetName()}(#{Count} / {MaxCount})";
+        => $"{nameof(RetryTracker)}(#{Count} / {MaxCount?.Format() ?? "∞"})";
 
     public void Reset()
     {
@@ -20,6 +21,6 @@ public struct RetryTracker(int maxCount, RetryDelaySeq? delays = null)
     public bool WillRetry(Exception? error = null)
     {
         LastError = error;
-        return ++Count > MaxCount;
+        return MaxCount is not { } maxCount || ++Count > maxCount;
     }
 }

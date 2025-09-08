@@ -11,7 +11,7 @@ public class RunnableTests
 
         var runnable = Runnable.New(async (_, ct) => {
             startedTcs.TrySetResult();
-            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct);
+            await TaskExt.NeverEnding(ct);
         });
 
         var runner = new RunnableRunner();

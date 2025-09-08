@@ -1,13 +1,13 @@
 namespace ActualChat.Core.Server.UnitTests.Runnables;
 
-public class RunnableSchedulerTests
+public class RunnableDispatcherTests
 {
     private static readonly TimeSpan DefaultWaitTime = TimeSpan.FromSeconds(5);
 
     [Fact]
     public async Task Add_Runnable_Starts_On_All_Runners()
     {
-        var scheduler = new RunnableScheduler();
+        var scheduler = new RunnableDispatcher();
         var runner1 = new RunnableRunner();
         var runner2 = new RunnableRunner();
         scheduler.Add(runner1).Should().BeTrue();
@@ -32,7 +32,7 @@ public class RunnableSchedulerTests
     [Fact]
     public async Task Add_Runner_Starts_All_Runnables()
     {
-        var scheduler = new RunnableScheduler();
+        var scheduler = new RunnableDispatcher();
 
         var r1StartedTcs = TaskCompletionSourceExt.New();
         var r1 = MakeRunnable(r1StartedTcs);
@@ -56,7 +56,7 @@ public class RunnableSchedulerTests
     [Fact]
     public async Task Remove_Runnable_Stops_On_All_Runners()
     {
-        var scheduler = new RunnableScheduler();
+        var scheduler = new RunnableDispatcher();
 
         var runner1 = new RunnableRunner();
         scheduler.Add(runner1).Should().BeTrue();
@@ -87,7 +87,7 @@ public class RunnableSchedulerTests
     [Fact]
     public async Task Remove_Runner_Disposes_It_When_mustStop()
     {
-        var scheduler = new RunnableScheduler();
+        var scheduler = new RunnableDispatcher();
         var runner = new RunnableRunner();
         scheduler.Add(runner).Should().BeTrue();
 
@@ -107,7 +107,7 @@ public class RunnableSchedulerTests
     [Fact]
     public async Task Remove_Runner_Without_Stop_Leaves_It_Running()
     {
-        var scheduler = new RunnableScheduler();
+        var scheduler = new RunnableDispatcher();
         var runner = new RunnableRunner();
         scheduler.Add(runner).Should().BeTrue();
 
@@ -134,6 +134,6 @@ public class RunnableSchedulerTests
     private static IRunnable MakeRunnable(TaskCompletionSource startedTcs)
         => Runnable.New(async (_, ct) => {
             startedTcs.TrySetResult();
-            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct);
+            await TaskExt.NeverEnding(ct);
         });
 }

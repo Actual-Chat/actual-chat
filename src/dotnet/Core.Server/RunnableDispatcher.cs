@@ -2,7 +2,7 @@ using ActualLab.Internal;
 
 namespace ActualChat;
 
-public sealed class RunnableScheduler : ProcessorBase
+public sealed class RunnableDispatcher : ProcessorBase
 {
     public ImmutableHashSet<IRunnable> Runnables { get; private set; } = ImmutableHashSet<IRunnable>.Empty;
     public ImmutableHashSet<IRunnableRunner> Runners { get; private set; } = ImmutableHashSet<IRunnableRunner>.Empty;
@@ -18,8 +18,15 @@ public sealed class RunnableScheduler : ProcessorBase
         return Task.WhenAll(tasks).SuppressExceptions();
     }
 
-    public IAsyncDisposable Activate(IRunnable runnable)
+    // Use
+
+    public IAsyncDisposable Use(IRunnable runnable)
         => new RunnableScope(this, runnable);
+
+    public IAsyncDisposable Use(IRunnableRunner runner)
+        => new RunnableRunnerScope(this, runner);
+
+    // Add
 
     public bool Add(IRunnable runnable)
     {
@@ -38,9 +45,6 @@ public sealed class RunnableScheduler : ProcessorBase
         }
     }
 
-    public IAsyncDisposable Activate(IRunnableRunner runner)
-        => new RunnableRunnerScope(this, runner);
-
     public bool Add(IRunnableRunner runner)
     {
         lock (Lock) {
@@ -57,6 +61,8 @@ public sealed class RunnableScheduler : ProcessorBase
             return true;
         }
     }
+
+    // Remove
 
     public ValueTask Remove(IRunnable runnable, bool mustStop = true)
     {
@@ -100,10 +106,10 @@ public sealed class RunnableScheduler : ProcessorBase
 
     public sealed class RunnableScope : IAsyncDisposable
     {
-        private readonly RunnableScheduler? _scheduler;
+        private readonly RunnableDispatcher? _scheduler;
         private readonly IRunnable? _runnable;
 
-        public RunnableScope(RunnableScheduler scheduler, IRunnable runnable)
+        public RunnableScope(RunnableDispatcher scheduler, IRunnable runnable)
         {
             if (!scheduler.Add(runnable))
                 return;
@@ -120,10 +126,10 @@ public sealed class RunnableScheduler : ProcessorBase
 
     public sealed class RunnableRunnerScope : IAsyncDisposable
     {
-        private readonly RunnableScheduler? _scheduler;
+        private readonly RunnableDispatcher? _scheduler;
         private readonly IRunnableRunner? _runner;
 
-        public RunnableRunnerScope(RunnableScheduler scheduler, IRunnableRunner runner)
+        public RunnableRunnerScope(RunnableDispatcher scheduler, IRunnableRunner runner)
         {
             if (!scheduler.Add(runner))
                 return;

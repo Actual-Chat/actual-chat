@@ -2,15 +2,24 @@ namespace ActualChat;
 
 public static class TaskExt
 {
+    // NeverEnding
+
+    // Same as ActualLab.Async.TaskExt.NeverEnding(cancellationToken);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task NeverEnding(CancellationToken cancellationToken)
+        => Task.Delay(System.Threading.Timeout.Infinite, cancellationToken);
+
     // WithDelay
 
-    public static async Task WithDelay(this Task task, TimeSpan delay, CancellationToken cancellationToken = default)
+    public static async Task WithDelay(
+        this Task task, TimeSpan delay, CancellationToken cancellationToken = default)
     {
         await task.ConfigureAwait(false);
         await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task<T> WithDelay<T>(this Task<T> task, TimeSpan delay, CancellationToken cancellationToken = default)
+    public static async Task<T> WithDelay<T>(
+        this Task<T> task, TimeSpan delay, CancellationToken cancellationToken = default)
     {
         var result = await task.ConfigureAwait(false);
         await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
@@ -19,45 +28,49 @@ public static class TaskExt
 
     // WithErrorHandler
 
-    public static async Task WithErrorHandler(this Task task, Action<Exception> errorHandler)
+    public static async Task WithErrorHandler(
+        this Task task, Action<Exception> errorHandler, CancellationToken cancellationToken = default)
     {
         try {
             await task.ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             errorHandler.Invoke(e);
             throw;
         }
     }
 
-    public static async Task<T> WithErrorHandler<T>(this Task<T> task, Action<Exception> errorHandler)
+    public static async Task<T> WithErrorHandler<T>(
+        this Task<T> task, Action<Exception> errorHandler, CancellationToken cancellationToken = default)
     {
         try {
             return await task.ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             errorHandler.Invoke(e);
             throw;
         }
     }
 
-    public static async ValueTask WithErrorHandler(this ValueTask task, Action<Exception> errorHandler)
+    public static async ValueTask WithErrorHandler(
+        this ValueTask task, Action<Exception> errorHandler, CancellationToken cancellationToken = default)
     {
         try {
             await task.ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             errorHandler.Invoke(e);
             throw;
         }
     }
 
-    public static async ValueTask<T> WithErrorHandler<T>(this ValueTask<T> task, Action<Exception> errorHandler)
+    public static async ValueTask<T> WithErrorHandler<T>(
+        this ValueTask<T> task, Action<Exception> errorHandler, CancellationToken cancellationToken = default)
     {
         try {
             return await task.ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             errorHandler.Invoke(e);
             throw;
         }
@@ -65,21 +78,63 @@ public static class TaskExt
 
     // WithErrorLog
 
-    public static Task WithErrorLog(this Task task, ILogger errorLog, string message, params object?[] args)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task WithErrorLog(this Task task, ILogger? errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
-    public static Task<T> WithErrorLog<T>(this Task<T> task, ILogger errorLog, string message, params object?[] args)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task<T> WithErrorLog<T>(this Task<T> task, ILogger? errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
-    public static ValueTask WithErrorLog(this ValueTask task, ILogger errorLog, string message, params object?[] args)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ValueTask WithErrorLog(this ValueTask task, ILogger? errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
-    public static ValueTask<T> WithErrorLog<T>(this ValueTask<T> task, ILogger errorLog, string message, params object?[] args)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ValueTask<T> WithErrorLog<T>(this ValueTask<T> task, ILogger? errorLog, string message, params object?[] args)
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        => task.WithErrorHandler(e => errorLog.LogError(e, message, args));
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args));
+
+    // WithErrorLog with CancellationToken overloads
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task WithErrorLog(
+            this Task task, CancellationToken cancellationToken,
+            ILogger? errorLog, string message, params object?[] args)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args), cancellationToken);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task<T> WithErrorLog<T>(
+            this Task<T> task, CancellationToken cancellationToken,
+            ILogger? errorLog, string message, params object?[] args)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args), cancellationToken);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ValueTask WithErrorLog(
+            this ValueTask task, CancellationToken cancellationToken,
+            ILogger? errorLog, string message, params object?[] args)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args), cancellationToken);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ValueTask<T> WithErrorLog<T>(
+            this ValueTask<T> task, CancellationToken cancellationToken,
+            ILogger? errorLog, string message, params object?[] args)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        => errorLog is null ? task
+            : task.WithErrorHandler(e => errorLog.LogError(e, message, args), cancellationToken);
 
     // WhenAll
 
@@ -96,7 +151,6 @@ public static class TaskExt
 
         Exception? exception1 = null;
         Exception? exception2 = null;
-
         try {
             await task1.ConfigureAwait(false);
         }
@@ -121,7 +175,7 @@ public static class TaskExt
         throw new AggregateException(exception1, exception2);
     }
 
-    public static async ValueTask WhenAll(this IReadOnlyCollection<ValueTask> source)
+    public static async ValueTask WhenAll(this IEnumerable<ValueTask> source)
     {
         List<Exception>? exceptions = null;
 
@@ -133,15 +187,15 @@ public static class TaskExt
                 await valueTask.ConfigureAwait(false);
             }
             catch (Exception ex) {
-                exceptions ??= new List<Exception>(source.Count);
+                exceptions ??= [];
                 exceptions.Add(ex);
             }
 
-        if (exceptions is not null) {
-            if (exceptions.Count == 1)
-                throw exceptions[0];
-            throw new AggregateException(exceptions);
-        }
+        if (exceptions is not null)
+            throw exceptions.Count switch {
+                1 => exceptions[0],
+                _ => new AggregateException(exceptions),
+            };
     }
 
     // WhenAny
@@ -151,9 +205,7 @@ public static class TaskExt
     public static WhenAnyValueTask<T> WhenAny<T>(ValueTask<T>[] tasks)
     {
         var whenAny = new WhenAnyValueTask<T>(tasks);
-
         whenAny.Start();
-
         return whenAny;
     }
 
@@ -194,18 +246,14 @@ public static class TaskExt
         public WhenAnyValueTask(ValueTask<T>[] tasks)
         {
             _tasks = tasks;
-
             var n = tasks.Length;
-
             _ready = new Queue<int>(n); // NB: Should never exceed this length, so we won't see dynamic realloc.
             _onReady = new Action[n];
-
             for (var i = 0; i < n; i++) {
                 //
                 // Cache these delegates, for they have closures (over `this` and `index`), and we need them
                 // for each replacement of a task, to hook up the continuation.
                 //
-
                 int index = i;
                 _onReady[index] = () => OnReady(index);
             }
@@ -222,7 +270,6 @@ public static class TaskExt
                 // Register a callback with the task, which will enqueue the index of the completed task
                 // for consumption by awaiters.
                 //
-
                 _tasks[i].ConfigureAwait(false).GetAwaiter().OnCompleted(_onReady[i]);
             }
         }
@@ -246,7 +293,6 @@ public static class TaskExt
         public void Replace(int index, in ValueTask<T> task)
         {
             _tasks[index] = task;
-
             task.ConfigureAwait(false).GetAwaiter().OnCompleted(_onReady[index]);
         }
 
@@ -291,7 +337,6 @@ public static class TaskExt
                 // the continuation action to null, we avoid waking up the same awaiter more than once. Any
                 // task completions that occur while no awaiter is active will end up being enqueued in _ready.
                 //
-
                 if (_onCompleted != null) {
                     onCompleted = _onCompleted;
                     _onCompleted = null;
@@ -309,9 +354,8 @@ public static class TaskExt
         {
             // REVIEW: Evaluate options to reduce locking, so the single consuming awaiter has limited contention
             //         with the multiple concurrent completing enumerator tasks, e.g. using ConcurrentQueue<T>.
-            lock (_ready) {
+            lock (_ready)
                 return _ready.Count > 0;
-            }
         }
 
         /// <summary>
@@ -322,9 +366,8 @@ public static class TaskExt
         /// <returns>Index of the earliest task that has completed.</returns>
         private int GetResult()
         {
-            lock (_ready) {
+            lock (_ready)
                 return _ready.Dequeue();
-            }
         }
 
         /// <summary>
@@ -334,7 +377,6 @@ public static class TaskExt
         private void OnCompleted(Action action)
         {
             bool shouldInvoke = false;
-
             lock (_ready) {
                 //
                 // Check if we have anything ready (which could happen in the short window between checking
@@ -361,23 +403,18 @@ public static class TaskExt
             //     synchronous completion of the await operation (which may be in a loop that awaits the
             //     current instance again).
             //
-            if (shouldInvoke) {
+            if (shouldInvoke)
                 action();
-            }
         }
 
         /// <summary>
         /// Awaiter type used to await completion of any task.
         /// </summary>
-        public readonly struct Awaiter : INotifyCompletion
+        public readonly struct Awaiter(WhenAnyValueTask<T> parent) : INotifyCompletion
         {
-            private readonly WhenAnyValueTask<T> _parent;
-
-            public Awaiter(WhenAnyValueTask<T> parent) => _parent = parent;
-
-            public bool IsCompleted => _parent.IsCompleted();
-            public int GetResult() => _parent.GetResult();
-            public void OnCompleted(Action continuation) => _parent.OnCompleted(continuation);
+            public bool IsCompleted => parent.IsCompleted();
+            public int GetResult() => parent.GetResult();
+            public void OnCompleted(Action continuation) => parent.OnCompleted(continuation);
         }
     }
 }

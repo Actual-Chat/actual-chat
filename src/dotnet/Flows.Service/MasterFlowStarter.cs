@@ -2,8 +2,7 @@ using ActualChat.Flows.Infrastructure;
 
 namespace ActualChat.Flows;
 
-internal class MasterFlowStarter(IServiceProvider services)
-    : LegacyShardWorker(services, ShardScheme.FlowsBackend)
+internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(services, ShardScheme.FlowsBackend)
 {
     private readonly Dictionary<Type, (FlowId FlowId, int RequiredShardIndex)> _masterFlows = new ();
     private bool _isCompleted;

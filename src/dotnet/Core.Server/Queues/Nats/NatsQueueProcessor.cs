@@ -39,7 +39,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     public NatsQueueProcessor(NatsQueues.Options settings, NatsQueues queues, QueueRef queueRef)
         : base(settings, queues, queueRef)
     {
-        ActionLocks = ShardScheduler.Owner.GetShardLocks(ShardScheme, nameof(ActionLocks));
+        ActionLocks = ShardDispatcher.Host.GetShardLocks(ShardScheme, nameof(ActionLocks));
         _instancePrefix = queues.NatsSettings.InstancePrefix;
     }
 

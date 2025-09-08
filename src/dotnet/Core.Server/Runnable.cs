@@ -2,7 +2,7 @@ namespace ActualChat;
 
 public interface IRunnable
 {
-    Task Start(IRunnableRunner runner, CancellationToken cancellationToken);
+    Task Run(IRunnableRunner runner, CancellationToken cancellationToken);
 }
 
 public static class Runnable
@@ -14,7 +14,7 @@ public static class Runnable
 
     private sealed class FuncRunnable(Func<IRunnableRunner, CancellationToken, Task> func) : IRunnable
     {
-        public Task Start(IRunnableRunner shard, CancellationToken cancellationToken)
+        public Task Run(IRunnableRunner shard, CancellationToken cancellationToken)
             => func.Invoke(shard, cancellationToken);
     }
 }
@@ -40,7 +40,7 @@ public sealed class StartedRunnable : IDisposable
         _stopTokenSource = cancellationToken.CreateLinkedTokenSource();
         StopToken = _stopTokenSource.Token;
         _onDispose = onDispose;
-        Task = BackgroundTask.Run(() => runnable.Start(runner, StopToken), StopToken);
+        Task = BackgroundTask.Run(() => runnable.Run(runner, StopToken), StopToken);
     }
 
     public void Dispose()

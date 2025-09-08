@@ -1899,7 +1899,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Reading the current author; we may need to wait for its creation here, so...
         AuthorFull? readAuthor;
-        var retryTracker = new RetryTracker(5, RetryDelaySeq.Exp(0.25, 1));
+        var retryTracker = new RetryTracker(RetryDelaySeq.Exp(0.25, 1), 5);
         while (true) {
             await Clocks.CoarseCpuClock.Delay(retryTracker.Delay, cancellationToken).ConfigureAwait(false);
             readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);

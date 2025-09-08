@@ -8,7 +8,7 @@ public class RunnableRunnerTest
     public async Task Start_Is_Idempotent_Per_Runnable()
     {
         var runnable = Runnable.New(async (_, ct) => {
-            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct);
+            await TaskExt.NeverEnding(ct);
         });
 
         var runner = new RunnableRunner();
@@ -28,7 +28,7 @@ public class RunnableRunnerTest
         var counter = StateFactory.Default.NewMutable<int>();
         IRunnable MakeRunnable() => Runnable.New(async (_, ct) => {
             counter.Set(x => x.Value + 1);
-            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct);
+            await TaskExt.NeverEnding(ct);
         });
 
         var runner = new RunnableRunner();

@@ -16,8 +16,8 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     where TSettings : QueueSettings
     where TProcessor : IQueueProcessor
 {
-    protected readonly ConcurrentDictionary<QueueRef, TProcessor> ProcessorsAndSenders = new();
-    protected ILogger Log { get; }
+    private readonly ConcurrentDictionary<QueueRef, TProcessor> _processors = new();
+    private ILogger Log { get; }
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
@@ -56,7 +56,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     protected abstract TProcessor CreateProcessor(QueueRef queueRef);
 
     protected TProcessor GetProcessor(QueueRef queueRef)
-        => ProcessorsAndSenders.GetOrAdd(queueRef, static (queueRef1, self) => self.CreateProcessor(queueRef1), this);
+        => _processors.GetOrAdd(queueRef, static (queueRef1, self) => self.CreateProcessor(queueRef1), this);
 
     protected virtual IReadOnlyDictionary<QueueRef, IQueueProcessor> CreateProcessors()
     {

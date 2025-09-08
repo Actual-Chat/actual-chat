@@ -31,7 +31,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
     public QueueRef QueueRef { get; }
 
     protected ShardQueueProcessor(TSettings settings, TQueues queues, QueueRef queueRef)
-        : base(queues.Services, queueRef.ShardScheme, $"Queues.{queueRef.Format()}")
+        : base(queues.Services, queueRef.ShardScheme)
     {
         Settings = settings;
         Queues = queues;

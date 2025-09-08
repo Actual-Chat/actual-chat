@@ -44,8 +44,7 @@ public static class BackgroundTask
     {
         using var _ = ExecutionContextExt.TrySuppressFlow();
         try {
-            return Task.Run(taskFactory, cancellationToken)
-                .WithErrorHandler(errorHandler);
+            return Task.Run(taskFactory, cancellationToken).WithErrorHandler(errorHandler, cancellationToken);
         }
         catch (OperationCanceledException) {
             return Task.FromCanceled(cancellationToken);
@@ -64,8 +63,7 @@ public static class BackgroundTask
     {
         using var _ = ExecutionContextExt.TrySuppressFlow();
         try {
-            return Task.Run(taskFactory, cancellationToken)
-                .WithErrorHandler(errorHandler);
+            return Task.Run(taskFactory, cancellationToken).WithErrorHandler(errorHandler, cancellationToken);
         }
         catch (OperationCanceledException) {
             return Task.FromCanceled<T>(cancellationToken);

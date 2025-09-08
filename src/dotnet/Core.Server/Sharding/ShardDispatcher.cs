@@ -1,56 +1,58 @@
 using ActualChat.Mesh;
 using ActualLab.Diagnostics;
-using Google.Apis.Util;
 
 namespace ActualChat;
 
-public sealed class ShardScheduler : WorkerBase, IHasServices
+public sealed class ShardDispatcher : WorkerBase, IHasServices
 {
     private static bool DebugMode => Constants.DebugMode.ShardLocker;
 
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Services.LoggerFactory().CreateLogger(GetType(), $"({KeyPrefix}.{ShardScheme.Id.Value})");
-    private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
+    public ILogger Log => field ??= Services.LoggerFactory().CreateLogger(
+        GetType(), $"({ShardDispatchers.ComposeFullKeyPrefix(ShardScheme, KeyPrefix)})");
+    public ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     private IMeshLocks ShardLocks { get; }
-    private MeshWatcher MeshWatcher => Owner.MeshWatcher;
-    private MeshNode ThisNode => Owner.ThisNode;
-    private StateFactory StateFactory => Owner.StateFactory;
-    private RunnableScheduler SchedulerImpl { get; } = new();
+    private MeshWatcher MeshWatcher => Host.MeshWatcher;
+    private MeshNode ThisNode => Host.ThisNode;
+    private StateFactory StateFactory => Host.StateFactory;
+    private RunnableDispatcher RunnableDispatcher { get; } = new();
 
-    public ShardSchedulerSet Owner { get; }
+    public ShardDispatchers Host { get; }
     public IServiceProvider Services { get; }
     public ShardScheme ShardScheme { get; }
     public string KeyPrefix { get; }
     public MeshLockOptions LockOptions { get; init; }
-    public MutableState<ShardSchedulerState> State { get; }
+    public MutableState<FullState> State { get; }
 
-    public ShardScheduler(
-        ShardSchedulerSet owner,
+    public ShardDispatcher(
+        ShardDispatchers host,
         IMeshLocks shardLocks,
         ShardScheme shardScheme,
         string keyPrefix,
         CancellationTokenSource? stopTokenSource
         ) : base(stopTokenSource)
     {
-        Owner = owner;
-        Services = owner.Services;
+        Host = host;
+        Services = host.Services;
         ShardScheme = shardScheme;
         ShardLocks = shardLocks;
         LockOptions = shardLocks.LockOptions;
-        KeyPrefix = keyPrefix.ThrowIfNullOrEmpty(nameof(keyPrefix));
+        KeyPrefix = keyPrefix;
 
         var meshState = MeshWatcher.State.LastNonErrorValue;
-        var lockStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
+        var shardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
         State = StateFactory.NewMutable(
-            initialValue: new ShardSchedulerState(this, meshState, lockStates),
+            initialValue: new FullState(this, meshState, shardStates),
             category: StateCategories.Get(GetType(), nameof(State)));
     }
 
-    public IAsyncDisposable Schedule(Func<ShardLockState, CancellationToken, Task> func)
-        => SchedulerImpl.Activate(new FuncShardRunner1(func));
-    public IAsyncDisposable Schedule(Func<int, CancellationToken, Task> func)
-        => SchedulerImpl.Activate(new FuncShardRunner2(func));
+    public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func, RetryDelaySeq? retryDelays)
+        => RunnableDispatcher.Use(new ShardRunnable(name, func) { RetryDelays = retryDelays });
+    public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func)
+        => RunnableDispatcher.Use(new ShardRunnable(name, func));
+    public IAsyncDisposable Use(ShardRunnable shardRunnable)
+        => RunnableDispatcher.Use(shardRunnable);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -58,9 +60,9 @@ public sealed class ShardScheduler : WorkerBase, IHasServices
         var addedShards = new List<int>();
         var removedShards = new List<int>();
         var disposeTasks = new List<Task>();
-        var lockStates = State.Value.LockStates; // Initial value
+        var shardStates = State.Value.ShardStates; // Initial value
         try {
-            var changes = Owner.MeshWatcher.State.Computed.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
+            var changes = Host.MeshWatcher.State.Computed.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
             await foreach (var (meshState, error) in changes.ConfigureAwait(false)) {
                 if (error != null) {
                     if (error is ObjectDisposedException)
@@ -75,25 +77,25 @@ public sealed class ShardScheduler : WorkerBase, IHasServices
                 var shardMap = meshState.GetShardMap(ShardScheme);
                 var nodes = shardMap.Nodes;
                 var nodeIndexes = shardMap.NodeIndexes;
-                var nextLockStates = new ShardState[lockStates.Count];
+                var nextShardStates = new ShardState[shardStates.Count];
                 foreach (var shardIndex in ShardScheme.ShardIndexes) {
                     var nodeIndex = nodeIndexes[shardIndex];
                     var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
-                    var lockState = lockStates[shardIndex];
+                    var lockState = shardStates[shardIndex];
                     var mustLock = node == ThisNode;
                     if (lockState.MustLock == mustLock) {
-                        nextLockStates[shardIndex] = lockState;
+                        nextShardStates[shardIndex] = lockState;
                         continue;
                     }
 
                     var nextShardState = new ShardState(lockState, mustLock);
-                    nextLockStates[shardIndex] = nextShardState;
+                    nextShardStates[shardIndex] = nextShardState;
                     if (lockState != nextShardState)
                         disposeTasks.Add(lockState.WhenDisposed);
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
-                State.Value = new ShardSchedulerState(this, meshState, lockStates = nextLockStates);
+                State.Value = new FullState(this, meshState, shardStates = nextShardStates);
                 if (addedShards.Count > 0 || removedShards.Count > 0)
                     Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
@@ -104,13 +106,13 @@ public sealed class ShardScheduler : WorkerBase, IHasServices
             }
         }
         finally {
-            await Task.WhenAll(lockStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait(false);
+            await Task.WhenAll(shardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait(false);
         }
     }
 
     // Private methods
 
-    private async Task LockShard(ShardState shardState, ShardState prevShardState)
+    private async Task LockAndUseShard(ShardState shardState, ShardState prevShardState)
     {
         // We must make sure we don't run LockShard in parallel with the previous one.
         // We always cancel the previous one, but there is no guarantee that it will stop immediately.
@@ -128,15 +130,15 @@ public sealed class ShardScheduler : WorkerBase, IHasServices
 
             // Create the processor
             if (!lockToken.IsCancellationRequested) {
-                var lockProcessor = new ShardLockState(shardState, lockHolder);
-                shardState.LockState.Value = lockProcessor;
-                SchedulerImpl.Add(lockProcessor);
+                var lockState = new LockState(shardState, lockHolder);
+                shardState.LockState.Value = lockState;
+                RunnableDispatcher.Add(lockState);
                 try {
-                    await Task.Delay(System.Threading.Timeout.Infinite, lockToken).SilentAwait(false);
+                    await TaskExt.NeverEnding(lockToken).SilentAwait(false);
                 }
                 finally {
                     shardState.LockState.Value = null;
-                    await SchedulerImpl.Remove(lockProcessor).ConfigureAwait(false);
+                    await RunnableDispatcher.Remove(lockState).ConfigureAwait(false);
                 }
             }
 
@@ -151,25 +153,36 @@ public sealed class ShardScheduler : WorkerBase, IHasServices
 
     // Nested types
 
+    public sealed class FullState(
+        ShardDispatcher dispatcher,
+        MeshState meshState,
+        IReadOnlyList<ShardState> shardStates)
+    {
+        public ShardDispatcher Dispatcher { get; } = dispatcher;
+        public MeshState MeshState { get; } = meshState;
+        public IReadOnlyList<ShardState> ShardStates { get; } = shardStates;
+    }
+
     public sealed class ShardState : IAsyncDisposable
     {
         private readonly Task? _lockTask;
         private readonly CancellationTokenSource _cancelLockTokenSource;
 
-        public ShardScheduler Scheduler { get; }
+        public ShardDispatcher Dispatcher { get; }
         public int ShardIndex { get; }
-        public MutableState<ShardLockState?> LockState { get; }
+        // ReSharper disable once MemberHidesStaticFromOuterClass
+        public MutableState<LockState?> LockState { get; }
         public CancellationToken CancelLockToken { get; }
         public bool MustLock => _lockTask != null;
         public Task WhenDisposed { get; }
 
-        internal ShardState(ShardScheduler scheduler, int shardIndex)
+        internal ShardState(ShardDispatcher dispatcher, int shardIndex)
         {
-            Scheduler = scheduler;
+            Dispatcher = dispatcher;
             ShardIndex = shardIndex;
-            LockState = Scheduler.Owner.StateFactory.NewMutable<ShardLockState?>(
+            LockState = Dispatcher.Host.StateFactory.NewMutable<LockState?>(
                 category: StateCategories.Get(GetType(), nameof(LockState)));
-            _cancelLockTokenSource = Scheduler.StopToken.CreateLinkedTokenSource();
+            _cancelLockTokenSource = Dispatcher.StopToken.CreateLinkedTokenSource();
             CancelLockToken = _cancelLockTokenSource.Token;
             WhenDisposed = Task.CompletedTask;
             _cancelLockTokenSource.CancelAndDisposeSilently();
@@ -178,13 +191,13 @@ public sealed class ShardScheduler : WorkerBase, IHasServices
         internal ShardState(ShardState prevState, bool mustLock)
         {
             prevState._cancelLockTokenSource.CancelAndDisposeSilently();
-            Scheduler = prevState.Scheduler;
+            Dispatcher = prevState.Dispatcher;
             ShardIndex = prevState.ShardIndex;
             LockState = prevState.LockState;
             if (mustLock) {
-                _cancelLockTokenSource = Scheduler.StopToken.CreateLinkedTokenSource();
+                _cancelLockTokenSource = Dispatcher.StopToken.CreateLinkedTokenSource();
                 CancelLockToken = _cancelLockTokenSource.Token;
-                WhenDisposed = _lockTask = Scheduler.LockShard(this, prevState);
+                WhenDisposed = _lockTask = Dispatcher.LockAndUseShard(this, prevState);
             }
             else {
                 _cancelLockTokenSource = prevState._cancelLockTokenSource;
@@ -200,28 +213,16 @@ public sealed class ShardScheduler : WorkerBase, IHasServices
         }
     }
 
-    public sealed class ShardLockState(ShardState shardState, MeshLockHolder lockHolder) : RunnableRunner
+    public sealed class LockState(ShardState shardState, MeshLockHolder lockHolder) : RunnableRunner
     {
         public ShardState ShardState { get; } = shardState;
         public MeshLockHolder LockHolder { get; } = lockHolder;
 
         // Handy shortcuts
-        public ShardScheduler Scheduler { get; } = shardState.Scheduler;
+        public ShardDispatcher Dispatcher { get; } = shardState.Dispatcher;
         public int ShardIndex { get; } = shardState.ShardIndex;
         public CancellationToken CancelLockToken { get; } = shardState.CancelLockToken;
         public CancellationToken LockToken { get; } = lockHolder.StopToken;
         public bool IsLockExpired => LockHolder.IsExpired;
-    }
-
-    private sealed record FuncShardRunner1(Func<ShardLockState, CancellationToken, Task> Func) : IRunnable
-    {
-        public Task Start(IRunnableRunner runner, CancellationToken cancellationToken)
-            => Func.Invoke((ShardLockState)runner, cancellationToken);
-    }
-
-    private sealed record FuncShardRunner2(Func<int, CancellationToken, Task> Func) : IRunnable
-    {
-        public Task Start(IRunnableRunner runner, CancellationToken cancellationToken)
-            => Func.Invoke(((ShardLockState)runner).ShardIndex, cancellationToken);
     }
 }
