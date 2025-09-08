@@ -1906,7 +1906,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (readAuthor?.Avatar != null)
                 break;
-            if (!retryPolicy.MustRetry(++tryIndex))
+            if (!retryPolicy.HasMoreRetries(++tryIndex))
                 throw StandardError.NotFound<Avatar>();
 
             var delay = retryPolicy.GetDelay(tryIndex);

@@ -59,9 +59,9 @@ public sealed class ShardRunnable : IRunnable
                 if (!retryPolicy.MustRetry(e, ref tryIndex))
                     throw;
 
-                var delay = retryPolicy.GetDelay(tryIndex);
+                var delay = retryPolicy.Delays[tryIndex];
                 retryLogger ??= new RetryLogger(log, Name);
-                retryLogger.LogRetry(e, tryIndex, delay);
+                retryLogger.LogRetry(e, tryIndex, retryPolicy.TryCount, delay);
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
