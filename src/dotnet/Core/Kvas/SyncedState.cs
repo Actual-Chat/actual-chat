@@ -180,7 +180,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
                 await Settings.Write(value, cancellationToken).ConfigureAwait(false);
                 return true;
             }
-            catch (Exception e) when (e is not OperationCanceledException) {
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 var delay = Settings.WriteFailureDelay.Next();
                 Log.LogError(e, $"{nameof(LazyWrite)} failed, will retry after {{Delay}}", delay.ToShortString());
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
