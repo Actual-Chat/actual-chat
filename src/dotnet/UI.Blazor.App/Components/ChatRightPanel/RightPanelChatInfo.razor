@@ -47,7 +47,7 @@
         if (chat.HasSingleAuthor || !chat.IsMember())
             return new() { HideNotificationsToggle = true };
 
-        var isOwner = chat.Rules.IsOwner();
+        var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var userChatSettings = await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,

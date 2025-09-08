@@ -5,8 +5,11 @@
 }
 
 <div class="bg-wrapper">
-    <div class="c-ground"></div>
-    <div class="c-image"></div>
+    @if (!ScreenSize.IsNarrow()) {
+        <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="voxt">
+    } else {
+        <img draggable="false" class="narrow-image" src="/dist/images/voxt-galaxy-vertical.svg" alt="voxt">
+    }
 </div>
 
 <div class="c-content">

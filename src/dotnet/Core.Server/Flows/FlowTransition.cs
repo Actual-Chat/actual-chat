@@ -84,22 +84,4 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
         var sEvents = hasEvents ? $", {Events.Count} {"event".Pluralize(Events.Count)}" : "";
         return $"{nameof(FlowTransition)}(->{Step}{sTag}{sMustStore}{sResumesIn}{sEvents})";
     }
-
-    public FlowTransition AddEvents(OperationEvent @event)
-        => this with { Events = Events.Add(@event) };
-
-    public FlowTransition AddEvents(params OperationEvent[] events)
-        => this with { Events = Events.AddRange(events) };
-
-    public FlowTransition AddTimerEvent(TimeSpan delay, string? tag = null)
-    {
-        var clock = ((IFlowImpl)Flow).Worklet.Host.Clocks.SystemClock;
-        return AddTimerEvent(clock.Now + delay, tag);
-    }
-
-    public FlowTransition AddTimerEvent(Moment firesAt, string? tag = null)
-    {
-        var e = new FlowTimerEvent(Flow.Id, tag);
-        return AddEvents(new OperationEvent(firesAt, e));
-    }
 }

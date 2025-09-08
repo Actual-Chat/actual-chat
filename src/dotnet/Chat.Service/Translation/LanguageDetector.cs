@@ -1,4 +1,5 @@
 using ActualChat.Chat.Module;
+using ActualChat.Module;
 using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -18,7 +19,12 @@ public class LanguageDetector(IServiceProvider services)
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     [field: AllowNull, MaybeNull]
-    private string Prompt => field ??= File.ReadAllText(Settings.LanguageDetection.PromptFile).RequireNonEmpty();
+    private CoreServerSettings CoreServerSettings => field ??= Services.GetRequiredService<CoreServerSettings>();
+
+    [field: AllowNull, MaybeNull]
+    private string Prompt => field ??= File
+        .ReadAllText(CoreServerSettings.PromptsDir | Settings.LanguageDetection.PromptFile)
+        .RequireNonEmpty();
 
     [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();

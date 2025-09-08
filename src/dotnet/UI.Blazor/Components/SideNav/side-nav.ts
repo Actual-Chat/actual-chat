@@ -154,6 +154,11 @@ export class SideNav extends DisposableBag {
                     parent.classList.add('rp-open');
                 }
             }
+            if (ScreenSize.isNarrow() || (!ScreenSize.isNarrow()) && window.getComputedStyle(this.element).position === 'absolute') {
+                const selection = window.getSelection();
+                if (selection)
+                    selection.removeAllRanges();
+            }
         } else {
             document.body.classList.remove(this.bodyClassWhenOpen);
             if (parent) {
@@ -194,6 +199,10 @@ class SideNavPullDetectGesture extends Gesture {
 
             if (!event.target)
                 return; // Not sure if this is possible, but just in case
+
+            const editor = document.querySelector('.chat-message-editor');
+            if (editor && editor.contains(event.target as Node))
+                return;
 
             const prePullDistance = getPrePullDistance(event.target);
             if (!prePullDistance)

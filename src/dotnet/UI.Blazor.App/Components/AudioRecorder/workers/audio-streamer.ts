@@ -10,7 +10,7 @@ import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Log } from 'logging';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('AudioStreamer');
-const bufferPool: ObjectPool<ArrayBuffer> = new ObjectPool<ArrayBuffer>(
+const bufferPool: ObjectPool<ArrayBufferLike> = new ObjectPool<ArrayBufferLike>(
     () => new ArrayBuffer(AE.FRAME_BUFFER_BYTES)
 ).expandTo(20);
 
@@ -169,6 +169,42 @@ export class AudioStream implements Disposable {
     }
 }
 
+class ConnectionOnlineTracker {
+    public isOnline: boolean = (typeof navigator === 'undefined') ? true : (navigator.onLine ?? true);
+    private lastWentOfflineAt: number | null = null;
+    private lastCameOnlineAt: number | null = null;
+    private attached = false;
+
+    public attach(): void {
+        if (this.attached)
+            return;
+
+        this.attached = true;
+        try {
+            globalThis.addEventListener('online', () => {
+                this.isOnline = true;
+                this.lastCameOnlineAt = Date.now();
+            });
+            globalThis.addEventListener('offline', () => {
+                this.isOnline = false;
+                this.lastWentOfflineAt = Date.now();
+            });
+        } catch { /* ignore if not available */ }
+    }
+
+    public justBecameOnline(): boolean {
+        if (!this.isOnline)
+            return false;
+
+        if (this.lastCameOnlineAt == null)
+            return false;
+
+        // If came online within the last 1 second
+        return (Date.now() - this.lastCameOnlineAt) < 1000;
+    }
+}
+const _connectionOnlineTracker = new ConnectionOnlineTracker();
+
 export class AudioStreamer {
     public static connection: signalR.HubConnection;
     public static readonly streams = new Array<AudioStream>();
@@ -187,23 +223,43 @@ export class AudioStreamer {
                 skipNegotiation: true,
                 transport: signalR.HttpTransportType.WebSockets,
             })
-            // We use fixed number of attempts here, because the reconnection is anyway
-            // triggered after SSB / ActualLab.Rpc reconnect. See:
-            // - C#: ChatAudioUI.ReconnectOnRpcReconnect
-            // - TS: AudioRecorder.ctor.
-            // Some extra attempts are needed, coz there is a chance that the primary connection
-            // stays intact, while this one drops somehow.
-            .withAutomaticReconnect([50, 350, 500, 1000, 1000, 1000])
+            .withAutomaticReconnect({
+                nextRetryDelayInMilliseconds: (ctx) => {
+                    // Immediate retry if we just came online (within < 1s)
+                    if (_connectionOnlineTracker.justBecameOnline())
+                        return 0;
+
+                    if (!_connectionOnlineTracker.isOnline)
+                        return 60 * 60 * 1000; // 1 hour when offline
+
+                    // online policy: 10, 100, 500, 1000 ms, then stop
+                    const seq = [10, 100, 500, 1000];
+                    const idx = Math.min(ctx.previousRetryCount ?? 0, seq.length - 1);
+                    return seq[idx];
+                }
+            } as signalR.IRetryPolicy)
             .withHubProtocol(new MessagePackHubProtocol())
             .configureLogging(signalR.LogLevel.Information)
             .build();
-        // stateful reconnect doesn't work with skipNegotiation and moreover provides glitches
+        // Track connection state and online/offline events
+        _connectionOnlineTracker.attach();
         c.onreconnected(() => updateConnectionState());
         c.onreconnecting(() => updateConnectionState());
         c.onclose(() => updateConnectionState());
         c['_launchStreams'] = _launchStreams.bind(c);
         c.start();
         this.connection = c;
+
+        // Network-aware reconnect: ensure we try fast when online event fires
+        try {
+            globalThis.addEventListener('online', () => {
+                const state = AudioStreamer.connection?.state;
+                if (state !== HubConnectionState.Connected && state !== HubConnectionState.Reconnecting) {
+                    debugLog?.log('online: ensuring SignalR connection ASAP');
+                    void AudioStreamer.ensureConnected(true);
+                }
+            });
+        } catch { }
     }
 
     public static get isInitialized(): boolean {
@@ -229,6 +285,21 @@ export class AudioStreamer {
         infoLog?.log(`ensureConnected(${quickReconnect}): connection.state:`, c.state);
         while (!this.isConnected) {
             try {
+                // If the browser reports we're offline, wait for the 'online' event to avoid futile reconnect attempts
+                if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                    warnLog?.log('ensureConnected: offline, waiting for window.online event...');
+                    await new Promise<void>(resolve => {
+                        const handler = () => {
+                            globalThis.removeEventListener('online', handler as any);
+                            resolve();
+                        };
+                        // Some runtimes don't type 'globalThis' with EventTarget in TS config
+                        globalThis.addEventListener('online', handler as any, { once: true } as any);
+                    });
+                    // Use quick reconnect once we're back online
+                    quickReconnect = true;
+                }
+
                 if (c.state === HubConnectionState.Disconnecting)
                     await c.stop();
                 if (c.state === HubConnectionState.Disconnected) {

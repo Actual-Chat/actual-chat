@@ -19,6 +19,7 @@ public partial class TimerFlow : Flow
         var args = Id.SplitArguments("", "1", "1");
         RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
         Period = double.Parse(args[2], CultureInfo.InvariantCulture);
+        EventUuidQuantizationInterval = TimeSpan.FromSeconds(Period / 2);
 
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnReset)}: {RemainingCount}");

@@ -344,6 +344,9 @@ body.hoverable .system-entry .message-content .avatar-name:hover {
 .system-entry .icon-at {
     @apply hidden;
 }
+.system-entry:has(.mention-markup) .plain-text-markup {
+    @apply pt-0.5;
+}
 
 .chat-message-quote {
     @apply flex-x gap-x-2;

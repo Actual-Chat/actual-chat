@@ -1,10 +1,22 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="web-splash">
-    <div class="c-content">
-        <img draggable="false" src="/dist/images/splashscreen.svg" alt="Loading...">
-        <div class="progress">
-            <div class="progress-value"></div>
+    <div class="c-wrapper">
+        <div class="bg-wrapper">
+            <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="voxt">
+            <img draggable="false" class="narrow-image" src="/dist/images/voxt-galaxy-vertical.svg" alt="voxt">
+        </div>
+
+        <div class="c-content">
+            <img draggable="false" src="/dist/images/splashscreen.svg" alt="Loading...">
+            <div class="progress">
+                <div class="progress-value"></div>
+            </div>
         </div>
     </div>
 </div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}

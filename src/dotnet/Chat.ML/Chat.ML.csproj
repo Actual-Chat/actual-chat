@@ -1,11 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  
   <ItemGroup>
     <ProjectReference Include="..\Api\Api.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
   </ItemGroup>
+  
   <ItemGroup>
-    <PackageReference Include="Microsoft.SemanticKernel.Abstractions" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.Abstractions" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Google" />
   </ItemGroup>
+
 </Project>

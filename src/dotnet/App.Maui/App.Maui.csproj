@@ -15,7 +15,7 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>9.0.70</MauiVersion>
+    <MauiVersion>9.0.100</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
@@ -424,7 +424,7 @@
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
 
     <!-- Splash Screen -->
-    <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0036A3" BaseSize="200,200" />
+    <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0C003D" BaseSize="200,200" />
 
     <!-- Images: none -->
     <MauiImage Remove="Resources\Images\**" />

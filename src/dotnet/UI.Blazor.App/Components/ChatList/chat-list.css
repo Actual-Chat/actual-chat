@@ -59,6 +59,10 @@
     @apply overflow-y-auto custom-scrollbar;
 }
 
+.navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
+    display: block;
+}
+
 /* Top-level container - active-chats, pinned-chats, etc. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;

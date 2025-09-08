@@ -55,6 +55,12 @@ public partial class EntryGroupBuilder
     public EntryGroupBuilder()
     { }
 
+    public EntryGroupBuilder(EntryGroupBuilder? entryGroupBuilder)
+    {
+        _entries = entryGroupBuilder != null ? [..entryGroupBuilder.Entries] : [];
+        Initialize();
+    }
+
     public EntryGroupBuilder(EntryGroup? entryGroup)
     {
         _entries = entryGroup != null ? [..entryGroup.Entries] : [];

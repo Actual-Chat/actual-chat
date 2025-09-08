@@ -13,35 +13,50 @@
 }
 
 .web-splash {
-    @apply absolute inset-0 z-[1900] overflow-hidden;
+    @apply absolute z-[1900] overflow-hidden;
     @apply flex items-center justify-center;
+    @apply w-screen h-screen;
     @apply transition-opacity ease-in duration-300;
-    background-color: var(--web-splash-bg-color);
     will-change: transform;
+    background-color: #0C003D;
 }
 .web-splash.removing {
     @apply transition-opacity ease-out duration-350 opacity-0;
 }
 
+.web-splash .c-wrapper {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-full h-full;
+}
+.web-splash .bg-wrapper {
+    @apply absolute inset-0 z-10;
+}
+.web-splash .bg-wrapper > img {
+    @apply absolute top-0 z-10;
+    @apply h-full w-full;
+}
+body.wide .web-splash .narrow-image,
+body.narrow .web-splash .wide-image {
+    @apply hidden;
+}
+body.narrow .web-splash .narrow-image,
+body.wide .web-splash .wide-image {
+    @apply block;
+}
 .web-splash .c-content {
-    @apply flex-y items-center justify-center;
-    min-height: 220px;
-    min-width: 220px;
-    max-height: 220px;
-    max-width: 220px;
+    @apply z-10;
+    @apply flex-y items-center justify-center gap-y-8;
+    min-height: 240px;
+    min-width: 240px;
+    max-height: 240px;
+    max-width: 240px;
 }
 .web-splash .c-content > img {
-    @apply mb-4;
-    min-height: 200px;
-    min-width: 200px;
-    max-height: 200px;
-    max-width: 200px;
-}
-body.app-maui.device-ios .web-splash .c-content > img {
-    @apply hidden;
-}
-body.app-maui.device-android .web-splash .c-content > img {
-    @apply hidden;
+    min-height: 100px;
+    min-width: 100px;
+    max-height: 100px;
+    max-width: 100px;
 }
 .web-splash .progress {
     @apply relative;

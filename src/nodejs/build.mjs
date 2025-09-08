@@ -38,6 +38,7 @@ const options = {
     platform: 'browser',
     target: 'es2020',
     format: 'esm',
+    external: ['module', 'worker_threads'],
     minify: isProduction,
     metafile: mustAnalyze,
     sourcemap: true,

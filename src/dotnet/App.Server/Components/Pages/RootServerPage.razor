@@ -95,10 +95,10 @@
         upgrade-insecure-requests;
         " />
     <link rel="icon" href="/favicon.svg">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#0036a3">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#0C003D">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
-    <meta name="msapplication-TileColor" content="#0036a3">
+    <meta name="msapplication-TileColor" content="#0C003D">
     <meta name="theme-color" content="#444444">
     <title>@CoreConstants.AppName</title>
     <base href="/" />
@@ -195,7 +195,7 @@
     <HeadOutlet @rendermode="@(_renderMode.Mode)" />
 </head>
 
-<body class="app-web" style="background-color: #0036A3">
+<body class="app-web" style="background-color: #0C003D">
 
 @if (_closeFlow == null && !renderModeKey.OrdinalStartsWith("s")) {
     <div id="web-splash" class="web-splash"></div>
@@ -204,10 +204,17 @@
         const overlay = document.getElementById('web-splash');
         if (overlay) {
           overlay.innerHTML = `
-            <div class="c-content">
-                <img draggable="false" src="/dist/images/splashscreen.svg" alt="Loading...">
-                <div class="progress">
-                    <div class="progress-value"></div>
+            <div class="c-wrapper">
+                <div class="bg-wrapper">
+                    <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="voxt">
+                    <img draggable="false" class="narrow-image" src="/dist/images/voxt-galaxy-vertical.svg" alt="voxt">
+                </div>
+
+                <div class="c-content">
+                    <img draggable="false" src="/dist/images/splashscreen.svg" alt="Loading...">
+                    <div class="progress">
+                        <div class="progress-value"></div>
+                    </div>
                 </div>
             </div>
           `;

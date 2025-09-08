@@ -169,7 +169,7 @@ body.narrow .landing .landing-header {
     @apply px-2;
 }
 body.wide.app-maui .landing .landing-header {
-    @apply px-8;
+    @apply px-32;
 }
 .landing .landing-header .light-icon,
 .landing .landing-header .dark-icon,
@@ -302,11 +302,19 @@ body.app-maui .landing .landing-header .btn-download {
 /* Page 1 styles */
 .landing .page-1 {
     @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-full;
+    @apply overflow-hidden;
+    background: #0C003D;
 }
 .landing .page-1 {
-    @apply min-h-screen;
+    @apply min-h-screen max-h-screen;
     min-height: calc(var(--vh, 1vh) * 100);
-
+    max-height: calc(var(--vh, 1vh) * 100);
+}
+.landing .page-1 .bg-wrapper > img {
+    @apply absolute top-0 z-10;
+    @apply h-full w-full;
 }
 .landing .page-1 > .c-content {
     @apply z-10;
@@ -324,24 +332,19 @@ body.narrow .landing .page-1 > .c-content {
     @apply pt-16;
     @apply bg-transparent;
 }
-body.narrow .landing .page-1 {
-    @apply min-h-screen;
-    @apply bg-gradient-to-b from-[var(--indigo-30)] to-[--magenta-60];
-    min-height: calc(var(--vh, 1vh) * 100);
-}
-body.narrow .landing .page-1 .page-1-wrapper,
+
 body.narrow .landing .page-links .page-links-wrapper {
     @apply h-full;
     @apply pt-12 px-4;
     @apply bg-cover bg-repeat-round;
     @apply bg-[url('images/ellipses-mobile.svg')];
 }
-.landing .page-1 > .c-content .main-text {
-    @apply gap-y-8;
+.landing .page.page-1 > .c-content .main-text {
+    @apply gap-y-8 items-start;
     @apply pt-0;
 }
-body.narrow .landing .page-1 > .c-content .main-text {
-    @apply gap-y-4;
+body.narrow .landing .page.page-1 > .c-content .main-text {
+    @apply gap-y-4 items-center;
 }
 .landing .page-1 > .c-content .main-text {
     @apply md:items-center;
@@ -380,7 +383,7 @@ body.narrow .landing .page-1 .main-text .c-description {
 }
 .landing .page-1 .main-text .c-btn-group {
     @apply flex-y gap-4;
-    @apply w-auto md:w-100 lg:w-120;
+    @apply w-full md:w-100 lg:w-120;
     @apply py-4;
 }
 .landing .page-1 > .c-content .main-image {
@@ -401,26 +404,6 @@ body.narrow .landing .page-1 .main-text .main-text-wrapper .c-btn-group {
     @apply absolute;
     @apply w-screen h-full;
     @apply overflow-hidden;
-}
-.landing .page-1 .bg-wrapper > .c-ground {
-    @apply absolute;
-    @apply h-full w-screen;
-    @apply bg-no-repeat;
-    background: radial-gradient(circle at 40% 95%, var(--magenta-60), var(--blue-30) 50%) 0 60% / 120% 200%;
-}
-.landing .page-1 .bg-wrapper > .c-image {
-    @apply absolute;
-    @apply h-full w-screen;
-    @apply bg-repeat-y;
-    @apply bg-contain;
-    @apply bg-[url('images/ellipses.svg')];
-}
-body.narrow .landing .page-1 .bg-wrapper > .c-ground {
-    background: radial-gradient(circle at 50% 95%, var(--magenta-60), var(--blue-30) 40%);
-}
-body.narrow .landing .page-1 .bg-wrapper > .c-image {
-    @apply bg-cover bg-repeat-round;
-    @apply bg-[url('images/ellipses-mobile.svg')];
 }
 
 /* Page 2 */

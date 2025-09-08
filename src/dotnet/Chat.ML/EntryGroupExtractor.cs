@@ -43,6 +43,9 @@ public partial record ExtractorState(
     EntryGroupBuilder? CurrentChunk)
 {
     [IgnoreDataMember, MemoryPackIgnore]
+    public long MinLid => CurrentGroup?.MinLid ?? (CurrentChunk?.MinLid ?? 0);
+
+    [IgnoreDataMember, MemoryPackIgnore]
     public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
 
     [IgnoreDataMember, MemoryPackIgnore]
