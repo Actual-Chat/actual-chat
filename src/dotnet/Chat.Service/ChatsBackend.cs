@@ -11,6 +11,7 @@ using ActualChat.Media;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Resilience;
 using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.Chat;
@@ -1899,15 +1900,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Reading the current author; we may need to wait for its creation here, so...
         AuthorFull? readAuthor;
-        var retryTracker = new RetryTracker(RetryDelaySeq.Exp(0.25, 1), 5);
+        var retryPolicy = new RetryPolicy(5, RetryDelaySeq.Exp(0.25, 1));
+        var tryIndex = 0;
         while (true) {
-            await Clocks.CoarseCpuClock.Delay(retryTracker.Delay, cancellationToken).ConfigureAwait(false);
             readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (readAuthor?.Avatar != null)
                 break;
-
-            if (!retryTracker.WillRetry())
+            if (!retryPolicy.MustRetry(++tryIndex))
                 throw StandardError.NotFound<Avatar>();
+
+            var delay = retryPolicy.GetDelay(tryIndex);
+            await Clocks.CoarseCpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
         var isAnonymous = readAuthor?.IsAnonymous ?? author.IsAnonymous;
         var authorId = isAnonymous ? null : author.Id;
