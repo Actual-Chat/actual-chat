@@ -1,16 +1,15 @@
 using ActualChat.Mesh;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat;
 
-public sealed class ShardDispatchers(IServiceProvider services) : ProcessorBase, IHasServices
+public sealed class ShardDispatchers(IServiceProvider services)
+    : ProcessorBase(services.HostLifetimeIfExist().CreateStopTokenSource()), IHasServices
 {
     private readonly ConcurrentDictionary<
         (ShardScheme ShardScheme, string KeyPrefix),
         LazySlim<(ShardScheme ShardScheme, string KeyPrefix), ShardDispatchers, ShardDispatcher>> _dispatchers
         = new();
 
-    private IHostApplicationLifetime? HostApplicationLifetime { get; } = services.HostLifetimeIfExist();
     private IMeshLocks ShardLocks { get; } = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ShardDispatchers));
 
     public IServiceProvider Services { get; } = services;
@@ -35,7 +34,7 @@ public sealed class ShardDispatchers(IServiceProvider services) : ProcessorBase,
                 static (key, self) => {
                     var (shardScheme, keyPrefix) = key;
                     var shardLocks = self.GetShardLocks(shardScheme, keyPrefix);
-                    var stopTokenSource = self.CreateShardStopTokenSource();
+                    var stopTokenSource = self.StopToken.CreateLinkedTokenSource();
                     var shardLocker = new ShardDispatcher(self, shardLocks, shardScheme, keyPrefix, stopTokenSource);
                     shardLocker.Start();
                     return shardLocker;
@@ -51,10 +50,4 @@ public sealed class ShardDispatchers(IServiceProvider services) : ProcessorBase,
 
     public IMeshLocks GetShardLocks(ShardScheme shardScheme, string keyPrefix)
         => ShardLocks.WithKeyPrefix(ComposeFullKeyPrefix(shardScheme, keyPrefix));
-
-    // Private methods
-
-    private CancellationTokenSource CreateShardStopTokenSource()
-        => HostApplicationLifetime?.ApplicationStopping.LinkWith(StopToken)
-            ?? StopToken.CreateLinkedTokenSource();
 }

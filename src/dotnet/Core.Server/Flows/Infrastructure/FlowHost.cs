@@ -28,8 +28,9 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
 
         using var cancelledCts = new CancellationTokenSource();
         cancelledCts.Cancel();
+        var cancelledToken = cancelledCts.Token;
         Shards = Enumerable.Range(0, ShardScheme.ShardCount)
-            .Select(i => new FlowHostShard(this, i, cancelledCts.Token))
+            .Select(i => new FlowHostShard(this, i, cancelledToken))
             .ToArray();
     }
 

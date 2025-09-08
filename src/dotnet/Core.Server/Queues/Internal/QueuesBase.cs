@@ -27,7 +27,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     public IReadOnlyDictionary<QueueRef, IQueueProcessor> Processors { get; protected init; } = null!;
 
     protected QueuesBase(TSettings settings, IServiceProvider services, bool initProcessors = true)
-        : base(services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource())
+        : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Settings = settings;
         Services = services;

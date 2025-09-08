@@ -14,10 +14,7 @@ public sealed class FlowHostShard(FlowHost host, int shardIndex, CancellationTok
 
     public async Task OnRun(CancellationToken cancellationToken)
     {
-        // cancellationToken = StopToken here
-        using var dTask = cancellationToken.ToTask();
-        await dTask.Resource.SilentAwait(false); // Await for cancellation
-
+        await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
         while (true) {
             var disposeTasks = Worklets.Values
                 .Select(w => w.DisposeAsync().AsTask())

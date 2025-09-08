@@ -1,12 +1,14 @@
+using ActualLab.Resilience;
+
 namespace ActualChat;
 
 public sealed class ShardRunnable : IRunnable
 {
-    public static readonly RetryDelaySeq DefaultRetryDelays = RetryDelaySeq.Exp(0.1, 1);
+    public static readonly IRetryPolicy DefaultRetryPolicy = new RetryPolicy(RetryDelaySeq.Exp(0.1, 1));
 
     public string Name { get; }
     public Delegate Func { get; }
-    public RetryDelaySeq? RetryDelays { get; init; } = DefaultRetryDelays; // null means no retries
+    public IRetryPolicy? RetryPolicy { get; init; } = DefaultRetryPolicy; // null means no retries
 
     private ShardRunnable(string name, Delegate func)
     {
@@ -25,8 +27,8 @@ public sealed class ShardRunnable : IRunnable
     public Task Run(IRunnableRunner runner, CancellationToken cancellationToken)
     {
         var shardLockState = (ShardDispatcher.LockState)runner;
-        return RetryDelays is { } retryDelays
-            ? Run(retryDelays, shardLockState, cancellationToken)
+        return RetryPolicy is { } retryPolicy
+            ? Run(retryPolicy, shardLockState, cancellationToken)
             : Run(shardLockState, cancellationToken);
     }
 
@@ -44,21 +46,22 @@ public sealed class ShardRunnable : IRunnable
         }
     }
 
-    private async Task Run(RetryDelaySeq retryDelays, ShardDispatcher.LockState lockState, CancellationToken cancellationToken)
+    private async Task Run(IRetryPolicy retryPolicy, ShardDispatcher.LockState lockState, CancellationToken cancellationToken)
     {
         var log = lockState.Dispatcher.Log;
-        var retryTracker = new RetryTracker(retryDelays);
+        var tryIndex = 0;
+        var retryLogger = (RetryLogger?)null;
         while (true) {
             try {
                 await InvokeFunc(lockState, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                if (!retryTracker.WillRetry(e))
+                if (!retryPolicy.MustRetry(e, ref tryIndex))
                     throw;
 
-                var delay = retryTracker.Delay;
-                log.LogWarning(e, "{Name}: will retry (#{Count}) in {Delay}",
-                    Name, retryTracker.Count, delay.ToShortString());
+                var delay = retryPolicy.GetDelay(tryIndex);
+                retryLogger ??= new RetryLogger(log, Name);
+                retryLogger.LogRetry(e, tryIndex, delay);
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }

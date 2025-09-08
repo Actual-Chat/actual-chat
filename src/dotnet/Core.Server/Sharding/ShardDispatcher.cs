@@ -1,5 +1,6 @@
 using ActualChat.Mesh;
 using ActualLab.Diagnostics;
+using ActualLab.Resilience;
 
 namespace ActualChat;
 
@@ -30,7 +31,7 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
         IMeshLocks shardLocks,
         ShardScheme shardScheme,
         string keyPrefix,
-        CancellationTokenSource? stopTokenSource
+        CancellationTokenSource stopTokenSource
         ) : base(stopTokenSource)
     {
         Host = host;
@@ -47,8 +48,8 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
             category: StateCategories.Get(GetType(), nameof(State)));
     }
 
-    public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func, RetryDelaySeq? retryDelays)
-        => RunnableDispatcher.Use(new ShardRunnable(name, func) { RetryDelays = retryDelays });
+    public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
+        => RunnableDispatcher.Use(new ShardRunnable(name, func) { RetryPolicy = retryPolicy });
     public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func)
         => RunnableDispatcher.Use(new ShardRunnable(name, func));
     public IAsyncDisposable Use(ShardRunnable shardRunnable)

@@ -31,7 +31,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
 #endif
 
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
-        : base(services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource())
+        : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Services = services;
         Log = services.LogFor(GetType());
@@ -243,8 +243,9 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                 return;
 
             Log.LogCritical("[!] {MeshNode} - failed to (re)acquire the node announcement lock in time", lockKey);
-            var hostLifetime = Services.GetService<IHostApplicationLifetime>();
-            if (MustStopHostOnAnnounceFailure && hostLifetime?.ApplicationStopping.IsCancellationRequested == false) {
+            if (MustStopHostOnAnnounceFailure
+                && Services.HostLifetimeIfExist() is { } hostLifetime
+                && !hostLifetime.StopToken().IsCancellationRequested) {
                 Log.LogCritical("[!] {MeshNode} - stopping the host", lockKey);
                 hostLifetime.StopApplication();
             }
