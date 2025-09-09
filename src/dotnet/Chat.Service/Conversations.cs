@@ -26,11 +26,7 @@ public class Conversations(IServiceProvider services) : IConversations
         if (conversation == null)
             return null;
 
-        var authorId = conversation.AuthorIds.FirstOrDefault();
-        var chatId = authorId?.ChatId;
-        if (chatId == null)
-            return null;
-
+        var chatId = conversationId.ChatId;
         var entryIdRange = conversation.EntryRange;
         var command = new ConversationBackend_Summarize(chatId, [entryIdRange]);
         return await Commander.Call(command, cancellationToken).ConfigureAwait(false);

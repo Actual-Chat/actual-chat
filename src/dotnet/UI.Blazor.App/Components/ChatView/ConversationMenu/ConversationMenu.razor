@@ -6,21 +6,57 @@
         return;
 
     var expandCollapseButtonTitle = _isOpen ? "Collapse conversation" : "Expand conversation";
+    var expandCollapseButtonIcon = _isOpen ? "icon-collapse" : "icon-expand";
 }
 
 <div class="message-menu">
     <MenuEntry
-        Icon="icon-share"
+        Icon="@expandCollapseButtonIcon"
         Text="@expandCollapseButtonTitle"
+        Class="important-item"
         Click="@(() => ToggleShowMessage())">
     </MenuEntry>
     @if (m.IsOwner) {
         <MenuEntry
-            Icon="icon-refresh"
+            Icon="icon-resummarize"
             Text="Re-summarize"
             Click="@(() => OnReSummarize(m.Conversation))">
         </MenuEntry>
     }
+    <MenuEntry
+        Icon="icon-reply"
+        FocusOnEditor="true"
+        Text="Reply"
+        Click="@Reply">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-copy"
+        Text="Copy summary"
+        Click="@CopySummary">
+    </MenuEntry>
+    <CopyTrigger Tooltip="" CopyText="" Class="ac-menu-item !p-0">
+        <MenuEntry
+            Icon="icon-copy"
+            Text="Copy summary link">
+        </MenuEntry>
+    </CopyTrigger>
+    <MenuEntry
+        Icon="icon-share"
+        Text="Forward"
+        Click="@Forward">
+    </MenuEntry>
+    <MenuEntry
+        Class="warning-item"
+        Icon="icon-trash03"
+        Text="Delete"
+        Click="@Delete">
+    </MenuEntry>
+    <MenuEntrySeparator/>
+    <MenuEntry
+        Icon="icon-select"
+        Text="Select"
+        Click="@Select">
+    </MenuEntry>
 </div>
 
 @code {
@@ -52,14 +88,7 @@
         if (conversation == null)
             return Model.None;
 
-        var authorId = conversation.AuthorIds.FirstOrDefault();
-        var chatId = authorId?.ChatId;
-        if (chatId == null)
-            return new() {
-                Conversation = conversation,
-                IsOwner = false,
-            };
-
+        var chatId = conversationId.ChatId;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isOwner = chat != null && (chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
 
@@ -74,6 +103,16 @@
 
     private void OnReSummarize(Conversation conversation)
         => Conversations.ReSummarize(conversation.Id, CancellationToken.None);
+
+    private void Reply() {}
+
+    private void CopySummary() {}
+
+    private void Forward() {}
+
+    private void Delete() {}
+
+    private void Select() {}
 
     // Nested types
 
